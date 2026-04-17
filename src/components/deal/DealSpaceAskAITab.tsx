@@ -1,15 +1,11 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown, Info, FileText, Mail, Copy, Check, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, RotateCw } from 'lucide-react';
-import { Textarea } from '@/components/ui/textarea';
+import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown, Info, FileText, Mail } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from '@/components/ui/dialog';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem,
   DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel,
@@ -26,6 +22,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
+import { DraftSubmissionEmailsModal, type EmailDraft, draftBodyToPlainText } from './email/DraftSubmissionEmailsModal';
 
 interface DealSpaceAskAITabProps {
   dealId: string;
@@ -85,21 +82,10 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   // Draft Submission runs as a structured product action — fully decoupled from the chat panel.
-  type EmailDraft = {
-    lenderName: string;
-    to: string;
-    subject: string;
-    body: string;
-    status: 'draft' | 'approved' | 'sending' | 'sent' | 'failed';
-    isSubjectEdited?: boolean;
-    isBodyEdited?: boolean;
-    errorMessage?: string;
-  };
   const [isDraftingEmail, setIsDraftingEmail] = useState(false);
   const [emailDrafts, setEmailDrafts] = useState<EmailDraft[]>([]);
   const [activeDraftIndex, setActiveDraftIndex] = useState(0);
   const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false);
-  const [appliedField, setAppliedField] = useState<'subject' | 'body' | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -252,13 +238,31 @@ CRITICAL RULES:
 
       const drafts: EmailDraft[] = (parsed.drafts || [])
         .filter((d) => d && (d.body || d.subject))
-        .map((d) => ({
-          lenderName: d.lenderName?.trim() || 'Lender',
-          to: '',
-          subject: d.subject?.replace(/^subject:\s*/i, '').trim() || '',
-          body: d.body?.trim() || '',
-          status: 'draft' as const,
-        }));
+        .map((d) => {
+          // Convert AI plain-text body (\n\n paragraphs) into HTML for the rich-text editor.
+          const plain = (d.body || '').trim();
+          const bodyHtml = plain
+            ? plain
+                .split(/\n{2,}/)
+                .map((para) =>
+                  `<p>${para
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/\n/g, '<br/>')}</p>`
+                )
+                .join('')
+            : '';
+          return {
+            lenderName: d.lenderName?.trim() || 'Lender',
+            to: '',
+            cc: '',
+            bcc: '',
+            subject: d.subject?.replace(/^subject:\s*/i, '').trim() || '',
+            bodyHtml,
+            status: 'draft' as const,
+          } satisfies EmailDraft;
+        });
 
       if (drafts.length === 0) {
         throw new Error('No active lenders found to draft emails for.');
@@ -273,40 +277,6 @@ CRITICAL RULES:
     }
   }, [dealId, DRAFT_SUBMISSION_PROMPT]);
 
-  const updateActiveDraft = useCallback((patch: Partial<EmailDraft>) => {
-    setEmailDrafts((prev) => prev.map((d, i) => (i === activeDraftIndex ? { ...d, ...patch } : d)));
-  }, [activeDraftIndex]);
-
-  const applySubjectToAll = useCallback(() => {
-    const source = emailDrafts[activeDraftIndex];
-    if (!source) return;
-    setEmailDrafts((prev) => prev.map((d) => ({ ...d, subject: source.subject, isSubjectEdited: false })));
-    setAppliedField('subject');
-    setTimeout(() => setAppliedField((f) => (f === 'subject' ? null : f)), 1800);
-  }, [emailDrafts, activeDraftIndex]);
-
-  const applyBodyToAll = useCallback(() => {
-    const source = emailDrafts[activeDraftIndex];
-    if (!source) return;
-    setEmailDrafts((prev) => prev.map((d) => ({ ...d, body: source.body, isBodyEdited: false })));
-    setAppliedField('body');
-    setTimeout(() => setAppliedField((f) => (f === 'body' ? null : f)), 1800);
-  }, [emailDrafts, activeDraftIndex]);
-
-  const goToPrev = useCallback(() => {
-    setActiveDraftIndex((i) => Math.max(0, i - 1));
-  }, []);
-  const goToNext = useCallback(() => {
-    setActiveDraftIndex((i) => Math.min(emailDrafts.length - 1, i + 1));
-  }, [emailDrafts.length]);
-
-  const handleApproveDraft = useCallback(() => {
-    updateActiveDraft({ status: 'approved' });
-    if (activeDraftIndex < emailDrafts.length - 1) {
-      setActiveDraftIndex((i) => i + 1);
-    }
-  }, [updateActiveDraft, activeDraftIndex, emailDrafts.length]);
-
   // Native in-app send via the connected email account (Nylas-backed).
   // No mailto:, no external clients — the request is fully handled inside the platform.
   const sendDraftAtIndex = useCallback(async (index: number) => {
@@ -319,31 +289,32 @@ CRITICAL RULES:
       )));
       return;
     }
-    if (!draft.subject?.trim() || !draft.body?.trim()) {
+    if (!draft.subject?.trim() || !draft.bodyHtml?.trim()) {
       setEmailDrafts((prev) => prev.map((d, i) => (
         i === index ? { ...d, status: 'failed', errorMessage: 'Subject and body are required.' } : d
       )));
       return;
     }
 
+    const splitEmails = (s: string) =>
+      (s || '').split(',').map((x) => x.trim()).filter(Boolean);
+
     setEmailDrafts((prev) => prev.map((d, i) => (
       i === index ? { ...d, status: 'sending', errorMessage: undefined } : d
     )));
 
     try {
-      // Convert plain-text body (with \n\n paragraphs) into simple HTML for delivery.
-      const bodyHtml = draft.body
-        .split(/\n{2,}/)
-        .map((para) => `<p>${para.replace(/\n/g, '<br/>').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`)
-        .join('');
+      const plainTextFallback = draftBodyToPlainText(draft.bodyHtml);
 
       const { data, error } = await supabase.functions.invoke('gmail-messages', {
         body: {
           action: 'send',
           to: [recipient],
+          cc: splitEmails(draft.cc),
+          bcc: splitEmails(draft.bcc),
           subject: draft.subject,
-          body: draft.body,
-          body_html: bodyHtml,
+          body: plainTextFallback,
+          body_html: draft.bodyHtml,
         },
       });
       if (error) throw new Error(error.message || 'Send failed');
@@ -368,10 +339,6 @@ CRITICAL RULES:
       toast({ title: 'Send failed', description: message, variant: 'destructive' });
     }
   }, [emailDrafts]);
-
-  const handleSendDraft = useCallback(() => {
-    void sendDraftAtIndex(activeDraftIndex);
-  }, [sendDraftAtIndex, activeDraftIndex]);
 
   const suggestedQuestions = [
     "Generate a full lender-ready memo for this deal",
@@ -601,214 +568,16 @@ CRITICAL RULES:
       </CardContent>
 
       {/* Draft Submission Email — multi-lender review modal (kept entirely separate from chat). */}
-      <Dialog open={isDraftDialogOpen} onOpenChange={setIsDraftDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Mail className="h-4 w-4 text-primary" />
-              Draft Submission Emails
-              {!isDraftingEmail && emailDrafts.length > 0 && (
-                <span className="text-xs font-normal text-muted-foreground">
-                  · {activeDraftIndex + 1} of {emailDrafts.length}
-                </span>
-              )}
-            </DialogTitle>
-            <DialogDescription>
-              Review each lender-specific draft. Approve and send one at a time.
-            </DialogDescription>
-          </DialogHeader>
-
-          {isDraftingEmail ? (
-            <div className="flex-1 flex items-center justify-center min-h-[300px]">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Generating drafts for each active lender…
-              </div>
-            </div>
-          ) : emailDrafts.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center min-h-[200px]">
-              <p className="text-sm text-muted-foreground">No drafts generated.</p>
-            </div>
-          ) : (
-            <div className="flex-1 flex flex-col min-h-0 gap-3">
-              {/* Lender tabs / pager */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                {emailDrafts.map((d, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setActiveDraftIndex(i)}
-                    className={cn(
-                      'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs whitespace-nowrap border transition-colors',
-                      i === activeDraftIndex
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-muted/50 hover:bg-muted border-border'
-                    )}
-                  >
-                    {d.status === 'sent' && <CheckCircle2 className="h-3 w-3" />}
-                    {d.status === 'approved' && <Check className="h-3 w-3" />}
-                    {d.status === 'sending' && <Loader2 className="h-3 w-3 animate-spin" />}
-                    {d.status === 'failed' && <AlertCircle className="h-3 w-3 text-destructive" />}
-                    <span>{d.lenderName}</span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Active email window */}
-              {(() => {
-                const draft = emailDrafts[activeDraftIndex];
-                if (!draft) return null;
-                return (
-                  <div className="flex-1 flex flex-col gap-2 overflow-auto rounded-md border bg-card p-3 min-h-0">
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="w-16 text-muted-foreground">To:</span>
-                      <Input
-                        value={draft.to}
-                        onChange={(e) => updateActiveDraft({ to: e.target.value })}
-                        placeholder="recipient@example.com"
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="w-16 text-muted-foreground">Subject:</span>
-                        <Input
-                          value={draft.subject}
-                          onChange={(e) => updateActiveDraft({ subject: e.target.value, isSubjectEdited: true })}
-                          className="h-8 text-xs"
-                        />
-                      </div>
-                      {(draft.isSubjectEdited || appliedField === 'subject') && emailDrafts.length > 1 && (
-                        <div className="pl-[72px]">
-                          <button
-                            type="button"
-                            onClick={applySubjectToAll}
-                            className="text-[11px] text-primary hover:underline disabled:opacity-60"
-                            disabled={appliedField === 'subject'}
-                          >
-                            {appliedField === 'subject' ? '✓ Applied to all drafts' : 'Apply to all submissions'}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-1 flex-1 min-h-0">
-                      <span className="text-xs text-muted-foreground">Body:</span>
-                      <Textarea
-                        value={draft.body}
-                        onChange={(e) => updateActiveDraft({ body: e.target.value, isBodyEdited: true })}
-                        className="flex-1 min-h-[260px] text-sm font-sans resize-none"
-                      />
-                      {(draft.isBodyEdited || appliedField === 'body') && emailDrafts.length > 1 && (
-                        <div>
-                          <button
-                            type="button"
-                            onClick={applyBodyToAll}
-                            className="text-[11px] text-primary hover:underline disabled:opacity-60"
-                            disabled={appliedField === 'body'}
-                          >
-                            {appliedField === 'body' ? '✓ Applied to all drafts' : 'Apply to all submissions'}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                        <Badge
-                          variant={draft.status === 'failed' ? 'destructive' : draft.status === 'sent' ? 'default' : 'outline'}
-                          className="text-[10px] py-0 h-4 gap-1"
-                        >
-                          {draft.status === 'sending' && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
-                          {draft.status === 'sent' && <CheckCircle2 className="h-2.5 w-2.5" />}
-                          {draft.status === 'failed' && <AlertCircle className="h-2.5 w-2.5" />}
-                          {draft.status}
-                        </Badge>
-                        <span>Lender: {draft.lenderName}</span>
-                      </div>
-                      {draft.status === 'failed' && draft.errorMessage && (
-                        <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-2 py-1.5 text-[11px] text-destructive">
-                          <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                          <span className="flex-1">{draft.errorMessage}</span>
-                          <button
-                            type="button"
-                            onClick={() => sendDraftAtIndex(activeDraftIndex)}
-                            className="inline-flex items-center gap-1 font-medium hover:underline"
-                          >
-                            <RotateCw className="h-3 w-3" /> Retry
-                          </button>
-                        </div>
-                      )}
-                      {draft.status === 'sent' && (
-                        <div className="flex items-center gap-1.5 text-[11px] text-primary">
-                          <CheckCircle2 className="h-3 w-3" />
-                          <span>Sent from your connected email account.</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          )}
-
-          <DialogFooter className="gap-2 sm:gap-2 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={goToPrev}
-              disabled={isDraftingEmail || activeDraftIndex === 0}
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" /> Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={goToNext}
-              disabled={isDraftingEmail || activeDraftIndex >= emailDrafts.length - 1}
-            >
-              Next <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-            <div className="flex-1" />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleApproveDraft}
-              disabled={isDraftingEmail || emailDrafts.length === 0 || emailDrafts[activeDraftIndex]?.status === 'sent'}
-            >
-              <Check className="h-4 w-4 mr-1" /> Approve
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleSendDraft}
-              disabled={
-                isDraftingEmail ||
-                emailDrafts.length === 0 ||
-                emailDrafts[activeDraftIndex]?.status === 'sending' ||
-                emailDrafts[activeDraftIndex]?.status === 'sent'
-              }
-            >
-              {emailDrafts[activeDraftIndex]?.status === 'sending' ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Sending…
-                </>
-              ) : emailDrafts[activeDraftIndex]?.status === 'sent' ? (
-                <>
-                  <CheckCircle2 className="h-4 w-4 mr-1" /> Sent
-                </>
-              ) : emailDrafts[activeDraftIndex]?.status === 'failed' ? (
-                <>
-                  <RotateCw className="h-4 w-4 mr-1" /> Retry send
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4 mr-1" /> Send
-                </>
-              )}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setIsDraftDialogOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DraftSubmissionEmailsModal
+        open={isDraftDialogOpen}
+        onOpenChange={setIsDraftDialogOpen}
+        isGenerating={isDraftingEmail}
+        drafts={emailDrafts}
+        setDrafts={setEmailDrafts}
+        activeIndex={activeDraftIndex}
+        setActiveIndex={setActiveDraftIndex}
+        onSend={sendDraftAtIndex}
+      />
     </Card>
   );
 }
