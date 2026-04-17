@@ -40,7 +40,9 @@ function fileLabel(filename: string, contentType: string): string {
 export function EmailAttachmentList({ messageId, attachments }: Props) {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  const visible = attachments.filter((a) => !a.is_inline && a.filename);
+  // Show every non-inline attachment, even if some metadata is missing —
+  // we still want users to see *something* rather than a blank tile.
+  const visible = attachments.filter((a) => !a.is_inline);
   if (visible.length === 0) return null;
 
   const handleDownload = async (att: EmailAttachment) => {
@@ -66,11 +68,12 @@ export function EmailAttachmentList({ messageId, attachments }: Props) {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {visible.map((att, i) => {
-          const Icon = iconForType(att.content_type, att.filename);
-          const label = fileLabel(att.filename, att.content_type);
+          const filename = att.filename || 'Untitled attachment';
+          const Icon = iconForType(att.content_type, filename);
+          const label = fileLabel(filename, att.content_type);
           const sizeLabel = formatBytes(att.size);
           const isDownloading = downloadingId === att.id;
-          const key = att.id || `${att.filename}-${i}`;
+          const key = att.id || `${filename}-${i}`;
           return (
             <button
               key={key}
@@ -78,15 +81,18 @@ export function EmailAttachmentList({ messageId, attachments }: Props) {
               onClick={() => handleDownload(att)}
               disabled={isDownloading || !att.id}
               className={cn(
-                'group flex items-center gap-3 p-2.5 rounded-md border border-[hsl(var(--email-border))] bg-card/60 hover:bg-card hover:border-[hsl(var(--outlook-blue)/0.4)] transition-all text-left min-w-0',
+                'group flex items-center gap-3 p-2.5 rounded-md text-left min-w-0',
+                'border border-[hsl(var(--email-border))]',
+                'bg-[hsl(var(--email-toolbar-bg))] hover:bg-[hsl(var(--email-reading-bg))]',
+                'hover:border-[hsl(var(--outlook-blue)/0.5)] transition-colors',
                 'disabled:opacity-60 disabled:cursor-not-allowed',
               )}
             >
-              <div className="flex items-center justify-center h-9 w-9 rounded bg-muted/50 shrink-0">
+              <div className="flex items-center justify-center h-9 w-9 rounded bg-[hsl(var(--email-list-bg))] border border-[hsl(var(--email-border))] shrink-0">
                 <Icon className="h-4 w-4 text-[hsl(var(--email-text-secondary))]" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium text-[hsl(var(--email-text-primary))] truncate">{att.filename}</div>
+                <div className="text-[13px] font-medium text-[hsl(var(--email-text-primary))] truncate">{filename}</div>
                 <div className="text-[11px] text-[hsl(var(--email-text-muted))] flex items-center gap-1.5">
                   <span>{label}</span>
                   {sizeLabel && <><span>·</span><span>{sizeLabel}</span></>}

@@ -247,6 +247,101 @@
 
 }
 
+/* ═══ Email HTML Body — neutralize hardcoded colors from third-party email HTML ═══ */
+/* The DOMPurify hook strips inline color/background declarations, but some emails
+   carry presentational <font> tags or wrapped tables with their own contrast. We
+   force every descendant in the rendered body to inherit naitive's email tokens
+   so dark mode is never broken by email source markup. */
+.email-html-body,
+.email-html-body * {
+  color: hsl(var(--email-text-primary)) !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+.email-html-body p,
+.email-html-body div,
+.email-html-body span,
+.email-html-body li,
+.email-html-body td,
+.email-html-body th,
+.email-html-body h1,
+.email-html-body h2,
+.email-html-body h3,
+.email-html-body h4,
+.email-html-body h5,
+.email-html-body h6 {
+  color: hsl(var(--email-text-primary)) !important;
+}
+
+.email-html-body p { margin: 0 0 0.75rem 0; }
+.email-html-body p:last-child { margin-bottom: 0; }
+
+.email-html-body ul,
+.email-html-body ol {
+  margin: 0.5rem 0 0.75rem 0;
+  padding-left: 1.5rem;
+}
+.email-html-body ul { list-style: disc; }
+.email-html-body ol { list-style: decimal; }
+.email-html-body li { margin-bottom: 0.25rem; }
+.email-html-body li::marker { color: hsl(var(--email-text-secondary)) !important; }
+
+.email-html-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.email-html-body table {
+  max-width: 100%;
+  width: 100% !important;
+  border-collapse: collapse;
+}
+
+.email-html-body a,
+.email-html-body a * {
+  color: hsl(var(--outlook-blue)) !important;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.email-html-body a:hover,
+.email-html-body a:hover * {
+  color: hsl(var(--outlook-blue)) !important;
+  filter: brightness(1.15);
+}
+
+.email-html-body blockquote,
+.email-html-body blockquote * {
+  color: hsl(var(--email-text-secondary)) !important;
+}
+.email-html-body blockquote {
+  border-left: 2px solid hsl(var(--outlook-blue) / 0.4) !important;
+  padding-left: 0.75rem;
+  margin: 0.5rem 0;
+}
+
+.email-html-body pre,
+.email-html-body code {
+  background-color: hsl(var(--muted) / 0.4) !important;
+  color: hsl(var(--email-text-primary)) !important;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+.email-html-body pre {
+  padding: 0.5rem;
+  white-space: pre-wrap;
+}
+.email-html-body code {
+  padding: 0.1rem 0.3rem;
+}
+
+.email-html-body hr {
+  border: 0;
+  border-top: 1px solid hsl(var(--email-border));
+  margin: 1rem 0;
+}
+
 /* ═══ Liquid Glass Utility Classes ═══ */
 @layer components {
   /* Glass card base */
