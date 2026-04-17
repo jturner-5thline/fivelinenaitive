@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { EmailThread } from './mockEmailData';
 import { useLenderPassDetection } from '@/hooks/useLenderPassDetection';
+import { useThreadDealResolver } from '@/hooks/useThreadDealResolver';
 import { LenderPassSidebarCard } from './LenderPassSidebarCard';
 
 /**
@@ -81,6 +82,16 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   const [selected, setSelected] = useState<1 | 2 | 3>(2);
   const [showSources, setShowSources] = useState(false);
 
+  // Resolve a deal from sender if no explicit dealId (Inbox popup case).
+  const latestInbound = thread.emails.find((e) => e.from_name !== 'You') || thread.latestEmail;
+  const { resolvedDealId } = useThreadDealResolver({
+    enabled: !dealId,
+    senderEmail: latestInbound?.from_email,
+    fallbackDealId: dealId && dealId.length > 0 ? dealId : undefined,
+    fallbackDealName: dealName,
+  });
+  const effectivePassDealId = dealId && dealId.length > 0 ? dealId : resolvedDealId;
+
   // Lender pass detection — shares state with the inline banner via the same row.
   const passThreadData = {
     subject: thread.subject,
@@ -95,7 +106,11 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
     setAutoCommitPref: setPassAutoCommit,
     confirmPass,
     dismissPass,
-  } = useLenderPassDetection({ dealId, threadData: passThreadData, autoRun: !!dealId });
+  } = useLenderPassDetection({
+    dealId: effectivePassDealId,
+    threadData: passThreadData,
+    autoRun: !!effectivePassDealId,
+  });
   const showPassCard = !!passDetection && (passDetection.status === 'pending' || passDetection.status === 'confirmed') && (passDetection.is_pass || passDetection.status === 'confirmed');
 
   const generate = useCallback(async () => {

@@ -56,6 +56,7 @@ import { EmailAttachmentList } from './EmailAttachmentList';
 import { useFullEmailMessage } from './useFullEmailMessage';
 import { LenderPassBanner } from './LenderPassBanner';
 import { useLenderPassDetection } from '@/hooks/useLenderPassDetection';
+import { useThreadDealResolver } from '@/hooks/useThreadDealResolver';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -79,6 +80,17 @@ function SentimentBadge({ sentiment }: { sentiment?: MockEmail['ai_sentiment'] }
 
 // ─── AI Pass Detection Banner wrapper ────────────────────────
 function PassDetectionBanner({ thread, dealId }: { thread: EmailThread; dealId?: string }) {
+  // Resolve a dealId from the latest inbound sender if no explicit dealId was provided
+  // (e.g. when viewing emails from the global Inbox popup).
+  const latestInbound = thread.emails.find((e) => e.from_name !== 'You') || thread.latestEmail;
+  const { resolvedDealId } = useThreadDealResolver({
+    enabled: !dealId,
+    senderEmail: latestInbound?.from_email,
+    fallbackDealId: dealId && dealId.length > 0 ? dealId : undefined,
+    fallbackDealName: thread.dealName,
+  });
+  const effectiveDealId = dealId && dealId.length > 0 ? dealId : resolvedDealId;
+
   const threadData = {
     subject: thread.subject,
     threadId: thread.threadId,
@@ -86,7 +98,7 @@ function PassDetectionBanner({ thread, dealId }: { thread: EmailThread; dealId?:
     latestEmail: thread.latestEmail,
   };
   const { detection, hasPendingPass, committing, confirmPass, dismissPass } =
-    useLenderPassDetection({ dealId, threadData, autoRun: !!dealId });
+    useLenderPassDetection({ dealId: effectiveDealId, threadData, autoRun: !!effectiveDealId });
   if (!hasPendingPass || !detection) return null;
   return (
     <LenderPassBanner
