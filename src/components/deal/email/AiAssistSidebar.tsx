@@ -290,6 +290,18 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             />
           )}
 
+          {/* Data Room attachment suggestion card */}
+          {showDrCard && (
+            <DataRoomSuggestionCard
+              attachmentCount={drUploadable.length}
+              dealName={drSuggestion?.suggested_deal_name || dealName}
+              suggestion={drSuggestion}
+              loading={drSuggesting && !drSuggestion}
+              onConfirm={() => setDrDialogOpen(true)}
+              onDismiss={() => setDrDismissed(true)}
+            />
+          )}
+
           {/* Result */}
           {!loading && !error && result && (
             <>
