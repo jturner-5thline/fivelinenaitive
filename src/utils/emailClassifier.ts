@@ -9,12 +9,13 @@
 
 import type { ClassifierEntity } from '@/hooks/useEmailClassifierData';
 
-export type EmailCategory = 'clients_deals' | 'asana_projects';
+export type EmailCategory = 'clients_deals' | 'asana_projects' | 'calendar';
 
 export const EMAIL_CATEGORY_TABS = [
   { key: 'all' as const, label: 'All' },
   { key: 'clients_deals' as const, label: 'Clients & Deals' },
   { key: 'asana_projects' as const, label: 'Asana & Projects' },
+  { key: 'calendar' as const, label: 'Calendar' },
 ] as const;
 
 /**
@@ -419,18 +420,104 @@ export function classifyEmail(
 
   // ── Asana & Projects ─────────────────────────────────────────
   const fromEmail = norm(email.from_email);
+  const fromName = norm(email.from_name);
   const subject = norm(email.subject);
   const snippet = norm(email.snippet);
-  if (
+  const isAsana =
     fromEmail.includes('asana.com') ||
     fromEmail.includes('mail.asana.com') ||
     subject.includes('asana') ||
-    snippet.includes('asana')
-  ) {
+    snippet.includes('asana');
+  if (isAsana) {
     cats.push('asana_projects');
   }
 
+  // ── Calendar ─────────────────────────────────────────────────
+  // Asana takes precedence — never reclassify Asana mail as Calendar.
+  if (!isAsana && isCalendarNotification(email, { fromEmail, fromName, subject, snippet })) {
+    cats.push('calendar');
+  }
+
   return cats;
+}
+
+// ── Calendar notification detection ────────────────────────────
+
+interface CalendarHeuristicCtx {
+  fromEmail: string;
+  fromName: string;
+  subject: string;
+  snippet: string;
+}
+
+/**
+ * Detect Google Calendar / system-generated event notification emails.
+ * Looks at sender, subject, and snippet/body heuristics.
+ * Centralised here so the rules can be tuned in one place.
+ */
+export function isCalendarNotification(
+  email: Record<string, any>,
+  precomputed?: CalendarHeuristicCtx,
+): boolean {
+  const fromEmail = precomputed?.fromEmail ?? norm(email.from_email);
+  const fromName = precomputed?.fromName ?? norm(email.from_name);
+  const subject = precomputed?.subject ?? norm(email.subject);
+  const snippet = precomputed?.snippet ?? norm(email.snippet);
+  const body = norm(email.body_preview) + ' ' + norm(email.body_text);
+
+  // 1. Strong sender signals — Google Calendar's standard sender addresses
+  if (
+    fromEmail === 'calendar-notification@google.com' ||
+    fromEmail.endsWith('@calendar-notification.google.com') ||
+    fromEmail.endsWith('@calendar.google.com') ||
+    fromEmail.includes('calendar-notification@google') ||
+    fromName === 'google calendar' ||
+    fromName.includes('google calendar')
+  ) {
+    return true;
+  }
+
+  // 2. Subject-line signals — invite lifecycle prefixes used by Google Calendar
+  //    e.g. "Notification: ...", "Invitation: ...", "Updated invitation: ...",
+  //         "Accepted: ...", "Declined: ...", "Tentative: ...",
+  //         "Canceled: ...", "Cancelled: ...", "Rescheduled: ..."
+  const calendarSubjectPrefixes = [
+    /^notification:\s/i,
+    /^invitation:\s/i,
+    /^updated invitation:\s/i,
+    /^accepted:\s/i,
+    /^declined:\s/i,
+    /^tentative:\s/i,
+    /^canceled:\s/i,
+    /^cancelled:\s/i,
+    /^rescheduled:\s/i,
+    /^reminder:\s.*\b(meeting|event|invite|calendar)\b/i,
+  ];
+  if (calendarSubjectPrefixes.some(rx => rx.test(email.subject || ''))) {
+    return true;
+  }
+
+  // 3. Body / snippet signals — strong calendar-specific phrases
+  const text = `${snippet} ${body}`;
+  const calendarBodyMarkers = [
+    'view your event',
+    'view event in google calendar',
+    'going (yes - maybe - no)',
+    'going? yes - maybe - no',
+    'has invited you to the following event',
+    'this event has been canceled',
+    'this event has been cancelled',
+    'this event has been updated',
+    'join with google meet',
+    'meet.google.com/',
+    'rsvp to this event',
+    'add to calendar',
+  ];
+  if (calendarBodyMarkers.some(m => text.includes(m))) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
