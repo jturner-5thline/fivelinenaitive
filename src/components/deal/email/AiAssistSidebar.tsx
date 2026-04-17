@@ -18,8 +18,11 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { EmailThread } from './mockEmailData';
 import { useLenderPassDetection } from '@/hooks/useLenderPassDetection';
-import { useThreadDealResolver } from '@/hooks/useThreadDealResolver';
 import { LenderPassSidebarCard } from './LenderPassSidebarCard';
+import { DataRoomSuggestionCard } from './DataRoomSuggestionCard';
+import { SendToDataRoomDialog } from './SendToDataRoomDialog';
+import { useFullEmailMessage } from './useFullEmailMessage';
+import { useEmailToDataRoom, type DataRoomDestinationSuggestion } from '@/hooks/useEmailToDataRoom';
 
 /**
  * AiAssistSidebar
@@ -81,16 +84,9 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   const [result, setResult] = useState<DraftResult | null>(null);
   const [selected, setSelected] = useState<1 | 2 | 3>(2);
   const [showSources, setShowSources] = useState(false);
-
-  // Resolve a deal from sender if no explicit dealId (Inbox popup case).
-  const latestInbound = thread.emails.find((e) => e.from_name !== 'You') || thread.latestEmail;
-  const { resolvedDealId } = useThreadDealResolver({
-    enabled: !dealId,
-    senderEmail: latestInbound?.from_email,
-    fallbackDealId: dealId && dealId.length > 0 ? dealId : undefined,
-    fallbackDealName: dealName,
-  });
-  const effectivePassDealId = dealId && dealId.length > 0 ? dealId : resolvedDealId;
+  const [drDismissed, setDrDismissed] = useState(false);
+  const [drDialogOpen, setDrDialogOpen] = useState(false);
+  const [drSuggestion, setDrSuggestion] = useState<DataRoomDestinationSuggestion | null>(null);
 
   // Lender pass detection — shares state with the inline banner via the same row.
   const passThreadData = {
@@ -106,12 +102,46 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
     setAutoCommitPref: setPassAutoCommit,
     confirmPass,
     dismissPass,
-  } = useLenderPassDetection({
-    dealId: effectivePassDealId,
-    threadData: passThreadData,
-    autoRun: !!effectivePassDealId,
-  });
+  } = useLenderPassDetection({ dealId, threadData: passThreadData, autoRun: !!dealId });
   const showPassCard = !!passDetection && (passDetection.status === 'pending' || passDetection.status === 'confirmed') && (passDetection.is_pass || passDetection.status === 'confirmed');
+
+  // Data Room suggestion — load latest message attachments + auto-suggest destination
+  const latestId = thread.latestEmail.id;
+  const isMock = !latestId || latestId.startsWith('mock-');
+  const { data: latestFull } = useFullEmailMessage(
+    latestId,
+    !isMock,
+    !!(thread.latestEmail.body_html || thread.latestEmail.body_text),
+  );
+  const drAttachments = (latestFull?.attachments && latestFull.attachments.length > 0)
+    ? latestFull.attachments
+    : (thread.latestEmail.attachments || []);
+  const drUploadable = drAttachments.filter(a => !a.is_inline && !!a.id);
+  const { suggest: drSuggest, suggesting: drSuggesting } = useEmailToDataRoom();
+  const showDrCard = !drDismissed && drUploadable.length > 0;
+
+  useEffect(() => {
+    if (!showDrCard || drSuggestion || drSuggesting) return;
+    let cancelled = false;
+    (async () => {
+      const r = await drSuggest({
+        dealId,
+        sourceEmail: {
+          messageId: latestId,
+          threadId: thread.threadId,
+          subject: thread.subject,
+          senderName: thread.latestEmail.from_name,
+          senderEmail: thread.latestEmail.from_email,
+        },
+        threadData: passThreadData,
+        attachments: drAttachments,
+      });
+      if (!cancelled && r) setDrSuggestion(r);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showDrCard, drUploadable.length, dealId, latestId]);
+
 
   const generate = useCallback(async () => {
     setLoading(true);

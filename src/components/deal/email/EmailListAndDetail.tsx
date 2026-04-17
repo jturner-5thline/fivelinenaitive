@@ -56,7 +56,8 @@ import { EmailAttachmentList } from './EmailAttachmentList';
 import { useFullEmailMessage } from './useFullEmailMessage';
 import { LenderPassBanner } from './LenderPassBanner';
 import { useLenderPassDetection } from '@/hooks/useLenderPassDetection';
-import { useThreadDealResolver } from '@/hooks/useThreadDealResolver';
+import { SendToDataRoomDialog } from './SendToDataRoomDialog';
+import { FolderPlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -80,17 +81,6 @@ function SentimentBadge({ sentiment }: { sentiment?: MockEmail['ai_sentiment'] }
 
 // ─── AI Pass Detection Banner wrapper ────────────────────────
 function PassDetectionBanner({ thread, dealId }: { thread: EmailThread; dealId?: string }) {
-  // Resolve a dealId from the latest inbound sender if no explicit dealId was provided
-  // (e.g. when viewing emails from the global Inbox popup).
-  const latestInbound = thread.emails.find((e) => e.from_name !== 'You') || thread.latestEmail;
-  const { resolvedDealId } = useThreadDealResolver({
-    enabled: !dealId,
-    senderEmail: latestInbound?.from_email,
-    fallbackDealId: dealId && dealId.length > 0 ? dealId : undefined,
-    fallbackDealName: thread.dealName,
-  });
-  const effectiveDealId = dealId && dealId.length > 0 ? dealId : resolvedDealId;
-
   const threadData = {
     subject: thread.subject,
     threadId: thread.threadId,
@@ -98,7 +88,7 @@ function PassDetectionBanner({ thread, dealId }: { thread: EmailThread; dealId?:
     latestEmail: thread.latestEmail,
   };
   const { detection, hasPendingPass, committing, confirmPass, dismissPass } =
-    useLenderPassDetection({ dealId: effectiveDealId, threadData, autoRun: !!effectiveDealId });
+    useLenderPassDetection({ dealId, threadData, autoRun: !!dealId });
   if (!hasPendingPass || !detection) return null;
   return (
     <LenderPassBanner
@@ -692,6 +682,22 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const [showAiAssist, setShowAiAssist] = useState(false);
   const [showAiDraft, setShowAiDraft] = useState(false);
   const [linkedDealName, setLinkedDealName] = useState<string | undefined>(thread.dealName);
+  const [showSendToDataRoom, setShowSendToDataRoom] = useState(false);
+
+  // Hoist the latest message's full body load so the toolbar/dialog can see
+  // its attachments (the per-message MessageBlock loads its own copy too —
+  // both share the Nylas cache so this is cheap).
+  const latestMessageId = thread.latestEmail.id;
+  const isMockLatest = !latestMessageId || latestMessageId.startsWith('mock-');
+  const { data: latestFullData } = useFullEmailMessage(
+    latestMessageId,
+    !isMockLatest,
+    !!(thread.latestEmail.body_html || thread.latestEmail.body_text),
+  );
+  const latestAttachments = (latestFullData?.attachments && latestFullData.attachments.length > 0)
+    ? latestFullData.attachments
+    : (thread.latestEmail.attachments || []);
+  const hasUploadableAttachments = latestAttachments.some(a => !a.is_inline && !!a.id);
   
   // Reply state
   const [replyTo, setReplyTo] = useState<{ subject: string; to_email: string; to_name: string; threadId: string } | null>(null);
@@ -997,7 +1003,20 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               <TooltipContent side="bottom" className="text-xs">AI-powered email analysis</TooltipContent>
             </Tooltip>
 
-
+            {hasUploadableAttachments && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setShowSendToDataRoom(true)}
+                    className="flex flex-col items-center gap-0.5 px-3 py-1 rounded transition-colors border border-transparent hover:bg-muted/40"
+                  >
+                    <FolderPlus className="h-4 w-4 text-[hsl(var(--email-text-secondary))]" />
+                    <span className="text-[10px] text-[hsl(var(--email-text-secondary))]">To Data Room</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">Send attachments to a deal's data room</TooltipContent>
+              </Tooltip>
+            )}
 
 
             <LinkToDealPopover
@@ -1259,6 +1278,32 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           tokenContext={snippetTokenContext}
         />
       )}
+
+      {/* Send to Data Room dialog */}
+      {showSendToDataRoom && (
+        <SendToDataRoomDialog
+          open={showSendToDataRoom}
+          onClose={() => setShowSendToDataRoom(false)}
+          attachments={latestAttachments}
+          messageId={latestMessageId}
+          threadData={{
+            subject: thread.subject,
+            threadId: thread.threadId,
+            emails: thread.emails,
+            latestEmail: thread.latestEmail,
+          }}
+          sourceEmail={{
+            messageId: latestMessageId,
+            threadId: thread.threadId,
+            subject: thread.subject,
+            senderName: thread.latestEmail.from_name,
+            senderEmail: thread.latestEmail.from_email,
+          }}
+          initialDealId={dealId}
+          initialDealName={linkedDealName}
+        />
+      )}
     </>
+
   );
 }
