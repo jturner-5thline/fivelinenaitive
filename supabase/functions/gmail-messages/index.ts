@@ -220,6 +220,9 @@ serve(async (req: Request): Promise<Response> => {
         }
 
         const msg = msgData.data || msgData;
+        const { body_html, body_text } = pickBodyHtmlAndText(msg);
+        const allAtts = normalizeAttachments(msg.attachments || msg.files || []);
+        const visibleAtts = allAtts.filter((a) => !a.is_inline);
         const message = {
           id: msg.id,
           thread_id: msg.thread_id || msg.id,
@@ -229,12 +232,14 @@ serve(async (req: Request): Promise<Response> => {
           to_emails: (msg.to || []).map((t: any) => t.email || ""),
           cc_emails: (msg.cc || []).map((c: any) => c.email || ""),
           snippet: msg.snippet || "",
-          body_text: msg.body || "",
-          body_html: msg.body || "",
+          body_text,
+          body_html,
           is_read: !msg.unread,
           is_starred: msg.starred || false,
           labels: msg.folders || msg.labels || [],
           received_at: msg.date ? new Date(msg.date * 1000).toISOString() : null,
+          attachments: visibleAtts,
+          has_attachments: visibleAtts.length > 0,
         };
 
         return new Response(JSON.stringify({ message }), {
