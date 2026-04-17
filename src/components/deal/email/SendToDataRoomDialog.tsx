@@ -37,6 +37,8 @@ interface Props {
   initialSuggestion?: DataRoomDestinationSuggestion | null;
   /** If provided, only these attachment ids will be pre-included; others default to excluded. */
   preselectedAttachmentIds?: string[];
+  /** Fires after a successful upload (uploaded > 0). Receives the destination deal name + count. */
+  onUploaded?: (info: { dealName: string; uploaded: number; failed: number }) => void;
 }
 
 function formatBytes(b: number): string {
