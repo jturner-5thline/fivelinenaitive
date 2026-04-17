@@ -442,13 +442,8 @@ Classify this email per the rules. Return strict JSON only.`;
         const senderDomain = senderEmail.split("@")[1] || "";
         const subject: string = latestEmail?.subject || threadData?.subject || "";
         const body: string = (latestEmail?.body_preview || latestEmail?.snippet || "").substring(0, 3000);
-        const incomingAttachments: Array<{ filename: string; content_type?: string; size?: number }> =
-          Array.isArray((req as any)?.attachments) ? (req as any).attachments : [];
-        // Pull from request body if not in closure
-        let attachmentList = incomingAttachments;
-        try {
-          // re-parse for robustness — body was already consumed; attachments arrive in the JSON parsed up top
-        } catch { /* noop */ }
+        const incomingAttachments: Array<{ filename: string; content_type?: string; size?: number }> = attachments;
+        const attachmentList = incomingAttachments;
 
         // If a dealId is already provided, fetch its name; otherwise look up candidate deals
         // by sender domain via the user's accessible deals.
