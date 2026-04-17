@@ -646,6 +646,8 @@ CRITICAL RULES:
                   >
                     {d.status === 'sent' && <CheckCircle2 className="h-3 w-3" />}
                     {d.status === 'approved' && <Check className="h-3 w-3" />}
+                    {d.status === 'sending' && <Loader2 className="h-3 w-3 animate-spin" />}
+                    {d.status === 'failed' && <AlertCircle className="h-3 w-3 text-destructive" />}
                     <span>{d.lenderName}</span>
                   </button>
                 ))}
