@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown, Info, FileText, Mail, Copy, Check } from 'lucide-react';
+import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown, Info, FileText, Mail, Copy, Check, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -84,10 +85,17 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   // Draft Submission runs as a structured product action — fully decoupled from the chat panel.
+  type EmailDraft = {
+    lenderName: string;
+    to: string;
+    subject: string;
+    body: string;
+    status: 'draft' | 'approved' | 'sent';
+  };
   const [isDraftingEmail, setIsDraftingEmail] = useState(false);
-  const [draftEmailContent, setDraftEmailContent] = useState<string | null>(null);
+  const [emailDrafts, setEmailDrafts] = useState<EmailDraft[]>([]);
+  const [activeDraftIndex, setActiveDraftIndex] = useState(0);
   const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false);
-  const [hasCopiedDraft, setHasCopiedDraft] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -164,53 +172,53 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
     setIsHistoryOpen(false);
   }, [clearMessages]);
 
-  const DRAFT_SUBMISSION_PROMPT = `Draft a lender submission email using this exact template. Fill in ALL bracketed fields using the deal data available to you:
+  const DRAFT_SUBMISSION_PROMPT = `You are drafting lender submission emails for this deal. Generate ONE email PER ACTIVE LENDER on this deal.
 
-**Subject:** [COMPANY NAME] | [LENDER INSTITUTION NAME] - New Deal [DEAL AMOUNT]
+Return your response as STRICT, VALID JSON (no markdown fences, no commentary) matching this exact shape:
 
-Hi [LENDER NAME],
+{
+  "drafts": [
+    {
+      "lenderName": "<full lender institution name>",
+      "subject": "<COMPANY NAME> | <LENDER INSTITUTION NAME> - New Deal <DEAL AMOUNT>",
+      "body": "<the full email body, plain text with \\n\\n between paragraphs>"
+    }
+  ]
+}
+
+EMAIL BODY TEMPLATE (fill in bracketed fields using deal data):
+
+Hi [LENDER FIRST NAME],
 
 There's a deal we're working on I wanted to send your way:
 
-[COMPANY NAME] is [Insert a one-paragraph company overview using the deal write-up description, memo narrative, pitch deck content, or call notes]
+[COMPANY NAME] is [one-paragraph company overview using the deal write-up description, memo narrative, pitch deck content, or call notes].
 
-The Company is seeking [DEAL SIZE from deal value] to [USE OF FUNDS from the deal write-up]
+The Company is seeking [DEAL SIZE] to [USE OF FUNDS from the deal write-up].
 
-I've attached the credit file [Include the data_room_url from the write-up as a hyperlink if available]. Inside, you'll find:
-
-A Deal Overview summarizing the company and the transaction ask along with the financials & supporting information.
+I've attached the credit file [include the data_room_url as a hyperlink if available]. Inside, you'll find a Deal Overview summarizing the company and the transaction ask along with the financials & supporting information.
 
 Let us know your initial thoughts or feedback!
 
 Thank you,
 
-IMPORTANT INSTRUCTIONS:
-
-- Do NOT include any (Source:...) citations or source references in the email output. The email should be clean and ready to send.
-
-- Format the email with proper spacing: add a blank line between each paragraph/section of the email for readability. Use markdown line breaks (two newlines) between the subject line, the greeting, the intro line, the company overview paragraph, the deal size line, the credit file line, the sign-off, etc.
-
-- SUBJECT LINE: Output a subject line at the very top of each email in this format: **Subject:** [COMPANY NAME] | [LENDER INSTITUTION NAME] - New Deal [DEAL AMOUNT]. The COMPANY NAME is the deal company name. The LENDER INSTITUTION NAME is the full lender institution/company name (not the contact first name). The DEAL AMOUNT uses abbreviated currency format. Separate the subject line from the greeting with a blank line.
-
-- For LENDER NAME: Use the FIRST NAME of the contact person associated with that lender. Look at the lender's contact information or contact name field. If the contact name is 'John Smith', use 'John'. If no contact first name is available, fall back to the lender institution name. Generate one version for each ACTIVE lender on this deal. If there are multiple active lenders, produce a separate email for each one.
-
-- For COMPANY NAME: Use the company name from the deal record.
-
-- For the company overview paragraph: Pull from the deal write-up description, memo narrative, company highlights, or any uploaded pitch deck / call notes. Keep it to one concise paragraph.
-
-- For DEAL SIZE: Use the deal value.
-
-- For USE OF FUNDS: Pull from the deal write-up use_of_funds field.
-
-- For the data room link: Use the data_room_url from the write-up if available, otherwise note that a link should be inserted.
-
-- CURRENCY FORMATTING: Always format dollar amounts using abbreviated notation: $6MM instead of $6,000,000, $15MM instead of $15,000,000, $1.5MM instead of $1,500,000, $500K instead of $500,000. Use K for thousands, MM for millions, B for billions.`;
+CRITICAL RULES:
+- Output VALID JSON ONLY. No prose before/after. No markdown code fences.
+- Generate one entry in "drafts" for EACH active lender on this deal.
+- LENDER FIRST NAME = the first name of the contact person for that lender. If only the institution name is available, use the institution name.
+- LENDER INSTITUTION NAME = the full lender institution/company name (used in the subject line).
+- COMPANY NAME = the deal's company name.
+- DEAL AMOUNT/DEAL SIZE = use abbreviated currency: $6MM, $1.5MM, $500K, $2B (K=thousands, MM=millions, B=billions).
+- Do NOT include any (Source:...) citations or source references.
+- Use \\n\\n between paragraphs in the body for readability.
+- The "subject" field must NOT include a "Subject:" prefix — just the line itself.`;
 
   // Silent background handler — invokes the AI directly via the edge function,
   // bypassing the chat hook entirely. The Ask AI panel is never touched.
   const handleDraftSubmission = useCallback(async () => {
     setIsDraftingEmail(true);
-    setDraftEmailContent(null);
+    setEmailDrafts([]);
+    setActiveDraftIndex(0);
     setIsDraftDialogOpen(true);
     try {
       const { data, error } = await supabase.functions.invoke('deal-space-ai', {
@@ -222,7 +230,36 @@ IMPORTANT INSTRUCTIONS:
       });
       if (error) throw new Error(error.message || 'Failed to draft email');
       if (data?.error) throw new Error(data.error);
-      setDraftEmailContent(data?.content || '');
+
+      const raw: string = data?.content || '';
+      // Strip code fences if model added them despite instructions.
+      const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+      // Find first '{' and last '}' to be resilient to leading prose.
+      const start = cleaned.indexOf('{');
+      const end = cleaned.lastIndexOf('}');
+      const jsonText = start !== -1 && end !== -1 ? cleaned.slice(start, end + 1) : cleaned;
+
+      let parsed: { drafts?: Array<{ lenderName?: string; subject?: string; body?: string }> } = {};
+      try {
+        parsed = JSON.parse(jsonText);
+      } catch {
+        throw new Error('AI response could not be parsed. Please try again.');
+      }
+
+      const drafts: EmailDraft[] = (parsed.drafts || [])
+        .filter((d) => d && (d.body || d.subject))
+        .map((d) => ({
+          lenderName: d.lenderName?.trim() || 'Lender',
+          to: '',
+          subject: d.subject?.replace(/^subject:\s*/i, '').trim() || '',
+          body: d.body?.trim() || '',
+          status: 'draft' as const,
+        }));
+
+      if (drafts.length === 0) {
+        throw new Error('No active lenders found to draft emails for.');
+      }
+      setEmailDrafts(drafts);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to draft submission email';
       toast({ title: 'Draft failed', description: message, variant: 'destructive' });
@@ -232,12 +269,33 @@ IMPORTANT INSTRUCTIONS:
     }
   }, [dealId, DRAFT_SUBMISSION_PROMPT]);
 
-  const handleCopyDraft = useCallback(async () => {
-    if (!draftEmailContent) return;
-    await navigator.clipboard.writeText(draftEmailContent);
-    setHasCopiedDraft(true);
-    setTimeout(() => setHasCopiedDraft(false), 2000);
-  }, [draftEmailContent]);
+  const updateActiveDraft = useCallback((patch: Partial<EmailDraft>) => {
+    setEmailDrafts((prev) => prev.map((d, i) => (i === activeDraftIndex ? { ...d, ...patch } : d)));
+  }, [activeDraftIndex]);
+
+  const goToPrev = useCallback(() => {
+    setActiveDraftIndex((i) => Math.max(0, i - 1));
+  }, []);
+  const goToNext = useCallback(() => {
+    setActiveDraftIndex((i) => Math.min(emailDrafts.length - 1, i + 1));
+  }, [emailDrafts.length]);
+
+  const handleApproveDraft = useCallback(() => {
+    updateActiveDraft({ status: 'approved' });
+    if (activeDraftIndex < emailDrafts.length - 1) {
+      setActiveDraftIndex((i) => i + 1);
+    }
+  }, [updateActiveDraft, activeDraftIndex, emailDrafts.length]);
+
+  const handleSendDraft = useCallback(() => {
+    const draft = emailDrafts[activeDraftIndex];
+    if (!draft) return;
+    const to = encodeURIComponent(draft.to || '');
+    const subject = encodeURIComponent(draft.subject || '');
+    const body = encodeURIComponent(draft.body || '');
+    window.open(`mailto:${to}?subject=${subject}&body=${body}`, '_blank');
+    updateActiveDraft({ status: 'sent' });
+  }, [emailDrafts, activeDraftIndex, updateActiveDraft]);
 
   const suggestedQuestions = [
     "Generate a full lender-ready memo for this deal",
@@ -466,59 +524,136 @@ IMPORTANT INSTRUCTIONS:
         </div>
       </CardContent>
 
-      {/* Draft Submission Email — dedicated output dialog (kept entirely separate from chat). */}
+      {/* Draft Submission Email — multi-lender review modal (kept entirely separate from chat). */}
       <Dialog open={isDraftDialogOpen} onOpenChange={setIsDraftDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Mail className="h-4 w-4 text-primary" />
-              Draft Submission Email
+              Draft Submission Emails
+              {!isDraftingEmail && emailDrafts.length > 0 && (
+                <span className="text-xs font-normal text-muted-foreground">
+                  · {activeDraftIndex + 1} of {emailDrafts.length}
+                </span>
+              )}
             </DialogTitle>
             <DialogDescription>
-              Generated from your deal data, lender list, and write-up. Review before sending.
+              Review each lender-specific draft. Approve and send one at a time.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-auto rounded-md border bg-muted/30 p-4 min-h-[200px]">
-            {isDraftingEmail ? (
+          {isDraftingEmail ? (
+            <div className="flex-1 flex items-center justify-center min-h-[300px]">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Drafting submission email…
+                Generating drafts for each active lender…
               </div>
-            ) : draftEmailContent ? (
-              <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-                <ReactMarkdown>{draftEmailContent}</ReactMarkdown>
+            </div>
+          ) : emailDrafts.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center min-h-[200px]">
+              <p className="text-sm text-muted-foreground">No drafts generated.</p>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col min-h-0 gap-3">
+              {/* Lender tabs / pager */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                {emailDrafts.map((d, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveDraftIndex(i)}
+                    className={cn(
+                      'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs whitespace-nowrap border transition-colors',
+                      i === activeDraftIndex
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-muted/50 hover:bg-muted border-border'
+                    )}
+                  >
+                    {d.status === 'sent' && <CheckCircle2 className="h-3 w-3" />}
+                    {d.status === 'approved' && <Check className="h-3 w-3" />}
+                    <span>{d.lenderName}</span>
+                  </button>
+                ))}
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No draft generated.</p>
-            )}
-          </div>
 
-          <DialogFooter className="gap-2 sm:gap-2">
+              {/* Active email window */}
+              {(() => {
+                const draft = emailDrafts[activeDraftIndex];
+                if (!draft) return null;
+                return (
+                  <div className="flex-1 flex flex-col gap-2 overflow-auto rounded-md border bg-card p-3 min-h-0">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="w-16 text-muted-foreground">To:</span>
+                      <Input
+                        value={draft.to}
+                        onChange={(e) => updateActiveDraft({ to: e.target.value })}
+                        placeholder="recipient@example.com"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="w-16 text-muted-foreground">Subject:</span>
+                      <Input
+                        value={draft.subject}
+                        onChange={(e) => updateActiveDraft({ subject: e.target.value })}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1 flex-1 min-h-0">
+                      <span className="text-xs text-muted-foreground">Body:</span>
+                      <Textarea
+                        value={draft.body}
+                        onChange={(e) => updateActiveDraft({ body: e.target.value })}
+                        className="flex-1 min-h-[260px] text-sm font-sans resize-none"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <Badge variant="outline" className="text-[10px] py-0 h-4">
+                        {draft.status}
+                      </Badge>
+                      <span>Lender: {draft.lenderName}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-2 flex-wrap">
             <Button
               variant="outline"
-              onClick={handleCopyDraft}
-              disabled={!draftEmailContent || isDraftingEmail}
+              size="sm"
+              onClick={goToPrev}
+              disabled={isDraftingEmail || activeDraftIndex === 0}
             >
-              {hasCopiedDraft ? (
-                <><Check className="h-4 w-4 mr-1.5" /> Copied</>
-              ) : (
-                <><Copy className="h-4 w-4 mr-1.5" /> Copy</>
-              )}
+              <ChevronLeft className="h-4 w-4 mr-1" /> Previous
             </Button>
             <Button
               variant="outline"
-              onClick={handleDraftSubmission}
-              disabled={isDraftingEmail}
+              size="sm"
+              onClick={goToNext}
+              disabled={isDraftingEmail || activeDraftIndex >= emailDrafts.length - 1}
             >
-              {isDraftingEmail ? (
-                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4 mr-1.5" />
-              )}
-              Regenerate
+              Next <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
-            <Button onClick={() => setIsDraftDialogOpen(false)}>Close</Button>
+            <div className="flex-1" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleApproveDraft}
+              disabled={isDraftingEmail || emailDrafts.length === 0 || emailDrafts[activeDraftIndex]?.status === 'sent'}
+            >
+              <Check className="h-4 w-4 mr-1" /> Approve
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSendDraft}
+              disabled={isDraftingEmail || emailDrafts.length === 0}
+            >
+              <Send className="h-4 w-4 mr-1" /> Send
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setIsDraftDialogOpen(false)}>
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
