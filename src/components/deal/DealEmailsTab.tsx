@@ -64,6 +64,8 @@ import { EmailList, EmailDetail } from './email/EmailListAndDetail';
 import { cn } from '@/lib/utils';
 import { EmailIntelligenceDialog } from './email/EmailIntelligenceDialog';
 import { InlineComposePanel } from './email/InlineComposePanel';
+import { useAIEmailSearch, AI_SEARCH_MIN_LENGTH } from '@/hooks/useAIEmailSearch';
+import { Sparkles, Loader2 } from 'lucide-react';
 
 interface DealEmailsTabProps {
   dealId: string;
