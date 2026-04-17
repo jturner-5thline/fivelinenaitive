@@ -19,6 +19,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { EmailThread } from './mockEmailData';
 import { useLenderPassDetection } from '@/hooks/useLenderPassDetection';
 import { LenderPassSidebarCard } from './LenderPassSidebarCard';
+import { DataRoomSuggestionCard } from './DataRoomSuggestionCard';
+import { SendToDataRoomDialog } from './SendToDataRoomDialog';
+import { useFullEmailMessage } from './useFullEmailMessage';
+import { useEmailToDataRoom, type DataRoomDestinationSuggestion } from '@/hooks/useEmailToDataRoom';
 
 /**
  * AiAssistSidebar
