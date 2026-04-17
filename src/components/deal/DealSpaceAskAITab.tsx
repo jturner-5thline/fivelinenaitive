@@ -710,11 +710,38 @@ CRITICAL RULES:
                         </div>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                      <Badge variant="outline" className="text-[10px] py-0 h-4">
-                        {draft.status}
-                      </Badge>
-                      <span>Lender: {draft.lenderName}</span>
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                        <Badge
+                          variant={draft.status === 'failed' ? 'destructive' : draft.status === 'sent' ? 'default' : 'outline'}
+                          className="text-[10px] py-0 h-4 gap-1"
+                        >
+                          {draft.status === 'sending' && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
+                          {draft.status === 'sent' && <CheckCircle2 className="h-2.5 w-2.5" />}
+                          {draft.status === 'failed' && <AlertCircle className="h-2.5 w-2.5" />}
+                          {draft.status}
+                        </Badge>
+                        <span>Lender: {draft.lenderName}</span>
+                      </div>
+                      {draft.status === 'failed' && draft.errorMessage && (
+                        <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-2 py-1.5 text-[11px] text-destructive">
+                          <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                          <span className="flex-1">{draft.errorMessage}</span>
+                          <button
+                            type="button"
+                            onClick={() => sendDraftAtIndex(activeDraftIndex)}
+                            className="inline-flex items-center gap-1 font-medium hover:underline"
+                          >
+                            <RotateCw className="h-3 w-3" /> Retry
+                          </button>
+                        </div>
+                      )}
+                      {draft.status === 'sent' && (
+                        <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle2 className="h-3 w-3" />
+                          <span>Sent from your connected email account.</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -751,9 +778,30 @@ CRITICAL RULES:
             <Button
               size="sm"
               onClick={handleSendDraft}
-              disabled={isDraftingEmail || emailDrafts.length === 0}
+              disabled={
+                isDraftingEmail ||
+                emailDrafts.length === 0 ||
+                emailDrafts[activeDraftIndex]?.status === 'sending' ||
+                emailDrafts[activeDraftIndex]?.status === 'sent'
+              }
             >
-              <Send className="h-4 w-4 mr-1" /> Send
+              {emailDrafts[activeDraftIndex]?.status === 'sending' ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Sending…
+                </>
+              ) : emailDrafts[activeDraftIndex]?.status === 'sent' ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4 mr-1" /> Sent
+                </>
+              ) : emailDrafts[activeDraftIndex]?.status === 'failed' ? (
+                <>
+                  <RotateCw className="h-4 w-4 mr-1" /> Retry send
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-1" /> Send
+                </>
+              )}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setIsDraftDialogOpen(false)}>
               Close
