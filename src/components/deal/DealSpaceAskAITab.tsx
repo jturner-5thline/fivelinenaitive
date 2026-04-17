@@ -238,13 +238,31 @@ CRITICAL RULES:
 
       const drafts: EmailDraft[] = (parsed.drafts || [])
         .filter((d) => d && (d.body || d.subject))
-        .map((d) => ({
-          lenderName: d.lenderName?.trim() || 'Lender',
-          to: '',
-          subject: d.subject?.replace(/^subject:\s*/i, '').trim() || '',
-          body: d.body?.trim() || '',
-          status: 'draft' as const,
-        }));
+        .map((d) => {
+          // Convert AI plain-text body (\n\n paragraphs) into HTML for the rich-text editor.
+          const plain = (d.body || '').trim();
+          const bodyHtml = plain
+            ? plain
+                .split(/\n{2,}/)
+                .map((para) =>
+                  `<p>${para
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/\n/g, '<br/>')}</p>`
+                )
+                .join('')
+            : '';
+          return {
+            lenderName: d.lenderName?.trim() || 'Lender',
+            to: '',
+            cc: '',
+            bcc: '',
+            subject: d.subject?.replace(/^subject:\s*/i, '').trim() || '',
+            bodyHtml,
+            status: 'draft' as const,
+          } satisfies EmailDraft;
+        });
 
       if (drafts.length === 0) {
         throw new Error('No active lenders found to draft emails for.');
