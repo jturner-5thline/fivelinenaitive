@@ -12,9 +12,10 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 interface MessageRequest {
-  action: "list" | "get" | "send" | "mark_read" | "mark_unread" | "star" | "unstar" | "trash" | "delete" | "sync_state";
+  action: "list" | "get" | "send" | "mark_read" | "mark_unread" | "star" | "unstar" | "trash" | "delete" | "sync_state" | "get_attachment";
   message_id?: string;
   message_ids?: string[];
+  attachment_id?: string;
   to?: string[];
   cc?: string[];
   bcc?: string[];
@@ -24,6 +25,36 @@ interface MessageRequest {
   max_results?: number;
   page_token?: string;
   query?: string;
+}
+
+// Normalize Nylas attachment objects to a consistent shape.
+function normalizeAttachments(raw: any[]): Array<{
+  id: string;
+  filename: string;
+  content_type: string;
+  size: number;
+  is_inline: boolean;
+}> {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((a: any) => a && (a.id || a.filename))
+    .map((a: any) => ({
+      id: String(a.id || ""),
+      filename: a.filename || a.name || "attachment",
+      content_type: a.content_type || a.contentType || "application/octet-stream",
+      size: Number(a.size || 0),
+      is_inline: !!(a.is_inline || a.content_disposition === "inline" || a.content_id),
+    }));
+}
+
+function pickBodyHtmlAndText(msg: any): { body_html: string; body_text: string } {
+  // Nylas v3 returns a single `body` field that is usually HTML when available.
+  // Be defensive: accept several shapes.
+  const rawBody = typeof msg.body === "string" ? msg.body : "";
+  const looksHtml = /<\w+[\s\S]*>/.test(rawBody);
+  const html = msg.body_html || (looksHtml ? rawBody : "") || "";
+  const text = msg.body_text || msg.plain_body || (!looksHtml ? rawBody : "") || "";
+  return { body_html: html, body_text: text };
 }
 
 function nylasHeaders() {
