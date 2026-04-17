@@ -202,12 +202,14 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
             <div className="flex items-center gap-1.5 min-w-0">
               <span className={cn(
                 'text-[13px] truncate',
-                isUnread ? 'font-bold text-foreground' : 'font-normal text-foreground/70'
+                isUnread
+                  ? 'font-bold text-[hsl(var(--email-text-primary))]'
+                  : 'font-medium text-[hsl(var(--email-text-secondary))]'
               )}>
                 {displayName}
               </span>
               {threadCount > 1 && (
-                <span className="text-[10px] text-muted-foreground font-medium shrink-0">
+                <span className="text-[10px] text-[hsl(var(--email-text-muted))] font-medium shrink-0">
                   [{threadCount}]
                 </span>
               )}
@@ -215,7 +217,7 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
             <span className={cn(
               'text-[11px] shrink-0 transition-opacity duration-100',
               hovered ? 'opacity-0' : 'opacity-100',
-              isUnread ? 'text-[hsl(var(--outlook-blue))] font-medium' : 'text-muted-foreground'
+              isUnread ? 'text-[hsl(var(--outlook-blue))] font-semibold' : 'text-[hsl(var(--email-text-muted))]'
             )}>
               {formatDistanceToNow(new Date(latest.received_at), { addSuffix: false })}
             </span>
@@ -224,7 +226,9 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
           {/* Row 2: Subject (bold if unread) */}
           <p className={cn(
             'text-[12px] truncate leading-tight',
-            isUnread ? 'text-foreground font-semibold' : 'text-foreground/60 font-normal'
+            isUnread
+              ? 'text-[hsl(var(--email-text-primary))] font-semibold'
+              : 'text-[hsl(var(--email-text-secondary))] font-normal'
           )}>
             {thread.subject}
           </p>
@@ -232,11 +236,11 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
           {/* Row 3: Preview text + deal pill */}
           <div className="flex items-center gap-1.5 mt-0.5">
             {thread.dealName && (
-              <Badge variant="outline" className="text-[9px] h-[16px] px-1 gap-0.5 bg-[hsl(var(--outlook-blue)/0.1)] text-[hsl(var(--outlook-blue))] border-[hsl(var(--outlook-blue)/0.2)] shrink-0">
+              <Badge variant="outline" className="text-[9px] h-[16px] px-1 gap-0.5 bg-[hsl(var(--outlook-blue)/0.12)] text-[hsl(var(--outlook-blue))] border-[hsl(var(--outlook-blue)/0.25)] shrink-0">
                 {thread.dealName}
               </Badge>
             )}
-            <p className="text-[11px] text-muted-foreground/60 truncate">
+            <p className="text-[11px] text-[hsl(var(--email-text-muted))] truncate">
               {latest.snippet}
             </p>
           </div>
