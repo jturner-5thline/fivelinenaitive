@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { SmartEmailPanel } from './SmartEmailPanel';
 import { ThreadLabelsBar } from './ThreadLabelsBar';
 import { AiAssistInlinePanel } from './AiAssistInlinePanel';
+import { AiAssistSidebar } from './AiAssistSidebar';
 import { AiDraftReviewPanel } from './AiDraftReviewPanel';
 import { LinkToDealPopover } from './LinkToDealPopover';
 import { Button } from '@/components/ui/button';
@@ -954,21 +955,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             )}
           </div>
 
-          {/* AI Assist inline panel */}
-          {showAiAssist && (
-            <AiAssistInlinePanel
-              thread={thread}
-              dealId={dealId}
-              onClose={() => setShowAiAssist(false)}
-              onInsertReply={(text) => {
-                handleReply();
-                setTimeout(() => {
-                  const target = getReplyTarget();
-                  setInlineDraft({ to: target.to_email, toName: target.to_name, body: text, subject: `Re: ${thread.subject}`, cc: '', bcc: '', attachments: [], threadId: thread.threadId });
-                }, 100);
-              }}
-            />
-          )}
+          {/* AI Assist sidebar is rendered as a flex sibling at the bottom of this component (see end of return). */}
 
           {/* AI Draft review panel */}
           {showAiDraft && (
