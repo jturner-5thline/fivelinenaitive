@@ -167,19 +167,25 @@ serve(async (req: Request): Promise<Response> => {
         }
 
         const items = listData.data || [];
-        const messages = items.map((msg: any) => ({
-          id: msg.id,
-          thread_id: msg.thread_id || msg.id,
-          subject: msg.subject || "",
-          from_email: msg.from?.[0]?.email || "",
-          from_name: msg.from?.[0]?.name || "",
-          to_emails: (msg.to || []).map((t: any) => t.email || ""),
-          snippet: msg.snippet || "",
-          is_read: !msg.unread,
-          is_starred: msg.starred || false,
-          labels: msg.folders || msg.labels || [],
-          received_at: msg.date ? new Date(msg.date * 1000).toISOString() : null,
-        }));
+        const messages = items.map((msg: any) => {
+          const atts = normalizeAttachments(msg.attachments || msg.files || []);
+          const visibleAtts = atts.filter((a) => !a.is_inline);
+          return {
+            id: msg.id,
+            thread_id: msg.thread_id || msg.id,
+            subject: msg.subject || "",
+            from_email: msg.from?.[0]?.email || "",
+            from_name: msg.from?.[0]?.name || "",
+            to_emails: (msg.to || []).map((t: any) => t.email || ""),
+            snippet: msg.snippet || "",
+            is_read: !msg.unread,
+            is_starred: msg.starred || false,
+            labels: msg.folders || msg.labels || [],
+            received_at: msg.date ? new Date(msg.date * 1000).toISOString() : null,
+            has_attachments: visibleAtts.length > 0,
+            attachment_count: visibleAtts.length,
+          };
+        });
 
         return new Response(JSON.stringify({
           messages,
