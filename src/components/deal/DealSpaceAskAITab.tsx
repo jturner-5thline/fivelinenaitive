@@ -1,11 +1,14 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown, Info, FileText, Mail } from 'lucide-react';
+import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown, Info, FileText, Mail, Copy, Check } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '@/components/ui/dialog';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem,
   DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel,
@@ -19,6 +22,8 @@ import { useDealSpaceDocuments } from '@/hooks/useDealSpaceDocuments';
 import { useDealSpaceFinancials } from '@/hooks/useDealSpaceFinancials';
 import { DealSpaceConversationHistory } from './DealSpaceConversationHistory';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
 
 interface DealSpaceAskAITabProps {
@@ -77,7 +82,13 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const [question, setQuestion] = useState('');
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  
+
+  // Draft Submission runs as a structured product action — fully decoupled from the chat panel.
+  const [isDraftingEmail, setIsDraftingEmail] = useState(false);
+  const [draftEmailContent, setDraftEmailContent] = useState<string | null>(null);
+  const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false);
+  const [hasCopiedDraft, setHasCopiedDraft] = useState(false);
+
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const totalDocuments = documents.length + financials.length;
@@ -195,24 +206,38 @@ IMPORTANT INSTRUCTIONS:
 
 - CURRENCY FORMATTING: Always format dollar amounts using abbreviated notation: $6MM instead of $6,000,000, $15MM instead of $15,000,000, $1.5MM instead of $1,500,000, $500K instead of $500,000. Use K for thousands, MM for millions, B for billions.`;
 
-  const handleDraftSubmission = useCallback(() => {
-    setQuestion('');
-    sendMessage(DRAFT_SUBMISSION_PROMPT);
-    
-    (async () => {
-      let conversationId = selectedConversationId;
-      if (!conversationId) {
-        const newConvo = await createConversation('Draft Submission Email');
-        if (newConvo) {
-          conversationId = newConvo.id;
-          setSelectedConversationId(conversationId);
-        }
-      }
-      if (conversationId) {
-        await saveMessage(conversationId, 'user', DRAFT_SUBMISSION_PROMPT);
-      }
-    })();
-  }, [sendMessage, selectedConversationId, createConversation, saveMessage]);
+  // Silent background handler — invokes the AI directly via the edge function,
+  // bypassing the chat hook entirely. The Ask AI panel is never touched.
+  const handleDraftSubmission = useCallback(async () => {
+    setIsDraftingEmail(true);
+    setDraftEmailContent(null);
+    setIsDraftDialogOpen(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('deal-space-ai', {
+        body: {
+          messages: [{ role: 'user', content: DRAFT_SUBMISSION_PROMPT }],
+          dealId,
+          scope: 'all',
+        },
+      });
+      if (error) throw new Error(error.message || 'Failed to draft email');
+      if (data?.error) throw new Error(data.error);
+      setDraftEmailContent(data?.content || '');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to draft submission email';
+      toast({ title: 'Draft failed', description: message, variant: 'destructive' });
+      setIsDraftDialogOpen(false);
+    } finally {
+      setIsDraftingEmail(false);
+    }
+  }, [dealId, DRAFT_SUBMISSION_PROMPT]);
+
+  const handleCopyDraft = useCallback(async () => {
+    if (!draftEmailContent) return;
+    await navigator.clipboard.writeText(draftEmailContent);
+    setHasCopiedDraft(true);
+    setTimeout(() => setHasCopiedDraft(false), 2000);
+  }, [draftEmailContent]);
 
   const suggestedQuestions = [
     "Generate a full lender-ready memo for this deal",
@@ -340,11 +365,15 @@ IMPORTANT INSTRUCTIONS:
                 <div className="space-y-2 w-full max-w-sm">
                   <button
                     onClick={handleDraftSubmission}
-                    disabled={isAILoading}
+                    disabled={isDraftingEmail}
                     className="w-full text-left text-sm p-3 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/20 transition-colors flex items-center gap-2.5 font-medium text-primary disabled:opacity-50"
                   >
-                    <Mail className="h-4 w-4 flex-shrink-0" />
-                    Draft Submission Email
+                    {isDraftingEmail ? (
+                      <Loader2 className="h-4 w-4 flex-shrink-0 animate-spin" />
+                    ) : (
+                      <Mail className="h-4 w-4 flex-shrink-0" />
+                    )}
+                    {isDraftingEmail ? 'Drafting submission email…' : 'Draft Submission Email'}
                   </button>
                   {suggestedQuestions.map((q, i) => (
                     <button
@@ -436,6 +465,63 @@ IMPORTANT INSTRUCTIONS:
           </div>
         </div>
       </CardContent>
+
+      {/* Draft Submission Email — dedicated output dialog (kept entirely separate from chat). */}
+      <Dialog open={isDraftDialogOpen} onOpenChange={setIsDraftDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-4 w-4 text-primary" />
+              Draft Submission Email
+            </DialogTitle>
+            <DialogDescription>
+              Generated from your deal data, lender list, and write-up. Review before sending.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-auto rounded-md border bg-muted/30 p-4 min-h-[200px]">
+            {isDraftingEmail ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Drafting submission email…
+              </div>
+            ) : draftEmailContent ? (
+              <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
+                <ReactMarkdown>{draftEmailContent}</ReactMarkdown>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No draft generated.</p>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={handleCopyDraft}
+              disabled={!draftEmailContent || isDraftingEmail}
+            >
+              {hasCopiedDraft ? (
+                <><Check className="h-4 w-4 mr-1.5" /> Copied</>
+              ) : (
+                <><Copy className="h-4 w-4 mr-1.5" /> Copy</>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleDraftSubmission}
+              disabled={isDraftingEmail}
+            >
+              {isDraftingEmail ? (
+                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-1.5" />
+              )}
+              Regenerate
+            </Button>
+            <Button onClick={() => setIsDraftDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
