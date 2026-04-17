@@ -107,14 +107,19 @@ export function SendToDataRoomDialog({
 
   // Apply suggestion → preselect deal + build plan
   useEffect(() => {
+    const preselectSet = preselectedAttachmentIds && preselectedAttachmentIds.length > 0
+      ? new Set(preselectedAttachmentIds)
+      : null;
+    const isPreselected = (att: EmailAttachment) =>
+      !preselectSet || (!!att.id && preselectSet.has(att.id));
+
     if (!suggestion) {
-      // No suggestion yet — initialize a default plan with all files included as 'materials'
       setPlan(
         visibleAttachments.map((a) => ({
           attachment: a,
           desiredName: a.filename || 'attachment',
           category: 'materials',
-          include: true,
+          include: isPreselected(a),
         })),
       );
       return;
@@ -127,16 +132,17 @@ export function SendToDataRoomDialog({
     setPlan(
       visibleAttachments.map((a) => {
         const m = perFileMap.get(a.filename || '');
+        const aiInclude = m?.include ?? true;
         return {
           attachment: a,
           desiredName: a.filename || 'attachment',
           category: m?.category || suggestion.default_category,
-          include: m?.include ?? true,
+          include: preselectSet ? isPreselected(a) : aiInclude,
         };
       }),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [suggestion, visibleAttachments]);
+  }, [suggestion, visibleAttachments, preselectedAttachmentIds]);
 
   const selectedDealName =
     deals.find((d) => d.id === selectedDealId)?.company ||
