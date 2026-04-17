@@ -128,7 +128,14 @@ export function SendToDataRoomDialog({
       );
       return;
     }
-    if (!selectedDealId && suggestion.suggested_deal_id) {
+    // Auto-apply the suggested deal as the active selection unless the user has explicitly changed it.
+    // Confidence must be medium or high, and the ID must be present (we'll validate against the deal list below).
+    if (
+      !userChangedDeal &&
+      suggestion.suggested_deal_id &&
+      (suggestion.confidence === 'high' || suggestion.confidence === 'medium') &&
+      suggestion.suggested_deal_id !== selectedDealId
+    ) {
       setSelectedDealId(suggestion.suggested_deal_id);
     }
     setDefaultCategory(suggestion.default_category);
