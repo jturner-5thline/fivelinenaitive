@@ -1,12 +1,35 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Sparkles, FolderOpen, FileText, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  Loader2,
+  Sparkles,
+  FolderOpen,
+  FileText,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  Check,
+  Search,
+  Archive,
+  Database,
+} from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from '@/components/ui/command';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { supabase } from '@/integrations/supabase/client';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { EmailAttachment } from './mockEmailData';
 import {
@@ -16,10 +39,19 @@ import {
   type UploadPlanItem,
 } from '@/hooks/useEmailToDataRoom';
 import { DEAL_ATTACHMENT_CATEGORIES, type DealAttachmentCategory } from '@/hooks/useDealAttachments';
+import { useDealsContext } from '@/contexts/DealsContext';
+import { usePipelineContext } from '@/contexts/PipelineContext';
+import { useDealStages } from '@/contexts/DealStagesContext';
+import type { Deal } from '@/types/deal';
 
 interface DealOption {
   id: string;
+  name: string;
   company: string;
+  stageLabel: string;
+  updatedAt: string;
+  isArchived: boolean;
+  isActivePipeline: boolean;
 }
 
 interface Props {
@@ -43,6 +75,14 @@ function formatBytes(b: number): string {
   return `${(b / 1024 / 1024).toFixed(1)} MB`;
 }
 
+function formatLastActivity(iso: string): string {
+  try {
+    return formatDistanceToNow(new Date(iso), { addSuffix: true });
+  } catch {
+    return '';
+  }
+}
+
 export function SendToDataRoomDialog({
   open,
   onClose,
@@ -57,41 +97,34 @@ export function SendToDataRoomDialog({
   onUploaded,
 }: Props) {
   const { suggest, commitUpload, suggesting, uploading } = useEmailToDataRoom();
+  const { deals: allDeals } = useDealsContext();
+  const { activePipelineId } = usePipelineContext();
+  const { stages } = useDealStages();
+
   const [suggestion, setSuggestion] = useState<DataRoomDestinationSuggestion | null>(initialSuggestion || null);
-  const [deals, setDeals] = useState<DealOption[]>([]);
   const [selectedDealId, setSelectedDealId] = useState<string>(initialDealId || '');
   const [userChangedDeal, setUserChangedDeal] = useState(false);
   const [defaultCategory, setDefaultCategory] = useState<DealAttachmentCategory>('materials');
   const [plan, setPlan] = useState<UploadPlanItem[]>([]);
   const [filesExpanded, setFilesExpanded] = useState(false);
-  const [showDealPicker, setShowDealPicker] = useState(false);
+  const [dealPickerOpen, setDealPickerOpen] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
-  // Wrap setSelectedDealId so explicit user changes lock out future auto-apply from suggestions
+  const stageLabelById = useMemo(() => {
+    const m = new Map<string, string>();
+    stages.forEach((s) => m.set(s.id, s.label));
+    return m;
+  }, [stages]);
+
   const handleUserSelectDeal = (id: string) => {
     setUserChangedDeal(true);
     setSelectedDealId(id);
+    setDealPickerOpen(false);
   };
 
   const visibleAttachments = useMemo(() => attachments.filter((a) => !a.is_inline && !!a.id), [attachments]);
 
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    supabase
-      .from('deals')
-      .select('id, company, status')
-      .eq('status', 'active')
-      .order('company')
-      .limit(200)
-      .then(({ data }) => {
-        if (cancelled) return;
-        setDeals((data || []).map((d: any) => ({ id: d.id, company: d.company })));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [open]);
-
+  // Fetch AI suggestion (only once per open)
   useEffect(() => {
     if (!open || initialSuggestion) return;
     let cancelled = false;
@@ -110,12 +143,13 @@ export function SendToDataRoomDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // Build plan + auto-apply suggested deal
   useEffect(() => {
-    const preselectSet = preselectedAttachmentIds && preselectedAttachmentIds.length > 0
-      ? new Set(preselectedAttachmentIds)
-      : null;
-    const isPreselected = (att: EmailAttachment) =>
-      !preselectSet || (!!att.id && preselectSet.has(att.id));
+    const preselectSet =
+      preselectedAttachmentIds && preselectedAttachmentIds.length > 0
+        ? new Set(preselectedAttachmentIds)
+        : null;
+    const isPreselected = (att: EmailAttachment) => !preselectSet || (!!att.id && preselectSet.has(att.id));
 
     if (!suggestion) {
       setPlan(
@@ -128,8 +162,8 @@ export function SendToDataRoomDialog({
       );
       return;
     }
-    // Auto-apply the suggested deal as the active selection unless the user has explicitly changed it.
-    // Confidence must be medium or high, and the ID must be present (we'll validate against the deal list below).
+
+    // Auto-apply suggested deal — only if user hasn't manually changed it
     if (
       !userChangedDeal &&
       suggestion.suggested_deal_id &&
@@ -155,31 +189,65 @@ export function SendToDataRoomDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [suggestion, visibleAttachments, preselectedAttachmentIds]);
 
-  const selectedDealName =
-    deals.find((d) => d.id === selectedDealId)?.company ||
-    (selectedDealId === initialDealId ? initialDealName : undefined) ||
-    (selectedDealId && selectedDealId === suggestion?.suggested_deal_id ? suggestion?.suggested_deal_name : undefined);
+  // Build dealOptions from the live deals context (same source as Active Deals sidebar)
+  const dealOptions: DealOption[] = useMemo(() => {
+    const map = new Map<string, DealOption>();
+    const toOpt = (d: Deal): DealOption => ({
+      id: d.id,
+      name: d.name || d.company,
+      company: d.company,
+      stageLabel: stageLabelById.get(d.stage) || d.stage || '',
+      updatedAt: d.updatedAt,
+      isArchived: d.status === 'archived',
+      isActivePipeline: !!activePipelineId && d.pipelineId === activePipelineId,
+    });
+    allDeals.forEach((d) => map.set(d.id, toOpt(d)));
 
-  // Always include the resolved deal (initial + AI suggestion) in the dropdown so the
-  // Select control can render a matching <SelectItem> for `selectedDealId`. Without this,
-  // a suggested deal that's not in the first 200 active deals would leave the trigger blank.
-  const dealOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    deals.forEach((d) => map.set(d.id, d.company));
-    if (initialDealId && initialDealName && !map.has(initialDealId)) {
-      map.set(initialDealId, initialDealName);
+    // Always inject initial + suggested deal so the trigger never shows blank
+    if (initialDealId && !map.has(initialDealId)) {
+      map.set(initialDealId, {
+        id: initialDealId,
+        name: initialDealName || 'Deal',
+        company: initialDealName || 'Deal',
+        stageLabel: '',
+        updatedAt: new Date().toISOString(),
+        isArchived: false,
+        isActivePipeline: false,
+      });
     }
-    if (
-      suggestion?.suggested_deal_id &&
-      suggestion?.suggested_deal_name &&
-      !map.has(suggestion.suggested_deal_id)
-    ) {
-      map.set(suggestion.suggested_deal_id, suggestion.suggested_deal_name);
+    if (suggestion?.suggested_deal_id && !map.has(suggestion.suggested_deal_id)) {
+      map.set(suggestion.suggested_deal_id, {
+        id: suggestion.suggested_deal_id,
+        name: suggestion.suggested_deal_name || 'Suggested Deal',
+        company: suggestion.suggested_deal_name || 'Suggested Deal',
+        stageLabel: '',
+        updatedAt: new Date().toISOString(),
+        isArchived: false,
+        isActivePipeline: false,
+      });
     }
-    return Array.from(map.entries())
-      .map(([id, company]) => ({ id, company }))
-      .sort((a, b) => a.company.localeCompare(b.company));
-  }, [deals, initialDealId, initialDealName, suggestion?.suggested_deal_id, suggestion?.suggested_deal_name]);
+    return Array.from(map.values());
+  }, [allDeals, activePipelineId, stageLabelById, initialDealId, initialDealName, suggestion]);
+
+  const selectedOption = useMemo(
+    () => dealOptions.find((d) => d.id === selectedDealId),
+    [dealOptions, selectedDealId],
+  );
+  const selectedDealName = selectedOption?.name || selectedOption?.company || '';
+
+  // Grouped & sorted options
+  const grouped = useMemo(() => {
+    const suggestedId = suggestion?.suggested_deal_id;
+    const sortByRecent = (a: DealOption, b: DealOption) =>
+      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+
+    const suggested = suggestedId ? dealOptions.find((d) => d.id === suggestedId) : undefined;
+    const rest = dealOptions.filter((d) => d.id !== suggestedId);
+    const activePipeline = rest.filter((d) => !d.isArchived && d.isActivePipeline).sort(sortByRecent);
+    const otherActive = rest.filter((d) => !d.isArchived && !d.isActivePipeline).sort(sortByRecent);
+    const archived = rest.filter((d) => d.isArchived).sort(sortByRecent);
+    return { suggested, activePipeline, otherActive, archived };
+  }, [dealOptions, suggestion?.suggested_deal_id]);
 
   const includedCount = plan.filter((p) => p.include).length;
   const canCommit = !!selectedDealId && includedCount > 0 && !uploading;
@@ -214,6 +282,43 @@ export function SendToDataRoomDialog({
     }
   };
 
+  const renderDealItem = (d: DealOption, opts?: { suggested?: boolean }) => {
+    const isSelected = d.id === selectedDealId;
+    return (
+      <CommandItem
+        key={d.id}
+        value={`${d.name} ${d.company} ${d.stageLabel}`}
+        onSelect={() => handleUserSelectDeal(d.id)}
+        className="flex items-start gap-2 py-2"
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-medium text-foreground truncate">{d.name}</span>
+            {opts?.suggested && (
+              <Badge variant="secondary" className="h-4 px-1.5 text-[9px] font-medium gap-0.5">
+                <Sparkles className="h-2.5 w-2.5" />
+                Suggested
+              </Badge>
+            )}
+            <Database className="h-3 w-3 text-muted-foreground/50 shrink-0" aria-label="Has data room" />
+          </div>
+          <div className="text-[10px] text-muted-foreground truncate mt-0.5">
+            {d.company !== d.name && <span>{d.company}</span>}
+            {d.company !== d.name && d.stageLabel && <span className="mx-1">·</span>}
+            {d.stageLabel && <span>{d.stageLabel}</span>}
+            {d.updatedAt && (
+              <>
+                <span className="mx-1">·</span>
+                <span>{formatLastActivity(d.updatedAt)}</span>
+              </>
+            )}
+          </div>
+        </div>
+        {isSelected && <Check className="h-3.5 w-3.5 text-primary shrink-0 mt-1" />}
+      </CommandItem>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[88vh] flex flex-col p-0 gap-0 overflow-hidden">
@@ -226,7 +331,9 @@ export function SendToDataRoomDialog({
             <div className="flex-1 min-w-0">
               <h2 className="text-base font-semibold leading-tight text-foreground">
                 {selectedDealName ? (
-                  <>Add attachments to <span className="text-primary">{selectedDealName}</span> Data Room</>
+                  <>
+                    Add attachments to <span className="text-primary">{selectedDealName}</span> Data Room
+                  </>
                 ) : (
                   <>Add attachments to Data Room</>
                 )}
@@ -239,7 +346,8 @@ export function SendToDataRoomDialog({
                   </span>
                 ) : (
                   <>
-                    We found {visibleAttachments.length} attachment{visibleAttachments.length === 1 ? '' : 's'} in this thread
+                    We found {visibleAttachments.length} attachment
+                    {visibleAttachments.length === 1 ? '' : 's'} in this thread
                     {selectedDealName ? ' and matched them to this deal' : ''}. Review and send them in one step.
                   </>
                 )}
@@ -250,7 +358,8 @@ export function SendToDataRoomDialog({
                 <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
                   <Sparkles className="h-3 w-3 text-primary/70 shrink-0" />
                   <span>
-                    Suggested deal: <span className="font-medium text-foreground/80">{suggestion.suggested_deal_name}</span>
+                    Suggested deal:{' '}
+                    <span className="font-medium text-foreground/80">{suggestion.suggested_deal_name}</span>
                     <span className="text-muted-foreground/70"> · matched from sender, subject, and attachment names</span>
                   </span>
                 </div>
@@ -266,12 +375,7 @@ export function SendToDataRoomDialog({
 
           {/* Primary action row */}
           <div className="mt-4 flex items-center gap-2 flex-wrap">
-            <Button
-              size="sm"
-              onClick={handleCommit}
-              disabled={!canCommit}
-              className="gap-1.5 h-9 px-4"
-            >
+            <Button size="sm" onClick={handleCommit} disabled={!canCommit} className="gap-1.5 h-9 px-4">
               {uploading ? (
                 <>
                   <Loader2 className="h-3.5 w-3.5 animate-spin" /> Uploading…
@@ -292,67 +396,118 @@ export function SendToDataRoomDialog({
               Review files
               {filesExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowDealPicker((v) => !v)}
-              className="h-9 text-xs text-muted-foreground hover:text-foreground"
-            >
-              Change deal
-            </Button>
+
+            {/* Searchable Deal combobox — replaces the prior Select */}
+            <Popover open={dealPickerOpen} onOpenChange={setDealPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 text-xs text-muted-foreground hover:text-foreground gap-1.5"
+                >
+                  <Search className="h-3 w-3" />
+                  {selectedDealName ? 'Change deal' : 'Choose deal'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0 w-[380px]" align="start">
+                <Command
+                  filter={(value, search) => {
+                    if (!search) return 1;
+                    return value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
+                  }}
+                >
+                  <CommandInput placeholder="Search deals by name, company, or stage…" className="h-9 text-xs" />
+                  <CommandList className="max-h-[340px]">
+                    <CommandEmpty>
+                      <div className="py-3 px-2 text-center space-y-2">
+                        <p className="text-xs text-muted-foreground">No deals match.</p>
+                        <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1" disabled>
+                          + Create new deal from this email
+                        </Button>
+                      </div>
+                    </CommandEmpty>
+
+                    {grouped.suggested && (
+                      <>
+                        <CommandGroup heading="AI Suggested">
+                          {renderDealItem(grouped.suggested, { suggested: true })}
+                        </CommandGroup>
+                        <CommandSeparator />
+                      </>
+                    )}
+
+                    {grouped.activePipeline.length > 0 && (
+                      <CommandGroup heading="Active Pipeline">
+                        {grouped.activePipeline.map((d) => renderDealItem(d))}
+                      </CommandGroup>
+                    )}
+
+                    {grouped.otherActive.length > 0 && (
+                      <>
+                        {grouped.activePipeline.length > 0 && <CommandSeparator />}
+                        <CommandGroup heading="Other Active Deals">
+                          {grouped.otherActive.map((d) => renderDealItem(d))}
+                        </CommandGroup>
+                      </>
+                    )}
+
+                    {grouped.archived.length > 0 && (
+                      <>
+                        <CommandSeparator />
+                        <CommandGroup heading="Recently Closed / Archived">
+                          <CommandItem
+                            value="__toggle_archived__"
+                            onSelect={() => setShowArchived((v) => !v)}
+                            className="text-[11px] text-muted-foreground gap-1.5"
+                          >
+                            <Archive className="h-3 w-3" />
+                            {showArchived
+                              ? `Hide ${grouped.archived.length} archived`
+                              : `Show ${grouped.archived.length} archived`}
+                            {showArchived ? (
+                              <ChevronUp className="h-3 w-3 ml-auto" />
+                            ) : (
+                              <ChevronDown className="h-3 w-3 ml-auto" />
+                            )}
+                          </CommandItem>
+                          {showArchived && grouped.archived.map((d) => renderDealItem(d))}
+                        </CommandGroup>
+                      </>
+                    )}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 
-        {/* ===== Configuration row (tight, inline) ===== */}
-        {(showDealPicker || !selectedDealId) && (
-          <div className="px-6 py-3 border-b border-border/40 bg-muted/10 shrink-0">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <div>
-                <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1 block">
-                  Deal
-                </label>
-                <Select value={selectedDealId} onValueChange={handleUserSelectDeal}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Select a deal…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {dealOptions.map((d) => (
-                      <SelectItem key={d.id} value={d.id} className="text-xs">
-                        {d.company}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1 block">
-                  Default folder
-                </label>
-                <Select value={defaultCategory} onValueChange={(v) => setAllCategory(v as DealAttachmentCategory)}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEAL_ATTACHMENT_CATEGORIES.map((c) => (
-                      <SelectItem key={c.value} value={c.value} className="text-xs">
-                        {c.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* ===== Configuration row — only the folder selector (deal lives in combobox above) ===== */}
+        <div className="px-6 py-2.5 border-b border-border/40 bg-muted/10 shrink-0 flex items-center gap-3 flex-wrap">
+          <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Default folder
+          </label>
+          <Select value={defaultCategory} onValueChange={(v) => setAllCategory(v as DealAttachmentCategory)}>
+            <SelectTrigger className="h-7 text-xs w-[160px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DEAL_ATTACHMENT_CATEGORIES.map((c) => (
+                <SelectItem key={c.value} value={c.value} className="text-xs">
+                  {c.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* ===== Compact summary row ===== */}
         <div className="px-6 py-2.5 border-b border-border/40 shrink-0 flex items-center justify-between gap-2 text-[11px]">
           <div className="flex items-center gap-1.5 text-muted-foreground flex-wrap">
-            <span className="font-medium text-foreground/80">
-              {includedCount} of {plan.length} selected
-            </span>
-            <span className="text-muted-foreground/50">·</span>
-            <span>Default folder: <span className="text-foreground/70">{defaultFolderLabel}</span></span>
+            <span className="font-medium text-foreground/80">{includedCount} files</span>
+            <span className="text-muted-foreground/50">→</span>
+            <span className="text-foreground/80">{selectedDealName || 'select a deal'}</span>
+            <span className="text-muted-foreground/50">→</span>
+            <span>{defaultFolderLabel}</span>
             <span className="text-muted-foreground/50">·</span>
             <span>Duplicates auto-versioned</span>
           </div>
@@ -420,10 +575,13 @@ export function SendToDataRoomDialog({
           </ScrollArea>
         )}
 
-        {/* ===== Footer (cancel only — primary action is in banner) ===== */}
+        {/* ===== Footer ===== */}
         <div className="px-6 py-3 border-t border-border/40 shrink-0 flex items-center justify-between bg-muted/10">
           <p className="text-[10px] text-muted-foreground">
-            Files will land in <span className="font-medium text-foreground/70">{selectedDealName || 'selected deal'} Data Room — Internal</span>
+            Files will land in{' '}
+            <span className="font-medium text-foreground/70">
+              {selectedDealName || 'selected deal'} Data Room — Internal
+            </span>
           </p>
           <Button variant="ghost" size="sm" onClick={onClose} disabled={uploading} className="h-8">
             Cancel
