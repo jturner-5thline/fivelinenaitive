@@ -1,0 +1,1 @@
+SELECT cron.unschedule('check-stale-deals-daily');
