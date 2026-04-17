@@ -292,6 +292,13 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     dealAssociation: 'all',
   });
 
+  // ── AI Search state ─────────────────────────────────────────
+  const aiSearch = useAIEmailSearch();
+  // True once the user has explicitly run an AI search for the current query.
+  // Until then, the search bar behaves as plain keyword search.
+  const [aiSearchActive, setAiSearchActive] = useState(false);
+  const lastAiQueryRef = useRef<string>('');
+
   // Counts
   const needsResponseCount = emails.filter(e => e.needs_response && e.folder === 'inbox').length;
   const starredCount = emails.filter(e => e.is_starred).length;
