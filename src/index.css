@@ -287,10 +287,48 @@
 .email-html-body li { margin-bottom: 0.25rem; }
 .email-html-body li::marker { color: hsl(var(--email-text-secondary)) !important; }
 
+/* Images: keep author dimensions when set, but cap to container width.
+   Add a soft light backdrop so transparent-PNG signature logos designed
+   for white backgrounds remain visible against our dark reading surface. */
 .email-html-body img {
   max-width: 100%;
   height: auto;
   border-radius: 4px;
+  background-color: hsl(0 0% 100% / 0.92);
+  padding: 2px;
+}
+/* Avoid double-padding when an image is wrapped in a link */
+.email-html-body a > img { padding: 2px; }
+
+/* Pending CID placeholder (image hasn't been resolved yet) */
+.email-html-body img[data-cid-pending] {
+  display: inline-block;
+  min-width: 80px;
+  min-height: 24px;
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+/* Inline fallback rendered by the <img onerror> handler when an image
+   genuinely fails to load — never an empty bordered box. */
+.email-html-body .email-img-fallback {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background-color: hsl(var(--muted) / 0.6) !important;
+  color: hsl(var(--email-text-muted)) !important;
+  font-size: 0.75rem;
+  line-height: 1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.email-html-body .email-img-fallback::before {
+  content: "🖼";
+  font-size: 0.85em;
+  opacity: 0.7;
 }
 
 .email-html-body table {

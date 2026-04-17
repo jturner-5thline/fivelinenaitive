@@ -6,6 +6,13 @@ interface FullMessage {
   body_html?: string;
   body_text?: string;
   attachments?: EmailAttachment[];
+  /**
+   * Inline attachments (Content-Disposition: inline OR carrying a Content-ID).
+   * Used to resolve `cid:` references in the HTML body — signature logos,
+   * embedded headshots, etc. These are NOT rendered as user-visible
+   * attachment cards.
+   */
+  inline_attachments?: EmailAttachment[];
 }
 
 /**
@@ -54,6 +61,7 @@ export function useFullEmailMessage(
           body_html: m.body_html || undefined,
           body_text: m.body_text || undefined,
           attachments: Array.isArray(m.attachments) ? m.attachments : [],
+          inline_attachments: Array.isArray(m.inline_attachments) ? m.inline_attachments : [],
         });
         setError(null);
       })
@@ -100,4 +108,29 @@ export async function downloadAttachment(
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/**
+ * Fetch a single attachment as a `data:` URL. Used to resolve inline `cid:`
+ * image references in HTML email bodies — keeps the URL self-contained so
+ * we don't leak blob URLs across React re-renders.
+ */
+export async function fetchAttachmentDataUrl(
+  messageId: string,
+  attachment: EmailAttachment,
+): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke('gmail-messages', {
+      body: {
+        action: 'get_attachment',
+        message_id: messageId,
+        attachment_id: attachment.id,
+      },
+    });
+    if (error || !data?.data) return null;
+    const ct = data.content_type || attachment.content_type || 'application/octet-stream';
+    return `data:${ct};base64,${data.data}`;
+  } catch {
+    return null;
+  }
 }

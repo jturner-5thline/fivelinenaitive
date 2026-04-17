@@ -1,17 +1,23 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import DOMPurify from 'dompurify';
 import { cn } from '@/lib/utils';
+import type { EmailAttachment } from './mockEmailData';
+import { fetchAttachmentDataUrl } from './useFullEmailMessage';
 
 interface Props {
   html?: string;
   text?: string;
   className?: string;
+  /** Message ID, required to resolve `cid:` inline images via the mail provider. */
+  messageId?: string;
+  /** Inline attachments keyed by Content-ID. Used to swap `cid:` URLs into real ones. */
+  inlineAttachments?: EmailAttachment[];
 }
 
 /**
  * Strip color/background-related declarations from an inline `style` string.
  * Email HTML often hardcodes near-black text colors that become invisible on
- * our dark-mode reading surface. We keep layout-related declarations intact.
+ * our dark-mode reading surface. We keep layout/dimensional declarations.
  */
 const COLOR_PROP_RE = /(^|;)\s*(color|background|background-color|bgcolor)\s*:\s*[^;]+/gi;
 function stripColorDeclarations(style: string): string {
@@ -24,20 +30,60 @@ function stripColorDeclarations(style: string): string {
 
 /**
  * Renders an email body, preferring sanitized HTML when available and
- * falling back to plain text. Designed to live inside a scrollable parent
- * — never adds its own height clipping.
+ * falling back to plain text. Designed to live inside a scrollable parent.
  *
- * HTML is sanitized with DOMPurify (no scripts, no event handlers, no
- * iframes). Hardcoded colors/backgrounds from the source email are
- * neutralized so the body always inherits naitive's dark-mode tokens.
- * Links are forced to open in a new tab.
+ * Image handling:
+ * - `cid:` references are resolved against `inlineAttachments` and lazily
+ *   swapped to `data:` URLs fetched from the mail provider.
+ * - Remote `https://` images are allowed and load directly.
+ * - `data:` URI images pass through untouched.
+ * - Failed images render an inline muted placeholder with their alt/filename
+ *   instead of an empty bordered box.
  */
-export function EmailBodyRenderer({ html, text, className }: Props) {
+export function EmailBodyRenderer({
+  html,
+  text,
+  className,
+  messageId,
+  inlineAttachments,
+}: Props) {
+  // Resolved CID -> data URL map, populated as inline attachments are fetched.
+  const [cidUrls, setCidUrls] = useState<Record<string, string>>({});
+
+  // Lazily resolve every inline attachment that has a content_id, so that
+  // `cid:image001.jpg@01D9...` references in the body can be rewritten.
+  useEffect(() => {
+    if (!messageId || !inlineAttachments?.length) return;
+    let cancelled = false;
+    const toFetch = inlineAttachments.filter(
+      (a) => a.content_id && !cidUrls[a.content_id],
+    );
+    if (toFetch.length === 0) return;
+
+    (async () => {
+      const updates: Record<string, string> = {};
+      // Fetch sequentially with a small cap to avoid hammering the function.
+      for (const att of toFetch.slice(0, 12)) {
+        const url = await fetchAttachmentDataUrl(messageId, att);
+        if (url && att.content_id) updates[att.content_id] = url;
+      }
+      if (!cancelled && Object.keys(updates).length > 0) {
+        setCidUrls((prev) => ({ ...prev, ...updates }));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messageId, inlineAttachments]);
+
   const sanitized = useMemo(() => {
     if (!html) return null;
 
-    // Hook 1: neutralize hardcoded colors before serialization
+    // Hook 1: neutralize hardcoded text colors AND rewrite cid: image refs.
     DOMPurify.addHook('uponSanitizeAttribute', (node, data) => {
+      // Neutralize inline color/background overrides on every element
       if (data.attrName === 'style' && typeof data.attrValue === 'string') {
         const cleaned = stripColorDeclarations(data.attrValue);
         if (!cleaned) {
@@ -50,36 +96,77 @@ export function EmailBodyRenderer({ html, text, className }: Props) {
       if (['color', 'bgcolor', 'background', 'text', 'link', 'vlink', 'alink'].includes(data.attrName)) {
         data.keepAttr = false;
       }
+
+      // Resolve cid: image references against the inline attachment map
+      if (
+        node.tagName === 'IMG' &&
+        data.attrName === 'src' &&
+        typeof data.attrValue === 'string' &&
+        data.attrValue.toLowerCase().startsWith('cid:')
+      ) {
+        const cid = data.attrValue.slice(4).replace(/^<|>$/g, '');
+        const resolved = cidUrls[cid];
+        if (resolved) {
+          data.attrValue = resolved;
+        } else {
+          // Mark unresolved CID images so we can show a graceful placeholder
+          // instead of a broken empty box.
+          (node as Element).setAttribute('data-cid-pending', cid);
+          data.keepAttr = false;
+        }
+      }
     });
 
-    // Hook 2: strip <font color="..."> by removing color attr (handled above)
-    // and force every <a> to open in a new tab safely
+    // Hook 2: open links safely in new tab; flag images for fallback handling.
     DOMPurify.addHook('afterSanitizeAttributes', (node) => {
       if (node.tagName === 'A') {
         node.setAttribute('target', '_blank');
         node.setAttribute('rel', 'noopener noreferrer');
       }
-      // Remove any <style> children that might have slipped through
+      if (node.tagName === 'IMG') {
+        const img = node as HTMLImageElement;
+        // Inline error fallback: replace the broken image with its alt text
+        // (or filename hint) wrapped in a muted pill — never a blank box.
+        const alt = img.getAttribute('alt') || img.getAttribute('title') || '';
+        img.setAttribute(
+          'onerror',
+          "this.onerror=null;" +
+          "var s=document.createElement('span');" +
+          "s.className='email-img-fallback';" +
+          "s.textContent=" + JSON.stringify(alt || 'image') + ";" +
+          "this.replaceWith(s);"
+        );
+        // Preserve aspect ratio / sane sizing without nuking author dimensions.
+        img.setAttribute('loading', 'lazy');
+        img.setAttribute('decoding', 'async');
+        // Mark unresolved-cid placeholders so CSS can render a tidy stub.
+        if (img.getAttribute('data-cid-pending') && !img.getAttribute('src')) {
+          img.setAttribute('alt', alt || 'Loading image…');
+        }
+      }
       if (node.tagName === 'STYLE') {
         node.parentNode?.removeChild(node);
       }
     });
 
+    // Allow image-friendly attributes (incl. data: URIs and srcset) so
+    // signature logos render correctly. Disallow only the dangerous bits.
     const clean = DOMPurify.sanitize(html, {
       USE_PROFILES: { html: true },
       FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'meta', 'link'],
       FORBID_ATTR: [
-        'onerror', 'onclick', 'onload', 'onmouseover', 'onfocus', 'onblur', 'onchange', 'onsubmit',
+        'onclick', 'onload', 'onmouseover', 'onfocus', 'onblur', 'onchange', 'onsubmit',
         'class', // strip remote class hooks that might reference unknown stylesheets
       ],
-      ADD_ATTR: ['target', 'rel'],
+      ADD_ATTR: ['target', 'rel', 'srcset', 'sizes', 'loading', 'decoding', 'data-cid-pending'],
+      // Allow data: and cid: schemes on images so base64 + inline refs survive.
+      ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|cid|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
     });
 
-    // Clean up our hooks so we don't leak across renders
     DOMPurify.removeAllHooks();
 
     return clean;
-  }, [html]);
+  }, [html, cidUrls]);
 
   if (sanitized) {
     return (
@@ -89,7 +176,6 @@ export function EmailBodyRenderer({ html, text, className }: Props) {
           'break-words',
           className,
         )}
-        // Sanitized + color-stripped above. CSS below enforces theme inheritance.
         dangerouslySetInnerHTML={{ __html: sanitized }}
       />
     );
