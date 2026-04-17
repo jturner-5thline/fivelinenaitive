@@ -272,6 +272,88 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
     }
   }, [hasMoreInbox, hasMoreSent, inboxNextToken, sentNextToken, isLoadingMore, mergeUniqueById]);
 
+  // ─── Background read-state sync ───────────────────────────────────
+  // Periodically reconciles is_read / is_starred state for messages
+  // currently loaded in the popup against Gmail (via Nylas) so that
+  // emails read or marked unread elsewhere (Gmail web, mobile) reflect
+  // here in near-real time. Lightweight delta sync — only fetches state
+  // for already-loaded message IDs, never the full mailbox.
+  const SYNC_INTERVAL_MS = 15_000;
+  const SYNC_BATCH_LIMIT = 150; // most-recent N messages per cycle
+  const syncInFlightRef = useRef(false);
+
+  const reconcileStates = useCallback((states: Array<{ id: string; is_read: boolean; is_starred: boolean; missing?: boolean }>) => {
+    if (!states.length || !isMountedRef.current) return;
+    const stateMap = new Map(states.map(s => [s.id, s]));
+    setInboxMessages(prev => {
+      let changed = false;
+      const next = prev
+        .filter(m => {
+          const s = stateMap.get(m.id);
+          if (s?.missing) { changed = true; return false; }
+          return true;
+        })
+        .map(m => {
+          const s = stateMap.get(m.id);
+          if (!s) return m;
+          if (m.is_read === s.is_read && m.is_starred === s.is_starred) return m;
+          changed = true;
+          return { ...m, is_read: s.is_read, is_starred: s.is_starred };
+        });
+      return changed ? next : prev;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!open || !status.connected) return;
+    let cancelled = false;
+
+    const runSync = async () => {
+      if (syncInFlightRef.current) return;
+      // Skip when tab is hidden — saves quota and avoids needless calls.
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      // Snapshot most-recent inbox message IDs for delta sync.
+      const ids = inboxMessages
+        .slice(0, SYNC_BATCH_LIMIT)
+        .map(m => m.id || m.gmail_message_id)
+        .filter(Boolean);
+      if (ids.length === 0) return;
+      syncInFlightRef.current = true;
+      try {
+        const { data, error } = await supabase.functions.invoke('gmail-messages', {
+          body: { action: 'sync_state', message_ids: ids },
+        });
+        if (cancelled || error || !data?.states) return;
+        reconcileStates(data.states);
+      } catch {
+        // Swallow transient errors — next tick will retry.
+      } finally {
+        syncInFlightRef.current = false;
+      }
+    };
+
+    // Run once shortly after open so quick external reads sync fast,
+    // then on a steady interval.
+    const kickoff = setTimeout(runSync, 4_000);
+    const interval = setInterval(runSync, SYNC_INTERVAL_MS);
+
+    // Also sync immediately when the tab/window regains focus.
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') runSync();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', runSync);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(kickoff);
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', runSync);
+    };
+  }, [open, status.connected, inboxMessages, reconcileStates]);
+
+
   // Combined deduped list (use API results if any; fall back to cache)
   const mappedEmails = useMemo(() => {
     const inboxSource = inboxMessages.length > 0 ? inboxMessages : cachedInboxEmails;
