@@ -60,10 +60,17 @@ export function SendToDataRoomDialog({
   const [suggestion, setSuggestion] = useState<DataRoomDestinationSuggestion | null>(initialSuggestion || null);
   const [deals, setDeals] = useState<DealOption[]>([]);
   const [selectedDealId, setSelectedDealId] = useState<string>(initialDealId || '');
+  const [userChangedDeal, setUserChangedDeal] = useState(false);
   const [defaultCategory, setDefaultCategory] = useState<DealAttachmentCategory>('materials');
   const [plan, setPlan] = useState<UploadPlanItem[]>([]);
   const [filesExpanded, setFilesExpanded] = useState(false);
   const [showDealPicker, setShowDealPicker] = useState(false);
+
+  // Wrap setSelectedDealId so explicit user changes lock out future auto-apply from suggestions
+  const handleUserSelectDeal = (id: string) => {
+    setUserChangedDeal(true);
+    setSelectedDealId(id);
+  };
 
   const visibleAttachments = useMemo(() => attachments.filter((a) => !a.is_inline && !!a.id), [attachments]);
 
@@ -121,7 +128,14 @@ export function SendToDataRoomDialog({
       );
       return;
     }
-    if (!selectedDealId && suggestion.suggested_deal_id) {
+    // Auto-apply the suggested deal as the active selection unless the user has explicitly changed it.
+    // Confidence must be medium or high, and the ID must be present (we'll validate against the deal list below).
+    if (
+      !userChangedDeal &&
+      suggestion.suggested_deal_id &&
+      (suggestion.confidence === 'high' || suggestion.confidence === 'medium') &&
+      suggestion.suggested_deal_id !== selectedDealId
+    ) {
       setSelectedDealId(suggestion.suggested_deal_id);
     }
     setDefaultCategory(suggestion.default_category);
@@ -276,7 +290,7 @@ export function SendToDataRoomDialog({
                 <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1 block">
                   Deal
                 </label>
-                <Select value={selectedDealId} onValueChange={setSelectedDealId}>
+                <Select value={selectedDealId} onValueChange={handleUserSelectDeal}>
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="Select a deal…" />
                   </SelectTrigger>
