@@ -447,6 +447,27 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
           </Button>
         </div>
       )}
+
+      {/* Send-to-Data-Room dialog (mounted from the proactive card) */}
+      {drDialogOpen && (
+        <SendToDataRoomDialog
+          open={drDialogOpen}
+          onClose={() => setDrDialogOpen(false)}
+          attachments={drAttachments}
+          messageId={latestId}
+          threadData={passThreadData}
+          sourceEmail={{
+            messageId: latestId,
+            threadId: thread.threadId,
+            subject: thread.subject,
+            senderName: thread.latestEmail.from_name,
+            senderEmail: thread.latestEmail.from_email,
+          }}
+          initialDealId={dealId}
+          initialDealName={dealName}
+          initialSuggestion={drSuggestion}
+        />
+      )}
     </aside>
   );
 }
