@@ -551,7 +551,64 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
       }
     }
 
-    return new Response(JSON.stringify({ result: parsed }), {
+    // For detect_lender_pass, persist the detection so the UI can read/confirm it later.
+    if (action === "detect_lender_pass" && dealId && typeof parsed === "object" && !parsed.raw) {
+      try {
+        const latest = emailData || threadData?.latestEmail || threadData?.emails?.[0];
+        const messageId: string | undefined = latest?.gmail_message_id || latest?.id;
+
+        if (messageId) {
+          const isPass = !!parsed.is_pass;
+          const confidence = ["low", "medium", "high"].includes(parsed.confidence) ? parsed.confidence : "low";
+          const matchedId: string | null = parsed.matched_lender_id && typeof parsed.matched_lender_id === "string" && parsed.matched_lender_id.length > 0
+            ? parsed.matched_lender_id
+            : null;
+          const matchedName: string = parsed.matched_lender_name || "";
+
+          // Upsert by (gmail_message_id, deal_id) — only stamp/refresh if not already confirmed/dismissed.
+          const { data: existing } = await supabase
+            .from("lender_pass_detections")
+            .select("id, status")
+            .eq("gmail_message_id", messageId)
+            .eq("deal_id", dealId)
+            .maybeSingle();
+
+          if (!existing) {
+            await supabase.from("lender_pass_detections").insert({
+              deal_id: dealId,
+              deal_lender_id: matchedId,
+              lender_name: matchedName || latest?.from_name || "Unknown lender",
+              gmail_message_id: messageId,
+              thread_id: latest?.thread_id || threadData?.threadId || null,
+              sender_email: latest?.from_email || null,
+              sender_name: latest?.from_name || null,
+              confidence,
+              is_pass: isPass,
+              reason_summary: parsed.reason_summary || null,
+              source_quote: parsed.source_quote || null,
+              status: "pending",
+              raw_classification: parsed,
+            });
+          } else if (existing.status === "pending") {
+            // Refresh the latest classification but keep status pending.
+            await supabase
+              .from("lender_pass_detections")
+              .update({
+                deal_lender_id: matchedId,
+                lender_name: matchedName || latest?.from_name || "Unknown lender",
+                confidence,
+                is_pass: isPass,
+                reason_summary: parsed.reason_summary || null,
+                source_quote: parsed.source_quote || null,
+                raw_classification: parsed,
+              })
+              .eq("id", existing.id);
+          }
+        }
+      } catch (persistErr) {
+        console.error("Failed to persist lender pass detection:", persistErr);
+      }
+    }
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
