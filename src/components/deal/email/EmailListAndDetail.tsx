@@ -56,6 +56,8 @@ import { EmailAttachmentList } from './EmailAttachmentList';
 import { useFullEmailMessage } from './useFullEmailMessage';
 import { LenderPassBanner } from './LenderPassBanner';
 import { useLenderPassDetection } from '@/hooks/useLenderPassDetection';
+import { SendToDataRoomDialog } from './SendToDataRoomDialog';
+import { FolderPlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -680,6 +682,22 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const [showAiAssist, setShowAiAssist] = useState(false);
   const [showAiDraft, setShowAiDraft] = useState(false);
   const [linkedDealName, setLinkedDealName] = useState<string | undefined>(thread.dealName);
+  const [showSendToDataRoom, setShowSendToDataRoom] = useState(false);
+
+  // Hoist the latest message's full body load so the toolbar/dialog can see
+  // its attachments (the per-message MessageBlock loads its own copy too —
+  // both share the Nylas cache so this is cheap).
+  const latestMessageId = thread.latestEmail.id;
+  const isMockLatest = !latestMessageId || latestMessageId.startsWith('mock-');
+  const { data: latestFullData } = useFullEmailMessage(
+    latestMessageId,
+    !isMockLatest,
+    !!(thread.latestEmail.body_html || thread.latestEmail.body_text),
+  );
+  const latestAttachments = (latestFullData?.attachments && latestFullData.attachments.length > 0)
+    ? latestFullData.attachments
+    : (thread.latestEmail.attachments || []);
+  const hasUploadableAttachments = latestAttachments.some(a => !a.is_inline && !!a.id);
   
   // Reply state
   const [replyTo, setReplyTo] = useState<{ subject: string; to_email: string; to_name: string; threadId: string } | null>(null);
