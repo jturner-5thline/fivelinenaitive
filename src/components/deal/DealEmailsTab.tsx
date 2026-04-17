@@ -1292,3 +1292,71 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     </Card>
   );
 }
+
+// ─── Minimalist empty-state summary ────────────────────────────────
+interface InboxSummaryPaneProps {
+  emails: MockEmail[];
+  classifierEntities: any;
+  orgCtx: any;
+  onSelectCategory: (tab: EmailCategoryTab) => void;
+}
+
+function InboxSummaryPane({ emails, classifierEntities, orgCtx, onSelectCategory }: InboxSummaryPaneProps) {
+  const summary = useMemo(() => {
+    const inbox = emails.filter(e => e.folder === 'inbox');
+    const unread = inbox.filter(e => !e.is_read);
+    const counts = EMAIL_CATEGORY_TABS
+      .filter(t => t.key !== 'all')
+      .map(t => ({
+        key: t.key,
+        label: t.label,
+        count: filterEmailsByCategory(unread, t.key, classifierEntities, orgCtx).length,
+      }));
+    return { totalUnread: unread.length, counts };
+  }, [emails, classifierEntities, orgCtx]);
+
+  return (
+    <div className="flex-1 flex items-center justify-center px-8 py-12">
+      <div className="w-full max-w-xs space-y-8">
+        <div className="space-y-1">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
+            Inbox Summary
+          </p>
+          <p className="text-[11px] text-muted-foreground/60">Select an email to read</p>
+        </div>
+
+        <div>
+          <p className="text-5xl font-light text-foreground tabular-nums leading-none">
+            {summary.totalUnread}
+          </p>
+          <p className="mt-2 text-[11px] text-muted-foreground/70">
+            unread {summary.totalUnread === 1 ? 'message' : 'messages'}
+          </p>
+        </div>
+
+        <div className="space-y-px">
+          {summary.counts.map(c => (
+            <button
+              key={c.key}
+              onClick={() => onSelectCategory(c.key)}
+              className="w-full flex items-baseline justify-between py-1.5 text-left group"
+            >
+              <span className={cn(
+                'text-xs transition-colors',
+                c.count > 0 ? 'text-foreground/80 group-hover:text-foreground' : 'text-muted-foreground/40'
+              )}>
+                {c.label}
+              </span>
+              <span className={cn(
+                'text-xs tabular-nums transition-colors',
+                c.count > 0 ? 'text-foreground/80 group-hover:text-foreground' : 'text-muted-foreground/30'
+              )}>
+                {c.count}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
