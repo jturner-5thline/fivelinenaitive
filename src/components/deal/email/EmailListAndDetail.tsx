@@ -1120,6 +1120,35 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             </div>
           )}
         </div>
+
+        {/* AI Assist right-side sidebar — lives inside the email popup border */}
+        {showAiAssist && (
+          <AiAssistSidebar
+            thread={thread}
+            dealId={dealId}
+            dealName={linkedDealName || thread.dealName}
+            onClose={() => setShowAiAssist(false)}
+            onInsertDraft={(subject, body) => {
+              const target = getReplyTarget();
+              const finalSubject = subject?.startsWith('Re:') ? subject : `Re: ${thread.subject}`;
+              // If composer not open yet, open it
+              if (!replyTo) {
+                setReplyTo(target);
+              }
+              setInlineDraft({
+                to: target.to_email,
+                toName: target.to_name,
+                subject: finalSubject,
+                body,
+                cc: inlineDraft?.cc || '',
+                bcc: inlineDraft?.bcc || '',
+                attachments: inlineDraft?.attachments || [],
+                threadId: thread.threadId,
+              });
+              setShowResumeBanner(false);
+            }}
+          />
+        )}
       </div>
 
       {/* Pop-out composer */}
