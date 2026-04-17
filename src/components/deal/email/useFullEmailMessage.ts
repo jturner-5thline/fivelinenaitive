@@ -42,12 +42,19 @@ export function useFullEmailMessage(
     hasFetchedRef.current = true;
     setLoading(true);
 
-    supabase.functions
-      .invoke('gmail-messages', {
-        body: { action: 'get', message_id: messageId },
-      })
-      .then(({ data: resp, error: err }) => {
+    // Wrap in async IIFE so any unhandled promise rejection (e.g. 404 from
+    // Nylas when the message is no longer accessible) is contained here and
+    // does NOT bubble up to the global error boundary / runtime error toast.
+    (async () => {
+      try {
+        const { data: resp, error: err } = await supabase.functions.invoke(
+          'gmail-messages',
+          { body: { action: 'get', message_id: messageId } },
+        );
         if (err) {
+          // Silently fail — the UI already has snippet/preview to render.
+          // Logging only, no error boundary trigger, no toast.
+          console.warn('[useFullEmailMessage] non-fatal:', err.message || err);
           setError(err.message || 'Failed to load message');
           setData(null);
           return;
@@ -64,11 +71,14 @@ export function useFullEmailMessage(
           inline_attachments: Array.isArray(m.inline_attachments) ? m.inline_attachments : [],
         });
         setError(null);
-      })
-      .catch((e: any) => {
+      } catch (e: any) {
+        // Swallow network / 404 errors — degrade gracefully to snippet view.
+        console.warn('[useFullEmailMessage] network error:', e?.message || e);
         setError(e?.message || 'Failed to load message');
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [messageId, enabled, alreadyLoaded]);
 
   return { data, loading, error };

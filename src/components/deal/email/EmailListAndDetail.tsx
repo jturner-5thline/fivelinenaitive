@@ -866,8 +866,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
   return (
     <>
-      <div className="flex h-full relative overflow-hidden">
-        <div className="flex flex-col flex-1 min-w-0 bg-[hsl(var(--email-reading-bg))]">
+      <div className="flex h-full min-h-0 relative overflow-hidden">
+        <div className="flex flex-col flex-1 min-w-0 min-h-0 bg-[hsl(var(--email-reading-bg))]">
           {/* Outlook-style command bar */}
           <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-[hsl(var(--email-border))] bg-card/60 backdrop-blur-sm shrink-0">
             <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-7 w-7">
@@ -1078,9 +1078,12 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             </div>
           </div>
 
-          {/* Thread content - scrollable */}
-          <ScrollArea className="flex-1 min-w-0">
-            <div className="py-2 space-y-0 min-w-0">
+          {/* Thread content - scrollable.
+              `min-h-0` on the flex child is required so the ScrollArea can
+              actually shrink and produce its own scrollbar instead of
+              overflowing the parent and being clipped by the composer. */}
+          <ScrollArea className="flex-1 min-h-0 min-w-0">
+            <div className="py-2 space-y-0 min-w-0 pb-24">
               <div className="px-5 mb-3">
                 <AiSummaryStrip email={thread.latestEmail} />
               </div>
@@ -1160,9 +1163,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             </div>
           </ScrollArea>
 
-          {/* Inline reply — Outlook style with blue separator */}
+          {/* Inline reply — Outlook style with blue separator.
+              `shrink-0` + `max-h-[55%]` keeps the composer from eating the
+              whole reading pane. Internal scrolling handled by the composer. */}
           {replyTo && (
-            <div className="border-t-2 border-[hsl(var(--outlook-blue))]">
+            <div className="shrink-0 max-h-[55%] overflow-hidden flex flex-col border-t-2 border-[hsl(var(--outlook-blue))]">
               <InlineReplyComposer
                 replyTo={replyTo}
                 onSend={handleSendFromComposer}
