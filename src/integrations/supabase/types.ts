@@ -5321,6 +5321,10 @@ export type Database = {
           position: number
           size_bytes: number
           source: string
+          source_email_id: string | null
+          source_sender: string | null
+          source_subject: string | null
+          source_thread_id: string | null
           upload_job_id: string | null
           user_id: string | null
         }
@@ -5335,6 +5339,10 @@ export type Database = {
           position?: number
           size_bytes?: number
           source?: string
+          source_email_id?: string | null
+          source_sender?: string | null
+          source_subject?: string | null
+          source_thread_id?: string | null
           upload_job_id?: string | null
           user_id?: string | null
         }
@@ -5349,6 +5357,10 @@ export type Database = {
           position?: number
           size_bytes?: number
           source?: string
+          source_email_id?: string | null
+          source_sender?: string | null
+          source_subject?: string | null
+          source_thread_id?: string | null
           upload_job_id?: string | null
           user_id?: string | null
         }
