@@ -202,12 +202,14 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
             <div className="flex items-center gap-1.5 min-w-0">
               <span className={cn(
                 'text-[13px] truncate',
-                isUnread ? 'font-bold text-foreground' : 'font-normal text-foreground/70'
+                isUnread
+                  ? 'font-bold text-[hsl(var(--email-text-primary))]'
+                  : 'font-medium text-[hsl(var(--email-text-secondary))]'
               )}>
                 {displayName}
               </span>
               {threadCount > 1 && (
-                <span className="text-[10px] text-muted-foreground font-medium shrink-0">
+                <span className="text-[10px] text-[hsl(var(--email-text-muted))] font-medium shrink-0">
                   [{threadCount}]
                 </span>
               )}
@@ -215,7 +217,7 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
             <span className={cn(
               'text-[11px] shrink-0 transition-opacity duration-100',
               hovered ? 'opacity-0' : 'opacity-100',
-              isUnread ? 'text-[hsl(var(--outlook-blue))] font-medium' : 'text-muted-foreground'
+              isUnread ? 'text-[hsl(var(--outlook-blue))] font-semibold' : 'text-[hsl(var(--email-text-muted))]'
             )}>
               {formatDistanceToNow(new Date(latest.received_at), { addSuffix: false })}
             </span>
@@ -224,7 +226,9 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
           {/* Row 2: Subject (bold if unread) */}
           <p className={cn(
             'text-[12px] truncate leading-tight',
-            isUnread ? 'text-foreground font-semibold' : 'text-foreground/60 font-normal'
+            isUnread
+              ? 'text-[hsl(var(--email-text-primary))] font-semibold'
+              : 'text-[hsl(var(--email-text-secondary))] font-normal'
           )}>
             {thread.subject}
           </p>
@@ -232,11 +236,11 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
           {/* Row 3: Preview text + deal pill */}
           <div className="flex items-center gap-1.5 mt-0.5">
             {thread.dealName && (
-              <Badge variant="outline" className="text-[9px] h-[16px] px-1 gap-0.5 bg-[hsl(var(--outlook-blue)/0.1)] text-[hsl(var(--outlook-blue))] border-[hsl(var(--outlook-blue)/0.2)] shrink-0">
+              <Badge variant="outline" className="text-[9px] h-[16px] px-1 gap-0.5 bg-[hsl(var(--outlook-blue)/0.12)] text-[hsl(var(--outlook-blue))] border-[hsl(var(--outlook-blue)/0.25)] shrink-0">
                 {thread.dealName}
               </Badge>
             )}
-            <p className="text-[11px] text-muted-foreground/60 truncate">
+            <p className="text-[11px] text-[hsl(var(--email-text-muted))] truncate">
               {latest.snippet}
             </p>
           </div>
@@ -426,8 +430,8 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
 
   return (
     <div ref={messageRef} className={cn(
-      'border-b border-white/[0.06] transition-all duration-100 min-w-0',
-      expanded ? 'bg-card/40' : 'hover:bg-[hsl(var(--foreground)/0.02)]'
+      'border-b border-[hsl(var(--email-border))] transition-all duration-100 min-w-0',
+      expanded ? 'bg-card/50' : 'hover:bg-[hsl(var(--foreground)/0.03)]'
     )}>
       <button
         onClick={toggleExpand}
@@ -435,25 +439,30 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
       >
         <EmailAvatar name={email.from_name === 'You' ? 'J' : email.from_name} email={email.from_email} size="md" />
         <div className="flex-1 min-w-0 flex items-center gap-2">
-          <span className={cn('text-[13px] truncate', isLatest ? 'font-semibold' : 'font-medium text-foreground/80')}>
+          <span className={cn(
+            'text-[13px] truncate',
+            isLatest
+              ? 'font-semibold text-[hsl(var(--email-text-primary))]'
+              : 'font-medium text-[hsl(var(--email-text-secondary))]'
+          )}>
             {displayName}
           </span>
           {!expanded && (
-            <span className="text-xs text-muted-foreground truncate">{email.snippet}</span>
+            <span className="text-xs text-[hsl(var(--email-text-muted))] truncate">{email.snippet}</span>
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {email.has_attachments && <Paperclip className="h-3 w-3 text-muted-foreground" />}
-          <span className="text-[11px] text-muted-foreground">
+          {email.has_attachments && <Paperclip className="h-3 w-3 text-[hsl(var(--email-text-muted))]" />}
+          <span className="text-[11px] text-[hsl(var(--email-text-muted))]">
             {format(new Date(email.received_at), 'MMM d, h:mm a')}
           </span>
-          {expanded ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+          {expanded ? <ChevronDown className="h-3 w-3 text-[hsl(var(--email-text-muted))]" /> : <ChevronRight className="h-3 w-3 text-[hsl(var(--email-text-muted))]" />}
         </div>
       </button>
 
       {expanded && (
         <div className="px-6 pb-5 pl-[64px] min-w-0">
-          <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 mb-3 text-xs text-[hsl(var(--email-text-muted))]">
             <span>to {email.folder === 'sent' ? (email.to_name || email.to_email) : 'me'}</span>
           </div>
 
@@ -491,7 +500,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
                     <ChevronUp className="h-3.5 w-3.5" />
                     <span>Hide quoted text</span>
                   </button>
-                  <div className="border-l-2 border-muted-foreground/20 pl-4 text-[13px] text-muted-foreground/80 leading-[1.65] max-w-full" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+                  <div className="border-l-2 border-[hsl(var(--outlook-blue)/0.35)] pl-4 text-[13px] text-[hsl(var(--email-text-secondary))] leading-[1.65] max-w-full" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                     {textQuoted}
                   </div>
                 </>
@@ -854,7 +863,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
       <div className="flex h-full relative overflow-hidden">
         <div className="flex flex-col flex-1 min-w-0 bg-[hsl(var(--email-reading-bg))]">
           {/* Outlook-style command bar */}
-          <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-white/[0.06] bg-card/40 backdrop-blur-sm shrink-0">
+          <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-[hsl(var(--email-border))] bg-card/60 backdrop-blur-sm shrink-0">
             <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-7 w-7">
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -863,8 +872,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             <Tooltip>
               <TooltipTrigger asChild>
                 <button onClick={handleReply} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
-                  <Reply className="h-4 w-4 text-foreground/70" />
-                  <span className="text-[10px] text-foreground/60">Reply</span>
+                  <Reply className="h-4 w-4 text-[hsl(var(--email-text-secondary))]" />
+                  <span className="text-[10px] text-[hsl(var(--email-text-secondary))]">Reply</span>
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">Reply (R)</TooltipContent>
@@ -872,8 +881,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             <Tooltip>
               <TooltipTrigger asChild>
                 <button onClick={handleReplyAll} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
-                  <ReplyAll className="h-4 w-4 text-foreground/70" />
-                  <span className="text-[10px] text-foreground/60">Reply All</span>
+                  <ReplyAll className="h-4 w-4 text-[hsl(var(--email-text-secondary))]" />
+                  <span className="text-[10px] text-[hsl(var(--email-text-secondary))]">Reply All</span>
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">Reply All</TooltipContent>
@@ -881,8 +890,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             <Tooltip>
               <TooltipTrigger asChild>
                 <button onClick={handleForward} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
-                  <Forward className="h-4 w-4 text-foreground/70" />
-                  <span className="text-[10px] text-foreground/60">Forward</span>
+                  <Forward className="h-4 w-4 text-[hsl(var(--email-text-secondary))]" />
+                  <span className="text-[10px] text-[hsl(var(--email-text-secondary))]">Forward</span>
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">Forward (F)</TooltipContent>
@@ -897,8 +906,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                   disabled={!onDelete || actionLoading === 'delete'}
                   className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {actionLoading === 'delete' ? <Loader2 className="h-4 w-4 animate-spin text-foreground/70" /> : <Trash2 className="h-4 w-4 text-foreground/70" />}
-                  <span className="text-[10px] text-foreground/60">Delete</span>
+                  {actionLoading === 'delete' ? <Loader2 className="h-4 w-4 animate-spin text-foreground/70" /> : <Trash2 className="h-4 w-4 text-[hsl(var(--email-text-secondary))]" />}
+                  <span className="text-[10px] text-[hsl(var(--email-text-secondary))]">Delete</span>
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">Delete</TooltipContent>
@@ -910,8 +919,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                   disabled={!onArchive || actionLoading === 'archive'}
                   className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {actionLoading === 'archive' ? <Loader2 className="h-4 w-4 animate-spin text-foreground/70" /> : <Archive className="h-4 w-4 text-foreground/70" />}
-                  <span className="text-[10px] text-foreground/60">Archive</span>
+                  {actionLoading === 'archive' ? <Loader2 className="h-4 w-4 animate-spin text-foreground/70" /> : <Archive className="h-4 w-4 text-[hsl(var(--email-text-secondary))]" />}
+                  <span className="text-[10px] text-[hsl(var(--email-text-secondary))]">Archive</span>
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">Archive</TooltipContent>
@@ -920,7 +929,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               <TooltipTrigger asChild>
                 <button onClick={() => onToggleStar(latest)} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
                   <Flag className={cn('h-4 w-4', thread.isStarred ? 'fill-[hsl(var(--outlook-blue))] text-[hsl(var(--outlook-blue))]' : 'text-foreground/70')} />
-                  <span className="text-[10px] text-foreground/60">Flag</span>
+                  <span className="text-[10px] text-[hsl(var(--email-text-secondary))]">Flag</span>
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">Flag</TooltipContent>
@@ -960,7 +969,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                       : 'border-transparent hover:bg-muted/40'
                   )}
                 >
-                  {linkedDealName ? <Unlink className="h-4 w-4 text-[hsl(var(--outlook-blue))]" /> : <Link2 className="h-4 w-4 text-foreground/70" />}
+                  {linkedDealName ? <Unlink className="h-4 w-4 text-[hsl(var(--outlook-blue))]" /> : <Link2 className="h-4 w-4 text-[hsl(var(--email-text-secondary))]" />}
                   <span className={cn('text-[10px]', linkedDealName ? 'text-[hsl(var(--outlook-blue))]' : 'text-foreground/60')}>
                     {linkedDealName ? 'Linked' : 'Link Deal'}
                   </span>
@@ -987,8 +996,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                       onClick={onToggleExpand}
                       className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors"
                     >
-                      {isExpanded ? <Minimize2 className="h-4 w-4 text-foreground/70" /> : <Maximize2 className="h-4 w-4 text-foreground/70" />}
-                      <span className="text-[10px] text-foreground/60">{isExpanded ? 'Collapse' : 'Expand'}</span>
+                      {isExpanded ? <Minimize2 className="h-4 w-4 text-[hsl(var(--email-text-secondary))]" /> : <Maximize2 className="h-4 w-4 text-[hsl(var(--email-text-secondary))]" />}
+                      <span className="text-[10px] text-[hsl(var(--email-text-secondary))]">{isExpanded ? 'Collapse' : 'Expand'}</span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="text-xs">{isExpanded ? 'Show email list' : 'Expand reading pane'}</TooltipContent>
@@ -1025,23 +1034,23 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             />
           )}
 
-          <div className="px-6 pt-5 pb-4 border-b border-white/[0.06]">
+          <div className="px-6 pt-5 pb-4 border-b border-[hsl(var(--email-border))]">
             {/* Large subject heading */}
-            <h2 className="text-xl font-semibold text-foreground leading-snug mb-3">{thread.subject}</h2>
+            <h2 className="text-xl font-semibold text-[hsl(var(--email-text-primary))] leading-snug mb-3">{thread.subject}</h2>
             
             {/* Sender info block */}
             <div className="flex items-start gap-3">
               <EmailAvatar name={senderName} email={senderEmail} size="md" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-foreground">{senderName}</span>
-                  <span className="text-xs text-muted-foreground">&lt;{senderEmail}&gt;</span>
+                  <span className="text-sm font-semibold text-[hsl(var(--email-text-primary))]">{senderName}</span>
+                  <span className="text-xs text-[hsl(var(--email-text-muted))]">&lt;{senderEmail}&gt;</span>
                 </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
+                <div className="text-xs text-[hsl(var(--email-text-muted))] mt-0.5">
                   {format(new Date(latest.received_at), 'EEEE, MMMM d, yyyy h:mm a')}
                 </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  To: <span className="text-foreground/70">me</span>
+                <div className="text-xs text-[hsl(var(--email-text-muted))] mt-0.5">
+                  To: <span className="text-[hsl(var(--email-text-secondary))]">me</span>
                   {linkedDealName && (
                     <span className="ml-2 text-[hsl(var(--outlook-blue))]">• Linked to: {linkedDealName}</span>
                   )}
@@ -1049,12 +1058,12 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               </div>
               {/* Thread count indicator */}
               {totalMessages > 1 && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                <div className="flex items-center gap-1 text-xs text-[hsl(var(--email-text-secondary))] shrink-0">
                   <MessageSquare className="h-3.5 w-3.5" />
                   <span>{totalMessages} messages</span>
                   <button
                     onClick={isFullyExpanded ? handleCollapseAll : handleExpandAll}
-                    className="ml-1 hover:text-foreground transition-colors"
+                    className="ml-1 hover:text-[hsl(var(--email-text-primary))] transition-colors"
                   >
                     {isFullyExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                   </button>

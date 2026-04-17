@@ -92,6 +92,11 @@
     --email-list-bg: 0 0% 98%;
     --email-reading-bg: 0 0% 100%;
     --email-toolbar-bg: 0 0% 97%;
+    /* Readability text layers — tuned for high contrast on email surfaces */
+    --email-text-primary: 222 25% 12%;       /* body / sender names */
+    --email-text-secondary: 222 15% 32%;     /* subjects, secondary labels */
+    --email-text-muted: 222 10% 45%;         /* timestamps, snippets, metadata */
+    --email-border: 222 15% 88%;             /* subtle row dividers */
 
     --spacing: 0.25rem;
 
@@ -171,12 +176,18 @@
     --gradient-accent: linear-gradient(135deg, hsl(213 90% 75%), hsl(213 80% 60%));
     --gradient-hero: linear-gradient(180deg, #0A0C14 0%, #080A10 100%);
 
-    /* Email / Outlook tokens — dark mode */
-    --outlook-blue: 207 90% 54%;
-    --email-sidebar-bg: 0 0% 14%;
-    --email-list-bg: 0 0% 16%;
-    --email-reading-bg: 0 0% 11%;
-    --email-toolbar-bg: 0 0% 13%;
+    /* Email / Outlook tokens — dark mode (tuned for readability) */
+    --outlook-blue: 213 90% 72%;
+    /* Lifted surfaces with clearer hierarchy: list < toolbar < reading < sidebar */
+    --email-sidebar-bg: 228 22% 9%;
+    --email-list-bg: 228 20% 11%;
+    --email-toolbar-bg: 228 20% 13%;
+    --email-reading-bg: 228 18% 14%;
+    /* Readability text layers for the email surface */
+    --email-text-primary: 0 0% 98%;          /* body / sender names — near white */
+    --email-text-secondary: 0 0% 82%;        /* subjects, secondary labels */
+    --email-text-muted: 0 0% 66%;            /* timestamps, snippets, metadata */
+    --email-border: 0 0% 100% / 0.10;        /* slightly stronger row dividers */
 
     --font-sans: Figtree, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
     --font-serif: "Playfair Display", ui-serif, Georgia, Cambria, Times New Roman, Times, serif;
