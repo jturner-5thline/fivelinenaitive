@@ -56,6 +56,7 @@ export function SendToDataRoomDialog({
   initialDealId,
   initialDealName,
   initialSuggestion,
+  preselectedAttachmentIds,
 }: Props) {
   const { suggest, commitUpload, suggesting, uploading } = useEmailToDataRoom();
   const [suggestion, setSuggestion] = useState<DataRoomDestinationSuggestion | null>(initialSuggestion || null);
