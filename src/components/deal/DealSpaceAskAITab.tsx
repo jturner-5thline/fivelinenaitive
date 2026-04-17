@@ -82,21 +82,10 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   // Draft Submission runs as a structured product action — fully decoupled from the chat panel.
-  type EmailDraft = {
-    lenderName: string;
-    to: string;
-    subject: string;
-    body: string;
-    status: 'draft' | 'approved' | 'sending' | 'sent' | 'failed';
-    isSubjectEdited?: boolean;
-    isBodyEdited?: boolean;
-    errorMessage?: string;
-  };
   const [isDraftingEmail, setIsDraftingEmail] = useState(false);
   const [emailDrafts, setEmailDrafts] = useState<EmailDraft[]>([]);
   const [activeDraftIndex, setActiveDraftIndex] = useState(0);
   const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false);
-  const [appliedField, setAppliedField] = useState<'subject' | 'body' | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
