@@ -436,14 +436,65 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     if (searchFilters.responseStatus === 'needs_response') filtered = filtered.filter(e => e.needs_response);
     if (searchFilters.responseStatus === 'responded') filtered = filtered.filter(e => !e.needs_response);
     if (searchFilters.dealAssociation !== 'all') filtered = filtered.filter(e => e.deal_name === searchFilters.dealAssociation);
-    if (searchQuery.trim()) {
+
+    // ── Search: AI-ranked OR plain keyword ─────────────────────
+    if (aiSearchActive && aiSearch.result && aiSearch.result.rankedIds.length > 0) {
+      // Re-order `filtered` by AI ranking and drop emails Claude did not rank.
+      const order = new Map<string, number>();
+      aiSearch.result.rankedIds.forEach((id, idx) => order.set(id, idx));
+      filtered = filtered
+        .filter(e => order.has(e.id))
+        .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+    } else if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
         e => e.subject.toLowerCase().includes(q) || e.from_name.toLowerCase().includes(q) || e.from_email.toLowerCase().includes(q) || e.snippet.toLowerCase().includes(q)
       );
     }
     return filtered;
-  }, [emails, activeItem, viewFilter, chipFilter, categoryTab, searchQuery, searchFilters, classifierEntities]);
+  }, [emails, activeItem, viewFilter, chipFilter, categoryTab, searchQuery, searchFilters, classifierEntities, aiSearchActive, aiSearch.result]);
+
+  // Candidate set for AI search = the same list pre-search (so categories/folders
+  // narrow the AI search scope as the spec requires).
+  const aiSearchCandidates = useMemo(() => {
+    let base = emails.filter(activeItem.filterFn);
+    if (categoryTab !== 'all') {
+      base = filterEmailsByCategory(base, categoryTab, classifierEntities, orgCtx);
+    }
+    return base;
+  }, [emails, activeItem, categoryTab, classifierEntities, orgCtx]);
+
+  const runAISearch = useCallback(async () => {
+    const q = searchQuery.trim();
+    if (q.length < AI_SEARCH_MIN_LENGTH) {
+      toast.message('AI search needs a longer query', {
+        description: `Try at least ${AI_SEARCH_MIN_LENGTH} characters, e.g. "calendar invites I declined".`,
+      });
+      return;
+    }
+    if (aiSearchCandidates.length === 0) {
+      toast.message('No emails to search yet');
+      return;
+    }
+    lastAiQueryRef.current = q;
+    setAiSearchActive(true);
+    await aiSearch.search(q, aiSearchCandidates);
+  }, [searchQuery, aiSearchCandidates, aiSearch]);
+
+  const clearAISearch = useCallback(() => {
+    setAiSearchActive(false);
+    aiSearch.clear();
+    lastAiQueryRef.current = '';
+  }, [aiSearch]);
+
+  // If the user keeps typing after running an AI search, downgrade to keyword
+  // search until they explicitly run AI again. Avoids stale interpretations.
+  useEffect(() => {
+    if (aiSearchActive && searchQuery.trim() !== lastAiQueryRef.current) {
+      setAiSearchActive(false);
+    }
+  }, [searchQuery, aiSearchActive]);
+
 
   const currentThread = useMemo(() => {
     if (!selectedThread) return null;
