@@ -473,9 +473,15 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: {
             </div>
           )}
 
-          {/* Body — HTML preferred, plain text fallback */}
+          {/* Body — HTML preferred, plain text fallback. Inline attachments
+              are passed so signature logos / embedded images can resolve their
+              `cid:` references. */}
           {resolvedHtml ? (
-            <EmailBodyRenderer html={resolvedHtml} />
+            <EmailBodyRenderer
+              html={resolvedHtml}
+              messageId={email.id}
+              inlineAttachments={fullData?.inline_attachments}
+            />
           ) : (
             <EmailBodyRenderer text={textMain} />
           )}
