@@ -402,6 +402,7 @@ export function CashFlowManager() {
   const [role, setRole] = useState<RoleMode>('admin');
   const [theme, setTheme] = useState<ThemeMode>('dark');
   const [recurringTags, setRecurringTags] = useState<RecurringTag[]>([]);
+  const [weeklyOverrides, setWeeklyOverrides] = useState<WeeklyOverrides>({});
 
   // Auto-save daily data + recurring tags to DB when they change (debounced)
   useEffect(() => {
