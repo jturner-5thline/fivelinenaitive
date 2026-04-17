@@ -366,6 +366,71 @@ Parse and extract all term sheet data from this email/thread. Identify any risk 
         break;
       }
 
+      case "detect_lender_pass": {
+        // Classify whether the latest inbound email is a lender pass/decline.
+        // Returns strict JSON for downstream UI confirmation.
+        const latestEmail = emailData || threadData?.latestEmail || threadData?.emails?.[0];
+        const senderEmail: string = (latestEmail?.from_email || "").toLowerCase();
+        const senderName: string = latestEmail?.from_name || "";
+        const senderDomain = senderEmail.split("@")[1] || "";
+
+        // Build lender candidate list from the deal so the model can match exactly.
+        let lenderCandidates: Array<{ id: string; name: string }> = [];
+        if (dealId) {
+          const { data: ls } = await supabase
+            .from("deal_lenders")
+            .select("id, name, stage")
+            .eq("deal_id", dealId);
+          lenderCandidates = (ls || []).map((l: any) => ({ id: l.id, name: l.name }));
+        }
+
+        systemPrompt = `You are a careful classifier deciding whether the LAST inbound email from a lender contact is a PASS / DECLINE on a debt deal.
+
+You return STRICT JSON with this schema:
+{
+  "is_pass": boolean,
+  "confidence": "low" | "medium" | "high",
+  "intent_category": "hard_pass" | "soft_pass" | "info_request" | "scheduling" | "internal_forward" | "other",
+  "reason_summary": "string — short, neutral, max ~140 chars (e.g. 'US team not a fit')",
+  "source_quote": "string — the single most decisive quoted sentence from the email, verbatim",
+  "matched_lender_name": "string — pick from candidates list, or empty string if none match",
+  "matched_lender_id": "string — id of matched lender from candidates, or empty string"
+}
+
+CLASSIFICATION RULES:
+- A PASS = the lender themselves clearly indicate they will not move forward on this opportunity.
+- High confidence = unambiguous decline language ("we have to pass", "we're declining", "not a fit", "unable to pursue").
+- Medium confidence = clear lean toward decline but slightly hedged ("after discussing internally we don't think this works for us right now").
+- Low confidence / not a pass = "circle back later", "need more info", scheduling messages, internal forwards, or any non-decline content.
+- A "soft" not-now ("circle back in 6 months", "interesting but timing isn't right") => intent_category="soft_pass" and is_pass=false unless extremely explicit.
+- An internal forward (someone forwarding the lender's reply rather than the lender writing it) => intent_category="internal_forward" and is_pass=false.
+- A request for more information => intent_category="info_request" and is_pass=false.
+- Never invent a quote. If unsure, use the most decisive sentence verbatim from the email body.
+
+LENDER MATCHING:
+- Use sender name, sender email domain, and email content to match the sender to ONE lender from the candidates list.
+- If no candidate is a clear match, return "" for matched_lender_name and matched_lender_id.
+
+Return ONLY the JSON object, no markdown fences, no commentary.`;
+
+        userPrompt = `${dealContext}
+
+LENDER CANDIDATES ON THIS DEAL:
+${lenderCandidates.length > 0 ? lenderCandidates.map(l => `- id=${l.id} name="${l.name}"`).join("\n") : "(none)"}
+
+INBOUND EMAIL TO CLASSIFY:
+From: ${senderName} <${senderEmail}>
+Sender domain: ${senderDomain}
+Subject: ${latestEmail?.subject || threadData?.subject || ""}
+Date: ${latestEmail?.received_at || ""}
+
+Body:
+${(latestEmail?.body_preview || latestEmail?.snippet || "").substring(0, 4000)}
+
+Classify this email per the rules. Return strict JSON only.`;
+        break;
+      }
+
       case "follow_up_sequence": {
         systemPrompt = `You are a deal follow-up strategist. Analyze an email thread and suggest a follow-up sequence strategy. Return a JSON object: { "status": "awaiting_response|ball_in_our_court|mutual_action|stale", "days_silent": number, "recommended_sequence": [{ "day": number, "action": "email|call|internal_note", "tone": "gentle|firm|urgent", "draft": "..." }], "escalation_trigger": "...", "context_notes": "..." }. day is the number of days from now. Limit to 3 follow-ups max. Each draft should be under 80 words.`;
         userPrompt = `${dealContext}
