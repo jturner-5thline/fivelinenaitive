@@ -534,6 +534,7 @@ function EmailTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path
     all: emails.length,
     clients_deals: classified.filter(c => c.cats.includes('clients_deals')).length,
     asana_projects: classified.filter(c => c.cats.includes('asana_projects')).length,
+    calendar: classified.filter(c => c.cats.includes('calendar')).length,
   };
 
   // Filtered list
@@ -545,6 +546,7 @@ function EmailTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path
     all: 'No emails found in this window.',
     clients_deals: 'No client or deal emails since yesterday.',
     asana_projects: 'No Asana emails since yesterday.',
+    calendar: 'No calendar notifications since yesterday.',
   };
 
   return (
