@@ -411,16 +411,25 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                       {labelText}
                     </td>
                     {visibleWeeks.map(([weekKey, entry]) => {
-                      const rawVal = isParent
-                        ? parentSumForWeek(entry)
-                        : ((entry[rowDef.key] as number) || 0);
+                      const transferAcc = (rowDef as WeeklyRow).transferAccount;
+                      const rawVal = isTransferAccount && transferAcc
+                        ? transferAccountValue(entry, transferAcc)
+                        : isTransfersParent
+                          ? (Number((entry as any)?.['Internal Transfers']) || 0)
+                          : isDebtAdvParent
+                            ? parentSumForWeek(entry)
+                            : ((entry[rowDef.key] as number) || 0);
                       const val = rawVal;
                       const displayVal = rowDef.section === 'disbursements' && !isTotal && val > 0 ? -val : val;
                       const planEntry = activePlan?.weeklyData?.[weekKey];
                       const planVal = planEntry
-                        ? (isParent
-                            ? parentSumForWeek(planEntry)
-                            : ((planEntry[rowDef.key] as number) || 0))
+                        ? (isTransferAccount && transferAcc
+                            ? transferAccountValue(planEntry, transferAcc)
+                            : isTransfersParent
+                              ? (Number((planEntry as any)?.['Internal Transfers']) || 0)
+                              : isDebtAdvParent
+                                ? parentSumForWeek(planEntry)
+                                : ((planEntry[rowDef.key] as number) || 0))
                         : null;
                       const isOverridden = !!(isCashRow && overrideField && safeOverrides[weekKey]?.[overrideField] !== undefined);
                       const editable = isAdmin && isCashRow && !!onCashOverride;
