@@ -26,34 +26,8 @@ interface AssistantErrorState {
   prompt: string;
 }
 
-interface SuggestionConfig {
-  text: string;
-  requiresInput: boolean;
-  /** Text to populate (if different from display text) */
-  populateText?: string;
-}
-
-const suggestions: SuggestionConfig[] = [
-  { text: "What are we waiting on?", requiresInput: false },
-  { text: "Who are our most active lenders?", requiresInput: false },
-  { text: "Stale Deals Analysis", requiresInput: false },
-  { text: "To-Do List", requiresInput: false },
-];
-
 interface DashboardAIInputProps {
   isDrawerMode?: boolean;
-}
-
-/** Render suggestion text with [placeholder] portions styled distinctly */
-function renderSuggestionText(text: string) {
-  const parts = text.split(/(\[[^\]]+\])/g);
-  if (parts.length === 1) return text;
-  return parts.map((part, i) => {
-    if (part.startsWith('[') && part.endsWith(']')) {
-      return <span key={i} className="text-primary italic">{part}</span>;
-    }
-    return <Fragment key={i}>{part}</Fragment>;
-  });
 }
 
 function extractTextContent(value: unknown): string {
