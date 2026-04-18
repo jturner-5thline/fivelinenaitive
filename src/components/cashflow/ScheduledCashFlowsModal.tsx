@@ -257,7 +257,7 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
 
         {/* Body */}
         <div
-          className="flex-1 overflow-auto px-6 py-4 bg-card"
+          className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-4 bg-card"
           style={{ maxHeight: 'calc(90vh - 180px)' }}
         >
           {drafts.length === 0 ? (
