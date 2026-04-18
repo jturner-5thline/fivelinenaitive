@@ -373,8 +373,8 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
                       </div>
 
                       {/* Frequency */}
-                      <div className="flex flex-col gap-2">
-                        <div className="flex gap-2">
+                      <div className="flex flex-col gap-2 min-w-0">
+                        <div className="flex gap-2 min-w-0">
                           <Select
                             value={d.frequency_type}
                             onValueChange={(v) =>
