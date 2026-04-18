@@ -429,11 +429,11 @@ export default function Dashboard() {
         </div>
       </div>
       {isJTurner && <DailyBriefingModal open={isBriefingOpen} onOpenChange={setIsBriefingOpen} />}
-      {isJTurner && (
+      {canSeeNiki && (
         <DailyBriefingModal
           open={isNikiBriefingOpen}
           onOpenChange={setIsNikiBriefingOpen}
-          title="Niki's Daily Briefing"
+          title={isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
           targetUserId={NIKI_USER_ID}
           targetAssigneeName={NIKI_ASSIGNEE_NAME}
           excludeTabs={['financial']}
