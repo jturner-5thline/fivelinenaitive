@@ -26,7 +26,10 @@ export function DealsHeader() {
   const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [isBriefingOpen, setIsBriefingOpen] = useState(false);
+  const [isNikiBriefingOpen, setIsNikiBriefingOpen] = useState(false);
   const isJTurner = user?.email === 'jturner@5thline.co';
+  const NIKI_USER_ID = 'a757f375-7e93-4fc5-a49e-e371abb42fac';
+  const NIKI_ASSIGNEE_NAME = 'Niki Heikali';
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -170,6 +173,22 @@ export function DealsHeader() {
               <TooltipContent>Daily Briefing</TooltipContent>
             </Tooltip>
           )}
+          {isJTurner && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-[hsl(190,90%,70%)] hover:text-[hsl(190,90%,80%)]"
+                  onClick={() => setIsNikiBriefingOpen(true)}
+                >
+                  <Newspaper className="h-4 w-4" />
+                  <span className="hidden sm:inline">Niki's Briefing</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Niki's Daily Briefing</TooltipContent>
+            </Tooltip>
+          )}
           
           <HintTooltip
             hint="Start here! Click to create your first deal and begin tracking your pipeline."
@@ -186,6 +205,15 @@ export function DealsHeader() {
       <HeaderNotificationPreview />
       {isFifthLine && <DashboardModal open={isDashboardOpen} onOpenChange={setIsDashboardOpen} />}
       {isJTurner && <DailyBriefingModal open={isBriefingOpen} onOpenChange={setIsBriefingOpen} />}
+      {isJTurner && (
+        <DailyBriefingModal
+          open={isNikiBriefingOpen}
+          onOpenChange={setIsNikiBriefingOpen}
+          title="Niki's Daily Briefing"
+          targetUserId={NIKI_USER_ID}
+          targetAssigneeName={NIKI_ASSIGNEE_NAME}
+        />
+      )}
     </header>
   );
 }
