@@ -375,4 +375,6 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }
