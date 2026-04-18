@@ -62,8 +62,9 @@
   --space-4: 1rem;
   --space-6: 1.5rem;
   --space-8: 2rem;
+  /* Aligned to global canonical radius scale (8px = button/widget canonical) */
   --radius-sm: 4px;
-  --radius-md: 6px;
+  --radius-md: 8px;
   --radius-lg: 8px;
   --radius-xl: 12px;
   --transition-interactive: 150ms cubic-bezier(0.16, 1, 0.3, 1);

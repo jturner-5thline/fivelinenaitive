@@ -49,7 +49,14 @@
     --input: 214 32% 91%;
     --ring: 216 37% 55%;
 
-    --radius: 0.5rem;
+    /* ═══ Unified radius scale (single source of truth) ═══
+       Canonical button/widget radius = 8px. Larger surfaces = 12px. */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+    --radius-full: 9999px;
+    --radius: 0.5rem; /* legacy alias = 8px (canonical) */
 
     /* Sidebar */
     --sidebar-background: 0 0% 100%;
