@@ -455,16 +455,8 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
     }
   }, [populateInput, handleSend]);
 
-  /** Handle suggestion chip click (#7) */
-  const handleSuggestionClick = useCallback((suggestion: SuggestionConfig) => {
-    const textToUse = suggestion.populateText || suggestion.text;
-    if (suggestion.requiresInput) {
-      populateInput(textToUse);
-    } else {
-      // Auto-send immediately and scroll to chat
-      handleSend(textToUse);
-    }
-  }, [populateInput, handleSend]);
+
+
 
   const handleRetry = useCallback(() => {
     if (!requestError?.prompt || isLoading) return;
