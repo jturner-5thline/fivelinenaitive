@@ -154,7 +154,13 @@ export function aggregateDailyToWeekly(daily: DailyData | null | undefined): Wee
       "ENDING CASH": computedEndCash,
       "Add'l Liquidity (Delayed Draw)": addlLiquidity,
       "TOTAL CASH ON HAND": computedEndCash + addlLiquidity,
-      "Debt Advisory Revenue": Math.round(debtAdvisory),
+      // Debt Advisory Revenue is a parent that the weekly view computes as the sum of
+      // its sub-categories. Route legacy aggregated daily values to the default sub
+      // (Retainers) so totals roll up correctly without double-counting on the parent.
+      "Retainers": Math.round(debtAdvisory),
+      "Milestones": 0,
+      "Closing Fees": 0,
+      "Referral Fees": 0,
       "FinServ Revenue": Math.round(finServ),
       "Technology Revenue": Math.round(technology),
       "Loan Proceeds": Math.round(loanProceeds),
