@@ -234,7 +234,7 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent
-        className="max-w-6xl w-[95vw] p-0 gap-0 overflow-hidden border-border bg-card shadow-2xl rounded-2xl"
+        className="max-w-7xl w-[96vw] p-0 gap-0 overflow-hidden border-border bg-card shadow-2xl rounded-2xl"
         style={{ maxHeight: '90vh' }}
       >
         {/* Header */}
@@ -257,7 +257,7 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
 
         {/* Body */}
         <div
-          className="flex-1 overflow-auto px-6 py-4 bg-card"
+          className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-4 bg-card"
           style={{ maxHeight: 'calc(90vh - 180px)' }}
         >
           {drafts.length === 0 ? (
@@ -280,7 +280,7 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
           ) : (
             <div className="flex flex-col">
               {/* Column Headers */}
-              <div className="grid grid-cols-[20px_minmax(160px,1.1fr)_minmax(180px,1.3fr)_minmax(130px,0.8fr)_minmax(280px,1.8fr)_minmax(170px,0.9fr)_32px] gap-3 items-center px-2 pb-2 mb-1 border-b border-border">
+              <div className="grid grid-cols-[16px_minmax(0,1.1fr)_minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,2fr)_140px_32px] gap-2 items-center px-2 pb-2 mb-1 border-b border-border">
                 <span />
                 <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
                   Account
@@ -307,7 +307,7 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
                   return (
                     <div
                       key={d._draftId}
-                      className="grid grid-cols-[20px_minmax(160px,1.1fr)_minmax(180px,1.3fr)_minmax(130px,0.8fr)_minmax(280px,1.8fr)_minmax(170px,0.9fr)_32px] gap-3 items-start px-2 py-3 border-b border-border/60 hover:bg-muted/40 transition-colors rounded-md"
+                      className="grid grid-cols-[16px_minmax(0,1.1fr)_minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,2fr)_140px_32px] gap-2 items-start px-2 py-3 border-b border-border/60 hover:bg-muted/40 transition-colors rounded-md"
                     >
                       {/* Drag handle */}
                       <div className="flex items-center justify-center pt-2 text-muted-foreground/50 cursor-grab">
@@ -373,8 +373,8 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
                       </div>
 
                       {/* Frequency */}
-                      <div className="flex flex-col gap-2">
-                        <div className="flex gap-2">
+                      <div className="flex flex-col gap-2 min-w-0">
+                        <div className="flex gap-2 min-w-0">
                           <Select
                             value={d.frequency_type}
                             onValueChange={(v) =>
@@ -394,7 +394,7 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
                           </Select>
 
                           {d.frequency_type === 'one_time' && (
-                            <div className="flex-1 min-w-[150px]">
+                            <div className="flex-1 min-w-0">
                               <DatePickerField
                                 value={d.frequency_config?.one_time_date}
                                 onChange={(iso) =>
