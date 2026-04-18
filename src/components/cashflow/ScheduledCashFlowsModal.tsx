@@ -51,6 +51,16 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
     );
   }, [open, initialEntries]);
 
+  // Lock body scroll while open
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
   const updateRow = useCallback((draftId: string, patch: Partial<DraftEntry>) => {
     setDrafts((prev) => prev.map((d) => (d._draftId === draftId ? { ...d, ...patch } : d)));
   }, []);
