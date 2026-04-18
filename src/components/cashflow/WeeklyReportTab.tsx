@@ -595,7 +595,33 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
         onNoteEdit={onNoteEdit}
         onNoteRemove={onNoteRemove}
         onNoteAdd={onNoteAdd}
+        cellComments={cellComments}
+        currentUserId={user?.id ?? null}
+        onCellCommentClick={handleSidebarCommentClick}
+        onCellCommentDelete={(c) => deleteCellComment(c.id)}
       />
+
+      {menuState && (
+        <CellCommentMenu
+          x={menuState.x}
+          y={menuState.y}
+          hasComments={(cellCommentsByCell[cellCommentKey(menuState.ctx.line_item_key, menuState.ctx.week_key)] || []).length > 0}
+          onAdd={handleMenuAdd}
+          onView={handleMenuView}
+          onClose={() => setMenuState(null)}
+        />
+      )}
+
+      {popoverState && (
+        <CellCommentPopover
+          anchor={{ x: popoverState.x, y: popoverState.y }}
+          mode={popoverState.mode}
+          comments={cellCommentsByCell[cellCommentKey(popoverState.ctx.line_item_key, popoverState.ctx.week_key)] || []}
+          onSubmit={handleSubmitComment}
+          onDelete={(id) => deleteCellComment(id)}
+          onClose={() => setPopoverState(null)}
+        />
+      )}
 
       {/* Save Plan dialog */}
       {savePlanOpen && (
