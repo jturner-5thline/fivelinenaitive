@@ -15,8 +15,11 @@ import { WeeklyReportTab } from './WeeklyReportTab';
 import { ExportModal } from './ExportModal';
 import { ActivityLogDialog } from './ActivityLogDialog';
 import { AddCashInModal } from './AddCashInModal';
+import { ScheduledCashFlowsModal } from './ScheduledCashFlowsModal';
 import { useCashFlowImport } from './useCashFlowImport';
 import { useCashInItems } from './useCashInItems';
+import { useScheduledCashFlows } from './useScheduledCashFlows';
+import { mergeScheduledIntoWeekly } from './scheduledCashFlows';
 import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -150,7 +153,9 @@ export function CashFlowManager() {
   const { company } = useCompany();
   const { importedDailyData, importedRowStructure, isImported, isImportLoading, importFile } = useCashFlowImport(company?.id);
   const { items: cashInDbItems, fetchItems: refreshCashInItems, removeItem: removeCashInDbItem, toSidebarItems } = useCashInItems();
+  const { items: scheduledItems, saveAll: saveScheduledItems } = useScheduledCashFlows(company?.id);
   const [addCashInOpen, setAddCashInOpen] = useState(false);
+  const [scheduledModalOpen, setScheduledModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sidebarDbItems = useMemo(() => toSidebarItems(), [toSidebarItems]);
@@ -529,13 +534,19 @@ export function CashFlowManager() {
     return out;
   }, [computedWeekly, weeklyOverrides]);
 
+  // Merge scheduled cash flow entries into the weekly grid
+  const weeklyWithScheduled = useMemo<WeeklyData>(
+    () => mergeScheduledIntoWeekly(rawWeekly, scheduledItems),
+    [rawWeekly, scheduledItems],
+  );
+
   const rawSidebar = useMemo(() => normalizeSidebarData(role === 'viewer' && sandboxSidebar ? sandboxSidebar : sidebarData), [role, sandboxSidebar, sidebarData]);
 
   const availableYears = useMemo(() => getAvailableYears(rawDaily.dates), [rawDaily.dates]);
 
   // Filtered data using debounced values
   const filteredDaily = useMemo(() => filterDailyByPeriod(rawDaily, debouncedYears, debouncedQuarters), [rawDaily, debouncedYears, debouncedQuarters]);
-  const filteredWeekly = useMemo(() => filterWeeklyByPeriod(rawWeekly, debouncedYears, debouncedQuarters), [rawWeekly, debouncedYears, debouncedQuarters]);
+  const filteredWeekly = useMemo(() => filterWeeklyByPeriod(weeklyWithScheduled, debouncedYears, debouncedQuarters), [weeklyWithScheduled, debouncedYears, debouncedQuarters]);
 
   const setActiveData = useCallback((setter: 'daily' | 'sidebar', updater: (prev: any) => any) => {
     if (role === 'viewer') {
@@ -945,6 +956,7 @@ export function CashFlowManager() {
           onActivePlanChange={setActivePlanId}
           onSavePlan={handleSavePlan}
           onExport={handleOpenExport}
+          onConfigureScheduled={() => setScheduledModalOpen(true)}
           onSidebarEditItem={handleSidebarEditItem}
           onSidebarRemoveItem={handleSidebarRemoveItem}
           onSidebarAddItem={handleSidebarAddItem}
@@ -982,6 +994,18 @@ export function CashFlowManager() {
           open={addCashInOpen}
           onClose={() => setAddCashInOpen(false)}
           onItemsAdded={handleCashInItemsAdded}
+        />
+      )}
+      {scheduledModalOpen && (
+        <ScheduledCashFlowsModal
+          open={scheduledModalOpen}
+          initialEntries={scheduledItems}
+          onClose={() => setScheduledModalOpen(false)}
+          onSave={async (entries) => {
+            const ok = await saveScheduledItems(entries);
+            if (ok) logAction(`Updated scheduled cash flows (${entries.length} entries)`);
+            return ok;
+          }}
         />
       )}
     </div>

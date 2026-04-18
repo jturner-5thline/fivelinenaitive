@@ -14395,6 +14395,65 @@ export type Database = {
           },
         ]
       }
+      scheduled_cash_flows: {
+        Row: {
+          account: string
+          amount: number
+          category: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          end_date: string | null
+          flow_type: string
+          frequency_config: Json
+          frequency_type: string
+          id: string
+          notes: string | null
+          start_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          account: string
+          amount: number
+          category: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          flow_type: string
+          frequency_config?: Json
+          frequency_type: string
+          id?: string
+          notes?: string | null
+          start_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account?: string
+          amount?: number
+          category?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          flow_type?: string
+          frequency_config?: Json
+          frequency_type?: string
+          id?: string
+          notes?: string | null
+          start_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_cash_flows_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scheduled_reports: {
         Row: {
           agent_id: string | null

@@ -26,6 +26,7 @@ interface WeeklyReportTabProps {
   onActivePlanChange: (id: string | null) => void;
   onSavePlan: (name: string) => void;
   onExport: () => void;
+  onConfigureScheduled?: () => void;
   onSidebarEditItem: (index: number, field: string, value: string | number) => void;
   onSidebarRemoveItem: (index: number) => void;
   onSidebarAddItem: () => void;
@@ -70,7 +71,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   weeklyData, weeklyOverrides, onCashOverride,
   sidebarData, sidebarDbItems, theme, isAdmin,
   planSnapshots, activePlanId, onActivePlanChange, onSavePlan,
-  onExport, onSidebarEditItem, onSidebarRemoveItem, onSidebarAddItem, onSidebarRemoveDbItem,
+  onExport, onConfigureScheduled, onSidebarEditItem, onSidebarRemoveItem, onSidebarAddItem, onSidebarRemoveDbItem,
   onNoteEdit, onNoteRemove, onNoteAdd,
 }: WeeklyReportTabProps) {
   const safeWeeklyData = weeklyData || {};
@@ -163,6 +164,11 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
             </span>
           </div>
           <div className="cf-range-controls">
+            {onConfigureScheduled && (
+              <button className="cf-btn cf-btn-secondary" onClick={onConfigureScheduled}>
+                Configure Payments &amp; Revenue
+              </button>
+            )}
             <button className="cf-btn cf-btn-secondary" onClick={() => setSavePlanOpen(true)}>Save Plan</button>
             <select
               className="cf-select"
