@@ -20,7 +20,7 @@ export const HomepageHeader = () => {
           </Button>
           <Button 
             size="sm" 
-            className="bg-[hsl(270,65%,50%)] text-white hover:bg-[hsl(270,65%,45%)] border-0"
+            className="marketing-glass-cta border-0"
             asChild
           >
             <Link to="/waitlist">Contact Us</Link>

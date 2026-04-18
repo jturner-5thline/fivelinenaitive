@@ -18,7 +18,7 @@ export const HomepageCTA = () => {
           <div className="flex items-center justify-center">
             <Button
               size="lg"
-              className="rounded-full px-10 py-6 text-base font-semibold text-white bg-[hsl(270,65%,50%)] hover:bg-[hsl(270,65%,45%)] border-0"
+              className="marketing-glass-cta rounded-full px-10 py-6 text-base font-semibold border-0"
               asChild
             >
               <Link to="/waitlist">
