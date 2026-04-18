@@ -46,6 +46,11 @@ interface DailyBriefingModalProps {
    * want the Operational tab to filter by that person.
    */
   targetAssigneeName?: string;
+  /**
+   * Tab values to hide from this briefing instance (e.g., ['financial']).
+   * Hidden tabs do not render their content and skip data fetching entirely.
+   */
+  excludeTabs?: Array<'catchup' | 'email' | 'financial' | 'pipeline' | 'operational'>;
 }
 
 // ── Glass surface classes ──────────────────────────────────────
@@ -841,7 +846,7 @@ function OperationalTab({ enabled, onNavigate, targetAssigneeName }: { enabled: 
 }
 
 // ── Tab icons & labels ─────────────────────────────────────────
-const TABS = [
+const ALL_TABS = [
   { value: 'catchup', label: 'Catch Up & News', icon: Newspaper },
   { value: 'email', label: 'Email', icon: Mail },
   { value: 'financial', label: 'Financial', icon: DollarSign },
@@ -850,11 +855,22 @@ const TABS = [
 ] as const;
 
 // ── Main modal component ───────────────────────────────────────
-export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing', targetUserId, targetAssigneeName }: DailyBriefingModalProps) {
+export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing', targetUserId, targetAssigneeName, excludeTabs }: DailyBriefingModalProps) {
   const navigate = useNavigate();
   const window = useBriefingWindow();
-  const [activeTab, setActiveTab] = useState('catchup');
+  const TABS = useMemo(
+    () => ALL_TABS.filter(t => !excludeTabs?.includes(t.value as any)),
+    [excludeTabs],
+  );
+  const [activeTab, setActiveTab] = useState<string>(TABS[0]?.value ?? 'catchup');
   const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
+
+  // If active tab gets excluded (prop change), fall back to first available
+  useEffect(() => {
+    if (!TABS.find(t => t.value === activeTab)) {
+      setActiveTab(TABS[0]?.value ?? 'catchup');
+    }
+  }, [TABS, activeTab]);
 
   const currentIndex = TABS.findIndex(t => t.value === activeTab);
   const canGoLeft = currentIndex > 0;
