@@ -43,10 +43,10 @@ export function aggregateDailyToWeekly(daily: DailyData | null | undefined): Wee
   const totalTransfersKey = findRowKey(rows, /TOTAL\s*TRANSFERS/i);
   const netChangeKey = findRowKey(rows, /NET\s*CASH\s*CHANGE/i);
 
-  // Receipt line items
-  const revenueKeys = findRowKeys(rows, /^Revenue\s*Deposits$/i);
-  const customerPayKey = findRowKey(rows, /Customer\s*Payment/i);
-  const consultingKey = findRowKey(rows, /Consulting\s*Fee/i);
+  // Receipt line items (legacy daily labels mapped to new categories)
+  const debtAdvisoryKeys = findRowKeys(rows, /^Debt\s*Advisory\s*Revenue$|^Revenue\s*Deposits$|Consulting\s*Fee/i);
+  const finServKey = findRowKey(rows, /^FinServ\s*Revenue$|Customer\s*Payment/i);
+  const technologyKey = findRowKey(rows, /^Technology\s*Revenue$/i);
   const loanProceedsKey = findRowKey(rows, /Loan\s*Proceeds/i);
   const otherReceiptsKey = findRowKey(rows, /Other\s*Receipts/i);
 
@@ -104,16 +104,16 @@ export function aggregateDailyToWeekly(daily: DailyData | null | undefined): Wee
     const endCash = endCashKey ? Math.round(rows[endCashKey]?.values?.[lastIdx] || 0) : 0;
 
     // Receipts - sum individual items
-    const revDeposits = sumKeys(revenueKeys);
-    const custPay = sumRange(customerPayKey);
-    const consulting = sumRange(consultingKey);
+    const debtAdvisory = sumKeys(debtAdvisoryKeys);
+    const finServ = sumRange(finServKey);
+    const technology = sumRange(technologyKey);
     const loanProceeds = sumRange(loanProceedsKey);
     const otherReceipts = sumRange(otherReceiptsKey);
 
     // Use the total row if available, otherwise compute from items
     let totalReceipts = sumRange(totalReceiptsKey);
     if (totalReceipts === 0 && !totalReceiptsKey) {
-      totalReceipts = revDeposits + custPay + consulting + loanProceeds + otherReceipts;
+      totalReceipts = debtAdvisory + finServ + technology + loanProceeds + otherReceipts;
     }
 
     // Disbursements - sum individual items
@@ -154,9 +154,9 @@ export function aggregateDailyToWeekly(daily: DailyData | null | undefined): Wee
       "ENDING CASH": computedEndCash,
       "Add'l Liquidity (Delayed Draw)": addlLiquidity,
       "TOTAL CASH ON HAND": computedEndCash + addlLiquidity,
-      "Revenue Deposits": Math.round(revDeposits),
-      "Customer Payments": Math.round(custPay),
-      "Consulting Fees": Math.round(consulting),
+      "Debt Advisory Revenue": Math.round(debtAdvisory),
+      "FinServ Revenue": Math.round(finServ),
+      "Technology Revenue": Math.round(technology),
       "Loan Proceeds": Math.round(loanProceeds),
       "Other Receipts": Math.round(otherReceipts),
       "TOTAL RECEIPTS": Math.round(totalReceipts),
