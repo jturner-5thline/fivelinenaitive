@@ -850,7 +850,7 @@ const TABS = [
 ] as const;
 
 // ── Main modal component ───────────────────────────────────────
-export function DailyBriefingModal({ open, onOpenChange }: DailyBriefingModalProps) {
+export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing', targetUserId, targetAssigneeName }: DailyBriefingModalProps) {
   const navigate = useNavigate();
   const window = useBriefingWindow();
   const [activeTab, setActiveTab] = useState('catchup');
@@ -896,7 +896,7 @@ export function DailyBriefingModal({ open, onOpenChange }: DailyBriefingModalPro
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-white/[0.02]">
             <div>
-              <h2 className="text-lg font-bold text-foreground tracking-tight">Daily Briefing</h2>
+              <h2 className="text-lg font-bold text-foreground tracking-tight">{title}</h2>
               <p className="text-xs text-muted-foreground/60 mt-0.5">
                 {window.label} • {format(new Date(), 'EEEE, MMMM d, yyyy')}
               </p>
@@ -972,10 +972,10 @@ export function DailyBriefingModal({ open, onOpenChange }: DailyBriefingModalPro
                   )}
                 >
                   {activeTab === 'catchup' && <CatchUpTab enabled={open} onNavigate={handleNavigate} />}
-                  {activeTab === 'email' && <EmailTab enabled={open} onNavigate={handleNavigate} />}
+                  {activeTab === 'email' && <EmailTab enabled={open} onNavigate={handleNavigate} targetUserId={targetUserId} />}
                   {activeTab === 'financial' && <FinancialTab enabled={open} onNavigate={handleNavigate} />}
                   {activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} />}
-                  {activeTab === 'operational' && <OperationalTab enabled={open} onNavigate={handleNavigate} />}
+                  {activeTab === 'operational' && <OperationalTab enabled={open} onNavigate={handleNavigate} targetAssigneeName={targetAssigneeName} />}
                 </div>
               </ScrollArea>
             </div>
