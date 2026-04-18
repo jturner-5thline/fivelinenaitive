@@ -24,16 +24,21 @@ import { FullCalendarView } from '@/components/dashboard/FullCalendarView';
 import { NewsFeedPanel } from '@/components/dashboard/NewsFeedPanel';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import {
+  canSeeNikiBriefing,
+  NIKI_USER_ID,
+  NIKI_ASSIGNEE_NAME,
+  NIKI_EMAIL,
+} from '@/constants/nikiBriefing';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { profile } = useProfile();
   const isJTurner = user?.email === 'jturner@5thline.co';
+  const canSeeNiki = canSeeNikiBriefing(user?.email);
+  const isNikiViewingHerself = user?.email?.toLowerCase() === NIKI_EMAIL;
   const [isBriefingOpen, setIsBriefingOpen] = useState(false);
   const [isNikiBriefingOpen, setIsNikiBriefingOpen] = useState(false);
-  // Niki Heikali — long-term this should come from a delegated_briefing_access lookup
-  const NIKI_USER_ID = 'a757f375-7e93-4fc5-a49e-e371abb42fac';
-  const NIKI_ASSIGNEE_NAME = 'Niki Heikali';
   const {
     presets,
     activePreset,
