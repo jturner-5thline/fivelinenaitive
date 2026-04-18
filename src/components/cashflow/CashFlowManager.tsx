@@ -956,6 +956,7 @@ export function CashFlowManager() {
           onActivePlanChange={setActivePlanId}
           onSavePlan={handleSavePlan}
           onExport={handleOpenExport}
+          onConfigureScheduled={() => setScheduledModalOpen(true)}
           onSidebarEditItem={handleSidebarEditItem}
           onSidebarRemoveItem={handleSidebarRemoveItem}
           onSidebarAddItem={handleSidebarAddItem}
