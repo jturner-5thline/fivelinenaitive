@@ -1,11 +1,16 @@
-import { useState, useEffect, memo, useCallback } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { useState, useEffect, memo, useCallback, useRef } from 'react';
+import { ChevronDown, ChevronRight, MessageSquare } from 'lucide-react';
 import type { WeeklyData, SidebarData, PlanSnapshot, ThemeMode, WeeklyOverrides } from './types';
 import { fmtAbbrev } from './formatters';
 import { WeeklyCharts } from './WeeklyCharts';
 import { WeeklySidebar } from './WeeklySidebar';
 import { useGridWheelPassthrough } from './useGridWheelPassthrough';
 import { ACCOUNT_OPTIONS } from './scheduledCashFlows';
+import { useCellComments, cellCommentKey } from './cellComments/useCellComments';
+import { CellCommentMenu } from './cellComments/CellCommentMenu';
+import { CellCommentPopover } from './cellComments/CellCommentPopover';
+import type { CellComment } from './cellComments/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SidebarItem {
   id?: string;
