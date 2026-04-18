@@ -154,7 +154,18 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
     <div
       className="cf-overlay"
       onClick={onClose}
-      style={{ position: 'fixed', inset: 0, zIndex: 1000 }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1000,
+        background: 'rgba(0, 0, 0, 0.6)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+      }}
     >
       <div
         className="cf-dialog"
@@ -165,17 +176,39 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
           display: 'flex',
           flexDirection: 'column',
           position: 'relative',
+          background: 'hsl(var(--card))',
+          color: 'hsl(var(--card-foreground))',
+          border: '1px solid hsl(var(--border))',
+          borderRadius: 16,
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+          opacity: 1,
+          padding: 0,
+          overflow: 'hidden',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="cf-dialog-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>Configure Payments &amp; Revenue</span>
+        <div
+          className="cf-dialog-title"
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '20px 24px',
+            borderBottom: '1px solid hsl(var(--border))',
+            background: 'hsl(var(--card))',
+            position: 'sticky',
+            top: 0,
+            zIndex: 2,
+            margin: 0,
+          }}
+        >
+          <span style={{ fontSize: 18, fontWeight: 600 }}>Configure Payments &amp; Revenue</span>
           <button className="cf-btn cf-btn-secondary" onClick={addRow}>
             <Plus size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Add Entry
           </button>
         </div>
 
-        <div style={{ flex: 1, overflow: 'auto', marginTop: 12 }}>
+        <div style={{ flex: 1, overflow: 'auto', padding: '16px 24px', background: 'hsl(var(--card))' }}>
           {drafts.length === 0 ? (
             <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-muted)' }}>
               No scheduled entries yet. Click "Add Entry" to create one.
@@ -366,7 +399,21 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
           )}
         </div>
 
-        <div className="cf-dialog-actions" style={{ marginTop: 12 }}>
+        <div
+          className="cf-dialog-actions"
+          style={{
+            margin: 0,
+            padding: '16px 24px',
+            borderTop: '1px solid hsl(var(--border))',
+            background: 'hsl(var(--card))',
+            position: 'sticky',
+            bottom: 0,
+            zIndex: 2,
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 8,
+          }}
+        >
           <button className="cf-btn cf-btn-ghost" onClick={onClose} disabled={saving}>Cancel</button>
           <button className="cf-btn cf-btn-primary" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
