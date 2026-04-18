@@ -53,9 +53,9 @@ export function QuickActionCards({ onAction }: Props) {
           onClick={() => onAction(action.prompt, action.requiresInput)}
           className={cn(
             'group flex items-start gap-3 p-3 rounded-xl text-left',
-            'border border-border/40 bg-card/40 backdrop-blur-sm',
+            'border bg-card/40 backdrop-blur-sm',
             'transition-all duration-200',
-            'hover:border-border/70 hover:bg-card/70 hover:shadow-md hover:-translate-y-px',
+            'hover:bg-muted/10 hover:shadow-md hover:-translate-y-px',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40'
           )}
         >
