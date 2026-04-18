@@ -258,8 +258,14 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                 }
 
                 const isTotal = rowDef.isTotal;
+                const isParent = rowDef.isParent === true;
+                const isChild = !!rowDef.parent;
                 // Hide detail rows when section is collapsed (but keep totals visible)
                 if (!isTotal && collapsedSections[rowDef.section]) {
+                  return null;
+                }
+                // Hide child sub-rows when their parent is collapsed
+                if (isChild && rowDef.parent === DEBT_ADV_PARENT_KEY && debtAdvCollapsed) {
                   return null;
                 }
                 const isCashRow = rowDef.key === 'BEGINNING CASH' || rowDef.key === 'ENDING CASH';
@@ -267,13 +273,37 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                   ? (rowDef.key === 'BEGINNING CASH' ? 'beginningCash' : 'endingCash')
                   : null;
                 return (
-                  <tr key={rowDef.key} className={isTotal ? 'cf-total-row' : 'cf-indent'}>
-                    <td className="cf-label-col">{rowDef.key}</td>
+                  <tr
+                    key={rowDef.key}
+                    className={`${isTotal ? 'cf-total-row' : 'cf-indent'}${isChild ? ' cf-subcategory-row' : ''}${isParent ? ' cf-parent-row' : ''}`}
+                    style={isParent ? { cursor: 'pointer' } : undefined}
+                    onClick={isParent ? toggleDebtAdv : undefined}
+                  >
+                    <td
+                      className="cf-label-col"
+                      style={
+                        isChild
+                          ? { paddingLeft: 32, color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem' }
+                          : isParent
+                            ? { display: 'flex', alignItems: 'center', gap: 4 }
+                            : undefined
+                      }
+                    >
+                      {isParent && (debtAdvCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />)}
+                      {rowDef.key}
+                    </td>
                     {visibleWeeks.map(([weekKey, entry]) => {
-                      const val = (entry[rowDef.key] as number) || 0;
+                      const rawVal = isParent
+                        ? parentSumForWeek(entry)
+                        : ((entry[rowDef.key] as number) || 0);
+                      const val = rawVal;
                       const displayVal = rowDef.section === 'disbursements' && !isTotal && val > 0 ? -val : val;
                       const planEntry = activePlan?.weeklyData?.[weekKey];
-                      const planVal = planEntry ? ((planEntry[rowDef.key] as number) || 0) : null;
+                      const planVal = planEntry
+                        ? (isParent
+                            ? parentSumForWeek(planEntry)
+                            : ((planEntry[rowDef.key] as number) || 0))
+                        : null;
                       const isOverridden = !!(isCashRow && overrideField && safeOverrides[weekKey]?.[overrideField] !== undefined);
                       const editable = isAdmin && isCashRow && !!onCashOverride;
 
