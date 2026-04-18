@@ -530,16 +530,58 @@ Classify and return strict JSON only.`;
           lenderCandidates = (ls || []).map((l: any) => ({ id: l.id, name: l.name, stage: l.stage }));
         }
 
-        // Build deal candidates — when no deal is linked yet, surface a small
-        // candidate list of active deals the user can access so Claude can infer.
-        let dealCandidates: Array<{ id: string; company: string; stage?: string }> = [];
+        // Build deal candidates — when no deal is linked yet, surface deals the
+        // user can access so Claude can infer the likely match. We pull a wider
+        // set than before (no `status='active'` filter — Naitive deals use other
+        // statuses) and pre-rank by subject/body keyword overlap so the most
+        // promising matches appear at the top of the prompt.
+        let dealCandidates: Array<{ id: string; company: string; name?: string; stage?: string }> = [];
         if (!dealId) {
-          const { data: ds } = await supabase
+          // Resolve user's company for tenant-scoped candidate fetching.
+          const { data: memberships } = await supabase
+            .from("company_members")
+            .select("company_id")
+            .eq("user_id", user.id);
+          const companyIds = (memberships || []).map((m: any) => m.company_id).filter(Boolean);
+
+          let dealsQuery = supabase
             .from("deals")
-            .select("id, company, stage, status")
-            .eq("status", "active")
-            .limit(80);
-          dealCandidates = (ds || []).map((d: any) => ({ id: d.id, company: d.company, stage: d.stage }));
+            .select("id, company, name, stage, status")
+            .order("updated_at", { ascending: false })
+            .limit(300);
+          if (companyIds.length > 0) {
+            dealsQuery = dealsQuery.in("company_id", companyIds);
+          }
+          const { data: ds } = await dealsQuery;
+          const all = (ds || []) as any[];
+
+          // Pre-rank: exact / partial matches against subject + body get top
+          // priority. Strip generic words to reduce false positives.
+          const haystack = `${subject} ${(latestEmail?.body_preview || "").substring(0, 2000)}`.toLowerCase();
+          const scored = all.map((d) => {
+            const company = (d.company || "").toLowerCase().trim();
+            const altName = (d.name || "").toLowerCase().trim();
+            let score = 0;
+            for (const candidate of [company, altName]) {
+              if (!candidate || candidate.length < 3) continue;
+              if (subject.toLowerCase().includes(candidate)) score += 10;
+              else if (haystack.includes(candidate)) score += 5;
+            }
+            return { d, score };
+          });
+          scored.sort((a, b) => b.score - a.score);
+
+          // Always include matched candidates first, then fill up to 80 with
+          // the most-recently-updated deals so Claude still has breadth.
+          const matched = scored.filter((s) => s.score > 0).map((s) => s.d);
+          const rest = scored.filter((s) => s.score === 0).map((s) => s.d);
+          const ordered = [...matched, ...rest].slice(0, 80);
+          dealCandidates = ordered.map((d: any) => ({
+            id: d.id,
+            company: d.company || d.name || "",
+            name: d.name && d.name !== d.company ? d.name : undefined,
+            stage: d.stage,
+          }));
         }
 
         systemPrompt = `You are a careful debt-advisory workflow classifier. You read an email thread between an advisor and a lender and infer:
@@ -616,8 +658,8 @@ If the email is internal commentary only (kind="internal_note"), recommended_upd
 LENDER CANDIDATES ON LINKED DEAL:
 ${lenderCandidates.length > 0 ? lenderCandidates.map(l => `- id=${l.id} name="${l.name}" stage=${l.stage || "?"}`).join("\n") : "(none — deal not linked or has no lenders)"}
 
-${!dealId ? `CANDIDATE DEALS (no deal linked yet — pick the most likely one if you can):
-${dealCandidates.length > 0 ? dealCandidates.slice(0, 60).map(d => `- id=${d.id} name="${d.company}" stage=${d.stage || "?"}`).join("\n") : "(none)"}` : `LINKED DEAL: id=${dealId}`}
+${!dealId ? `CANDIDATE DEALS (no deal linked yet — pick the most likely one if you can; the top entries already keyword-match the subject/body):
+${dealCandidates.length > 0 ? dealCandidates.slice(0, 60).map(d => `- id=${d.id} name="${d.company}"${d.name ? ` aka="${d.name}"` : ""} stage=${d.stage || "?"}`).join("\n") : "(none)"}` : `LINKED DEAL: id=${dealId}`}
 
 EMAIL THREAD:
 Subject: ${subject}
@@ -707,6 +749,49 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
     // For generate_draft_options, inject context sources
     if (action === "generate_draft_options" && typeof parsed === "object" && !parsed.raw) {
       parsed.cited_context_sources = dealContextSources.length > 0 ? dealContextSources : ["email_thread_only"];
+    }
+
+    // For analyze_thread_workflow, post-process to ensure deal_id resolution.
+    // If Claude returned a deal name but no id (or vice versa), reconcile against
+    // our candidate list so the UI always has a real deal to target.
+    if (action === "analyze_thread_workflow" && typeof parsed === "object" && !parsed.raw) {
+      try {
+        const candidates = (typeof dealCandidates !== "undefined" ? dealCandidates : []) as any[];
+        const ld = parsed.likely_deal || {};
+        const norm = (s: string) => (s || "").toLowerCase().trim();
+
+        // 1) If id missing but name present, find by name.
+        if (!ld.id && ld.name) {
+          const wanted = norm(ld.name);
+          const match = candidates.find((c) => norm(c.company) === wanted || norm(c.name || "") === wanted)
+            || candidates.find((c) => norm(c.company).includes(wanted) || wanted.includes(norm(c.company)));
+          if (match) {
+            ld.id = match.id;
+            ld.name = match.company || ld.name;
+            if (!ld.confidence || ld.confidence === "low") ld.confidence = "medium";
+          }
+        }
+        // 2) If id present but name missing, fill name.
+        if (ld.id && !ld.name) {
+          const match = candidates.find((c) => c.id === ld.id);
+          if (match) ld.name = match.company;
+        }
+
+        // 3) Propagate resolved deal into recommended_update so the UI can act.
+        const rec = parsed.recommended_update || {};
+        if (rec.kind && rec.kind !== "none") {
+          if (!rec.deal_id && ld.id) rec.deal_id = ld.id;
+          if (!rec.deal_name && ld.name) rec.deal_name = ld.name;
+          // Rewrite the title if it still says "unknown" / placeholder
+          if (ld.name && rec.title && /unknown|the deal/i.test(rec.title)) {
+            rec.title = rec.title.replace(/unknown|the deal/gi, ld.name);
+          }
+        }
+        parsed.likely_deal = ld;
+        parsed.recommended_update = rec;
+      } catch (resolveErr) {
+        console.warn("workflow deal resolution skipped:", resolveErr);
+      }
     }
 
     // Log AI usage
