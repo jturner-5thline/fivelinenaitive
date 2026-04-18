@@ -1,6 +1,39 @@
 import { useState, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import { Trash2, Plus } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import {
+  Trash2,
+  Plus,
+  GripVertical,
+  Calendar as CalendarIcon,
+  Building2,
+  Tag,
+  TrendingUp,
+  TrendingDown,
+  Save,
+  CalendarClock,
+} from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import {
   ACCOUNT_OPTIONS,
   CASH_IN_CATEGORIES,
@@ -36,6 +69,62 @@ function newDraft(): DraftEntry {
   };
 }
 
+function safeParseDate(s?: string | null): Date | undefined {
+  if (!s) return undefined;
+  try {
+    return parseISO(s);
+  } catch {
+    return undefined;
+  }
+}
+
+function toIso(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function DatePickerField({
+  value,
+  onChange,
+  placeholder = 'Pick a date',
+  className,
+}: {
+  value: string | null | undefined;
+  onChange: (iso: string | null) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  const date = safeParseDate(value || undefined);
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={cn(
+            'w-full justify-start text-left font-normal h-9',
+            !date && 'text-muted-foreground',
+            className,
+          )}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4 opacity-70" />
+          {date ? format(date, 'MMM d, yyyy') : <span>{placeholder}</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={(d) => onChange(d ? toIso(d) : null)}
+          initialFocus
+          className={cn('p-3 pointer-events-auto')}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave }: Props) {
   const [drafts, setDrafts] = useState<DraftEntry[]>([]);
   const [saving, setSaving] = useState(false);
@@ -47,19 +136,9 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
         ...e,
         _draftId: e.id,
         frequency_config: e.frequency_config || {},
-      }))
+      })),
     );
   }, [open, initialEntries]);
-
-  // Lock body scroll while open
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
 
   const updateRow = useCallback((draftId: string, patch: Partial<DraftEntry>) => {
     setDrafts((prev) => prev.map((d) => (d._draftId === draftId ? { ...d, ...patch } : d)));
@@ -70,8 +149,8 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
       prev.map((d) =>
         d._draftId === draftId
           ? { ...d, frequency_config: { ...(d.frequency_config || {}), ...patch } }
-          : d
-      )
+          : d,
+      ),
     );
   }, []);
 
@@ -87,7 +166,7 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
           ? d.category
           : validCats[0];
         return { ...d, flow_type: flow, category };
-      })
+      }),
     );
   };
 
@@ -103,7 +182,7 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
           cfg = { ordinal_day_of_week: d.frequency_config?.ordinal_day_of_week ?? 1 };
         if (freq === 'monthly_day') cfg = { day_of_month: d.frequency_config?.day_of_month ?? 1 };
         return { ...d, frequency_type: freq, frequency_config: cfg };
-      })
+      }),
     );
   };
 
@@ -125,7 +204,7 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
   const handleSave = async () => {
     const v = validate();
     if (!v.ok) {
-      alert(v.error);
+      toast.error(v.error || 'Please fix validation errors');
       return;
     }
     setSaving(true);
@@ -144,284 +223,328 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
     }));
     const ok = await onSave(entries);
     setSaving(false);
-    if (ok) onClose();
-    else alert('Failed to save. Please try again.');
+    if (ok) {
+      toast.success('Scheduled cash flows saved');
+      onClose();
+    } else {
+      toast.error('Failed to save. Please try again.');
+    }
   };
 
-  if (!open) return null;
-
-  const modal = (
-    <div
-      className="cf-overlay"
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1000,
-        background: 'rgba(0, 0, 0, 0.6)',
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-      }}
-    >
-      <div
-        className="cf-dialog"
-        style={{
-          maxWidth: 1200,
-          width: '95vw',
-          maxHeight: '90vh',
-          display: 'flex',
-          flexDirection: 'column',
-          position: 'relative',
-          background: 'hsl(var(--card))',
-          color: 'hsl(var(--card-foreground))',
-          border: '1px solid hsl(var(--border))',
-          borderRadius: 16,
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-          opacity: 1,
-          padding: 0,
-          overflow: 'hidden',
-        }}
-        onClick={(e) => e.stopPropagation()}
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent
+        className="max-w-6xl w-[95vw] p-0 gap-0 overflow-hidden border-border bg-card shadow-2xl rounded-2xl"
+        style={{ maxHeight: '90vh' }}
       >
-        <div
-          className="cf-dialog-title"
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '20px 24px',
-            borderBottom: '1px solid hsl(var(--border))',
-            background: 'hsl(var(--card))',
-            position: 'sticky',
-            top: 0,
-            zIndex: 2,
-            margin: 0,
-          }}
-        >
-          <span style={{ fontSize: 18, fontWeight: 600 }}>Configure Payments &amp; Revenue</span>
-          <button className="cf-btn cf-btn-secondary" onClick={addRow}>
-            <Plus size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Add Entry
-          </button>
-        </div>
+        {/* Header */}
+        <DialogHeader className="px-6 py-5 border-b border-border bg-card sticky top-0 z-10">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-1 text-left">
+              <DialogTitle className="text-lg font-semibold">
+                Configure Payments &amp; Revenue
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground">
+                Schedule recurring or one-time cash flows that auto-populate the weekly view.
+              </DialogDescription>
+            </div>
+            <Button onClick={addRow} size="sm" className="gap-1.5 shrink-0">
+              <Plus className="h-4 w-4" />
+              Add Entry
+            </Button>
+          </div>
+        </DialogHeader>
 
-        <div style={{ flex: 1, overflow: 'auto', padding: '16px 24px', background: 'hsl(var(--card))' }}>
+        {/* Body */}
+        <div
+          className="flex-1 overflow-auto px-6 py-4 bg-card"
+          style={{ maxHeight: 'calc(90vh - 180px)' }}
+        >
           {drafts.length === 0 ? (
-            <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-muted)' }}>
-              No scheduled entries yet. Click "Add Entry" to create one.
+            <div className="flex flex-col items-center justify-center text-center py-16 px-6">
+              <div className="h-14 w-14 rounded-2xl bg-muted/60 border border-border flex items-center justify-center mb-4">
+                <CalendarClock className="h-7 w-7 text-muted-foreground" />
+              </div>
+              <h3 className="text-base font-semibold text-foreground mb-1">
+                No scheduled cash flows yet
+              </h3>
+              <p className="text-sm text-muted-foreground mb-5 max-w-sm">
+                Add recurring or one-time payments and revenue to automatically populate the
+                weekly cash flow view.
+              </p>
+              <Button onClick={addRow} className="gap-1.5">
+                <Plus className="h-4 w-4" />
+                Add your first entry
+              </Button>
             </div>
           ) : (
-            <table className="cf-grid" style={{ width: '100%' }}>
-              <thead>
-                <tr>
-                  <th style={{ minWidth: 160, textAlign: 'left' }}>Account</th>
-                  <th style={{ minWidth: 200, textAlign: 'left' }}>Category</th>
-                  <th style={{ minWidth: 120, textAlign: 'left' }}>Amount ($)</th>
-                  <th style={{ minWidth: 320, textAlign: 'left' }}>Frequency</th>
-                  <th style={{ minWidth: 140, textAlign: 'left' }}>Type</th>
-                  <th style={{ width: 40 }}></th>
-                </tr>
-              </thead>
-              <tbody>
+            <div className="flex flex-col">
+              {/* Column Headers */}
+              <div className="grid grid-cols-[20px_minmax(160px,1.1fr)_minmax(180px,1.3fr)_minmax(130px,0.8fr)_minmax(280px,1.8fr)_minmax(170px,0.9fr)_32px] gap-3 items-center px-2 pb-2 mb-1 border-b border-border">
+                <span />
+                <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
+                  Account
+                </span>
+                <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
+                  Category
+                </span>
+                <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
+                  Amount
+                </span>
+                <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
+                  Frequency
+                </span>
+                <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
+                  Type
+                </span>
+                <span />
+              </div>
+
+              {/* Rows */}
+              <div className="flex flex-col">
                 {drafts.map((d) => {
                   const cats = d.flow_type === 'cash_in' ? CASH_IN_CATEGORIES : CASH_OUT_CATEGORIES;
                   return (
-                    <tr key={d._draftId}>
-                      <td>
-                        <select
-                          className="cf-select"
-                          style={{ width: '100%' }}
-                          value={d.account}
-                          onChange={(e) => updateRow(d._draftId, { account: e.target.value })}
-                        >
+                    <div
+                      key={d._draftId}
+                      className="grid grid-cols-[20px_minmax(160px,1.1fr)_minmax(180px,1.3fr)_minmax(130px,0.8fr)_minmax(280px,1.8fr)_minmax(170px,0.9fr)_32px] gap-3 items-start px-2 py-3 border-b border-border/60 hover:bg-muted/40 transition-colors rounded-md"
+                    >
+                      {/* Drag handle */}
+                      <div className="flex items-center justify-center pt-2 text-muted-foreground/50 cursor-grab">
+                        <GripVertical className="h-4 w-4" />
+                      </div>
+
+                      {/* Account */}
+                      <Select
+                        value={d.account}
+                        onValueChange={(v) => updateRow(d._draftId, { account: v })}
+                      >
+                        <SelectTrigger className="h-9">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <SelectValue />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
                           {ACCOUNT_OPTIONS.map((a) => (
-                            <option key={a} value={a}>{a}</option>
+                            <SelectItem key={a} value={a}>
+                              {a}
+                            </SelectItem>
                           ))}
-                        </select>
-                      </td>
-                      <td>
-                        <select
-                          className="cf-select"
-                          style={{ width: '100%' }}
-                          value={d.category}
-                          onChange={(e) => updateRow(d._draftId, { category: e.target.value })}
-                        >
+                        </SelectContent>
+                      </Select>
+
+                      {/* Category */}
+                      <Select
+                        value={d.category}
+                        onValueChange={(v) => updateRow(d._draftId, { category: v })}
+                      >
+                        <SelectTrigger className="h-9">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <SelectValue />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
                           {cats.map((c) => (
-                            <option key={c} value={c}>{c}</option>
+                            <SelectItem key={c} value={c}>
+                              {c}
+                            </SelectItem>
                           ))}
-                        </select>
-                      </td>
-                      <td>
-                        <input
-                          className="cf-input"
+                        </SelectContent>
+                      </Select>
+
+                      {/* Amount */}
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                          $
+                        </span>
+                        <Input
                           type="number"
                           min={0}
                           step="0.01"
-                          value={d.amount}
-                          onChange={(e) => updateRow(d._draftId, { amount: Number(e.target.value) })}
-                          style={{ width: '100%' }}
+                          value={d.amount || ''}
+                          placeholder="0.00"
+                          onChange={(e) =>
+                            updateRow(d._draftId, { amount: Number(e.target.value) })
+                          }
+                          className="pl-6 h-9 text-right tabular-nums"
                         />
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <select
-                            className="cf-select"
+                      </div>
+
+                      {/* Frequency */}
+                      <div className="flex flex-col gap-2">
+                        <div className="flex gap-2">
+                          <Select
                             value={d.frequency_type}
-                            onChange={(e) => handleFrequencyChange(d._draftId, e.target.value as FrequencyType)}
+                            onValueChange={(v) =>
+                              handleFrequencyChange(d._draftId, v as FrequencyType)
+                            }
                           >
-                            <option value="one_time">1-Time</option>
-                            <option value="weekly">Weekly on [Day of Week]</option>
-                            <option value="monthly_first">Monthly — First [Day] of the month</option>
-                            <option value="monthly_last">Monthly — Last [Day] of the month</option>
-                            <option value="monthly_day">Monthly on the [X] day of the month</option>
-                          </select>
+                            <SelectTrigger className="h-9 flex-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="one_time">1-Time</SelectItem>
+                              <SelectItem value="weekly">Weekly on [Day]</SelectItem>
+                              <SelectItem value="monthly_first">Monthly — First [Day]</SelectItem>
+                              <SelectItem value="monthly_last">Monthly — Last [Day]</SelectItem>
+                              <SelectItem value="monthly_day">Monthly on the [X] day</SelectItem>
+                            </SelectContent>
+                          </Select>
 
                           {d.frequency_type === 'one_time' && (
-                            <input
-                              type="date"
-                              className="cf-input"
-                              value={d.frequency_config?.one_time_date || ''}
-                              onChange={(e) => updateConfig(d._draftId, { one_time_date: e.target.value })}
-                            />
-                          )}
-
-                          {d.frequency_type === 'weekly' && (
-                            <select
-                              className="cf-select"
-                              value={d.frequency_config?.day_of_week ?? 1}
-                              onChange={(e) => updateConfig(d._draftId, { day_of_week: Number(e.target.value) })}
-                            >
-                              {DAY_OF_WEEK_LABELS.map((label, idx) => (
-                                <option key={idx} value={idx}>{label}</option>
-                              ))}
-                            </select>
-                          )}
-
-                          {(d.frequency_type === 'monthly_first' || d.frequency_type === 'monthly_last') && (
-                            <select
-                              className="cf-select"
-                              value={d.frequency_config?.ordinal_day_of_week ?? 1}
-                              onChange={(e) => updateConfig(d._draftId, { ordinal_day_of_week: Number(e.target.value) })}
-                            >
-                              {DAY_OF_WEEK_LABELS.map((label, idx) => (
-                                <option key={idx} value={idx}>{label}</option>
-                              ))}
-                            </select>
-                          )}
-
-                          {d.frequency_type === 'monthly_day' && (
-                            <input
-                              type="number"
-                              min={1}
-                              max={31}
-                              className="cf-input"
-                              value={d.frequency_config?.day_of_month ?? 1}
-                              onChange={(e) => updateConfig(d._draftId, { day_of_month: Math.min(31, Math.max(1, Number(e.target.value))) })}
-                            />
-                          )}
-
-                          {d.frequency_type !== 'one_time' && (
-                            <div style={{ display: 'flex', gap: 6 }}>
-                              <input
-                                type="date"
-                                className="cf-input"
-                                title="Start date"
-                                value={d.start_date || ''}
-                                onChange={(e) => updateRow(d._draftId, { start_date: e.target.value })}
-                                style={{ flex: 1 }}
-                              />
-                              <input
-                                type="date"
-                                className="cf-input"
-                                title="End date (optional)"
-                                value={d.end_date || ''}
-                                onChange={(e) => updateRow(d._draftId, { end_date: e.target.value || null })}
-                                style={{ flex: 1 }}
+                            <div className="flex-1 min-w-[150px]">
+                              <DatePickerField
+                                value={d.frequency_config?.one_time_date}
+                                onChange={(iso) =>
+                                  updateConfig(d._draftId, { one_time_date: iso || '' })
+                                }
                               />
                             </div>
                           )}
+
+                          {d.frequency_type === 'weekly' && (
+                            <Select
+                              value={String(d.frequency_config?.day_of_week ?? 1)}
+                              onValueChange={(v) =>
+                                updateConfig(d._draftId, { day_of_week: Number(v) })
+                              }
+                            >
+                              <SelectTrigger className="h-9 flex-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {DAY_OF_WEEK_LABELS.map((label, idx) => (
+                                  <SelectItem key={idx} value={String(idx)}>
+                                    {label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+
+                          {(d.frequency_type === 'monthly_first' ||
+                            d.frequency_type === 'monthly_last') && (
+                            <Select
+                              value={String(d.frequency_config?.ordinal_day_of_week ?? 1)}
+                              onValueChange={(v) =>
+                                updateConfig(d._draftId, { ordinal_day_of_week: Number(v) })
+                              }
+                            >
+                              <SelectTrigger className="h-9 flex-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {DAY_OF_WEEK_LABELS.map((label, idx) => (
+                                  <SelectItem key={idx} value={String(idx)}>
+                                    {label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+
+                          {d.frequency_type === 'monthly_day' && (
+                            <Input
+                              type="number"
+                              min={1}
+                              max={31}
+                              className="h-9 flex-1"
+                              value={d.frequency_config?.day_of_month ?? 1}
+                              onChange={(e) =>
+                                updateConfig(d._draftId, {
+                                  day_of_month: Math.min(31, Math.max(1, Number(e.target.value))),
+                                })
+                              }
+                            />
+                          )}
                         </div>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: 4 }}>
-                          <button
-                            type="button"
-                            onClick={() => handleFlowChange(d._draftId, 'cash_in')}
-                            style={{
-                              padding: '4px 10px',
-                              borderRadius: 999,
-                              fontSize: 11,
-                              fontWeight: 600,
-                              border: '1px solid var(--color-positive)',
-                              background: d.flow_type === 'cash_in' ? 'var(--color-positive)' : 'transparent',
-                              color: d.flow_type === 'cash_in' ? 'white' : 'var(--color-positive)',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Cash-In
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleFlowChange(d._draftId, 'cash_out')}
-                            style={{
-                              padding: '4px 10px',
-                              borderRadius: 999,
-                              fontSize: 11,
-                              fontWeight: 600,
-                              border: '1px solid var(--color-negative)',
-                              background: d.flow_type === 'cash_out' ? 'var(--color-negative)' : 'transparent',
-                              color: d.flow_type === 'cash_out' ? 'white' : 'var(--color-negative)',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Cash-Out
-                          </button>
-                        </div>
-                      </td>
-                      <td>
-                        <button
-                          className="cf-btn cf-btn-ghost"
-                          onClick={() => deleteRow(d._draftId)}
-                          title="Delete row"
-                          style={{ padding: 6 }}
+
+                        {d.frequency_type !== 'one_time' && (
+                          <div className="flex gap-2">
+                            <DatePickerField
+                              value={d.start_date}
+                              onChange={(iso) => updateRow(d._draftId, { start_date: iso })}
+                              placeholder="Start date"
+                            />
+                            <DatePickerField
+                              value={d.end_date}
+                              onChange={(iso) => updateRow(d._draftId, { end_date: iso })}
+                              placeholder="End date (optional)"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Type toggle */}
+                      <ToggleGroup
+                        type="single"
+                        value={d.flow_type}
+                        onValueChange={(v) => v && handleFlowChange(d._draftId, v as FlowType)}
+                        className="grid grid-cols-2 gap-1 h-9"
+                      >
+                        <ToggleGroupItem
+                          value="cash_in"
+                          className={cn(
+                            'h-9 px-2 gap-1 text-xs font-medium border border-border rounded-md',
+                            'data-[state=on]:bg-emerald-500/20 data-[state=on]:text-emerald-400 data-[state=on]:border-emerald-500/40',
+                            'data-[state=off]:text-muted-foreground',
+                          )}
+                          aria-label="Cash In"
                         >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-                    </tr>
+                          <TrendingUp className="h-3.5 w-3.5" />
+                          In
+                        </ToggleGroupItem>
+                        <ToggleGroupItem
+                          value="cash_out"
+                          className={cn(
+                            'h-9 px-2 gap-1 text-xs font-medium border border-border rounded-md',
+                            'data-[state=on]:bg-red-500/20 data-[state=on]:text-red-400 data-[state=on]:border-red-500/40',
+                            'data-[state=off]:text-muted-foreground',
+                          )}
+                          aria-label="Cash Out"
+                        >
+                          <TrendingDown className="h-3.5 w-3.5" />
+                          Out
+                        </ToggleGroupItem>
+                      </ToggleGroup>
+
+                      {/* Delete */}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteRow(d._draftId)}
+                        title="Delete row"
+                        className="h-9 w-9 text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
+              </div>
+            </div>
           )}
         </div>
 
-        <div
-          className="cf-dialog-actions"
-          style={{
-            margin: 0,
-            padding: '16px 24px',
-            borderTop: '1px solid hsl(var(--border))',
-            background: 'hsl(var(--card))',
-            position: 'sticky',
-            bottom: 0,
-            zIndex: 2,
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: 8,
-          }}
-        >
-          <button className="cf-btn cf-btn-ghost" onClick={onClose} disabled={saving}>Cancel</button>
-          <button className="cf-btn cf-btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-        </div>
-      </div>
-    </div>
+        {/* Footer */}
+        <DialogFooter className="px-6 py-4 border-t border-border bg-card sticky bottom-0 z-10 flex-row sm:justify-between items-center gap-3">
+          <p className="text-xs text-muted-foreground hidden sm:block">
+            Changes apply to the weekly cash flow view after saving.
+          </p>
+          <div className="flex items-center gap-2 ml-auto">
+            <Button variant="ghost" onClick={onClose} disabled={saving}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={saving} className="gap-1.5">
+              <Save className="h-4 w-4" />
+              {saving ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
-
-  return createPortal(modal, document.body);
 }
