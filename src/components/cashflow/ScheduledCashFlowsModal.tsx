@@ -307,7 +307,7 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
                   return (
                     <div
                       key={d._draftId}
-                      className="grid grid-cols-[20px_minmax(160px,1.1fr)_minmax(180px,1.3fr)_minmax(130px,0.8fr)_minmax(280px,1.8fr)_minmax(170px,0.9fr)_32px] gap-3 items-start px-2 py-3 border-b border-border/60 hover:bg-muted/40 transition-colors rounded-md"
+                      className="grid grid-cols-[16px_minmax(0,1.1fr)_minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,2fr)_140px_32px] gap-2 items-start px-2 py-3 border-b border-border/60 hover:bg-muted/40 transition-colors rounded-md"
                     >
                       {/* Drag handle */}
                       <div className="flex items-center justify-center pt-2 text-muted-foreground/50 cursor-grab">
