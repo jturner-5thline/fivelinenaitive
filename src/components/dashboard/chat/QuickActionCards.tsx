@@ -42,7 +42,7 @@ const actions = [
 
 export function QuickActionCards({ onAction }: Props) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
       {actions.map((action) => (
         <button
           key={action.label}
@@ -57,11 +57,7 @@ export function QuickActionCards({ onAction }: Props) {
           <div className="flex items-center gap-1.5">
             <action.icon className={cn('h-3.5 w-3.5', action.color)} />
             <span className="text-xs font-medium">{action.label}</span>
-            {action.requiresInput ? (
-              <Pencil className="h-2.5 w-2.5 text-muted-foreground/40" />
-            ) : (
-              <Zap className="h-2.5 w-2.5 text-muted-foreground/40" />
-            )}
+            <Zap className="h-2.5 w-2.5 text-muted-foreground/40" />
           </div>
           <span className="text-[10px] text-muted-foreground leading-tight">
             {action.description}
