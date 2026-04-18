@@ -1250,6 +1250,78 @@ export type Database = {
           },
         ]
       }
+      cell_comments: {
+        Row: {
+          cell_value_snapshot: number | null
+          company_id: string
+          content_html: string
+          content_json: Json | null
+          content_text: string
+          created_at: string
+          created_by: string
+          id: string
+          line_item_key: string
+          line_item_label: string
+          parent_comment_id: string | null
+          plan_id: string | null
+          updated_at: string
+          week_ending: string | null
+          week_key: string
+          week_num: number | null
+        }
+        Insert: {
+          cell_value_snapshot?: number | null
+          company_id: string
+          content_html?: string
+          content_json?: Json | null
+          content_text?: string
+          created_at?: string
+          created_by: string
+          id?: string
+          line_item_key: string
+          line_item_label: string
+          parent_comment_id?: string | null
+          plan_id?: string | null
+          updated_at?: string
+          week_ending?: string | null
+          week_key: string
+          week_num?: number | null
+        }
+        Update: {
+          cell_value_snapshot?: number | null
+          company_id?: string
+          content_html?: string
+          content_json?: Json | null
+          content_text?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          line_item_key?: string
+          line_item_label?: string
+          parent_comment_id?: string | null
+          plan_id?: string | null
+          updated_at?: string
+          week_ending?: string | null
+          week_key?: string
+          week_num?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cell_comments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cell_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "cell_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channel_entries: {
         Row: {
           channel_type: Database["public"]["Enums"]["channel_type"]

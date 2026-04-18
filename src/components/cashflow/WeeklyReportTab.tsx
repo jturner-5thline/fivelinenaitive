@@ -1,11 +1,16 @@
-import { useState, useEffect, memo, useCallback } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { useState, useEffect, memo, useCallback, useRef } from 'react';
+import { ChevronDown, ChevronRight, MessageSquare } from 'lucide-react';
 import type { WeeklyData, SidebarData, PlanSnapshot, ThemeMode, WeeklyOverrides } from './types';
 import { fmtAbbrev } from './formatters';
 import { WeeklyCharts } from './WeeklyCharts';
 import { WeeklySidebar } from './WeeklySidebar';
 import { useGridWheelPassthrough } from './useGridWheelPassthrough';
 import { ACCOUNT_OPTIONS } from './scheduledCashFlows';
+import { useCellComments, cellCommentKey } from './cellComments/useCellComments';
+import { CellCommentMenu } from './cellComments/CellCommentMenu';
+import { CellCommentPopover } from './cellComments/CellCommentPopover';
+import type { CellComment } from './cellComments/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SidebarItem {
   id?: string;
@@ -22,6 +27,7 @@ interface WeeklyReportTabProps {
   sidebarDbItems: SidebarItem[];
   theme: ThemeMode;
   isAdmin: boolean;
+  companyId?: string | null;
   planSnapshots: PlanSnapshot[];
   activePlanId: string | null;
   onActivePlanChange: (id: string | null) => void;
@@ -102,11 +108,14 @@ const TRANSFERS_COLLAPSE_KEY = 'cf:internalTransfersCollapsed';
 
 export const WeeklyReportTab = memo(function WeeklyReportTab({
   weeklyData, weeklyOverrides, onCashOverride,
-  sidebarData, sidebarDbItems, theme, isAdmin,
+  sidebarData, sidebarDbItems, theme, isAdmin, companyId,
   planSnapshots, activePlanId, onActivePlanChange, onSavePlan,
   onExport, onConfigureScheduled, onSidebarEditItem, onSidebarRemoveItem, onSidebarAddItem, onSidebarRemoveDbItem,
   onNoteEdit, onNoteRemove, onNoteAdd,
 }: WeeklyReportTabProps) {
+  const { user } = useAuth();
+  const { comments: cellComments, byCell: cellCommentsByCell, addComment: addCellComment, deleteComment: deleteCellComment } =
+    useCellComments({ companyId, planId: activePlanId });
   const safeWeeklyData = weeklyData || {};
   const safeOverrides = weeklyOverrides || {};
   const safeSidebarData: SidebarData = {
@@ -177,18 +186,97 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   const toggleDebtAdv = useCallback(() => setDebtAdvCollapsed(p => !p), []);
   const toggleTransfers = useCallback(() => setTransfersCollapsed(p => !p), []);
 
-  // Compute parent (Debt Advisory Revenue) value per week as sum of sub-categories
   const parentSumForWeek = useCallback((entry: any): number => {
     let s = 0;
     for (const k of DEBT_ADV_SUBKEYS) s += Number(entry?.[k]) || 0;
     return s;
   }, []);
 
-  // Per-account internal-transfer value for a week (Transfer:<account>)
-  // Returns 0 if no per-account data exists (transfer entries may not yet be split by account).
   const transferAccountValue = useCallback((entry: any, account: string): number => {
     return Number(entry?.[`${TRANSFER_ACCOUNT_KEY_PREFIX}${account}`]) || 0;
   }, []);
+
+  // ===== Cell-comment menu / popover state =====
+  type CellCtx = {
+    line_item_key: string;
+    line_item_label: string;
+    week_key: string;
+    week_num: number | null;
+    week_ending: string | null;
+    cell_value_snapshot: number | null;
+  };
+  const [menuState, setMenuState] = useState<{ x: number; y: number; ctx: CellCtx } | null>(null);
+  const [popoverState, setPopoverState] = useState<{ x: number; y: number; ctx: CellCtx; mode: 'compose' | 'view' } | null>(null);
+  const cellRefs = useRef<Map<string, HTMLTableCellElement>>(new Map());
+
+  const registerCellRef = useCallback((key: string, el: HTMLTableCellElement | null) => {
+    if (el) cellRefs.current.set(key, el);
+    else cellRefs.current.delete(key);
+  }, []);
+
+  const handleCellContextMenu = useCallback((e: React.MouseEvent<HTMLTableCellElement>, ctx: CellCtx) => {
+    e.preventDefault();
+    setPopoverState(null);
+    setMenuState({ x: e.clientX, y: e.clientY, ctx });
+  }, []);
+
+  const handleMenuAdd = useCallback(() => {
+    if (!menuState) return;
+    setPopoverState({ x: menuState.x, y: menuState.y, ctx: menuState.ctx, mode: 'compose' });
+    setMenuState(null);
+  }, [menuState]);
+
+  const handleMenuView = useCallback(() => {
+    if (!menuState) return;
+    setPopoverState({ x: menuState.x, y: menuState.y, ctx: menuState.ctx, mode: 'view' });
+    setMenuState(null);
+  }, [menuState]);
+
+  const handleSubmitComment = useCallback(async (html: string) => {
+    if (!popoverState) return;
+    const c = popoverState.ctx;
+    await addCellComment({
+      line_item_key: c.line_item_key,
+      line_item_label: c.line_item_label,
+      week_key: c.week_key,
+      week_num: c.week_num,
+      week_ending: c.week_ending,
+      cell_value_snapshot: c.cell_value_snapshot,
+      content_html: html,
+      content_text: '',
+    });
+  }, [popoverState, addCellComment]);
+
+  const scrollToCell = useCallback((line_item_key: string, week_key: string) => {
+    const el = cellRefs.current.get(cellCommentKey(line_item_key, week_key));
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    el.classList.remove('cf-cell-highlight');
+    void el.offsetWidth;
+    el.classList.add('cf-cell-highlight');
+    setTimeout(() => el.classList.remove('cf-cell-highlight'), 2000);
+  }, []);
+
+  const handleSidebarCommentClick = useCallback((c: CellComment) => {
+    scrollToCell(c.line_item_key, c.week_key);
+    const el = cellRefs.current.get(cellCommentKey(c.line_item_key, c.week_key));
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      setPopoverState({
+        x: rect.left,
+        y: rect.bottom + 4,
+        ctx: {
+          line_item_key: c.line_item_key,
+          line_item_label: c.line_item_label,
+          week_key: c.week_key,
+          week_num: c.week_num,
+          week_ending: c.week_ending,
+          cell_value_snapshot: c.cell_value_snapshot,
+        },
+        mode: 'view',
+      });
+    }
+  }, [scrollToCell]);
 
   const activePlan = activePlanId ? safePlanSnapshots.find(p => p.id === activePlanId) : null;
 
