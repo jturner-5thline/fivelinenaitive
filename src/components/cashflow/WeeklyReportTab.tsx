@@ -1,4 +1,4 @@
-import { useState, memo, useCallback } from 'react';
+import { useState, useEffect, memo, useCallback } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { WeeklyData, SidebarData, PlanSnapshot, ThemeMode, WeeklyOverrides } from './types';
 import { fmtAbbrev } from './formatters';
@@ -36,13 +36,28 @@ interface WeeklyReportTabProps {
   onNoteAdd: () => void;
 }
 
-const WEEKLY_ROW_ORDER = [
+const DEBT_ADV_PARENT_KEY = 'Debt Advisory Revenue';
+const DEBT_ADV_SUBKEYS = ['Retainers', 'Milestones', 'Closing Fees', 'Referral Fees'] as const;
+
+const WEEKLY_ROW_ORDER: Array<{
+  key: string;
+  section: string;
+  isTotal?: boolean;
+  isHeader?: boolean;
+  label?: string;
+  isParent?: boolean;
+  parent?: string;
+}> = [
   { key: 'BEGINNING CASH', section: 'position', isTotal: true },
   { key: 'ENDING CASH', section: 'position', isTotal: true },
   { key: "Add'l Liquidity (Delayed Draw)", section: 'position', isTotal: false },
   { key: 'TOTAL CASH ON HAND', section: 'position', isTotal: true },
   { key: '__sep_receipts', section: 'receipts', label: '( + ) CASH RECEIPTS', isHeader: true },
-  { key: 'Debt Advisory Revenue', section: 'receipts', isTotal: false },
+  { key: DEBT_ADV_PARENT_KEY, section: 'receipts', isTotal: false, isParent: true },
+  { key: 'Retainers', section: 'receipts', isTotal: false, parent: DEBT_ADV_PARENT_KEY },
+  { key: 'Milestones', section: 'receipts', isTotal: false, parent: DEBT_ADV_PARENT_KEY },
+  { key: 'Closing Fees', section: 'receipts', isTotal: false, parent: DEBT_ADV_PARENT_KEY },
+  { key: 'Referral Fees', section: 'receipts', isTotal: false, parent: DEBT_ADV_PARENT_KEY },
   { key: 'FinServ Revenue', section: 'receipts', isTotal: false },
   { key: 'Technology Revenue', section: 'receipts', isTotal: false },
   { key: 'Loan Proceeds', section: 'receipts', isTotal: false },
@@ -66,6 +81,8 @@ const WEEKLY_ROW_ORDER = [
   { key: 'Internal Transfers', section: 'summary', isTotal: false },
   { key: 'NET CHANGE', section: 'summary', isTotal: true },
 ];
+
+const DEBT_ADV_COLLAPSE_KEY = 'cf:debtAdvisoryCollapsed';
 
 export const WeeklyReportTab = memo(function WeeklyReportTab({
   weeklyData, weeklyOverrides, onCashOverride,
@@ -103,10 +120,35 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   const [savePlanOpen, setSavePlanOpen] = useState(false);
   const [planName, setPlanName] = useState('');
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const [debtAdvCollapsed, setDebtAdvCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem(DEBT_ADV_COLLAPSE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
   const gridWrapRef = useGridWheelPassthrough<HTMLDivElement>();
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(DEBT_ADV_COLLAPSE_KEY, debtAdvCollapsed ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }, [debtAdvCollapsed]);
 
   const toggleSection = useCallback((section: string) => {
     setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  }, []);
+
+  const toggleDebtAdv = useCallback(() => setDebtAdvCollapsed(p => !p), []);
+
+  // Compute parent (Debt Advisory Revenue) value per week as sum of sub-categories
+  const parentSumForWeek = useCallback((entry: any): number => {
+    let s = 0;
+    for (const k of DEBT_ADV_SUBKEYS) s += Number(entry?.[k]) || 0;
+    return s;
   }, []);
 
   const activePlan = activePlanId ? safePlanSnapshots.find(p => p.id === activePlanId) : null;
@@ -216,8 +258,14 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                 }
 
                 const isTotal = rowDef.isTotal;
+                const isParent = rowDef.isParent === true;
+                const isChild = !!rowDef.parent;
                 // Hide detail rows when section is collapsed (but keep totals visible)
                 if (!isTotal && collapsedSections[rowDef.section]) {
+                  return null;
+                }
+                // Hide child sub-rows when their parent is collapsed
+                if (isChild && rowDef.parent === DEBT_ADV_PARENT_KEY && debtAdvCollapsed) {
                   return null;
                 }
                 const isCashRow = rowDef.key === 'BEGINNING CASH' || rowDef.key === 'ENDING CASH';
@@ -225,13 +273,37 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                   ? (rowDef.key === 'BEGINNING CASH' ? 'beginningCash' : 'endingCash')
                   : null;
                 return (
-                  <tr key={rowDef.key} className={isTotal ? 'cf-total-row' : 'cf-indent'}>
-                    <td className="cf-label-col">{rowDef.key}</td>
+                  <tr
+                    key={rowDef.key}
+                    className={`${isTotal ? 'cf-total-row' : 'cf-indent'}${isChild ? ' cf-subcategory-row' : ''}${isParent ? ' cf-parent-row' : ''}`}
+                    style={isParent ? { cursor: 'pointer' } : undefined}
+                    onClick={isParent ? toggleDebtAdv : undefined}
+                  >
+                    <td
+                      className="cf-label-col"
+                      style={
+                        isChild
+                          ? { paddingLeft: 32, color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem' }
+                          : isParent
+                            ? { display: 'flex', alignItems: 'center', gap: 4 }
+                            : undefined
+                      }
+                    >
+                      {isParent && (debtAdvCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />)}
+                      {rowDef.key}
+                    </td>
                     {visibleWeeks.map(([weekKey, entry]) => {
-                      const val = (entry[rowDef.key] as number) || 0;
+                      const rawVal = isParent
+                        ? parentSumForWeek(entry)
+                        : ((entry[rowDef.key] as number) || 0);
+                      const val = rawVal;
                       const displayVal = rowDef.section === 'disbursements' && !isTotal && val > 0 ? -val : val;
                       const planEntry = activePlan?.weeklyData?.[weekKey];
-                      const planVal = planEntry ? ((planEntry[rowDef.key] as number) || 0) : null;
+                      const planVal = planEntry
+                        ? (isParent
+                            ? parentSumForWeek(planEntry)
+                            : ((planEntry[rowDef.key] as number) || 0))
+                        : null;
                       const isOverridden = !!(isCashRow && overrideField && safeOverrides[weekKey]?.[overrideField] !== undefined);
                       const editable = isAdmin && isCashRow && !!onCashOverride;
 

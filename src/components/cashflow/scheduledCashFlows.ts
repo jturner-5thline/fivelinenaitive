@@ -34,13 +34,42 @@ export const ACCOUNT_OPTIONS = [
   'M&T Acc.',
 ] as const;
 
+// Sub-categories nested under "Debt Advisory Revenue"
+export const DEBT_ADVISORY_SUBCATEGORIES = [
+  'Retainers',
+  'Milestones',
+  'Closing Fees',
+  'Referral Fees',
+] as const;
+
+// Default fallback when a legacy entry is on the parent without a sub-category
+export const DEBT_ADVISORY_DEFAULT_SUBCATEGORY = 'Retainers';
+
+// Flat selectable Cash-In categories (sub-categories replace the parent for storage)
 export const CASH_IN_CATEGORIES = [
-  'Debt Advisory Revenue',
+  ...DEBT_ADVISORY_SUBCATEGORIES,
   'FinServ Revenue',
   'Technology Revenue',
   'Loan Proceeds',
   'Other Receipts',
 ] as const;
+
+// Grouped Cash-In options for the Configure modal Select
+export const CASH_IN_GROUPED_OPTIONS: ReadonlyArray<{
+  group?: string;
+  options: ReadonlyArray<string>;
+}> = [
+  { group: 'Debt Advisory Revenue', options: DEBT_ADVISORY_SUBCATEGORIES },
+  { options: ['FinServ Revenue', 'Technology Revenue', 'Loan Proceeds', 'Other Receipts'] },
+];
+
+// Map child category -> parent for weekly grid roll-up
+export const CASH_IN_PARENT_MAP: Record<string, string> = {
+  Retainers: 'Debt Advisory Revenue',
+  Milestones: 'Debt Advisory Revenue',
+  'Closing Fees': 'Debt Advisory Revenue',
+  'Referral Fees': 'Debt Advisory Revenue',
+};
 
 export const CASH_OUT_CATEGORIES = [
   'Advertising & Marketing',
@@ -197,9 +226,13 @@ export function mergeScheduledIntoWeekly(
       const wk = findWeekKey(occ);
       if (!wk) continue;
       const target = out[wk] as any;
-      const cat = entry.category;
+      // Migrate legacy entries stored on parent "Debt Advisory Revenue" to the default sub-category
+      let cat = entry.category;
+      if (cat === 'Debt Advisory Revenue') cat = DEBT_ADVISORY_DEFAULT_SUBCATEGORY;
       const amt = Number(entry.amount) || 0;
       target[cat] = (Number(target[cat]) || 0) + amt;
+      // Note: parent "Debt Advisory Revenue" value is computed in the weekly view as
+      // the sum of its sub-categories, so we do NOT write to the parent key here.
       if (entry.flow_type === 'cash_in') {
         target['TOTAL RECEIPTS'] = (Number(target['TOTAL RECEIPTS']) || 0) + amt;
         target['NET CHANGE'] = (Number(target['NET CHANGE']) || 0) + amt;

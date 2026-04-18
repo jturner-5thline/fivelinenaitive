@@ -128,6 +128,10 @@ export const SECTION_KEYS = {
 // Weekly category mapping for daily-to-weekly aggregation
 export const WEEKLY_CATEGORIES = [
   'Debt Advisory Revenue',
+  'Retainers',
+  'Milestones',
+  'Closing Fees',
+  'Referral Fees',
   'FinServ Revenue',
   'Technology Revenue',
   'Loan Proceeds',

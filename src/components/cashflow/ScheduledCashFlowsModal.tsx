@@ -28,6 +28,8 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
+  SelectGroup,
+  SelectLabel,
 } from '@/components/ui/select';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -36,6 +38,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
   ACCOUNT_OPTIONS,
+  CASH_IN_GROUPED_OPTIONS,
   CASH_IN_CATEGORIES,
   CASH_OUT_CATEGORIES,
   DAY_OF_WEEK_LABELS,
@@ -303,7 +306,6 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
               {/* Rows */}
               <div className="flex flex-col">
                 {drafts.map((d) => {
-                  const cats = d.flow_type === 'cash_in' ? CASH_IN_CATEGORIES : CASH_OUT_CATEGORIES;
                   return (
                     <div
                       key={d._draftId}
@@ -346,11 +348,32 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
                           </div>
                         </SelectTrigger>
                         <SelectContent>
-                          {cats.map((c) => (
-                            <SelectItem key={c} value={c}>
-                              {c}
-                            </SelectItem>
-                          ))}
+                          {d.flow_type === 'cash_in'
+                            ? CASH_IN_GROUPED_OPTIONS.map((g, gi) =>
+                                g.group ? (
+                                  <SelectGroup key={`${gi}-${g.group}`}>
+                                    <SelectLabel>{g.group}</SelectLabel>
+                                    {g.options.map((c) => (
+                                      <SelectItem key={c} value={c} className="pl-10">
+                                        {c}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectGroup>
+                                ) : (
+                                  <SelectGroup key={`g-${gi}`}>
+                                    {g.options.map((c) => (
+                                      <SelectItem key={c} value={c}>
+                                        {c}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectGroup>
+                                ),
+                              )
+                            : CASH_OUT_CATEGORIES.map((c) => (
+                                <SelectItem key={c} value={c}>
+                                  {c}
+                                </SelectItem>
+                              ))}
                         </SelectContent>
                       </Select>
 
