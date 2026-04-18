@@ -36,13 +36,28 @@ interface WeeklyReportTabProps {
   onNoteAdd: () => void;
 }
 
-const WEEKLY_ROW_ORDER = [
+const DEBT_ADV_PARENT_KEY = 'Debt Advisory Revenue';
+const DEBT_ADV_SUBKEYS = ['Retainers', 'Milestones', 'Closing Fees', 'Referral Fees'] as const;
+
+const WEEKLY_ROW_ORDER: Array<{
+  key: string;
+  section: string;
+  isTotal?: boolean;
+  isHeader?: boolean;
+  label?: string;
+  isParent?: boolean;
+  parent?: string;
+}> = [
   { key: 'BEGINNING CASH', section: 'position', isTotal: true },
   { key: 'ENDING CASH', section: 'position', isTotal: true },
   { key: "Add'l Liquidity (Delayed Draw)", section: 'position', isTotal: false },
   { key: 'TOTAL CASH ON HAND', section: 'position', isTotal: true },
   { key: '__sep_receipts', section: 'receipts', label: '( + ) CASH RECEIPTS', isHeader: true },
-  { key: 'Debt Advisory Revenue', section: 'receipts', isTotal: false },
+  { key: DEBT_ADV_PARENT_KEY, section: 'receipts', isTotal: false, isParent: true },
+  { key: 'Retainers', section: 'receipts', isTotal: false, parent: DEBT_ADV_PARENT_KEY },
+  { key: 'Milestones', section: 'receipts', isTotal: false, parent: DEBT_ADV_PARENT_KEY },
+  { key: 'Closing Fees', section: 'receipts', isTotal: false, parent: DEBT_ADV_PARENT_KEY },
+  { key: 'Referral Fees', section: 'receipts', isTotal: false, parent: DEBT_ADV_PARENT_KEY },
   { key: 'FinServ Revenue', section: 'receipts', isTotal: false },
   { key: 'Technology Revenue', section: 'receipts', isTotal: false },
   { key: 'Loan Proceeds', section: 'receipts', isTotal: false },
@@ -66,6 +81,8 @@ const WEEKLY_ROW_ORDER = [
   { key: 'Internal Transfers', section: 'summary', isTotal: false },
   { key: 'NET CHANGE', section: 'summary', isTotal: true },
 ];
+
+const DEBT_ADV_COLLAPSE_KEY = 'cf:debtAdvisoryCollapsed';
 
 export const WeeklyReportTab = memo(function WeeklyReportTab({
   weeklyData, weeklyOverrides, onCashOverride,
