@@ -46,13 +46,13 @@ const actions = [
 
 export function QuickActionCards({ onAction }: Props) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
       {actions.map((action) => (
         <button
           key={action.label}
           onClick={() => onAction(action.prompt, action.requiresInput)}
           className={cn(
-            'group flex items-start gap-3 p-3 rounded-xl text-left',
+            'group flex items-start gap-3 p-3 rounded-xl text-left min-w-0',
             'border bg-card/40 backdrop-blur-sm',
             'transition-all duration-200',
             'hover:bg-muted/10 hover:shadow-md hover:-translate-y-px',
@@ -71,7 +71,7 @@ export function QuickActionCards({ onAction }: Props) {
             <div className="text-xs font-medium text-foreground leading-tight truncate">
               {action.label}
             </div>
-            <div className="mt-0.5 text-[11px] text-muted-foreground leading-tight truncate">
+            <div className="mt-0.5 text-[11px] text-muted-foreground leading-snug line-clamp-2">
               {action.description}
             </div>
           </div>
