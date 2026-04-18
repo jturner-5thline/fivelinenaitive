@@ -42,9 +42,20 @@ export interface NewsItem {
   meta?: Record<string, any>;
 }
 
-export function useCatchUpData(enabled: boolean) {
+export function useCatchUpData(enabled: boolean, targetDealOwnerName?: string) {
   const { user } = useAuth();
-  const { deals } = useDealsContext();
+  const { deals: allDeals } = useDealsContext();
+  const window = useBriefingWindow();
+
+  // When delegated (targetDealOwnerName set), narrow the deal set to deals
+  // where that user is Owner OR Manager. This narrows every downstream
+  // section: highlights, news items, risk deals, milestones, etc.
+  const deals = useMemo(
+    () => (targetDealOwnerName ? getDealsForUserName(allDeals, targetDealOwnerName) : allDeals),
+    [allDeals, targetDealOwnerName],
+  );
+  const dealIdSet = useMemo(() => new Set(deals.map(d => d.id)), [deals]);
+  const isDelegated = !!targetDealOwnerName;
   const window = useBriefingWindow();
 
   return useQuery({
