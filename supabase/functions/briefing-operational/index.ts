@@ -207,11 +207,19 @@ serve(async (req) => {
   }
 
   try {
-    // Check cache first
-    const cached = getCached();
-    if (cached) {
-      console.log('Returning cached operational data');
-      return jsonResponse(cached);
+    // Read optional targetAssigneeName from query string OR body
+    const url = new URL(req.url);
+    let targetAssigneeName = url.searchParams.get('targetAssigneeName') || '';
+
+    if (!targetAssigneeName && (req.method === 'POST' || req.method === 'PUT')) {
+      try {
+        const body = await req.clone().json();
+        if (typeof body?.targetAssigneeName === 'string') {
+          targetAssigneeName = body.targetAssigneeName;
+        }
+      } catch {
+        // ignore non-JSON bodies
+      }
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -226,6 +234,23 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await anonClient.auth.getUser();
     if (userError || !user) {
       return jsonResponse({ error: 'Unauthorized', fallback: true }, 401);
+    }
+
+    // If a targetAssigneeName is requested, verify the caller is allow-listed
+    // for that assignee. Otherwise default to the caller's own briefing.
+    if (targetAssigneeName && !isAllowedAssigneeDelegate(user.email, targetAssigneeName)) {
+      console.warn(
+        `[briefing-operational] DENIED assignee delegation: caller=${user.email} target=${targetAssigneeName}`
+      );
+      return jsonResponse({ error: 'Not authorized to view this user\'s operational briefing' }, 403);
+    }
+
+    // Cache key: per assignee filter so James's view and Niki's view stay separate
+    const cacheKey = targetAssigneeName ? `assignee:${targetAssigneeName}` : 'self';
+    const cached = getCached(cacheKey);
+    if (cached) {
+      console.log(`Returning cached operational data (${cacheKey})`);
+      return jsonResponse(cached);
     }
 
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
