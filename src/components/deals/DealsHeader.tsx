@@ -212,6 +212,7 @@ export function DealsHeader() {
           title="Niki's Daily Briefing"
           targetUserId={NIKI_USER_ID}
           targetAssigneeName={NIKI_ASSIGNEE_NAME}
+          excludeTabs={['financial']}
         />
       )}
     </header>
