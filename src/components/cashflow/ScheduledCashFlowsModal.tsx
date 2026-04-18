@@ -150,11 +150,22 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
 
   if (!open) return null;
 
-  return (
-    <div className="cf-overlay" onClick={onClose}>
+  const modal = (
+    <div
+      className="cf-overlay"
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, zIndex: 1000 }}
+    >
       <div
         className="cf-dialog"
-        style={{ maxWidth: 1200, width: '95vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
+        style={{
+          maxWidth: 1200,
+          width: '95vw',
+          maxHeight: '90vh',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="cf-dialog-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
