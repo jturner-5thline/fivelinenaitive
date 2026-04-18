@@ -16,6 +16,7 @@ interface HeaderProps {
   onTabChange: (tab: ActiveTab) => void;
   onUndo: () => void;
   onOpenActivityLog: () => void;
+  onConfigureScheduled?: () => void;
 }
 
 function LogoSVG() {
@@ -78,7 +79,7 @@ function EyeIcon() {
 export const CashFlowHeader = memo(function CashFlowHeader({
   role, theme, activeTab, cashIn, cashOut, netChange,
   undoCount, activityCount, onRoleChange, onThemeToggle,
-  onTabChange, onUndo, onOpenActivityLog,
+  onTabChange, onUndo, onOpenActivityLog, onConfigureScheduled,
 }: HeaderProps) {
   return (
     <>
@@ -138,6 +139,15 @@ export const CashFlowHeader = memo(function CashFlowHeader({
         <button className="cf-tab active" onClick={() => onTabChange('weekly')}>
           Weekly Report
         </button>
+        {onConfigureScheduled && (
+          <button
+            className="cf-btn cf-btn-secondary"
+            style={{ marginLeft: 'auto', alignSelf: 'center', marginRight: 'var(--space-4)' }}
+            onClick={onConfigureScheduled}
+          >
+            Configure
+          </button>
+        )}
       </div>
     </>
   );
