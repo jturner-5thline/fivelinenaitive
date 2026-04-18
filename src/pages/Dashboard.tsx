@@ -227,7 +227,7 @@ export default function Dashboard() {
             onDismiss={() => dismissHint('dashboard-quick-actions')}
             side="bottom"
           >
-          <div className={`grid gap-3 md:gap-4 ${isJTurner ? 'grid-cols-5' : 'grid-cols-4'}`}>
+          <div className={`grid gap-3 md:gap-4 ${isJTurner ? 'grid-cols-4' : 'grid-cols-3'}`}>
             <Card
               className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
               onClick={() => setCalendarOpen(true)}
