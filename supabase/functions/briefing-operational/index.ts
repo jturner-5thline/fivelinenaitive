@@ -40,20 +40,33 @@ type OperationalTask = {
   is_milestone: boolean; days_overdue: number; last_activity_at: string | null;
 };
 
-// ── In-memory cache ──────────────────────────────────────────
+// ── In-memory cache (keyed by assignee filter so different users don't bleed) ──
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-let cachedResponse: { data: unknown; timestamp: number } | null = null;
+const cacheByKey = new Map<string, { data: unknown; timestamp: number }>();
 
-function getCached(): unknown | null {
-  if (cachedResponse && (Date.now() - cachedResponse.timestamp) < CACHE_TTL_MS) {
-    return cachedResponse.data;
+function getCached(key: string): unknown | null {
+  const entry = cacheByKey.get(key);
+  if (entry && (Date.now() - entry.timestamp) < CACHE_TTL_MS) {
+    return entry.data;
   }
-  cachedResponse = null;
+  if (entry) cacheByKey.delete(key);
   return null;
 }
 
-function setCache(data: unknown) {
-  cachedResponse = { data, timestamp: Date.now() };
+function setCache(key: string, data: unknown) {
+  cacheByKey.set(key, { data, timestamp: Date.now() });
+}
+
+// MVP allow-list mirror of briefing-for-user. Only allow-listed callers
+// can request another user's filtered Asana view.
+const DELEGATE_ACCESS: Record<string, Set<string>> = {
+  'jturner@5thline.co': new Set(['Niki Heikali']),
+};
+
+function isAllowedAssigneeDelegate(callerEmail: string | undefined, assigneeName: string): boolean {
+  if (!callerEmail) return false;
+  const allowed = DELEGATE_ACCESS[callerEmail.toLowerCase()];
+  return !!allowed && allowed.has(assigneeName);
 }
 
 // ── Helpers ──────────────────────────────────────────────────
