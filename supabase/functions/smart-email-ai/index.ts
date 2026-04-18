@@ -751,6 +751,49 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
       parsed.cited_context_sources = dealContextSources.length > 0 ? dealContextSources : ["email_thread_only"];
     }
 
+    // For analyze_thread_workflow, post-process to ensure deal_id resolution.
+    // If Claude returned a deal name but no id (or vice versa), reconcile against
+    // our candidate list so the UI always has a real deal to target.
+    if (action === "analyze_thread_workflow" && typeof parsed === "object" && !parsed.raw) {
+      try {
+        const candidates = (typeof dealCandidates !== "undefined" ? dealCandidates : []) as any[];
+        const ld = parsed.likely_deal || {};
+        const norm = (s: string) => (s || "").toLowerCase().trim();
+
+        // 1) If id missing but name present, find by name.
+        if (!ld.id && ld.name) {
+          const wanted = norm(ld.name);
+          const match = candidates.find((c) => norm(c.company) === wanted || norm(c.name || "") === wanted)
+            || candidates.find((c) => norm(c.company).includes(wanted) || wanted.includes(norm(c.company)));
+          if (match) {
+            ld.id = match.id;
+            ld.name = match.company || ld.name;
+            if (!ld.confidence || ld.confidence === "low") ld.confidence = "medium";
+          }
+        }
+        // 2) If id present but name missing, fill name.
+        if (ld.id && !ld.name) {
+          const match = candidates.find((c) => c.id === ld.id);
+          if (match) ld.name = match.company;
+        }
+
+        // 3) Propagate resolved deal into recommended_update so the UI can act.
+        const rec = parsed.recommended_update || {};
+        if (rec.kind && rec.kind !== "none") {
+          if (!rec.deal_id && ld.id) rec.deal_id = ld.id;
+          if (!rec.deal_name && ld.name) rec.deal_name = ld.name;
+          // Rewrite the title if it still says "unknown" / placeholder
+          if (ld.name && rec.title && /unknown|the deal/i.test(rec.title)) {
+            rec.title = rec.title.replace(/unknown|the deal/gi, ld.name);
+          }
+        }
+        parsed.likely_deal = ld;
+        parsed.recommended_update = rec;
+      } catch (resolveErr) {
+        console.warn("workflow deal resolution skipped:", resolveErr);
+      }
+    }
+
     // Log AI usage
     if (action === "generate_draft_options") {
       try {
