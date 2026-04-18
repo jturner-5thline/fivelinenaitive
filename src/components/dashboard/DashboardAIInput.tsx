@@ -18,7 +18,7 @@ import { ProactiveAlerts } from './chat/ProactiveAlerts';
 import { QuickActionCards } from './chat/QuickActionCards';
 import { isBriefingPrompt, BRIEFING_MARKER } from './chat/MorningBriefing';
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dashboard-chat`;
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claude-dashboard-chat`;
 const CHAT_REQUEST_TIMEOUT_MS = 70_000;
 
 interface AssistantErrorState {
@@ -35,11 +35,10 @@ interface SuggestionConfig {
 }
 
 const suggestions: SuggestionConfig[] = [
-  { text: "Give me my morning briefing", requiresInput: false },
-  { text: "What's my pipeline conversion rate?", requiresInput: false },
-  { text: "Research [company name] for me", requiresInput: true, populateText: "Research [company name] for me" },
-  { text: "Draft a lender outreach email", requiresInput: false },
-  { text: "Find lenders for my biggest deal", requiresInput: false },
+  { text: "What are we waiting on?", requiresInput: false },
+  { text: "Who are our most active lenders?", requiresInput: false },
+  { text: "Stale Deals Analysis", requiresInput: false },
+  { text: "To-Do List", requiresInput: false },
 ];
 
 interface DashboardAIInputProps {
