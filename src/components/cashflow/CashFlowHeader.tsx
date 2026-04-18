@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { Clock } from 'lucide-react';
 import type { RoleMode, ThemeMode, ActiveTab } from './types';
 import { fmtShort } from './formatters';
 
