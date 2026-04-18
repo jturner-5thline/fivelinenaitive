@@ -76,10 +76,16 @@ export default {
 			'brand-gradient-hover': 'linear-gradient(135deg, #94C8FF, #5AA0EB)'
 		},
   		borderRadius: {
-			xl: '12px',
-  			lg: '8px',
-  			md: '6px',
-  			sm: '4px'
+			/* Unified radius scale — canonical = 8px for ALL bordered elements
+			   (buttons, cards, inputs, modals, popovers, widgets).
+			   Pills/avatars use rounded-full. Tiny chips may use rounded-sm (4px). */
+			'3xl': '8px',
+			'2xl': '8px',
+			xl: '8px',
+			lg: '8px',
+			md: '8px',
+			sm: '4px',
+			DEFAULT: '8px'
   		},
   		keyframes: {
   			'accordion-down': {
