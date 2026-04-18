@@ -1003,6 +1003,7 @@ export function CashFlowManager() {
           initialEntries={scheduledItems}
           onClose={() => setScheduledModalOpen(false)}
           onSave={async (entries) => {
+            pushUndo(`Update scheduled cash flows`);
             const ok = await saveScheduledItems(entries);
             if (ok) logAction(`Updated scheduled cash flows (${entries.length} entries)`);
             return ok;
