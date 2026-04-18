@@ -1308,7 +1308,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               setShowResumeBanner(false);
             }}
           />
-        )}
+        </div>
       </div>
 
       {/* Pop-out composer */}
