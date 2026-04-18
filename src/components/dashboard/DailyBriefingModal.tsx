@@ -534,8 +534,8 @@ import { classifyEmail, filterEmailsByCategory, EMAIL_CATEGORY_TABS, type EmailC
 import { useEmailClassifierData } from '@/hooks/useEmailClassifierData';
 
 // ── Tab: Email ─────────────────────────────────────────────────
-function EmailTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path: string) => void }) {
-  const { data, isLoading } = useEmailData(enabled);
+function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onNavigate: (path: string) => void; targetUserId?: string }) {
+  const { data, isLoading } = useEmailData(enabled, targetUserId);
   const [detail, setDetail] = useState<any>(null);
   const [subTab, setSubTab] = useState<EmailCategoryTab>('all');
   const { entities: classifierEntities, orgCtx } = useEmailClassifierData();
