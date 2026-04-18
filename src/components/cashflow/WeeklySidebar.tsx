@@ -1,6 +1,9 @@
 import { memo } from 'react';
+import { MessageSquare, Trash2 } from 'lucide-react';
 import type { SidebarData } from './types';
-import { fmtShort } from './formatters';
+import type { CellComment } from './cellComments/types';
+import { fmtShort, fmtAbbrev } from './formatters';
+import { authorDisplay, authorInitials, formatAbsoluteTime, formatRelativeTime } from './cellComments/formatAuthor';
 
 interface SidebarItem {
   id?: string;
@@ -20,11 +23,26 @@ interface WeeklySidebarProps {
   onNoteEdit: (index: number, value: string) => void;
   onNoteRemove: (index: number) => void;
   onNoteAdd: () => void;
+  cellComments?: CellComment[];
+  currentUserId?: string | null;
+  onCellCommentClick?: (comment: CellComment) => void;
+  onCellCommentDelete?: (comment: CellComment) => void;
+}
+
+function formatWeekHeader(weekKey: string, weekNum: number | null, weekEnding: string | null): string {
+  const dateSrc = weekEnding || weekKey;
+  const d = new Date(dateSrc + 'T00:00:00');
+  const fmt = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return weekNum ? `WK ${weekNum} – ${fmt}` : fmt;
 }
 
 export const WeeklySidebar = memo(function WeeklySidebar({
   data, dbItems, isAdmin, onEditItem, onRemoveItem, onAddItem, onRemoveDbItem,
   onNoteEdit, onNoteRemove, onNoteAdd,
+  cellComments = [],
+  currentUserId,
+  onCellCommentClick,
+  onCellCommentDelete,
 }: WeeklySidebarProps) {
   const cashInItems = Array.isArray(data?.cash_in_next_8_weeks) ? data.cash_in_next_8_weeks : [];
   const notes = Array.isArray(data?.notes) ? data.notes : [];
@@ -32,6 +50,12 @@ export const WeeklySidebar = memo(function WeeklySidebar({
   const manualTotal = cashInItems.reduce((s, i) => s + i.amount, 0);
   const dbTotal = dbEntries.reduce((s, i) => s + i.amount, 0);
   const total = manualTotal + dbTotal;
+
+  // Top-level (non-reply) cell comments, newest first
+  const topLevelCellComments = cellComments
+    .filter(c => !c.parent_comment_id)
+    .slice()
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
 
   return (
     <div className="cf-weekly-sidebar">
@@ -140,6 +164,88 @@ export const WeeklySidebar = memo(function WeeklySidebar({
             + Add Note
           </button>
         )}
+
+        {/* === Cell Comments sub-section === */}
+        <div className="cf-cell-comments-section">
+          <div className="cf-cell-comments-title">
+            <MessageSquare size={11} />
+            Cell Comments
+            <span style={{ marginLeft: 'auto', fontWeight: 500, color: 'var(--color-text-faint)' }}>
+              {topLevelCellComments.length}
+            </span>
+          </div>
+          {topLevelCellComments.length === 0 ? (
+            <div style={{ fontSize: '10px', color: 'var(--color-text-faint)', fontStyle: 'italic' }}>
+              Right-click any cell to add a comment.
+            </div>
+          ) : (
+            topLevelCellComments.map((c) => {
+              const canDelete = currentUserId === c.created_by;
+              const valueLabel = c.cell_value_snapshot !== null && c.cell_value_snapshot !== 0
+                ? fmtAbbrev(c.cell_value_snapshot)
+                : '—';
+              return (
+                <div
+                  key={c.id}
+                  className="cf-cell-comment-card"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onCellCommentClick?.(c)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onCellCommentClick?.(c);
+                    }
+                  }}
+                >
+                  <div className="cf-cell-comment-header-row">
+                    <span className="cf-cell-comment-pill">Cell</span>
+                    <span style={{ fontWeight: 600 }}>{c.line_item_label}</span>
+                    <span className="cf-cell-comment-meta-pill">
+                      {formatWeekHeader(c.week_key, c.week_num, c.week_ending)}
+                    </span>
+                    <span className="cf-cell-comment-meta-pill">{valueLabel}</span>
+                  </div>
+                  <div
+                    className="cf-cell-comment-body"
+                    dangerouslySetInnerHTML={{ __html: c.content_html }}
+                  />
+                  <div className="cf-cell-comment-footer">
+                    <span className="cf-cell-comment-author-avatar" aria-hidden>{authorInitials(c)}</span>
+                    <span>— {authorDisplay(c)}</span>
+                    <span title={formatAbsoluteTime(c.created_at)} style={{ marginLeft: 'auto' }}>
+                      {formatRelativeTime(c.created_at)}
+                    </span>
+                    {canDelete && onCellCommentDelete && (
+                      <button
+                        type="button"
+                        className="cf-row-remove"
+                        style={{
+                          opacity: 0.7,
+                          background: 'transparent',
+                          border: 'none',
+                          padding: 0,
+                          marginLeft: 4,
+                          cursor: 'pointer',
+                          color: 'var(--color-negative)',
+                          display: 'flex',
+                          alignItems: 'center',
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onCellCommentDelete(c);
+                        }}
+                        aria-label="Delete comment"
+                      >
+                        <Trash2 size={10} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
   );
