@@ -226,9 +226,16 @@ export function mergeScheduledIntoWeekly(
       const wk = findWeekKey(occ);
       if (!wk) continue;
       const target = out[wk] as any;
-      const cat = entry.category;
+      // Migrate legacy entries stored on parent "Debt Advisory Revenue" to the default sub-category
+      let cat = entry.category;
+      if (cat === 'Debt Advisory Revenue') cat = DEBT_ADVISORY_DEFAULT_SUBCATEGORY;
       const amt = Number(entry.amount) || 0;
       target[cat] = (Number(target[cat]) || 0) + amt;
+      // Roll up child -> parent if applicable
+      const parent = CASH_IN_PARENT_MAP[cat];
+      if (parent) {
+        target[parent] = (Number(target[parent]) || 0) + amt;
+      }
       if (entry.flow_type === 'cash_in') {
         target['TOTAL RECEIPTS'] = (Number(target['TOTAL RECEIPTS']) || 0) + amt;
         target['NET CHANGE'] = (Number(target['NET CHANGE']) || 0) + amt;
