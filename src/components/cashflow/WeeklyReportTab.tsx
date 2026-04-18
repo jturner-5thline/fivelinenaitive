@@ -75,7 +75,6 @@ const WEEKLY_ROW_ORDER: Array<{
   { key: 'Office & Admin', section: 'disbursements', isTotal: false },
   { key: 'Loan Payments', section: 'disbursements', isTotal: false },
   { key: 'Other Disbursements', section: 'disbursements', isTotal: false },
-  { key: 'TOTAL DISBURSEMENTS', section: 'disbursements', isTotal: true },
   { key: '__sep_net', section: 'summary', label: 'NET CHANGE', isHeader: true },
   { key: 'Internal Transfers', section: 'summary', isTotal: false },
   { key: 'NET CHANGE', section: 'summary', isTotal: true },
