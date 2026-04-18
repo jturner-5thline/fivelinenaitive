@@ -397,6 +397,7 @@
     -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-md);
+  }
   .glass-card-accent {
     background: var(--glass-surface);
     backdrop-filter: var(--glass-blur);
@@ -404,12 +405,15 @@
     border: 1px solid var(--glass-border);
     border-top: 2px solid rgba(126,184,247,0.4);
     border-radius: var(--radius-md);
+  }
+  .glass-card-destructive {
     background: var(--glass-surface);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid var(--glass-border);
     border-top: 2px solid hsl(0 72% 51%);
     border-radius: var(--radius-md);
+  }
   .glass-header {
     background: var(--glass-header-bg);
     border-bottom: 1px solid var(--glass-border);
@@ -528,48 +532,51 @@
     overflow-wrap: anywhere;
   }
 
-  /* Marketing site — frosted glass CTA (used on homepage hero + nav) */
+  /* Marketing site — lighter airy-blue frosted glass CTA (logo-derived palette).
+     Tokens: --glass-blue-50 #C9DCFF / --glass-blue-100 #A9C6FF / --glass-blue-200 #7FB3FF.
+     Hover stays translucent — bg alpha hard-capped ~0.30. */
   .marketing-glass-cta {
     position: relative;
     color: #fff;
     letter-spacing: 0.01em;
-    background: linear-gradient(135deg, rgba(99, 130, 255, 0.22), rgba(130, 160, 255, 0.14));
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+    background: linear-gradient(180deg, rgba(169, 198, 255, 0.18), rgba(127, 179, 255, 0.10));
+    border: 1px solid rgba(201, 220, 255, 0.22);
     -webkit-backdrop-filter: blur(14px) saturate(140%);
     backdrop-filter: blur(14px) saturate(140%);
     box-shadow:
-      0 8px 24px rgba(80, 110, 255, 0.25),
-      0 1px 2px rgba(0, 0, 0, 0.4),
-      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+      0 8px 28px rgba(127, 179, 255, 0.22),
+      0 1px 2px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.22);
     transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
   }
   .marketing-glass-cta:hover {
-    background: linear-gradient(135deg, rgba(120, 150, 255, 0.32), rgba(150, 180, 255, 0.2));
-    border-color: rgba(255, 255, 255, 0.22);
+    background: linear-gradient(180deg, rgba(201, 220, 255, 0.26), rgba(169, 198, 255, 0.16));
+    border-color: rgba(201, 220, 255, 0.32);
     box-shadow:
-      0 12px 32px rgba(80, 110, 255, 0.4),
-      0 1px 2px rgba(0, 0, 0, 0.4),
-      inset 0 1px 0 rgba(255, 255, 255, 0.28);
+      0 10px 34px rgba(127, 179, 255, 0.32),
+      0 1px 2px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.32);
     transform: translateY(-1px);
   }
   .marketing-glass-cta:active {
-    background: linear-gradient(135deg, rgba(80, 110, 230, 0.28), rgba(110, 140, 230, 0.16));
+    background: linear-gradient(180deg, rgba(169, 198, 255, 0.16), rgba(127, 179, 255, 0.10));
     box-shadow:
-      0 4px 12px rgba(80, 110, 255, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      0 4px 14px rgba(127, 179, 255, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.16);
     transform: translateY(0);
   }
   .marketing-glass-cta:focus-visible {
     outline: none;
     box-shadow:
-      0 0 0 2px rgba(130, 160, 255, 0.55),
-      0 8px 24px rgba(80, 110, 255, 0.25),
-      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+      0 0 0 2px rgba(127, 179, 255, 0.55),
+      0 8px 28px rgba(127, 179, 255, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.22);
   }
-  /* Fallback for browsers without backdrop-filter support */
+  /* Fallback for browsers without backdrop-filter support — keep palette, raise alpha (cap 0.45) */
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .marketing-glass-cta {
-      background: linear-gradient(135deg, rgba(99, 130, 255, 0.55), rgba(130, 160, 255, 0.45));
+      background: linear-gradient(180deg, rgba(169, 198, 255, 0.45), rgba(127, 179, 255, 0.32));
     }
   }
 }
