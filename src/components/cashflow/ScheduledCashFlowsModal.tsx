@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Trash2, Plus } from 'lucide-react';
 import {
   ACCOUNT_OPTIONS,
@@ -49,6 +50,16 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
       }))
     );
   }, [open, initialEntries]);
+
+  // Lock body scroll while open
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
 
   const updateRow = useCallback((draftId: string, patch: Partial<DraftEntry>) => {
     setDrafts((prev) => prev.map((d) => (d._draftId === draftId ? { ...d, ...patch } : d)));
@@ -139,11 +150,22 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
 
   if (!open) return null;
 
-  return (
-    <div className="cf-overlay" onClick={onClose}>
+  const modal = (
+    <div
+      className="cf-overlay"
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, zIndex: 1000 }}
+    >
       <div
         className="cf-dialog"
-        style={{ maxWidth: 1200, width: '95vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
+        style={{
+          maxWidth: 1200,
+          width: '95vw',
+          maxHeight: '90vh',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="cf-dialog-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -353,4 +375,6 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }
