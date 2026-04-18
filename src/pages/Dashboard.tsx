@@ -30,6 +30,10 @@ export default function Dashboard() {
   const { profile } = useProfile();
   const isJTurner = user?.email === 'jturner@5thline.co';
   const [isBriefingOpen, setIsBriefingOpen] = useState(false);
+  const [isNikiBriefingOpen, setIsNikiBriefingOpen] = useState(false);
+  // Niki Heikali — long-term this should come from a delegated_briefing_access lookup
+  const NIKI_USER_ID = 'a757f375-7e93-4fc5-a49e-e371abb42fac';
+  const NIKI_ASSIGNEE_NAME = 'Niki Heikali';
   const {
     presets,
     activePreset,
@@ -274,6 +278,19 @@ export default function Dashboard() {
                     <Newspaper className="relative z-10 h-7 w-7 text-warning" />
                   </div>
                   <span className="text-sm font-medium text-foreground">Daily Briefing</span>
+                </div>
+              </Card>
+            )}
+            {isJTurner && (
+              <Card
+                className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
+                onClick={() => setIsNikiBriefingOpen(true)}
+              >
+                <div className="flex flex-col items-center text-center space-y-3">
+                  <div className="relative h-12 w-12 rounded-xl border border-[hsl(190,90%,55%,0.4)] bg-[hsl(190,90%,45%,0.18)] backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(190,90%,50%,0.25),inset_0_1px_1px_hsl(190,90%,70%,0.2)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-[hsl(190,90%,60%,0.25)] before:to-transparent before:rounded-xl">
+                    <Newspaper className="relative z-10 h-7 w-7 text-[hsl(190,90%,70%)]" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">Niki's Daily Briefing</span>
                 </div>
               </Card>
             )}
