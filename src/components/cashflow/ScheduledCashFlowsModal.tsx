@@ -38,8 +38,8 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
   ACCOUNT_OPTIONS,
-  CASH_IN_CATEGORIES,
   CASH_IN_GROUPED_OPTIONS,
+  CASH_IN_CATEGORIES,
   CASH_OUT_CATEGORIES,
   DAY_OF_WEEK_LABELS,
   type ScheduledCashFlow,
