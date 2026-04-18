@@ -28,6 +28,24 @@ import { cn } from '@/lib/utils';
 interface DailyBriefingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Title shown in the modal header. Defaults to "Daily Briefing".
+   */
+  title?: string;
+  /**
+   * If set, the briefing's user-scoped sections (Email, Operational) will be
+   * loaded for this target user instead of the current user. The caller must
+   * be allow-listed server-side (see briefing-for-user / briefing-operational
+   * edge functions). Org-wide sections (Catch Up, Pipeline, Financial) remain
+   * shared regardless.
+   */
+  targetUserId?: string;
+  /**
+   * Asana assignee display name for the Operational tab when delegating
+   * (e.g., "Niki Heikali"). Required only when targetUserId is set and you
+   * want the Operational tab to filter by that person.
+   */
+  targetAssigneeName?: string;
 }
 
 // ── Glass surface classes ──────────────────────────────────────
