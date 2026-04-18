@@ -417,7 +417,7 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-[95vw] w-[1400px] h-[85vh] p-0 flex flex-col overflow-hidden"
+        className="max-w-none w-[95vw] h-[92vh] sm:h-[92vh] xl:w-[93vw] 2xl:w-[92vw] p-0 flex flex-col overflow-hidden rounded-lg"
         overlayClassName="bg-black/50 transition-opacity duration-200"
       >
         <div className="flex-1 min-h-0 overflow-hidden">
