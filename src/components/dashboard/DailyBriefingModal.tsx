@@ -690,9 +690,17 @@ function FinancialTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (
 }
 
 // ── Tab: Pipeline & Clients ────────────────────────────────────
-function PipelineTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path: string) => void }) {
-  const { data, isLoading } = usePipelineData(enabled);
-  const { data: catchUpData, isLoading: catchUpLoading } = useCatchUpData(enabled);
+function PipelineTab({
+  enabled,
+  onNavigate,
+  targetDealOwnerName,
+}: {
+  enabled: boolean;
+  onNavigate: (path: string) => void;
+  targetDealOwnerName?: string;
+}) {
+  const { data, isLoading } = usePipelineData(enabled, targetDealOwnerName);
+  const { data: catchUpData, isLoading: catchUpLoading } = useCatchUpData(enabled, targetDealOwnerName);
   const [detail, setDetail] = useState<NewsItem | null>(null);
   const [dealDetail, setDealDetail] = useState<any>(null);
 
@@ -702,6 +710,19 @@ function PipelineTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (p
   const highlights = catchUpData?.highlights || [];
   const newsItems = catchUpData?.newsItems || [];
   const dealAlerts = (catchUpData?.alerts || []).filter((a: any) => a.deal_id);
+
+  // Empty state for delegated view with no owned/managed deals
+  const isDelegated = !!targetDealOwnerName;
+  const hasAnyContent =
+    newDeals.length + riskDeals.length + stageChanges.length + recentActivity.length +
+    highlights.length + newsItems.length + dealAlerts.length > 0;
+  if (isDelegated && !hasAnyContent) {
+    return (
+      <div className="p-1">
+        <EmptySection message={`No deals assigned to ${targetDealOwnerName} as Owner or Manager`} />
+      </div>
+    );
+  }
 
   return (
     <div className="relative h-full">
