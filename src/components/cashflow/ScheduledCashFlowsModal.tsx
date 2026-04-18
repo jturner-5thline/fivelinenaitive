@@ -394,7 +394,7 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
                           </Select>
 
                           {d.frequency_type === 'one_time' && (
-                            <div className="flex-1 min-w-[150px]">
+                            <div className="flex-1 min-w-0">
                               <DatePickerField
                                 value={d.frequency_config?.one_time_date}
                                 onChange={(iso) =>
