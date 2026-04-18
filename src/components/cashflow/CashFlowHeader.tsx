@@ -79,7 +79,7 @@ function EyeIcon() {
 export const CashFlowHeader = memo(function CashFlowHeader({
   role, theme, activeTab, cashIn, cashOut, netChange,
   undoCount, activityCount, onRoleChange, onThemeToggle,
-  onTabChange, onUndo, onOpenActivityLog,
+  onTabChange, onUndo, onOpenActivityLog, onConfigureScheduled,
 }: HeaderProps) {
   return (
     <>
