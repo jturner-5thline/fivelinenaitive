@@ -144,6 +144,14 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
       return false;
     }
   });
+  const [transfersCollapsed, setTransfersCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem(TRANSFERS_COLLAPSE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
   const gridWrapRef = useGridWheelPassthrough<HTMLDivElement>();
 
   useEffect(() => {
@@ -154,17 +162,32 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
     }
   }, [debtAdvCollapsed]);
 
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(TRANSFERS_COLLAPSE_KEY, transfersCollapsed ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }, [transfersCollapsed]);
+
   const toggleSection = useCallback((section: string) => {
     setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }));
   }, []);
 
   const toggleDebtAdv = useCallback(() => setDebtAdvCollapsed(p => !p), []);
+  const toggleTransfers = useCallback(() => setTransfersCollapsed(p => !p), []);
 
   // Compute parent (Debt Advisory Revenue) value per week as sum of sub-categories
   const parentSumForWeek = useCallback((entry: any): number => {
     let s = 0;
     for (const k of DEBT_ADV_SUBKEYS) s += Number(entry?.[k]) || 0;
     return s;
+  }, []);
+
+  // Per-account internal-transfer value for a week (Transfer:<account>)
+  // Returns 0 if no per-account data exists (transfer entries may not yet be split by account).
+  const transferAccountValue = useCallback((entry: any, account: string): number => {
+    return Number(entry?.[`${TRANSFER_ACCOUNT_KEY_PREFIX}${account}`]) || 0;
   }, []);
 
   const activePlan = activePlanId ? safePlanSnapshots.find(p => p.id === activePlanId) : null;
