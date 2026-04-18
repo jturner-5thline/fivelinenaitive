@@ -618,7 +618,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
           mode={popoverState.mode}
           comments={cellCommentsByCell[cellCommentKey(popoverState.ctx.line_item_key, popoverState.ctx.week_key)] || []}
           onSubmit={handleSubmitComment}
-          onDelete={(id) => deleteCellComment(id)}
+          onDelete={async (id) => { await deleteCellComment(id); }}
           onClose={() => setPopoverState(null)}
         />
       )}
