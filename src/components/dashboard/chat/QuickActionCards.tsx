@@ -1,4 +1,4 @@
-import { Search, FileText, Mail, BarChart3, TrendingUp, Shield, Pencil, Zap } from 'lucide-react';
+import { Clock, Users, AlertTriangle, ListChecks, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -7,52 +7,36 @@ interface Props {
 
 const actions = [
   {
-    icon: Search,
-    label: 'Research',
-    description: 'Company or market deep-dive',
-    prompt: 'Research ',
-    requiresInput: true,
-    color: 'text-blue-400',
-  },
-  {
-    icon: Mail,
-    label: 'Draft Email',
-    description: 'Lender outreach or follow-up',
-    prompt: 'Draft a lender outreach email for ',
-    requiresInput: true,
-    color: 'text-emerald-400',
-  },
-  {
-    icon: FileText,
-    label: 'Deal Memo',
-    description: 'Generate lender-ready memo',
-    prompt: 'Generate a deal memo for ',
-    requiresInput: true,
+    icon: Clock,
+    label: 'What are we waiting on?',
+    description: 'Outstanding items by deal',
+    prompt: 'What are we waiting on?',
+    requiresInput: false,
     color: 'text-amber-400',
   },
   {
-    icon: BarChart3,
-    label: 'Pipeline Report',
-    description: 'Analytics & conversion rates',
-    prompt: 'Give me a full pipeline analytics report',
+    icon: Users,
+    label: 'Who are our most active lenders?',
+    description: 'Most-sent and most-active lenders',
+    prompt: 'Who are our most active lenders?',
     requiresInput: false,
-    color: 'text-purple-400',
+    color: 'text-emerald-400',
   },
   {
-    icon: TrendingUp,
-    label: 'Revenue Forecast',
-    description: 'Weighted pipeline forecast',
-    prompt: "What's my revenue forecast this quarter?",
+    icon: AlertTriangle,
+    label: 'Stale Deals Analysis',
+    description: 'Deals at risk of going stale',
+    prompt: 'Stale Deals Analysis',
     requiresInput: false,
-    color: 'text-cyan-400',
-  },
-  {
-    icon: Shield,
-    label: 'Risk Assessment',
-    description: 'Deal risk analysis',
-    prompt: 'Run a risk assessment for ',
-    requiresInput: true,
     color: 'text-rose-400',
+  },
+  {
+    icon: ListChecks,
+    label: 'To-Do List',
+    description: 'Your assigned tasks and priorities',
+    prompt: 'To-Do List',
+    requiresInput: false,
+    color: 'text-blue-400',
   },
 ];
 
