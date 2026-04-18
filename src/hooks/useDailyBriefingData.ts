@@ -10,6 +10,27 @@ export function useBriefingWindow() {
   return useMemo(() => getDailyBriefingWindow('interactive'), []);
 }
 
+// ── Deal scoping helper ───────────────────────────────────────
+// Returns deals where the named user is the Deal Owner OR Deal Manager.
+// In the Naitive schema both `deal_owner` and `manager` are text columns
+// holding the display name (e.g., "Niki Heikali"). Comparison is
+// case-insensitive and trims whitespace. Dedupe is implicit (single array).
+export function getDealsForUserName(
+  allDeals: any[],
+  userDisplayName: string,
+  roles: Array<'owner' | 'manager'> = ['owner', 'manager'],
+): any[] {
+  if (!userDisplayName) return [];
+  const target = userDisplayName.trim().toLowerCase();
+  return allDeals.filter(d => {
+    const owner = (d.deal_owner || d.dealOwner || '').toString().trim().toLowerCase();
+    const manager = (d.manager || '').toString().trim().toLowerCase();
+    if (roles.includes('owner') && owner === target) return true;
+    if (roles.includes('manager') && manager === target) return true;
+    return false;
+  });
+}
+
 // ── Catch Up tab data ─────────────────────────────────────────
 export interface NewsItem {
   id: string;
@@ -21,13 +42,23 @@ export interface NewsItem {
   meta?: Record<string, any>;
 }
 
-export function useCatchUpData(enabled: boolean) {
+export function useCatchUpData(enabled: boolean, targetDealOwnerName?: string) {
   const { user } = useAuth();
-  const { deals } = useDealsContext();
+  const { deals: allDeals } = useDealsContext();
   const window = useBriefingWindow();
 
+  // When delegated (targetDealOwnerName set), narrow the deal set to deals
+  // where that user is Owner OR Manager. This narrows every downstream
+  // section: highlights, news items, risk deals, milestones, etc.
+  const deals = useMemo(
+    () => (targetDealOwnerName ? getDealsForUserName(allDeals, targetDealOwnerName) : allDeals),
+    [allDeals, targetDealOwnerName],
+  );
+  const dealIdSet = useMemo(() => new Set(deals.map(d => d.id)), [deals]);
+  const isDelegated = !!targetDealOwnerName;
+
   return useQuery({
-    queryKey: ['briefing-catchup', window.startISO, user?.id],
+    queryKey: ['briefing-catchup', window.startISO, user?.id, isDelegated ? `for:${targetDealOwnerName}` : 'self'],
     enabled: enabled && !!user?.id,
     staleTime: 60_000,
     queryFn: async () => {
@@ -69,11 +100,24 @@ export function useCatchUpData(enabled: boolean) {
           .limit(200),
       ]);
 
-      const activities = activityRes.data || [];
-      const stageChanges = stageChangeRes.data || [];
-      const milestones = milestonesRes.data || [];
-      const emailCache = emailCacheRes.data || [];
-      const emailAnalysis = emailAnalysisRes.data || [];
+      // When delegated, scope all deal-bound activity/milestones to the
+      // target user's deals (Owner OR Manager). Email content is intentionally
+      // NOT mixed in for delegated mode — Niki's email surfaces only via the
+      // dedicated Email tab (handled by useEmailData with its own auth path).
+      const rawActivities = activityRes.data || [];
+      const rawStageChanges = stageChangeRes.data || [];
+      const rawMilestones = milestonesRes.data || [];
+      const activities = isDelegated
+        ? rawActivities.filter(a => !a.deal_id || dealIdSet.has(a.deal_id))
+        : rawActivities;
+      const stageChanges = isDelegated
+        ? rawStageChanges.filter(sc => !sc.deal_id || dealIdSet.has(sc.deal_id))
+        : rawStageChanges;
+      const milestones = isDelegated
+        ? rawMilestones.filter(m => !m.deal_id || dealIdSet.has(m.deal_id))
+        : rawMilestones;
+      const emailCache = isDelegated ? [] : (emailCacheRes.data || []);
+      const emailAnalysis = isDelegated ? [] : (emailAnalysisRes.data || []);
       const analysisMap = new Map(emailAnalysis.map(a => [a.email_cache_id, a]));
 
       // Priority alerts (unchanged)
@@ -285,13 +329,24 @@ export function useFinancialData(enabled: boolean) {
 }
 
 // ── Pipeline tab data ─────────────────────────────────────────
-export function usePipelineData(enabled: boolean) {
+// When `targetDealOwnerName` is provided, the deal set is narrowed to deals
+// where that user is Deal Owner OR Deal Manager (see getDealsForUserName).
+// All downstream sections (newDeals, riskDeals, stageChanges, recentActivity)
+// share that narrowed deal set, so no Niki-unowned activity leaks in.
+export function usePipelineData(enabled: boolean, targetDealOwnerName?: string) {
   const { user } = useAuth();
-  const { deals } = useDealsContext();
+  const { deals: allDeals } = useDealsContext();
   const window = useBriefingWindow();
 
+  const deals = useMemo(
+    () => (targetDealOwnerName ? getDealsForUserName(allDeals, targetDealOwnerName) : allDeals),
+    [allDeals, targetDealOwnerName],
+  );
+  const dealIdSet = useMemo(() => new Set(deals.map(d => d.id)), [deals]);
+  const isDelegated = !!targetDealOwnerName;
+
   return useQuery({
-    queryKey: ['briefing-pipeline', window.startISO, user?.id],
+    queryKey: ['briefing-pipeline', window.startISO, user?.id, isDelegated ? `for:${targetDealOwnerName}` : 'self'],
     enabled: enabled && !!user?.id,
     staleTime: 60_000,
     queryFn: async () => {
@@ -314,8 +369,14 @@ export function usePipelineData(enabled: boolean) {
           .limit(50),
       ]);
 
-      const activities = activityRes.data || [];
-      const stageChanges = stageChangeRes.data || [];
+      const rawActivities = activityRes.data || [];
+      const rawStageChanges = stageChangeRes.data || [];
+      const activities = isDelegated
+        ? rawActivities.filter(a => a.deal_id && dealIdSet.has(a.deal_id))
+        : rawActivities;
+      const stageChanges = isDelegated
+        ? rawStageChanges.filter(sc => sc.deal_id && dealIdSet.has(sc.deal_id))
+        : rawStageChanges;
 
       const dealCreatedIds = new Set(stageChanges.filter(sc => sc.activity_type === 'deal_created').map(sc => sc.deal_id));
       const newDeals = deals.filter(d => dealCreatedIds.has(d.id));
@@ -337,6 +398,8 @@ export function usePipelineData(enabled: boolean) {
         riskDeals,
         stageChanges: stageChanges.slice(0, 20),
         recentActivity: activities.slice(0, 30),
+        isDelegated,
+        targetUserName: targetDealOwnerName,
       };
     },
   });
