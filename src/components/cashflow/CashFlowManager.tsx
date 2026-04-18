@@ -534,13 +534,19 @@ export function CashFlowManager() {
     return out;
   }, [computedWeekly, weeklyOverrides]);
 
+  // Merge scheduled cash flow entries into the weekly grid
+  const weeklyWithScheduled = useMemo<WeeklyData>(
+    () => mergeScheduledIntoWeekly(rawWeekly, scheduledItems),
+    [rawWeekly, scheduledItems],
+  );
+
   const rawSidebar = useMemo(() => normalizeSidebarData(role === 'viewer' && sandboxSidebar ? sandboxSidebar : sidebarData), [role, sandboxSidebar, sidebarData]);
 
   const availableYears = useMemo(() => getAvailableYears(rawDaily.dates), [rawDaily.dates]);
 
   // Filtered data using debounced values
   const filteredDaily = useMemo(() => filterDailyByPeriod(rawDaily, debouncedYears, debouncedQuarters), [rawDaily, debouncedYears, debouncedQuarters]);
-  const filteredWeekly = useMemo(() => filterWeeklyByPeriod(rawWeekly, debouncedYears, debouncedQuarters), [rawWeekly, debouncedYears, debouncedQuarters]);
+  const filteredWeekly = useMemo(() => filterWeeklyByPeriod(weeklyWithScheduled, debouncedYears, debouncedQuarters), [weeklyWithScheduled, debouncedYears, debouncedQuarters]);
 
   const setActiveData = useCallback((setter: 'daily' | 'sidebar', updater: (prev: any) => any) => {
     if (role === 'viewer') {
