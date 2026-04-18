@@ -341,9 +341,15 @@ serve(async (req) => {
       .filter((t) => t.completed && !!t.completed_at && t.completed_at >= recentCutoff)
       .sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || ''));
 
+    // When filtering by assignee, project task_count should reflect ONLY the
+    // visible (filtered) tasks so the project list lines up with what's shown.
+    const filteredTaskGids = new Set(allTasks.map((t) => t.gid));
     const projectsWithStats = allTaskGroups.map(({ project, tasks }) => {
-      const lastActivityAt = tasks.map((t) => t.last_activity_at).filter(Boolean).sort().at(-1) || null;
-      return { ...project, task_count: tasks.length, last_activity_at: lastActivityAt };
+      const visibleTasks = targetAssigneeName
+        ? tasks.filter((t) => filteredTaskGids.has(t.gid))
+        : tasks;
+      const lastActivityAt = visibleTasks.map((t) => t.last_activity_at).filter(Boolean).sort().at(-1) || null;
+      return { ...project, task_count: visibleTasks.length, last_activity_at: lastActivityAt };
     });
 
     // Add projects that had errors with 0 task count
