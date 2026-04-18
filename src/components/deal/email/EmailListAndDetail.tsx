@@ -702,7 +702,9 @@ interface EmailDetailProps {
 export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar, onSendReply, isExpanded, onToggleExpand, onDelete, onArchive }: EmailDetailProps) {
   const [showSmartPanel, setShowSmartPanel] = useState(false);
   const [smartPopoverOpen, setSmartPopoverOpen] = useState(false);
-  const [showAiAssist, setShowAiAssist] = useState(false);
+  // AI Assist sidebar is always-on by default. On desktop it's persistently rendered;
+  // on smaller widths it collapses into a toggleable drawer driven by this state.
+  const [showAiAssist, setShowAiAssist] = useState(true);
   const [showAiDraft, setShowAiDraft] = useState(false);
   const [linkedDealName, setLinkedDealName] = useState<string | undefined>(thread.dealName);
   const [showSendToDataRoom, setShowSendToDataRoom] = useState(false);
@@ -1007,13 +1009,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
             <div className="w-px h-8 bg-border/50 mx-1" />
 
-            {/* Custom actions: AI Assist + Link to Deal — Outlook command bar style */}
+            {/* AI Assist toggle — sidebar is always-on by default on desktop;
+                on smaller widths this button expands the collapsed AI panel. */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   onClick={() => setShowAiAssist(!showAiAssist)}
                   className={cn(
-                    'flex flex-col items-center gap-0.5 px-3 py-1 rounded transition-colors border',
+                    'flex flex-col items-center gap-0.5 px-3 py-1 rounded transition-colors border lg:hidden',
                     showAiAssist
                       ? 'bg-[hsl(var(--outlook-blue)/0.1)] border-[hsl(var(--outlook-blue)/0.3)] text-[hsl(var(--outlook-blue))]'
                       : 'border-transparent hover:bg-muted/40'
@@ -1023,7 +1026,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                   <span className={cn('text-[10px]', showAiAssist ? 'text-[hsl(var(--outlook-blue))]' : 'text-foreground/60')}>AI Assist</span>
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">AI-powered email analysis</TooltipContent>
+              <TooltipContent side="bottom" className="text-xs">Show AI suggestions</TooltipContent>
             </Tooltip>
 
             {hasUploadableAttachments && (
@@ -1268,8 +1271,18 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           )}
         </div>
 
-        {/* AI Assist right-side sidebar — lives inside the email popup border */}
-        {showAiAssist && (
+        {/* AI Assist right-side sidebar — always rendered on lg+ as a persistent
+            narrow column. On smaller widths it slides in only when toggled via
+            the toolbar button. */}
+        <div
+          className={cn(
+            'h-full',
+            // Desktop: always visible, sticky within modal
+            'hidden lg:flex',
+            // Mobile/tablet: only when explicitly opened, slides over
+            showAiAssist && 'flex absolute inset-y-0 right-0 z-20 lg:static lg:z-auto shadow-2xl lg:shadow-none',
+          )}
+        >
           <AiAssistSidebar
             thread={thread}
             dealId={dealId}
@@ -1295,7 +1308,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               setShowResumeBanner(false);
             }}
           />
-        )}
+        </div>
       </div>
 
       {/* Pop-out composer */}
