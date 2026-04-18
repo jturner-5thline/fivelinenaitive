@@ -260,7 +260,10 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
         <div className="flex-1 min-w-0">
           <div className="text-sm font-semibold text-foreground leading-tight">AI Assist</div>
           <div className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">
-            {dealName || 'No linked deal found'}
+            {dealName
+              || (workflowAnalysis?.likely_deal?.name
+                ? `Likely: ${workflowAnalysis.likely_deal.name}`
+                : 'Analyzing thread…')}
           </div>
         </div>
         <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
