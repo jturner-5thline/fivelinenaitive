@@ -56,10 +56,9 @@ export function useCatchUpData(enabled: boolean, targetDealOwnerName?: string) {
   );
   const dealIdSet = useMemo(() => new Set(deals.map(d => d.id)), [deals]);
   const isDelegated = !!targetDealOwnerName;
-  const window = useBriefingWindow();
 
   return useQuery({
-    queryKey: ['briefing-catchup', window.startISO, user?.id],
+    queryKey: ['briefing-catchup', window.startISO, user?.id, isDelegated ? `for:${targetDealOwnerName}` : 'self'],
     enabled: enabled && !!user?.id,
     staleTime: 60_000,
     queryFn: async () => {
