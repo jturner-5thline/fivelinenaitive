@@ -343,14 +343,19 @@ export function usePipelineData(enabled: boolean) {
 }
 
 // ── Operational tab data (Asana portfolio) ───────────────────
-export function useOperationalData(enabled: boolean) {
+// Optional `targetAssigneeName` filters Asana tasks to only those assigned to
+// that name (e.g., "Niki Heikali"). The edge function gates this server-side
+// to allow-listed callers.
+export function useOperationalData(enabled: boolean, targetAssigneeName?: string) {
   return useQuery({
-    queryKey: ['briefing-operational-asana'],
+    queryKey: ['briefing-operational-asana', targetAssigneeName || 'self'],
     enabled,
     staleTime: 5 * 60_000, // 5 min client-side cache
     retry: 1, // Don't spam retries on rate limit errors
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('briefing-operational');
+      const { data, error } = await supabase.functions.invoke('briefing-operational', {
+        body: targetAssigneeName ? { targetAssigneeName } : {},
+      });
       if (error) throw new Error(error.message);
       return data as {
         error?: string;
