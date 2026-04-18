@@ -10,6 +10,27 @@ export function useBriefingWindow() {
   return useMemo(() => getDailyBriefingWindow('interactive'), []);
 }
 
+// ── Deal scoping helper ───────────────────────────────────────
+// Returns deals where the named user is the Deal Owner OR Deal Manager.
+// In the Naitive schema both `deal_owner` and `manager` are text columns
+// holding the display name (e.g., "Niki Heikali"). Comparison is
+// case-insensitive and trims whitespace. Dedupe is implicit (single array).
+export function getDealsForUserName(
+  allDeals: any[],
+  userDisplayName: string,
+  roles: Array<'owner' | 'manager'> = ['owner', 'manager'],
+): any[] {
+  if (!userDisplayName) return [];
+  const target = userDisplayName.trim().toLowerCase();
+  return allDeals.filter(d => {
+    const owner = (d.deal_owner || d.dealOwner || '').toString().trim().toLowerCase();
+    const manager = (d.manager || '').toString().trim().toLowerCase();
+    if (roles.includes('owner') && owner === target) return true;
+    if (roles.includes('manager') && manager === target) return true;
+    return false;
+  });
+}
+
 // ── Catch Up tab data ─────────────────────────────────────────
 export interface NewsItem {
   id: string;
