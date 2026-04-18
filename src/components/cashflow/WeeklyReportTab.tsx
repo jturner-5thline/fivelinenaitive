@@ -62,7 +62,6 @@ const WEEKLY_ROW_ORDER: Array<{
   { key: 'Technology Revenue', section: 'receipts', isTotal: false },
   { key: 'Loan Proceeds', section: 'receipts', isTotal: false },
   { key: 'Other Receipts', section: 'receipts', isTotal: false },
-  { key: 'TOTAL RECEIPTS', section: 'receipts', isTotal: true },
   { key: '__sep_disb', section: 'disbursements', label: '( – ) CASH DISBURSEMENTS', isHeader: true },
   { key: 'Advertising & Marketing', section: 'disbursements', isTotal: false },
   { key: 'Insurance', section: 'disbursements', isTotal: false },
@@ -76,7 +75,6 @@ const WEEKLY_ROW_ORDER: Array<{
   { key: 'Office & Admin', section: 'disbursements', isTotal: false },
   { key: 'Loan Payments', section: 'disbursements', isTotal: false },
   { key: 'Other Disbursements', section: 'disbursements', isTotal: false },
-  { key: 'TOTAL DISBURSEMENTS', section: 'disbursements', isTotal: true },
   { key: '__sep_net', section: 'summary', label: 'NET CHANGE', isHeader: true },
   { key: 'Internal Transfers', section: 'summary', isTotal: false },
   { key: 'NET CHANGE', section: 'summary', isTotal: true },
@@ -242,6 +240,8 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                 if ('isHeader' in rowDef && rowDef.isHeader) {
                   const isCollapsible = rowDef.section === 'receipts' || rowDef.section === 'disbursements';
                   const isCollapsed = collapsedSections[rowDef.section];
+                  const showTotals = rowDef.section === 'receipts' || rowDef.section === 'disbursements';
+                  const totalKey = rowDef.section === 'receipts' ? 'TOTAL RECEIPTS' : 'TOTAL DISBURSEMENTS';
                   return (
                     <tr
                       key={rowDef.key}
@@ -249,10 +249,28 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                       style={isCollapsible ? { cursor: 'pointer' } : undefined}
                       onClick={isCollapsible ? () => toggleSection(rowDef.section) : undefined}
                     >
-                      <td className="cf-label-col" colSpan={visibleWeeks.length + 1} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        {isCollapsible && (isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />)}
-                        {rowDef.label}
-                      </td>
+                      {showTotals ? (
+                        <>
+                          <td className="cf-label-col" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            {isCollapsible && (isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />)}
+                            {rowDef.label}
+                          </td>
+                          {visibleWeeks.map(([weekKey, entry]) => {
+                            const raw = Number(entry?.[totalKey]) || 0;
+                            const display = rowDef.section === 'disbursements' && raw > 0 ? -raw : raw;
+                            return (
+                              <td key={weekKey} style={{ fontWeight: 700 }}>
+                                {fmtAbbrev(display)}
+                              </td>
+                            );
+                          })}
+                        </>
+                      ) : (
+                        <td className="cf-label-col" colSpan={visibleWeeks.length + 1} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          {isCollapsible && (isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />)}
+                          {rowDef.label}
+                        </td>
+                      )}
                     </tr>
                   );
                 }
