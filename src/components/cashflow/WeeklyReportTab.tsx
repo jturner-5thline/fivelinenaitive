@@ -39,8 +39,10 @@ interface WeeklyReportTabProps {
 
 const DEBT_ADV_PARENT_KEY = 'Debt Advisory Revenue';
 const DEBT_ADV_SUBKEYS = ['Retainers', 'Milestones', 'Closing Fees', 'Referral Fees'] as const;
+const INTERNAL_TRANSFERS_PARENT_KEY = 'Internal Transfers';
+const TRANSFER_ACCOUNT_KEY_PREFIX = 'Transfer:';
 
-const WEEKLY_ROW_ORDER: Array<{
+type WeeklyRow = {
   key: string;
   section: string;
   isTotal?: boolean;
@@ -48,7 +50,13 @@ const WEEKLY_ROW_ORDER: Array<{
   label?: string;
   isParent?: boolean;
   parent?: string;
-}> = [
+  isNetChange?: boolean;
+  isSpacer?: boolean;
+  isTransferAccount?: boolean;
+  transferAccount?: string;
+};
+
+const WEEKLY_ROW_ORDER: Array<WeeklyRow> = [
   { key: 'BEGINNING CASH', section: 'position', isTotal: true },
   { key: 'ENDING CASH', section: 'position', isTotal: true },
   { key: "Add'l Liquidity (Delayed Draw)", section: 'position', isTotal: false },
@@ -76,12 +84,21 @@ const WEEKLY_ROW_ORDER: Array<{
   { key: 'Office & Admin', section: 'disbursements', isTotal: false },
   { key: 'Loan Payments', section: 'disbursements', isTotal: false },
   { key: 'Other Disbursements', section: 'disbursements', isTotal: false },
-  { key: '__sep_net', section: 'summary', label: 'NET CHANGE', isHeader: true },
-  { key: 'Internal Transfers', section: 'summary', isTotal: false },
-  { key: 'NET CHANGE', section: 'summary', isTotal: true },
+  { key: 'NET CHANGE', section: 'summary', isTotal: true, isNetChange: true },
+  { key: '__spacer_transfers', section: 'spacer', isSpacer: true },
+  { key: INTERNAL_TRANSFERS_PARENT_KEY, section: 'transfers', isTotal: false, isParent: true },
+  ...ACCOUNT_OPTIONS.map((acc) => ({
+    key: `${TRANSFER_ACCOUNT_KEY_PREFIX}${acc}`,
+    section: 'transfers',
+    isTotal: false,
+    parent: INTERNAL_TRANSFERS_PARENT_KEY,
+    isTransferAccount: true,
+    transferAccount: acc,
+  })),
 ];
 
 const DEBT_ADV_COLLAPSE_KEY = 'cf:debtAdvisoryCollapsed';
+const TRANSFERS_COLLAPSE_KEY = 'cf:internalTransfersCollapsed';
 
 export const WeeklyReportTab = memo(function WeeklyReportTab({
   weeklyData, weeklyOverrides, onCashOverride,
