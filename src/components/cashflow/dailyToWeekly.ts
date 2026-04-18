@@ -43,10 +43,10 @@ export function aggregateDailyToWeekly(daily: DailyData | null | undefined): Wee
   const totalTransfersKey = findRowKey(rows, /TOTAL\s*TRANSFERS/i);
   const netChangeKey = findRowKey(rows, /NET\s*CASH\s*CHANGE/i);
 
-  // Receipt line items
-  const revenueKeys = findRowKeys(rows, /^Revenue\s*Deposits$/i);
-  const customerPayKey = findRowKey(rows, /Customer\s*Payment/i);
-  const consultingKey = findRowKey(rows, /Consulting\s*Fee/i);
+  // Receipt line items (legacy daily labels mapped to new categories)
+  const debtAdvisoryKeys = findRowKeys(rows, /^Debt\s*Advisory\s*Revenue$|^Revenue\s*Deposits$|Consulting\s*Fee/i);
+  const finServKey = findRowKey(rows, /^FinServ\s*Revenue$|Customer\s*Payment/i);
+  const technologyKey = findRowKey(rows, /^Technology\s*Revenue$/i);
   const loanProceedsKey = findRowKey(rows, /Loan\s*Proceeds/i);
   const otherReceiptsKey = findRowKey(rows, /Other\s*Receipts/i);
 
