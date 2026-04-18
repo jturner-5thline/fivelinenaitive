@@ -1,9 +1,8 @@
-import { useState, useCallback, useEffect, useRef, Fragment } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { History, Maximize2, Minimize2, RotateCcw, Download, AlertCircle } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,34 +26,8 @@ interface AssistantErrorState {
   prompt: string;
 }
 
-interface SuggestionConfig {
-  text: string;
-  requiresInput: boolean;
-  /** Text to populate (if different from display text) */
-  populateText?: string;
-}
-
-const suggestions: SuggestionConfig[] = [
-  { text: "What are we waiting on?", requiresInput: false },
-  { text: "Who are our most active lenders?", requiresInput: false },
-  { text: "Stale Deals Analysis", requiresInput: false },
-  { text: "To-Do List", requiresInput: false },
-];
-
 interface DashboardAIInputProps {
   isDrawerMode?: boolean;
-}
-
-/** Render suggestion text with [placeholder] portions styled distinctly */
-function renderSuggestionText(text: string) {
-  const parts = text.split(/(\[[^\]]+\])/g);
-  if (parts.length === 1) return text;
-  return parts.map((part, i) => {
-    if (part.startsWith('[') && part.endsWith(']')) {
-      return <span key={i} className="text-primary italic">{part}</span>;
-    }
-    return <Fragment key={i}>{part}</Fragment>;
-  });
 }
 
 function extractTextContent(value: unknown): string {
@@ -482,16 +455,8 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
     }
   }, [populateInput, handleSend]);
 
-  /** Handle suggestion chip click (#7) */
-  const handleSuggestionClick = useCallback((suggestion: SuggestionConfig) => {
-    const textToUse = suggestion.populateText || suggestion.text;
-    if (suggestion.requiresInput) {
-      populateInput(textToUse);
-    } else {
-      // Auto-send immediately and scroll to chat
-      handleSend(textToUse);
-    }
-  }, [populateInput, handleSend]);
+
+
 
   const handleRetry = useCallback(() => {
     if (!requestError?.prompt || isLoading) return;
@@ -544,25 +509,13 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
           )}
 
           <div className={cn('flex-1 flex flex-col min-w-0', expanded ? 'p-4' : '')}>
-            {/* #32: Hide shortcut cards and suggestion pills when chat is active */}
+            {/* #32: Hide shortcut cards when chat is active */}
             {!showHistory && !isChatActive && (
-              <div className="space-y-4 mb-4">
+              <div className="mb-4 space-y-4">
                 <ProactiveAlerts onAction={(prompt) => { setInputValue(prompt); handleSend(prompt); }} />
-                <QuickActionCards onAction={handleQuickAction} />
-                <div className="flex flex-wrap gap-2">
-                  {suggestions.map((s, i) => (
-                    <Badge
-                      key={i}
-                      variant="outline"
-                      className="cursor-pointer text-xs px-3 py-1.5 border-[hsl(263,40%,30%,0.5)] bg-[linear-gradient(135deg,hsl(260,20%,10%,0.6)_0%,hsl(263,18%,8%,0.7)_100%)] backdrop-blur-md shadow-[inset_0_1px_1px_hsl(263,40%,40%,0.1),0_2px_8px_hsl(0,0%,0%,0.3)] hover:border-[hsl(263,50%,40%,0.6)] hover:bg-[linear-gradient(135deg,hsl(260,25%,14%,0.7)_0%,hsl(263,22%,11%,0.8)_100%)] hover:shadow-[inset_0_1px_1px_hsl(263,50%,50%,0.15),0_4px_16px_hsl(263,40%,20%,0.3)] transition-all duration-300"
-                      onClick={() => handleSuggestionClick(s)}
-                    >
-                      {renderSuggestionText(s.text)}
-                    </Badge>
-                  ))}
+                <div className="mx-auto w-full max-w-2xl">
+                  <QuickActionCards onAction={handleQuickAction} />
                 </div>
-                {/* Subtle divider */}
-                <div className="border-t border-border/10 pt-4" />
               </div>
             )}
 

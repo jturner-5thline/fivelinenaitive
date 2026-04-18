@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useSearchParams } from 'react-router-dom';
-import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Zap, Briefcase, LayoutTemplate, Newspaper } from 'lucide-react';
+import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Briefcase, LayoutTemplate, Newspaper } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
 import { InboxDialog } from '@/components/dashboard/InboxDialog';
@@ -17,7 +17,7 @@ import { PresetManager } from '@/components/dashboard/PresetManager';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { AddWidgetDialog } from '@/components/dashboard/AddWidgetDialog';
 import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
-import { QuickPromptsDialog } from '@/components/dashboard/QuickPromptsDialog';
+
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { DashboardTemplatesDialog } from '@/components/dashboard/DashboardTemplates';
 import { FullCalendarView } from '@/components/dashboard/FullCalendarView';
@@ -227,7 +227,7 @@ export default function Dashboard() {
             onDismiss={() => dismissHint('dashboard-quick-actions')}
             side="bottom"
           >
-          <div className={`grid gap-3 md:gap-4 ${isJTurner ? 'grid-cols-5' : 'grid-cols-4'}`}>
+          <div className={`grid gap-3 md:gap-4 ${isJTurner ? 'grid-cols-4' : 'grid-cols-3'}`}>
             <Card
               className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
               onClick={() => setCalendarOpen(true)}
@@ -252,18 +252,6 @@ export default function Dashboard() {
               </div>
             </Card>
             <InboxDialog open={emailOpen} onOpenChange={setEmailOpen} />
-            <QuickPromptsDialog
-              trigger={
-                <Card className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]">
-                  <div className="flex flex-col items-center text-center space-y-3">
-                    <div className="relative h-12 w-12 rounded-xl border border-success/30 bg-success/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--success)/0.2),inset_0_1px_1px_hsl(var(--success)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-success/20 before:to-transparent before:rounded-xl">
-                      <Zap className="relative z-10 h-7 w-7 text-success" />
-                    </div>
-                    <span className="text-sm font-medium text-foreground">Quick Prompts</span>
-                  </div>
-                </Card>
-              }
-            />
             <CreateDealDialog
               trigger={
                 <Card className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]">
