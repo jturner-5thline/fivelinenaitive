@@ -862,7 +862,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
     () => ALL_TABS.filter(t => !excludeTabs?.includes(t.value as any)),
     [excludeTabs],
   );
-  const [activeTab, setActiveTab] = useState(TABS[0]?.value ?? 'catchup');
+  const [activeTab, setActiveTab] = useState<string>(TABS[0]?.value ?? 'catchup');
   const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
 
   // If active tab gets excluded (prop change), fall back to first available
