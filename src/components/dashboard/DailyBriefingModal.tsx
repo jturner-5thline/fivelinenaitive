@@ -46,6 +46,11 @@ interface DailyBriefingModalProps {
    * want the Operational tab to filter by that person.
    */
   targetAssigneeName?: string;
+  /**
+   * Tab values to hide from this briefing instance (e.g., ['financial']).
+   * Hidden tabs do not render their content and skip data fetching entirely.
+   */
+  excludeTabs?: Array<'catchup' | 'email' | 'financial' | 'pipeline' | 'operational'>;
 }
 
 // ── Glass surface classes ──────────────────────────────────────
