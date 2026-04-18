@@ -153,7 +153,9 @@ export function CashFlowManager() {
   const { company } = useCompany();
   const { importedDailyData, importedRowStructure, isImported, isImportLoading, importFile } = useCashFlowImport(company?.id);
   const { items: cashInDbItems, fetchItems: refreshCashInItems, removeItem: removeCashInDbItem, toSidebarItems } = useCashInItems();
+  const { items: scheduledItems, saveAll: saveScheduledItems } = useScheduledCashFlows(company?.id);
   const [addCashInOpen, setAddCashInOpen] = useState(false);
+  const [scheduledModalOpen, setScheduledModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sidebarDbItems = useMemo(() => toSidebarItems(), [toSidebarItems]);
