@@ -852,6 +852,7 @@ export function CashFlowManager() {
         onTabChange={setActiveTab}
         onUndo={performUndo}
         onOpenActivityLog={handleOpenActivityLog}
+        onConfigureScheduled={() => setScheduledModalOpen(true)}
       />
 
       {role === 'viewer' && (
