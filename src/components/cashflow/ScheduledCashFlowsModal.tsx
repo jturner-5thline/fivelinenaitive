@@ -349,11 +349,32 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
                           </div>
                         </SelectTrigger>
                         <SelectContent>
-                          {cats.map((c) => (
-                            <SelectItem key={c} value={c}>
-                              {c}
-                            </SelectItem>
-                          ))}
+                          {d.flow_type === 'cash_in'
+                            ? CASH_IN_GROUPED_OPTIONS.map((g, gi) =>
+                                g.group ? (
+                                  <SelectGroup key={`${gi}-${g.group}`}>
+                                    <SelectLabel>{g.group}</SelectLabel>
+                                    {g.options.map((c) => (
+                                      <SelectItem key={c} value={c} className="pl-10">
+                                        {c}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectGroup>
+                                ) : (
+                                  <SelectGroup key={`g-${gi}`}>
+                                    {g.options.map((c) => (
+                                      <SelectItem key={c} value={c}>
+                                        {c}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectGroup>
+                                ),
+                              )
+                            : CASH_OUT_CATEGORIES.map((c) => (
+                                <SelectItem key={c} value={c}>
+                                  {c}
+                                </SelectItem>
+                              ))}
                         </SelectContent>
                       </Select>
 
