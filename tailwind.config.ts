@@ -76,10 +76,15 @@ export default {
 			'brand-gradient-hover': 'linear-gradient(135deg, #94C8FF, #5AA0EB)'
 		},
   		borderRadius: {
-			xl: '12px',
-  			lg: '8px',
-  			md: '6px',
-  			sm: '4px'
+			/* Unified radius scale — canonical button radius = 8px (lg/md/xl all collapse to 8px).
+			   Larger surfaces (cards, modals) use 2xl/3xl = 12px. Pills/avatars use full. */
+			'3xl': '12px',
+			'2xl': '12px',
+			xl: '8px',
+			lg: '8px',
+			md: '8px',
+			sm: '4px',
+			DEFAULT: '8px'
   		},
   		keyframes: {
   			'accordion-down': {
