@@ -104,16 +104,16 @@ export function aggregateDailyToWeekly(daily: DailyData | null | undefined): Wee
     const endCash = endCashKey ? Math.round(rows[endCashKey]?.values?.[lastIdx] || 0) : 0;
 
     // Receipts - sum individual items
-    const revDeposits = sumKeys(revenueKeys);
-    const custPay = sumRange(customerPayKey);
-    const consulting = sumRange(consultingKey);
+    const debtAdvisory = sumKeys(debtAdvisoryKeys);
+    const finServ = sumRange(finServKey);
+    const technology = sumRange(technologyKey);
     const loanProceeds = sumRange(loanProceedsKey);
     const otherReceipts = sumRange(otherReceiptsKey);
 
     // Use the total row if available, otherwise compute from items
     let totalReceipts = sumRange(totalReceiptsKey);
     if (totalReceipts === 0 && !totalReceiptsKey) {
-      totalReceipts = revDeposits + custPay + consulting + loanProceeds + otherReceipts;
+      totalReceipts = debtAdvisory + finServ + technology + loanProceeds + otherReceipts;
     }
 
     // Disbursements - sum individual items
