@@ -107,6 +107,19 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   } = useLenderPassDetection({ dealId, threadData: passThreadData, autoRun: !!dealId });
   const showPassCard = !!passDetection && (passDetection.status === 'pending' || passDetection.status === 'confirmed') && (passDetection.is_pass || passDetection.status === 'confirmed');
 
+  // Claude-powered workflow analysis — runs on every thread open, even without a linked deal.
+  const {
+    analysis: workflowAnalysis,
+    loading: workflowLoading,
+    committing: workflowCommitting,
+    isDismissed: workflowDismissed,
+    dismiss: dismissWorkflow,
+    confirmRecommendation: confirmWorkflow,
+  } = useThreadWorkflowAnalysis({ dealId, threadData: passThreadData, autoRun: true });
+  // Hide the workflow card when the more specialized lender-pass card is already
+  // surfacing the same recommendation, to avoid duplicate prompts.
+  const showWorkflowCard = !!workflowAnalysis && !workflowDismissed && !showPassCard;
+
   // Data Room suggestion — load latest message attachments + auto-suggest destination
   const latestId = thread.latestEmail.id;
   const isMock = !latestId || latestId.startsWith('mock-');
