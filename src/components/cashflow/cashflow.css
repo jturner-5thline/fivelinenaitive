@@ -318,7 +318,8 @@
 
 .cf-grid th.cf-label-col { z-index: 7; background: var(--color-surface-2); }
 
-.cf-grid td { text-align: center; font-variant-numeric: tabular-nums; }
+.cf-grid td { text-align: center; font-variant-numeric: tabular-nums; position: relative; }
+.cf-grid td.cf-cell-has-comment { cursor: context-menu; }
 .cf-grid td.cf-val-pos { color: var(--color-positive); }
 .cf-grid td.cf-val-neg { color: var(--color-negative); }
 

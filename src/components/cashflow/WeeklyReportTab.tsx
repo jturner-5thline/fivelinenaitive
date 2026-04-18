@@ -387,9 +387,34 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                           {visibleWeeks.map(([weekKey, entry]) => {
                             const raw = Number(entry?.[totalKey]) || 0;
                             const display = rowDef.section === 'disbursements' && raw > 0 ? -raw : raw;
+                            const lineItemKey = totalKey; // 'TOTAL RECEIPTS' | 'TOTAL DISBURSEMENTS'
+                            const ccKey = cellCommentKey(lineItemKey, weekKey);
+                            const cellCommentsHere = cellCommentsByCell[ccKey] || [];
+                            const cellCtx: CellCtx = {
+                              line_item_key: lineItemKey,
+                              line_item_label: rowDef.label || lineItemKey,
+                              week_key: weekKey,
+                              week_num: (entry?.week_num as number) ?? null,
+                              week_ending: (entry?.week_ending as string) ?? null,
+                              cell_value_snapshot: display,
+                            };
                             return (
-                              <td key={weekKey} style={{ fontWeight: 700 }}>
+                              <td
+                                key={weekKey}
+                                ref={(el) => registerCellRef(ccKey, el)}
+                                style={{ fontWeight: 700 }}
+                                onContextMenu={(e) => {
+                                  e.stopPropagation();
+                                  handleCellContextMenu(e, cellCtx);
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                title={cellCommentsHere.length > 0 ? `${cellCommentsHere.length} comment${cellCommentsHere.length > 1 ? 's' : ''}` : undefined}
+                                className={cellCommentsHere.length > 0 ? 'cf-cell-has-comment' : undefined}
+                              >
                                 {fmtAbbrev(display)}
+                                {cellCommentsHere.length > 0 && (
+                                  <span className={`cf-cell-comment-indicator${cellCommentsHere.length > 1 ? ' has-multiple' : ''}`} aria-hidden />
+                                )}
                               </td>
                             );
                           })}
@@ -434,13 +459,29 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                         const planVal = planEntry
                           ? (Number(planEntry?.['TOTAL RECEIPTS']) || 0) - (Number(planEntry?.['TOTAL DISBURSEMENTS']) || 0)
                           : null;
+                        const ccKey = cellCommentKey('NET CHANGE', weekKey);
+                        const cellCommentsHere = cellCommentsByCell[ccKey] || [];
+                        const cellCtx: CellCtx = {
+                          line_item_key: 'NET CHANGE',
+                          line_item_label: 'NET CHANGE',
+                          week_key: weekKey,
+                          week_num: (entry?.week_num as number) ?? null,
+                          week_ending: (entry?.week_ending as string) ?? null,
+                          cell_value_snapshot: net,
+                        };
                         return (
                           <td
                             key={weekKey}
-                            className={net > 0 ? 'cf-val-pos' : net < 0 ? 'cf-val-neg' : ''}
+                            ref={(el) => registerCellRef(ccKey, el)}
+                            className={`${net > 0 ? 'cf-val-pos' : net < 0 ? 'cf-val-neg' : ''}${cellCommentsHere.length > 0 ? ' cf-cell-has-comment' : ''}`}
                             style={{ fontWeight: 700 }}
+                            onContextMenu={(e) => handleCellContextMenu(e, cellCtx)}
+                            title={cellCommentsHere.length > 0 ? `${cellCommentsHere.length} comment${cellCommentsHere.length > 1 ? 's' : ''}` : undefined}
                           >
                             <div>{fmtAbbrev(net)}</div>
+                            {cellCommentsHere.length > 0 && (
+                              <span className={`cf-cell-comment-indicator${cellCommentsHere.length > 1 ? ' has-multiple' : ''}`} aria-hidden />
+                            )}
                             {planVal !== null && renderVariance(net, planVal)}
                           </td>
                         );
@@ -522,11 +563,28 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                       const isOverridden = !!(isCashRow && overrideField && safeOverrides[weekKey]?.[overrideField] !== undefined);
                       const editable = isAdmin && isCashRow && !!onCashOverride;
 
+                      // Cell comment plumbing
+                      const lineItemKey = isTransferAccount && transferAcc
+                        ? `transfer:${transferAcc}`
+                        : rowDef.key;
+                      const ccKey = cellCommentKey(lineItemKey, weekKey);
+                      const cellCommentsHere = cellCommentsByCell[ccKey] || [];
+                      const cellCtx: CellCtx = {
+                        line_item_key: lineItemKey,
+                        line_item_label: labelText,
+                        week_key: weekKey,
+                        week_num: (entry?.week_num as number) ?? null,
+                        week_ending: (entry?.week_ending as string) ?? null,
+                        cell_value_snapshot: displayVal,
+                      };
+
                       return (
                         <td
                           key={weekKey}
-                          className={`${displayVal > 0 ? 'cf-val-pos' : displayVal < 0 ? 'cf-val-neg' : ''}${isOverridden ? ' cf-cell-override' : ''}`}
-                          title={isOverridden ? 'Manually overridden — double-click to clear' : (editable ? 'Click to edit' : undefined)}
+                          ref={(el) => registerCellRef(ccKey, el)}
+                          className={`${displayVal > 0 ? 'cf-val-pos' : displayVal < 0 ? 'cf-val-neg' : ''}${isOverridden ? ' cf-cell-override' : ''}${cellCommentsHere.length > 0 ? ' cf-cell-has-comment' : ''}`}
+                          title={isOverridden ? 'Manually overridden — double-click to clear' : (editable ? 'Click to edit' : (cellCommentsHere.length > 0 ? `${cellCommentsHere.length} comment${cellCommentsHere.length > 1 ? 's' : ''}` : undefined))}
+                          onContextMenu={(e) => handleCellContextMenu(e, cellCtx)}
                           onDoubleClick={isOverridden && editable && overrideField
                             ? () => onCashOverride!(weekKey, overrideField, null)
                             : undefined}
@@ -571,6 +629,12 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                             <div>{fmtAbbrev(displayVal)}</div>
                           )}
                           {isOverridden && <span className="cf-override-dot" aria-hidden />}
+                          {cellCommentsHere.length > 0 && (
+                            <span
+                              className={`cf-cell-comment-indicator${cellCommentsHere.length > 1 ? ' has-multiple' : ''}`}
+                              aria-hidden
+                            />
+                          )}
                           {planVal !== null && renderVariance(val, planVal)}
                         </td>
                       );
@@ -595,7 +659,33 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
         onNoteEdit={onNoteEdit}
         onNoteRemove={onNoteRemove}
         onNoteAdd={onNoteAdd}
+        cellComments={cellComments}
+        currentUserId={user?.id ?? null}
+        onCellCommentClick={handleSidebarCommentClick}
+        onCellCommentDelete={(c) => deleteCellComment(c.id)}
       />
+
+      {menuState && (
+        <CellCommentMenu
+          x={menuState.x}
+          y={menuState.y}
+          hasComments={(cellCommentsByCell[cellCommentKey(menuState.ctx.line_item_key, menuState.ctx.week_key)] || []).length > 0}
+          onAdd={handleMenuAdd}
+          onView={handleMenuView}
+          onClose={() => setMenuState(null)}
+        />
+      )}
+
+      {popoverState && (
+        <CellCommentPopover
+          anchor={{ x: popoverState.x, y: popoverState.y }}
+          mode={popoverState.mode}
+          comments={cellCommentsByCell[cellCommentKey(popoverState.ctx.line_item_key, popoverState.ctx.week_key)] || []}
+          onSubmit={handleSubmitComment}
+          onDelete={async (id) => { await deleteCellComment(id); }}
+          onClose={() => setPopoverState(null)}
+        />
+      )}
 
       {/* Save Plan dialog */}
       {savePlanOpen && (
