@@ -18,7 +18,9 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { EmailThread } from './mockEmailData';
 import { useLenderPassDetection } from '@/hooks/useLenderPassDetection';
+import { useThreadWorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
 import { LenderPassSidebarCard } from './LenderPassSidebarCard';
+import { WorkflowIntelligenceCard } from './WorkflowIntelligenceCard';
 import { DataRoomSuggestionCard } from './DataRoomSuggestionCard';
 import { SendToDataRoomDialog } from './SendToDataRoomDialog';
 import { useFullEmailMessage } from './useFullEmailMessage';
@@ -104,6 +106,19 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
     dismissPass,
   } = useLenderPassDetection({ dealId, threadData: passThreadData, autoRun: !!dealId });
   const showPassCard = !!passDetection && (passDetection.status === 'pending' || passDetection.status === 'confirmed') && (passDetection.is_pass || passDetection.status === 'confirmed');
+
+  // Claude-powered workflow analysis — runs on every thread open, even without a linked deal.
+  const {
+    analysis: workflowAnalysis,
+    loading: workflowLoading,
+    committing: workflowCommitting,
+    isDismissed: workflowDismissed,
+    dismiss: dismissWorkflow,
+    confirmRecommendation: confirmWorkflow,
+  } = useThreadWorkflowAnalysis({ dealId, threadData: passThreadData, autoRun: true });
+  // Hide the workflow card when the more specialized lender-pass card is already
+  // surfacing the same recommendation, to avoid duplicate prompts.
+  const showWorkflowCard = !!workflowAnalysis && !workflowDismissed && !showPassCard;
 
   // Data Room suggestion — load latest message attachments + auto-suggest destination
   const latestId = thread.latestEmail.id;
@@ -245,7 +260,10 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
         <div className="flex-1 min-w-0">
           <div className="text-sm font-semibold text-foreground leading-tight">AI Assist</div>
           <div className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">
-            {dealName || 'No linked deal found'}
+            {dealName
+              || (workflowAnalysis?.likely_deal?.name
+                ? `Likely: ${workflowAnalysis.likely_deal.name}`
+                : 'Analyzing thread…')}
           </div>
         </div>
         <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
@@ -278,7 +296,23 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             </div>
           )}
 
-          {/* Lender pass detection card */}
+          {/* Workflow Intelligence (Claude) — primary, confirm-first workflow assistant.
+              Renders above pass detection so the user sees the structured deal/lender/signal
+              extraction first, with explicit suggested updates. Drafts come last. */}
+          {showWorkflowCard && workflowAnalysis && (
+            <WorkflowIntelligenceCard
+              analysis={workflowAnalysis}
+              loading={workflowLoading}
+              committing={workflowCommitting}
+              hasLinkedDeal={!!dealId}
+              onConfirm={(o) => confirmWorkflow(o)}
+              onDismiss={dismissWorkflow}
+              onMaybeLater={dismissWorkflow}
+            />
+          )}
+
+          {/* Lender pass detection card (specialized confirm-first flow that already
+              writes back lender stage). Kept for back-compat with existing detections. */}
           {showPassCard && passDetection && (
             <LenderPassSidebarCard
               detection={passDetection}
