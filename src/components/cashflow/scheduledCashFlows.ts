@@ -35,9 +35,9 @@ export const ACCOUNT_OPTIONS = [
 ] as const;
 
 export const CASH_IN_CATEGORIES = [
-  'Revenue Deposits',
-  'Customer Payments',
-  'Consulting Fees',
+  'Debt Advisory Revenue',
+  'FinServ Revenue',
+  'Technology Revenue',
   'Loan Proceeds',
   'Other Receipts',
 ] as const;
