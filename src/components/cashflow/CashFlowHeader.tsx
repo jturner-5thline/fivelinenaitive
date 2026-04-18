@@ -125,14 +125,10 @@ export const CashFlowHeader = memo(function CashFlowHeader({
           </button>
 
           <button className="cf-icon-btn" onClick={onOpenActivityLog} title="Activity Log">
-            <DocIcon />
+            <Clock size={16} />
           </button>
 
           <span className="cf-timestamp">Updated: Mar 8, 2026, 10:31 AM</span>
-
-          <button className="cf-theme-btn" onClick={onThemeToggle} title="Toggle theme">
-            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-          </button>
         </div>
       </div>
 
