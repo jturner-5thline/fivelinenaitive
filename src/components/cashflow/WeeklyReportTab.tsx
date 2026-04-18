@@ -5,6 +5,7 @@ import { fmtAbbrev } from './formatters';
 import { WeeklyCharts } from './WeeklyCharts';
 import { WeeklySidebar } from './WeeklySidebar';
 import { useGridWheelPassthrough } from './useGridWheelPassthrough';
+import { ACCOUNT_OPTIONS } from './scheduledCashFlows';
 
 interface SidebarItem {
   id?: string;
@@ -38,8 +39,10 @@ interface WeeklyReportTabProps {
 
 const DEBT_ADV_PARENT_KEY = 'Debt Advisory Revenue';
 const DEBT_ADV_SUBKEYS = ['Retainers', 'Milestones', 'Closing Fees', 'Referral Fees'] as const;
+const INTERNAL_TRANSFERS_PARENT_KEY = 'Internal Transfers';
+const TRANSFER_ACCOUNT_KEY_PREFIX = 'Transfer:';
 
-const WEEKLY_ROW_ORDER: Array<{
+type WeeklyRow = {
   key: string;
   section: string;
   isTotal?: boolean;
@@ -47,7 +50,13 @@ const WEEKLY_ROW_ORDER: Array<{
   label?: string;
   isParent?: boolean;
   parent?: string;
-}> = [
+  isNetChange?: boolean;
+  isSpacer?: boolean;
+  isTransferAccount?: boolean;
+  transferAccount?: string;
+};
+
+const WEEKLY_ROW_ORDER: Array<WeeklyRow> = [
   { key: 'BEGINNING CASH', section: 'position', isTotal: true },
   { key: 'ENDING CASH', section: 'position', isTotal: true },
   { key: "Add'l Liquidity (Delayed Draw)", section: 'position', isTotal: false },
@@ -75,12 +84,21 @@ const WEEKLY_ROW_ORDER: Array<{
   { key: 'Office & Admin', section: 'disbursements', isTotal: false },
   { key: 'Loan Payments', section: 'disbursements', isTotal: false },
   { key: 'Other Disbursements', section: 'disbursements', isTotal: false },
-  { key: '__sep_net', section: 'summary', label: 'NET CHANGE', isHeader: true },
-  { key: 'Internal Transfers', section: 'summary', isTotal: false },
-  { key: 'NET CHANGE', section: 'summary', isTotal: true },
+  { key: 'NET CHANGE', section: 'summary', isTotal: true, isNetChange: true },
+  { key: '__spacer_transfers', section: 'spacer', isSpacer: true },
+  { key: INTERNAL_TRANSFERS_PARENT_KEY, section: 'transfers', isTotal: false, isParent: true },
+  ...ACCOUNT_OPTIONS.map((acc) => ({
+    key: `${TRANSFER_ACCOUNT_KEY_PREFIX}${acc}`,
+    section: 'transfers',
+    isTotal: false,
+    parent: INTERNAL_TRANSFERS_PARENT_KEY,
+    isTransferAccount: true,
+    transferAccount: acc,
+  })),
 ];
 
 const DEBT_ADV_COLLAPSE_KEY = 'cf:debtAdvisoryCollapsed';
+const TRANSFERS_COLLAPSE_KEY = 'cf:internalTransfersCollapsed';
 
 export const WeeklyReportTab = memo(function WeeklyReportTab({
   weeklyData, weeklyOverrides, onCashOverride,
@@ -126,6 +144,14 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
       return false;
     }
   });
+  const [transfersCollapsed, setTransfersCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem(TRANSFERS_COLLAPSE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
   const gridWrapRef = useGridWheelPassthrough<HTMLDivElement>();
 
   useEffect(() => {
@@ -136,17 +162,32 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
     }
   }, [debtAdvCollapsed]);
 
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(TRANSFERS_COLLAPSE_KEY, transfersCollapsed ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }, [transfersCollapsed]);
+
   const toggleSection = useCallback((section: string) => {
     setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }));
   }, []);
 
   const toggleDebtAdv = useCallback(() => setDebtAdvCollapsed(p => !p), []);
+  const toggleTransfers = useCallback(() => setTransfersCollapsed(p => !p), []);
 
   // Compute parent (Debt Advisory Revenue) value per week as sum of sub-categories
   const parentSumForWeek = useCallback((entry: any): number => {
     let s = 0;
     for (const k of DEBT_ADV_SUBKEYS) s += Number(entry?.[k]) || 0;
     return s;
+  }, []);
+
+  // Per-account internal-transfer value for a week (Transfer:<account>)
+  // Returns 0 if no per-account data exists (transfer entries may not yet be split by account).
+  const transferAccountValue = useCallback((entry: any, account: string): number => {
+    return Number(entry?.[`${TRANSFER_ACCOUNT_KEY_PREFIX}${account}`]) || 0;
   }, []);
 
   const activePlan = activePlanId ? safePlanSnapshots.find(p => p.id === activePlanId) : null;
@@ -275,52 +316,120 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                   );
                 }
 
+                // Spacer row (truly empty, normal row height, no borders implying data)
+                if ((rowDef as WeeklyRow).isSpacer) {
+                  return (
+                    <tr key={rowDef.key} aria-hidden="true">
+                      <td
+                        colSpan={visibleWeeks.length + 1}
+                        style={{
+                          height: '1.75rem',
+                          background: 'transparent',
+                          border: 'none',
+                          padding: 0,
+                        }}
+                      />
+                    </tr>
+                  );
+                }
+
+                // NET CHANGE row — computed per week as TOTAL RECEIPTS - TOTAL DISBURSEMENTS
+                if ((rowDef as WeeklyRow).isNetChange) {
+                  return (
+                    <tr key={rowDef.key} className="cf-total-row">
+                      <td className="cf-label-col">{rowDef.key}</td>
+                      {visibleWeeks.map(([weekKey, entry]) => {
+                        const receipts = Number(entry?.['TOTAL RECEIPTS']) || 0;
+                        const disb = Number(entry?.['TOTAL DISBURSEMENTS']) || 0;
+                        const net = receipts - disb;
+                        const planEntry = activePlan?.weeklyData?.[weekKey];
+                        const planVal = planEntry
+                          ? (Number(planEntry?.['TOTAL RECEIPTS']) || 0) - (Number(planEntry?.['TOTAL DISBURSEMENTS']) || 0)
+                          : null;
+                        return (
+                          <td
+                            key={weekKey}
+                            className={net > 0 ? 'cf-val-pos' : net < 0 ? 'cf-val-neg' : ''}
+                            style={{ fontWeight: 700 }}
+                          >
+                            <div>{fmtAbbrev(net)}</div>
+                            {planVal !== null && renderVariance(net, planVal)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                }
+
                 const isTotal = rowDef.isTotal;
                 const isParent = rowDef.isParent === true;
                 const isChild = !!rowDef.parent;
-                // Hide detail rows when section is collapsed (but keep totals visible)
-                if (!isTotal && collapsedSections[rowDef.section]) {
+                const isTransferAccount = (rowDef as WeeklyRow).isTransferAccount === true;
+                const isTransfersParent = isParent && rowDef.key === INTERNAL_TRANSFERS_PARENT_KEY;
+                const isDebtAdvParent = isParent && rowDef.key === DEBT_ADV_PARENT_KEY;
+                // Hide detail rows when section is collapsed (but keep totals visible).
+                // Skip this hide-rule for transfer rows — the transfers section uses its own
+                // parent-level collapse (transfersCollapsed) rather than the section header.
+                if (!isTotal && !isParent && !isTransferAccount && collapsedSections[rowDef.section]) {
                   return null;
                 }
-                // Hide child sub-rows when their parent is collapsed
+                // Hide Debt Advisory sub-rows when its parent is collapsed
                 if (isChild && rowDef.parent === DEBT_ADV_PARENT_KEY && debtAdvCollapsed) {
                   return null;
                 }
+                // Hide Internal Transfers account sub-rows when its parent is collapsed
+                if (isTransferAccount && transfersCollapsed) {
+                  return null;
+                }
+                const parentCollapsed = isDebtAdvParent ? debtAdvCollapsed : isTransfersParent ? transfersCollapsed : false;
+                const parentToggle = isDebtAdvParent ? toggleDebtAdv : isTransfersParent ? toggleTransfers : undefined;
                 const isCashRow = rowDef.key === 'BEGINNING CASH' || rowDef.key === 'ENDING CASH';
                 const overrideField: 'beginningCash' | 'endingCash' | null = isCashRow
                   ? (rowDef.key === 'BEGINNING CASH' ? 'beginningCash' : 'endingCash')
                   : null;
+                const labelText = isTransferAccount
+                  ? (rowDef as WeeklyRow).transferAccount || rowDef.key
+                  : rowDef.key;
                 return (
                   <tr
                     key={rowDef.key}
-                    className={`${isTotal ? 'cf-total-row' : 'cf-indent'}${isChild ? ' cf-subcategory-row' : ''}${isParent ? ' cf-parent-row' : ''}`}
+                    className={`${isTotal ? 'cf-total-row' : 'cf-indent'}${(isChild || isTransferAccount) ? ' cf-subcategory-row' : ''}${isParent ? ' cf-parent-row' : ''}`}
                     style={isParent ? { cursor: 'pointer' } : undefined}
-                    onClick={isParent ? toggleDebtAdv : undefined}
+                    onClick={isParent ? parentToggle : undefined}
                   >
                     <td
                       className="cf-label-col"
                       style={
-                        isChild
+                        (isChild || isTransferAccount)
                           ? { paddingLeft: 32, color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem' }
                           : isParent
                             ? { display: 'flex', alignItems: 'center', gap: 4 }
                             : undefined
                       }
                     >
-                      {isParent && (debtAdvCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />)}
-                      {rowDef.key}
+                      {isParent && (parentCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />)}
+                      {labelText}
                     </td>
                     {visibleWeeks.map(([weekKey, entry]) => {
-                      const rawVal = isParent
-                        ? parentSumForWeek(entry)
-                        : ((entry[rowDef.key] as number) || 0);
+                      const transferAcc = (rowDef as WeeklyRow).transferAccount;
+                      const rawVal = isTransferAccount && transferAcc
+                        ? transferAccountValue(entry, transferAcc)
+                        : isTransfersParent
+                          ? (Number((entry as any)?.['Internal Transfers']) || 0)
+                          : isDebtAdvParent
+                            ? parentSumForWeek(entry)
+                            : ((entry[rowDef.key] as number) || 0);
                       const val = rawVal;
                       const displayVal = rowDef.section === 'disbursements' && !isTotal && val > 0 ? -val : val;
                       const planEntry = activePlan?.weeklyData?.[weekKey];
                       const planVal = planEntry
-                        ? (isParent
-                            ? parentSumForWeek(planEntry)
-                            : ((planEntry[rowDef.key] as number) || 0))
+                        ? (isTransferAccount && transferAcc
+                            ? transferAccountValue(planEntry, transferAcc)
+                            : isTransfersParent
+                              ? (Number((planEntry as any)?.['Internal Transfers']) || 0)
+                              : isDebtAdvParent
+                                ? parentSumForWeek(planEntry)
+                                : ((planEntry[rowDef.key] as number) || 0))
                         : null;
                       const isOverridden = !!(isCashRow && overrideField && safeOverrides[weekKey]?.[overrideField] !== undefined);
                       const editable = isAdmin && isCashRow && !!onCashOverride;
