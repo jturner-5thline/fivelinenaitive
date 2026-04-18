@@ -387,9 +387,34 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                           {visibleWeeks.map(([weekKey, entry]) => {
                             const raw = Number(entry?.[totalKey]) || 0;
                             const display = rowDef.section === 'disbursements' && raw > 0 ? -raw : raw;
+                            const lineItemKey = totalKey; // 'TOTAL RECEIPTS' | 'TOTAL DISBURSEMENTS'
+                            const ccKey = cellCommentKey(lineItemKey, weekKey);
+                            const cellCommentsHere = cellCommentsByCell[ccKey] || [];
+                            const cellCtx: CellCtx = {
+                              line_item_key: lineItemKey,
+                              line_item_label: rowDef.label || lineItemKey,
+                              week_key: weekKey,
+                              week_num: (entry?.week_num as number) ?? null,
+                              week_ending: (entry?.week_ending as string) ?? null,
+                              cell_value_snapshot: display,
+                            };
                             return (
-                              <td key={weekKey} style={{ fontWeight: 700 }}>
+                              <td
+                                key={weekKey}
+                                ref={(el) => registerCellRef(ccKey, el)}
+                                style={{ fontWeight: 700 }}
+                                onContextMenu={(e) => {
+                                  e.stopPropagation();
+                                  handleCellContextMenu(e, cellCtx);
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                title={cellCommentsHere.length > 0 ? `${cellCommentsHere.length} comment${cellCommentsHere.length > 1 ? 's' : ''}` : undefined}
+                                className={cellCommentsHere.length > 0 ? 'cf-cell-has-comment' : undefined}
+                              >
                                 {fmtAbbrev(display)}
+                                {cellCommentsHere.length > 0 && (
+                                  <span className={`cf-cell-comment-indicator${cellCommentsHere.length > 1 ? ' has-multiple' : ''}`} aria-hidden />
+                                )}
                               </td>
                             );
                           })}
