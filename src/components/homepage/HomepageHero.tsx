@@ -46,7 +46,7 @@ export const HomepageHero = () => {
           {/* CTA — shares left edge with tagline and wordmark "n" */}
           <Button
             size="lg"
-            className="mt-6 sm:mt-8 px-8 sm:px-10 py-5 sm:py-6 text-sm sm:text-base font-semibold text-white bg-[hsl(270,65%,50%)] hover:bg-[hsl(270,65%,45%)] border-0"
+            className="marketing-glass-cta mt-6 sm:mt-8 px-8 sm:px-10 py-5 sm:py-6 text-sm sm:text-base font-semibold border-0"
             asChild
           >
             <Link to="/waitlist">Request Access</Link>
