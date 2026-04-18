@@ -293,7 +293,23 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             </div>
           )}
 
-          {/* Lender pass detection card */}
+          {/* Workflow Intelligence (Claude) — primary, confirm-first workflow assistant.
+              Renders above pass detection so the user sees the structured deal/lender/signal
+              extraction first, with explicit suggested updates. Drafts come last. */}
+          {showWorkflowCard && workflowAnalysis && (
+            <WorkflowIntelligenceCard
+              analysis={workflowAnalysis}
+              loading={workflowLoading}
+              committing={workflowCommitting}
+              hasLinkedDeal={!!dealId}
+              onConfirm={(o) => confirmWorkflow(o)}
+              onDismiss={dismissWorkflow}
+              onMaybeLater={dismissWorkflow}
+            />
+          )}
+
+          {/* Lender pass detection card (specialized confirm-first flow that already
+              writes back lender stage). Kept for back-compat with existing detections. */}
           {showPassCard && passDetection && (
             <LenderPassSidebarCard
               detection={passDetection}
