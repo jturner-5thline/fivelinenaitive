@@ -306,7 +306,6 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
               {/* Rows */}
               <div className="flex flex-col">
                 {drafts.map((d) => {
-                  const cats = d.flow_type === 'cash_in' ? CASH_IN_CATEGORIES : CASH_OUT_CATEGORIES;
                   return (
                     <div
                       key={d._draftId}
