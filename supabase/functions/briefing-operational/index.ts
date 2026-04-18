@@ -316,7 +316,14 @@ serve(async (req) => {
     }
 
     // Step 3: Classify tasks
-    const allTasks = allTaskGroups.flatMap((g) => g.tasks);
+    let allTasks = allTaskGroups.flatMap((g) => g.tasks);
+
+    // If a target assignee was requested, filter tasks to that assignee only.
+    if (targetAssigneeName) {
+      const wanted = targetAssigneeName.toLowerCase();
+      allTasks = allTasks.filter((t) => (t.assignee || '').toLowerCase() === wanted);
+    }
+
 
     const overdue = allTasks
       .filter((t) => !t.completed && !!t.due_on && t.due_on < todayString)
