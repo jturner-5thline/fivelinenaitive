@@ -996,6 +996,18 @@ export function CashFlowManager() {
           onItemsAdded={handleCashInItemsAdded}
         />
       )}
+      {scheduledModalOpen && (
+        <ScheduledCashFlowsModal
+          open={scheduledModalOpen}
+          initialEntries={scheduledItems}
+          onClose={() => setScheduledModalOpen(false)}
+          onSave={async (entries) => {
+            const ok = await saveScheduledItems(entries);
+            if (ok) logAction(`Updated scheduled cash flows (${entries.length} entries)`);
+            return ok;
+          }}
+        />
+      )}
     </div>
   );
 }
