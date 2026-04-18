@@ -50,11 +50,12 @@
     --ring: 216 37% 55%;
 
     /* ═══ Unified radius scale (single source of truth) ═══
-       Canonical button/widget radius = 8px. Larger surfaces = 12px. */
+       Canonical = 8px for every bordered element (buttons, cards, inputs,
+       modals, popovers, widgets, tiles). Pills/avatars use --radius-full. */
     --radius-sm: 4px;
     --radius-md: 8px;
     --radius-lg: 8px;
-    --radius-xl: 12px;
+    --radius-xl: 8px;
     --radius-full: 9999px;
     --radius: 0.5rem; /* legacy alias = 8px (canonical) */
 
