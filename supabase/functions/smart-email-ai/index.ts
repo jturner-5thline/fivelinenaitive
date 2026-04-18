@@ -663,7 +663,7 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: action === "generate_draft_options" ? "google/gemini-2.5-flash" : "google/gemini-3-flash-preview",
+        model: action === "generate_draft_options" ? "google/gemini-2.5-flash" : action === "analyze_thread_workflow" ? "google/gemini-2.5-flash" : "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
