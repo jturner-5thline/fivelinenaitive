@@ -329,13 +329,24 @@ export function useFinancialData(enabled: boolean) {
 }
 
 // ── Pipeline tab data ─────────────────────────────────────────
-export function usePipelineData(enabled: boolean) {
+// When `targetDealOwnerName` is provided, the deal set is narrowed to deals
+// where that user is Deal Owner OR Deal Manager (see getDealsForUserName).
+// All downstream sections (newDeals, riskDeals, stageChanges, recentActivity)
+// share that narrowed deal set, so no Niki-unowned activity leaks in.
+export function usePipelineData(enabled: boolean, targetDealOwnerName?: string) {
   const { user } = useAuth();
-  const { deals } = useDealsContext();
+  const { deals: allDeals } = useDealsContext();
   const window = useBriefingWindow();
 
+  const deals = useMemo(
+    () => (targetDealOwnerName ? getDealsForUserName(allDeals, targetDealOwnerName) : allDeals),
+    [allDeals, targetDealOwnerName],
+  );
+  const dealIdSet = useMemo(() => new Set(deals.map(d => d.id)), [deals]);
+  const isDelegated = !!targetDealOwnerName;
+
   return useQuery({
-    queryKey: ['briefing-pipeline', window.startISO, user?.id],
+    queryKey: ['briefing-pipeline', window.startISO, user?.id, isDelegated ? `for:${targetDealOwnerName}` : 'self'],
     enabled: enabled && !!user?.id,
     staleTime: 60_000,
     queryFn: async () => {
@@ -358,8 +369,14 @@ export function usePipelineData(enabled: boolean) {
           .limit(50),
       ]);
 
-      const activities = activityRes.data || [];
-      const stageChanges = stageChangeRes.data || [];
+      const rawActivities = activityRes.data || [];
+      const rawStageChanges = stageChangeRes.data || [];
+      const activities = isDelegated
+        ? rawActivities.filter(a => a.deal_id && dealIdSet.has(a.deal_id))
+        : rawActivities;
+      const stageChanges = isDelegated
+        ? rawStageChanges.filter(sc => sc.deal_id && dealIdSet.has(sc.deal_id))
+        : rawStageChanges;
 
       const dealCreatedIds = new Set(stageChanges.filter(sc => sc.activity_type === 'deal_created').map(sc => sc.deal_id));
       const newDeals = deals.filter(d => dealCreatedIds.has(d.id));
@@ -381,6 +398,8 @@ export function usePipelineData(enabled: boolean) {
         riskDeals,
         stageChanges: stageChanges.slice(0, 20),
         recentActivity: activities.slice(0, 30),
+        isDelegated,
+        targetUserName: targetDealOwnerName,
       };
     },
   });
