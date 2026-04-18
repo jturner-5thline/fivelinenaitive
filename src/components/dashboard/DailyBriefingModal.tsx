@@ -835,8 +835,8 @@ function StatusChip({ status }: { status: string | null }) {
 }
 
 // ── Tab: Operational & Projects ────────────────────────────────
-function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path: string) => void }) {
-  const { data, isLoading, error, refetch } = useOperationalData(enabled);
+function OperationalTab({ enabled, onNavigate, targetAssigneeName }: { enabled: boolean; onNavigate: (path: string) => void; targetAssigneeName?: string }) {
+  const { data, isLoading, error, refetch } = useOperationalData(enabled, targetAssigneeName);
   return <OperationalDashboard data={data ?? null} isLoading={isLoading} error={error as Error | null} onRefetch={refetch} />;
 }
 
