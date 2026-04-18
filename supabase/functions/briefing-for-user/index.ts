@@ -1,10 +1,11 @@
 // Fetches another user's email_cache + email_analysis on behalf of an
-// allow-listed caller (currently James Turner). Uses service role to bypass RLS.
+// authorized caller. Uses service role to bypass RLS.
 //
-// This is the MVP authorization model: a small server-side allow-list. The
-// long-term plan is to back this with a `delegated_briefing_access` table
-// (grantor_user_id, grantee_user_id) and check membership instead. When that
-// table is added, replace `isAllowedDelegate(...)` with a DB lookup.
+// Authorization model (MVP): a small server-side allow-list mirrored in
+// `src/constants/nikiBriefing.ts`. Callers in NIKI_BRIEFING_ALLOWED_EMAILS
+// may view Niki's briefing. Niki herself is included so she can self-view
+// through this same parameterized path. The long-term plan is to back this
+// with a `delegated_briefing_access` table and check membership instead.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -14,17 +15,26 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// MVP allow-list: caller email -> set of target user_ids they may view
-const DELEGATE_ACCESS: Record<string, Set<string>> = {
-  'jturner@5thline.co': new Set([
-    'a757f375-7e93-4fc5-a49e-e371abb42fac', // Niki Heikali
-  ]),
-};
+// Mirror of src/constants/nikiBriefing.ts — keep in sync.
+const NIKI_BRIEFING_ALLOWED_EMAILS = new Set<string>([
+  'jturner@5thline.co',
+  'nheikali@5thline.co',
+]);
+const NIKI_USER_ID = 'a757f375-7e93-4fc5-a49e-e371abb42fac';
 
-function isAllowedDelegate(callerEmail: string | undefined, targetUserId: string): boolean {
+function isAuthorizedCaller(
+  callerEmail: string | undefined,
+  callerUserId: string,
+  targetUserId: string,
+): boolean {
   if (!callerEmail) return false;
-  const allowed = DELEGATE_ACCESS[callerEmail.toLowerCase()];
-  return !!allowed && allowed.has(targetUserId);
+  const email = callerEmail.toLowerCase();
+  // Self-view: caller is the target user (e.g., Niki viewing her own briefing).
+  if (callerUserId === targetUserId) {
+    return NIKI_BRIEFING_ALLOWED_EMAILS.has(email);
+  }
+  // Delegated view: caller on allow-list AND target is Niki.
+  return NIKI_BRIEFING_ALLOWED_EMAILS.has(email) && targetUserId === NIKI_USER_ID;
 }
 
 function jsonResponse(body: unknown, status = 200) {
@@ -68,7 +78,7 @@ serve(async (req) => {
       return jsonResponse({ error: 'targetUserId, startISO, endISO required' }, 400);
     }
 
-    if (!isAllowedDelegate(user.email, targetUserId)) {
+    if (!isAuthorizedCaller(user.email, user.id, targetUserId)) {
       // Audit denied access attempt
       console.warn(
         `[briefing-for-user] DENIED: caller=${user.email} (${user.id}) tried to read target=${targetUserId}`
@@ -76,9 +86,10 @@ serve(async (req) => {
       return jsonResponse({ error: 'Not authorized to view this user\'s briefing' }, 403);
     }
 
-    // Audit allowed access
+    const isSelfView = user.id === targetUserId;
+    // Audit allowed access (distinguish self vs delegated)
     console.log(
-      `[briefing-for-user] ALLOWED: caller=${user.email} (${user.id}) -> target=${targetUserId} dataset=${dataset}`
+      `[briefing-for-user] ALLOWED (${isSelfView ? 'self' : 'delegated'}): caller=${user.email} (${user.id}) -> target=${targetUserId} dataset=${dataset}`
     );
 
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);

@@ -24,16 +24,21 @@ import { FullCalendarView } from '@/components/dashboard/FullCalendarView';
 import { NewsFeedPanel } from '@/components/dashboard/NewsFeedPanel';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import {
+  canSeeNikiBriefing,
+  NIKI_USER_ID,
+  NIKI_ASSIGNEE_NAME,
+  NIKI_EMAIL,
+} from '@/constants/nikiBriefing';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { profile } = useProfile();
   const isJTurner = user?.email === 'jturner@5thline.co';
+  const canSeeNiki = canSeeNikiBriefing(user?.email);
+  const isNikiViewingHerself = user?.email?.toLowerCase() === NIKI_EMAIL;
   const [isBriefingOpen, setIsBriefingOpen] = useState(false);
   const [isNikiBriefingOpen, setIsNikiBriefingOpen] = useState(false);
-  // Niki Heikali — long-term this should come from a delegated_briefing_access lookup
-  const NIKI_USER_ID = 'a757f375-7e93-4fc5-a49e-e371abb42fac';
-  const NIKI_ASSIGNEE_NAME = 'Niki Heikali';
   const {
     presets,
     activePreset,
@@ -231,7 +236,14 @@ export default function Dashboard() {
             onDismiss={() => dismissHint('dashboard-quick-actions')}
             side="bottom"
           >
-          <div className={`grid gap-3 md:gap-4 ${isJTurner ? 'grid-cols-4' : 'grid-cols-3'}`}>
+          {(() => {
+            const tileCount = 3 + (isJTurner ? 1 : 0) + (canSeeNiki ? 1 : 0);
+            const gridColsClass =
+              tileCount >= 5 ? 'grid-cols-5'
+              : tileCount === 4 ? 'grid-cols-4'
+              : 'grid-cols-3';
+            return (
+          <div className={`grid gap-3 md:gap-4 ${gridColsClass}`}>
             <Card
               className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
               onClick={() => setCalendarOpen(true)}
@@ -281,7 +293,7 @@ export default function Dashboard() {
                 </div>
               </Card>
             )}
-            {isJTurner && (
+            {canSeeNiki && (
               <Card
                 className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
                 onClick={() => setIsNikiBriefingOpen(true)}
@@ -290,11 +302,15 @@ export default function Dashboard() {
                   <div className="relative h-12 w-12 rounded-xl border border-[hsl(190,90%,55%,0.4)] bg-[hsl(190,90%,45%,0.18)] backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(190,90%,50%,0.25),inset_0_1px_1px_hsl(190,90%,70%,0.2)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-[hsl(190,90%,60%,0.25)] before:to-transparent before:rounded-xl">
                     <Newspaper className="relative z-10 h-7 w-7 text-[hsl(190,90%,70%)]" />
                   </div>
-                  <span className="text-sm font-medium text-foreground">Niki's Daily Briefing</span>
+                  <span className="text-sm font-medium text-foreground">
+                    {isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
+                  </span>
                 </div>
               </Card>
             )}
           </div>
+            );
+          })()}
           </HintTooltip>
 
           {/* Dashboard Tabs */}
@@ -413,11 +429,11 @@ export default function Dashboard() {
         </div>
       </div>
       {isJTurner && <DailyBriefingModal open={isBriefingOpen} onOpenChange={setIsBriefingOpen} />}
-      {isJTurner && (
+      {canSeeNiki && (
         <DailyBriefingModal
           open={isNikiBriefingOpen}
           onOpenChange={setIsNikiBriefingOpen}
-          title="Niki's Daily Briefing"
+          title={isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
           targetUserId={NIKI_USER_ID}
           targetAssigneeName={NIKI_ASSIGNEE_NAME}
           excludeTabs={['financial']}

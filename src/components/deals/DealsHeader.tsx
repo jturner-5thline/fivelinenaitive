@@ -17,6 +17,12 @@ import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { DashboardModal } from '@/components/dashboard/DashboardModal';
 import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
 import { Newspaper } from 'lucide-react';
+import {
+  canSeeNikiBriefing,
+  NIKI_USER_ID,
+  NIKI_ASSIGNEE_NAME,
+  NIKI_EMAIL,
+} from '@/constants/nikiBriefing';
 
 export function DealsHeader() {
   const location = useLocation();
@@ -28,8 +34,8 @@ export function DealsHeader() {
   const [isBriefingOpen, setIsBriefingOpen] = useState(false);
   const [isNikiBriefingOpen, setIsNikiBriefingOpen] = useState(false);
   const isJTurner = user?.email === 'jturner@5thline.co';
-  const NIKI_USER_ID = 'a757f375-7e93-4fc5-a49e-e371abb42fac';
-  const NIKI_ASSIGNEE_NAME = 'Niki Heikali';
+  const canSeeNiki = canSeeNikiBriefing(user?.email);
+  const isNikiViewingHerself = user?.email?.toLowerCase() === NIKI_EMAIL;
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -173,7 +179,7 @@ export function DealsHeader() {
               <TooltipContent>Daily Briefing</TooltipContent>
             </Tooltip>
           )}
-          {isJTurner && (
+          {canSeeNiki && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -183,10 +189,14 @@ export function DealsHeader() {
                   onClick={() => setIsNikiBriefingOpen(true)}
                 >
                   <Newspaper className="h-4 w-4" />
-                  <span className="hidden sm:inline">Niki's Briefing</span>
+                  <span className="hidden sm:inline">
+                    {isNikiViewingHerself ? 'My Briefing' : "Niki's Briefing"}
+                  </span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Niki's Daily Briefing</TooltipContent>
+              <TooltipContent>
+                {isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
+              </TooltipContent>
             </Tooltip>
           )}
           
@@ -205,11 +215,11 @@ export function DealsHeader() {
       <HeaderNotificationPreview />
       {isFifthLine && <DashboardModal open={isDashboardOpen} onOpenChange={setIsDashboardOpen} />}
       {isJTurner && <DailyBriefingModal open={isBriefingOpen} onOpenChange={setIsBriefingOpen} />}
-      {isJTurner && (
+      {canSeeNiki && (
         <DailyBriefingModal
           open={isNikiBriefingOpen}
           onOpenChange={setIsNikiBriefingOpen}
-          title="Niki's Daily Briefing"
+          title={isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
           targetUserId={NIKI_USER_ID}
           targetAssigneeName={NIKI_ASSIGNEE_NAME}
           excludeTabs={['financial']}

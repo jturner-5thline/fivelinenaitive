@@ -57,10 +57,12 @@ function setCache(key: string, data: unknown) {
   cacheByKey.set(key, { data, timestamp: Date.now() });
 }
 
-// MVP allow-list mirror of briefing-for-user. Only allow-listed callers
-// can request another user's filtered Asana view.
+// Allow-list mirror of briefing-for-user (src/constants/nikiBriefing.ts).
+// Callers in NIKI_BRIEFING_ALLOWED_EMAILS may request the Niki Heikali
+// assignee filter — including Niki herself for her own briefing.
 const DELEGATE_ACCESS: Record<string, Set<string>> = {
   'jturner@5thline.co': new Set(['Niki Heikali']),
+  'nheikali@5thline.co': new Set(['Niki Heikali']),
 };
 
 function isAllowedAssigneeDelegate(callerEmail: string | undefined, assigneeName: string): boolean {
