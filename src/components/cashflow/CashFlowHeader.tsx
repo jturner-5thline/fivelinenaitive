@@ -16,6 +16,7 @@ interface HeaderProps {
   onTabChange: (tab: ActiveTab) => void;
   onUndo: () => void;
   onOpenActivityLog: () => void;
+  onConfigureScheduled?: () => void;
 }
 
 function LogoSVG() {
