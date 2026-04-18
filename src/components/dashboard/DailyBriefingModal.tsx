@@ -1011,7 +1011,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
                   {activeTab === 'catchup' && <CatchUpTab enabled={open} onNavigate={handleNavigate} />}
                   {activeTab === 'email' && <EmailTab enabled={open} onNavigate={handleNavigate} targetUserId={targetUserId} />}
                   {activeTab === 'financial' && <FinancialTab enabled={open} onNavigate={handleNavigate} />}
-                  {activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} />}
+                  {activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} targetDealOwnerName={targetAssigneeName} />}
                   {activeTab === 'operational' && <OperationalTab enabled={open} onNavigate={handleNavigate} targetAssigneeName={targetAssigneeName} />}
                 </div>
               </ScrollArea>
