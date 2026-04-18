@@ -399,7 +399,21 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
           )}
         </div>
 
-        <div className="cf-dialog-actions" style={{ marginTop: 12 }}>
+        <div
+          className="cf-dialog-actions"
+          style={{
+            margin: 0,
+            padding: '16px 24px',
+            borderTop: '1px solid hsl(var(--border))',
+            background: 'hsl(var(--card))',
+            position: 'sticky',
+            bottom: 0,
+            zIndex: 2,
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 8,
+          }}
+        >
           <button className="cf-btn cf-btn-ghost" onClick={onClose} disabled={saving}>Cancel</button>
           <button className="cf-btn cf-btn-primary" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
