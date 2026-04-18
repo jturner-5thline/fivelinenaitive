@@ -68,7 +68,7 @@ serve(async (req) => {
       return jsonResponse({ error: 'targetUserId, startISO, endISO required' }, 400);
     }
 
-    if (!isAllowedDelegate(user.email, targetUserId)) {
+    if (!isAuthorizedCaller(user.email, user.id, targetUserId)) {
       // Audit denied access attempt
       console.warn(
         `[briefing-for-user] DENIED: caller=${user.email} (${user.id}) tried to read target=${targetUserId}`
@@ -76,9 +76,10 @@ serve(async (req) => {
       return jsonResponse({ error: 'Not authorized to view this user\'s briefing' }, 403);
     }
 
-    // Audit allowed access
+    const isSelfView = user.id === targetUserId;
+    // Audit allowed access (distinguish self vs delegated)
     console.log(
-      `[briefing-for-user] ALLOWED: caller=${user.email} (${user.id}) -> target=${targetUserId} dataset=${dataset}`
+      `[briefing-for-user] ALLOWED (${isSelfView ? 'self' : 'delegated'}): caller=${user.email} (${user.id}) -> target=${targetUserId} dataset=${dataset}`
     );
 
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
