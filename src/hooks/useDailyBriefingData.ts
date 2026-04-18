@@ -196,21 +196,40 @@ export function useCatchUpData(enabled: boolean) {
 }
 
 // ── Email tab data ────────────────────────────────────────────
-export function useEmailData(enabled: boolean) {
+// When `targetUserId` is provided AND it's not the current user, the email
+// data is fetched via the `briefing-for-user` edge function (service role,
+// allow-list-gated). Otherwise we read directly with RLS as the current user.
+export function useEmailData(enabled: boolean, targetUserId?: string) {
   const { user } = useAuth();
   const window = useBriefingWindow();
+  const effectiveUserId = targetUserId || user?.id;
+  const isDelegated = !!targetUserId && targetUserId !== user?.id;
 
   return useQuery({
-    queryKey: ['briefing-email', window.startISO, user?.id],
-    enabled: enabled && !!user?.id,
+    queryKey: ['briefing-email', window.startISO, effectiveUserId, isDelegated ? 'delegated' : 'self'],
+    enabled: enabled && !!effectiveUserId,
     staleTime: 60_000,
     queryFn: async () => {
       const { startISO, endISO } = window;
+
+      if (isDelegated) {
+        const { data, error } = await supabase.functions.invoke('briefing-for-user', {
+          body: { targetUserId, startISO, endISO, dataset: 'email' },
+        });
+        if (error) throw new Error(error.message);
+        if (data?.error) throw new Error(data.error);
+        const emailCache = (data?.emailCache || []) as any[];
+        const emailAnalysis = (data?.emailAnalysis || []) as any[];
+        const analysisMap = new Map(emailAnalysis.map((a: any) => [a.email_cache_id, a]));
+        const emails = emailCache.map((e: any) => ({ ...e, analysis: analysisMap.get(e.id) || null }));
+        return { emails };
+      }
+
       const [emailCacheRes, emailAnalysisRes] = await Promise.all([
         supabase
           .from('email_cache')
           .select('id, gmail_message_id, subject, snippet, from_email, from_name, received_at, is_read, labels')
-          .eq('user_id', user!.id)
+          .eq('user_id', effectiveUserId!)
           .gte('received_at', startISO)
           .lte('received_at', endISO)
           .order('received_at', { ascending: false })
@@ -324,14 +343,19 @@ export function usePipelineData(enabled: boolean) {
 }
 
 // ── Operational tab data (Asana portfolio) ───────────────────
-export function useOperationalData(enabled: boolean) {
+// Optional `targetAssigneeName` filters Asana tasks to only those assigned to
+// that name (e.g., "Niki Heikali"). The edge function gates this server-side
+// to allow-listed callers.
+export function useOperationalData(enabled: boolean, targetAssigneeName?: string) {
   return useQuery({
-    queryKey: ['briefing-operational-asana'],
+    queryKey: ['briefing-operational-asana', targetAssigneeName || 'self'],
     enabled,
     staleTime: 5 * 60_000, // 5 min client-side cache
     retry: 1, // Don't spam retries on rate limit errors
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('briefing-operational');
+      const { data, error } = await supabase.functions.invoke('briefing-operational', {
+        body: targetAssigneeName ? { targetAssigneeName } : {},
+      });
       if (error) throw new Error(error.message);
       return data as {
         error?: string;

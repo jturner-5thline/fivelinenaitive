@@ -28,6 +28,24 @@ import { cn } from '@/lib/utils';
 interface DailyBriefingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Title shown in the modal header. Defaults to "Daily Briefing".
+   */
+  title?: string;
+  /**
+   * If set, the briefing's user-scoped sections (Email, Operational) will be
+   * loaded for this target user instead of the current user. The caller must
+   * be allow-listed server-side (see briefing-for-user / briefing-operational
+   * edge functions). Org-wide sections (Catch Up, Pipeline, Financial) remain
+   * shared regardless.
+   */
+  targetUserId?: string;
+  /**
+   * Asana assignee display name for the Operational tab when delegating
+   * (e.g., "Niki Heikali"). Required only when targetUserId is set and you
+   * want the Operational tab to filter by that person.
+   */
+  targetAssigneeName?: string;
 }
 
 // ── Glass surface classes ──────────────────────────────────────
@@ -516,8 +534,8 @@ import { classifyEmail, filterEmailsByCategory, EMAIL_CATEGORY_TABS, type EmailC
 import { useEmailClassifierData } from '@/hooks/useEmailClassifierData';
 
 // ── Tab: Email ─────────────────────────────────────────────────
-function EmailTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path: string) => void }) {
-  const { data, isLoading } = useEmailData(enabled);
+function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onNavigate: (path: string) => void; targetUserId?: string }) {
+  const { data, isLoading } = useEmailData(enabled, targetUserId);
   const [detail, setDetail] = useState<any>(null);
   const [subTab, setSubTab] = useState<EmailCategoryTab>('all');
   const { entities: classifierEntities, orgCtx } = useEmailClassifierData();
@@ -817,8 +835,8 @@ function StatusChip({ status }: { status: string | null }) {
 }
 
 // ── Tab: Operational & Projects ────────────────────────────────
-function OperationalTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path: string) => void }) {
-  const { data, isLoading, error, refetch } = useOperationalData(enabled);
+function OperationalTab({ enabled, onNavigate, targetAssigneeName }: { enabled: boolean; onNavigate: (path: string) => void; targetAssigneeName?: string }) {
+  const { data, isLoading, error, refetch } = useOperationalData(enabled, targetAssigneeName);
   return <OperationalDashboard data={data ?? null} isLoading={isLoading} error={error as Error | null} onRefetch={refetch} />;
 }
 
@@ -832,7 +850,7 @@ const TABS = [
 ] as const;
 
 // ── Main modal component ───────────────────────────────────────
-export function DailyBriefingModal({ open, onOpenChange }: DailyBriefingModalProps) {
+export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing', targetUserId, targetAssigneeName }: DailyBriefingModalProps) {
   const navigate = useNavigate();
   const window = useBriefingWindow();
   const [activeTab, setActiveTab] = useState('catchup');
@@ -878,7 +896,7 @@ export function DailyBriefingModal({ open, onOpenChange }: DailyBriefingModalPro
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-white/[0.02]">
             <div>
-              <h2 className="text-lg font-bold text-foreground tracking-tight">Daily Briefing</h2>
+              <h2 className="text-lg font-bold text-foreground tracking-tight">{title}</h2>
               <p className="text-xs text-muted-foreground/60 mt-0.5">
                 {window.label} • {format(new Date(), 'EEEE, MMMM d, yyyy')}
               </p>
@@ -954,10 +972,10 @@ export function DailyBriefingModal({ open, onOpenChange }: DailyBriefingModalPro
                   )}
                 >
                   {activeTab === 'catchup' && <CatchUpTab enabled={open} onNavigate={handleNavigate} />}
-                  {activeTab === 'email' && <EmailTab enabled={open} onNavigate={handleNavigate} />}
+                  {activeTab === 'email' && <EmailTab enabled={open} onNavigate={handleNavigate} targetUserId={targetUserId} />}
                   {activeTab === 'financial' && <FinancialTab enabled={open} onNavigate={handleNavigate} />}
                   {activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} />}
-                  {activeTab === 'operational' && <OperationalTab enabled={open} onNavigate={handleNavigate} />}
+                  {activeTab === 'operational' && <OperationalTab enabled={open} onNavigate={handleNavigate} targetAssigneeName={targetAssigneeName} />}
                 </div>
               </ScrollArea>
             </div>

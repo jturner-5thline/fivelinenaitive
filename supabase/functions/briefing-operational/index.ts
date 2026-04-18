@@ -40,20 +40,33 @@ type OperationalTask = {
   is_milestone: boolean; days_overdue: number; last_activity_at: string | null;
 };
 
-// ── In-memory cache ──────────────────────────────────────────
+// ── In-memory cache (keyed by assignee filter so different users don't bleed) ──
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-let cachedResponse: { data: unknown; timestamp: number } | null = null;
+const cacheByKey = new Map<string, { data: unknown; timestamp: number }>();
 
-function getCached(): unknown | null {
-  if (cachedResponse && (Date.now() - cachedResponse.timestamp) < CACHE_TTL_MS) {
-    return cachedResponse.data;
+function getCached(key: string): unknown | null {
+  const entry = cacheByKey.get(key);
+  if (entry && (Date.now() - entry.timestamp) < CACHE_TTL_MS) {
+    return entry.data;
   }
-  cachedResponse = null;
+  if (entry) cacheByKey.delete(key);
   return null;
 }
 
-function setCache(data: unknown) {
-  cachedResponse = { data, timestamp: Date.now() };
+function setCache(key: string, data: unknown) {
+  cacheByKey.set(key, { data, timestamp: Date.now() });
+}
+
+// MVP allow-list mirror of briefing-for-user. Only allow-listed callers
+// can request another user's filtered Asana view.
+const DELEGATE_ACCESS: Record<string, Set<string>> = {
+  'jturner@5thline.co': new Set(['Niki Heikali']),
+};
+
+function isAllowedAssigneeDelegate(callerEmail: string | undefined, assigneeName: string): boolean {
+  if (!callerEmail) return false;
+  const allowed = DELEGATE_ACCESS[callerEmail.toLowerCase()];
+  return !!allowed && allowed.has(assigneeName);
 }
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -194,11 +207,19 @@ serve(async (req) => {
   }
 
   try {
-    // Check cache first
-    const cached = getCached();
-    if (cached) {
-      console.log('Returning cached operational data');
-      return jsonResponse(cached);
+    // Read optional targetAssigneeName from query string OR body
+    const url = new URL(req.url);
+    let targetAssigneeName = url.searchParams.get('targetAssigneeName') || '';
+
+    if (!targetAssigneeName && (req.method === 'POST' || req.method === 'PUT')) {
+      try {
+        const body = await req.clone().json();
+        if (typeof body?.targetAssigneeName === 'string') {
+          targetAssigneeName = body.targetAssigneeName;
+        }
+      } catch {
+        // ignore non-JSON bodies
+      }
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -213,6 +234,23 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await anonClient.auth.getUser();
     if (userError || !user) {
       return jsonResponse({ error: 'Unauthorized', fallback: true }, 401);
+    }
+
+    // If a targetAssigneeName is requested, verify the caller is allow-listed
+    // for that assignee. Otherwise default to the caller's own briefing.
+    if (targetAssigneeName && !isAllowedAssigneeDelegate(user.email, targetAssigneeName)) {
+      console.warn(
+        `[briefing-operational] DENIED assignee delegation: caller=${user.email} target=${targetAssigneeName}`
+      );
+      return jsonResponse({ error: 'Not authorized to view this user\'s operational briefing' }, 403);
+    }
+
+    // Cache key: per assignee filter so James's view and Niki's view stay separate
+    const cacheKey = targetAssigneeName ? `assignee:${targetAssigneeName}` : 'self';
+    const cached = getCached(cacheKey);
+    if (cached) {
+      console.log(`Returning cached operational data (${cacheKey})`);
+      return jsonResponse(cached);
     }
 
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
@@ -278,7 +316,14 @@ serve(async (req) => {
     }
 
     // Step 3: Classify tasks
-    const allTasks = allTaskGroups.flatMap((g) => g.tasks);
+    let allTasks = allTaskGroups.flatMap((g) => g.tasks);
+
+    // If a target assignee was requested, filter tasks to that assignee only.
+    if (targetAssigneeName) {
+      const wanted = targetAssigneeName.toLowerCase();
+      allTasks = allTasks.filter((t) => (t.assignee || '').toLowerCase() === wanted);
+    }
+
 
     const overdue = allTasks
       .filter((t) => !t.completed && !!t.due_on && t.due_on < todayString)
@@ -296,9 +341,15 @@ serve(async (req) => {
       .filter((t) => t.completed && !!t.completed_at && t.completed_at >= recentCutoff)
       .sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || ''));
 
+    // When filtering by assignee, project task_count should reflect ONLY the
+    // visible (filtered) tasks so the project list lines up with what's shown.
+    const filteredTaskGids = new Set(allTasks.map((t) => t.gid));
     const projectsWithStats = allTaskGroups.map(({ project, tasks }) => {
-      const lastActivityAt = tasks.map((t) => t.last_activity_at).filter(Boolean).sort().at(-1) || null;
-      return { ...project, task_count: tasks.length, last_activity_at: lastActivityAt };
+      const visibleTasks = targetAssigneeName
+        ? tasks.filter((t) => filteredTaskGids.has(t.gid))
+        : tasks;
+      const lastActivityAt = visibleTasks.map((t) => t.last_activity_at).filter(Boolean).sort().at(-1) || null;
+      return { ...project, task_count: visibleTasks.length, last_activity_at: lastActivityAt };
     });
 
     // Add projects that had errors with 0 task count
@@ -335,8 +386,8 @@ serve(async (req) => {
         : {}),
     };
 
-    // Cache successful response
-    setCache(responseData);
+    // Cache successful response per assignee key
+    setCache(cacheKey, responseData);
 
     return jsonResponse(responseData);
   } catch (error) {
