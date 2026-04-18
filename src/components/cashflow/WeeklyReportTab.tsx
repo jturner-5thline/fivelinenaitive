@@ -522,11 +522,28 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                       const isOverridden = !!(isCashRow && overrideField && safeOverrides[weekKey]?.[overrideField] !== undefined);
                       const editable = isAdmin && isCashRow && !!onCashOverride;
 
+                      // Cell comment plumbing
+                      const lineItemKey = isTransferAccount && transferAcc
+                        ? `transfer:${transferAcc}`
+                        : rowDef.key;
+                      const ccKey = cellCommentKey(lineItemKey, weekKey);
+                      const cellCommentsHere = cellCommentsByCell[ccKey] || [];
+                      const cellCtx: CellCtx = {
+                        line_item_key: lineItemKey,
+                        line_item_label: labelText,
+                        week_key: weekKey,
+                        week_num: (entry?.week_num as number) ?? null,
+                        week_ending: (entry?.week_ending as string) ?? null,
+                        cell_value_snapshot: displayVal,
+                      };
+
                       return (
                         <td
                           key={weekKey}
-                          className={`${displayVal > 0 ? 'cf-val-pos' : displayVal < 0 ? 'cf-val-neg' : ''}${isOverridden ? ' cf-cell-override' : ''}`}
-                          title={isOverridden ? 'Manually overridden — double-click to clear' : (editable ? 'Click to edit' : undefined)}
+                          ref={(el) => registerCellRef(ccKey, el)}
+                          className={`${displayVal > 0 ? 'cf-val-pos' : displayVal < 0 ? 'cf-val-neg' : ''}${isOverridden ? ' cf-cell-override' : ''}${cellCommentsHere.length > 0 ? ' cf-cell-has-comment' : ''}`}
+                          title={isOverridden ? 'Manually overridden — double-click to clear' : (editable ? 'Click to edit' : (cellCommentsHere.length > 0 ? `${cellCommentsHere.length} comment${cellCommentsHere.length > 1 ? 's' : ''}` : undefined))}
+                          onContextMenu={(e) => handleCellContextMenu(e, cellCtx)}
                           onDoubleClick={isOverridden && editable && overrideField
                             ? () => onCashOverride!(weekKey, overrideField, null)
                             : undefined}
@@ -571,6 +588,12 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                             <div>{fmtAbbrev(displayVal)}</div>
                           )}
                           {isOverridden && <span className="cf-override-dot" aria-hidden />}
+                          {cellCommentsHere.length > 0 && (
+                            <span
+                              className={`cf-cell-comment-indicator${cellCommentsHere.length > 1 ? ' has-multiple' : ''}`}
+                              aria-hidden
+                            />
+                          )}
                           {planVal !== null && renderVariance(val, planVal)}
                         </td>
                       );
