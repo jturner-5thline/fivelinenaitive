@@ -386,8 +386,8 @@ serve(async (req) => {
         : {}),
     };
 
-    // Cache successful response
-    setCache(responseData);
+    // Cache successful response per assignee key
+    setCache(cacheKey, responseData);
 
     return jsonResponse(responseData);
   } catch (error) {
