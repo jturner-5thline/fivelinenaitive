@@ -509,6 +509,132 @@ Classify and return strict JSON only.`;
         break;
       }
 
+      case "analyze_thread_workflow": {
+        // Claude-powered workflow extraction: identifies likely deal, lender contact,
+        // lender firm, workflow signal, recommended update, reason, and supporting quote.
+        // When no dealId is provided, also tries to infer the most likely deal from the
+        // user's accessible active deals.
+        const latestEmail = emailData || threadData?.latestEmail || threadData?.emails?.[0];
+        const senderEmail: string = (latestEmail?.from_email || "").toLowerCase();
+        const senderName: string = latestEmail?.from_name || "";
+        const senderDomain = senderEmail.split("@")[1] || "";
+        const subject: string = latestEmail?.subject || threadData?.subject || "";
+
+        // Build lender candidate list from the linked deal (for high-precision matching).
+        let lenderCandidates: Array<{ id: string; name: string; stage?: string }> = [];
+        if (dealId) {
+          const { data: ls } = await supabase
+            .from("deal_lenders")
+            .select("id, name, stage")
+            .eq("deal_id", dealId);
+          lenderCandidates = (ls || []).map((l: any) => ({ id: l.id, name: l.name, stage: l.stage }));
+        }
+
+        // Build deal candidates — when no deal is linked yet, surface a small
+        // candidate list of active deals the user can access so Claude can infer.
+        let dealCandidates: Array<{ id: string; company: string; stage?: string }> = [];
+        if (!dealId) {
+          const { data: ds } = await supabase
+            .from("deals")
+            .select("id, company, stage, status")
+            .eq("status", "active")
+            .limit(80);
+          dealCandidates = (ds || []).map((d: any) => ({ id: d.id, company: d.company, stage: d.stage }));
+        }
+
+        systemPrompt = `You are a careful debt-advisory workflow classifier. You read an email thread between an advisor and a lender and infer:
+1. The most likely DEAL the thread is about
+2. The most likely lender CONTACT (the person)
+3. The most likely lender FIRM / account
+4. The workflow SIGNAL the inbound email represents
+5. A recommended UPDATE to suggest to the user (confirm-first; never auto-applied)
+
+Return STRICT JSON only — no markdown fences, no commentary:
+{
+  "likely_deal": { "id": "string — id from candidate list, or empty", "name": "string — deal company name, or empty", "confidence": "low|medium|high", "reasoning": "string — brief why" },
+  "likely_contact": { "name": "string — sender name or signature name", "email": "string", "confidence": "low|medium|high" },
+  "likely_lender_firm": { "id": "string — id from lender candidates if matched, else empty", "name": "string — firm/account name (from signature, domain, or candidates)", "confidence": "low|medium|high", "reasoning": "string" },
+  "signal": {
+    "type": "terms_issued|lender_pass|not_a_fit|info_request|meeting_request|positive_interest|diligence_question|access_issue|internal_note|no_signal",
+    "label": "string — short human-readable, e.g. 'Term sheet received', 'Lender pass (US team)'",
+    "confidence": "low|medium|high",
+    "supporting_quote": "string — the single most decisive verbatim quote from the email body",
+    "nuance": "string — any important nuance, e.g. 'US team passed but UK team may still review' (empty string if none)"
+  },
+  "recommended_update": {
+    "kind": "deal_stage|lender_status|none",
+    "title": "string — explicit confirm-first prompt, e.g. 'Mark TriplePoint Capital as Passed on Arbolus?' or 'Update Arbolus to Terms Issued?'",
+    "deal_id": "string — id of the deal this update targets (use linked dealId if present, else likely_deal.id)",
+    "deal_name": "string",
+    "lender_id": "string — id of the lender candidate this targets, or empty",
+    "lender_name": "string — firm name, or empty",
+    "new_stage": "passed|terms_issued|not_a_fit|info_requested|engaged|interested|other|empty string",
+    "reason_note": "string — short rationale to save with the update (max ~200 chars)",
+    "confidence": "low|medium|high"
+  },
+  "secondary_action": {
+    "kind": "draft_reply|log_activity|none",
+    "title": "string — short prompt, e.g. 'Log lender feedback to Arbolus activity'",
+    "details": "string — empty if none"
+  }
+}
+
+CLASSIFICATION GUIDE:
+- terms_issued: lender sends term sheet / indicative terms / proposal letter / LOI. Look for terms like "indicative terms", "term sheet attached", "proposal letter", numerical pricing offers.
+- lender_pass: lender clearly declines ("we have to pass", "we're declining", "won't move forward", "unable to pursue"). Distinguish hard pass vs nuanced regional pass — preserve nuance.
+- not_a_fit: "outside our strike zone", "not in our wheelhouse", "doesn't fit our box".
+- info_request: lender asks for diligence materials, model, or follow-ups.
+- meeting_request: scheduling language ("let's get on a call", "available next week").
+- positive_interest: "we're interested", "would like to learn more", "seems compelling".
+- diligence_question: a pointed question about the financials or business.
+- access_issue: data room login problems / file access errors.
+- internal_note: an internal forward or commentary, NOT external lender wording. In this case set recommended_update.kind="none".
+- no_signal: small talk, thanks, intros — no workflow update warranted.
+
+DEAL MATCHING:
+- Use subject line, signature, prior thread content, sender email, and candidate list.
+- If a deal is already linked (dealId in context), use that and set high confidence.
+- Otherwise, score by exact company name match in subject or thread body, then by sender domain matching a candidate's known contact.
+- If no candidate is a clear match, set likely_deal.id="" and confidence="low".
+
+LENDER FIRM MATCHING:
+- Prefer exact match against lender candidate list.
+- Otherwise infer firm from sender email signature, domain (drop generic gmail/outlook), or footer text.
+
+QUOTE EXTRACTION:
+- supporting_quote MUST be a verbatim sentence from the email body. Never paraphrase. If unsure, use the most decisive sentence.
+
+CONFIDENCE:
+- high = unambiguous matches and clear signal language.
+- medium = strong inference but some ambiguity (e.g., regional nuance).
+- low = weak inference; requires user to confirm associations first.
+
+If the email is internal commentary only (kind="internal_note"), recommended_update should be {"kind":"none"}.`;
+
+        userPrompt = `${dealContext}
+
+LENDER CANDIDATES ON LINKED DEAL:
+${lenderCandidates.length > 0 ? lenderCandidates.map(l => `- id=${l.id} name="${l.name}" stage=${l.stage || "?"}`).join("\n") : "(none — deal not linked or has no lenders)"}
+
+${!dealId ? `CANDIDATE DEALS (no deal linked yet — pick the most likely one if you can):
+${dealCandidates.length > 0 ? dealCandidates.slice(0, 60).map(d => `- id=${d.id} name="${d.company}" stage=${d.stage || "?"}`).join("\n") : "(none)"}` : `LINKED DEAL: id=${dealId}`}
+
+EMAIL THREAD:
+Subject: ${subject}
+Latest inbound message:
+  From: ${senderName} <${senderEmail}>
+  Sender domain: ${senderDomain}
+  Date: ${latestEmail?.received_at || ""}
+  Body:
+${(latestEmail?.body_preview || latestEmail?.snippet || "").substring(0, 5000)}
+
+Earlier thread context (most recent first):
+${(threadData?.emails || []).slice(0, 6).map((e: any) => `[${e.from_name} <${e.from_email}> @ ${e.received_at}] ${(e.body_preview || e.snippet || "").substring(0, 800)}`).join("\n---\n")}
+
+Analyze and return strict JSON per the schema.`;
+        break;
+      }
+
       case "follow_up_sequence": {
         systemPrompt = `You are a deal follow-up strategist. Analyze an email thread and suggest a follow-up sequence strategy. Return a JSON object: { "status": "awaiting_response|ball_in_our_court|mutual_action|stale", "days_silent": number, "recommended_sequence": [{ "day": number, "action": "email|call|internal_note", "tone": "gentle|firm|urgent", "draft": "..." }], "escalation_trigger": "...", "context_notes": "..." }. day is the number of days from now. Limit to 3 follow-ups max. Each draft should be under 80 words.`;
         userPrompt = `${dealContext}
