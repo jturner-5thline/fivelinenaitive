@@ -293,15 +293,21 @@ ${promptAddendum}`;
 
     if (!anthropicResp.ok) {
       const errText = await anthropicResp.text().catch(() => "");
-      console.error("[claude-dashboard-chat] Anthropic error:", anthropicResp.status, errText);
+      console.error("[claude-dashboard-chat] Anthropic error:", anthropicResp.status, "model:", CLAUDE_MODEL, "body:", errText);
       if (anthropicResp.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again shortly." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      return new Response(JSON.stringify({ error: "AI service unavailable" }), {
-        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          error: "AI service unavailable",
+          upstream_status: anthropicResp.status,
+          upstream_body: errText.slice(0, 1000),
+          model: CLAUDE_MODEL,
+        }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     if (!anthropicResp.body) {
