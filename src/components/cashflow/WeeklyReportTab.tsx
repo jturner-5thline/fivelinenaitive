@@ -62,7 +62,6 @@ const WEEKLY_ROW_ORDER: Array<{
   { key: 'Technology Revenue', section: 'receipts', isTotal: false },
   { key: 'Loan Proceeds', section: 'receipts', isTotal: false },
   { key: 'Other Receipts', section: 'receipts', isTotal: false },
-  { key: 'TOTAL RECEIPTS', section: 'receipts', isTotal: true },
   { key: '__sep_disb', section: 'disbursements', label: '( – ) CASH DISBURSEMENTS', isHeader: true },
   { key: 'Advertising & Marketing', section: 'disbursements', isTotal: false },
   { key: 'Insurance', section: 'disbursements', isTotal: false },
