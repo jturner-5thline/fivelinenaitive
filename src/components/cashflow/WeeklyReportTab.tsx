@@ -5,6 +5,7 @@ import { fmtAbbrev } from './formatters';
 import { WeeklyCharts } from './WeeklyCharts';
 import { WeeklySidebar } from './WeeklySidebar';
 import { useGridWheelPassthrough } from './useGridWheelPassthrough';
+import { ACCOUNT_OPTIONS } from './scheduledCashFlows';
 
 interface SidebarItem {
   id?: string;
