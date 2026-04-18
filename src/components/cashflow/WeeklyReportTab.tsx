@@ -27,6 +27,7 @@ interface WeeklyReportTabProps {
   sidebarDbItems: SidebarItem[];
   theme: ThemeMode;
   isAdmin: boolean;
+  companyId?: string | null;
   planSnapshots: PlanSnapshot[];
   activePlanId: string | null;
   onActivePlanChange: (id: string | null) => void;
@@ -107,11 +108,14 @@ const TRANSFERS_COLLAPSE_KEY = 'cf:internalTransfersCollapsed';
 
 export const WeeklyReportTab = memo(function WeeklyReportTab({
   weeklyData, weeklyOverrides, onCashOverride,
-  sidebarData, sidebarDbItems, theme, isAdmin,
+  sidebarData, sidebarDbItems, theme, isAdmin, companyId,
   planSnapshots, activePlanId, onActivePlanChange, onSavePlan,
   onExport, onConfigureScheduled, onSidebarEditItem, onSidebarRemoveItem, onSidebarAddItem, onSidebarRemoveDbItem,
   onNoteEdit, onNoteRemove, onNoteAdd,
 }: WeeklyReportTabProps) {
+  const { user } = useAuth();
+  const { comments: cellComments, byCell: cellCommentsByCell, addComment: addCellComment, deleteComment: deleteCellComment } =
+    useCellComments({ companyId, planId: activePlanId });
   const safeWeeklyData = weeklyData || {};
   const safeOverrides = weeklyOverrides || {};
   const safeSidebarData: SidebarData = {
