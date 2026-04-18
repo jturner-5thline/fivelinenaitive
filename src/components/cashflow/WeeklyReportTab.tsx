@@ -164,11 +164,6 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
             </span>
           </div>
           <div className="cf-range-controls">
-            {onConfigureScheduled && (
-              <button className="cf-btn cf-btn-secondary" onClick={onConfigureScheduled}>
-                Configure Payments &amp; Revenue
-              </button>
-            )}
             <button className="cf-btn cf-btn-secondary" onClick={() => setSavePlanOpen(true)}>Save Plan</button>
             <select
               className="cf-select"
