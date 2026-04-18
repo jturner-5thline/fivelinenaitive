@@ -252,18 +252,6 @@ export default function Dashboard() {
               </div>
             </Card>
             <InboxDialog open={emailOpen} onOpenChange={setEmailOpen} />
-            <QuickPromptsDialog
-              trigger={
-                <Card className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]">
-                  <div className="flex flex-col items-center text-center space-y-3">
-                    <div className="relative h-12 w-12 rounded-xl border border-success/30 bg-success/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--success)/0.2),inset_0_1px_1px_hsl(var(--success)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-success/20 before:to-transparent before:rounded-xl">
-                      <Zap className="relative z-10 h-7 w-7 text-success" />
-                    </div>
-                    <span className="text-sm font-medium text-foreground">Quick Prompts</span>
-                  </div>
-                </Card>
-              }
-            />
             <CreateDealDialog
               trigger={
                 <Card className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]">
