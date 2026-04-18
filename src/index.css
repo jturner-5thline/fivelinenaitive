@@ -396,32 +396,20 @@
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid var(--glass-border);
-    border-radius: 12px;
-    box-shadow: var(--glass-shadow);
-  }
-
-  /* Glass card with accent top border (KPI cards) */
+    border-radius: var(--radius-md);
   .glass-card-accent {
     background: var(--glass-surface);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid var(--glass-border);
     border-top: 2px solid rgba(126,184,247,0.4);
-    border-radius: 12px;
-    box-shadow: var(--glass-shadow);
-  }
-
-  .glass-card-negative {
+    border-radius: var(--radius-md);
     background: var(--glass-surface);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid var(--glass-border);
     border-top: 2px solid hsl(0 72% 51%);
-    border-radius: 12px;
-    box-shadow: var(--glass-shadow);
-  }
-
-  /* Module header row */
+    border-radius: var(--radius-md);
   .glass-header {
     background: var(--glass-header-bg);
     border-bottom: 1px solid var(--glass-border);
