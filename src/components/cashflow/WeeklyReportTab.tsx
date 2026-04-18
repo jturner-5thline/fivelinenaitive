@@ -434,13 +434,29 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                         const planVal = planEntry
                           ? (Number(planEntry?.['TOTAL RECEIPTS']) || 0) - (Number(planEntry?.['TOTAL DISBURSEMENTS']) || 0)
                           : null;
+                        const ccKey = cellCommentKey('NET CHANGE', weekKey);
+                        const cellCommentsHere = cellCommentsByCell[ccKey] || [];
+                        const cellCtx: CellCtx = {
+                          line_item_key: 'NET CHANGE',
+                          line_item_label: 'NET CHANGE',
+                          week_key: weekKey,
+                          week_num: (entry?.week_num as number) ?? null,
+                          week_ending: (entry?.week_ending as string) ?? null,
+                          cell_value_snapshot: net,
+                        };
                         return (
                           <td
                             key={weekKey}
-                            className={net > 0 ? 'cf-val-pos' : net < 0 ? 'cf-val-neg' : ''}
+                            ref={(el) => registerCellRef(ccKey, el)}
+                            className={`${net > 0 ? 'cf-val-pos' : net < 0 ? 'cf-val-neg' : ''}${cellCommentsHere.length > 0 ? ' cf-cell-has-comment' : ''}`}
                             style={{ fontWeight: 700 }}
+                            onContextMenu={(e) => handleCellContextMenu(e, cellCtx)}
+                            title={cellCommentsHere.length > 0 ? `${cellCommentsHere.length} comment${cellCommentsHere.length > 1 ? 's' : ''}` : undefined}
                           >
                             <div>{fmtAbbrev(net)}</div>
+                            {cellCommentsHere.length > 0 && (
+                              <span className={`cf-cell-comment-indicator${cellCommentsHere.length > 1 ? ' has-multiple' : ''}`} aria-hidden />
+                            )}
                             {planVal !== null && renderVariance(net, planVal)}
                           </td>
                         );
