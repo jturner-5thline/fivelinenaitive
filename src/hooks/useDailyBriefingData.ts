@@ -100,11 +100,24 @@ export function useCatchUpData(enabled: boolean, targetDealOwnerName?: string) {
           .limit(200),
       ]);
 
-      const activities = activityRes.data || [];
-      const stageChanges = stageChangeRes.data || [];
-      const milestones = milestonesRes.data || [];
-      const emailCache = emailCacheRes.data || [];
-      const emailAnalysis = emailAnalysisRes.data || [];
+      // When delegated, scope all deal-bound activity/milestones to the
+      // target user's deals (Owner OR Manager). Email content is intentionally
+      // NOT mixed in for delegated mode — Niki's email surfaces only via the
+      // dedicated Email tab (handled by useEmailData with its own auth path).
+      const rawActivities = activityRes.data || [];
+      const rawStageChanges = stageChangeRes.data || [];
+      const rawMilestones = milestonesRes.data || [];
+      const activities = isDelegated
+        ? rawActivities.filter(a => !a.deal_id || dealIdSet.has(a.deal_id))
+        : rawActivities;
+      const stageChanges = isDelegated
+        ? rawStageChanges.filter(sc => !sc.deal_id || dealIdSet.has(sc.deal_id))
+        : rawStageChanges;
+      const milestones = isDelegated
+        ? rawMilestones.filter(m => !m.deal_id || dealIdSet.has(m.deal_id))
+        : rawMilestones;
+      const emailCache = isDelegated ? [] : (emailCacheRes.data || []);
+      const emailAnalysis = isDelegated ? [] : (emailAnalysisRes.data || []);
       const analysisMap = new Map(emailAnalysis.map(a => [a.email_cache_id, a]));
 
       // Priority alerts (unchanged)
