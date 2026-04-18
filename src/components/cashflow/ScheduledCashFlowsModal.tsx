@@ -234,7 +234,7 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent
-        className="max-w-6xl w-[95vw] p-0 gap-0 overflow-hidden border-border bg-card shadow-2xl rounded-2xl"
+        className="max-w-7xl w-[96vw] p-0 gap-0 overflow-hidden border-border bg-card shadow-2xl rounded-2xl"
         style={{ maxHeight: '90vh' }}
       >
         {/* Header */}
