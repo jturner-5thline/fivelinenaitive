@@ -18,7 +18,7 @@ export const HomepageFeatureSection = ({
   const { ref: imageRef, isVisible: imageVisible } = useScrollReveal(0.1);
 
   return (
-    <section className="py-14 md:py-20 bg-[#0a0a12]">
+    <section className="py-14 md:py-20 bg-transparent">
       <div className="container mx-auto px-6">
         <div className={`flex flex-col ${reverse ? 'lg:flex-row-reverse' : 'lg:flex-row'} gap-12 lg:gap-20 items-center`}>
           {/* Text */}

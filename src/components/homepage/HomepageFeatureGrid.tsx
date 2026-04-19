@@ -39,7 +39,7 @@ export const HomepageFeatureGrid = () => {
   const { ref, isVisible } = useScrollReveal();
 
   return (
-    <section className="py-16 md:py-24 bg-[#0a0a12]">
+    <section className="py-16 md:py-24 bg-transparent">
       <div className="container mx-auto px-6">
         <div ref={ref} className={`max-w-3xl mb-14 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
           <p className="text-sm font-medium uppercase tracking-[0.2em] text-[hsl(270,65%,72%)] mb-4">

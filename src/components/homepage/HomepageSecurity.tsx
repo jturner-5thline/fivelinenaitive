@@ -13,7 +13,7 @@ const badges = ["SOC2", "GDPR", "CCPA"];
 
 export const HomepageSecurity = () => {
   return (
-    <section className="py-24 md:py-32 bg-[#0a0a12]">
+    <section className="py-24 md:py-32 bg-transparent">
       <div className="container mx-auto px-6">
         <div className="max-w-4xl mx-auto">
           {/* Badge */}
