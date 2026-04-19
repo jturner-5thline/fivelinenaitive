@@ -41,14 +41,14 @@ export default function Homepage() {
         
         <HomepageHero />
 
+        {/* Scrolling capability tags — full-width banner directly under hero */}
+        <div className="scroll-reveal">
+          <HomepageScrollingTags />
+        </div>
+
         {/* Narrative intro */}
         <div className="scroll-reveal-soft">
           <HomepageValueProp />
-        </div>
-
-        {/* Scrolling capability tags */}
-        <div className="scroll-reveal">
-          <HomepageScrollingTags />
         </div>
 
         {/* Feature grid — 5 modules */}
