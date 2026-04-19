@@ -32,8 +32,18 @@ export const HomepageHero = () => {
         </div>
       </div>
 
-      {/* Bottom fade — soft blend into page background, no hard edge */}
-      <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-b from-transparent to-[hsl(268,40%,7%)] pointer-events-none" />
+      {/* Bottom fade — seamless blend into next section's exact background color */}
+      <div
+        className="absolute inset-x-0 bottom-0 pointer-events-none"
+        style={{
+          height: "22%",
+          minHeight: "160px",
+          maxHeight: "220px",
+          background:
+            "linear-gradient(180deg, rgba(18,13,27,0) 0%, rgba(18,13,27,0) 60%, hsl(265 35% 5%) 100%)",
+          zIndex: 2,
+        }}
+      />
 
       {/* Left-aligned, vertically centered content */}
       <div className="relative z-10 container mx-auto px-6 md:px-[8%] lg:px-[10%]">
