@@ -28,7 +28,15 @@ export default function Homepage() {
         />
       </Helmet>
 
-      <div className="dark min-h-screen bg-[hsl(230,25%,5%)]" style={{ colorScheme: 'dark' }}>
+      <div
+        className="dark min-h-screen bg-[hsl(230,25%,5%)] relative"
+        style={{
+          colorScheme: 'dark',
+          backgroundImage:
+            'radial-gradient(ellipse 80% 60% at 100% 0%, hsl(270, 55%, 12%) 0%, transparent 60%), radial-gradient(ellipse 70% 50% at 0% 100%, hsl(265, 50%, 9%) 0%, transparent 65%)',
+          backgroundAttachment: 'fixed',
+        }}
+      >
         <HomepageHeader />
         
         <HomepageHero />
