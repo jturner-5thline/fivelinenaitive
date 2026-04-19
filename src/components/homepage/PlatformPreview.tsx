@@ -48,15 +48,15 @@ export const PlatformPreviewDealPipeline = () => {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="text-center p-4 rounded-lg bg-white/5">
+        <div className="text-center p-4 rounded-lg bg-[hsl(268,40%,14%,0.5)] border border-[hsl(270,30%,50%,0.14)]">
           <p className="text-2xl font-semibold text-white">12</p>
           <p className="text-xs text-white/50">Active Deals</p>
         </div>
-        <div className="text-center p-4 rounded-lg bg-white/5">
+        <div className="text-center p-4 rounded-lg bg-[hsl(268,40%,14%,0.5)] border border-[hsl(270,30%,50%,0.14)]">
           <p className="text-2xl font-semibold text-white">$312M</p>
           <p className="text-xs text-white/50">Pipeline Value</p>
         </div>
-        <div className="text-center p-4 rounded-lg bg-white/5">
+        <div className="text-center p-4 rounded-lg bg-[hsl(268,40%,14%,0.5)] border border-[hsl(270,30%,50%,0.14)]">
           <p className="text-2xl font-semibold text-emerald-400">3</p>
           <p className="text-xs text-white/50">LOI Stage</p>
         </div>
@@ -71,7 +71,7 @@ export const PlatformPreviewDealPipeline = () => {
           return (
             <div
               key={deal.company}
-              className="flex items-center justify-between p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors group cursor-pointer"
+              className="flex items-center justify-between p-4 rounded-lg bg-[hsl(268,40%,14%,0.5)] border border-[hsl(270,30%,50%,0.14)] hover:bg-[hsl(268,40%,16%,0.6)] transition-colors group cursor-pointer"
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg border border-[hsl(280,85%,65%,0.55)] bg-[hsl(275,80%,40%,0.3)] shadow-[inset_0_1px_1px_hsl(280,85%,75%,0.35),0_4px_24px_hsl(275,80%,45%,0.4)] flex items-center justify-center text-sm font-semibold text-white">
@@ -126,7 +126,7 @@ export const PlatformPreviewLenderKanban = () => {
       {/* Kanban */}
       <div className="grid grid-cols-3 gap-4">
         {stages.map((stage) => (
-          <div key={stage.name} className="p-4 rounded-lg bg-white/5">
+          <div key={stage.name} className="p-4 rounded-lg bg-[hsl(268,40%,14%,0.5)] border border-[hsl(270,30%,50%,0.14)]">
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm font-medium text-white">{stage.name}</span>
               <span className="text-xs text-white/50">{stage.count}</span>
@@ -135,7 +135,7 @@ export const PlatformPreviewLenderKanban = () => {
               {stage.lenders.map((lender) => (
                 <div
                   key={lender}
-                  className="p-3 rounded-lg bg-white/5 border border-white/10 text-sm text-white/80 hover:bg-white/10 transition-colors cursor-pointer"
+                  className="p-3 rounded-lg bg-[hsl(268,40%,18%,0.55)] border border-[hsl(270,30%,55%,0.16)] text-sm text-white/80 hover:bg-[hsl(268,40%,20%,0.65)] transition-colors cursor-pointer"
                 >
                   {lender}
                 </div>
@@ -169,12 +169,12 @@ export const PlatformPreviewDataRoom = () => {
       </div>
 
       {/* Progress */}
-      <div className="mb-6 p-4 rounded-lg bg-white/5">
+      <div className="mb-6 p-4 rounded-lg bg-[hsl(268,40%,14%,0.5)] border border-[hsl(270,30%,50%,0.14)]">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm text-white">Checklist Progress</span>
           <span className="text-sm text-[hsl(292,46%,72%)]">67%</span>
         </div>
-        <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+        <div className="h-2 rounded-full bg-[hsl(268,30%,20%,0.6)] overflow-hidden">
           <div className="h-full w-2/3 rounded-full bg-gradient-to-r from-[hsl(292,46%,72%)] to-[hsl(292,46%,82%)]" />
         </div>
       </div>
@@ -184,10 +184,10 @@ export const PlatformPreviewDataRoom = () => {
         {folders.map((folder) => (
           <div
             key={folder.name}
-            className="flex items-center justify-between p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+            className="flex items-center justify-between p-4 rounded-lg bg-[hsl(268,40%,14%,0.5)] border border-[hsl(270,30%,50%,0.14)] hover:bg-[hsl(268,40%,16%,0.6)] transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${folder.complete ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white/50'}`}>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${folder.complete ? 'bg-emerald-500/20 text-emerald-400' : 'bg-[hsl(268,30%,25%,0.5)] text-white/50'}`}>
                 {folder.complete ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
               </div>
               <span className="text-sm text-white">{folder.name}</span>
