@@ -545,13 +545,13 @@ function Globe() {
   });
 
   return (
-    <Sphere ref={meshRef} args={[2, 64, 64]} position={[0, 0, 0]}>
-      {/* Back-facing wireframe — dim & cool, gives depth without glow */}
+    <Sphere ref={meshRef} args={[2, 36, 24]} position={[0, 0, 0]} renderOrder={0}>
+      {/* Back-facing wireframe — very faint, recedes so nucleus reads through */}
       <meshBasicMaterial
-        color="#4A3E7A"
+        color="#2A2347"
         wireframe
         transparent
-        opacity={0.32}
+        opacity={0.12}
         side={THREE.BackSide}
         depthWrite={false}
       />
@@ -571,7 +571,7 @@ function GlobeLines() {
   });
 
   return (
-    <Sphere ref={meshRef} args={[2.001, 64, 64]} position={[0, 0, 0]}>
+    <Sphere ref={meshRef} args={[2.001, 64, 64]} position={[0, 0, 0]} renderOrder={1}>
       {/* Front-facing wireframe — bright, lit, crisp */}
       <meshStandardMaterial
         color="#E8E4FF"
@@ -1075,7 +1075,6 @@ function NeuralNetwork() {
   return (
     <group ref={groupRef}>
       {/* === CELLULAR NUCLEUS === */}
-      
       {/* Expanding pulse wave with soft radial fade */}
       <mesh ref={pulseWaveRef} position={[0, 0, 0]} material={pulseShaderMaterial}>
         <sphereGeometry args={[1, 48, 48]} />
@@ -1395,7 +1394,9 @@ export function SpinningGlobe() {
         {/* Rim light, lower-right */}
         <directionalLight position={[5, -4, 3]} intensity={0.55} color="#22D3EE" />
         <group rotation={[seasonalTilt.x, 0, seasonalTilt.z]}>
-          <NeuralNetwork />
+          <group renderOrder={2}>
+            <NeuralNetwork />
+          </group>
           <Globe />
           <GlobeLines />
         </group>
