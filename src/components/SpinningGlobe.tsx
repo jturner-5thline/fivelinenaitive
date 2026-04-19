@@ -1372,7 +1372,7 @@ export function SpinningGlobe() {
         <group rotation={[seasonalTilt.x, 0, seasonalTilt.z]}>
           <NeuralNetwork />
           <Globe />
-          <GlobeLines />
+          {/* GlobeLines (teal wireframe) removed for clean globe surface */}
           {/* GlobeGlow removed */}
           {/* ContinentOutlines and CityLights removed for clean globe surface */}
         </group>
