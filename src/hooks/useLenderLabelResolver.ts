@@ -83,7 +83,7 @@ export function useLenderLabelResolver() {
           description,
           'milestone',
         );
-        const fromLabel = resolveLenderActivity(to ? from : null, 'milestone', lenderId);
+        const fromLabel = resolveLenderActivity(from, 'milestone', lenderId);
         const toLabel = resolveLenderActivity(to, 'milestone', lenderId);
         const subject = entityName?.trim() || 'Lender';
         return `${subject} milestone changed from ${fromLabel} to ${toLabel}`;
