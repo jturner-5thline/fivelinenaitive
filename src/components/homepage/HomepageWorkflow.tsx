@@ -86,7 +86,7 @@ export const HomepageWorkflow = () => {
             <div className="absolute inset-x-4 top-4 h-full rounded-2xl bg-gradient-to-b from-[hsl(268,40%,15%,0.45)] to-[hsl(262,38%,9%,0.5)] border border-[hsl(270,35%,55%,0.16)] backdrop-blur-xl rotate-[1deg]" />
 
             {/* front card */}
-            <div className="relative rounded-2xl p-7 bg-[#0e0e18] border border-[hsl(270,35%,55%,0.2)] shadow-[inset_0_1px_0_hsl(270,40%,70%,0.06),0_20px_50px_-20px_hsl(265,60%,3%,0.7)] backdrop-blur-2xl">
+            <div className="relative rounded-2xl p-7 bg-[#0e0e18] border border-[hsl(220,15%,22%,0.9)] shadow-[inset_0_1px_0_hsl(220,15%,40%,0.12),0_1px_0_hsl(220,15%,8%,0.6),0_8px_24px_-12px_hsl(220,30%,2%,0.6)] backdrop-blur-2xl">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs uppercase tracking-wider text-white/50">Active deal</span>
                 <span className="inline-flex items-center gap-1.5 text-xs text-emerald-300">
