@@ -179,6 +179,7 @@ import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithComm
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
 import { Label } from '@/components/ui/label';
+import { useLenderLabelResolver } from '@/hooks/useLenderLabelResolver';
 
 // Editable deal tile for lender "About" tab - extracted to avoid hooks-in-map
 function EditableLenderDealTile({ 
@@ -487,6 +488,7 @@ export default function DealDetail() {
   const { getLenderNames, getLenderDetails } = useLenders();
   const { lenders: masterLenders, loading: masterLendersLoading, loadingMore: masterLendersLoadingMore } = useMasterLenders({ eagerAll: true });
   const { stages: configuredStages, substages: configuredSubstages, passReasons, getTrackingStatusConfig, stageGroups } = useLenderStages();
+  const { resolveLenderActivityLabel } = useLenderLabelResolver();
   const { dealTypes: availableDealTypes } = useDealTypes();
   const { stages: dealStages, getStageConfig } = useDealStages();
   const dynamicStageConfig = getStageConfig();
@@ -558,6 +560,14 @@ export default function DealDetail() {
   // Get deal from context
   const contextDeal = getDealById(id || '');
   const [deal, setDeal] = useState<Deal | undefined>(contextDeal);
+  const formatRenderedLenderStage = useCallback(
+    (value: string | null | undefined) => resolveLenderActivityLabel(value, 'stage'),
+    [resolveLenderActivityLabel],
+  );
+  const formatRenderedLenderMilestone = useCallback(
+    (value: string | null | undefined) => resolveLenderActivityLabel(value, 'milestone'),
+    [resolveLenderActivityLabel],
+  );
   const [naitiveFallbackLoading, setNaitiveFallbackLoading] = useState(false);
   const { hasAccess: hasNaitivePipelineAccess } = useNaitivePipelineAccess();
 
