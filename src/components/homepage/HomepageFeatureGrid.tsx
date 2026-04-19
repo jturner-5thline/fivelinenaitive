@@ -61,14 +61,8 @@ export const HomepageFeatureGrid = () => {
                 f.wide ? "lg:col-span-2 lg:row-span-1" : ""
               }`}
             >
-              {/* shimmer line */}
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[hsl(280,70%,65%,0.6)] to-transparent opacity-60 group-hover:opacity-100 transition-opacity" />
-
-              {/* glow */}
-              <div className="pointer-events-none absolute -top-20 -right-16 w-64 h-64 rounded-full bg-[radial-gradient(circle,_hsl(270,70%,55%,0.18),_transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
               <div className="relative">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[hsl(270,60%,40%,0.45)] to-[hsl(220,60%,35%,0.35)] border border-[hsl(280,70%,65%,0.4)] flex items-center justify-center mb-5 shadow-[0_0_20px_hsl(280,70%,55%,0.2)]">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[hsl(270,60%,40%,0.45)] to-[hsl(220,60%,35%,0.35)] border border-[hsl(280,70%,65%,0.4)] flex items-center justify-center mb-5">
                   <f.icon className="w-5 h-5 text-white" />
                 </div>
                 <h3 className="text-xl font-semibold text-white mb-2.5">{f.title}</h3>

@@ -46,9 +46,8 @@ export const HomepageTestimonials = () => {
           {testimonials.map((t) => (
             <div
               key={t.author}
-              className="group relative overflow-hidden rounded-2xl p-7 bg-white/[0.05] border border-white/10 backdrop-blur-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-white/[0.075] hover:border-white/20 transition-all duration-300"
+              className="group relative overflow-hidden rounded-2xl p-7 bg-white/[0.05] border border-white/10 backdrop-blur-2xl hover:bg-white/[0.075] hover:border-white/20 transition-all duration-300"
             >
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[hsl(280,70%,65%,0.5)] to-transparent" />
               {/* Accent bar */}
               <div className={`absolute left-0 top-7 bottom-7 w-0.5 rounded-full ${accentBar[t.accent]}`} />
 
