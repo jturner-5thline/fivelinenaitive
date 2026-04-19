@@ -94,7 +94,8 @@ async function resolveRecipients(
 
   // If we have a deal_id but no resolved owner/manager IDs, look them up from the deal record
   const dealId = context.deal_id as string | undefined;
-  if (dealId && (!context.deal_owner_id || !context.deal_manager_ids)) {
+  let resolvedDealCompanyId: string | null = null;
+  if (dealId) {
     const { data: deal } = await supabase
       .from("deals")
       .select("user_id, manager, analyst, deal_owner, company_id")
@@ -102,7 +103,10 @@ async function resolveRecipients(
       .maybeSingle();
 
     if (deal) {
-      const companyId = deal.company_id || (context.company_id as string | undefined);
+      const companyId = (deal.company_id as string | null) || (context.company_id as string | undefined) || null;
+      resolvedDealCompanyId = companyId;
+      // Expose for downstream resolvers (ADMIN scoping)
+      if (!context.company_id && companyId) context.company_id = companyId;
 
       // Resolve deal_owner (text name) to user ID, fallback to user_id (creator)
       if (!context.deal_owner_id) {
@@ -152,12 +156,36 @@ async function resolveRecipients(
           if (context.tagged_user_id) recipientSet.add(String(context.tagged_user_id));
           break;
         case "ADMIN": {
-          const { data: admins } = await supabase
-            .from("user_roles")
-            .select("user_id")
-            .eq("role", "admin");
-          if (admins) {
-            for (const a of admins) recipientSet.add(a.user_id);
+          // Scope admins to the deal's company when we know it; otherwise fall back to global admins.
+          const adminCompanyId =
+            resolvedDealCompanyId ||
+            (typeof context.company_id === "string" ? (context.company_id as string) : null);
+
+          if (adminCompanyId) {
+            // Find users who are members of this company AND have the global 'admin' role.
+            const { data: members } = await supabase
+              .from("company_members")
+              .select("user_id")
+              .eq("company_id", adminCompanyId);
+            const memberIds = (members || []).map((m: any) => m.user_id);
+            if (memberIds.length > 0) {
+              const { data: admins } = await supabase
+                .from("user_roles")
+                .select("user_id")
+                .eq("role", "admin")
+                .in("user_id", memberIds);
+              if (admins) {
+                for (const a of admins) recipientSet.add(a.user_id);
+              }
+            }
+          } else {
+            const { data: admins } = await supabase
+              .from("user_roles")
+              .select("user_id")
+              .eq("role", "admin");
+            if (admins) {
+              for (const a of admins) recipientSet.add(a.user_id);
+            }
           }
           break;
         }

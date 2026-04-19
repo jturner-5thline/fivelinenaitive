@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { notifyDealFlagged } from '@/utils/notifyDealFlagged';
 
 export interface FlagNote {
   id: string;
@@ -52,17 +53,47 @@ export function useFlagNotes(dealId: string | null) {
     if (!dealId || !note.trim() || !user) return;
 
     try {
+      const trimmed = note.trim();
       const { error } = await supabase
         .from('deal_flag_notes')
         .insert({
           deal_id: dealId,
-          note: note.trim(),
+          note: trimmed,
           user_id: user.id,
           resolved: false,
         });
 
       if (error) throw error;
       await fetchFlagNotes();
+
+      // Fire the deal_flagged notification. Recipient resolution + dispatch
+      // happens server-side in `notification-engine`. Best-effort — failure
+      // here must not break the flag insert above.
+      try {
+        const { data: dealRow } = await supabase
+          .from('deals')
+          .select('company, company_id, is_flagged')
+          .eq('id', dealId)
+          .maybeSingle();
+
+        // Keep legacy is_flagged column in sync so list/kanban surfaces show the flag too.
+        if (dealRow && dealRow.is_flagged !== true) {
+          await supabase
+            .from('deals')
+            .update({ is_flagged: true })
+            .eq('id', dealId);
+        }
+
+        await notifyDealFlagged({
+          dealId,
+          dealName: dealRow?.company || 'this deal',
+          actorUserId: user.id,
+          flagNote: trimmed,
+          companyId: (dealRow as any)?.company_id ?? null,
+        });
+      } catch (notifyErr) {
+        console.error('Error sending deal_flagged notification:', notifyErr);
+      }
     } catch (error) {
       console.error('Error adding flag note:', error);
     }
