@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { useLenderStages } from '@/contexts/LenderStagesContext';
 import {
   extractChangePayload,
+  resolveLenderActivityLabel,
   resolveStageLabel,
   resolveSubstageLabel,
 } from '@/lib/lenderStageFormat';
@@ -16,11 +17,11 @@ export function useLenderLabelResolver() {
   const { stages, substages } = useLenderStages();
 
   const stageOptions = useMemo(
-    () => stages.map((s) => ({ id: s.id, label: s.label })),
+    () => stages.map((s) => ({ id: s.id, key: s.id, label: s.label })),
     [stages],
   );
   const substageOptions = useMemo(
-    () => substages.map((s) => ({ id: s.id, label: s.label })),
+    () => substages.map((s) => ({ id: s.id, key: s.id, label: s.label })),
     [substages],
   );
 
@@ -35,6 +36,21 @@ export function useLenderLabelResolver() {
     [substageOptions],
   );
 
+  const resolveLenderActivity = useCallback(
+    (
+      value: string | null | undefined,
+      type: 'stage' | 'milestone',
+      lenderId?: string | null,
+    ) =>
+      resolveLenderActivityLabel(
+        value,
+        type,
+        type === 'stage' ? stageOptions : substageOptions,
+        lenderId ?? undefined,
+      ),
+    [stageOptions, substageOptions],
+  );
+
   /**
    * Rebuild a "<lender> stage changed from X to Y" / "<lender> milestone
    * changed from X to Y" sentence with fully resolved, humanized labels.
@@ -45,8 +61,9 @@ export function useLenderLabelResolver() {
       activityType: string;
       description: string;
       metadata: unknown;
+      lenderId?: string | null;
     }): string => {
-      const { activityType, description, metadata } = params;
+      const { activityType, description, metadata, lenderId } = params;
 
       if (activityType === 'lender_stage_change') {
         const { entityName, from, to } = extractChangePayload(
@@ -54,8 +71,8 @@ export function useLenderLabelResolver() {
           description,
           'stage',
         );
-        const fromLabel = resolveStage(from);
-        const toLabel = resolveStage(to);
+        const fromLabel = resolveLenderActivity(from, 'stage', lenderId);
+        const toLabel = resolveLenderActivity(to, 'stage', lenderId);
         const subject = entityName?.trim() || 'Lender';
         return `${subject} stage changed from ${fromLabel} to ${toLabel}`;
       }
@@ -66,8 +83,8 @@ export function useLenderLabelResolver() {
           description,
           'milestone',
         );
-        const fromLabel = resolveSubstage(from);
-        const toLabel = resolveSubstage(to);
+        const fromLabel = resolveLenderActivity(to ? from : null, 'milestone', lenderId);
+        const toLabel = resolveLenderActivity(to, 'milestone', lenderId);
         const subject = entityName?.trim() || 'Lender';
         return `${subject} milestone changed from ${fromLabel} to ${toLabel}`;
       }
@@ -80,6 +97,7 @@ export function useLenderLabelResolver() {
   return {
     resolveStage,
     resolveSubstage,
+    resolveLenderActivityLabel: resolveLenderActivity,
     formatLenderActivity,
     stageOptions,
     substageOptions,
