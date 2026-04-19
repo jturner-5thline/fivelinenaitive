@@ -2,46 +2,62 @@ import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 const testimonials = [
   {
-    quote: "Teams managing complex, multi-party deal processes — from origination through diligence and close — who need execution to stay organized, transparent, and repeatable as deal volume scales.",
+    quote:
+      "Teams managing complex, multi-party deal processes — from origination through diligence and close — who need execution to stay organized, transparent, and repeatable as deal volume scales.",
     author: "Advisors & Brokers",
+    accent: "purple",
   },
   {
-    quote: "Firms evaluating, structuring, and advancing deals across multiple stakeholders — where visibility, coordination, and execution discipline are critical to moving capital efficiently.",
+    quote:
+      "Firms evaluating, structuring, and advancing deals across multiple stakeholders — where visibility, coordination, and execution discipline are critical to moving capital efficiently.",
     author: "Credit & Investment Teams",
+    accent: "cyan",
   },
   {
-    quote: "Internal teams responsible for acquisitions, financings, and strategic transactions — coordinating diligence, documentation, and approvals across legal, finance, and external partners.",
+    quote:
+      "Internal teams responsible for acquisitions, financings, and strategic transactions — coordinating diligence, documentation, and approvals across legal, finance, and external partners.",
     author: "Corporate Deal Teams",
+    accent: "blue",
   },
 ];
+
+const accentBar: Record<string, string> = {
+  purple: "bg-gradient-to-b from-[hsl(270,70%,65%)] to-[hsl(270,70%,40%)]",
+  cyan: "bg-gradient-to-b from-[hsl(180,70%,55%)] to-[hsl(200,70%,40%)]",
+  blue: "bg-gradient-to-b from-[hsl(220,80%,65%)] to-[hsl(240,70%,45%)]",
+};
 
 export const HomepageTestimonials = () => {
   const { ref, isVisible } = useScrollReveal();
 
   return (
-    <section className="py-12 md:py-16 bg-[#0a0a12]">
+    <section className="py-16 md:py-24 bg-[#0a0a12]">
       <div ref={ref} className={`container mx-auto px-6 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
-        {/* Section header */}
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-6xl font-bold text-white mb-4">
-            Who n<span className="bg-gradient-to-r from-[hsl(270,65%,55%)] to-[hsl(220,70%,72%)] bg-clip-text text-transparent">ai</span>tive is built for
+        <div className="max-w-3xl mb-14">
+          <p className="text-sm font-medium uppercase tracking-[0.2em] text-[hsl(270,65%,72%)] mb-4">
+            Built for
+          </p>
+          <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight">
+            Who n<span className="bg-gradient-to-r from-[hsl(270,65%,55%)] to-[hsl(220,70%,72%)] bg-clip-text text-transparent">ai</span>tive is built for.
           </h2>
         </div>
 
-        {/* Testimonials grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {testimonials.map((testimonial, index) => (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {testimonials.map((t) => (
             <div
-              key={index}
-              className="relative p-8 rounded-2xl bg-gradient-to-br from-white/5 to-transparent border border-[hsl(263,45%,45%,0.7)] shadow-[0_0_20px_hsl(263,60%,50%,0.12)] hover:border-[hsl(263,45%,55%,0.9)] transition-colors"
+              key={t.author}
+              className="group relative overflow-hidden rounded-2xl p-7 bg-white/[0.05] border border-white/10 backdrop-blur-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-white/[0.075] hover:border-white/20 transition-all duration-300"
             >
-              
-              <div className="mb-4 text-center">
-                <p className="text-2xl font-medium text-white">{testimonial.author}</p>
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[hsl(280,70%,65%,0.5)] to-transparent" />
+              {/* Accent bar */}
+              <div className={`absolute left-0 top-7 bottom-7 w-0.5 rounded-full ${accentBar[t.accent]}`} />
+
+              <div className="pl-3">
+                <p className="text-2xl font-semibold text-white mb-4">{t.author}</p>
+                <p className="text-white/65 leading-relaxed text-[15px]">
+                  {t.quote}
+                </p>
               </div>
-              <p className="text-white/80 leading-relaxed text-center">
-                {testimonial.quote}
-              </p>
             </div>
           ))}
         </div>
