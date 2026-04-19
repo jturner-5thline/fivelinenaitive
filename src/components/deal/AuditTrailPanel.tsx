@@ -11,6 +11,7 @@ import { History, Search, ChevronDown, ChevronUp, ArrowUpDown, Users } from 'luc
 import { format, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Json } from '@/integrations/supabase/types';
+import { useLenderLabelResolver } from '@/hooks/useLenderLabelResolver';
 
 interface AuditLogEntry {
   id: string;
@@ -67,6 +68,7 @@ export function AuditTrailPanel({ dealId, className }: AuditTrailPanelProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const { formatLenderActivity } = useLenderLabelResolver();
 
   // Fetch audit logs
   useEffect(() => {
@@ -260,7 +262,11 @@ export function AuditTrailPanel({ dealId, className }: AuditTrailPanelProps) {
                         </Badge>
                       </div>
                       <p className="text-muted-foreground text-xs mt-0.5 line-clamp-2">
-                        {log.description}
+                        {formatLenderActivity({
+                          activityType: log.activity_type,
+                          description: log.description,
+                          metadata: log.metadata,
+                        })}
                       </p>
                       <p className="text-muted-foreground/60 text-[10px] mt-1">
                         {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
