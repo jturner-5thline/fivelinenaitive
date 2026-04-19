@@ -26,7 +26,7 @@ export const HomepageHero = () => {
       />
 
       {/* Bottom fade — soft blend into page background, no hard edge */}
-      <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-b from-transparent to-[hsl(270,80%,3%)] pointer-events-none" />
+      <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-b from-transparent to-[hsl(268,40%,7%)] pointer-events-none" />
 
       {/* Left-aligned, vertically centered content */}
       <div className="relative z-10 container mx-auto px-6 md:px-[8%] lg:px-[10%]">
