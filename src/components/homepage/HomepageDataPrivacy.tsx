@@ -62,7 +62,7 @@ export const HomepageDataPrivacy = () => {
             {dataUsageItems.map((item) => (
               <div
                 key={item.title}
-                className="relative overflow-hidden rounded-2xl p-6 bg-white/[0.045] border border-white/10 backdrop-blur-2xl hover:bg-white/[0.07] hover:border-white/20 transition-all"
+                className="relative overflow-hidden rounded-2xl p-6 bg-gradient-to-b from-[hsl(268,40%,16%,0.45)] to-[hsl(262,38%,9%,0.5)] border border-[hsl(270,35%,55%,0.18)] backdrop-blur-2xl shadow-[inset_0_1px_0_hsl(270,40%,70%,0.05),0_8px_24px_-12px_hsl(265,60%,4%,0.6)] hover:border-[hsl(270,40%,60%,0.3)] transition-all"
               >
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[hsl(270,60%,40%,0.4)] to-[hsl(220,60%,35%,0.3)] border border-[hsl(280,70%,65%,0.35)] flex items-center justify-center mb-4">
                   <item.icon className="w-5 h-5 text-white" />

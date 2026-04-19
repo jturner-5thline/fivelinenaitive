@@ -82,11 +82,11 @@ export const HomepageWorkflow = () => {
             className={`relative transition-all duration-700 delay-150 ${rightVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
           >
             {/* back card */}
-            <div className="absolute inset-x-8 top-8 h-full rounded-2xl bg-gradient-to-b from-[hsl(280,40%,20%,0.2)] to-[hsl(260,30%,12%,0.2)] border border-[hsl(280,60%,45%,0.3)] backdrop-blur-xl rotate-[2deg]" />
-            <div className="absolute inset-x-4 top-4 h-full rounded-2xl bg-gradient-to-b from-[hsl(280,40%,20%,0.25)] to-[hsl(260,30%,12%,0.25)] border border-[hsl(280,60%,45%,0.35)] backdrop-blur-xl rotate-[1deg]" />
+            <div className="absolute inset-x-8 top-8 h-full rounded-2xl bg-gradient-to-b from-[hsl(268,40%,14%,0.35)] to-[hsl(262,38%,8%,0.4)] border border-[hsl(270,35%,55%,0.12)] backdrop-blur-xl rotate-[2deg]" />
+            <div className="absolute inset-x-4 top-4 h-full rounded-2xl bg-gradient-to-b from-[hsl(268,40%,15%,0.45)] to-[hsl(262,38%,9%,0.5)] border border-[hsl(270,35%,55%,0.16)] backdrop-blur-xl rotate-[1deg]" />
 
             {/* front card */}
-            <div className="relative rounded-2xl p-7 bg-gradient-to-b from-[hsl(280,40%,20%,0.3)] to-[hsl(260,30%,12%,0.3)] border border-[hsl(280,60%,45%,0.4)] shadow-[0_0_8px_hsl(280,60%,45%,0.1)] backdrop-blur-2xl">
+            <div className="relative rounded-2xl p-7 bg-gradient-to-b from-[hsl(268,40%,16%,0.55)] to-[hsl(262,38%,9%,0.6)] border border-[hsl(270,35%,55%,0.2)] shadow-[inset_0_1px_0_hsl(270,40%,70%,0.06),0_20px_50px_-20px_hsl(265,60%,3%,0.7)] backdrop-blur-2xl">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs uppercase tracking-wider text-white/50">Active deal</span>
                 <span className="inline-flex items-center gap-1.5 text-xs text-emerald-300">
@@ -116,7 +116,7 @@ export const HomepageWorkflow = () => {
                 {lenders.map((l) => (
                   <div
                     key={l.name}
-                    className="flex items-center justify-between p-3 rounded-lg bg-white/[0.04] border border-white/[0.08]"
+                    className="flex items-center justify-between p-3 rounded-lg bg-[hsl(268,40%,14%,0.4)] border border-[hsl(270,30%,50%,0.14)]"
                   >
                     <span className="text-sm text-white/80">{l.name}</span>
                     <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${toneStyles[l.tone]}`}>
