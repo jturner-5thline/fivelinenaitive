@@ -577,3 +577,50 @@
     }
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   Scroll-driven section reveals (premium, no layout shift)
+   - Animates only opacity (and clip-path for the soft variant)
+   - Uses native CSS scroll timelines where supported
+   - Fully respects prefers-reduced-motion
+   ═══════════════════════════════════════════════════════════════ */
+@layer utilities {
+  /* Default state: fully visible, so non-supporting browsers see normal layout */
+  .scroll-reveal,
+  .scroll-reveal-soft {
+    opacity: 1;
+  }
+
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      @keyframes naitive-reveal-fade {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+      }
+      @keyframes naitive-reveal-soft {
+        from {
+          opacity: 0;
+          clip-path: inset(8% 0 0 0);
+        }
+        to {
+          opacity: 1;
+          clip-path: inset(0 0 0 0);
+        }
+      }
+
+      .scroll-reveal {
+        animation: naitive-reveal-fade both linear;
+        animation-timeline: view();
+        animation-range: entry 10% entry 50%;
+        will-change: opacity;
+      }
+
+      .scroll-reveal-soft {
+        animation: naitive-reveal-soft both linear;
+        animation-timeline: view();
+        animation-range: entry 10% entry 55%;
+        will-change: opacity, clip-path;
+      }
+    }
+  }
+}
