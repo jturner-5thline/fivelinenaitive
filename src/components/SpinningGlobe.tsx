@@ -1374,8 +1374,7 @@ export function SpinningGlobe() {
           <Globe />
           <GlobeLines />
           {/* GlobeGlow removed */}
-          <ContinentOutlines />
-          <CityLights />
+          {/* ContinentOutlines and CityLights removed for clean globe surface */}
         </group>
         <Particles />
         <OrbitControls
