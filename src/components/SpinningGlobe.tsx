@@ -546,11 +546,14 @@ function Globe() {
 
   return (
     <Sphere ref={meshRef} args={[2, 64, 64]} position={[0, 0, 0]}>
-      <meshStandardMaterial
-        color="#0ea5e9"
+      {/* Back-facing wireframe — dim & cool, gives depth without glow */}
+      <meshBasicMaterial
+        color="#4A3E7A"
         wireframe
         transparent
-        opacity={0.15}
+        opacity={0.32}
+        side={THREE.BackSide}
+        depthWrite={false}
       />
     </Sphere>
   );
@@ -558,7 +561,7 @@ function Globe() {
 
 function GlobeLines() {
   const meshRef = useRef<THREE.Mesh>(null);
-  
+
   useFrame((state, delta) => {
     if (meshRef.current) {
       // Earth rotates west-to-east (counter-clockwise when viewed from above North Pole)
@@ -568,12 +571,17 @@ function GlobeLines() {
   });
 
   return (
-    <Sphere ref={meshRef} args={[2.05, 48, 48]} position={[0, 0, 0]}>
-      <meshBasicMaterial
-        color="#7DD3FC"
+    <Sphere ref={meshRef} args={[2.001, 64, 64]} position={[0, 0, 0]}>
+      {/* Front-facing wireframe — bright, lit, crisp */}
+      <meshStandardMaterial
+        color="#E8E4FF"
         wireframe
         transparent
-        opacity={0.1}
+        opacity={0.95}
+        side={THREE.FrontSide}
+        roughness={0.55}
+        metalness={0.15}
+        depthWrite={false}
       />
     </Sphere>
   );
