@@ -4,8 +4,19 @@ export const HomepageValueProp = () => {
   const { ref, isVisible } = useScrollReveal();
 
   return (
-    <section className="py-12 md:py-16 bg-transparent">
-      <div className="container mx-auto px-6">
+    <section className="relative py-12 md:py-16 bg-transparent border-0 shadow-none outline-none -mt-px">
+      {/* Top fade — carries hero's lower-tone purple into next section for invisible seam */}
+      <div
+        aria-hidden
+        className="absolute inset-x-0 top-0 pointer-events-none"
+        style={{
+          height: "220px",
+          background:
+            "linear-gradient(180deg, rgba(30,22,55,0.9) 0%, rgba(30,22,55,0.55) 35%, rgba(30,22,55,0.25) 65%, rgba(30,22,55,0) 100%)",
+          zIndex: 0,
+        }}
+      />
+      <div className="relative container mx-auto px-6" style={{ zIndex: 1 }}>
         <div
           ref={ref}
           className={`max-w-4xl mx-auto text-center space-y-8 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
