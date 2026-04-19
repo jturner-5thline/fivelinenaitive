@@ -19,6 +19,7 @@ import { useWorkflowSuggestions, useDismissSuggestion } from '@/hooks/useBehavio
 import { useAgentSuggestions, useDismissAgentSuggestion } from '@/hooks/useAgentSuggestions';
 import { Deal } from '@/types/deal';
 import { cn } from '@/lib/utils';
+import { isLenderEligibleForAttention } from '@/utils/lenderAttentionEligibility';
 
 interface Notification {
   id: string;
@@ -49,6 +50,7 @@ function getStaleDealAlerts(deals: Deal[], yellowThreshold: number): StaleDeal[]
     let staleLenderCount = 0;
     
     deal.lenders?.forEach(lender => {
+      if (!isLenderEligibleForAttention(lender as any, deal as any)) return;
       if (lender.trackingStatus === 'active' && lender.updatedAt) {
         const daysSinceUpdate = differenceInDays(now, new Date(lender.updatedAt));
         if (daysSinceUpdate >= yellowThreshold) {
