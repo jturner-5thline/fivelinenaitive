@@ -57,6 +57,7 @@ export interface ActivityItem {
     oldValue?: string;
     newValue?: string;
     lenderName?: string;
+    lenderId?: string;
     lenderData?: any;
     field?: string;
   };
@@ -178,6 +179,7 @@ export function activityLogToItem(log: ActivityLog): ActivityItem {
       oldValue: metadata.oldValue,
       newValue: metadata.newValue,
       lenderName: metadata.lender_name,
+      lenderId: metadata.lender_id,
       field: metadata.field,
     },
   };
@@ -202,11 +204,22 @@ function formatValue(value: any): string {
 }
 
 function ActivityDetailPopover({ activity }: { activity: ActivityItem }) {
+  const { formatLenderActivity, resolveLenderActivityLabel } = useLenderLabelResolver();
   const hasDetails = activity.metadata && (
     activity.metadata.oldValue !== undefined || 
     activity.metadata.newValue !== undefined ||
     (activity.metadata.from && activity.metadata.to)
   );
+  const isLenderActivity = activity.type === 'lender_stage_change' || activity.type === 'lender_substage_change';
+  const labelType = activity.type === 'lender_substage_change' ? 'milestone' : 'stage';
+  const displayDescription = isLenderActivity
+    ? formatLenderActivity({
+        activityType: activity.type,
+        description: activity.description,
+        metadata: activity.metadata,
+        lenderId: activity.metadata?.lenderId,
+      })
+    : activity.description;
 
   const fieldLabel = activity.metadata?.field 
     ? fieldLabels[activity.metadata.field] || activity.metadata.field
@@ -227,18 +240,22 @@ function ActivityDetailPopover({ activity }: { activity: ActivityItem }) {
   if (activity.metadata?.from && activity.metadata?.to) {
     return (
       <div className="text-sm space-y-2">
-        <p className="font-medium text-foreground">{activity.description}</p>
+        <p className="font-medium text-foreground">{displayDescription}</p>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <p className="text-xs text-muted-foreground mb-1">From</p>
             <p className="text-foreground bg-muted/50 px-2 py-1 rounded text-xs">
-              {formatValue(activity.metadata.from)}
+              {isLenderActivity
+                ? resolveLenderActivityLabel(activity.metadata.from, labelType, activity.metadata?.lenderId)
+                : formatValue(activity.metadata.from)}
             </p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground mb-1">To</p>
             <p className="text-foreground bg-muted/50 px-2 py-1 rounded text-xs">
-              {formatValue(activity.metadata.to)}
+              {isLenderActivity
+                ? resolveLenderActivityLabel(activity.metadata.to, labelType, activity.metadata?.lenderId)
+                : formatValue(activity.metadata.to)}
             </p>
           </div>
         </div>
@@ -273,6 +290,7 @@ function ActivityDetailPopover({ activity }: { activity: ActivityItem }) {
 export function ActivityTimeline({ activities }: ActivityTimelineProps) {
   const [selectedFilters, setSelectedFilters] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const { formatLenderActivity } = useLenderLabelResolver();
 
   const formatDate = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -446,6 +464,15 @@ export function ActivityTimeline({ activities }: ActivityTimelineProps) {
             const Icon = activityIcons[activity.type] || Clock;
             const isLast = index === filteredActivities.length - 1;
             const colorClass = activityColors[activity.type] || 'bg-muted-foreground/20';
+            const displayDescription =
+              activity.type === 'lender_stage_change' || activity.type === 'lender_substage_change'
+                ? formatLenderActivity({
+                    activityType: activity.type,
+                    description: activity.description,
+                    metadata: activity.metadata,
+                    lenderId: activity.metadata?.lenderId,
+                  })
+                : activity.description;
 
           return (
             <li key={activity.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
@@ -471,13 +498,7 @@ export function ActivityTimeline({ activities }: ActivityTimelineProps) {
                                 <span className="text-[10px] font-medium uppercase">FLEx</span>
                               </span>
                             )}
-                            {activity.description}
-                            {activity.metadata?.from && activity.metadata?.to && (
-                              <span className="text-muted-foreground">
-                                {' '}from <span className="font-medium text-foreground">{activity.metadata.from}</span> to{' '}
-                                <span className="font-medium text-foreground">{activity.metadata.to}</span>
-                              </span>
-                            )}
+                            {displayDescription}
                           </p>
                           {activity.onUndo && (
                             <Button

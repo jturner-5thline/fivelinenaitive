@@ -179,6 +179,7 @@ import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithComm
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
 import { Label } from '@/components/ui/label';
+import { useLenderLabelResolver } from '@/hooks/useLenderLabelResolver';
 
 // Editable deal tile for lender "About" tab - extracted to avoid hooks-in-map
 function EditableLenderDealTile({ 
@@ -487,6 +488,7 @@ export default function DealDetail() {
   const { getLenderNames, getLenderDetails } = useLenders();
   const { lenders: masterLenders, loading: masterLendersLoading, loadingMore: masterLendersLoadingMore } = useMasterLenders({ eagerAll: true });
   const { stages: configuredStages, substages: configuredSubstages, passReasons, getTrackingStatusConfig, stageGroups } = useLenderStages();
+  const { resolveLenderActivityLabel } = useLenderLabelResolver();
   const { dealTypes: availableDealTypes } = useDealTypes();
   const { stages: dealStages, getStageConfig } = useDealStages();
   const dynamicStageConfig = getStageConfig();
@@ -558,6 +560,14 @@ export default function DealDetail() {
   // Get deal from context
   const contextDeal = getDealById(id || '');
   const [deal, setDeal] = useState<Deal | undefined>(contextDeal);
+  const formatRenderedLenderStage = useCallback(
+    (value: string | null | undefined) => resolveLenderActivityLabel(value, 'stage'),
+    [resolveLenderActivityLabel],
+  );
+  const formatRenderedLenderMilestone = useCallback(
+    (value: string | null | undefined) => resolveLenderActivityLabel(value, 'milestone'),
+    [resolveLenderActivityLabel],
+  );
   const [naitiveFallbackLoading, setNaitiveFallbackLoading] = useState(false);
   const { hasAccess: hasNaitivePipelineAccess } = useNaitivePipelineAccess();
 
@@ -1882,6 +1892,7 @@ export default function DealDetail() {
     // Log activity (fire-and-forget)
     if (lender) {
       logActivity('lender_stage_change', `${lender.name} stage changed`, {
+        lender_id: lender.id,
         lender_name: lender.name,
         from: oldStage?.label || lender.stage,
         to: targetStage?.label || newGroup,
@@ -2286,6 +2297,7 @@ export default function DealDetail() {
               const oldLabel = oldLender.substage ? (configuredSubstages.find(s => s.id === oldLender.substage)?.label || oldLender.substage) : 'None';
               const newLabel = newLender.substage ? (configuredSubstages.find(s => s.id === newLender.substage)?.label || newLender.substage) : 'None';
               logActivity('lender_substage_change', `${newLender.name} milestone changed`, {
+                lender_id: newLender.id,
                 lender_name: newLender.name,
                 from: oldLabel,
                 to: newLabel,
@@ -2296,6 +2308,7 @@ export default function DealDetail() {
               const oldStageLabel = configuredStages.find(s => s.id === oldLender.stage)?.label || oldLender.stage;
               const newStageLabel = configuredStages.find(s => s.id === newLender.stage)?.label || newLender.stage;
               logActivity('lender_stage_change', `${newLender.name} stage changed`, {
+                lender_id: newLender.id,
                 lender_name: newLender.name,
                 from: oldStageLabel,
                 to: newStageLabel,
@@ -3877,7 +3890,7 @@ export default function DealDetail() {
                                           {configuredStages.find(s => s.id === lender.stage)?.group === 'passed' && (
                                             <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />
                                           )}
-                                          {configuredStages.find(s => s.id === lender.stage)?.label || lender.stage}
+                                          {formatRenderedLenderStage(lender.stage)}
                                         </span>
                                       </SelectValue>
                                     </SelectTrigger>
@@ -3945,7 +3958,7 @@ export default function DealDetail() {
                                   >
                                     <SelectTrigger className="w-full h-7 text-xs rounded-lg px-2 bg-muted/50 border-0 justify-start">
                                       <SelectValue placeholder="Milestone">
-                                        {lender.substage ? (configuredSubstages.find(s => s.id === lender.substage)?.label || lender.substage) : 'Milestone'}
+                                        {lender.substage ? formatRenderedLenderMilestone(lender.substage) : 'Milestone'}
                                       </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
@@ -4259,7 +4272,7 @@ export default function DealDetail() {
                                                   {configuredStages.find(s => s.id === lender.stage)?.group === 'passed' && (
                                                     <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />
                                                   )}
-                                                  {configuredStages.find(s => s.id === lender.stage)?.label || lender.stage}
+                                                  {formatRenderedLenderStage(lender.stage)}
                                                 </span>
                                               </SelectValue>
                                             </SelectTrigger>
@@ -4322,7 +4335,7 @@ export default function DealDetail() {
                                           >
                                             <SelectTrigger className="w-full h-7 text-xs rounded-lg px-2 bg-muted/50 border-0 justify-start">
                                               <SelectValue placeholder="Milestone">
-                                                {lender.substage ? (configuredSubstages.find(s => s.id === lender.substage)?.label || lender.substage) : 'Milestone'}
+                                                {lender.substage ? formatRenderedLenderMilestone(lender.substage) : 'Milestone'}
                                               </SelectValue>
                                             </SelectTrigger>
                                             <SelectContent>
