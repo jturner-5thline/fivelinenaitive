@@ -15,17 +15,6 @@ export const HomepageHero = () => {
         backgroundRepeat: "no-repeat",
       }}
     >
-      {/* Frosted glass overlay — dark tint + blur for legibility */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundColor: "rgba(10, 15, 30, 0.45)",
-          backdropFilter: "blur(16px) saturate(120%)",
-          WebkitBackdropFilter: "blur(16px) saturate(120%)",
-          boxShadow: "inset 0 -1px 0 0 rgba(255, 255, 255, 0.1)",
-        }}
-      />
-
       {/* Globe — scaled down, pushed right */}
       <div className="absolute inset-0 flex items-center justify-end overflow-hidden">
         <div className="w-[65%] h-full relative right-[-8%]">
