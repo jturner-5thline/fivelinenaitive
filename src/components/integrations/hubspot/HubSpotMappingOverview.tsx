@@ -164,12 +164,15 @@ export function HubSpotMappingOverview() {
             Configure how HubSpot objects map to nAItive entities
           </p>
         </div>
-        {!dealsConfig && (
-          <Button size="sm" onClick={handleCreateConfig} disabled={upsertConfig.isPending}>
-            {upsertConfig.isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-            Add Deal Mapping
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          <SyncUnsyncedDealsButton />
+          {!dealsConfig && (
+            <Button size="sm" onClick={handleCreateConfig} disabled={upsertConfig.isPending}>
+              {upsertConfig.isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+              Add Deal Mapping
+            </Button>
+          )}
+        </div>
       </div>
 
       {dealsConfig ? (
