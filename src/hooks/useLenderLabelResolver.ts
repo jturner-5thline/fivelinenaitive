@@ -45,8 +45,8 @@ export function useLenderLabelResolver() {
       resolveLenderActivityLabel(
         value,
         type,
-        type === 'stage' ? stageOptions : substageOptions,
         lenderId ?? undefined,
+        type === 'stage' ? stageOptions : substageOptions,
       ),
     [stageOptions, substageOptions],
   );
