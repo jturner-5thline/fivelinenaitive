@@ -33,9 +33,6 @@ export default function Homepage() {
         
         <HomepageHero />
 
-        {/* Stats bar — credibility anchor */}
-        <HomepageStatsBar />
-
         {/* Narrative intro */}
         <HomepageValueProp />
 
