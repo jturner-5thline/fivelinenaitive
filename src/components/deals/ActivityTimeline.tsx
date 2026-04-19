@@ -42,10 +42,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useLenderLabelResolver } from '@/hooks/useLenderLabelResolver';
 
 export interface ActivityItem {
   id: string;
-  type: 'status_change' | 'stage_change' | 'note_added' | 'contact_added' | 'value_updated' | 'comment' | 'created' | 'lender_removed' | 'lender_added' | 'lender_stage_change' | 'deal_updated';
+  type: 'status_change' | 'stage_change' | 'note_added' | 'contact_added' | 'value_updated' | 'comment' | 'created' | 'lender_removed' | 'lender_added' | 'lender_stage_change' | 'lender_substage_change' | 'deal_updated';
   description: string;
   user: string;
   timestamp: string;
@@ -75,6 +76,7 @@ const activityTypeFilters: { value: string; label: string; group?: string }[] = 
   { value: 'lender_added', label: 'Lender Added' },
   { value: 'lender_removed', label: 'Lender Removed' },
   { value: 'lender_stage_change', label: 'Lender Stage Changes' },
+  { value: 'lender_substage_change', label: 'Lender Milestone Changes' },
   { value: 'deal_created', label: 'Deal Created' },
   // FLEx activity types
   { value: 'flex_deal_viewed', label: 'FLEx Views', group: 'flex' },
@@ -96,6 +98,7 @@ const activityIcons: Record<string, typeof Clock> = {
   lender_removed: Trash2,
   lender_added: Users,
   lender_stage_change: TrendingUp,
+  lender_substage_change: CheckCircle,
   deal_updated: Edit,
   deal_created: CheckCircle,
   // FLEx activity icons
@@ -119,6 +122,7 @@ const activityColors: Record<string, string> = {
   lender_removed: 'bg-destructive/20',
   lender_added: 'bg-brand/20',
   lender_stage_change: 'bg-muted-foreground/20',
+  lender_substage_change: 'bg-muted-foreground/20',
   deal_updated: 'bg-muted-foreground/20',
   deal_created: 'bg-brand/20',
   // FLEx activity colors - using a distinct color for external activity
