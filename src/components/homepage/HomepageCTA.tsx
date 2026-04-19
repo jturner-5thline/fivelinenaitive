@@ -9,12 +9,7 @@ export const HomepageCTA = () => {
   return (
     <section className="py-16 md:py-24 bg-[#0a0a12]">
       <div ref={ref} className={`container mx-auto px-6 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
-        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-          {/* Glows */}
-          <div className="absolute -top-32 -left-20 w-[420px] h-[420px] rounded-full bg-[radial-gradient(circle,_hsl(270,70%,50%,0.35),_transparent_65%)] pointer-events-none" />
-          <div className="absolute -bottom-32 -right-16 w-[460px] h-[460px] rounded-full bg-[radial-gradient(circle,_hsl(200,70%,55%,0.25),_transparent_65%)] pointer-events-none" />
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[hsl(280,70%,65%,0.6)] to-transparent" />
-
+        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-2xl">
           {/* Subtle grid */}
           <div
             className="absolute inset-0 opacity-[0.07] pointer-events-none"

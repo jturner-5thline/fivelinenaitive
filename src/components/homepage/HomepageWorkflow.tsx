@@ -81,17 +81,12 @@ export const HomepageWorkflow = () => {
             ref={rightRef}
             className={`relative transition-all duration-700 delay-150 ${rightVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
           >
-            {/* halo */}
-            <div className="absolute -inset-10 bg-[radial-gradient(ellipse_at_center,_hsl(270,70%,50%,0.18),_transparent_60%)] pointer-events-none" />
-
             {/* back card */}
             <div className="absolute inset-x-8 top-8 h-full rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-xl rotate-[2deg]" />
             <div className="absolute inset-x-4 top-4 h-full rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xl rotate-[1deg]" />
 
             {/* front card */}
-            <div className="relative rounded-2xl p-7 bg-white/[0.07] border border-white/15 backdrop-blur-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_30px_80px_-20px_hsl(270,70%,30%,0.4)]">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[hsl(280,70%,65%,0.7)] to-transparent" />
-
+            <div className="relative rounded-2xl p-7 bg-white/[0.07] border border-white/15 backdrop-blur-2xl">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs uppercase tracking-wider text-white/50">Active deal</span>
                 <span className="inline-flex items-center gap-1.5 text-xs text-emerald-300">
