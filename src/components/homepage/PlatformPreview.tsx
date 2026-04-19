@@ -35,7 +35,7 @@ const statusConfig = {
 
 export const PlatformPreviewDealPipeline = () => {
   return (
-    <div className="p-6">
+    <div className="p-6 bg-[#0e0e18]">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
