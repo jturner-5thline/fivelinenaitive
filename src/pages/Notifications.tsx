@@ -17,6 +17,7 @@ import { Deal } from '@/types/deal';
 import { differenceInDays, format, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { isLenderEligibleForAttention } from '@/utils/lenderAttentionEligibility';
 
 interface StaleDeal {
   dealId: string;
@@ -28,12 +29,13 @@ interface StaleDeal {
 function getStaleDealAlerts(deals: Deal[], yellowThreshold: number): StaleDeal[] {
   const now = new Date();
   const staleDeals: StaleDeal[] = [];
-  
+
   deals.filter(d => isPostSubmissionDealStage(d.stage)).forEach(deal => {
     let maxDays = 0;
     let staleLenderCount = 0;
-    
+
     deal.lenders?.forEach(lender => {
+      if (!isLenderEligibleForAttention(lender as any, deal as any)) return;
       if (lender.trackingStatus === 'active' && lender.updatedAt) {
         const daysSinceUpdate = differenceInDays(now, new Date(lender.updatedAt));
         if (daysSinceUpdate >= yellowThreshold) {
@@ -42,7 +44,7 @@ function getStaleDealAlerts(deals: Deal[], yellowThreshold: number): StaleDeal[]
         }
       }
     });
-    
+
     if (staleLenderCount > 0) {
       staleDeals.push({
         dealId: deal.id,
@@ -52,7 +54,7 @@ function getStaleDealAlerts(deals: Deal[], yellowThreshold: number): StaleDeal[]
       });
     }
   });
-  
+
   return staleDeals;
 }
 
