@@ -12,6 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { htmlToPlainText } from '@/lib/htmlToPlainText';
 import type { Json } from '@/integrations/supabase/types';
+import { useLenderLabelResolver } from '@/hooks/useLenderLabelResolver';
 
 interface ActivityLog {
   id: string;
@@ -52,6 +53,7 @@ export function DealUpdatesUnified({
   const [isOpen, setIsOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [seenAt, setSeenAt] = useState<string | null>(null);
+  const { formatLenderActivity } = useLenderLabelResolver();
 
   const getIcon = (activityType: string, description: string) => {
     const descLower = description.toLowerCase();
@@ -183,11 +185,17 @@ export function DealUpdatesUnified({
                 <p className="text-sm text-muted-foreground py-4 text-center">No recent updates</p>
               ) : (
                 <div className="space-y-3">
-                  {recentActivities.map((activity) => (
+                  {recentActivities.map((activity) => {
+                    const displayDescription = formatLenderActivity({
+                      activityType: activity.activity_type,
+                      description: activity.description,
+                      metadata: activity.metadata,
+                    });
+                    return (
                     <div key={activity.id} className="flex items-start gap-3 text-sm">
                       <div className="mt-0.5">{getIcon(activity.activity_type, activity.description)}</div>
                       <div className="flex-1 min-w-0">
-                        <span className="text-foreground">{activity.description}</span>
+                        <span className="text-foreground">{displayDescription}</span>
                         <div className="flex items-center gap-2 mt-0.5">
                           {activity.user_display_name && (
                             <span className="text-xs text-primary font-medium">{activity.user_display_name}</span>
@@ -198,7 +206,8 @@ export function DealUpdatesUnified({
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
