@@ -1394,7 +1394,9 @@ export function SpinningGlobe() {
         {/* Rim light, lower-right */}
         <directionalLight position={[5, -4, 3]} intensity={0.55} color="#22D3EE" />
         <group rotation={[seasonalTilt.x, 0, seasonalTilt.z]}>
-          <NeuralNetwork />
+          <group renderOrder={2}>
+            <NeuralNetwork />
+          </group>
           <Globe />
           <GlobeLines />
         </group>
