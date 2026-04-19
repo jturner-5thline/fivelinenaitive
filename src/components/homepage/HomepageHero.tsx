@@ -15,6 +15,16 @@ export const HomepageHero = () => {
         backgroundRepeat: "no-repeat",
       }}
     >
+      {/* Tint overlay — darkens left side for wordmark legibility, keeps globe crisp */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "linear-gradient(90deg, rgba(10,13,25,0.42) 0%, rgba(10,13,25,0.22) 55%, rgba(10,13,25,0.10) 100%)",
+          zIndex: 1,
+        }}
+      />
+
       {/* Globe — scaled down, pushed right */}
       <div className="absolute inset-0 flex items-center justify-end overflow-hidden">
         <div className="w-[65%] h-full relative right-[-8%]">
