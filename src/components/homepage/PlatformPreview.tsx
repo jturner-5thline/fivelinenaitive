@@ -74,7 +74,7 @@ export const PlatformPreviewDealPipeline = () => {
               className="flex items-center justify-between p-4 rounded-lg bg-[hsl(268,40%,14%,0.5)] border border-[hsl(270,30%,50%,0.14)] hover:bg-[hsl(268,40%,16%,0.6)] transition-colors group cursor-pointer"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg border border-[hsl(280,85%,65%,0.55)] bg-[hsl(275,80%,40%,0.3)] shadow-[inset_0_1px_1px_hsl(280,85%,75%,0.35),0_4px_24px_hsl(275,80%,45%,0.4)] flex items-center justify-center text-sm font-semibold text-white">
+                <div className="w-10 h-10 rounded-lg border border-[hsl(280,40%,40%,0.45)] bg-[hsl(275,50%,22%,0.5)] flex items-center justify-center text-sm font-semibold text-white">
                   {deal.company.charAt(0)}
                 </div>
                 <div>

@@ -13,18 +13,6 @@ export const HomepageHero = () => {
         </div>
       </div>
 
-      {/* Purple radial glow behind globe */}
-      <div
-        className="absolute pointer-events-none"
-        style={{
-          width: '60vw',
-          height: '60vh',
-          right: '-10%',
-          top: '20%',
-          background: 'radial-gradient(ellipse at center, hsl(270 60% 50% / 0.18) 0%, transparent 70%)',
-        }}
-      />
-
       {/* Bottom fade — soft blend into page background, no hard edge */}
       <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-b from-transparent to-[hsl(268,40%,7%)] pointer-events-none" />
 
