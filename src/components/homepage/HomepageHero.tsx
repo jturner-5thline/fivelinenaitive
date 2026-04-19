@@ -2,10 +2,30 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { SpinningGlobe } from "@/components/SpinningGlobe";
 import naitiveLogoDark from "@/assets/naitive-logo-dark.png";
+import heroGlassBg from "@/assets/hero-glass-bg.jpg";
 
 export const HomepageHero = () => {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_bottom_right,_hsl(280,60%,45%,0.2)_0%,_hsl(270,80%,4%)_40%,_hsl(270,100%,2%)_100%)]">
+    <section
+      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[hsl(270,80%,4%)]"
+      style={{
+        backgroundImage: `url(${heroGlassBg})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
+      {/* Frosted glass overlay — dark tint + blur for legibility */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundColor: "rgba(10, 15, 30, 0.45)",
+          backdropFilter: "blur(16px) saturate(120%)",
+          WebkitBackdropFilter: "blur(16px) saturate(120%)",
+          boxShadow: "inset 0 -1px 0 0 rgba(255, 255, 255, 0.1)",
+        }}
+      />
+
       {/* Globe — scaled down, pushed right */}
       <div className="absolute inset-0 flex items-center justify-end overflow-hidden">
         <div className="w-[65%] h-full relative right-[-8%]">
