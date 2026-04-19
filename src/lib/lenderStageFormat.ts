@@ -190,8 +190,8 @@ export function resolveSubstageLabel(
 export function resolveLenderActivityLabel(
   value: string | null | undefined,
   type: LenderActivityLabelType,
-  options: ReadonlyArray<LabeledOption> = [],
   _lenderId?: string,
+  options: ReadonlyArray<LabeledOption> = [],
 ): string {
   const unknownLabel = type === 'stage' ? 'Unknown Stage' : 'Unknown Milestone';
 
