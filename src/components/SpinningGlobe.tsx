@@ -1075,9 +1075,9 @@ function NeuralNetwork() {
   return (
     <group ref={groupRef}>
       {/* === CELLULAR NUCLEUS === */}
-      
+      {/* renderOrder boost so nucleus draws on top of back-facing wireframe */}
       {/* Expanding pulse wave with soft radial fade */}
-      <mesh ref={pulseWaveRef} position={[0, 0, 0]} material={pulseShaderMaterial}>
+      <mesh ref={pulseWaveRef} position={[0, 0, 0]} material={pulseShaderMaterial} renderOrder={2}>
         <sphereGeometry args={[1, 48, 48]} />
       </mesh>
       
