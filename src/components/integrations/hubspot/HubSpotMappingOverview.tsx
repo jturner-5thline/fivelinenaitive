@@ -21,6 +21,7 @@ import {
   type HubSpotIntegrationConfig,
 } from "@/hooks/useHubSpotMapping";
 import { HubSpotMappingDetailModal } from "./HubSpotMappingDetailModal";
+import { SyncUnsyncedDealsButton } from "./SyncUnsyncedDealsButton";
 
 function StatusBadge({ status }: { status: HubSpotIntegrationConfig["status"] }) {
   switch (status) {

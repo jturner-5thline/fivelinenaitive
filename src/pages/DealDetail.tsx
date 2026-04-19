@@ -2536,6 +2536,7 @@ export default function DealDetail() {
                     onClose={() => setIsFlagDialogOpen(false)}
                     onFlagCountChange={setActiveFlagCount}
                   />
+                  <HubSpotDealBadge dealId={deal.id} />
                 </div>
                 <InlineEditField
                   value={formatValue(deal.value)}
