@@ -206,7 +206,8 @@ export function DealUpdatesUnified({
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
