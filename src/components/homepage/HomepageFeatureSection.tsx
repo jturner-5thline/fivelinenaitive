@@ -43,7 +43,7 @@ export const HomepageFeatureSection = ({
             className={`flex-1 w-full transition-all duration-700 delay-200 ${imageVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
           >
             <div className="relative">
-              <div className="relative rounded-2xl overflow-hidden bg-white/[0.04] border border-white/15 backdrop-blur-2xl">
+              <div className="relative rounded-2xl overflow-hidden bg-gradient-to-b from-[hsl(280,40%,20%,0.3)] to-[hsl(260,30%,12%,0.3)] border border-[hsl(280,60%,45%,0.4)] shadow-[0_0_8px_hsl(280,60%,45%,0.1)] backdrop-blur-2xl">
                 {image}
               </div>
             </div>
