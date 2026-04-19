@@ -38,7 +38,7 @@ export const HomepageTestimonials = () => {
             Built for
           </p>
           <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight">
-            Who n<span className="bg-gradient-to-r from-[hsl(270,65%,55%)] to-[hsl(220,70%,72%)] bg-clip-text text-transparent">ai</span>tive is built for.
+            Who naitive is built for.
           </h2>
         </div>
 

@@ -27,10 +27,7 @@ export const HomepageCTA = () => {
               Get started
             </p>
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-[1.1] mb-5">
-              Ready to experience{" "}
-              <span className="whitespace-nowrap">
-                n<span className="bg-gradient-to-r from-[hsl(270,65%,55%)] to-[hsl(220,70%,72%)] bg-clip-text text-transparent">ai</span>tive?
-              </span>
+              Ready to experience naitive?
             </h2>
             <p className="text-lg text-white/65 mb-10 max-w-xl mx-auto">
               Join the deal teams operating with clarity, speed, and discipline. Request access today.
