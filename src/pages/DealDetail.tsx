@@ -5,6 +5,7 @@ import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDow
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { BetaBadge } from '@/components/ui/beta-badge';
+import { HubSpotDealBadge } from '@/components/integrations/hubspot/HubSpotDealBadge';
 import { LenderFlagIndicator, LenderNotesPopover } from '@/components/lenders/LenderNotesPopover';
 import { LenderHistoryHint } from '@/components/deal/LenderHistoryHint';
 import { LenderNotesField } from '@/components/deal/LenderNotesField';
