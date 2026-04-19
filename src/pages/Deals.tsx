@@ -352,7 +352,32 @@ export default function Dashboard() {
 
   const handleToggleFlag = async (dealId: string, isFlagged: boolean, flagNotes?: string) => {
     try {
-      await updateDeal(dealId, { isFlagged, flagNotes: flagNotes ?? '' });
+      const previous = allDeals.find(d => d.id === dealId);
+      const previousFlagged = previous?.isFlagged === true;
+      const previousNote = (previous?.flagNotes ?? '').trim();
+      const nextNote = (flagNotes ?? '').trim();
+
+      await updateDeal(dealId, { isFlagged, flagNotes: nextNote });
+
+      // Notification rules:
+      //  - Unflag (true → false): never notify.
+      //  - Flag on (false → true): always notify.
+      //  - Re-flag while already flagged: only notify if the flag note actually changed.
+      const shouldNotify =
+        isFlagged === true &&
+        user?.id &&
+        (!previousFlagged || nextNote !== previousNote);
+
+      if (shouldNotify) {
+        const { notifyDealFlagged } = await import('@/utils/notifyDealFlagged');
+        await notifyDealFlagged({
+          dealId,
+          dealName: previous?.company || 'this deal',
+          actorUserId: user!.id,
+          flagNote: nextNote,
+          companyId: (previous as any)?.companyId ?? null,
+        });
+      }
     } catch (error) {
       throw error;
     }
