@@ -36,14 +36,7 @@ export const HomepageHero = () => {
           />
 
           {/* Tagline — shares left edge with the "n" in the wordmark */}
-          <h1
-            className="text-xl sm:text-2xl md:text-3xl lg:text-4xl leading-[1.15]"
-            style={{
-              color: "hsl(230 40% 10%)",
-              fontWeight: 700,
-              letterSpacing: "-0.01em",
-            }}
-          >
+          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold leading-[1.15] text-white">
             The Operating System for Deal Management
           </h1>
 
