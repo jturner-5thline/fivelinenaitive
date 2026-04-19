@@ -32,15 +32,15 @@ export const HomepageHero = () => {
         </div>
       </div>
 
-      {/* Bottom fade — seamless blend into next section's exact background color */}
+      {/* Bottom fade — long, multi-stop blend into next section's exact background color */}
       <div
-        className="absolute inset-x-0 bottom-0 pointer-events-none"
+        className="absolute inset-x-0 bottom-0 pointer-events-none border-0 shadow-none outline-none"
         style={{
-          height: "22%",
-          minHeight: "160px",
-          maxHeight: "220px",
+          height: "60%",
+          minHeight: "380px",
+          maxHeight: "560px",
           background:
-            "linear-gradient(180deg, rgba(18,13,27,0) 0%, rgba(18,13,27,0) 60%, hsl(265 35% 5%) 100%)",
+            "linear-gradient(180deg, rgba(18,13,27,0) 0%, rgba(18,13,27,0.05) 25%, rgba(18,13,27,0.18) 45%, rgba(18,13,27,0.45) 65%, rgba(18,13,27,0.78) 82%, hsl(265 35% 5%) 100%)",
           zIndex: 2,
         }}
       />
