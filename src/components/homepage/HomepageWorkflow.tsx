@@ -82,11 +82,11 @@ export const HomepageWorkflow = () => {
             className={`relative transition-all duration-700 delay-150 ${rightVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
           >
             {/* back card */}
-            <div className="absolute inset-x-8 top-8 h-full rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-xl rotate-[2deg]" />
-            <div className="absolute inset-x-4 top-4 h-full rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xl rotate-[1deg]" />
+            <div className="absolute inset-x-8 top-8 h-full rounded-2xl bg-gradient-to-b from-[hsl(280,40%,20%,0.2)] to-[hsl(260,30%,12%,0.2)] border border-[hsl(280,60%,45%,0.3)] backdrop-blur-xl rotate-[2deg]" />
+            <div className="absolute inset-x-4 top-4 h-full rounded-2xl bg-gradient-to-b from-[hsl(280,40%,20%,0.25)] to-[hsl(260,30%,12%,0.25)] border border-[hsl(280,60%,45%,0.35)] backdrop-blur-xl rotate-[1deg]" />
 
             {/* front card */}
-            <div className="relative rounded-2xl p-7 bg-white/[0.07] border border-white/15 backdrop-blur-2xl">
+            <div className="relative rounded-2xl p-7 bg-gradient-to-b from-[hsl(280,40%,20%,0.3)] to-[hsl(260,30%,12%,0.3)] border border-[hsl(280,60%,45%,0.4)] shadow-[0_0_8px_hsl(280,60%,45%,0.1)] backdrop-blur-2xl">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs uppercase tracking-wider text-white/50">Active deal</span>
                 <span className="inline-flex items-center gap-1.5 text-xs text-emerald-300">
