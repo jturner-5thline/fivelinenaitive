@@ -3,10 +3,12 @@ import {
   HomepageHeader,
   HomepageHero,
   HomepageValueProp,
+  HomepageStatsBar,
+  HomepageFeatureGrid,
+  HomepageWorkflow,
   HomepageFeatureSection,
   HomepageScrollingTags,
   HomepageTestimonials,
-  HomepageSecurity,
   HomepageDataPrivacy,
   HomepageCTA,
   HomepageFooter,
@@ -30,37 +32,51 @@ export default function Homepage() {
         <HomepageHeader />
         
         <HomepageHero />
-        
+
+        {/* Stats bar — credibility anchor */}
+        <HomepageStatsBar />
+
+        {/* Narrative intro */}
         <HomepageValueProp />
-        
+
+        {/* Scrolling capability tags */}
         <HomepageScrollingTags />
-        
-        {/* Feature Sections with Platform Previews */}
+
+        {/* Feature grid — 5 modules */}
+        <HomepageFeatureGrid />
+
+        {/* Feature deep dives with platform previews */}
         <HomepageFeatureSection
           title="The Operating System for Deal Management"
           description="naitive is designed for teams responsible for running complex deals end-to-end — coordinating stakeholders, managing review and diligence, and moving work forward across fragmented systems."
           image={<PlatformPreviewDealPipeline />}
         />
-        
+
         <HomepageFeatureSection
           title="Centralized Lender Management, Without the Noise"
           description="Track lender outreach, review, and term sheets directly within the deal — without spreadsheets, side channels, or manual handoffs. As lenders move through each stage, activity is captured in context, giving teams a clear, real-time view of where the deal stands and what needs attention next."
           image={<PlatformPreviewLenderKanban />}
           reverse
         />
-        
+
         <HomepageFeatureSection
           title="Execution-Ready Data Rooms"
           description="Organize diligence materials directly within the deal — with progress, ownership, and status tracked as execution unfolds. Checklists, documents, and milestones stay connected to the transaction, giving teams a clear view of what's complete, what's pending, and what needs attention next."
           image={<PlatformPreviewDataRoom />}
         />
-        
+
+        {/* Workflow — numbered steps + deal card stack */}
+        <HomepageWorkflow />
+
+        {/* Audience */}
         <HomepageTestimonials />
-        
+
+        {/* Data & Privacy */}
         <HomepageDataPrivacy />
-        
+
+        {/* Final CTA */}
         <HomepageCTA />
-        
+
         <HomepageFooter />
       </div>
     </>
