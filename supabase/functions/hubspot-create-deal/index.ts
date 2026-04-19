@@ -7,50 +7,110 @@ const corsHeaders = {
 
 // ─── Forward-only cutoff ───────────────────────────────────────────────
 // Only deals created on or after this timestamp will be synced to HubSpot.
-// This prevents any historical backfill of existing deals.
 const HUBSPOT_SYNC_ENABLED_FROM = '2026-04-10T00:00:00Z';
 
-// ─── Pipeline mapping ─────────────────────────────────────────────────
-const HUBSPOT_PIPELINE_MAP: Record<string, string> = {
+// ─── Hardcoded fallback pipeline mapping by NAME (used only if no DB row) ───
+const HUBSPOT_PIPELINE_NAME_FALLBACK: Record<string, string> = {
   'Active Pipeline': 'default',
+  'Active Deals': 'default',
   'In Development': '1768501',
 };
 
-// ─── Stage resolver ───────────────────────────────────────────────────
-// Fetches stages for a HubSpot pipeline and finds one matching the
-// Naitive stage label (case-insensitive).
-async function resolveHubSpotStage(
-  hubspotPipelineId: string,
-  naitiveStageLabel: string,
-  accessToken: string,
-): Promise<{ stageId: string | null; error: string | null }> {
+interface StageResolution {
+  hubspotPipelineId: string | null;
+  hubspotStageId: string | null;
+  source: 'db_map' | 'label_match' | 'none';
+  error: string | null;
+}
+
+/**
+ * Resolve HubSpot pipeline + stage:
+ * 1. Try the hubspot_pipeline_stage_map DB table (preferred — explicit per-company config).
+ * 2. Fall back to fetching HubSpot pipelines and matching stage labels case-insensitively.
+ */
+async function resolveHubSpotMapping(
+  supabase: any,
+  params: {
+    companyId: string;
+    naitivePipelineId: string | null;
+    naitivePipelineName: string;
+    naitiveStageLabel: string;
+    accessToken: string;
+  },
+): Promise<StageResolution> {
+  const { companyId, naitivePipelineId, naitivePipelineName, naitiveStageLabel, accessToken } = params;
+
+  // ── 1. DB map lookup ─────────────────────────────────────────────────
+  if (naitivePipelineId) {
+    const { data: mapRow } = await supabase
+      .from('hubspot_pipeline_stage_map')
+      .select('hubspot_pipeline_id, hubspot_dealstage_id')
+      .eq('company_id', companyId)
+      .eq('naitive_pipeline_id', naitivePipelineId)
+      .ilike('naitive_stage_name', naitiveStageLabel)
+      .maybeSingle();
+
+    if (mapRow?.hubspot_pipeline_id && mapRow?.hubspot_dealstage_id) {
+      return {
+        hubspotPipelineId: mapRow.hubspot_pipeline_id,
+        hubspotStageId: mapRow.hubspot_dealstage_id,
+        source: 'db_map',
+        error: null,
+      };
+    }
+  }
+
+  // ── 2. Fallback: use hardcoded pipeline mapping + live HubSpot stage lookup ──
+  const hubspotPipelineId = HUBSPOT_PIPELINE_NAME_FALLBACK[naitivePipelineName];
+  if (!hubspotPipelineId) {
+    return {
+      hubspotPipelineId: null,
+      hubspotStageId: null,
+      source: 'none',
+      error: `No HubSpot mapping for Naitive pipeline "${naitivePipelineName}" (stage "${naitiveStageLabel}"). Add a row to hubspot_pipeline_stage_map.`,
+    };
+  }
+
   try {
     const res = await fetch(
       `https://api.hubapi.com/crm/v3/pipelines/deals/${hubspotPipelineId}/stages`,
       { headers: { Authorization: `Bearer ${accessToken}` } },
     );
-
     const body = await res.text();
     if (!res.ok) {
-      return { stageId: null, error: `HubSpot stages API ${res.status}: ${body.slice(0, 500)}` };
+      return {
+        hubspotPipelineId,
+        hubspotStageId: null,
+        source: 'none',
+        error: `HubSpot stages API ${res.status}: ${body.slice(0, 300)}`,
+      };
     }
-
     const parsed = JSON.parse(body);
     const stages: { id: string; label: string }[] = parsed.results ?? parsed;
     const match = stages.find(
-      (s) => s.label.toLowerCase() === naitiveStageLabel.toLowerCase(),
+      (s) => s.label.toLowerCase().trim() === naitiveStageLabel.toLowerCase().trim(),
     );
-
     if (!match) {
       return {
-        stageId: null,
+        hubspotPipelineId,
+        hubspotStageId: null,
+        source: 'none',
         error: `No HubSpot stage matching "${naitiveStageLabel}" in pipeline ${hubspotPipelineId}. Available: ${stages.map((s) => s.label).join(', ')}`,
       };
     }
-
-    return { stageId: match.id, error: null };
+    return {
+      hubspotPipelineId,
+      hubspotStageId: match.id,
+      source: 'label_match',
+      error: null,
+    };
   } catch (err: any) {
-    return { stageId: null, error: `Stage lookup failed: ${err.message}` };
+    return {
+      hubspotPipelineId,
+      hubspotStageId: null,
+      source: 'none',
+      error: `Stage lookup failed: ${err.message}`,
+    };
   }
 }
 
@@ -64,7 +124,7 @@ Deno.serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
-    const { deal_id } = await req.json();
+    const { deal_id, force = false } = await req.json();
     if (!deal_id) {
       return new Response(JSON.stringify({ error: 'deal_id is required' }), {
         status: 400,
@@ -86,8 +146,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── Forward-only guard ────────────────────────────────────────────
-    if (deal.created_at < HUBSPOT_SYNC_ENABLED_FROM) {
+    // ── Forward-only guard (skipped on force) ─────────────────────────
+    if (!force && deal.created_at < HUBSPOT_SYNC_ENABLED_FROM) {
       await supabase.from('deals').update({
         hubspot_sync_status: 'skipped',
         hubspot_sync_error: 'Skipped historical deal created before HubSpot sync launch',
@@ -99,98 +159,85 @@ Deno.serve(async (req) => {
     }
 
     // ── Idempotency guard ─────────────────────────────────────────────
-    if (deal.hubspot_deal_id) {
-      return new Response(JSON.stringify({ skipped: true, reason: 'already_synced', hubspot_deal_id: deal.hubspot_deal_id }), {
+    if (deal.hubspot_deal_id && !force) {
+      return new Response(JSON.stringify({
+        skipped: true,
+        reason: 'already_synced',
+        hubspot_deal_id: deal.hubspot_deal_id,
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // ── Resolve Naitive pipeline name ─────────────────────────────────
-    let pipelineName = 'Active Pipeline'; // default
+    // ── Token check ───────────────────────────────────────────────────
+    const accessToken = Deno.env.get('HUBSPOT_ACCESS_TOKEN');
+    if (!accessToken) {
+      const msg = 'HUBSPOT_ACCESS_TOKEN not configured';
+      await supabase.from('deals').update({
+        hubspot_sync_status: 'failed',
+        hubspot_sync_error: msg,
+      }).eq('id', deal_id);
+      return new Response(JSON.stringify({ error: msg }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ── Resolve Naitive pipeline name + stage label ───────────────────
+    let pipelineName = 'Active Pipeline';
+    let stageLabel = deal.stage;
     if (deal.pipeline_id) {
       const { data: pipeline } = await supabase
         .from('deal_pipelines')
         .select('name, stages')
         .eq('id', deal.pipeline_id)
         .single();
-
       if (pipeline) {
         pipelineName = pipeline.name;
-      }
-    }
-
-    // ── Resolve Naitive stage label from pipeline stages JSON ─────────
-    let stageLabel = deal.stage; // fallback to raw stage ID
-    if (deal.pipeline_id) {
-      const { data: pipeline } = await supabase
-        .from('deal_pipelines')
-        .select('stages')
-        .eq('id', deal.pipeline_id)
-        .single();
-
-      if (pipeline?.stages) {
-        const stages = pipeline.stages as Array<{ id: string; label: string }>;
+        const stages = (pipeline.stages || []) as Array<{ id: string; label: string }>;
         const found = stages.find((s) => s.id === deal.stage);
         if (found) stageLabel = found.label;
       }
     }
 
-    // ── Map to HubSpot pipeline ───────────────────────────────────────
-    const hubspotPipelineId = HUBSPOT_PIPELINE_MAP[pipelineName];
-    if (!hubspotPipelineId) {
-      const msg = `No HubSpot pipeline mapping for Naitive pipeline "${pipelineName}"`;
-      console.error(`[hubspot-create-deal] ${msg}`);
-      await supabase.from('deals').update({
-        hubspot_sync_status: 'failed',
-        hubspot_sync_error: msg,
-      }).eq('id', deal_id);
-
-      return new Response(JSON.stringify({ error: msg }), {
-        status: 422,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // ── Resolve HubSpot stage ─────────────────────────────────────────
-    const accessToken = Deno.env.get('HUBSPOT_ACCESS_TOKEN');
-    if (!accessToken) {
-      await supabase.from('deals').update({
-        hubspot_sync_status: 'failed',
-        hubspot_sync_error: 'HUBSPOT_ACCESS_TOKEN not configured',
-      }).eq('id', deal_id);
-
-      return new Response(JSON.stringify({ error: 'HUBSPOT_ACCESS_TOKEN not configured' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const { stageId: hubspotStageId, error: stageError } = await resolveHubSpotStage(
-      hubspotPipelineId,
-      stageLabel,
+    // ── Resolve HubSpot pipeline + stage ──────────────────────────────
+    const resolved = await resolveHubSpotMapping(supabase, {
+      companyId: deal.company_id,
+      naitivePipelineId: deal.pipeline_id,
+      naitivePipelineName: pipelineName,
+      naitiveStageLabel: stageLabel,
       accessToken,
-    );
+    });
 
-    if (stageError || !hubspotStageId) {
-      console.error(`[hubspot-create-deal] Stage resolution failed: ${stageError}`);
+    if (!resolved.hubspotPipelineId || !resolved.hubspotStageId) {
+      console.error(`[hubspot-create-deal] Resolution failed: ${resolved.error}`);
       await supabase.from('deals').update({
         hubspot_sync_status: 'failed',
-        hubspot_sync_error: stageError || 'Unknown stage resolution error',
+        hubspot_sync_error: resolved.error,
       }).eq('id', deal_id);
 
-      return new Response(JSON.stringify({ error: stageError }), {
+      await logSync(supabase, {
+        company_id: deal.company_id,
+        deal_id: deal.id,
+        action: 'create_deal',
+        status: 'error',
+        error_message: resolved.error || 'Mapping not found',
+      });
+
+      return new Response(JSON.stringify({ error: resolved.error }), {
         status: 422,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     // ── Create deal in HubSpot ────────────────────────────────────────
+    const numericAmount = Number(String(deal.value ?? 0).replace(/[^0-9.-]/g, '')) || 0;
     const hubspotPayload = {
       properties: {
         dealname: deal.company || 'Untitled Deal',
-        amount: String(deal.value || 0),
-        pipeline: hubspotPipelineId,
-        dealstage: hubspotStageId,
+        amount: String(numericAmount),
+        pipeline: resolved.hubspotPipelineId,
+        dealstage: resolved.hubspotStageId,
       },
     };
 
@@ -212,7 +259,6 @@ Deno.serve(async (req) => {
         hubspot_sync_error: `HubSpot ${hsResponse.status}: ${hsBody.slice(0, 500)}`,
       }).eq('id', deal_id);
 
-      // Log to hubspot_sync_logs
       await logSync(supabase, {
         company_id: deal.company_id,
         deal_id: deal.id,
@@ -223,7 +269,7 @@ Deno.serve(async (req) => {
         error_message: `HubSpot ${hsResponse.status}`,
       });
 
-      return new Response(JSON.stringify({ error: `HubSpot API error ${hsResponse.status}` }), {
+      return new Response(JSON.stringify({ error: `HubSpot API error ${hsResponse.status}`, details: hsBody.slice(0, 500) }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -232,7 +278,6 @@ Deno.serve(async (req) => {
     const hsResult = JSON.parse(hsBody);
     const hubspotDealId = hsResult.id;
 
-    // ── Update Naitive deal with HubSpot ID ───────────────────────────
     await supabase.from('deals').update({
       hubspot_deal_id: hubspotDealId,
       hubspot_sync_status: 'success',
@@ -240,7 +285,6 @@ Deno.serve(async (req) => {
       hubspot_last_synced_at: new Date().toISOString(),
     }).eq('id', deal_id);
 
-    // Log success
     await logSync(supabase, {
       company_id: deal.company_id,
       deal_id: deal.id,
@@ -248,11 +292,17 @@ Deno.serve(async (req) => {
       action: 'create_deal',
       status: 'success',
       request_payload: hubspotPayload,
+      response_payload: { id: hubspotDealId, mapping_source: resolved.source },
     });
 
-    console.log(`[hubspot-create-deal] Created HubSpot deal ${hubspotDealId} for Naitive deal ${deal_id}`);
+    console.log(`[hubspot-create-deal] Created HubSpot deal ${hubspotDealId} for Naitive deal ${deal_id} via ${resolved.source}`);
 
-    return new Response(JSON.stringify({ success: true, hubspot_deal_id: hubspotDealId }), {
+    return new Response(JSON.stringify({
+      success: true,
+      hubspot_deal_id: hubspotDealId,
+      mapping_source: resolved.source,
+      payload: hubspotPayload,
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err: any) {
