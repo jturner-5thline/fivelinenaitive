@@ -4274,9 +4274,12 @@ export default function DealDetail() {
                                             <SelectTrigger className="w-full h-7 text-xs rounded-lg px-2 bg-secondary border-0 justify-start">
                                               <SelectValue>
                                                 <span className="flex items-center gap-1.5">
-                                                  {configuredStages.find(s => s.id === lender.stage)?.group === 'passed' && (
-                                                    <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />
-                                                  )}
+                                                  {(() => {
+                                                    const g = configuredStages.find(s => s.id === lender.stage)?.group;
+                                                    return (g === 'passed' || g === 'excluded') ? (
+                                                      <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />
+                                                    ) : null;
+                                                  })()}
                                                   {formatRenderedLenderStage(lender.stage)}
                                                 </span>
                                               </SelectValue>
@@ -4287,7 +4290,7 @@ export default function DealDetail() {
                                                 return (
                                                   <SelectItem key={stage.id} value={stage.id}>
                                                     <span className="flex items-center gap-1.5">
-                                                      {stage.group === 'passed' && (
+                                                      {(stage.group === 'passed' || stage.group === 'excluded') && (
                                                         <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />
                                                       )}
                                                       {stage.label}
