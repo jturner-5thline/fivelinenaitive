@@ -36,7 +36,7 @@ export const HomepageCTA = () => {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Button
                 size="lg"
-                className="marketing-glass-cta rounded-full px-9 py-6 text-base font-semibold border-0"
+                className="marketing-glass-cta px-9 py-6 text-base font-semibold border-0"
                 asChild
               >
                 <Link to="/waitlist">
@@ -47,7 +47,7 @@ export const HomepageCTA = () => {
               <Button
                 size="lg"
                 variant="ghost"
-                className="rounded-full px-7 py-6 text-base font-medium text-white/80 hover:text-white hover:bg-white/10 border border-white/10"
+                className="px-7 py-6 text-base font-medium text-white/80 hover:text-white hover:bg-white/10 border border-white/10"
                 asChild
               >
                 <Link to="/waitlist">Talk to the team</Link>
