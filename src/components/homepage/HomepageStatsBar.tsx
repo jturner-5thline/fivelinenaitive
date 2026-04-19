@@ -11,7 +11,7 @@ export const HomepageStatsBar = () => {
   const { ref, isVisible } = useScrollReveal();
 
   return (
-    <section className="py-10 md:py-14 bg-[#0a0a12]">
+    <section className="py-10 md:py-14 bg-transparent">
       <div ref={ref} className={`container mx-auto px-6 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
         <div className="relative rounded-2xl overflow-hidden bg-white/[0.045] border border-white/10 backdrop-blur-2xl">
           <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-white/10">

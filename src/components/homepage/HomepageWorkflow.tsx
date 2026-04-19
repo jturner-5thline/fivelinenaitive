@@ -40,7 +40,7 @@ export const HomepageWorkflow = () => {
   const { ref: rightRef, isVisible: rightVisible } = useScrollReveal(0.1);
 
   return (
-    <section className="py-16 md:py-24 bg-[#0a0a12]">
+    <section className="py-16 md:py-24 bg-transparent">
       <div className="container mx-auto px-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           {/* Steps */}

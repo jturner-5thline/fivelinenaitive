@@ -33,7 +33,7 @@ export const HomepageDataPrivacy = () => {
   const { ref, isVisible } = useScrollReveal();
 
   return (
-    <section className="py-16 md:py-24 bg-[#0a0a12]">
+    <section className="py-16 md:py-24 bg-transparent">
       <div ref={ref} className={`container mx-auto px-6 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.5fr] gap-12 lg:gap-16 items-start">
           {/* Left intro */}

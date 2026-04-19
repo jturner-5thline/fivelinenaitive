@@ -4,7 +4,7 @@ export const HomepageValueProp = () => {
   const { ref, isVisible } = useScrollReveal();
 
   return (
-    <section className="py-12 md:py-16 bg-[#0a0a12]">
+    <section className="py-12 md:py-16 bg-transparent">
       <div className="container mx-auto px-6">
         <div
           ref={ref}
