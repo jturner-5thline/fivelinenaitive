@@ -393,9 +393,23 @@ const handler = async (req: Request): Promise<Response> => {
         .in('deal_id', dealIds);
 
       // Build a map: deal_id → count of stale lenders (active lenders not updated in X days)
+      // Mirrors src/utils/lenderAttentionEligibility.ts — keep in sync.
       const staleLenderCounts: Record<string, number> = {};
-      const excludedLenderStages = ['passed', 'not-a-fit', 'not a fit', 'unresponsive', 'excluded', 'on hold', 'on-hold', 'direct'];
-      const inactiveTrackingStatuses = ['passed', 'on-hold', 'on-deck', 'excluded', 'direct', 'not_a_fit', 'not-a-fit'];
+      const excludedLenderStages = [
+        'on deck', 'on-deck',
+        'on hold', 'on-hold',
+        'passed',
+        'not a fit', 'not-a-fit',
+        'unresponsive',
+        'excluded',
+        'closed & funded', 'closed-funded', 'closed funded',
+        'direct',
+      ];
+      const inactiveTrackingStatuses = [
+        'passed', 'on-hold', 'on-deck', 'excluded', 'direct',
+        'not_a_fit', 'not-a-fit',
+        'closed-funded', 'closed_funded',
+      ];
       if (lenders) {
         for (const lender of lenders) {
           const lenderStage = (lender.stage || '').toLowerCase();
