@@ -1370,19 +1370,34 @@ function Particles() {
 
 export function SpinningGlobe() {
   const seasonalTilt = useMemo(() => getSeasonalTilt(), []);
-  
+
   return (
     <div className="absolute inset-0">
-      <Canvas camera={{ position: [0, 0, 5], fov: 60 }} gl={{ alpha: true }} style={{ background: 'transparent' }}>
-        <ambientLight intensity={0.3} />
-        <pointLight position={[10, 10, 10]} intensity={0.5} color="#22d3ee" />
-        <pointLight position={[-10, -10, -10]} intensity={0.3} color="#0ea5e9" />
+      {/* Subtle radial atmosphere — sits BEHIND the sphere only, no halo around edges */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle at 50% 50%, rgba(120,100,220,0.18) 0%, rgba(60,45,130,0.10) 38%, transparent 60%)",
+          zIndex: 0,
+        }}
+      />
+
+      <Canvas
+        camera={{ position: [0, 0, 5], fov: 60 }}
+        gl={{ alpha: true, antialias: true }}
+        style={{ background: 'transparent', position: 'relative', zIndex: 1 }}
+      >
+        {/* Low ambient so back-facing lines don't go pure black */}
+        <ambientLight intensity={0.25} color="#1E1B3A" />
+        {/* Cool key light, upper-left */}
+        <directionalLight position={[-5, 5, 4]} intensity={1.1} color="#A78BFA" />
+        {/* Rim light, lower-right */}
+        <directionalLight position={[5, -4, 3]} intensity={0.55} color="#22D3EE" />
         <group rotation={[seasonalTilt.x, 0, seasonalTilt.z]}>
           <NeuralNetwork />
           <Globe />
           <GlobeLines />
-          {/* GlobeGlow removed */}
-          {/* ContinentOutlines and CityLights removed for clean globe surface */}
         </group>
         <OrbitControls
           enableZoom={false}
@@ -1391,6 +1406,18 @@ export function SpinningGlobe() {
           autoRotateSpeed={-0.3}
         />
       </Canvas>
+
+      {/* Soft contact shadow beneath the globe — anchors it without glowing the sphere */}
+      <div
+        className="absolute inset-x-0 pointer-events-none"
+        style={{
+          bottom: '12%',
+          height: '14%',
+          background:
+            "radial-gradient(ellipse 55% 100% at 50% 100%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 45%, transparent 70%)",
+          zIndex: 2,
+        }}
+      />
     </div>
   );
 }
