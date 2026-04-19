@@ -20,7 +20,7 @@ export const HomepageHero = () => {
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            "linear-gradient(90deg, rgba(10,13,25,0.42) 0%, rgba(10,13,25,0.22) 55%, rgba(10,13,25,0.10) 100%)",
+            "linear-gradient(90deg, rgba(10,13,25,0.57) 0%, rgba(10,13,25,0.37) 55%, rgba(10,13,25,0.25) 100%)",
           zIndex: 1,
         }}
       />
