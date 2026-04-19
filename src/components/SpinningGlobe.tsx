@@ -1370,8 +1370,11 @@ export function SpinningGlobe() {
         <pointLight position={[10, 10, 10]} intensity={0.5} color="#22d3ee" />
         <pointLight position={[-10, -10, -10]} intensity={0.3} color="#0ea5e9" />
         <group rotation={[seasonalTilt.x, 0, seasonalTilt.z]}>
+          <NeuralNetwork />
           <Globe />
-          {/* NeuralNetwork, GlobeLines, ContinentOutlines, CityLights removed for clean sphere */}
+          <GlobeLines />
+          {/* GlobeGlow removed */}
+          {/* ContinentOutlines and CityLights removed for clean globe surface */}
         </group>
         <Particles />
         <OrbitControls
