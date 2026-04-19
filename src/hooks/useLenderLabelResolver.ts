@@ -64,6 +64,14 @@ export function useLenderLabelResolver() {
       lenderId?: string | null;
     }): string => {
       const { activityType, description, metadata, lenderId } = params;
+      const metadataRecord =
+        metadata && typeof metadata === 'object' && !Array.isArray(metadata)
+          ? (metadata as Record<string, unknown>)
+          : null;
+      const resolvedLenderId =
+        lenderId ??
+        (typeof metadataRecord?.lender_id === 'string' ? metadataRecord.lender_id : null) ??
+        (typeof metadataRecord?.lenderId === 'string' ? metadataRecord.lenderId : null);
 
       if (activityType === 'lender_stage_change') {
         const { entityName, from, to } = extractChangePayload(
@@ -71,8 +79,8 @@ export function useLenderLabelResolver() {
           description,
           'stage',
         );
-        const fromLabel = resolveLenderActivity(from, 'stage', lenderId);
-        const toLabel = resolveLenderActivity(to, 'stage', lenderId);
+        const fromLabel = resolveLenderActivity(from, 'stage', resolvedLenderId);
+        const toLabel = resolveLenderActivity(to, 'stage', resolvedLenderId);
         const subject = entityName?.trim() || 'Lender';
         return `${subject} stage changed from ${fromLabel} to ${toLabel}`;
       }
@@ -83,15 +91,15 @@ export function useLenderLabelResolver() {
           description,
           'milestone',
         );
-        const fromLabel = resolveLenderActivity(from, 'milestone', lenderId);
-        const toLabel = resolveLenderActivity(to, 'milestone', lenderId);
+        const fromLabel = resolveLenderActivity(to === from ? from : from, 'milestone', resolvedLenderId);
+        const toLabel = resolveLenderActivity(to, 'milestone', resolvedLenderId);
         const subject = entityName?.trim() || 'Lender';
         return `${subject} milestone changed from ${fromLabel} to ${toLabel}`;
       }
 
       return description;
     },
-    [resolveStage, resolveSubstage],
+    [resolveLenderActivity],
   );
 
   return {
