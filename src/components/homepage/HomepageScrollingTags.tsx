@@ -15,14 +15,22 @@ const tags = [
 
 export const HomepageScrollingTags = () => {
   return (
-    <section className="py-6 bg-transparent overflow-hidden">
-      <div className="relative">
-        {/* Gradient masks */}
-        <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-[#0a0a12] to-transparent z-10" />
-        <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-[#0a0a12] to-transparent z-10" />
-        
+    <section
+      className="relative overflow-hidden flex items-center"
+      style={{
+        width: "100vw",
+        marginLeft: "calc(50% - 50vw)",
+        height: "72px",
+        backgroundColor: "hsl(265 35% 5%)",
+        WebkitMaskImage:
+          "linear-gradient(90deg, transparent 0%, black 6%, black 94%, transparent 100%)",
+        maskImage:
+          "linear-gradient(90deg, transparent 0%, black 6%, black 94%, transparent 100%)",
+      }}
+    >
+      <div className="relative w-full">
         {/* Scrolling container */}
-        <div className="flex animate-scroll-left">
+        <div className="flex items-center animate-scroll-left">
           {[...tags, ...tags, ...tags].map((tag, index) => (
             <div
               key={index}
