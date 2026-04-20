@@ -268,6 +268,21 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
                 {thread.dealName}
               </Badge>
             )}
+            {autoLabels?.map(lbl => (
+              <Badge
+                key={lbl.id}
+                variant="outline"
+                className="text-[9px] h-[16px] px-1 gap-0.5 shrink-0"
+                style={{
+                  borderColor: `${lbl.color}55`,
+                  backgroundColor: `${lbl.color}1F`,
+                  color: lbl.color,
+                }}
+                title={lbl.description || lbl.name}
+              >
+                {lbl.name}
+              </Badge>
+            ))}
             <p className="text-[11px] text-[hsl(var(--email-text-muted))] truncate">
               {latest.snippet}
             </p>
