@@ -598,6 +598,28 @@ Classify and return strict JSON only.`;
           }));
         }
 
+        // Master lender candidates — surfaced so Claude can identify the
+        // lender FIRM even when it has not yet been added to the deal.
+        // The client confirm flow uses master_lender_id to auto-link the
+        // lender via ensureLenderOnDeal(). Tenant-scoped, capped at 400.
+        let masterLenderCandidates: Array<{ id: string; name: string; tier?: string }> = [];
+        try {
+          const { data: mems2 } = await supabase
+            .from("company_members")
+            .select("company_id")
+            .eq("user_id", user.id);
+          const cids2 = (mems2 || []).map((m: any) => m.company_id).filter(Boolean);
+          if (cids2.length > 0) {
+            const { data: mls } = await supabase
+              .from("master_lenders")
+              .select("id, name, tier")
+              .in("company_id", cids2)
+              .order("updated_at", { ascending: false })
+              .limit(400);
+            masterLenderCandidates = (mls || []).map((l: any) => ({ id: l.id, name: l.name, tier: l.tier }));
+          }
+        } catch { /* non-fatal */ }
+
         systemPrompt = `You are a careful debt-advisory workflow classifier. You read an email thread between an advisor and a lender and infer:
 1. The most likely DEAL the thread is about
 2. The most likely lender CONTACT (the person)
@@ -623,8 +645,11 @@ Return STRICT JSON only — no markdown fences, no commentary:
     "deal_id": "string — id of the deal this update targets (use linked dealId if present, else likely_deal.id)",
     "deal_name": "string",
     "lender_id": "string — id of the lender candidate this targets, or empty",
+    "master_lender_id": "string — id from MASTER LENDER CANDIDATES if matched (used to auto-link lender to deal when lender_id is empty), or empty",
     "lender_name": "string — firm name, or empty",
     "new_stage": "passed|not_a_fit|interested|in_diligence|follow_up|declined|terms_issued|info_requested|engaged|other|empty string",
+    "suggested_detail": "string — REQUIRED when new_stage is passed or not_a_fit. One of: deal_size_mismatch | industry_exclusion | geographic_restriction | risk_profile_concerns | timing_issues | relationship_issues | terms_mismatch | other. Empty for other statuses.",
+    "suggested_detail_confidence": "low|medium|high",
     "reason_note": "string — short rationale to save with the update (max ~200 chars)",
     "confidence": "low|medium|high",
     "ambiguity_flags": ["string — e.g. 'lender_not_matched', 'regional_nuance', 'forwarded_internally', 'multiple_deals_possible'"]
@@ -658,6 +683,17 @@ SUGGESTED STATUS MAPPING (recommended_update.new_stage):
 - "declined" — formal decline language without mandate-fit reasoning.
 - Use the most specific status that is supported by the email language. Never silently collapse "passed" and "not_a_fit" — they stay distinct.
 
+SUGGESTED DETAIL TAXONOMY (recommended_update.suggested_detail) — SHARED with the lenders-page disqualification modal. Use these EXACT keys when new_stage is "passed" or "not_a_fit":
+- deal_size_mismatch — too big / too small for the lender's check size
+- industry_exclusion — sector or vertical is on the lender's avoid list (e.g. "we don't do event spaces", cannabis, adult, etc.)
+- geographic_restriction — outside the lender's allowed states/countries
+- risk_profile_concerns — credit, leverage, burn, profitability, customer concentration concerns
+- timing_issues — wrong moment (recently funded a similar deal, capacity full, year-end pause)
+- relationship_issues — prior relationship friction or conflict
+- terms_mismatch — pricing/structure/term length the lender will not match
+- other — none of the above clearly applies
+Pick the SINGLE best key based on the verbatim language in the email. Set suggested_detail_confidence to "high" only when the email explicitly cites the reason. Leave suggested_detail empty for any new_stage other than passed/not_a_fit.
+
 DEAL MATCHING:
 - Use subject line, signature, prior thread content, sender email, and candidate list.
 - If a deal is already linked (dealId in context), use that and set high confidence.
@@ -665,8 +701,9 @@ DEAL MATCHING:
 - If no candidate is a clear match, set likely_deal.id="" and confidence="low".
 
 LENDER FIRM MATCHING:
-- Prefer exact match against lender candidate list.
-- Otherwise infer firm from sender email signature, domain (drop generic gmail/outlook), or footer text.
+- Prefer exact match against LENDER CANDIDATES ON LINKED DEAL.
+- If the firm is NOT in LENDER CANDIDATES ON LINKED DEAL but IS in MASTER LENDER CANDIDATES, set lender_id="" AND populate master_lender_id with the matching id so the client can auto-link the lender to the deal.
+- Otherwise infer firm from sender email signature, domain (drop generic gmail/outlook), or footer text and leave both lender_id and master_lender_id empty.
 
 QUOTE EXTRACTION:
 - supporting_quote MUST be a verbatim sentence from the email body. Never paraphrase. If unsure, use the most decisive sentence.
@@ -682,6 +719,9 @@ If the email is internal commentary only (kind="internal_note"), recommended_upd
 
 LENDER CANDIDATES ON LINKED DEAL:
 ${lenderCandidates.length > 0 ? lenderCandidates.map(l => `- id=${l.id} name="${l.name}" stage=${l.stage || "?"}`).join("\n") : "(none — deal not linked or has no lenders)"}
+
+MASTER LENDER CANDIDATES (firm-level directory — use these when the firm is not yet on this deal so the client can auto-link):
+${masterLenderCandidates.length > 0 ? masterLenderCandidates.slice(0, 200).map(l => `- id=${l.id} name="${l.name}"${l.tier ? ` tier=${l.tier}` : ""}`).join("\n") : "(none)"}
 
 ${!dealId ? `CANDIDATE DEALS (no deal linked yet — pick the most likely one if you can; the top entries already keyword-match the subject/body):
 ${dealCandidates.length > 0 ? dealCandidates.slice(0, 60).map(d => `- id=${d.id} name="${d.company}"${d.name ? ` aka="${d.name}"` : ""} stage=${d.stage || "?"}`).join("\n") : "(none)"}` : `LINKED DEAL: id=${dealId}`}
