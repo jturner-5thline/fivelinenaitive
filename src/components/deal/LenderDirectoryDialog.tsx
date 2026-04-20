@@ -505,7 +505,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
             <ScrollArea className="w-full h-full">
               <div style={{ minWidth: TOTAL_WIDTH }}>
                 {/* Header Row - identical style to LenderSpreadsheetView */}
-                <div className="flex sticky top-0 z-10 bg-background/95 backdrop-blur-md border-b border-border/60 shadow-[0_1px_0_0_hsl(var(--border)/0.4)]">
+                <div className="flex sticky top-0 z-10 bg-background/95 backdrop-blur-md border-b border-white/5">
                   {/* Row number header */}
                   <div className="flex-shrink-0 w-[50px] px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/60 bg-background/95 sticky left-0 z-20">
                     #
