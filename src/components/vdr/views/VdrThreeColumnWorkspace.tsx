@@ -594,6 +594,77 @@ export function VdrThreeColumnWorkspace({
     );
   };
 
+  /** Render a column's docs grouped by category (Settings-driven taxonomy). */
+  const renderCategoryGroups = (
+    grouped: Map<string, VdrDocument[]>,
+    column: 'internal' | 'dataroom',
+  ) => {
+    const collapsed = column === 'internal' ? collapsedInternal : collapsedDataroom;
+    const fileInputRef = column === 'internal' ? internalFileInput : dataroomFileInput;
+    // Render in Settings order; show empty categories too so the taxonomy is always visible.
+    const order = [...categoryNames, UNCATEGORIZED];
+    return (
+      <div className="space-y-1">
+        {order.map(cat => {
+          const docs = grouped.get(cat) || [];
+          // Hide the empty Uncategorized bucket to reduce noise
+          if (cat === UNCATEGORIZED && docs.length === 0) return null;
+          const isCollapsed = collapsed.has(cat);
+          const isActive = activeCategory === cat || (cat === UNCATEGORIZED && activeCategory === UNCATEGORIZED);
+          const label = cat === UNCATEGORIZED ? 'Uncategorized' : cat;
+          return (
+            <div key={cat} className="">
+              <div
+                className={cn(
+                  'group/cat flex items-center gap-1.5 px-1.5 py-1 rounded-md text-[11px] font-medium uppercase tracking-wider transition-colors cursor-pointer',
+                  isActive
+                    ? 'bg-primary/10 text-foreground'
+                    : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground/90'
+                )}
+                onClick={() => toggleCollapsed(column, cat)}
+              >
+                {isCollapsed
+                  ? <ChevronRight className="h-3 w-3 flex-shrink-0" />
+                  : <ChevronDown className="h-3 w-3 flex-shrink-0" />}
+                {isCollapsed
+                  ? <FolderClosed className="h-3 w-3 flex-shrink-0" />
+                  : <FolderOpen className="h-3 w-3 flex-shrink-0" />}
+                <span className="truncate">{label}</span>
+                <span className="ml-1 text-[10px] tabular-nums text-muted-foreground/70 normal-case font-normal">
+                  {docs.length}
+                </span>
+                {column === 'internal' && cat !== UNCATEGORIZED && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveCategory(cat);
+                      fileInputRef.current?.click();
+                    }}
+                    className="ml-auto opacity-0 group-hover/cat:opacity-100 transition-opacity p-0.5 rounded hover:bg-secondary/60"
+                    title={`Upload to ${label}`}
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+              {!isCollapsed && (
+                <div className="mt-0.5">
+                  {docs.length === 0 ? (
+                    <div className="px-3 py-1 text-[10px] text-muted-foreground/50 italic">
+                      No files
+                    </div>
+                  ) : (
+                    docs.map(d => renderFileRow(d, column))
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   const internalCount = internalDocs.length;
   const dataroomCount = dataroomDocs.length;
   const indexedCount = vdrDocs.ingestionStats?.complete || 0;
