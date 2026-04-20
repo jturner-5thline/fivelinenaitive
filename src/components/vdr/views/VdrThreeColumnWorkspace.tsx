@@ -3,7 +3,7 @@ import {
   Search, FolderOpen, FolderClosed, ChevronRight, ChevronDown, Plus, FileText,
   FileSpreadsheet, Presentation, Eye, Loader2, CheckCircle2, AlertCircle,
   ClipboardList, PackagePlus, Send, FolderPlus, Trash2, Download,
-  ArrowRight, ArrowLeft, Lock, Globe, MoreHorizontal,
+  ArrowRight, ArrowLeft, Lock, Globe, MoreHorizontal, Upload,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
