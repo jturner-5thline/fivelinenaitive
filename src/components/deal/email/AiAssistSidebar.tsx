@@ -95,10 +95,12 @@ const CONFIDENCE_TONE: Record<string, string> = {
 };
 
 export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDraft }: Props) {
-  const [loading, setLoading] = useState(false);
+  // `loadingTones` tracks per-tone in-flight requests (so the panel can render
+  // skeletons selectively). The shell never blocks on either.
+  const [loadingTones, setLoadingTones] = useState<Record<ToneKey, boolean>>({ concise: false, balanced: false });
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DraftResult | null>(null);
-  const [selected, setSelected] = useState<1 | 2 | 3>(2);
+  const [selected, setSelected] = useState<ToneKey>('balanced');
   const [showSources, setShowSources] = useState(false);
   const [drDismissed, setDrDismissed] = useState(false);
   const [drDialogOpen, setDrDialogOpen] = useState(false);
