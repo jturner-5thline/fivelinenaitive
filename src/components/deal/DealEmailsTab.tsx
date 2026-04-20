@@ -237,6 +237,29 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const [pinnedOpen, setPinnedOpen] = useUiPreference<boolean>('email_folder_rail_pinned', false);
   const [railHovered, setRailHovered] = useState(false);
   const railExpanded = pinnedOpen || railHovered;
+  const railHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const railRef = useRef<HTMLDivElement | null>(null);
+  const handleRailEnter = useCallback(() => {
+    if (railHoverTimer.current) clearTimeout(railHoverTimer.current);
+    railHoverTimer.current = setTimeout(() => setRailHovered(true), 70);
+  }, []);
+  const handleRailLeave = useCallback(() => {
+    if (railHoverTimer.current) clearTimeout(railHoverTimer.current);
+    railHoverTimer.current = setTimeout(() => setRailHovered(false), 120);
+  }, []);
+  // Add will-change only while animating, then strip it.
+  useEffect(() => {
+    const el = railRef.current;
+    if (!el) return;
+    el.style.willChange = 'width';
+    const t = setTimeout(() => {
+      if (railRef.current) railRef.current.style.willChange = 'auto';
+    }, 220);
+    return () => clearTimeout(t);
+  }, [railExpanded]);
+  useEffect(() => () => {
+    if (railHoverTimer.current) clearTimeout(railHoverTimer.current);
+  }, []);
 
   const inboxWidth = liveInboxWidth ?? savedInboxWidth;
 
