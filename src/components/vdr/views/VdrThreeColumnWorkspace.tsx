@@ -73,7 +73,6 @@ export function VdrThreeColumnWorkspace({
 }: Props) {
   // Shared state
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedChecklistId, setSelectedChecklistId] = useState<string | null>(null);
   // Active category context — uploads and new files default to this
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   // Collapsed category sections (per column)
