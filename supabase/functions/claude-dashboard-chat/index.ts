@@ -19,7 +19,7 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
 
   const [dealsRes, tasksRes] = await Promise.all([
     supabase.from("deals")
-      .select("id, company, value, stage, status, deal_type, industry, geography, created_at, updated_at, user_id, last_activity_at")
+      .select("id, company, value, stage, status, deal_type, business_model, created_at, updated_at, user_id, deal_owner, manager, next_follow_up_at, notes_updated_at")
       .eq("company_id", companyId)
       .order("updated_at", { ascending: false })
       .limit(80),
@@ -83,15 +83,35 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
   const milestones = milestonesRes.data || [];
   const activities = activitiesRes.data || [];
 
+  // Compute "last touch" per deal from the most recent of: deal updated_at,
+  // notes_updated_at, latest activity_log, latest deal_lender update.
   const now = Date.now();
+  const lastActivityByDeal = new Map<string, number>();
+  for (const a of activities) {
+    const t = new Date(a.created_at).getTime();
+    const prev = lastActivityByDeal.get(a.deal_id) || 0;
+    if (t > prev) lastActivityByDeal.set(a.deal_id, t);
+  }
+  for (const l of lenders) {
+    const t = new Date(l.updated_at || l.created_at).getTime();
+    const prev = lastActivityByDeal.get(l.deal_id) || 0;
+    if (t > prev) lastActivityByDeal.set(l.deal_id, t);
+  }
+
   const staleDeals = deals
     .filter((d: any) => d.status === "active")
     .map((d: any) => {
-      const last = new Date(d.last_activity_at || d.updated_at || d.created_at).getTime();
+      const candidates = [
+        lastActivityByDeal.get(d.id) || 0,
+        d.notes_updated_at ? new Date(d.notes_updated_at).getTime() : 0,
+        d.updated_at ? new Date(d.updated_at).getTime() : 0,
+        d.created_at ? new Date(d.created_at).getTime() : 0,
+      ];
+      const last = Math.max(...candidates);
       const days = Math.floor((now - last) / 86_400_000);
       return { ...d, days_since_activity: days };
     })
-    .filter((d: any) => d.days_since_activity >= 21)
+    .filter((d: any) => d.days_since_activity >= 14)
     .sort((a: any, b: any) => b.days_since_activity - a.days_since_activity);
 
   return {
