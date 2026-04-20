@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Loader2, Check, X, Pencil, Quote, AlertCircle, Briefcase, User, Building2, Zap } from 'lucide-react';
+import { Loader2, Check, X, Quote, AlertCircle, Briefcase, User, Building2, Zap } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
