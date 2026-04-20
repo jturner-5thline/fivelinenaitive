@@ -26,6 +26,7 @@ import { useDealTypes } from '@/contexts/DealTypesContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useUploadedItems } from '@/hooks/useUploadedItems';
 import { useChecklistCategories } from '@/hooks/useChecklistCategories';
+import { useDealOutstandingItemsByKey } from '@/hooks/useDealOutstandingItemsByKey';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
