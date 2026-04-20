@@ -723,7 +723,9 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
 
   return (
     <ResizablePanelGroup direction="horizontal" className="h-full">
-      {/* Internal - Checklists */}
+      {/* Internal - Checklists (hidden in Data Room view) */}
+      {!isDataroomView && (
+      <>
       <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
         {bulkUploadStep === 'upload' ? (
           <BulkUploadStep
