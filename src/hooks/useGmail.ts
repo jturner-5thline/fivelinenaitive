@@ -169,6 +169,13 @@ export function useGmail() {
     }
 
     try {
+      // Guard: if there's no live session token, skip the call (avoids 401 spam after logout)
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session?.access_token) {
+        setIsStatusLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('gmail-status');
       
       if (error) throw error;
@@ -177,8 +184,12 @@ export function useGmail() {
       persistStatus(data);
       setError(null);
     } catch (err: any) {
-      console.error('Gmail status error:', err);
-      setError(err.message);
+      // Suppress 401s — usually means the session expired/logged out between renders
+      const msg = err?.message || '';
+      if (!/401|Unauthorized|Invalid token/i.test(msg)) {
+        console.error('Gmail status error:', err);
+        setError(msg);
+      }
       // Don't clear persisted status on transient errors — keep showing connected
     } finally {
       setIsStatusLoading(false);
