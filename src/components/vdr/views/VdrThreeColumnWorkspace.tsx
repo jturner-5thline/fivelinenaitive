@@ -308,6 +308,22 @@ export function VdrThreeColumnWorkspace({
     toast.success(`Moved ${ids.length} file${ids.length === 1 ? '' : 's'} to Internal`);
   }, [vdrDocs]);
 
+  // Move file(s) to a category folder (just changes folder_path)
+  const moveToCategory = useCallback(async (ids: string[], categoryName: string | null) => {
+    if (!ids.length) return;
+    const newPath = !categoryName ? '/' : `/${categoryName}/`;
+    for (const id of ids) {
+      await vdrDocs.moveDocument(id, newPath);
+    }
+    setInternalSelected(new Set());
+    setDataroomSelected(new Set());
+    toast.success(
+      categoryName
+        ? `Moved to ${categoryName}`
+        : 'Moved to Uncategorized'
+    );
+  }, [vdrDocs]);
+
   // Drag & drop
   const handleDragStart = (e: React.DragEvent, doc: VdrDocument, source: 'internal' | 'dataroom') => {
     const selected = source === 'internal' ? internalSelected : dataroomSelected;
