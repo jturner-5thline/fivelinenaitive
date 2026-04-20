@@ -14407,12 +14407,16 @@ export type Database = {
           action_id: string
           action_type: string
           created_at: string
+          drift_seconds: number | null
           error_message: string | null
+          error_stack: string | null
           executed_at: string | null
+          fired_at: string | null
           id: string
           result: Json | null
           scheduled_for: string
           status: string
+          step_log: Json
           trigger_data: Json
           user_id: string
           workflow_id: string
@@ -14423,12 +14427,16 @@ export type Database = {
           action_id: string
           action_type: string
           created_at?: string
+          drift_seconds?: number | null
           error_message?: string | null
+          error_stack?: string | null
           executed_at?: string | null
+          fired_at?: string | null
           id?: string
           result?: Json | null
           scheduled_for: string
           status?: string
+          step_log?: Json
           trigger_data?: Json
           user_id: string
           workflow_id: string
@@ -14439,12 +14447,16 @@ export type Database = {
           action_id?: string
           action_type?: string
           created_at?: string
+          drift_seconds?: number | null
           error_message?: string | null
+          error_stack?: string | null
           executed_at?: string | null
+          fired_at?: string | null
           id?: string
           result?: Json | null
           scheduled_for?: string
           status?: string
+          step_log?: Json
           trigger_data?: Json
           user_id?: string
           workflow_id?: string
@@ -14456,6 +14468,13 @@ export type Database = {
             columns: ["workflow_id"]
             isOneToOne: false
             referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_actions_workflow_run_id_fkey"
+            columns: ["workflow_run_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_run_latest"
             referencedColumns: ["id"]
           },
           {
@@ -18408,33 +18427,48 @@ export type Database = {
         Row: {
           completed_at: string | null
           error_message: string | null
+          error_stack: string | null
+          error_step: string | null
           id: string
           results: Json
           started_at: string
           status: string
+          step: string | null
+          step_log: Json
           trigger_data: Json
+          trigger_source: string | null
           user_id: string
           workflow_id: string
         }
         Insert: {
           completed_at?: string | null
           error_message?: string | null
+          error_stack?: string | null
+          error_step?: string | null
           id?: string
           results?: Json
           started_at?: string
           status?: string
+          step?: string | null
+          step_log?: Json
           trigger_data?: Json
+          trigger_source?: string | null
           user_id: string
           workflow_id: string
         }
         Update: {
           completed_at?: string | null
           error_message?: string | null
+          error_stack?: string | null
+          error_step?: string | null
           id?: string
           results?: Json
           started_at?: string
           status?: string
+          step?: string | null
+          step_log?: Json
           trigger_data?: Json
+          trigger_source?: string | null
           user_id?: string
           workflow_id?: string
         }
@@ -18827,6 +18861,30 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      workflow_run_latest: {
+        Row: {
+          completed_at: string | null
+          duration_seconds: number | null
+          error_message: string | null
+          error_step: string | null
+          id: string | null
+          started_at: string | null
+          status: string | null
+          step: string | null
+          trigger_source: string | null
+          user_id: string | null
+          workflow_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_runs_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
