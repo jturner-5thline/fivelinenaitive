@@ -88,10 +88,46 @@ serve(async (req) => {
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  console.log('Processing scheduled actions...');
+  // ──────────────────────────────────────────────────────────────────
+  // CRITICAL: This function has TWO independent responsibilities that
+  // run on every cron tick:
+  //   (A) Drain due rows from public.scheduled_actions   (delayed actions
+  //       from the visual workflow builder).
+  //   (B) Renew due rows from public.wf_tasks WHERE is_recurring=true
+  //       (code-defined follow-up workflows like deal_active_followup_task).
+  //
+  // BUG FIXED 2026-04-20: previously we early-returned when (A) was empty,
+  // which meant (B) NEVER ran in production (scheduled_actions has been
+  // empty since launch). Result: 1,060 stuck recurring follow-ups.
+  // Both phases now ALWAYS run and have independent try/catch.
+  //
+  // TZ NOTE: every timestamp here is computed via `new Date()` (UTC) and
+  // stored in TIMESTAMPTZ columns. Postgres normalizes TIMESTAMPTZ to UTC
+  // on write. Display-side TZ conversion happens in the React layer.
+  // ──────────────────────────────────────────────────────────────────
 
+  const tickStartedAt = new Date().toISOString();
+  console.log(`[scheduled-actions] tick start ${tickStartedAt}`);
+
+  const tickSummary = {
+    tickStartedAt,
+    scheduledActionsProcessed: 0,
+    scheduledActionsSuccess: 0,
+    scheduledActionsFailed: 0,
+    recurringTasksConsidered: 0,
+    recurringTasksRenewed: 0,
+    recurringTasksCompleted: 0,
+    recurringTasksFailed: 0,
+    phaseErrors: [] as Array<{ phase: string; message: string }>,
+  };
+
+  const results: Array<{ actionId: string; success: boolean; message: string }> = [];
+
+  // ── PHASE A: Drain due scheduled_actions ──────────────────────────
   try {
     // Fetch due scheduled actions
+    // `new Date().toISOString()` is always UTC; `.lte('scheduled_for', now)`
+    // compares against UTC since the column is TIMESTAMPTZ.
     const now = new Date().toISOString();
     const { data: scheduledActions, error: fetchError } = await supabase
       .from('scheduled_actions')
@@ -106,75 +142,90 @@ serve(async (req) => {
     }
 
     if (!scheduledActions || scheduledActions.length === 0) {
-      console.log('No scheduled actions to process');
-      return new Response(JSON.stringify({ processed: 0, message: 'No actions due' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+      console.log('[scheduled-actions] phase A: no scheduled actions due');
+    } else {
+      console.log(`[scheduled-actions] phase A: ${scheduledActions.length} due`);
+      tickSummary.scheduledActionsProcessed = scheduledActions.length;
 
-    console.log(`Found ${scheduledActions.length} scheduled actions to process`);
-
-    const results: Array<{ actionId: string; success: boolean; message: string }> = [];
-
-    for (const scheduledAction of scheduledActions as ScheduledAction[]) {
-      // Mark as running
-      await supabase
-        .from('scheduled_actions')
-        .update({ status: 'running' })
-        .eq('id', scheduledAction.id);
-
-      try {
-        const result = await executeAction(
-          scheduledAction.action,
-          scheduledAction.trigger_data,
-          supabase
-        );
-
-        // Mark as completed
+      for (const scheduledAction of scheduledActions as ScheduledAction[]) {
+        // Mark as running
         await supabase
           .from('scheduled_actions')
-          .update({ 
-            status: 'completed',
-            executed_at: new Date().toISOString(),
-          })
+          .update({ status: 'running' })
           .eq('id', scheduledAction.id);
 
-        // Update the workflow run with the delayed action result
-        await updateWorkflowRunWithDelayedResult(
-          supabase,
-          scheduledAction.workflow_run_id,
-          result
-        );
+        const firedAt = new Date();
+        const scheduledForMs = new Date(scheduledAction.scheduled_for).getTime();
+        const driftSeconds = (firedAt.getTime() - scheduledForMs) / 1000;
 
-        results.push({
-          actionId: scheduledAction.action.id,
-          success: result.success,
-          message: result.message,
-        });
+        try {
+          const result = await executeAction(
+            scheduledAction.action,
+            scheduledAction.trigger_data,
+            supabase
+          );
 
-        console.log(`Executed scheduled action ${scheduledAction.id}: ${result.success ? 'success' : 'failed'}`);
+          // Mark as completed (capture firing time + drift for observability)
+          await supabase
+            .from('scheduled_actions')
+            .update({
+              status: 'completed',
+              executed_at: firedAt.toISOString(),
+              fired_at: firedAt.toISOString(),
+              drift_seconds: driftSeconds,
+              result: result as unknown as Record<string, unknown>,
+            })
+            .eq('id', scheduledAction.id);
 
-      } catch (error) {
-        console.error(`Error executing scheduled action ${scheduledAction.id}:`, error);
-        
-        // Mark as failed
-        await supabase
-          .from('scheduled_actions')
-          .update({ 
-            status: 'failed',
-            error_message: error instanceof Error ? error.message : 'Unknown error',
-          })
-          .eq('id', scheduledAction.id);
+          // Append result to the parent workflow run
+          await updateWorkflowRunWithDelayedResult(
+            supabase,
+            scheduledAction.workflow_run_id,
+            result
+          );
 
-        results.push({
-          actionId: scheduledAction.action.id,
-          success: false,
-          message: error instanceof Error ? error.message : 'Unknown error',
-        });
+          results.push({
+            actionId: scheduledAction.action.id,
+            success: result.success,
+            message: result.message,
+          });
+          if (result.success) tickSummary.scheduledActionsSuccess++;
+          else tickSummary.scheduledActionsFailed++;
+
+          console.log(
+            `[scheduled-actions] action ${scheduledAction.id} ${result.success ? '✓' : '✗'} drift=${driftSeconds.toFixed(1)}s`
+          );
+        } catch (error) {
+          const errMsg = error instanceof Error ? error.message : 'Unknown error';
+          const errStack = error instanceof Error ? error.stack || null : null;
+          console.error(`[scheduled-actions] action ${scheduledAction.id} threw:`, errMsg);
+
+          await supabase
+            .from('scheduled_actions')
+            .update({
+              status: 'failed',
+              error_message: errMsg,
+              error_stack: errStack,
+              fired_at: firedAt.toISOString(),
+              drift_seconds: driftSeconds,
+            })
+            .eq('id', scheduledAction.id);
+
+          results.push({ actionId: scheduledAction.action.id, success: false, message: errMsg });
+          tickSummary.scheduledActionsFailed++;
+        }
       }
     }
+  } catch (phaseAError) {
+    const msg = phaseAError instanceof Error ? phaseAError.message : 'Unknown phase A error';
+    console.error('[scheduled-actions] phase A fatal:', msg);
+    tickSummary.phaseErrors.push({ phase: 'scheduled_actions', message: msg });
+    // DO NOT return — phase B must still run.
+  }
 
-    // ── Process recurring wf_tasks ────────────────────────────────
+  // ── PHASE B: Renew recurring wf_tasks (the previously dead path) ──
+  try {
+    const now = new Date().toISOString();
     console.log('[recurring-tasks] Checking for due recurring tasks...');
     const { data: dueTasks, error: recurError } = await supabase
       .from('wf_tasks')
@@ -186,139 +237,145 @@ serve(async (req) => {
 
     if (recurError) {
       console.error('[recurring-tasks] Fetch error:', recurError);
+      throw recurError;
     }
 
-    let recurCompleted = 0;
-    let recurRenewed = 0;
+    tickSummary.recurringTasksConsidered = dueTasks?.length ?? 0;
 
     if (dueTasks && dueTasks.length > 0) {
       console.log(`[recurring-tasks] Found ${dueTasks.length} due recurring tasks`);
 
       for (const task of dueTasks) {
-        const dealId = task.deal_id;
+        // Per-task try/catch so one bad task can't kill the whole batch
+        try {
+          const dealId = task.deal_id;
 
-        // Fetch associated deal (try wf_deals first, then deals)
-        let deal: Record<string, unknown> | null = null;
-        const { data: wfDeal } = await supabase
-          .from('wf_deals')
-          .select('*')
-          .eq('id', dealId)
-          .maybeSingle();
-
-        if (wfDeal) {
-          deal = wfDeal;
-        } else {
-          const { data: mainDeal } = await supabase
-            .from('deals')
+          // Fetch associated deal (try wf_deals first, then deals)
+          let deal: Record<string, unknown> | null = null;
+          const { data: wfDeal } = await supabase
+            .from('wf_deals')
             .select('*')
             .eq('id', dealId)
             .maybeSingle();
-          deal = mainDeal;
-        }
 
-        if (!deal) {
-          console.log(`[recurring-tasks] Deal ${dealId} not found, marking task done`);
+          if (wfDeal) {
+            deal = wfDeal;
+          } else {
+            const { data: mainDeal } = await supabase
+              .from('deals')
+              .select('*')
+              .eq('id', dealId)
+              .maybeSingle();
+            deal = mainDeal;
+          }
+
+          if (!deal) {
+            console.log(`[recurring-tasks] task=${task.id} deal=${dealId} missing → completing`);
+            await supabase.from('wf_tasks').update({ status: 'done' }).eq('id', task.id);
+            tickSummary.recurringTasksCompleted++;
+            continue;
+          }
+
+          // Evaluate stop conditions
+          const stopConditions: StopCondition[] | null = task.recurrence_stop_conditions;
+
+          if (evaluateStopConditions(stopConditions, task, deal)) {
+            console.log(`[recurring-tasks] task=${task.id} "${task.title}" stop-cond met → completing`);
+            await supabase.from('wf_tasks').update({ status: 'done' }).eq('id', task.id);
+            await supabase.from('deals').update({ next_follow_up_at: null }).eq('id', dealId);
+            await supabase.from('wf_deals').update({ next_follow_up_at: null }).eq('id', dealId);
+            tickSummary.recurringTasksCompleted++;
+            continue;
+          }
+
+          // No stop condition met → create next occurrence.
+          // TZ: Date.now() is UTC ms; * 86_400_000 ms/day; result is UTC ISO.
+          const recurrenceRule = task.recurrence_rule_json as Record<string, unknown> | null;
+          const intervalDays = (recurrenceRule?.interval as number) || 3;
+          const newDueAt = new Date(Date.now() + intervalDays * 86400000).toISOString();
+
+          console.log(`[recurring-tasks] task=${task.id} renewing → due ${newDueAt}`);
+
+          const { error: insertErr } = await supabase.from('wf_tasks').insert({
+            deal_id: task.deal_id,
+            title: task.title,
+            description: task.description,
+            status: 'open',
+            assignee_id: task.assignee_id,
+            created_by_id: task.created_by_id,
+            workflow_owner_id: task.workflow_owner_id,
+            workflow_key: task.workflow_key,
+            trigger_source: task.trigger_source,
+            is_recurring: true,
+            recurrence_rule_json: task.recurrence_rule_json,
+            recurrence_stop_conditions: task.recurrence_stop_conditions,
+            due_at: newDueAt,
+            org_company_id: task.org_company_id,
+          });
+
+          if (insertErr) {
+            console.error(`[recurring-tasks] task=${task.id} insert renewal failed:`, insertErr);
+            tickSummary.recurringTasksFailed++;
+            continue;
+          }
+
+          // Complete old task
           await supabase.from('wf_tasks').update({ status: 'done' }).eq('id', task.id);
-          recurCompleted++;
-          continue;
+
+          // Update next_follow_up_at on the deal
+          await supabase.from('deals').update({ next_follow_up_at: newDueAt }).eq('id', dealId);
+          await supabase.from('wf_deals').update({ next_follow_up_at: newDueAt }).eq('id', dealId);
+
+          // Audit-log renewal
+          await supabase.from('wf_workflows_log').insert({
+            workflow_name: `recurring_renewal_${task.workflow_key || 'unknown'}`,
+            trigger_type: 'stage_change',
+            deal_id: dealId,
+            org_company_id: task.org_company_id,
+            metadata_json: {
+              action: 'recurring_renewal',
+              old_task_id: task.id,
+              new_due_at: newDueAt,
+              interval_days: intervalDays,
+              tick_started_at: tickStartedAt,
+            },
+          });
+
+          tickSummary.recurringTasksRenewed++;
+          results.push({ actionId: task.id, success: true, message: `Recurring task "${task.title}" renewed` });
+        } catch (perTaskErr) {
+          const msg = perTaskErr instanceof Error ? perTaskErr.message : 'Unknown error';
+          console.error(`[recurring-tasks] task=${task.id} unhandled:`, msg);
+          tickSummary.recurringTasksFailed++;
         }
-
-        // Evaluate stop conditions
-        const stopConditions: StopCondition[] | null = task.recurrence_stop_conditions;
-
-        if (evaluateStopConditions(stopConditions, task, deal)) {
-          console.log(`[recurring-tasks] Stop condition met for "${task.title}" – completing`);
-          await supabase.from('wf_tasks').update({ status: 'done' }).eq('id', task.id);
-          await supabase.from('deals').update({ next_follow_up_at: null }).eq('id', dealId);
-          await supabase.from('wf_deals').update({ next_follow_up_at: null }).eq('id', dealId);
-          recurCompleted++;
-          continue;
-        }
-
-        // No stop condition met → create next occurrence
-        const recurrenceRule = task.recurrence_rule_json as Record<string, unknown> | null;
-        const intervalDays = (recurrenceRule?.interval as number) || 3;
-        const newDueAt = new Date(Date.now() + intervalDays * 86400000).toISOString();
-
-        console.log(`[recurring-tasks] Renewing "${task.title}" – next due: ${newDueAt}`);
-
-        const { error: insertErr } = await supabase.from('wf_tasks').insert({
-          deal_id: task.deal_id,
-          title: task.title,
-          description: task.description,
-          status: 'open',
-          assignee_id: task.assignee_id,
-          created_by_id: task.created_by_id,
-          workflow_owner_id: task.workflow_owner_id,
-          workflow_key: task.workflow_key,
-          trigger_source: task.trigger_source,
-          is_recurring: true,
-          recurrence_rule_json: task.recurrence_rule_json,
-          recurrence_stop_conditions: task.recurrence_stop_conditions,
-          due_at: newDueAt,
-          org_company_id: task.org_company_id,
-        });
-
-        if (insertErr) {
-          console.error(`[recurring-tasks] Insert error for "${task.title}":`, insertErr);
-          continue;
-        }
-
-        // Complete old task
-        await supabase.from('wf_tasks').update({ status: 'done' }).eq('id', task.id);
-
-        // Update next_follow_up_at on the deal
-        await supabase.from('deals').update({ next_follow_up_at: newDueAt }).eq('id', dealId);
-        await supabase.from('wf_deals').update({ next_follow_up_at: newDueAt }).eq('id', dealId);
-
-        // Log renewal
-        await supabase.from('wf_workflows_log').insert({
-          workflow_name: `recurring_renewal_${task.workflow_key || 'unknown'}`,
-          trigger_type: 'stage_change',
-          deal_id: dealId,
-          org_company_id: task.org_company_id,
-          metadata_json: {
-            action: 'recurring_renewal',
-            old_task_id: task.id,
-            new_due_at: newDueAt,
-            interval_days: intervalDays,
-          },
-        });
-
-        recurRenewed++;
-        results.push({ actionId: task.id, success: true, message: `Recurring task "${task.title}" renewed` });
       }
     }
-
-    console.log(`[recurring-tasks] Done. Completed: ${recurCompleted}, Renewed: ${recurRenewed}`);
-    // ── End recurring tasks ────────────────────────────────────────
-
-    const successCount = results.filter(r => r.success).length;
-    const failedCount = results.filter(r => !r.success).length;
-
-    // Send summary email notification if there are any results
-    if (results.length > 0) {
-      await sendWorkflowSummaryEmail(supabase, results, successCount, failedCount);
-    }
-
-    return new Response(JSON.stringify({
-      processed: scheduledActions.length,
-      successful: successCount,
-      failed: failedCount,
-      results,
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-
-  } catch (error) {
-    console.error('Error processing scheduled actions:', error);
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+  } catch (phaseBError) {
+    const msg = phaseBError instanceof Error ? phaseBError.message : 'Unknown phase B error';
+    console.error('[recurring-tasks] phase B fatal:', msg);
+    tickSummary.phaseErrors.push({ phase: 'recurring_tasks', message: msg });
   }
+
+  console.log(
+    `[scheduled-actions] tick done: scheduled=${tickSummary.scheduledActionsProcessed} ` +
+    `(✓${tickSummary.scheduledActionsSuccess} ✗${tickSummary.scheduledActionsFailed}) ` +
+    `recurring=${tickSummary.recurringTasksConsidered} ` +
+    `(renewed ${tickSummary.recurringTasksRenewed}, completed ${tickSummary.recurringTasksCompleted}, ` +
+    `failed ${tickSummary.recurringTasksFailed}) ` +
+    `phaseErrors=${tickSummary.phaseErrors.length}`
+  );
+
+  const successCount = results.filter(r => r.success).length;
+  const failedCount = results.filter(r => !r.success).length;
+
+  // Only email when there's something to report (avoid spamming on idle ticks)
+  if (results.length > 0) {
+    await sendWorkflowSummaryEmail(supabase, results, successCount, failedCount);
+  }
+
+  return new Response(JSON.stringify(tickSummary), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
 });
 
 async function executeAction(

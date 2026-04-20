@@ -9,6 +9,15 @@ export interface WorkflowRunResult {
   message: string;
 }
 
+export interface WorkflowStepLogEntry {
+  ts: string;
+  step: string;
+  ok: boolean;
+  action_id?: string;
+  action_type?: string;
+  detail?: string;
+}
+
 export interface WorkflowRun {
   id: string;
   workflow_id: string;
@@ -17,6 +26,11 @@ export interface WorkflowRun {
   status: 'pending' | 'running' | 'completed' | 'partial' | 'failed';
   results: WorkflowRunResult[];
   error_message: string | null;
+  step: string | null;
+  error_step: string | null;
+  error_stack: string | null;
+  step_log: WorkflowStepLogEntry[];
+  trigger_source: string | null;
   started_at: string;
   completed_at: string | null;
 }
@@ -68,6 +82,11 @@ export function useWorkflowRuns(workflowId?: string) {
         status: run.status as WorkflowRun['status'],
         results: (run.results as unknown) as WorkflowRunResult[],
         error_message: run.error_message,
+        step: (run as any).step ?? null,
+        error_step: (run as any).error_step ?? null,
+        error_stack: (run as any).error_stack ?? null,
+        step_log: ((run as any).step_log ?? []) as WorkflowStepLogEntry[],
+        trigger_source: (run as any).trigger_source ?? null,
         started_at: run.started_at,
         completed_at: run.completed_at,
       }));

@@ -440,6 +440,30 @@ serve(async (req) => {
     console.log(`Trigger: ${triggerType}`, triggerData);
     console.log(`Actions:`, actions);
 
+    // ──────────────────────────────────────────────────────────────
+    // Structured per-step observability.
+    // Every phase appends a typed entry to `stepLog`. On failure we
+    // record `error_step`, `error_message`, `error_stack` so the UI
+    // can surface exactly where a run broke without log spelunking.
+    // ──────────────────────────────────────────────────────────────
+    const stepLog: Array<{
+      ts: string;
+      step: string;
+      action_id?: string;
+      action_type?: string;
+      ok: boolean;
+      detail?: string;
+    }> = [];
+    const log = (
+      step: string,
+      ok: boolean,
+      extra?: { action_id?: string; action_type?: string; detail?: string }
+    ) => {
+      stepLog.push({ ts: new Date().toISOString(), step, ok, ...extra });
+    };
+
+    log('trigger_received', true, { detail: triggerType });
+
     // Create a workflow run record
     const { data: runData, error: runError } = await supabase
       .from("workflow_runs")
@@ -448,16 +472,25 @@ serve(async (req) => {
         user_id: user.id,
         trigger_data: triggerData,
         status: "running",
+        step: 'evaluating',
+        trigger_source: triggerType,
+        step_log: stepLog,
       })
       .select()
       .single();
 
     if (runError) {
       console.error("Error creating workflow run:", runError);
+      log('create_workflow_run', false, { detail: runError.message });
+    } else {
+      log('create_workflow_run', true);
     }
 
     const runId = runData?.id;
     const results: { actionId: string; type: string; success: boolean; message: string }[] = [];
+    let firstFailedStep: string | null = null;
+    let firstFailedMessage: string | null = null;
+    let firstFailedStack: string | null = null;
 
     // Execute each action
     for (const action of actions) {
@@ -465,7 +498,25 @@ serve(async (req) => {
 
       // Check condition if present
       if (action.condition) {
-        const conditionMet = evaluateCondition(action.condition, triggerData);
+        // Wrap condition eval so a malformed condition can't kill the run
+        let conditionMet = true;
+        try {
+          conditionMet = evaluateCondition(action.condition, triggerData);
+          log('condition_eval', true, {
+            action_id: action.id,
+            action_type: action.type,
+            detail: `${action.condition.field} ${action.condition.operator} ${action.condition.value} → ${conditionMet}`,
+          });
+        } catch (condErr) {
+          const msg = condErr instanceof Error ? condErr.message : 'Unknown condition error';
+          log('condition_eval', false, {
+            action_id: action.id,
+            action_type: action.type,
+            detail: msg,
+          });
+          // Treat malformed condition as "not met" rather than failing the whole run
+          conditionMet = false;
+        }
         if (!conditionMet) {
           results.push({ actionId: action.id, type: action.type, success: true, message: 'Skipped: condition not met' });
           continue;
@@ -474,10 +525,18 @@ serve(async (req) => {
 
       // Handle delayed actions
       if (action.delay) {
-        const delayMs = action.delay.amount * (action.delay.unit === 'minutes' ? 60000 : action.delay.unit === 'hours' ? 3600000 : 86400000);
+        // TZ NOTE: Date.now() is UTC ms. delayMs is duration in ms.
+        // scheduled_for is stored as TIMESTAMPTZ → Postgres normalizes to UTC.
+        const delayMs =
+          action.delay.amount *
+          (action.delay.unit === 'minutes'
+            ? 60_000
+            : action.delay.unit === 'hours'
+            ? 3_600_000
+            : 86_400_000);
         const scheduledFor = new Date(Date.now() + delayMs).toISOString();
-        
-        await supabase.from('scheduled_actions').insert({
+
+        const { error: schedErr } = await supabase.from('scheduled_actions').insert({
           workflow_run_id: runId,
           workflow_id: workflowId,
           user_id: user.id,
@@ -488,38 +547,88 @@ serve(async (req) => {
           scheduled_for: scheduledFor,
           status: 'pending',
         });
-        
-        results.push({ actionId: action.id, type: action.type, success: true, message: `Scheduled for ${scheduledFor}` });
+
+        if (schedErr) {
+          log('schedule_action', false, {
+            action_id: action.id,
+            action_type: action.type,
+            detail: schedErr.message,
+          });
+          if (!firstFailedStep) {
+            firstFailedStep = 'schedule_action';
+            firstFailedMessage = schedErr.message;
+          }
+          results.push({
+            actionId: action.id,
+            type: action.type,
+            success: false,
+            message: `Schedule failed: ${schedErr.message}`,
+          });
+        } else {
+          log('schedule_action', true, {
+            action_id: action.id,
+            action_type: action.type,
+            detail: `delayed until ${scheduledFor}`,
+          });
+          results.push({
+            actionId: action.id,
+            type: action.type,
+            success: true,
+            message: `Scheduled for ${scheduledFor}`,
+          });
+        }
         continue;
       }
 
-      switch (action.type) {
-        case "webhook":
-          result = await executeWebhookAction(action.config, triggerData);
-          break;
-        case "send_notification":
-          result = await executeNotificationAction(supabase, user.id, action.config, triggerData);
-          break;
-        case "send_email":
-          result = await executeEmailAction(action.config, triggerData, user.email || "");
-          break;
-        case "update_field":
-          result = await executeUpdateFieldAction(supabase, action.config, triggerData);
-          break;
-        case "trigger_workflow":
-          result = await executeTriggerWorkflowAction(supabase, action.config, triggerData, authHeader);
-          break;
-        case "ai_process":
-          const aiResult = await executeAIProcessAction(supabase, user.id, action.config, triggerData);
-          result = aiResult;
-          // Pass AI output to subsequent actions via triggerData
-          if (aiResult.aiOutput) {
-            triggerData.ai_output = aiResult.aiOutput;
-            triggerData[`ai_output_${action.id}`] = aiResult.aiOutput;
+      // Per-action try/catch — never let one bad action kill the whole run
+      try {
+        switch (action.type) {
+          case "webhook":
+            result = await executeWebhookAction(action.config, triggerData);
+            break;
+          case "send_notification":
+            result = await executeNotificationAction(supabase, user.id, action.config, triggerData);
+            break;
+          case "send_email":
+            result = await executeEmailAction(action.config, triggerData, user.email || "");
+            break;
+          case "update_field":
+            result = await executeUpdateFieldAction(supabase, action.config, triggerData);
+            break;
+          case "trigger_workflow":
+            result = await executeTriggerWorkflowAction(supabase, action.config, triggerData, authHeader);
+            break;
+          case "ai_process": {
+            const aiResult = await executeAIProcessAction(supabase, user.id, action.config, triggerData);
+            result = aiResult;
+            if (aiResult.aiOutput) {
+              triggerData.ai_output = aiResult.aiOutput;
+              triggerData[`ai_output_${action.id}`] = aiResult.aiOutput;
+            }
+            break;
           }
-          break;
-        default:
-          result = { success: false, message: `Unknown action type: ${action.type}` };
+          default:
+            result = { success: false, message: `Unknown action type: ${action.type}` };
+        }
+      } catch (actionErr) {
+        const msg = actionErr instanceof Error ? actionErr.message : 'Unknown action error';
+        const stack = actionErr instanceof Error ? actionErr.stack || null : null;
+        result = { success: false, message: msg };
+        if (!firstFailedStep) {
+          firstFailedStep = `execute_${action.type}`;
+          firstFailedMessage = msg;
+          firstFailedStack = stack;
+        }
+      }
+
+      log(`execute_${action.type}`, result.success, {
+        action_id: action.id,
+        action_type: action.type,
+        detail: result.message,
+      });
+      if (!result.success && !firstFailedStep) {
+        firstFailedStep = `execute_${action.type}`;
+        firstFailedMessage = result.message;
       }
 
       results.push({ actionId: action.id, type: action.type, ...result });
@@ -528,11 +637,19 @@ serve(async (req) => {
 
     // Update the workflow run
     const allSucceeded = results.every(r => r.success);
+    log('finalize', true, {
+      detail: `${results.filter(r => r.success).length}/${results.length} actions succeeded`,
+    });
     if (runId) {
       await supabase
         .from("workflow_runs")
         .update({
           status: allSucceeded ? "completed" : "partial",
+          step: allSucceeded ? 'completed' : 'partial',
+          error_step: allSucceeded ? null : firstFailedStep,
+          error_message: allSucceeded ? null : firstFailedMessage,
+          error_stack: allSucceeded ? null : firstFailedStack,
+          step_log: stepLog,
           results: results,
           completed_at: new Date().toISOString(),
         })
