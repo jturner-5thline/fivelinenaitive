@@ -874,6 +874,7 @@ function DayColumn({
   onSlotClick?: (date: Date, hour: number) => void;
 }) {
   const timedEvents = dayEvents.filter(e => !e.all_day);
+  const today = isToday(date);
 
   const handleGridClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!onSlotClick) return;
@@ -887,21 +888,38 @@ function DayColumn({
   };
 
   return (
-    <div className="relative flex-1 min-w-0">
+    <div className={cn(
+      'relative flex-1 min-w-0 border-l border-border/40 first:border-l-0',
+      today && 'bg-primary/[0.04]',
+    )}>
       {showDayLabel && (
-        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b text-center py-2">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{format(date, 'EEE')}</p>
-          <p className={cn('text-lg font-semibold leading-tight', isToday(date) ? 'text-primary' : 'text-foreground')}>
+        <div className={cn(
+          'sticky top-0 z-10 backdrop-blur-sm border-b border-border/40 text-center py-2',
+          today ? 'bg-primary/[0.06]' : 'bg-background/95',
+        )}>
+          <p className={cn(
+            'text-[10px] uppercase tracking-wider font-medium',
+            today ? 'text-primary' : 'text-muted-foreground',
+          )}>{format(date, 'EEE')}</p>
+          <p className={cn('text-lg font-semibold leading-tight', today ? 'text-primary' : 'text-foreground')}>
             {format(date, 'd')}
           </p>
-          {isToday(date) && <div className="mx-auto mt-0.5 h-1 w-1 rounded-full bg-primary" />}
+          {/* Reserve identical vertical space across all day headers so today does not push the grid down */}
+          <div className="mx-auto mt-0.5 h-1 w-1 rounded-full" aria-hidden style={{ background: today ? 'hsl(var(--primary))' : 'transparent' }} />
         </div>
       )}
       <div className="relative cursor-pointer" style={{ height: HOURS.length * HOUR_HEIGHT }} onClick={handleGridClick}>
         {HOURS.map(h => (
-          <div key={h} className="absolute left-0 right-0 border-t border-border/30 hover:bg-primary/5 transition-colors" style={{ top: h * HOUR_HEIGHT, height: HOUR_HEIGHT }} />
+          <div
+            key={h}
+            className={cn(
+              'absolute left-0 right-0 hover:bg-primary/5 transition-colors',
+              h !== 0 && 'border-t border-border/40',
+            )}
+            style={{ top: h * HOUR_HEIGHT, height: HOUR_HEIGHT }}
+          />
         ))}
-        {isToday(date) && <CurrentTimeIndicator />}
+        {today && <CurrentTimeIndicator />}
         {timedEvents.map((event, idx) => {
           const start = parseISO(event.start);
           const end = parseISO(event.end);
