@@ -684,7 +684,11 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   // Render sidebar item
   const renderSidebarItem = (item: SidebarItem, isDealSection?: boolean) => {
     const isActive = activeItemId === item.id;
-    return (
+    const hasCount = item.count != null && item.count > 0;
+    const isHighlightCount =
+      item.id === 'needs_response' || (item.id === 'all_inbox' && (item.count ?? 0) > 0);
+
+    const button = (
       <button
         key={item.id}
         onClick={() => {
@@ -693,31 +697,72 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
           setViewFilter('all');
           setChipFilter(null);
         }}
+        aria-label={item.label}
+        title={!railExpanded ? item.label : undefined}
         className={cn(
-          'w-full flex items-center gap-2 text-left transition-all duration-100 px-3 py-1.5 border-l-2',
+          'group relative w-full flex items-center text-left transition-colors duration-150 border-l-2',
+          railExpanded ? 'gap-2.5 px-3 py-2' : 'justify-center px-0 py-2.5',
           isActive
-            ? 'border-l-[hsl(var(--outlook-blue))] bg-[hsl(var(--outlook-blue)/0.1)] text-foreground font-medium'
-            : 'border-l-transparent text-muted-foreground hover:bg-[hsl(var(--foreground)/0.04)] hover:text-foreground'
+            ? 'border-l-[hsl(var(--outlook-blue))] bg-[hsl(var(--outlook-blue)/0.12)] text-foreground font-medium'
+            : 'border-l-transparent text-foreground/85 hover:bg-[hsl(var(--foreground)/0.05)] hover:text-foreground'
         )}
       >
         {item.indicatorColor ? (
           <span className={cn('w-2 h-2 rounded-full shrink-0', item.indicatorColor)} />
         ) : (
-          <item.icon className="h-3.5 w-3.5 shrink-0" />
+          <item.icon
+            className={cn(
+              'shrink-0 transition-all',
+              railExpanded ? 'h-4 w-4' : 'h-[18px] w-[18px]',
+              isActive ? 'text-foreground' : 'text-foreground/90',
+              !railExpanded && 'stroke-[2.25]'
+            )}
+          />
         )}
-        <span className="flex-1 truncate text-[12px]">{item.label}</span>
-        {item.count != null && item.count > 0 && (
-          <span className={cn(
-            'text-[10px] font-semibold tabular-nums min-w-[18px] text-center',
-            item.id === 'needs_response' || (item.id === 'all_inbox' && item.count > 0)
-              ? 'text-[hsl(var(--outlook-blue))] font-bold'
-              : 'text-muted-foreground'
-          )}>
+        {railExpanded && (
+          <>
+            <span className="flex-1 truncate text-[12px]">{item.label}</span>
+            {hasCount && (
+              <span
+                className={cn(
+                  'text-[10px] font-semibold tabular-nums min-w-[18px] text-center',
+                  isHighlightCount
+                    ? 'text-[hsl(var(--outlook-blue))] font-bold'
+                    : 'text-muted-foreground'
+                )}
+              >
+                {item.count}
+              </span>
+            )}
+          </>
+        )}
+        {!railExpanded && hasCount && (
+          <span
+            className={cn(
+              'absolute top-1 right-1 min-w-[14px] h-[14px] rounded-full px-1 text-[9px] font-bold tabular-nums leading-[14px] text-center',
+              isHighlightCount
+                ? 'bg-[hsl(var(--outlook-blue))] text-white'
+                : 'bg-foreground/15 text-foreground/90'
+            )}
+          >
             {item.count}
           </span>
         )}
       </button>
     );
+
+    if (!railExpanded) {
+      return (
+        <Tooltip key={item.id} delayDuration={150}>
+          <TooltipTrigger asChild>{button}</TooltipTrigger>
+          <TooltipContent side="right" className="text-xs">
+            {item.label}
+            {hasCount ? ` · ${item.count}` : ''}
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+    return button;
   };
 
   return (
