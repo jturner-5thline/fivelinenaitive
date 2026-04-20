@@ -250,21 +250,47 @@ export function WorkflowIntelligenceCard({
             {rec.title}
           </p>
 
-          {!editing ? (
-            rec.reason_note && (
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                <span className="text-foreground/60">Reason:</span> {rec.reason_note}
-              </p>
-            )
-          ) : (
+          {/* Editable disposition — only relevant for lender status updates. */}
+          {isLenderStatus && (
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Status
+              </label>
+              <Select value={confirmedStatus} onValueChange={handleStatusChange}>
+                <SelectTrigger className="h-8 text-[11px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value} className="text-[11px]">
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {userOverrodeSuggestion && (
+                <div className="text-[10px] leading-tight pt-0.5">
+                  <span className="text-muted-foreground">AI suggested: </span>
+                  <span className="text-foreground/70">{STATUS_LABEL[aiSuggestedStatus]}</span>
+                  <span className="text-muted-foreground"> · You are confirming: </span>
+                  <span className="text-primary font-medium">{STATUS_LABEL[confirmedStatus]}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Reason / note — always editable inline. */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Note
+            </label>
             <Input
-              autoFocus
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               className="h-8 text-[11px]"
-              placeholder="Reason note"
+              placeholder="Reason / context for this update"
             />
-          )}
+          </div>
 
           {needsDealLink && (
             <div className="flex items-start gap-1.5 text-[10px] text-amber-300/90 bg-amber-500/[0.04] rounded p-2">
@@ -284,19 +310,11 @@ export function WorkflowIntelligenceCard({
             <Button
               size="sm"
               className="h-7 px-2 text-[11px] gap-1 flex-1"
-              disabled={committing || needsDealLink || (rec.kind === 'lender_status' && !rec.lender_id)}
-              onClick={() => onConfirm(editing ? { reasonNote: reason } : undefined)}
+              disabled={!canConfirm}
+              onClick={handleConfirm}
             >
               {committing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
               Confirm
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 px-2 text-[11px] gap-1"
-              onClick={() => setEditing((e) => !e)}
-            >
-              <Pencil className="h-3 w-3" />
             </Button>
             <Button
               size="sm"
