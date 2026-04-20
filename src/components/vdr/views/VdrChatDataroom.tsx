@@ -808,7 +808,9 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
       <ResizableHandle />
 
       {/* Right Panel - Dataroom File Tree */}
-      <ResizablePanel defaultSize={65} minSize={30}>
+      </>
+      )}
+      <ResizablePanel defaultSize={isDataroomView ? 100 : 65} minSize={30}>
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center gap-2 px-3 h-10 min-h-[2.5rem] border-b border-border/40">
