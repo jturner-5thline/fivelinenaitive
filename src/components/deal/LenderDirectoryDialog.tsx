@@ -414,7 +414,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
       </DialogHeader>
 
       {/* ── Unified filter rail ── */}
-      <div className="px-6 py-3 border-y border-border/40 bg-muted/20 shrink-0">
+      <div className="px-6 py-3 border-y border-white/5 bg-muted/20 shrink-0">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[240px] max-w-[320px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
@@ -422,19 +422,19 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
               placeholder="Search lenders..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-8 h-8 text-[13px] bg-background border-border/60 shadow-sm focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50"
+              className="pl-8 h-8 text-[13px] bg-background border-white/10 shadow-sm focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50"
             />
           </div>
-          <div className="h-5 w-px bg-border/50 mx-1" />
+          <div className="h-5 w-px bg-white/5 mx-1" />
           <MultiSelectFilter
             label="All Types"
             options={lenderTypes.map(t => ({ value: t, label: t }))}
             selected={selectedTypes}
             onChange={setSelectedTypes}
-            className="h-8 w-[170px] text-[13px] bg-background border-border/60 shadow-sm hover:bg-muted/40 hover:border-border font-normal"
+            className="h-8 w-[170px] text-[13px] bg-background border-white/10 shadow-sm hover:bg-muted/40 hover:border-white/20 font-normal"
           />
           <Select value={tierFilter} onValueChange={setTierFilter}>
-            <SelectTrigger className="h-8 w-[120px] text-[13px] bg-background border-border/60 shadow-sm hover:bg-muted/40 hover:border-border focus:ring-1 focus:ring-primary/20 focus:ring-offset-0">
+            <SelectTrigger className="h-8 w-[120px] text-[13px] bg-background border-white/10 shadow-sm hover:bg-muted/40 hover:border-white/20 focus:ring-1 focus:ring-primary/20 focus:ring-offset-0">
               <SelectValue placeholder="All Tiers" />
             </SelectTrigger>
             <SelectContent>
