@@ -216,6 +216,52 @@ export function VdrThreeColumnWorkspace({
   const visibleInternal = useMemo(() => filterDocs(internalDocs), [filterDocs, internalDocs]);
   const visibleDataroom = useMemo(() => filterDocs(dataroomDocs), [filterDocs, dataroomDocs]);
 
+  // ── Category grouping ────────────────────────────────────
+  // Build the ordered list of category names from settings (source of truth)
+  const categoryNames = useMemo(() => categories.map(c => c.name), [categories]);
+  const categoryNameSet = useMemo(() => new Set(categoryNames), [categoryNames]);
+  const UNCATEGORIZED = '__uncategorized__';
+
+  /** Derive the category bucket for a document from its folder_path. */
+  const docCategory = useCallback((doc: VdrDocument): string => {
+    const fp = (doc.folder_path || '/').replace(/^\/+|\/+$/g, '');
+    if (!fp) return UNCATEGORIZED;
+    const top = fp.split('/')[0];
+    return categoryNameSet.has(top) ? top : UNCATEGORIZED;
+  }, [categoryNameSet]);
+
+  /** Group an array of docs by category (preserving Settings order, then Uncategorized). */
+  const groupByCategory = useCallback((docs: VdrDocument[]) => {
+    const map = new Map<string, VdrDocument[]>();
+    for (const cat of categoryNames) map.set(cat, []);
+    map.set(UNCATEGORIZED, []);
+    for (const d of docs) {
+      const k = docCategory(d);
+      const arr = map.get(k) || [];
+      arr.push(d);
+      map.set(k, arr);
+    }
+    return map;
+  }, [categoryNames, docCategory]);
+
+  const internalGrouped = useMemo(() => groupByCategory(visibleInternal), [groupByCategory, visibleInternal]);
+  const dataroomGrouped = useMemo(() => groupByCategory(visibleDataroom), [groupByCategory, visibleDataroom]);
+
+  /** "Active" folder path for new uploads, based on selected category. */
+  const uploadFolderPath = useMemo(() => {
+    if (!activeCategory || activeCategory === UNCATEGORIZED) return '/';
+    return `/${activeCategory}/`;
+  }, [activeCategory]);
+
+  const toggleCollapsed = useCallback((column: 'internal' | 'dataroom', cat: string) => {
+    const setter = column === 'internal' ? setCollapsedInternal : setCollapsedDataroom;
+    setter(prev => {
+      const n = new Set(prev);
+      if (n.has(cat)) n.delete(cat); else n.add(cat);
+      return n;
+    });
+  }, []);
+
   // Selection helpers
   const toggleInternal = useCallback((id: string) => {
     setInternalSelected(prev => {
