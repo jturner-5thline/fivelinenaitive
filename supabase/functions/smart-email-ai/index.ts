@@ -842,7 +842,7 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
             user_id: user.id,
             company_id: membership.company_id,
             feature: "email_draft_options",
-            model: "google/gemini-2.5-flash",
+            model: selectedModel,
             input_tokens: aiResult.usage?.prompt_tokens || 0,
             output_tokens: aiResult.usage?.completion_tokens || 0,
             status: "success",
