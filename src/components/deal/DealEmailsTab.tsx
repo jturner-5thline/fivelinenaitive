@@ -872,21 +872,20 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         <div className="flex h-full overflow-hidden max-w-full min-w-0">
           {/* ─── Left: Outlook-style folder sidebar ─── */}
           <div
-            onMouseEnter={() => setRailHovered(true)}
-            onMouseLeave={() => setRailHovered(false)}
-            style={{ width: railExpanded ? 168 : 52 }}
-            className={cn(
-              'border-r border-white/[0.06] flex-shrink-0 flex flex-col bg-card/40 backdrop-blur-sm',
-              'transition-[width] duration-200 ease-out overflow-hidden'
-            )}
+            ref={railRef}
+            onMouseEnter={handleRailEnter}
+            onMouseLeave={handleRailLeave}
+            style={{
+              width: railExpanded ? 168 : 52,
+              transitionProperty: 'width',
+              transitionDuration: '180ms',
+              transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)',
+              contain: 'layout paint',
+            }}
+            className="border-r border-white/[0.06] flex-shrink-0 flex flex-col bg-card/60 overflow-hidden"
           >
             {/* Hamburger / pin toggle */}
-            <div
-              className={cn(
-                'flex items-center border-b border-white/[0.04] h-9',
-                railExpanded ? 'justify-end px-2' : 'justify-center'
-              )}
-            >
+            <div className="flex items-center justify-center border-b border-white/[0.04] h-9 w-[52px] shrink-0">
               <Tooltip delayDuration={150}>
                 <TooltipTrigger asChild>
                   <Button
