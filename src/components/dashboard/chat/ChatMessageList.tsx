@@ -164,9 +164,31 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
                     <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
                       <ReactMarkdown
                         components={{
-                          a: ({ href, children }) => (
-                            <button type="button" className="text-primary underline hover:text-primary/80 cursor-pointer" onClick={() => href && handleLinkClick(href)}>{children}</button>
-                          ),
+                          a: ({ href, children }) => {
+                            const isInternal = !!href && href.startsWith('/');
+                            const isTaskLink = !!href && href.startsWith('/tasks/');
+                            if (isTaskLink) {
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => href && handleLinkClick(href)}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-primary/10 hover:bg-primary/20 text-primary font-medium text-[13px] no-underline transition-colors border border-primary/20 hover:border-primary/40 cursor-pointer align-baseline"
+                                  title="Open task"
+                                >
+                                  {children}
+                                </button>
+                              );
+                            }
+                            return (
+                              <button
+                                type="button"
+                                className="text-primary underline hover:text-primary/80 cursor-pointer"
+                                onClick={() => isInternal ? href && handleLinkClick(href) : href && window.open(href, '_blank', 'noopener,noreferrer')}
+                              >
+                                {children}
+                              </button>
+                            );
+                          },
                           h1: ({ children }) => <h3 className="font-semibold text-sm mt-3 mb-1">{children}</h3>,
                           h2: ({ children }) => <h3 className="font-semibold text-sm mt-3 mb-1">{children}</h3>,
                           h3: ({ children }) => <h4 className="font-medium text-sm mt-2 mb-1">{children}</h4>,
