@@ -379,67 +379,91 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
   const totalOnDeal = useMemo(() => sorted.filter(l => l.isOnDeal).length, [sorted]);
 
   return (
-    <DialogContent className="max-w-[95vw] h-[85vh] flex flex-col p-0">
-      <DialogHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0">
-        <DialogTitle className="text-lg">Lender Directory</DialogTitle>
+    <DialogContent className="max-w-[95vw] h-[85vh] flex flex-col p-0 gap-0 border-border/60 bg-background shadow-2xl overflow-hidden">
+      <DialogHeader className="px-6 pt-5 pb-4 border-b border-border/40 shrink-0 space-y-0">
+        <div className="flex items-baseline justify-between gap-4">
+          <div className="flex items-baseline gap-3">
+            <DialogTitle className="text-base font-semibold tracking-tight text-foreground">
+              Lender Directory
+            </DialogTitle>
+            <span className="text-xs text-muted-foreground/80 tabular-nums">
+              {sorted.length.toLocaleString()} lenders
+              <span className="mx-1.5 text-muted-foreground/40">·</span>
+              <span className="text-foreground/70">{totalOnDeal} on deal</span>
+            </span>
+          </div>
+        </div>
         <DialogDescription className="sr-only">Browse and manage lenders for this deal</DialogDescription>
-        <div className="flex items-center gap-3 mt-3">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search lenders..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+        <div className="flex flex-wrap items-center gap-2 mt-4">
+          <div className="relative flex-1 min-w-[220px] max-w-sm">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/70" />
+            <Input
+              placeholder="Search lenders..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-8 h-9 text-sm bg-muted/30 border-border/50 focus-visible:bg-background focus-visible:border-border focus-visible:ring-1 focus-visible:ring-ring/40 focus-visible:ring-offset-0"
+            />
           </div>
           <MultiSelectFilter
             label="All Types"
             options={lenderTypes.map(t => ({ value: t, label: t }))}
             selected={selectedTypes}
             onChange={setSelectedTypes}
-            className="h-9 w-[200px]"
+            className="h-9 w-[180px] text-sm bg-muted/30 border-border/50 hover:bg-muted/50 hover:border-border"
           />
-          <select
-            value={tierFilter}
-            onChange={e => setTierFilter(e.target.value)}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-          >
-            <option value="all">All Tiers</option>
-            <option value="T1">T1</option>
-            <option value="T2">T2</option>
-            <option value="T3">T3</option>
-            <option value="None">No Tier</option>
-          </select>
-          <Button
-            variant={groupByTier ? 'secondary' : 'outline'}
-            size="sm"
-            className="h-9 gap-1.5 text-xs"
+          <Select value={tierFilter} onValueChange={setTierFilter}>
+            <SelectTrigger className="h-9 w-[130px] text-sm bg-muted/30 border-border/50 hover:bg-muted/50 hover:border-border focus:ring-1 focus:ring-ring/40 focus:ring-offset-0">
+              <SelectValue placeholder="All Tiers" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Tiers</SelectItem>
+              <SelectItem value="T1">T1</SelectItem>
+              <SelectItem value="T2">T2</SelectItem>
+              <SelectItem value="T3">T3</SelectItem>
+              <SelectItem value="None">No Tier</SelectItem>
+            </SelectContent>
+          </Select>
+          <button
+            type="button"
             onClick={() => setGroupByTier(g => !g)}
+            className={cn(
+              'h-9 inline-flex items-center gap-1.5 px-3 rounded-md text-xs font-medium border transition-colors',
+              groupByTier
+                ? 'bg-foreground/[0.04] border-border text-foreground'
+                : 'bg-transparent border-border/50 text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/30'
+            )}
           >
             <Layers className="h-3.5 w-3.5" />
             Group by Tier
-          </Button>
-          <div className="text-xs text-muted-foreground ml-auto">
-            {sorted.length} lenders · {totalOnDeal} on deal
-          </div>
+          </button>
         </div>
         {selectedTypes.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+          <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-3 border-t border-border/30">
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground/70 font-medium mr-1">
+              Filters
+            </span>
             {selectedTypes.map(t => (
-              <Badge key={t} variant="secondary" className="gap-1 pl-2 pr-1 py-0.5 text-xs">
+              <span
+                key={t}
+                className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 text-xs rounded-md bg-foreground/[0.04] border border-border/60 text-foreground/90"
+              >
                 {t}
                 <button
                   type="button"
                   onClick={() => setSelectedTypes(prev => prev.filter(x => x !== t))}
-                  className="rounded hover:bg-muted-foreground/20 p-0.5"
+                  className="rounded-sm hover:bg-foreground/10 p-0.5 text-muted-foreground hover:text-foreground transition-colors"
                   aria-label={`Remove ${t}`}
                 >
                   <X className="h-3 w-3" />
                 </button>
-              </Badge>
+              </span>
             ))}
             <button
               type="button"
               onClick={() => setSelectedTypes([])}
-              className="text-xs text-muted-foreground hover:text-foreground ml-1"
+              className="text-xs text-muted-foreground hover:text-foreground ml-1 underline-offset-2 hover:underline"
             >
-              Clear
+              Clear all
             </button>
           </div>
         )}
