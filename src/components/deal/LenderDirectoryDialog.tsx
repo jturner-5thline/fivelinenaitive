@@ -537,7 +537,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                     if (row.type === 'tier-header') {
                       return (
                         <div
-                          className="flex items-center gap-2.5 px-4 py-2 bg-muted/30 border-y border-border/40 sticky z-[5]"
+                          className="flex items-center gap-2.5 px-4 py-2 bg-muted/30 border-y border-white/5 sticky z-[5]"
                           style={{ minWidth: TOTAL_WIDTH }}
                         >
                           <span className={cn(
@@ -555,7 +555,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                           <span className="text-[11px] text-muted-foreground/60 tabular-nums">
                             {row.count} {row.count === 1 ? 'lender' : 'lenders'}
                           </span>
-                          <div className="flex-1 h-px bg-border/30 ml-2" />
+                          <div className="flex-1 h-px bg-white/5 ml-2" />
                         </div>
                       );
                     }
@@ -564,7 +564,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                     return (
                       <div
                         className={cn(
-                          'group flex border-b border-border/20 hover:bg-muted/40 transition-colors',
+                          'group flex hover:bg-muted/40 transition-colors',
                           lender.isOnDeal && 'bg-primary/[0.035]',
                           isSelected && !lender.isOnDeal && 'bg-primary/[0.06]'
                         )}
