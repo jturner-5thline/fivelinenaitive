@@ -728,21 +728,6 @@ export function VdrThreeColumnWorkspace({
             </Button>
           </div>
 
-          {selectedChecklistId && (
-            <div className="px-3 py-1.5 bg-primary/5 border-b border-white/5 flex items-center gap-2">
-              <span className="text-[10px] text-muted-foreground">Filtering files by:</span>
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                {checklistItemsForMapping.find(i => i.id === selectedChecklistId)?.name || '—'}
-              </Badge>
-              <button
-                onClick={() => setSelectedChecklistId(null)}
-                className="ml-auto text-[10px] text-muted-foreground hover:text-foreground"
-              >
-                Clear
-              </button>
-            </div>
-          )}
-
           <div className="flex-1 overflow-auto">
             {checklistLoading ? (
               <div className="flex items-center justify-center h-32 text-xs text-muted-foreground">
