@@ -884,7 +884,7 @@ export function VdrThreeColumnWorkspace({
                 )}
               </div>
             ) : (
-              visibleInternal.map(d => renderFileRow(d, 'internal'))
+              renderCategoryGroups(internalGrouped, 'internal')
             )}
           </div>
 
