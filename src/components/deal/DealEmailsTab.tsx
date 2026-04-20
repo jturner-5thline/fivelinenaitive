@@ -237,6 +237,29 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const [pinnedOpen, setPinnedOpen] = useUiPreference<boolean>('email_folder_rail_pinned', false);
   const [railHovered, setRailHovered] = useState(false);
   const railExpanded = pinnedOpen || railHovered;
+  const railHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const railRef = useRef<HTMLDivElement | null>(null);
+  const handleRailEnter = useCallback(() => {
+    if (railHoverTimer.current) clearTimeout(railHoverTimer.current);
+    railHoverTimer.current = setTimeout(() => setRailHovered(true), 70);
+  }, []);
+  const handleRailLeave = useCallback(() => {
+    if (railHoverTimer.current) clearTimeout(railHoverTimer.current);
+    railHoverTimer.current = setTimeout(() => setRailHovered(false), 120);
+  }, []);
+  // Add will-change only while animating, then strip it.
+  useEffect(() => {
+    const el = railRef.current;
+    if (!el) return;
+    el.style.willChange = 'width';
+    const t = setTimeout(() => {
+      if (railRef.current) railRef.current.style.willChange = 'auto';
+    }, 220);
+    return () => clearTimeout(t);
+  }, [railExpanded]);
+  useEffect(() => () => {
+    if (railHoverTimer.current) clearTimeout(railHoverTimer.current);
+  }, []);
 
   const inboxWidth = liveInboxWidth ?? savedInboxWidth;
 
@@ -700,50 +723,62 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         aria-label={item.label}
         title={!railExpanded ? item.label : undefined}
         className={cn(
-          'group relative w-full flex items-center text-left transition-colors duration-150 border-l-2',
-          railExpanded ? 'gap-2.5 px-3 py-2' : 'justify-center px-0 py-2.5',
+          'group relative w-full flex items-center text-left border-l-2 py-2 px-0',
+          'transition-colors duration-150',
           isActive
             ? 'border-l-[hsl(var(--outlook-blue))] bg-[hsl(var(--outlook-blue)/0.12)] text-foreground font-medium'
             : 'border-l-transparent text-foreground/85 hover:bg-[hsl(var(--foreground)/0.05)] hover:text-foreground'
         )}
       >
-        {item.indicatorColor ? (
-          <span className={cn('w-2 h-2 rounded-full shrink-0', item.indicatorColor)} />
-        ) : (
-          <item.icon
-            className={cn(
-              'shrink-0 transition-all',
-              railExpanded ? 'h-4 w-4' : 'h-[18px] w-[18px]',
-              isActive ? 'text-foreground' : 'text-foreground/90',
-              !railExpanded && 'stroke-[2.25]'
-            )}
-          />
-        )}
-        {railExpanded && (
-          <>
-            <span className="flex-1 truncate text-[12px]">{item.label}</span>
-            {hasCount && (
-              <span
-                className={cn(
-                  'text-[10px] font-semibold tabular-nums min-w-[18px] text-center',
-                  isHighlightCount
-                    ? 'text-[hsl(var(--outlook-blue))] font-bold'
-                    : 'text-muted-foreground'
-                )}
-              >
-                {item.count}
-              </span>
-            )}
-          </>
-        )}
-        {!railExpanded && hasCount && (
+        {/* Fixed-width icon column so labels reveal without reflow */}
+        <span className="w-[52px] flex items-center justify-center shrink-0">
+          {item.indicatorColor ? (
+            <span className={cn('w-2 h-2 rounded-full', item.indicatorColor)} />
+          ) : (
+            <item.icon
+              className={cn(
+                'h-[18px] w-[18px] shrink-0',
+                isActive ? 'text-foreground' : 'text-foreground/90'
+              )}
+              strokeWidth={2.25}
+            />
+          )}
+        </span>
+        {/* Label + count: always mounted, fade via opacity only — no layout shift */}
+        <span
+          className={cn(
+            'flex-1 min-w-0 flex items-center gap-2 pr-3',
+            'transition-opacity duration-150 ease-out',
+            railExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          )}
+          aria-hidden={!railExpanded}
+        >
+          <span className="flex-1 truncate text-[12px]">{item.label}</span>
+          {hasCount && (
+            <span
+              className={cn(
+                'text-[10px] font-semibold tabular-nums min-w-[18px] text-center',
+                isHighlightCount
+                  ? 'text-[hsl(var(--outlook-blue))] font-bold'
+                  : 'text-muted-foreground'
+              )}
+            >
+              {item.count}
+            </span>
+          )}
+        </span>
+        {/* Collapsed-state count badge — hidden when expanded */}
+        {hasCount && (
           <span
             className={cn(
               'absolute top-1 right-1 min-w-[14px] h-[14px] rounded-full px-1 text-[9px] font-bold tabular-nums leading-[14px] text-center',
+              'transition-opacity duration-150 ease-out',
+              railExpanded ? 'opacity-0' : 'opacity-100',
               isHighlightCount
                 ? 'bg-[hsl(var(--outlook-blue))] text-white'
                 : 'bg-foreground/15 text-foreground/90'
             )}
+            aria-hidden={railExpanded}
           >
             {item.count}
           </span>
@@ -837,21 +872,20 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         <div className="flex h-full overflow-hidden max-w-full min-w-0">
           {/* ─── Left: Outlook-style folder sidebar ─── */}
           <div
-            onMouseEnter={() => setRailHovered(true)}
-            onMouseLeave={() => setRailHovered(false)}
-            style={{ width: railExpanded ? 168 : 52 }}
-            className={cn(
-              'border-r border-white/[0.06] flex-shrink-0 flex flex-col bg-card/40 backdrop-blur-sm',
-              'transition-[width] duration-200 ease-out overflow-hidden'
-            )}
+            ref={railRef}
+            onMouseEnter={handleRailEnter}
+            onMouseLeave={handleRailLeave}
+            style={{
+              width: railExpanded ? 168 : 52,
+              transitionProperty: 'width',
+              transitionDuration: '180ms',
+              transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)',
+              contain: 'layout paint',
+            }}
+            className="border-r border-white/[0.06] flex-shrink-0 flex flex-col bg-card/60 overflow-hidden"
           >
             {/* Hamburger / pin toggle */}
-            <div
-              className={cn(
-                'flex items-center border-b border-white/[0.04] h-9',
-                railExpanded ? 'justify-end px-2' : 'justify-center'
-              )}
-            >
+            <div className="flex items-center justify-center border-b border-white/[0.04] h-9 w-[52px] shrink-0">
               <Tooltip delayDuration={150}>
                 <TooltipTrigger asChild>
                   <Button
