@@ -9,6 +9,31 @@ const corsHeaders = {
 const CLAUDE_MODEL = "claude-sonnet-4-20250514";
 const CLAUDE_TIMEOUT_MS = 55_000;
 
+// Format a YYYY-MM-DD due date as a human-readable relative phrase
+// (e.g., "due today", "due tomorrow", "due this Friday", "3 days overdue").
+function formatRelativeDue(dueDate: string): string {
+  if (!dueDate) return "";
+  const due = new Date(dueDate + (dueDate.length === 10 ? "T00:00:00" : ""));
+  if (isNaN(due.getTime())) return `due ${dueDate}`;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+  const diffDays = Math.round((dueDay.getTime() - today.getTime()) / 86_400_000);
+  const weekdayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const weekday = weekdayNames[dueDay.getDay()];
+
+  if (diffDays === 0) return "due today";
+  if (diffDays === 1) return "due tomorrow";
+  if (diffDays === -1) return "due yesterday";
+  if (diffDays > 1 && diffDays <= 6) return `due this ${weekday}`;
+  if (diffDays === 7) return `due next ${weekday}`;
+  if (diffDays > 7 && diffDays <= 14) return `due next ${weekday}`;
+  if (diffDays > 14) return `due in ${diffDays} days`;
+  // Overdue beyond 1 day
+  if (diffDays >= -6 && diffDays < -1) return `due last ${weekday} (${Math.abs(diffDays)} days overdue)`;
+  return `${Math.abs(diffDays)} days overdue`;
+}
+
 async function fetchUserContext(supabase: any, userId: string, companyId: string) {
   if (!companyId) {
     return {
@@ -175,7 +200,8 @@ function buildContextString(ctx: any, companyName: string, userName: string) {
     lines.push(`\n## My Open Tasks (assigned to ${userName}) — ${tasks.length}`);
     tasks.slice(0, 40).forEach((t: any) => {
       const dealCompany = deals.find((d: any) => d.id === t.deal_id)?.company;
-      lines.push(`- [${t.priority || "normal"}] ${t.title}${t.due_date ? ` | due ${t.due_date}` : ""}${dealCompany ? ` | deal: ${dealCompany}` : ""}${t.status ? ` | ${t.status}` : ""}`);
+      const dueLabel = t.due_date ? formatRelativeDue(t.due_date) : null;
+      lines.push(`- task_id=${t.id} | [${t.priority || "normal"}] ${t.title}${dueLabel ? ` | ${dueLabel}` : ""}${dealCompany ? ` | deal: ${dealCompany}` : ""}${t.status ? ` | ${t.status}` : ""}`);
     });
   }
 
@@ -222,11 +248,17 @@ Limit to top 8. Order by days-since-activity descending. No preamble, no closing
   }
   if (/to-?do list|my tasks|what do i need to do/.test(t)) {
     return `\n\n## Task: "To-Do List"
-Summarize MY open tasks in a structured but conversational form. Group by urgency:
-**Today** – inline list of today/overdue items with brief deal context.
-**Next 3 days** – inline list of upcoming items.
-**Later** – brief mention only if relevant.
-Each item: short verb-led phrase + relevant counterparty/deal. No preamble.`;
+Summarize MY open tasks grouped by urgency. Use these EXACT section headers (in this order, skip a section if empty):
+**Overdue**, **Today**, **Next 3 days**, **Later**.
+
+Render EACH task as a markdown bullet in this exact format:
+- [Task Title](/tasks/<task_id>) — <relative due label>${'`'} (e.g. \`due today\`, \`due tomorrow\`, \`due this Friday\`, \`3 days overdue\`) · brief deal/lender context if relevant
+
+Critical rules:
+- The task title MUST be a markdown link using the task_id from the data above. The href is exactly "/tasks/" + the task_id (e.g. /tasks/abc123).
+- Use the pre-computed relative due phrase from the data (the part after the task_id and priority). NEVER print raw YYYY-MM-DD dates.
+- Keep each line tight and verb-led. No preamble, no closing summary.
+- If a task has no due date, omit the due phrase entirely.`;
   }
   return "";
 }
