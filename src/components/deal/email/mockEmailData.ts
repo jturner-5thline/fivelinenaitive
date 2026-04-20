@@ -39,7 +39,7 @@ export interface MockEmail {
   received_at: string;
   is_read: boolean;
   is_starred: boolean;
-  folder: 'inbox' | 'sent' | 'drafts';
+  folder: 'inbox' | 'sent' | 'drafts' | 'junk' | 'trash' | 'outbox';
   labels: string[];
   has_attachments: boolean;
   attachments?: EmailAttachment[];
