@@ -1407,18 +1407,6 @@ export function SpinningGlobe() {
           autoRotateSpeed={-0.3}
         />
       </Canvas>
-
-      {/* Soft contact shadow beneath the globe — anchors it without glowing the sphere */}
-      <div
-        className="absolute inset-x-0 pointer-events-none"
-        style={{
-          bottom: '12%',
-          height: '14%',
-          background:
-            "radial-gradient(ellipse 55% 100% at 50% 100%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 45%, transparent 70%)",
-          zIndex: 2,
-        }}
-      />
     </div>
   );
 }
