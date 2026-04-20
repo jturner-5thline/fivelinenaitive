@@ -25,6 +25,17 @@ export const HomepageHero = () => {
         }}
       />
 
+      {/* Globe-area vignette — darkens center behind the sphere so internal activity reads;
+          pushes brand color outward into atmospheric framing. */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse 38% 48% at 71% 50%, rgba(4,4,8,0.78) 0%, rgba(4,4,8,0.55) 35%, rgba(4,4,8,0.18) 65%, rgba(4,4,8,0) 100%)",
+          zIndex: 1,
+        }}
+      />
+
       {/* Globe — scaled down, pushed right */}
       <div className="absolute inset-0 flex items-center justify-end overflow-hidden">
         <div className="w-[65%] h-full relative right-[-8%]">
