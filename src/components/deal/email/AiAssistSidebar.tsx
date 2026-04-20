@@ -432,62 +432,6 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
           {/* Draft area — always rendered as a shell so the panel never blocks. */}
           {!error && (
             <>
-              {/* Context snapshot */}
-              <div className="rounded-md border border-white/[0.06] bg-background/40 p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <Briefcase className="h-3.5 w-3.5 text-primary/70 shrink-0" />
-                  <span className="text-[11px] font-medium text-foreground/90 truncate">
-                    {dealName || 'Email-only context'}
-                  </span>
-                  {result?.confidence && (
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        'ml-auto text-[9px] h-4 px-1.5 border shrink-0',
-                        CONFIDENCE_TONE[result.confidence]
-                      )}
-                    >
-                      {result.confidence}
-                    </Badge>
-                  )}
-                </div>
-                {result?.detected_intent ? (
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    {result.detected_intent}
-                  </p>
-                ) : (
-                  <Skeleton className="h-3 w-3/4" />
-                )}
-                {result?.cited_context_sources && result.cited_context_sources.length > 0 && (
-                  <div>
-                    <button
-                      onClick={() => setShowSources((s) => !s)}
-                      className="flex items-center gap-1 text-[10px] text-muted-foreground/80 hover:text-foreground transition-colors"
-                    >
-                      Using {result.cited_context_sources.length} source
-                      {result.cited_context_sources.length === 1 ? '' : 's'}
-                      {showSources ? (
-                        <ChevronUp className="h-3 w-3" />
-                      ) : (
-                        <ChevronDown className="h-3 w-3" />
-                      )}
-                    </button>
-                    {showSources && (
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {result.cited_context_sources.map((src) => (
-                          <Badge
-                            key={src}
-                            variant="outline"
-                            className="text-[9px] h-4 px-1.5 font-normal"
-                          >
-                            {SOURCE_LABELS[src] || src}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
 
               {/* Variant selector */}
               <div>
