@@ -142,14 +142,24 @@ ${notes.map((n: any) => `- ${(n.content || n.note || "").substring(0, 200)} (${n
         const effectiveDraftType = draftType || "reply";
         const threadEmails = threadData?.emails || [];
         const latestEmail = threadEmails[0];
-        const wantThree = optionCount === 3;
+        // "Detailed" tone has been removed. We now support either:
+        //   - 2 options ("Concise" + "Balanced"), the default for the AI Assist sidebar
+        //   - 1 option (when `singleTone` is "concise" | "balanced") for fast/lazy generation
+        const tone: "concise" | "balanced" | null =
+          singleTone === "concise" || singleTone === "balanced" ? singleTone : null;
+        const wantSingle = !!tone;
 
         // Detect scheduling intent
         const fullBody = threadEmails.map((e: any) => e.body_preview || "").join(" ").toLowerCase();
         const hasSchedulingIntent = /\b(schedule|availability|calendar|meeting|call|slot|free|available|reschedule|time works|when can)\b/i.test(fullBody);
 
-        const optionsBlock = wantThree
+        const optionsBlock = wantSingle
           ? `  "option_1_subject": "string — email subject line",
+  "option_1_body": "string — full email body text",
+  "option_1_tone_label": "${tone === "concise" ? "Concise" : "Balanced"}",
+  "option_1_rationale": "string — why this version works",
+  "recommended_option": 1,`
+          : `  "option_1_subject": "string — email subject line",
   "option_1_body": "string — full email body text",
   "option_1_tone_label": "Concise",
   "option_1_rationale": "string — why this version works",
@@ -157,34 +167,17 @@ ${notes.map((n: any) => `- ${(n.content || n.note || "").substring(0, 200)} (${n
   "option_2_body": "string — full email body text",
   "option_2_tone_label": "Balanced",
   "option_2_rationale": "string — why this version works",
-  "option_3_subject": "string — same or similar subject",
-  "option_3_body": "string — full email body text",
-  "option_3_tone_label": "Detailed",
-  "option_3_rationale": "string — why this version works",
-  "recommended_option": 1 | 2 | 3,`
-          : `  "option_1_subject": "string — email subject line",
-  "option_1_body": "string — full email body text",
-  "option_1_tone_label": "string — e.g. 'Concise & Direct'",
-  "option_1_rationale": "string — why this version works",
-  "option_2_subject": "string — same or similar subject",
-  "option_2_body": "string — full email body text",
-  "option_2_tone_label": "string — e.g. 'Polished & Warm'",
-  "option_2_rationale": "string — why this version works",
-  "recommended_option": 1 or 2,`;
+  "recommended_option": 2,`;
 
-        const generationRule = wantThree
-          ? `- Generate exactly 3 draft options:
-   • Option 1 — "Concise": shorter, direct, gets to the point in 2-4 sentences. Still warm and natural.
-   • Option 2 — "Balanced": the strongest standard reply, 4-7 sentences. Friendly, polished, and sendable.
-   • Option 3 — "Detailed": more explanatory, includes relevant context and next steps; can run longer (still under ~250 words). Conversational throughout.
-- All three must convey the SAME intent and substance — they differ only in length, structure, and level of detail.
-- All three must sound like the same sender and follow the TONE & STYLE rules below.`
-          : `- Generate exactly 2 draft options.
-- Both drafts must convey the SAME intent, recommendation, and tone.
-- They should differ only in wording, sentence structure, and phrasing — NOT in strategy or substance.
-- One may be slightly tighter/direct, the other slightly smoother.
-- Both must sound like the same sender and follow the TONE & STYLE rules below.
-- Keep replies concise (under 150 words) unless complexity demands more.`;
+        const generationRule = wantSingle
+          ? (tone === "concise"
+            ? `- Generate exactly 1 "Concise" draft option: shorter, direct, gets to the point in 2-4 sentences. Still warm and natural. Under 100 words.`
+            : `- Generate exactly 1 "Balanced" draft option: the strongest standard reply, 4-7 sentences. Friendly, polished, and sendable. Under 150 words.`)
+          : `- Generate exactly 2 draft options:
+   • Option 1 — "Concise": shorter, direct, gets to the point in 2-4 sentences. Still warm and natural. Under 100 words.
+   • Option 2 — "Balanced": the strongest standard reply, 4-7 sentences. Friendly, polished, and sendable. Under 150 words.
+- Both must convey the SAME intent and substance — they differ only in length, structure, and level of detail.
+- Both must sound like the same sender and follow the TONE & STYLE rules below.`;
 
         systemPrompt = `You are drafting emails on behalf of the user — a debt advisory and capital markets professional. Your voice is warm, human, and conversational while still polished and appropriate for lenders, borrowers, investors, and other professional counterparties. Think "smart colleague firing off a quick deal email," not "corporate memo."
 
