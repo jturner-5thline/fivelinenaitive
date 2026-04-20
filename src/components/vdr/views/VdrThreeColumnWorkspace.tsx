@@ -600,6 +600,23 @@ export function VdrThreeColumnWorkspace({
             </div>
           </div>
 
+          {/* Integrated upload / dropzone (Internal is the staging intake) */}
+          <div className="px-3 pt-2 pb-1.5 border-b border-white/5">
+            <div
+              onClick={() => internalFileInput.current?.click()}
+              className={cn(
+                'flex items-center justify-center gap-2 h-12 rounded-md border border-dashed cursor-pointer transition-colors',
+                dropTarget === 'internal'
+                  ? 'border-primary/60 bg-primary/10 text-primary'
+                  : 'border-white/10 bg-secondary/20 text-muted-foreground hover:border-primary/30 hover:text-foreground/80 hover:bg-secondary/30'
+              )}
+            >
+              <Upload className="h-3.5 w-3.5" />
+              <span className="text-[11px] font-medium">Drop files here</span>
+              <span className="text-[10px] opacity-60">or click to browse</span>
+            </div>
+          </div>
+
           {/* Search shared by both file columns lives here once */}
           <div className="px-3 py-2 border-b border-white/5">
             <div className="relative">
