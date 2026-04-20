@@ -776,12 +776,37 @@ export function VdrThreeColumnWorkspace({
             </div>
           </div>
 
-          {/* Banner */}
-          <div className="px-3 py-1.5 border-b border-white/5 bg-muted/10">
-            <p className="text-[10px] text-muted-foreground flex items-center gap-1.5">
-              <Globe className="h-2.5 w-2.5" />
-              External-facing — files here are shared with the deal's data room.
-            </p>
+          {/* Metrics block — matches Internal dropzone height for symmetric file-row alignment */}
+          <div className="px-3 pt-2 pb-1.5 border-b border-white/5">
+            <div className="grid grid-cols-4 gap-1.5 h-12">
+              <div className="rounded-md border border-white/10 bg-secondary/20 px-2 py-1 flex flex-col justify-center min-w-0">
+                <div className="text-[9px] uppercase tracking-wider text-muted-foreground/80 truncate">Shared</div>
+                <div className="text-sm font-semibold tabular-nums leading-tight">
+                  {dataroomCount}
+                  <span className="text-[10px] text-muted-foreground font-normal">/{totalDocsCount}</span>
+                </div>
+              </div>
+              <div className="rounded-md border border-white/10 bg-secondary/20 px-2 py-1 flex flex-col justify-center min-w-0">
+                <div className="text-[9px] uppercase tracking-wider text-muted-foreground/80 truncate">Required</div>
+                <div className="text-sm font-semibold tabular-nums leading-tight">
+                  {requiredFulfilled}
+                  <span className="text-[10px] text-muted-foreground font-normal">/{requiredTotal || 0}</span>
+                </div>
+              </div>
+              <div className="rounded-md border border-white/10 bg-secondary/20 px-2 py-1 flex flex-col justify-center min-w-0">
+                <div className="text-[9px] uppercase tracking-wider text-muted-foreground/80 truncate">Indexed</div>
+                <div className="text-sm font-semibold tabular-nums leading-tight flex items-center gap-1">
+                  {indexedCount}
+                  {processingCount > 0 && (
+                    <Loader2 className="h-2.5 w-2.5 text-amber-400 animate-spin" />
+                  )}
+                </div>
+              </div>
+              <div className="rounded-md border border-white/10 bg-secondary/20 px-2 py-1 flex flex-col justify-center min-w-0">
+                <div className="text-[9px] uppercase tracking-wider text-muted-foreground/80 truncate">Last shared</div>
+                <div className="text-[11px] font-medium leading-tight truncate">{lastSharedLabel}</div>
+              </div>
+            </div>
           </div>
 
           {/* Bulk action bar */}
