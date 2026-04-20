@@ -20,6 +20,13 @@ import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderD
 import { toast } from 'sonner';
 import { MultiSelectFilter } from '@/components/deals/MultiSelectFilter';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 // Parse a raw lender_type string into a list of normalized atomic tags.
 // - splits on commas
@@ -372,67 +379,91 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
   const totalOnDeal = useMemo(() => sorted.filter(l => l.isOnDeal).length, [sorted]);
 
   return (
-    <DialogContent className="max-w-[95vw] h-[85vh] flex flex-col p-0">
-      <DialogHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0">
-        <DialogTitle className="text-lg">Lender Directory</DialogTitle>
+    <DialogContent className="max-w-[95vw] h-[85vh] flex flex-col p-0 gap-0 border-border/60 bg-background shadow-2xl overflow-hidden">
+      <DialogHeader className="px-6 pt-5 pb-4 border-b border-border/40 shrink-0 space-y-0">
+        <div className="flex items-baseline justify-between gap-4">
+          <div className="flex items-baseline gap-3">
+            <DialogTitle className="text-base font-semibold tracking-tight text-foreground">
+              Lender Directory
+            </DialogTitle>
+            <span className="text-xs text-muted-foreground/80 tabular-nums">
+              {sorted.length.toLocaleString()} lenders
+              <span className="mx-1.5 text-muted-foreground/40">·</span>
+              <span className="text-foreground/70">{totalOnDeal} on deal</span>
+            </span>
+          </div>
+        </div>
         <DialogDescription className="sr-only">Browse and manage lenders for this deal</DialogDescription>
-        <div className="flex items-center gap-3 mt-3">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search lenders..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+        <div className="flex flex-wrap items-center gap-2 mt-4">
+          <div className="relative flex-1 min-w-[220px] max-w-sm">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/70" />
+            <Input
+              placeholder="Search lenders..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-8 h-9 text-sm bg-muted/30 border-border/50 focus-visible:bg-background focus-visible:border-border focus-visible:ring-1 focus-visible:ring-ring/40 focus-visible:ring-offset-0"
+            />
           </div>
           <MultiSelectFilter
             label="All Types"
             options={lenderTypes.map(t => ({ value: t, label: t }))}
             selected={selectedTypes}
             onChange={setSelectedTypes}
-            className="h-9 w-[200px]"
+            className="h-9 w-[180px] text-sm bg-muted/30 border-border/50 hover:bg-muted/50 hover:border-border"
           />
-          <select
-            value={tierFilter}
-            onChange={e => setTierFilter(e.target.value)}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-          >
-            <option value="all">All Tiers</option>
-            <option value="T1">T1</option>
-            <option value="T2">T2</option>
-            <option value="T3">T3</option>
-            <option value="None">No Tier</option>
-          </select>
-          <Button
-            variant={groupByTier ? 'secondary' : 'outline'}
-            size="sm"
-            className="h-9 gap-1.5 text-xs"
+          <Select value={tierFilter} onValueChange={setTierFilter}>
+            <SelectTrigger className="h-9 w-[130px] text-sm bg-muted/30 border-border/50 hover:bg-muted/50 hover:border-border focus:ring-1 focus:ring-ring/40 focus:ring-offset-0">
+              <SelectValue placeholder="All Tiers" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Tiers</SelectItem>
+              <SelectItem value="T1">T1</SelectItem>
+              <SelectItem value="T2">T2</SelectItem>
+              <SelectItem value="T3">T3</SelectItem>
+              <SelectItem value="None">No Tier</SelectItem>
+            </SelectContent>
+          </Select>
+          <button
+            type="button"
             onClick={() => setGroupByTier(g => !g)}
+            className={cn(
+              'h-9 inline-flex items-center gap-1.5 px-3 rounded-md text-xs font-medium border transition-colors',
+              groupByTier
+                ? 'bg-foreground/[0.04] border-border text-foreground'
+                : 'bg-transparent border-border/50 text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/30'
+            )}
           >
             <Layers className="h-3.5 w-3.5" />
             Group by Tier
-          </Button>
-          <div className="text-xs text-muted-foreground ml-auto">
-            {sorted.length} lenders · {totalOnDeal} on deal
-          </div>
+          </button>
         </div>
         {selectedTypes.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+          <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-3 border-t border-border/30">
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground/70 font-medium mr-1">
+              Filters
+            </span>
             {selectedTypes.map(t => (
-              <Badge key={t} variant="secondary" className="gap-1 pl-2 pr-1 py-0.5 text-xs">
+              <span
+                key={t}
+                className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 text-xs rounded-md bg-foreground/[0.04] border border-border/60 text-foreground/90"
+              >
                 {t}
                 <button
                   type="button"
                   onClick={() => setSelectedTypes(prev => prev.filter(x => x !== t))}
-                  className="rounded hover:bg-muted-foreground/20 p-0.5"
+                  className="rounded-sm hover:bg-foreground/10 p-0.5 text-muted-foreground hover:text-foreground transition-colors"
                   aria-label={`Remove ${t}`}
                 >
                   <X className="h-3 w-3" />
                 </button>
-              </Badge>
+              </span>
             ))}
             <button
               type="button"
               onClick={() => setSelectedTypes([])}
-              className="text-xs text-muted-foreground hover:text-foreground ml-1"
+              className="text-xs text-muted-foreground hover:text-foreground ml-1 underline-offset-2 hover:underline"
             >
-              Clear
+              Clear all
             </button>
           </div>
         )}
@@ -444,22 +475,22 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
         ) : sorted.length === 0 ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">No lenders found matching your filters.</div>
         ) : (
-          <div className="border-t border-border h-full overflow-hidden">
+          <div className="h-full overflow-hidden bg-background">
             <ScrollArea className="w-full h-full">
               <div style={{ minWidth: TOTAL_WIDTH }}>
                 {/* Header Row - identical style to LenderSpreadsheetView */}
-                <div className="flex sticky top-0 z-10 bg-muted border-b border-border">
+                <div className="flex sticky top-0 z-10 bg-muted/40 backdrop-blur-sm border-b border-border/50">
                   {/* Row number header */}
-                  <div className="flex-shrink-0 w-[50px] px-2 py-2 text-xs font-semibold text-muted-foreground border-r border-border bg-muted sticky left-0 z-20">
+                  <div className="flex-shrink-0 w-[50px] px-2 py-2.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70 bg-muted/40 sticky left-0 z-20">
                     #
                   </div>
                   {COLUMNS.map((col) => (
                     <div
                       key={col.key}
                       className={cn(
-                        'flex-shrink-0 px-2 py-2 text-xs font-semibold text-foreground border-r border-border bg-muted flex items-center',
-                        col.sortable && 'cursor-pointer hover:bg-muted/80 select-none',
-                        col.key === 'name' && 'sticky left-[50px] z-20 bg-muted'
+                        'flex-shrink-0 px-2 py-2.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/80 bg-muted/40 flex items-center',
+                        col.sortable && 'cursor-pointer hover:text-foreground select-none transition-colors',
+                        col.key === 'name' && 'sticky left-[50px] z-20 bg-muted/40'
                       )}
                       style={{ width: col.width }}
                       title={col.sortable ? `Click to sort by ${col.label}` : col.label}
@@ -479,10 +510,14 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                     const row = rows[index];
                     if (row.type === 'tier-header') {
                       return (
-                        <div className="flex items-center gap-2 px-4 py-2 bg-muted/70 border-b border-border font-semibold text-xs text-foreground sticky z-[5]" style={{ minWidth: TOTAL_WIDTH }}>
-                          <Layers className="h-3.5 w-3.5 text-muted-foreground" />
-                          {row.tier === 'None' ? 'No Tier' : row.tier}
-                          <span className="font-normal text-muted-foreground">({row.count} lender{row.count !== 1 ? 's' : ''})</span>
+                        <div
+                          className="flex items-center gap-2 px-4 py-1.5 bg-muted/20 border-y border-border/30 text-[11px] font-medium uppercase tracking-wide text-muted-foreground sticky z-[5]"
+                          style={{ minWidth: TOTAL_WIDTH }}
+                        >
+                          <span className="text-foreground/80">{row.tier === 'None' ? 'No Tier' : row.tier}</span>
+                          <span className="text-muted-foreground/60 normal-case tracking-normal">
+                            {row.count} lender{row.count !== 1 ? 's' : ''}
+                          </span>
                         </div>
                       );
                     }
@@ -491,13 +526,13 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                     return (
                       <div
                         className={cn(
-                          'group flex border-b border-border/50 hover:bg-muted/50 transition-colors',
-                          lender.isOnDeal && 'bg-primary/5',
-                          isSelected && !lender.isOnDeal && 'bg-primary/10'
+                          'group flex border-b border-border/30 hover:bg-muted/30 transition-colors',
+                          lender.isOnDeal && 'bg-primary/[0.04]',
+                          isSelected && !lender.isOnDeal && 'bg-primary/[0.07]'
                         )}
                       >
                         {/* Row number + checkbox */}
-                        <div className="flex-shrink-0 w-[50px] px-2 py-1.5 text-xs text-muted-foreground border-r border-border/50 bg-muted/30 sticky left-0 z-10 flex items-center justify-center">
+                        <div className="flex-shrink-0 w-[50px] px-2 py-2 text-xs text-muted-foreground/60 tabular-nums bg-background/60 sticky left-0 z-10 flex items-center justify-center group-hover:bg-muted/30 transition-colors">
                           {lender.isOnDeal ? (
                             <span>{index + 1}</span>
                           ) : (
@@ -514,15 +549,15 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                             return (
                               <div
                                 key={col.key}
-                                className="flex-shrink-0 px-2 py-1.5 text-xs border-r border-border/50 flex items-center"
+                                className="flex-shrink-0 px-2 py-2 text-xs flex items-center"
                                 style={{ width: col.width }}
                               >
                                 {lender.isOnDeal ? (
-                                  <span className="inline-flex items-center gap-1 text-primary font-medium">
-                                    <Check className="h-3 w-3" />On Deal
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary">
+                                    <Check className="h-2.5 w-2.5" />On Deal
                                   </span>
                                 ) : (
-                                  <span className="text-muted-foreground">—</span>
+                                  <span className="text-muted-foreground/40">—</span>
                                 )}
                               </div>
                             );
@@ -532,12 +567,12 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                             return (
                               <div
                                 key={col.key}
-                                className="flex-shrink-0 px-2 py-1 border-r border-border/50 flex items-center justify-center"
+                                className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center"
                                 style={{ width: col.width }}
                               >
                                 {lender.isOnDeal ? (
                                   <button
-                                    className="inline-flex items-center gap-1 text-xs text-destructive hover:text-destructive/80 transition-colors px-2 py-0.5 rounded hover:bg-destructive/10"
+                                    className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-destructive transition-colors px-2 py-1 rounded-md hover:bg-destructive/10 opacity-0 group-hover:opacity-100"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setRemovingLender({ id: lender.id, name: lender.name });
@@ -548,7 +583,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                                   </button>
                                 ) : (
                                   <button
-                                    className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors px-2 py-0.5 rounded hover:bg-primary/10"
+                                    className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-primary/10"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       onAddLender(lender.name);
@@ -565,7 +600,10 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                             return (
                               <div
                                 key={col.key}
-                                className={cn("flex-shrink-0 px-2 py-1.5 text-xs text-primary border-r border-border/50 truncate cursor-pointer hover:underline font-medium sticky left-[50px] z-10 bg-background group-hover:bg-muted/50", lender.isOnDeal && "bg-primary/5 group-hover:bg-muted/50")}
+                                className={cn(
+                                  "flex-shrink-0 px-2 py-2 text-xs text-foreground truncate cursor-pointer font-medium sticky left-[50px] z-10 bg-background group-hover:bg-muted/30 hover:text-primary transition-colors",
+                                  lender.isOnDeal && "bg-primary/[0.04] group-hover:bg-muted/30"
+                                )}
                                 style={{ width: col.width }}
                                 title={lender.name}
                                 onClick={(e) => {
@@ -585,7 +623,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                             <div
                               key={col.key}
                               className={cn(
-                                'flex-shrink-0 px-2 py-1.5 text-xs text-foreground border-r border-border/50',
+                                'flex-shrink-0 px-2 py-2 text-xs text-foreground/80',
                                 isArray ? 'flex items-center gap-1 overflow-hidden' : 'truncate'
                               )}
                               style={{ width: col.width }}
@@ -595,7 +633,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                                 (rawValue as string[]).map((tag, i) => (
                                   <span
                                     key={i}
-                                    className="inline-flex shrink-0 items-center rounded-sm bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground border border-border/50"
+                                    className="inline-flex shrink-0 items-center rounded bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
                                   >
                                     {tag}
                                   </span>
@@ -611,10 +649,10 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                   }}
                   components={{
                     Footer: () => (
-                      <div className="py-4 px-4 text-center text-sm text-muted-foreground border-t border-border/50">
-                        <span className="inline-flex items-center gap-2">
-                          <Building2 className="h-4 w-4" />
-                          Showing all {sorted.length.toLocaleString()} lenders
+                      <div className="py-6 px-4 text-center text-xs text-muted-foreground/60 border-t border-border/30">
+                        <span className="inline-flex items-center gap-1.5">
+                          <Building2 className="h-3 w-3" />
+                          {sorted.length.toLocaleString()} lenders
                         </span>
                       </div>
                     ),
