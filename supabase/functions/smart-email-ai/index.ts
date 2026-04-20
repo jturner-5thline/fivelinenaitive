@@ -765,6 +765,8 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
 
     const aiResult = await response.json();
     const content = aiResult.choices?.[0]?.message?.content || "";
+    const latencyMs = Date.now() - t0;
+    console.log(`[smart-email-ai] action=${action} model=${selectedModel} latency=${latencyMs}ms input_tokens=${aiResult.usage?.prompt_tokens || 0} output_tokens=${aiResult.usage?.completion_tokens || 0}`);
 
     // Try to parse as JSON for structured responses
     let parsed: any = content;
