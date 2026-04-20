@@ -190,27 +190,14 @@ export function VdrThreeColumnWorkspace({
     [documents]
   );
 
-  // Filter by search + selected checklist item
-  const filenamesForSelectedChecklist = useMemo(() => {
-    if (!selectedChecklistId) return null;
-    const uIds = checklistFileMap.get(selectedChecklistId);
-    if (!uIds) return new Set<string>();
-    const names = new Set<string>();
-    uIds.forEach(uid => {
-      const n = uploadedItemNames.get(uid);
-      if (n) names.add(n);
-    });
-    return names;
-  }, [selectedChecklistId, checklistFileMap, uploadedItemNames]);
-
+  // Filter by search only — checklist clicks no longer filter the file panes
   const filterDocs = useCallback((docs: VdrDocument[]) => {
     const q = searchQuery.trim().toLowerCase();
     return docs.filter(d => {
       if (q && !d.filename.toLowerCase().includes(q)) return false;
-      if (filenamesForSelectedChecklist && !filenamesForSelectedChecklist.has(d.filename)) return false;
       return true;
     });
-  }, [searchQuery, filenamesForSelectedChecklist]);
+  }, [searchQuery]);
 
   const visibleInternal = useMemo(() => filterDocs(internalDocs), [filterDocs, internalDocs]);
   const visibleDataroom = useMemo(() => filterDocs(dataroomDocs), [filterDocs, dataroomDocs]);
