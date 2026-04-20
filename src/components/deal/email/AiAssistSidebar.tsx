@@ -174,88 +174,172 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   }, [showDrCard, drUploadable.length, dealId, latestId]);
 
 
-  const generate = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  // ── Per-thread cache (sessionStorage) ─────────────────────────────────
+  // Key includes the latest message id so a new inbound message busts the cache.
+  const cacheKey = useMemo(() => {
+    const latestId = thread.latestEmail?.id || thread.latestEmail?.gmail_message_id || '';
+    return `naitive.aiAssist.draft.${thread.threadId}::${latestId}`;
+  }, [thread.threadId, thread.latestEmail?.id, (thread.latestEmail as any)?.gmail_message_id]);
+
+  const readCache = useCallback((): DraftResult | null => {
     try {
-      const threadData = {
-        subject: thread.subject,
-        emails: thread.emails.map((e) => ({
-          from_name: e.from_name,
-          from_email: e.from_email,
-          to_name: e.to_name,
-          to_email: e.to_email,
-          subject: e.subject,
-          body_preview: e.body_preview?.substring(0, 1500),
-          received_at: e.received_at,
-          snippet: e.snippet,
-        })),
-        latestEmail: thread.latestEmail,
-      };
+      const raw = sessionStorage.getItem(cacheKey);
+      return raw ? (JSON.parse(raw) as DraftResult) : null;
+    } catch { return null; }
+  }, [cacheKey]);
 
-      const { data, error: fnError } = await supabase.functions.invoke('smart-email-ai', {
-        body: {
-          action: 'generate_draft_options',
-          dealId,
-          threadData,
-          draftType: 'reply',
-          optionCount: 3,
-        },
-      });
+  const writeCache = useCallback((next: DraftResult) => {
+    try { sessionStorage.setItem(cacheKey, JSON.stringify(next)); } catch { /* ignore */ }
+  }, [cacheKey]);
 
-      if (fnError) throw fnError;
-      if (data?.error) throw new Error(data.error);
+  // Track in-flight per-tone requests so re-renders don't double-fire.
+  const inflight = useRef<Record<ToneKey, Promise<void> | null>>({ concise: null, balanced: null });
+  const panelOpenedAt = useRef<number>(Date.now());
 
-      const r = data?.result;
-      if (!r || r.raw) throw new Error('Invalid response from AI');
+  const buildThreadData = useCallback(() => ({
+    subject: thread.subject,
+    threadId: thread.threadId,
+    // Trim to last 4 messages and 1.2k chars each — keeps prompt small.
+    emails: thread.emails.slice(0, 4).map((e) => ({
+      from_name: e.from_name,
+      from_email: e.from_email,
+      to_name: e.to_name,
+      to_email: e.to_email,
+      subject: e.subject,
+      body_preview: (e.body_preview || '').substring(0, 1200),
+      received_at: e.received_at,
+      snippet: e.snippet,
+    })),
+    latestEmail: thread.latestEmail,
+  }), [thread]);
 
-      const options: DraftOption[] = [];
-      ([1, 2, 3] as const).forEach((i) => {
-        const subject = r[`option_${i}_subject`];
-        const body = r[`option_${i}_body`];
-        if (subject && body) {
-          options.push({
-            index: i,
-            subject,
-            body,
-            toneLabel: r[`option_${i}_tone_label`] || ['Concise', 'Balanced', 'Detailed'][i - 1],
-            rationale: r[`option_${i}_rationale`] || '',
-          });
-        }
-      });
+  /**
+   * Generate a single tone (Concise or Balanced). Fast model by default;
+   * heavier model when `regenerate` is true. 8s hard timeout.
+   */
+  const generateTone = useCallback(async (
+    tone: ToneKey,
+    opts?: { regenerate?: boolean }
+  ): Promise<void> => {
+    if (inflight.current[tone]) return inflight.current[tone]!;
 
-      if (options.length === 0) throw new Error('No drafts returned');
+    setError(null);
+    setLoadingTones((s) => ({ ...s, [tone]: true }));
+    const startAt = Date.now();
+    console.log(`[AiAssist] draft start tone=${tone} regenerate=${!!opts?.regenerate} since-open=${startAt - panelOpenedAt.current}ms`);
 
-      const recommended = (r.recommended_option as 1 | 2 | 3) || 2;
-      const safeRecommended = options.find((o) => o.index === recommended)?.index || options[0].index;
+    const work = (async () => {
+      try {
+        // Hard 8s timeout w/ graceful fallback message.
+        const timeoutMs = 8000;
+        const ac = new AbortController();
+        const timer = setTimeout(() => ac.abort(), timeoutMs);
 
-      setResult({
-        detected_intent: r.detected_intent,
-        confidence: r.confidence,
-        used_deal_context: r.used_deal_context,
-        recommended_option: safeRecommended,
-        cited_context_sources: r.cited_context_sources || [],
-        options,
-      });
-      setSelected(safeRecommended);
-    } catch (err: any) {
-      console.error('AI Assist sidebar error:', err);
-      setError(err?.message || 'Failed to generate drafts.');
-    } finally {
-      setLoading(false);
-    }
-  }, [thread, dealId]);
+        const invokePromise = supabase.functions.invoke('smart-email-ai', {
+          body: {
+            action: 'generate_draft_options',
+            dealId,
+            threadData: buildThreadData(),
+            draftType: 'reply',
+            singleTone: tone,
+            fastModel: !opts?.regenerate,
+          },
+        });
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          ac.signal.addEventListener('abort', () =>
+            reject(new Error(`Draft request timed out after ${timeoutMs / 1000}s. Please try again.`)));
+        });
 
-  // Auto-generate on mount / when thread changes
+        const { data, error: fnError } = await Promise.race([invokePromise, timeoutPromise]) as Awaited<typeof invokePromise>;
+        clearTimeout(timer);
+
+        if (fnError) throw fnError;
+        if (data?.error) throw new Error(data.error);
+
+        const r = data?.result;
+        if (!r || r.raw) throw new Error('Invalid response from AI');
+
+        const subject = r.option_1_subject;
+        const body = r.option_1_body;
+        if (!subject || !body) throw new Error('No draft returned');
+
+        const newOpt: DraftOption = {
+          index: 1,
+          toneKey: tone,
+          toneLabel: TONE_LABELS[tone],
+          subject,
+          body,
+          rationale: r.option_1_rationale || '',
+        };
+
+        setResult((prev) => {
+          const next: DraftResult = {
+            detected_intent: r.detected_intent || prev?.detected_intent,
+            confidence: r.confidence || prev?.confidence,
+            used_deal_context: r.used_deal_context ?? prev?.used_deal_context,
+            recommended_tone: prev?.recommended_tone || 'balanced',
+            cited_context_sources: r.cited_context_sources || prev?.cited_context_sources || [],
+            options: { ...(prev?.options || {}), [tone]: newOpt },
+          };
+          writeCache(next);
+          return next;
+        });
+
+        const elapsed = Date.now() - startAt;
+        console.log(`[AiAssist] draft complete tone=${tone} latency=${elapsed}ms tokens(out)≈${(body.length / 4) | 0}`);
+      } catch (err: any) {
+        const isTimeout = /timed out/i.test(err?.message || '');
+        console.error(`[AiAssist] draft error tone=${tone}:`, err?.message || err);
+        setError(isTimeout
+          ? 'Taking longer than expected. Tap Retry to try a different model.'
+          : (err?.message || 'Failed to generate draft.'));
+      } finally {
+        setLoadingTones((s) => ({ ...s, [tone]: false }));
+        inflight.current[tone] = null;
+      }
+    })();
+    inflight.current[tone] = work;
+    return work;
+  }, [dealId, buildThreadData, writeCache]);
+
+  /** Regenerate the currently selected tone with the heavier model. */
+  const regenerateSelected = useCallback(() => {
+    void generateTone(selected, { regenerate: true });
+  }, [generateTone, selected]);
+
+  // ── Bootstrap: hydrate cache, then generate Balanced if missing ───────
   useEffect(() => {
-    generate();
+    panelOpenedAt.current = Date.now();
+    console.log(`[AiAssist] panel open thread=${thread.threadId}`);
+
+    const cached = readCache();
+    if (cached) {
+      console.log(`[AiAssist] cache hit thread=${thread.threadId} tones=${Object.keys(cached.options || {}).join(',')}`);
+      setResult(cached);
+      // Pick a sensible default selection that exists in cache.
+      if (cached.options.balanced) setSelected('balanced');
+      else if (cached.options.concise) setSelected('concise');
+      return;
+    }
+    setResult(null);
+    setSelected('balanced');
+    void generateTone('balanced');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [thread.threadId]);
 
+  // ── Tab switch: lazy-generate the other tone if missing ──────────────
+  const handleSelectTone = useCallback((tone: ToneKey) => {
+    setSelected(tone);
+    if (!result?.options[tone] && !loadingTones[tone]) {
+      void generateTone(tone);
+    }
+  }, [result, loadingTones, generateTone]);
+
   const selectedOption = useMemo(
-    () => result?.options.find((o) => o.index === selected) || result?.options[0],
+    () => result?.options[selected] || result?.options.balanced || result?.options.concise,
     [result, selected]
   );
+  const isSelectedLoading = loadingTones[selected];
 
   const handleInsert = () => {
     if (!selectedOption) return;
