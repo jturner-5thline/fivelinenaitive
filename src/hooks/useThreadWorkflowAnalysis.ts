@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { toast } from 'sonner';
@@ -92,6 +93,11 @@ function logEvent(event: string, payload: Record<string, unknown>) {
   } catch { /* ignore */ }
 }
 
+function debugStep(step: string, payload: Record<string, unknown>) {
+  // eslint-disable-next-line no-console
+  console.debug(`[useThreadWorkflowAnalysis] ${step}`, payload);
+}
+
 /**
  * Map a confirmed status to its underlying lender stage + tracking status.
  * "Passed" and "Not a Fit" both close the lender out, but with distinct
@@ -128,7 +134,7 @@ export function useThreadWorkflowAnalysis({
   autoRun = true,
 }: UseThreadWorkflowAnalysisOptions) {
   const { user } = useAuth();
-  const { updateLender, addLenderToDeal, refreshDeals } = useDealsContext();
+  const { refreshDeals } = useDealsContext();
   const [analysis, setAnalysis] = useState<WorkflowAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [committing, setCommitting] = useState(false);
