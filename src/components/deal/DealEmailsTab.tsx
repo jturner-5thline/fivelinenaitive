@@ -836,9 +836,46 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       <CardContent className="p-0 flex-1 min-h-0">
         <div className="flex h-full overflow-hidden max-w-full min-w-0">
           {/* ─── Left: Outlook-style folder sidebar ─── */}
-          <div className="border-r border-white/[0.06] flex-shrink-0 w-[148px] flex flex-col bg-card/40 backdrop-blur-sm">
+          <div
+            onMouseEnter={() => setRailHovered(true)}
+            onMouseLeave={() => setRailHovered(false)}
+            style={{ width: railExpanded ? 168 : 52 }}
+            className={cn(
+              'border-r border-white/[0.06] flex-shrink-0 flex flex-col bg-card/40 backdrop-blur-sm',
+              'transition-[width] duration-200 ease-out overflow-hidden'
+            )}
+          >
+            {/* Hamburger / pin toggle */}
+            <div
+              className={cn(
+                'flex items-center border-b border-white/[0.04] h-9',
+                railExpanded ? 'justify-end px-2' : 'justify-center'
+              )}
+            >
+              <Tooltip delayDuration={150}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-foreground/80 hover:text-foreground"
+                    onClick={() => setPinnedOpen(!pinnedOpen)}
+                    aria-label={pinnedOpen ? 'Collapse folders' : 'Pin folders open'}
+                    aria-pressed={pinnedOpen}
+                  >
+                    {pinnedOpen ? (
+                      <PanelLeftClose className="h-[16px] w-[16px]" />
+                    ) : (
+                      <PanelLeftOpen className="h-[16px] w-[16px]" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="text-xs">
+                  {pinnedOpen ? 'Collapse folders' : 'Pin folders open'}
+                </TooltipContent>
+              </Tooltip>
+            </div>
             <ScrollArea className="flex-1">
-              <div className="py-2">
+              <div className="py-1.5">
                 {systemFolders.map(item => renderSidebarItem(item))}
               </div>
             </ScrollArea>
