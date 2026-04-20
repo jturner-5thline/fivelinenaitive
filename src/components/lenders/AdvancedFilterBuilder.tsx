@@ -14,6 +14,33 @@ import {
 import { MultiSelectFilter } from '@/components/deals/MultiSelectFilter';
 import { MasterLender } from '@/hooks/useMasterLenders';
 
+/**
+ * Parse a comma-delimited lender type field into a normalized list of atomic tags.
+ * - Splits on commas
+ * - Trims whitespace and collapses repeated whitespace
+ * - Removes blanks, email-like values, and other obvious junk
+ * - Deduplicates (case-insensitive, preserves first-seen casing)
+ */
+export function parseTypeTags(value: unknown): string[] {
+  if (!value || typeof value !== 'string') return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of value.split(',')) {
+    const tag = raw.replace(/\s+/g, ' ').trim();
+    if (!tag) continue;
+    // Reject emails, URLs, phone numbers, or values with @ / digits-only / too long
+    if (/@/.test(tag)) continue;
+    if (/^https?:\/\//i.test(tag)) continue;
+    if (/^[\d\s().+-]+$/.test(tag)) continue;
+    if (tag.length > 60) continue;
+    const key = tag.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(tag);
+  }
+  return out;
+}
+
 // Define field types
 type FieldType = 'boolean' | 'number' | 'select' | 'multiselect' | 'text';
 
@@ -84,10 +111,17 @@ const FIELD_DEFINITIONS: FieldDefinition[] = [
       { value: 'is_any_of', label: 'is any of' },
       { value: 'has_none_of', label: 'has none of' },
     ],
-    getOptions: (lenders) => 
-      Array.from(new Set(lenders.map(l => l.lender_type).filter(Boolean)))
-        .sort()
-        .map(v => ({ value: v!, label: v! })),
+    getOptions: (lenders) => {
+      const tags = new Set<string>();
+      for (const l of lenders) {
+        for (const tag of parseTypeTags(l.lender_type)) {
+          tags.add(tag);
+        }
+      }
+      return Array.from(tags)
+        .sort((a, b) => a.localeCompare(b))
+        .map(v => ({ value: v, label: v }));
+    },
   },
   {
     key: 'min_deal',
@@ -527,6 +561,16 @@ export function applyAdvancedFilters(
 function evaluateCondition(lender: MasterLender, condition: FilterCondition): boolean {
   const { field, operator, value } = condition;
   const lenderValue = (lender as unknown as Record<string, unknown>)[field];
+
+  // Special-case: lender_type is stored as a comma-delimited string but
+  // should be matched against parsed atomic tags.
+  if (field === 'lender_type' && (operator === 'is_any_of' || operator === 'has_none_of')) {
+    if (!Array.isArray(value) || value.length === 0) return true;
+    const tags = parseTypeTags(lenderValue);
+    const tagsLower = tags.map(t => t.toLowerCase());
+    const matches = (value as string[]).some(v => tagsLower.includes(String(v).toLowerCase()));
+    return operator === 'is_any_of' ? matches : !matches;
+  }
 
   switch (operator) {
     case 'is':
