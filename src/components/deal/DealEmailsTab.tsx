@@ -324,72 +324,32 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     'VelocityPay': 'bg-purple-500',
   };
 
-  // Favorites = pinned items at top
-  const favoritesSection: SidebarSection = {
-    title: 'Favorites',
-    defaultOpen: true,
-    items: [
-      { id: 'all_inbox', label: 'Inbox', icon: Inbox, count: unreadCount || undefined, filterFn: e => e.folder === 'inbox' },
-      { id: 'sent', label: 'Sent Items', icon: Send, filterFn: e => e.folder === 'sent' },
-      { id: 'drafts', label: 'Drafts', icon: FileEdit, count: emails.filter(e => e.folder === 'drafts').length || undefined, filterFn: e => e.folder === 'drafts' },
-    ],
-  };
+  // System mailbox folders only — no smart-category groupings.
+  // Outbox is rendered only when there are messages currently being sent.
+  const draftsCount = emails.filter(e => e.folder === 'drafts').length;
+  const junkCount = emails.filter(e => e.folder === 'junk').length;
+  const trashCount = emails.filter(e => e.folder === 'trash').length;
+  const outboxCount = emails.filter(e => e.folder === 'outbox').length;
 
-  const foldersSections: (SidebarSection & { isDealFilter?: boolean })[] = [
-    {
-      title: 'Folders',
-      defaultOpen: true,
-      items: [
-        { id: 'needs_response', label: 'Needs Response', icon: AlertTriangle, count: needsResponseCount || undefined, filterFn: e => e.needs_response && e.folder === 'inbox' },
-        { id: 'starred', label: 'Flagged', icon: Star, count: starredCount || undefined, filterFn: e => e.is_starred },
-        { id: 'follow_up', label: 'Follow Up', icon: Clock, count: followUpCount || undefined, filterFn: e => e.is_follow_up && e.folder === 'inbox' },
-        { id: 'newsletters', label: 'Newsletters', icon: Rss, count: countByCategory('newsletter') || undefined, filterFn: e => e.category === 'newsletter' },
-      ],
-    },
-    {
-      title: 'Active Deals',
-      defaultOpen: true,
-      isDealFilter: true,
-      items: activeDealNames.map(name => ({
-        id: `deal_${name}`,
-        label: name,
-        icon: Briefcase,
-        count: countByDeal(name) || undefined,
-        indicatorColor: dealIndicatorColors[name] || 'bg-[hsl(var(--outlook-blue))]',
-        filterFn: (e: MockEmail) => e.deal_name === name,
-      })),
-    },
-    {
-      title: 'Categories',
-      defaultOpen: false,
-      isDealFilter: true,
-      items: [
-        { id: 'cat_prospect', label: 'Prospects', icon: Target, count: countByCategory('prospect') || undefined, filterFn: e => e.category === 'prospect' },
-        { id: 'cat_lender', label: 'Lenders', icon: Landmark, count: countByCategory('lender') || undefined, filterFn: e => e.category === 'lender' },
-        { id: 'cat_conference', label: 'Conferences', icon: Calendar, count: countByCategory('conference') || undefined, filterFn: e => e.category === 'conference' },
-        { id: 'cat_partnership', label: 'Partnerships', icon: Handshake, count: countByCategory('partnership') || undefined, filterFn: e => e.category === 'partnership' },
-      ],
-    },
-    {
-      title: 'Archive',
-      defaultOpen: false,
-      isDealFilter: true,
-      items: [
-        { id: 'cat_closed_won', label: 'Closed Won', icon: CheckCircle2, count: countByCategory('closed_won') || undefined, filterFn: e => e.category === 'closed_won' },
-        { id: 'cat_closed_lost', label: 'Closed Lost', icon: XCircle, count: countByCategory('closed_lost') || undefined, filterFn: e => e.category === 'closed_lost' },
-        { id: 'cat_archive', label: 'Archive', icon: Package, count: countByCategory('archive') || undefined, filterFn: e => e.category === 'archive' },
-      ],
-    },
+  const systemFolders: SidebarItem[] = [
+    { id: 'all_inbox', label: 'Inbox', icon: Inbox, count: unreadCount || undefined, filterFn: e => e.folder === 'inbox' },
+    { id: 'sent', label: 'Sent', icon: Send, filterFn: e => e.folder === 'sent' },
+    { id: 'drafts', label: 'Drafts', icon: FileEdit, count: draftsCount || undefined, filterFn: e => e.folder === 'drafts' },
+    { id: 'junk', label: 'Junk', icon: AlertTriangle, count: junkCount || undefined, filterFn: e => e.folder === 'junk' },
+    { id: 'trash', label: 'Trash', icon: Trash2, count: trashCount || undefined, filterFn: e => e.folder === 'trash' },
+    ...(outboxCount > 0
+      ? [{ id: 'outbox', label: 'Outbox', icon: Send, count: outboxCount, filterFn: (e: MockEmail) => e.folder === 'outbox' }]
+      : []),
   ];
 
-  const allSections = [favoritesSection, ...foldersSections];
+  const allSections: SidebarSection[] = [{ title: 'Mailbox', items: systemFolders, defaultOpen: true }];
 
   const activeItem = useMemo(() => {
     for (const section of allSections) {
       const found = section.items.find(i => i.id === activeItemId);
       if (found) return found;
     }
-    return favoritesSection.items[0];
+    return systemFolders[0];
   }, [activeItemId, allSections]);
 
   const activeFilterChips = useMemo(() => {
@@ -824,41 +784,10 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       <CardContent className="p-0 flex-1 min-h-0">
         <div className="flex h-full overflow-hidden max-w-full min-w-0">
           {/* ─── Left: Outlook-style folder sidebar ─── */}
-          <div className="border-r border-white/[0.06] flex-shrink-0 w-[200px] flex flex-col bg-card/40 backdrop-blur-sm">
+          <div className="border-r border-white/[0.06] flex-shrink-0 w-[148px] flex flex-col bg-card/40 backdrop-blur-sm">
             <ScrollArea className="flex-1">
-              <div className="py-1">
-                {/* Favorites */}
-                <div className="mb-1">
-                  <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-                    Favorites
-                  </div>
-                  {favoritesSection.items.map(item => renderSidebarItem(item))}
-                </div>
-
-                <div className="mx-3 my-1 border-t border-white/[0.06]" />
-
-                {/* Folder sections */}
-                {foldersSections.map((section) => {
-                  const isOpen = isSectionOpen(section);
-                  return (
-                    <div key={section.title} className="mb-0.5">
-                      <button
-                        onClick={() => toggleSection(section.title)}
-                        className="w-full flex items-center gap-1 px-3 py-1.5 text-left hover:bg-[hsl(var(--foreground)/0.03)]"
-                      >
-                        {isOpen ? (
-                          <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
-                        ) : (
-                          <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                        )}
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 flex-1">
-                          {section.title}
-                        </span>
-                      </button>
-                      {isOpen && section.items.map(item => renderSidebarItem(item, section.isDealFilter))}
-                    </div>
-                  );
-                })}
+              <div className="py-2">
+                {systemFolders.map(item => renderSidebarItem(item))}
               </div>
             </ScrollArea>
           </div>
