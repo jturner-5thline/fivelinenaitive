@@ -1165,7 +1165,7 @@ function AllDayBar({
 }) {
   if (events.length === 0) return null;
   return (
-    <div className="border-b px-14 py-1.5 flex flex-wrap gap-1">
+    <div className="border-b border-border/40 px-14 py-1.5 flex flex-wrap gap-1">
       {events.map((event, idx) => (
         <button
           key={event.id}
