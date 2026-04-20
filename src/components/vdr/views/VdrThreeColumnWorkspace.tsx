@@ -74,6 +74,11 @@ export function VdrThreeColumnWorkspace({
   // Shared state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedChecklistId, setSelectedChecklistId] = useState<string | null>(null);
+  // Active category context — uploads and new files default to this
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  // Collapsed category sections (per column)
+  const [collapsedInternal, setCollapsedInternal] = useState<Set<string>>(new Set());
+  const [collapsedDataroom, setCollapsedDataroom] = useState<Set<string>>(new Set());
 
   // Per-column selection
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
@@ -95,6 +100,9 @@ export function VdrThreeColumnWorkspace({
 
   const internalFileInput = useRef<HTMLInputElement>(null);
   const dataroomFileInput = useRef<HTMLInputElement>(null);
+
+  // Load default categories (Settings-driven via data_room_checklist_categories)
+  const { categories } = useChecklistCategories();
 
   // Checklist
   const uploadedItems = useUploadedItems(dealId, bulkBatchId);
