@@ -349,7 +349,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       const found = section.items.find(i => i.id === activeItemId);
       if (found) return found;
     }
-    return favoritesSection.items[0];
+    return systemFolders[0];
   }, [activeItemId, allSections]);
 
   const activeFilterChips = useMemo(() => {
@@ -784,41 +784,10 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       <CardContent className="p-0 flex-1 min-h-0">
         <div className="flex h-full overflow-hidden max-w-full min-w-0">
           {/* ─── Left: Outlook-style folder sidebar ─── */}
-          <div className="border-r border-white/[0.06] flex-shrink-0 w-[200px] flex flex-col bg-card/40 backdrop-blur-sm">
+          <div className="border-r border-white/[0.06] flex-shrink-0 w-[148px] flex flex-col bg-card/40 backdrop-blur-sm">
             <ScrollArea className="flex-1">
-              <div className="py-1">
-                {/* Favorites */}
-                <div className="mb-1">
-                  <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-                    Favorites
-                  </div>
-                  {favoritesSection.items.map(item => renderSidebarItem(item))}
-                </div>
-
-                <div className="mx-3 my-1 border-t border-white/[0.06]" />
-
-                {/* Folder sections */}
-                {foldersSections.map((section) => {
-                  const isOpen = isSectionOpen(section);
-                  return (
-                    <div key={section.title} className="mb-0.5">
-                      <button
-                        onClick={() => toggleSection(section.title)}
-                        className="w-full flex items-center gap-1 px-3 py-1.5 text-left hover:bg-[hsl(var(--foreground)/0.03)]"
-                      >
-                        {isOpen ? (
-                          <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
-                        ) : (
-                          <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                        )}
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 flex-1">
-                          {section.title}
-                        </span>
-                      </button>
-                      {isOpen && section.items.map(item => renderSidebarItem(item, section.isDealFilter))}
-                    </div>
-                  );
-                })}
+              <div className="py-2">
+                {systemFolders.map(item => renderSidebarItem(item))}
               </div>
             </ScrollArea>
           </div>
