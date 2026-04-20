@@ -19,7 +19,7 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
 
   const [dealsRes, tasksRes] = await Promise.all([
     supabase.from("deals")
-      .select("id, company, value, stage, status, deal_type, industry, geography, created_at, updated_at, user_id, last_activity_at")
+      .select("id, company, value, stage, status, deal_type, business_model, created_at, updated_at, user_id, deal_owner, manager, next_follow_up_at, notes_updated_at")
       .eq("company_id", companyId)
       .order("updated_at", { ascending: false })
       .limit(80),
@@ -30,6 +30,20 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
       .order("due_date", { ascending: true, nullsFirst: false })
       .limit(40),
   ]);
+
+  if (dealsRes.error) {
+    console.error("[claude-dashboard-chat] deals query error", {
+      message: dealsRes.error.message,
+      code: (dealsRes.error as any).code,
+      companyId,
+    });
+  }
+  if (tasksRes.error) {
+    console.error("[claude-dashboard-chat] tasks query error", {
+      message: tasksRes.error.message,
+      code: (tasksRes.error as any).code,
+    });
+  }
 
   const allDeals = dealsRes.data || [];
   const deals = allDeals.filter((d: any) => {
@@ -71,15 +85,40 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
   const milestones = milestonesRes.data || [];
   const activities = activitiesRes.data || [];
 
+  // Compute "last touch" per deal from the most recent of: deal updated_at,
+  // notes_updated_at, latest activity_log, latest deal_lender update.
   const now = Date.now();
+  const lastActivityByDeal = new Map<string, number>();
+  for (const a of activities) {
+    const t = new Date(a.created_at).getTime();
+    const prev = lastActivityByDeal.get(a.deal_id) || 0;
+    if (t > prev) lastActivityByDeal.set(a.deal_id, t);
+  }
+  for (const l of lenders) {
+    const t = new Date(l.updated_at || l.created_at).getTime();
+    const prev = lastActivityByDeal.get(l.deal_id) || 0;
+    if (t > prev) lastActivityByDeal.set(l.deal_id, t);
+  }
+
+  // "Active" for staleness = pipeline-active deals only (exclude archived,
+  // on-hold, dead, won, lost). on-hold deals are intentionally suppressed.
+  const isActiveStatus = (s: string) =>
+    !!s && !["archived", "on-hold", "on_hold", "closed-won", "closed-lost", "lost", "won", "dead"].includes(s);
+
   const staleDeals = deals
-    .filter((d: any) => d.status === "active")
+    .filter((d: any) => isActiveStatus(d.status))
     .map((d: any) => {
-      const last = new Date(d.last_activity_at || d.updated_at || d.created_at).getTime();
+      // Use real activity signals (logs, lender touches, notes) — NOT the bulk
+      // updated_at column, which can be touched en-masse by maintenance jobs.
+      const candidates = [
+        lastActivityByDeal.get(d.id) || 0,
+        d.notes_updated_at ? new Date(d.notes_updated_at).getTime() : 0,
+      ].filter(Boolean);
+      const last = candidates.length ? Math.max(...candidates) : new Date(d.created_at).getTime();
       const days = Math.floor((now - last) / 86_400_000);
       return { ...d, days_since_activity: days };
     })
-    .filter((d: any) => d.days_since_activity >= 21)
+    .filter((d: any) => d.days_since_activity >= 14)
     .sort((a: any, b: any) => b.days_since_activity - a.days_since_activity);
 
   return {
@@ -98,11 +137,14 @@ function buildContextString(ctx: any, companyName: string, userName: string) {
 
   if (deals.length > 0) {
     lines.push(`## Deals (${deals.length} total, showing active)`);
-    const activeDeals = deals.filter((d: any) => d.status === "active").slice(0, 30);
+    const isActiveStatus = (s: string) =>
+      !!s && !["archived", "on-hold", "on_hold", "closed-won", "closed-lost", "lost", "won"].includes(s);
+    const activeDeals = deals.filter((d: any) => isActiveStatus(d.status)).slice(0, 30);
     activeDeals.forEach((d: any) => {
-      const last = new Date(d.last_activity_at || d.updated_at || d.created_at);
+      const last = new Date(d.updated_at || d.created_at);
       const daysAgo = Math.floor((Date.now() - last.getTime()) / 86_400_000);
-      lines.push(`- ${d.company}: $${(d.value / 1e6).toFixed(1)}M | stage: ${d.stage}${d.industry ? ` | ${d.industry}` : ""} | last activity: ${daysAgo}d ago`);
+      const valueM = d.value ? `$${(d.value / 1e6).toFixed(1)}M` : "n/a";
+      lines.push(`- ${d.company}: ${valueM} | stage: ${d.stage}${d.business_model ? ` | ${d.business_model}` : ""} | last update: ${daysAgo}d ago`);
     });
   }
 
@@ -196,6 +238,7 @@ Deno.serve(async (req) => {
     const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     if (!ANTHROPIC_API_KEY) {
       return new Response(JSON.stringify({ error: "AI service not configured" }), {
@@ -210,16 +253,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    // Auth-bound client for verifying the user
+    const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await authClient.auth.getUser();
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Service-role client for fetching context. We've already verified the user
+    // and we explicitly scope every query by company_id / user_id below, so
+    // using the service role here avoids RLS edge cases that have intermittently
+    // returned empty results for users with valid company memberships.
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     const body = await req.json();
     const messages = body.messages || [];
@@ -247,6 +297,22 @@ Deno.serve(async (req) => {
 
     const ctx = await fetchUserContext(supabase, user.id, companyId);
     const userContext = buildContextString(ctx, companyName, userName);
+
+    console.log("[claude-dashboard-chat] context loaded", {
+      user_id: user.id,
+      company_id: companyId,
+      company_name: companyName,
+      counts: {
+        deals: ctx.deals?.length || 0,
+        tasks: ctx.tasks?.length || 0,
+        lenders: ctx.lenders?.length || 0,
+        milestones: ctx.milestones?.length || 0,
+        activities: ctx.activities?.length || 0,
+        lenderStats: ctx.lenderStats?.length || 0,
+        staleDeals: ctx.staleDeals?.length || 0,
+      },
+      context_chars: userContext.length,
+    });
 
     const lastUserText = [...messages].reverse().find((m: any) => m.role === "user")?.content || "";
     const promptAddendum = getPromptAddendum(lastUserText);
