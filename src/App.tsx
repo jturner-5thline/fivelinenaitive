@@ -34,7 +34,6 @@ import { Loader2 } from "lucide-react";
 import { lazyRetry } from "@/lib/lazyRetry";
 
 // Lazy-load all pages with retry to handle stale chunk URLs after deploys
-const Waitlist = lazy(lazyRetry(() => import("./pages/Waitlist")));
 const Index = lazy(lazyRetry(() => import("./pages/Index")));
 const Auth = lazy(lazyRetry(() => import("./pages/Auth")));
 const Onboarding = lazy(lazyRetry(() => import("./pages/Onboarding")));
@@ -141,7 +140,6 @@ const App = () => (
                         <Suspense fallback={<PageLoader />}>
                         <Routes>
                         <Route path="/" element={<Homepage />} />
-                          <Route path="/waitlist" element={<Waitlist />} />
                           <Route path="/home" element={<Index />} />
                           <Route path="/login" element={<Auth />} />
                           <Route path="/auth" element={<Auth />} />

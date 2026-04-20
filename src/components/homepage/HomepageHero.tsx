@@ -78,7 +78,7 @@ export const HomepageHero = () => {
             className="marketing-glass-cta mt-6 sm:mt-8 px-8 sm:px-10 py-5 sm:py-6 text-sm sm:text-base font-semibold border-0"
             asChild
           >
-            <Link to="/waitlist">Request Access</Link>
+            <Link to="/auth">Sign Up</Link>
           </Button>
         </div>
       </div>
