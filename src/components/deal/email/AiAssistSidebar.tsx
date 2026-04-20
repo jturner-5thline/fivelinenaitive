@@ -378,23 +378,12 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       {/* Content */}
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-4 space-y-4">
-          {/* Loading */}
-          {loading && (
-            <div className="flex flex-col items-center justify-center py-12 gap-2">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              <span className="text-xs text-muted-foreground">Drafting reply options…</span>
-              <span className="text-[10px] text-muted-foreground/60">
-                {dealId ? 'Reading deal context, lenders, notes & activity' : 'Analyzing email thread'}
-              </span>
-            </div>
-          )}
-
-          {/* Error */}
-          {!loading && error && (
+          {/* Error (non-blocking — shell still renders below) */}
+          {error && (
             <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-center space-y-2">
               <AlertTriangle className="h-4 w-4 text-destructive mx-auto" />
               <p className="text-xs text-destructive">{error}</p>
-              <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1" onClick={generate}>
+              <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1" onClick={regenerateSelected}>
                 <RefreshCw className="h-3 w-3" /> Try again
               </Button>
             </div>
