@@ -107,13 +107,13 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
   const staleDeals = deals
     .filter((d: any) => isActiveStatus(d.status))
     .map((d: any) => {
+      // Use real activity signals (logs, lender touches, notes) — NOT the bulk
+      // updated_at column, which can be touched en-masse by maintenance jobs.
       const candidates = [
         lastActivityByDeal.get(d.id) || 0,
         d.notes_updated_at ? new Date(d.notes_updated_at).getTime() : 0,
-        d.updated_at ? new Date(d.updated_at).getTime() : 0,
-        d.created_at ? new Date(d.created_at).getTime() : 0,
-      ];
-      const last = Math.max(...candidates);
+      ].filter(Boolean);
+      const last = candidates.length ? Math.max(...candidates) : new Date(d.created_at).getTime();
       const days = Math.floor((now - last) / 86_400_000);
       return { ...d, days_since_activity: days };
     })
