@@ -95,7 +95,7 @@ function logEvent(event: string, payload: Record<string, unknown>) {
 
 function debugStep(step: string, payload: Record<string, unknown>) {
   // eslint-disable-next-line no-console
-  console.debug(`[useThreadWorkflowAnalysis] ${step}`, payload);
+  console.info(`[useThreadWorkflowAnalysis] ${step}`, payload);
 }
 
 /**
