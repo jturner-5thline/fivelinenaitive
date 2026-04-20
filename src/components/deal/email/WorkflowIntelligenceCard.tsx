@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Loader2, Check, X, Pencil, Quote, AlertCircle, Briefcase, User, Building2, Zap } from 'lucide-react';
+import { Loader2, Check, X, Quote, AlertCircle, Briefcase, User, Building2, Zap } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import type { WorkflowAnalysis, WorkflowConfidence } from '@/hooks/useThreadWorkflowAnalysis';
 
@@ -12,7 +13,7 @@ interface Props {
   loading?: boolean;
   committing: boolean;
   hasLinkedDeal: boolean;
-  onConfirm: (overrides?: { reasonNote?: string }) => void;
+  onConfirm: (overrides?: { reasonNote?: string; confirmedStatus?: string }) => void;
   onDismiss: () => void;
   onMaybeLater: () => void;
 }
@@ -37,6 +38,49 @@ const SIGNAL_TONE: Record<string, string> = {
 };
 
 /**
+ * Editable lender disposition options. The internal value is the canonical
+ * status that we hand to `confirmRecommendation` — the human label is what
+ * the user sees. "Passed" and "Not a Fit" are intentionally distinct.
+ */
+const STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: 'passed', label: 'Passed' },
+  { value: 'not_a_fit', label: 'Not a Fit' },
+  { value: 'interested', label: 'Interested' },
+  { value: 'in_diligence', label: 'In Diligence' },
+  { value: 'follow_up', label: 'Follow Up' },
+  { value: 'declined', label: 'Declined' },
+];
+
+const STATUS_LABEL: Record<string, string> = STATUS_OPTIONS.reduce((acc, o) => {
+  acc[o.value] = o.label;
+  return acc;
+}, {} as Record<string, string>);
+
+/** Map a model-suggested `new_stage` to one of our editable status options. */
+function normalizeSuggested(stage: string | undefined): string {
+  if (!stage) return 'follow_up';
+  const s = stage.toLowerCase();
+  if (STATUS_LABEL[s]) return s;
+  if (s === 'terms_issued') return 'in_diligence';
+  if (s === 'info_requested' || s === 'engaged') return 'follow_up';
+  return 'follow_up';
+}
+
+function logAnalytics(event: string, payload: Record<string, unknown>) {
+  try {
+    // Lightweight analytics hook — fans out to dataLayer / window event for
+    // any analytics listener wired up elsewhere in the app.
+    (window as any).dataLayer = (window as any).dataLayer || [];
+    (window as any).dataLayer.push({ event, ...payload });
+    window.dispatchEvent(new CustomEvent(event, { detail: payload }));
+    // eslint-disable-next-line no-console
+    console.debug('[WorkflowIntelligenceCard]', event, payload);
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
  * WorkflowIntelligenceCard
  * -------------------------
  * Confirm-first workflow assistant for the email AI sidebar. Surfaces
@@ -53,12 +97,65 @@ export function WorkflowIntelligenceCard({
   onDismiss,
   onMaybeLater,
 }: Props) {
-  const [editing, setEditing] = useState(false);
-  const [reason, setReason] = useState(analysis.recommended_update.reason_note || '');
-
   const rec = analysis.recommended_update;
   const hasUpdate = rec.kind !== 'none' && !!rec.title;
   const needsDealLink = !hasLinkedDeal && !!analysis.likely_deal.id && rec.kind !== 'none';
+  const aiSuggestedStatus = normalizeSuggested(rec.new_stage);
+
+  const [reason, setReason] = useState(rec.reason_note || '');
+  const [confirmedStatus, setConfirmedStatus] = useState<string>(aiSuggestedStatus);
+  const [renderedKey, setRenderedKey] = useState<string | null>(null);
+
+  // Reset local state when the underlying analysis changes (e.g. new email).
+  // Tracked by signal+lender+stage so we don't clobber an in-progress edit.
+  const analysisKey = `${analysis.signal.type}::${rec.lender_id || rec.lender_name}::${rec.new_stage}`;
+  if (renderedKey !== analysisKey) {
+    setRenderedKey(analysisKey);
+    setConfirmedStatus(aiSuggestedStatus);
+    setReason(rec.reason_note || '');
+    if (hasUpdate && rec.kind === 'lender_status') {
+      logAnalytics('ai_suggested_update_rendered', {
+        deal_id: rec.deal_id || analysis.likely_deal.id,
+        lender_id: rec.lender_id,
+        lender_name: rec.lender_name,
+        ai_suggested_status: aiSuggestedStatus,
+        signal_type: analysis.signal.type,
+        confidence: rec.confidence,
+      });
+    }
+  }
+
+  const userOverrodeSuggestion = confirmedStatus !== aiSuggestedStatus;
+  const isLenderStatus = rec.kind === 'lender_status';
+  const lenderResolved = !isLenderStatus || !!rec.lender_id;
+  const dealResolved = !!(rec.deal_id || analysis.likely_deal.id);
+  const canConfirm = !committing && !needsDealLink && lenderResolved && dealResolved;
+
+  const handleStatusChange = (next: string) => {
+    setConfirmedStatus(next);
+    logAnalytics('ai_suggested_update_modified', {
+      deal_id: rec.deal_id,
+      lender_id: rec.lender_id,
+      lender_name: rec.lender_name,
+      original_suggested_status: aiSuggestedStatus,
+      final_confirmed_status: next,
+    });
+  };
+
+  const handleConfirm = () => {
+    logAnalytics('ai_suggested_update_confirmed', {
+      deal_id: rec.deal_id,
+      lender_id: rec.lender_id,
+      lender_name: rec.lender_name,
+      original_suggested_status: aiSuggestedStatus,
+      final_confirmed_status: confirmedStatus,
+      user_overrode_suggestion: userOverrodeSuggestion,
+    });
+    onConfirm({
+      reasonNote: reason || rec.reason_note || '',
+      confirmedStatus,
+    });
+  };
 
   return (
     <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-3 space-y-3">
@@ -152,21 +249,47 @@ export function WorkflowIntelligenceCard({
             {rec.title}
           </p>
 
-          {!editing ? (
-            rec.reason_note && (
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                <span className="text-foreground/60">Reason:</span> {rec.reason_note}
-              </p>
-            )
-          ) : (
+          {/* Editable disposition — only relevant for lender status updates. */}
+          {isLenderStatus && (
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Status
+              </label>
+              <Select value={confirmedStatus} onValueChange={handleStatusChange}>
+                <SelectTrigger className="h-8 text-[11px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value} className="text-[11px]">
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {userOverrodeSuggestion && (
+                <div className="text-[10px] leading-tight pt-0.5">
+                  <span className="text-muted-foreground">AI suggested: </span>
+                  <span className="text-foreground/70">{STATUS_LABEL[aiSuggestedStatus]}</span>
+                  <span className="text-muted-foreground"> · You are confirming: </span>
+                  <span className="text-primary font-medium">{STATUS_LABEL[confirmedStatus]}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Reason / note — always editable inline. */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Note
+            </label>
             <Input
-              autoFocus
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               className="h-8 text-[11px]"
-              placeholder="Reason note"
+              placeholder="Reason / context for this update"
             />
-          )}
+          </div>
 
           {needsDealLink && (
             <div className="flex items-start gap-1.5 text-[10px] text-amber-300/90 bg-amber-500/[0.04] rounded p-2">
@@ -186,19 +309,11 @@ export function WorkflowIntelligenceCard({
             <Button
               size="sm"
               className="h-7 px-2 text-[11px] gap-1 flex-1"
-              disabled={committing || needsDealLink || (rec.kind === 'lender_status' && !rec.lender_id)}
-              onClick={() => onConfirm(editing ? { reasonNote: reason } : undefined)}
+              disabled={!canConfirm}
+              onClick={handleConfirm}
             >
               {committing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
               Confirm
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 px-2 text-[11px] gap-1"
-              onClick={() => setEditing((e) => !e)}
-            >
-              <Pencil className="h-3 w-3" />
             </Button>
             <Button
               size="sm"

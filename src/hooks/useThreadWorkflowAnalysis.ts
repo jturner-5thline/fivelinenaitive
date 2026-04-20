@@ -162,7 +162,10 @@ export function useThreadWorkflowAnalysis({
     writeDismissed(next);
   }, [cacheKey, dismissedKeys]);
 
-  const confirmRecommendation = useCallback(async (overrides?: { reasonNote?: string }) => {
+  const confirmRecommendation = useCallback(async (overrides?: {
+    reasonNote?: string;
+    confirmedStatus?: string;
+  }) => {
     if (!analysis || !user) return false;
     const rec = analysis.recommended_update;
     if (!rec || rec.kind === 'none') return false;
@@ -175,35 +178,50 @@ export function useThreadWorkflowAnalysis({
         return false;
       }
       const reason = overrides?.reasonNote ?? rec.reason_note ?? analysis.signal.label;
+      const aiSuggestedStatus = (rec.new_stage || '').toLowerCase();
+      const finalStatus = (overrides?.confirmedStatus || aiSuggestedStatus || 'passed').toLowerCase();
+      const userOverrodeSuggestion = !!overrides?.confirmedStatus
+        && overrides.confirmedStatus.toLowerCase() !== aiSuggestedStatus;
 
       if (rec.kind === 'lender_status') {
         if (!rec.lender_id) {
           toast.error('Lender not matched on this deal — please confirm the lender first.');
           return false;
         }
-        // Map model stage suggestions onto known lender stages used by updateLender.
-        const stageMap: Record<string, string> = {
-          passed: 'passed',
-          not_a_fit: 'passed',
-          terms_issued: 'terms_received',
-          info_requested: 'engaged',
-          engaged: 'engaged',
-          interested: 'engaged',
+        // Map the user-confirmed status onto known lender stages used by
+        // updateLender. CRITICAL: "Not a Fit" and "Passed" are NOT collapsed
+        // — both close the lender out, but with distinct pass_reason context
+        // so reporting can tell them apart. Other statuses preserve their
+        // semantic meaning (interest, diligence, follow-up).
+        const stageMap: Record<string, { stage: string; trackingStatus: string; closes: boolean }> = {
+          passed:       { stage: 'passed',         trackingStatus: 'passed',  closes: true  },
+          not_a_fit:    { stage: 'passed',         trackingStatus: 'passed',  closes: true  },
+          declined:     { stage: 'passed',         trackingStatus: 'passed',  closes: true  },
+          interested:   { stage: 'engaged',        trackingStatus: 'active',  closes: false },
+          in_diligence: { stage: 'reviewing-drl',  trackingStatus: 'active',  closes: false },
+          follow_up:    { stage: 'engaged',        trackingStatus: 'active',  closes: false },
         };
-        const stage = stageMap[rec.new_stage] || 'passed';
+        const mapped = stageMap[finalStatus] || stageMap.passed;
+        const passReasonText = mapped.closes
+          ? `${finalStatus === 'not_a_fit' ? 'Not a fit' : finalStatus === 'declined' ? 'Declined' : 'Passed'}: ${reason}`
+          : undefined;
 
         await updateLender(rec.lender_id, {
-          stage,
-          trackingStatus: stage,
-          passReason: stage === 'passed' ? reason : undefined,
+          stage: mapped.stage,
+          trackingStatus: mapped.trackingStatus,
+          passReason: passReasonText,
         } as any);
       }
 
       // Always log the AI-suggested + user-confirmed action for auditability.
+      const sourceMessageId =
+        latestInbound?.gmail_message_id || latestInbound?.id || messageId || null;
       await supabase.from('activity_logs').insert({
         deal_id: targetDealId,
         activity_type: rec.kind === 'lender_status' ? 'lender_update' : 'status_update',
-        description: rec.title.replace(/\?$/, ''),
+        description: userOverrodeSuggestion
+          ? `${rec.lender_name || 'Lender'} marked as ${finalStatus.replace('_', ' ')} (user override)`
+          : rec.title.replace(/\?$/, ''),
         user_id: user.id,
         metadata: {
           source: 'ai_thread_workflow',
@@ -211,15 +229,22 @@ export function useThreadWorkflowAnalysis({
           signal_label: analysis.signal.label,
           supporting_quote: analysis.signal.supporting_quote,
           nuance: analysis.signal.nuance,
-          new_stage: rec.new_stage,
+          ai_suggested_status: aiSuggestedStatus,
+          final_confirmed_status: finalStatus,
+          user_overrode_suggestion: userOverrodeSuggestion,
           lender_id: rec.lender_id || null,
           lender_name: rec.lender_name || null,
           reason_note: reason,
           confidence: rec.confidence,
+          source_thread_id: threadData?.threadId || null,
+          source_message_id: sourceMessageId,
         },
       });
 
-      toast.success(rec.title.replace(/\?$/, ''));
+      const successMsg = userOverrodeSuggestion
+        ? `${rec.lender_name || 'Lender'} marked as ${finalStatus.replace('_', ' ')}`
+        : rec.title.replace(/\?$/, '');
+      toast.success(successMsg);
       dismiss();
       await refreshDeals();
       return true;
@@ -230,7 +255,7 @@ export function useThreadWorkflowAnalysis({
     } finally {
       setCommitting(false);
     }
-  }, [analysis, user, dealId, updateLender, refreshDeals, dismiss]);
+  }, [analysis, user, dealId, updateLender, refreshDeals, dismiss, latestInbound, messageId, threadData]);
 
   return {
     analysis,

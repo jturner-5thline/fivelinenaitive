@@ -624,9 +624,10 @@ Return STRICT JSON only — no markdown fences, no commentary:
     "deal_name": "string",
     "lender_id": "string — id of the lender candidate this targets, or empty",
     "lender_name": "string — firm name, or empty",
-    "new_stage": "passed|terms_issued|not_a_fit|info_requested|engaged|interested|other|empty string",
+    "new_stage": "passed|not_a_fit|interested|in_diligence|follow_up|declined|terms_issued|info_requested|engaged|other|empty string",
     "reason_note": "string — short rationale to save with the update (max ~200 chars)",
-    "confidence": "low|medium|high"
+    "confidence": "low|medium|high",
+    "ambiguity_flags": ["string — e.g. 'lender_not_matched', 'regional_nuance', 'forwarded_internally', 'multiple_deals_possible'"]
   },
   "secondary_action": {
     "kind": "draft_reply|log_activity|none",
@@ -646,6 +647,16 @@ CLASSIFICATION GUIDE:
 - access_issue: data room login problems / file access errors.
 - internal_note: an internal forward or commentary, NOT external lender wording. In this case set recommended_update.kind="none".
 - no_signal: small talk, thanks, intros — no workflow update warranted.
+
+SUGGESTED STATUS MAPPING (recommended_update.new_stage):
+- This is a DRAFT recommendation only. The user will review and may override before saving.
+- "passed" — lender declined for general/strategic reasons.
+- "not_a_fit" — lender explicitly cited mismatch with mandate, sector, size, structure, or strategy ("outside our box", "not in our wheelhouse"). Do NOT collapse this into "passed" — they are distinct.
+- "interested" — clear positive signal, wants to keep engaging.
+- "in_diligence" — actively reviewing materials / asking diligence questions.
+- "follow_up" — needs another touch to advance (info request, scheduling).
+- "declined" — formal decline language without mandate-fit reasoning.
+- Use the most specific status that is supported by the email language. Never silently collapse "passed" and "not_a_fit" — they stay distinct.
 
 DEAL MATCHING:
 - Use subject line, signature, prior thread content, sender email, and candidate list.
