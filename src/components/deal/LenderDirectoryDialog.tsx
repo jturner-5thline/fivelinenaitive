@@ -678,7 +678,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                                 (rawValue as string[]).map((tag, i) => (
                                   <span
                                     key={i}
-                                    className="inline-flex shrink-0 items-center rounded bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/90 border border-border/30"
+                                    className="inline-flex shrink-0 items-center rounded bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/90 border border-white/5"
                                   >
                                     {tag}
                                   </span>
@@ -694,7 +694,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                   }}
                   components={{
                     Footer: () => (
-                      <div className="py-5 px-4 text-center text-[11px] text-muted-foreground/50 border-t border-border/30 bg-muted/10">
+                      <div className="py-5 px-4 text-center text-[11px] text-muted-foreground/50 border-t border-white/5 bg-muted/10">
                         <span className="inline-flex items-center gap-1.5">
                           <Building2 className="h-3 w-3" />
                           End of {sorted.length.toLocaleString()} lenders
