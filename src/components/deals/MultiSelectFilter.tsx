@@ -58,14 +58,17 @@ export function MultiSelectFilter({
         </Button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[200px] p-0 bg-popover z-50" 
+        className="w-[220px] p-0 bg-popover z-50 flex flex-col max-h-[min(360px,60vh)]" 
         align="start"
         side="bottom"
         sideOffset={4}
         avoidCollisions={true}
         collisionPadding={16}
       >
-        <div className="max-h-[min(300px,50vh)] overflow-auto p-1">
+        <div
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-1"
+          onWheel={(e) => e.stopPropagation()}
+        >
           {options.map((option) => {
             const isSelected = selected.includes(option.value);
             return (
@@ -89,7 +92,7 @@ export function MultiSelectFilter({
           })}
         </div>
         {selected.length > 0 && (
-          <div className="border-t border-border p-1">
+          <div className="border-t border-border p-1 shrink-0">
             <Button
               variant="ghost"
               size="sm"
