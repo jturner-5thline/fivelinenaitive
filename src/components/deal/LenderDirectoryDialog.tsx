@@ -458,7 +458,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                 'h-8 inline-flex items-center gap-1.5 px-2.5 rounded-md text-[12px] font-medium border transition-all',
                 groupByTier
                   ? 'bg-primary/10 border-primary/30 text-primary shadow-sm'
-                  : 'bg-background border-border/60 shadow-sm text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/40'
+                  : 'bg-background border-white/10 shadow-sm text-muted-foreground hover:text-foreground hover:border-white/20 hover:bg-muted/40'
               )}
             >
               <Layers className="h-3.5 w-3.5" />
