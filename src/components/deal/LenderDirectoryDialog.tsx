@@ -475,22 +475,22 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
         ) : sorted.length === 0 ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">No lenders found matching your filters.</div>
         ) : (
-          <div className="border-t border-border h-full overflow-hidden">
+          <div className="h-full overflow-hidden bg-background">
             <ScrollArea className="w-full h-full">
               <div style={{ minWidth: TOTAL_WIDTH }}>
                 {/* Header Row - identical style to LenderSpreadsheetView */}
-                <div className="flex sticky top-0 z-10 bg-muted border-b border-border">
+                <div className="flex sticky top-0 z-10 bg-muted/40 backdrop-blur-sm border-b border-border/50">
                   {/* Row number header */}
-                  <div className="flex-shrink-0 w-[50px] px-2 py-2 text-xs font-semibold text-muted-foreground border-r border-border bg-muted sticky left-0 z-20">
+                  <div className="flex-shrink-0 w-[50px] px-2 py-2.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70 bg-muted/40 sticky left-0 z-20">
                     #
                   </div>
                   {COLUMNS.map((col) => (
                     <div
                       key={col.key}
                       className={cn(
-                        'flex-shrink-0 px-2 py-2 text-xs font-semibold text-foreground border-r border-border bg-muted flex items-center',
-                        col.sortable && 'cursor-pointer hover:bg-muted/80 select-none',
-                        col.key === 'name' && 'sticky left-[50px] z-20 bg-muted'
+                        'flex-shrink-0 px-2 py-2.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/80 bg-muted/40 flex items-center',
+                        col.sortable && 'cursor-pointer hover:text-foreground select-none transition-colors',
+                        col.key === 'name' && 'sticky left-[50px] z-20 bg-muted/40'
                       )}
                       style={{ width: col.width }}
                       title={col.sortable ? `Click to sort by ${col.label}` : col.label}
@@ -510,10 +510,14 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                     const row = rows[index];
                     if (row.type === 'tier-header') {
                       return (
-                        <div className="flex items-center gap-2 px-4 py-2 bg-muted/70 border-b border-border font-semibold text-xs text-foreground sticky z-[5]" style={{ minWidth: TOTAL_WIDTH }}>
-                          <Layers className="h-3.5 w-3.5 text-muted-foreground" />
-                          {row.tier === 'None' ? 'No Tier' : row.tier}
-                          <span className="font-normal text-muted-foreground">({row.count} lender{row.count !== 1 ? 's' : ''})</span>
+                        <div
+                          className="flex items-center gap-2 px-4 py-1.5 bg-muted/20 border-y border-border/30 text-[11px] font-medium uppercase tracking-wide text-muted-foreground sticky z-[5]"
+                          style={{ minWidth: TOTAL_WIDTH }}
+                        >
+                          <span className="text-foreground/80">{row.tier === 'None' ? 'No Tier' : row.tier}</span>
+                          <span className="text-muted-foreground/60 normal-case tracking-normal">
+                            {row.count} lender{row.count !== 1 ? 's' : ''}
+                          </span>
                         </div>
                       );
                     }
@@ -522,13 +526,13 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                     return (
                       <div
                         className={cn(
-                          'group flex border-b border-border/50 hover:bg-muted/50 transition-colors',
-                          lender.isOnDeal && 'bg-primary/5',
-                          isSelected && !lender.isOnDeal && 'bg-primary/10'
+                          'group flex border-b border-border/30 hover:bg-muted/30 transition-colors',
+                          lender.isOnDeal && 'bg-primary/[0.04]',
+                          isSelected && !lender.isOnDeal && 'bg-primary/[0.07]'
                         )}
                       >
                         {/* Row number + checkbox */}
-                        <div className="flex-shrink-0 w-[50px] px-2 py-1.5 text-xs text-muted-foreground border-r border-border/50 bg-muted/30 sticky left-0 z-10 flex items-center justify-center">
+                        <div className="flex-shrink-0 w-[50px] px-2 py-2 text-xs text-muted-foreground/60 tabular-nums bg-background/60 sticky left-0 z-10 flex items-center justify-center group-hover:bg-muted/30 transition-colors">
                           {lender.isOnDeal ? (
                             <span>{index + 1}</span>
                           ) : (
@@ -545,15 +549,15 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                             return (
                               <div
                                 key={col.key}
-                                className="flex-shrink-0 px-2 py-1.5 text-xs border-r border-border/50 flex items-center"
+                                className="flex-shrink-0 px-2 py-2 text-xs flex items-center"
                                 style={{ width: col.width }}
                               >
                                 {lender.isOnDeal ? (
-                                  <span className="inline-flex items-center gap-1 text-primary font-medium">
-                                    <Check className="h-3 w-3" />On Deal
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary">
+                                    <Check className="h-2.5 w-2.5" />On Deal
                                   </span>
                                 ) : (
-                                  <span className="text-muted-foreground">—</span>
+                                  <span className="text-muted-foreground/40">—</span>
                                 )}
                               </div>
                             );
@@ -563,12 +567,12 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                             return (
                               <div
                                 key={col.key}
-                                className="flex-shrink-0 px-2 py-1 border-r border-border/50 flex items-center justify-center"
+                                className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center"
                                 style={{ width: col.width }}
                               >
                                 {lender.isOnDeal ? (
                                   <button
-                                    className="inline-flex items-center gap-1 text-xs text-destructive hover:text-destructive/80 transition-colors px-2 py-0.5 rounded hover:bg-destructive/10"
+                                    className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-destructive transition-colors px-2 py-1 rounded-md hover:bg-destructive/10 opacity-0 group-hover:opacity-100"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setRemovingLender({ id: lender.id, name: lender.name });
@@ -579,7 +583,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                                   </button>
                                 ) : (
                                   <button
-                                    className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors px-2 py-0.5 rounded hover:bg-primary/10"
+                                    className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-primary/10"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       onAddLender(lender.name);
@@ -596,7 +600,10 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                             return (
                               <div
                                 key={col.key}
-                                className={cn("flex-shrink-0 px-2 py-1.5 text-xs text-primary border-r border-border/50 truncate cursor-pointer hover:underline font-medium sticky left-[50px] z-10 bg-background group-hover:bg-muted/50", lender.isOnDeal && "bg-primary/5 group-hover:bg-muted/50")}
+                                className={cn(
+                                  "flex-shrink-0 px-2 py-2 text-xs text-foreground truncate cursor-pointer font-medium sticky left-[50px] z-10 bg-background group-hover:bg-muted/30 hover:text-primary transition-colors",
+                                  lender.isOnDeal && "bg-primary/[0.04] group-hover:bg-muted/30"
+                                )}
                                 style={{ width: col.width }}
                                 title={lender.name}
                                 onClick={(e) => {
@@ -616,7 +623,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                             <div
                               key={col.key}
                               className={cn(
-                                'flex-shrink-0 px-2 py-1.5 text-xs text-foreground border-r border-border/50',
+                                'flex-shrink-0 px-2 py-2 text-xs text-foreground/80',
                                 isArray ? 'flex items-center gap-1 overflow-hidden' : 'truncate'
                               )}
                               style={{ width: col.width }}
@@ -626,7 +633,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                                 (rawValue as string[]).map((tag, i) => (
                                   <span
                                     key={i}
-                                    className="inline-flex shrink-0 items-center rounded-sm bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground border border-border/50"
+                                    className="inline-flex shrink-0 items-center rounded bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
                                   >
                                     {tag}
                                   </span>
@@ -642,10 +649,10 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                   }}
                   components={{
                     Footer: () => (
-                      <div className="py-4 px-4 text-center text-sm text-muted-foreground border-t border-border/50">
-                        <span className="inline-flex items-center gap-2">
-                          <Building2 className="h-4 w-4" />
-                          Showing all {sorted.length.toLocaleString()} lenders
+                      <div className="py-6 px-4 text-center text-xs text-muted-foreground/60 border-t border-border/30">
+                        <span className="inline-flex items-center gap-1.5">
+                          <Building2 className="h-3 w-3" />
+                          {sorted.length.toLocaleString()} lenders
                         </span>
                       </div>
                     ),
