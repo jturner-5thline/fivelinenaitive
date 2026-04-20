@@ -379,40 +379,62 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
   const totalOnDeal = useMemo(() => sorted.filter(l => l.isOnDeal).length, [sorted]);
 
   return (
-    <DialogContent className="max-w-[95vw] h-[85vh] flex flex-col p-0 gap-0 border-border/60 bg-background shadow-2xl overflow-hidden">
-      <DialogHeader className="px-6 pt-5 pb-4 border-b border-border/40 shrink-0 space-y-0">
-        <div className="flex items-baseline justify-between gap-4">
-          <div className="flex items-baseline gap-3">
-            <DialogTitle className="text-base font-semibold tracking-tight text-foreground">
+    <DialogContent className="max-w-[95vw] h-[85vh] flex flex-col p-0 gap-0 border-border/50 bg-background shadow-[0_24px_64px_-20px_rgba(0,0,0,0.45)] overflow-hidden">
+      {/* ── Header: title + KPI metadata ── */}
+      <DialogHeader className="px-6 pt-5 pb-4 shrink-0 space-y-0 bg-gradient-to-b from-muted/20 to-transparent">
+        <div className="flex items-end justify-between gap-6 flex-wrap">
+          <div className="flex items-center gap-4">
+            <DialogTitle className="text-[15px] font-semibold tracking-tight text-foreground leading-none">
               Lender Directory
             </DialogTitle>
-            <span className="text-xs text-muted-foreground/80 tabular-nums">
-              {sorted.length.toLocaleString()} lenders
-              <span className="mx-1.5 text-muted-foreground/40">·</span>
-              <span className="text-foreground/70">{totalOnDeal} on deal</span>
-            </span>
+            <div className="flex items-center gap-4 pl-4 border-l border-border/40">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[15px] font-semibold tabular-nums text-foreground leading-none">
+                  {sorted.length.toLocaleString()}
+                </span>
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium">
+                  Lenders
+                </span>
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className={cn(
+                  "text-[15px] font-semibold tabular-nums leading-none",
+                  totalOnDeal > 0 ? "text-primary" : "text-muted-foreground/50"
+                )}>
+                  {totalOnDeal}
+                </span>
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium">
+                  On Deal
+                </span>
+              </div>
+            </div>
           </div>
         </div>
         <DialogDescription className="sr-only">Browse and manage lenders for this deal</DialogDescription>
-        <div className="flex flex-wrap items-center gap-2 mt-4">
-          <div className="relative flex-1 min-w-[220px] max-w-sm">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/70" />
+      </DialogHeader>
+
+      {/* ── Unified filter rail ── */}
+      <div className="px-6 py-3 border-y border-border/40 bg-muted/20 shrink-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[240px] max-w-[320px]">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
             <Input
               placeholder="Search lenders..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-8 h-9 text-sm bg-muted/30 border-border/50 focus-visible:bg-background focus-visible:border-border focus-visible:ring-1 focus-visible:ring-ring/40 focus-visible:ring-offset-0"
+              className="pl-8 h-8 text-[13px] bg-background border-border/60 shadow-sm focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50"
             />
           </div>
+          <div className="h-5 w-px bg-border/50 mx-1" />
           <MultiSelectFilter
             label="All Types"
             options={lenderTypes.map(t => ({ value: t, label: t }))}
             selected={selectedTypes}
             onChange={setSelectedTypes}
-            className="h-9 w-[180px] text-sm bg-muted/30 border-border/50 hover:bg-muted/50 hover:border-border"
+            className="h-8 w-[170px] text-[13px] bg-background border-border/60 shadow-sm hover:bg-muted/40 hover:border-border font-normal"
           />
           <Select value={tierFilter} onValueChange={setTierFilter}>
-            <SelectTrigger className="h-9 w-[130px] text-sm bg-muted/30 border-border/50 hover:bg-muted/50 hover:border-border focus:ring-1 focus:ring-ring/40 focus:ring-offset-0">
+            <SelectTrigger className="h-8 w-[120px] text-[13px] bg-background border-border/60 shadow-sm hover:bg-muted/40 hover:border-border focus:ring-1 focus:ring-primary/20 focus:ring-offset-0">
               <SelectValue placeholder="All Tiers" />
             </SelectTrigger>
             <SelectContent>
@@ -423,51 +445,55 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
               <SelectItem value="None">No Tier</SelectItem>
             </SelectContent>
           </Select>
-          <button
-            type="button"
-            onClick={() => setGroupByTier(g => !g)}
-            className={cn(
-              'h-9 inline-flex items-center gap-1.5 px-3 rounded-md text-xs font-medium border transition-colors',
-              groupByTier
-                ? 'bg-foreground/[0.04] border-border text-foreground'
-                : 'bg-transparent border-border/50 text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/30'
+          <div className="ml-auto flex items-center gap-2">
+            {(selectedTypes.length > 0 || tierFilter !== 'all' || search) && (
+              <span className="text-[11px] text-muted-foreground/70 tabular-nums">
+                {sorted.length.toLocaleString()} {sorted.length === 1 ? 'result' : 'results'}
+              </span>
             )}
-          >
-            <Layers className="h-3.5 w-3.5" />
-            Group by Tier
-          </button>
+            <button
+              type="button"
+              onClick={() => setGroupByTier(g => !g)}
+              className={cn(
+                'h-8 inline-flex items-center gap-1.5 px-2.5 rounded-md text-[12px] font-medium border transition-all',
+                groupByTier
+                  ? 'bg-primary/10 border-primary/30 text-primary shadow-sm'
+                  : 'bg-background border-border/60 shadow-sm text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/40'
+              )}
+            >
+              <Layers className="h-3.5 w-3.5" />
+              Group by Tier
+            </button>
+          </div>
         </div>
         {selectedTypes.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-3 border-t border-border/30">
-            <span className="text-[11px] uppercase tracking-wide text-muted-foreground/70 font-medium mr-1">
-              Filters
-            </span>
+          <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
             {selectedTypes.map(t => (
               <span
                 key={t}
-                className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 text-xs rounded-md bg-foreground/[0.04] border border-border/60 text-foreground/90"
+                className="inline-flex items-center gap-1 pl-2 pr-0.5 py-0.5 text-[11px] rounded-md bg-primary/[0.08] border border-primary/20 text-foreground/90"
               >
                 {t}
                 <button
                   type="button"
                   onClick={() => setSelectedTypes(prev => prev.filter(x => x !== t))}
-                  className="rounded-sm hover:bg-foreground/10 p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+                  className="rounded-sm hover:bg-primary/15 p-0.5 text-muted-foreground hover:text-foreground transition-colors"
                   aria-label={`Remove ${t}`}
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-2.5 w-2.5" />
                 </button>
               </span>
             ))}
             <button
               type="button"
               onClick={() => setSelectedTypes([])}
-              className="text-xs text-muted-foreground hover:text-foreground ml-1 underline-offset-2 hover:underline"
+              className="text-[11px] text-muted-foreground hover:text-foreground ml-1 underline-offset-2 hover:underline"
             >
-              Clear all
+              Clear
             </button>
           </div>
         )}
-      </DialogHeader>
+      </div>
 
       <div className="flex-1 overflow-hidden">
         {loading ? (
