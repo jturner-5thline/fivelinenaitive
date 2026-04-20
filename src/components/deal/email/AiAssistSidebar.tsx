@@ -495,12 +495,13 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                   Draft options
                 </p>
                 <div className="flex gap-1 mb-3 p-0.5 rounded-md bg-muted/30 border border-white/[0.04]">
-                  {result.options.map((opt) => {
-                    const isSel = selected === opt.index;
+                  {TONE_ORDER.map((tone) => {
+                    const isSel = selected === tone;
+                    const isLoading = loadingTones[tone];
                     return (
                       <button
-                        key={opt.index}
-                        onClick={() => setSelected(opt.index)}
+                        key={tone}
+                        onClick={() => handleSelectTone(tone)}
                         className={cn(
                           'flex-1 px-2 py-1.5 rounded text-[11px] font-medium transition-all',
                           isSel
@@ -508,9 +509,12 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                             : 'text-muted-foreground hover:text-foreground/80'
                         )}
                       >
-                        {opt.toneLabel}
-                        {result.recommended_option === opt.index && (
+                        {TONE_LABELS[tone]}
+                        {result?.recommended_tone === tone && (
                           <span className="ml-1 text-primary">★</span>
+                        )}
+                        {isLoading && (
+                          <Loader2 className="inline h-3 w-3 ml-1 animate-spin opacity-70" />
                         )}
                       </button>
                     );
@@ -555,15 +559,16 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       </ScrollArea>
 
       {/* Footer actions */}
-      {!loading && result && selectedOption && (
+      {selectedOption && (
         <div className="border-t border-white/[0.06] p-3 flex items-center gap-2 shrink-0 bg-card/60">
           <Button
             variant="ghost"
             size="sm"
             className="h-8 text-[11px] gap-1 px-2"
-            onClick={generate}
+            onClick={regenerateSelected}
+            disabled={isSelectedLoading}
           >
-            <RefreshCw className="h-3 w-3" /> Regenerate
+            <RefreshCw className={cn('h-3 w-3', isSelectedLoading && 'animate-spin')} /> Regenerate
           </Button>
           <div className="flex-1" />
           <Button
