@@ -537,6 +537,7 @@ function CatchUpTab({ enabled }: { enabled: boolean; onNavigate: (path: string) 
 // ── Email sub-tab types (shared classifier) ────────────────────
 import { classifyEmail, filterEmailsByCategory, EMAIL_CATEGORY_TABS, type EmailCategoryTab } from '@/utils/emailClassifier';
 import { useEmailClassifierData } from '@/hooks/useEmailClassifierData';
+import { useAutoEmailLabelEvaluator } from '@/hooks/useAutoEmailLabelEvaluator';
 
 // ── Tab: Email ─────────────────────────────────────────────────
 function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onNavigate: (path: string) => void; targetUserId?: string }) {
@@ -544,6 +545,7 @@ function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onN
   const [detail, setDetail] = useState<any>(null);
   const [subTab, setSubTab] = useState<EmailCategoryTab>('all');
   const { entities: classifierEntities, orgCtx } = useEmailClassifierData();
+  const { evaluate: evaluateAutoLabels } = useAutoEmailLabelEvaluator();
 
   if (isLoading || !data) return <TabSkeleton />;
 
