@@ -14,7 +14,8 @@ export const Logo = ({ className = "h-3" }: LogoProps) => {
     <img 
       src={logoSrc} 
       alt="naitive" 
-      className={className}
+      className={`${className} w-auto shrink-0 object-contain`}
+      style={{ aspectRatio: 'auto' }}
     />
   );
 };
