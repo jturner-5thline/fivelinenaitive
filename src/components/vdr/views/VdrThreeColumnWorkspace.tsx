@@ -567,6 +567,22 @@ export function VdrThreeColumnWorkspace({
           ) : (
             <ContextMenuItem onClick={() => moveToInternal([doc.id])}>Move to Internal</ContextMenuItem>
           )}
+          {categoryNames.length > 0 && (
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>Move to category</ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                {categoryNames.map(cat => (
+                  <ContextMenuItem key={cat} onClick={() => moveToCategory([doc.id], cat)}>
+                    {cat}
+                  </ContextMenuItem>
+                ))}
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={() => moveToCategory([doc.id], null)}>
+                  Uncategorized
+                </ContextMenuItem>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          )}
           <ContextMenuItem onClick={() => { setRenameDialog({ id: doc.id, currentName: doc.filename }); setRenameName(doc.filename); }}>
             Rename
           </ContextMenuItem>
