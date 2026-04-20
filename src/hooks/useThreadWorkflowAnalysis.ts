@@ -112,6 +112,10 @@ const STATUS_STAGE_MAP: Record<string, { stage: string; trackingStatus: string; 
   follow_up:    { stage: 'engaged',        trackingStatus: 'active',  closes: false },
 };
 
+type DealLenderInsert = Database['public']['Tables']['deal_lenders']['Insert'];
+type DealLenderUpdate = Database['public']['Tables']['deal_lenders']['Update'];
+type LenderDisqualificationInsert = Database['public']['Tables']['lender_disqualifications']['Insert'];
+
 /**
  * useThreadWorkflowAnalysis
  * --------------------------
