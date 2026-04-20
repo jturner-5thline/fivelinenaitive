@@ -712,6 +712,22 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
         });
     }
 
+    // Model selection — for generate_draft_options, prefer the faster/cheaper
+    // gemini-2.5-flash-lite when the client requests `fastModel: true` (default
+    // for the AI Assist sidebar's initial open). Heavier model is reserved for
+    // explicit "Regenerate" actions.
+    const selectedModel = action === "generate_draft_options"
+      ? (fastModel === false ? "google/gemini-2.5-flash" : "google/gemini-2.5-flash-lite")
+      : action === "analyze_thread_workflow"
+        ? "google/gemini-2.5-flash"
+        : "google/gemini-3-flash-preview";
+
+    // Cap output tokens for draft options so the model can't run away.
+    const maxTokensForAction =
+      action === "generate_draft_options" ? (singleTone ? 600 : 1100) : undefined;
+
+    const t0 = Date.now();
+    console.log(`[smart-email-ai] action=${action} model=${selectedModel} singleTone=${singleTone || "none"} threadEmails=${threadData?.emails?.length || 0}`);
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -719,12 +735,13 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: action === "generate_draft_options" ? "google/gemini-2.5-flash" : action === "analyze_thread_workflow" ? "google/gemini-2.5-flash" : "google/gemini-3-flash-preview",
+        model: selectedModel,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
         temperature: (action === "draft_reply" || action === "auto_draft" || action === "generate_draft_options") ? 0.7 : 0.3,
+        ...(maxTokensForAction ? { max_tokens: maxTokensForAction } : {}),
       }),
     });
 
