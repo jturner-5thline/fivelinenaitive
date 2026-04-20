@@ -132,9 +132,10 @@ function buildContextString(ctx: any, companyName: string, userName: string) {
     lines.push(`## Deals (${deals.length} total, showing active)`);
     const activeDeals = deals.filter((d: any) => d.status === "active").slice(0, 30);
     activeDeals.forEach((d: any) => {
-      const last = new Date(d.last_activity_at || d.updated_at || d.created_at);
+      const last = new Date(d.updated_at || d.created_at);
       const daysAgo = Math.floor((Date.now() - last.getTime()) / 86_400_000);
-      lines.push(`- ${d.company}: $${(d.value / 1e6).toFixed(1)}M | stage: ${d.stage}${d.industry ? ` | ${d.industry}` : ""} | last activity: ${daysAgo}d ago`);
+      const valueM = d.value ? `$${(d.value / 1e6).toFixed(1)}M` : "n/a";
+      lines.push(`- ${d.company}: ${valueM} | stage: ${d.stage}${d.business_model ? ` | ${d.business_model}` : ""} | last update: ${daysAgo}d ago`);
     });
   }
 
