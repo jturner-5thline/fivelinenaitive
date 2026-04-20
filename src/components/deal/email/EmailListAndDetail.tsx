@@ -58,6 +58,8 @@ import { LenderPassBanner } from './LenderPassBanner';
 import { useLenderPassDetection } from '@/hooks/useLenderPassDetection';
 import { SendToDataRoomDialog } from './SendToDataRoomDialog';
 import { FolderPlus } from 'lucide-react';
+import { useAutoEmailLabelEvaluator } from '@/hooks/useAutoEmailLabelEvaluator';
+import type { EmailLabel } from '@/hooks/useEmailLabels';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -167,9 +169,10 @@ interface ThreadListItemProps {
   onMarkUnread?: (email: MockEmail) => void;
   onArchive?: (email: MockEmail) => void;
   onDelete?: (email: MockEmail) => void;
+  autoLabels?: EmailLabel[];
 }
 
-function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete }: ThreadListItemProps) {
+function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels }: ThreadListItemProps) {
   const [hovered, setHovered] = useState(false);
   const latest = thread.latestEmail;
   const displayName = latest.folder === 'sent' ? `To: ${latest.to_name || latest.to_email}` : latest.from_name;
@@ -265,6 +268,21 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
                 {thread.dealName}
               </Badge>
             )}
+            {autoLabels?.map(lbl => (
+              <Badge
+                key={lbl.id}
+                variant="outline"
+                className="text-[9px] h-[16px] px-1 gap-0.5 shrink-0"
+                style={{
+                  borderColor: `${lbl.color}55`,
+                  backgroundColor: `${lbl.color}1F`,
+                  color: lbl.color,
+                }}
+                title={lbl.description || lbl.name}
+              >
+                {lbl.name}
+              </Badge>
+            ))}
             <p className="text-[11px] text-[hsl(var(--email-text-muted))] truncate">
               {latest.snippet}
             </p>
@@ -342,6 +360,7 @@ interface EmailListProps {
 }
 
 export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink, onToggleStar, isLoading, selectedIds, onSelectionChange, onMarkRead, onMarkUnread, onArchive, onDelete }: EmailListProps) {
+  const { evaluate: evaluateAutoLabels } = useAutoEmailLabelEvaluator();
   if (isLoading) {
     return <EmailListSkeleton />;
   }
@@ -382,6 +401,7 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
             onMarkUnread={onMarkUnread}
             onArchive={onArchive}
             onDelete={onDelete}
+            autoLabels={evaluateAutoLabels(thread.latestEmail)}
           />
         ))}
       </div>
