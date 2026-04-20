@@ -31,7 +31,7 @@ serve(async (req) => {
     }
 
     const requestBody = await req.json();
-    const { action, dealId, emailData, threadData, draftType, customInstructions, optionCount } = requestBody;
+    const { action, dealId, emailData, threadData, draftType, customInstructions, optionCount, singleTone, fastModel } = requestBody;
     const attachments = Array.isArray(requestBody?.attachments) ? requestBody.attachments : [];
 
     // Validate input lengths
