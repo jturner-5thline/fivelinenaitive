@@ -233,6 +233,11 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const dragStartX = useRef(0);
   const dragStartWidth = useRef(0);
 
+  // ─── Folder rail: collapsed (icons only) by default, hover-expand, pin to keep open ───
+  const [pinnedOpen, setPinnedOpen] = useUiPreference<boolean>('email_folder_rail_pinned', false);
+  const [railHovered, setRailHovered] = useState(false);
+  const railExpanded = pinnedOpen || railHovered;
+
   const inboxWidth = liveInboxWidth ?? savedInboxWidth;
 
   const [isResizing, setIsResizing] = useState(false);
