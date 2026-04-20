@@ -9,9 +9,6 @@ import {
   Check,
   RefreshCw,
   AlertTriangle,
-  Briefcase,
-  ChevronDown,
-  ChevronUp,
   ArrowRight,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
@@ -78,22 +75,6 @@ interface Props {
   onInsertDraft: (subject: string, body: string) => void;
 }
 
-const SOURCE_LABELS: Record<string, string> = {
-  deal_metadata: 'Deal info',
-  deal_writeup: 'Writeup',
-  deal_lenders: 'Lenders',
-  milestones: 'Milestones',
-  recent_activity: 'Activity',
-  deal_notes: 'Notes',
-  email_thread_only: 'Email only',
-};
-
-const CONFIDENCE_TONE: Record<string, string> = {
-  high: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/5',
-  medium: 'text-amber-400 border-amber-500/30 bg-amber-500/5',
-  low: 'text-red-400 border-red-500/30 bg-red-500/5',
-};
-
 export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDraft }: Props) {
   // `loadingTones` tracks per-tone in-flight requests (so the panel can render
   // skeletons selectively). The shell never blocks on either.
@@ -101,7 +82,6 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DraftResult | null>(null);
   const [selected, setSelected] = useState<ToneKey>('balanced');
-  const [showSources, setShowSources] = useState(false);
   const [drDismissed, setDrDismissed] = useState(false);
   const [drDialogOpen, setDrDialogOpen] = useState(false);
   const [drSuggestion, setDrSuggestion] = useState<DataRoomDestinationSuggestion | null>(null);
