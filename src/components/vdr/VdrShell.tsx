@@ -356,13 +356,6 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
 
   return (
     <div className={cn("flex overflow-hidden divide-x divide-border/50", embedded ? "h-full w-full bg-card" : "h-screen w-screen bg-background")}>
-      <VdrSidebar
-        dealId={dealId}
-        deals={deals}
-        currentDeal={currentDeal}
-        onFilesDropped={handleFilesDropped}
-      />
-
       <div className="flex-1 flex min-w-0 min-h-0">
         <ResizablePanelGroup direction="horizontal" className="flex-1">
           <ResizablePanel defaultSize={previewDoc ? 65 : 100} minSize={40}>
