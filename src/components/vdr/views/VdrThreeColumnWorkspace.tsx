@@ -78,8 +78,11 @@ export function VdrThreeColumnWorkspace({
   // Collapsed category sections (per column)
   const [collapsedInternal, setCollapsedInternal] = useState<Set<string>>(new Set());
   const [collapsedDataroom, setCollapsedDataroom] = useState<Set<string>>(new Set());
-  // Manually-checked checklist items (independent from file-pane filtering)
+  // Manual overrides for checklist items (independent from file-pane filtering).
+  // - manuallyCheckedChecklist: items user explicitly checked (when not auto-mapped)
+  // - manuallyUncheckedChecklist: items user explicitly unchecked (overrides auto-mapped state)
   const [manuallyCheckedChecklist, setManuallyCheckedChecklist] = useState<Set<string>>(new Set());
+  const [manuallyUncheckedChecklist, setManuallyUncheckedChecklist] = useState<Set<string>>(new Set());
 
   // Per-column selection
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
