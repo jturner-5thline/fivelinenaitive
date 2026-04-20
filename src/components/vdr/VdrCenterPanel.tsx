@@ -1,6 +1,5 @@
 import type { VdrDocument } from './types';
-import type { VdrView } from './VdrSidebar';
-import { VdrChatDataroom } from './views/VdrChatDataroom';
+import { VdrThreeColumnWorkspace } from './views/VdrThreeColumnWorkspace';
 
 interface VdrCenterPanelProps {
   dealId: string;
@@ -14,13 +13,12 @@ interface VdrCenterPanelProps {
   dealType?: string | null;
   companyId?: string | null;
   mappingRefreshKey?: number;
-  activeView?: VdrView;
 }
 
-export function VdrCenterPanel({ dealId, documents, documentsLoading, onPreview, vdrDocs, canPushToFlex, isPushingToFlex, onPushToFlex, dealType, companyId, mappingRefreshKey, activeView = 'internal' }: VdrCenterPanelProps) {
+export function VdrCenterPanel({ dealId, documents, documentsLoading, onPreview, vdrDocs, canPushToFlex, isPushingToFlex, onPushToFlex, companyId, mappingRefreshKey }: VdrCenterPanelProps) {
   return (
     <div className="flex flex-col h-full min-w-0">
-      <VdrChatDataroom
+      <VdrThreeColumnWorkspace
         dealId={dealId}
         documents={documents}
         documentsLoading={documentsLoading}
@@ -29,10 +27,8 @@ export function VdrCenterPanel({ dealId, documents, documentsLoading, onPreview,
         canPushToFlex={canPushToFlex}
         isPushingToFlex={isPushingToFlex}
         onPushToFlex={onPushToFlex}
-        dealType={dealType}
         companyId={companyId}
         mappingRefreshKey={mappingRefreshKey}
-        activeView={activeView}
       />
     </div>
   );

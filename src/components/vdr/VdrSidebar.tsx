@@ -1,18 +1,18 @@
 import { useState, useCallback, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { FolderLock, FolderOpen, Upload } from 'lucide-react';
+import { Upload } from 'lucide-react';
 import type { Deal } from '@/types/deal';
 
-export type VdrView = 'internal' | 'dataroom';
+export type VdrView = 'workspace';
 
 interface VdrSidebarProps {
   dealId: string;
   deals: Deal[];
   currentDeal: Deal | undefined;
   onFilesDropped?: (files: File[]) => void;
-  activeView: VdrView;
-  onViewChange: (view: VdrView) => void;
+  activeView?: VdrView;
+  onViewChange?: (view: VdrView) => void;
 }
 
 function getStatusBadge(status: string | undefined) {
@@ -29,8 +29,6 @@ export function VdrSidebar({
   deals,
   currentDeal,
   onFilesDropped,
-  activeView,
-  onViewChange,
 }: VdrSidebarProps) {
   const statusBadge = getStatusBadge(currentDeal?.status);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -77,31 +75,12 @@ export function VdrSidebar({
         </div>
       </div>
 
-      {/* Views */}
+      {/* Workspace hint */}
       <div className="px-4 pb-3 space-y-1.5">
-        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">Views</p>
-        <div className="space-y-0.5">
-          <button
-            onClick={() => onViewChange('internal')}
-            className={cn(
-              "flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs font-medium transition-colors",
-              activeView === 'internal' ? "text-foreground bg-secondary/50" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-            )}
-          >
-            <FolderLock className="h-3.5 w-3.5 text-muted-foreground" />
-            Internal
-          </button>
-          <button
-            onClick={() => onViewChange('dataroom')}
-            className={cn(
-              "flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs font-medium transition-colors",
-              activeView === 'dataroom' ? "text-foreground bg-secondary/50" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-            )}
-          >
-            <FolderOpen className="h-3.5 w-3.5 text-muted-foreground" />
-            Data Room
-          </button>
-        </div>
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">Workspace</p>
+        <p className="text-[11px] text-muted-foreground leading-snug">
+          Checklist, Internal staging, and the external Data Room are all visible side-by-side. Drag files between columns to share or unshare.
+        </p>
       </div>
 
       <div className="flex-1" />
