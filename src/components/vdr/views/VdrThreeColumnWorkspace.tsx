@@ -457,7 +457,9 @@ export function VdrThreeColumnWorkspace({
       );
     }
     const sorted = [...round.items].sort((a, b) => a.order - b.order);
-    const isChecked = (id: string) => mappedChecklistIds.has(id) || manuallyCheckedChecklist.has(id);
+    const isChecked = (id: string) =>
+      !manuallyUncheckedChecklist.has(id) &&
+      (mappedChecklistIds.has(id) || manuallyCheckedChecklist.has(id));
     const completed = sorted.filter(i => isChecked(i.id)).length;
     return (
       <div className="px-2 py-2">
@@ -468,8 +470,9 @@ export function VdrThreeColumnWorkspace({
         <div className="space-y-0.5">
           {sorted.map(item => {
             const isMapped = mappedChecklistIds.has(item.id);
-            const isManual = manuallyCheckedChecklist.has(item.id);
-            const checked = isMapped || isManual;
+            const isManualChecked = manuallyCheckedChecklist.has(item.id);
+            const isManualUnchecked = manuallyUncheckedChecklist.has(item.id);
+            const checked = !isManualUnchecked && (isMapped || isManualChecked);
             const fileCount = checklistFileMap.get(item.id)?.size || 0;
             return (
               <div
@@ -480,14 +483,29 @@ export function VdrThreeColumnWorkspace({
                   type="button"
                   aria-label={checked ? `Mark ${item.label} incomplete` : `Mark ${item.label} complete`}
                   onClick={() => {
-                    setManuallyCheckedChecklist(prev => {
-                      const n = new Set(prev);
-                      // If auto-mapped, manual toggle just adds an "explicit uncheck" override is not supported —
-                      // mapped state remains source of truth. Only allow toggling when not auto-mapped.
-                      if (isMapped) return prev;
-                      if (n.has(item.id)) n.delete(item.id); else n.add(item.id);
-                      return n;
-                    });
+                    if (checked) {
+                      // Uncheck: remove manual check, and if auto-mapped, add manual uncheck override
+                      setManuallyCheckedChecklist(prev => {
+                        if (!prev.has(item.id)) return prev;
+                        const n = new Set(prev); n.delete(item.id); return n;
+                      });
+                      if (isMapped) {
+                        setManuallyUncheckedChecklist(prev => {
+                          const n = new Set(prev); n.add(item.id); return n;
+                        });
+                      }
+                    } else {
+                      // Check: clear any uncheck override and add manual check
+                      setManuallyUncheckedChecklist(prev => {
+                        if (!prev.has(item.id)) return prev;
+                        const n = new Set(prev); n.delete(item.id); return n;
+                      });
+                      if (!isMapped) {
+                        setManuallyCheckedChecklist(prev => {
+                          const n = new Set(prev); n.add(item.id); return n;
+                        });
+                      }
+                    }
                   }}
                   className={cn(
                     'mt-0.5 h-3.5 w-3.5 rounded-sm border flex items-center justify-center flex-shrink-0 transition-colors',
@@ -495,8 +513,7 @@ export function VdrThreeColumnWorkspace({
                       ? 'bg-emerald-500/20 border-emerald-500/40 hover:bg-emerald-500/30'
                       : item.required
                         ? 'border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10'
-                        : 'border-border/60 hover:bg-secondary/60',
-                    isMapped && 'cursor-default'
+                        : 'border-border/60 hover:bg-secondary/60'
                   )}
                 >
                   {checked && <CheckCircle2 className="h-2.5 w-2.5 text-emerald-400" />}
