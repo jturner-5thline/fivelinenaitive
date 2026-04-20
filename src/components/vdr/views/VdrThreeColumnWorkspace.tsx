@@ -73,12 +73,13 @@ export function VdrThreeColumnWorkspace({
 }: Props) {
   // Shared state
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedChecklistId, setSelectedChecklistId] = useState<string | null>(null);
   // Active category context — uploads and new files default to this
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   // Collapsed category sections (per column)
   const [collapsedInternal, setCollapsedInternal] = useState<Set<string>>(new Set());
   const [collapsedDataroom, setCollapsedDataroom] = useState<Set<string>>(new Set());
+  // Manually-checked checklist items (independent from file-pane filtering)
+  const [manuallyCheckedChecklist, setManuallyCheckedChecklist] = useState<Set<string>>(new Set());
 
   // Per-column selection
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
@@ -191,27 +192,14 @@ export function VdrThreeColumnWorkspace({
     [documents]
   );
 
-  // Filter by search + selected checklist item
-  const filenamesForSelectedChecklist = useMemo(() => {
-    if (!selectedChecklistId) return null;
-    const uIds = checklistFileMap.get(selectedChecklistId);
-    if (!uIds) return new Set<string>();
-    const names = new Set<string>();
-    uIds.forEach(uid => {
-      const n = uploadedItemNames.get(uid);
-      if (n) names.add(n);
-    });
-    return names;
-  }, [selectedChecklistId, checklistFileMap, uploadedItemNames]);
-
+  // Filter by search only — checklist clicks no longer filter the file panes
   const filterDocs = useCallback((docs: VdrDocument[]) => {
     const q = searchQuery.trim().toLowerCase();
     return docs.filter(d => {
       if (q && !d.filename.toLowerCase().includes(q)) return false;
-      if (filenamesForSelectedChecklist && !filenamesForSelectedChecklist.has(d.filename)) return false;
       return true;
     });
-  }, [searchQuery, filenamesForSelectedChecklist]);
+  }, [searchQuery]);
 
   const visibleInternal = useMemo(() => filterDocs(internalDocs), [filterDocs, internalDocs]);
   const visibleDataroom = useMemo(() => filterDocs(dataroomDocs), [filterDocs, dataroomDocs]);
@@ -466,7 +454,8 @@ export function VdrThreeColumnWorkspace({
       );
     }
     const sorted = [...round.items].sort((a, b) => a.order - b.order);
-    const completed = sorted.filter(i => mappedChecklistIds.has(i.id)).length;
+    const isChecked = (id: string) => mappedChecklistIds.has(id) || manuallyCheckedChecklist.has(id);
+    const completed = sorted.filter(i => isChecked(i.id)).length;
     return (
       <div className="px-2 py-2">
         <div className="flex items-center justify-between px-1 mb-1">
@@ -476,33 +465,45 @@ export function VdrThreeColumnWorkspace({
         <div className="space-y-0.5">
           {sorted.map(item => {
             const isMapped = mappedChecklistIds.has(item.id);
-            const isSelected = selectedChecklistId === item.id;
+            const isManual = manuallyCheckedChecklist.has(item.id);
+            const checked = isMapped || isManual;
             const fileCount = checklistFileMap.get(item.id)?.size || 0;
             return (
-              <button
+              <div
                 key={item.id}
-                onClick={() => setSelectedChecklistId(isSelected ? null : item.id)}
-                className={cn(
-                  'w-full flex items-start gap-2 py-1.5 px-2 rounded-md text-left text-xs transition-colors',
-                  isSelected ? 'bg-primary/10 ring-1 ring-primary/30' : 'hover:bg-secondary/40'
-                )}
+                className="w-full flex items-start gap-2 py-1.5 px-2 rounded-md text-left text-xs transition-colors hover:bg-secondary/40"
               >
-                <div className={cn(
-                  'mt-0.5 h-3.5 w-3.5 rounded-sm border flex items-center justify-center flex-shrink-0',
-                  isMapped
-                    ? 'bg-emerald-500/20 border-emerald-500/40'
-                    : item.required
-                      ? 'border-amber-500/40 bg-amber-500/5'
-                      : 'border-border/60'
-                )}>
-                  {isMapped && <CheckCircle2 className="h-2.5 w-2.5 text-emerald-400" />}
-                </div>
-                <div className="flex-1 min-w-0">
+                <button
+                  type="button"
+                  aria-label={checked ? `Mark ${item.label} incomplete` : `Mark ${item.label} complete`}
+                  onClick={() => {
+                    setManuallyCheckedChecklist(prev => {
+                      const n = new Set(prev);
+                      // If auto-mapped, manual toggle just adds an "explicit uncheck" override is not supported —
+                      // mapped state remains source of truth. Only allow toggling when not auto-mapped.
+                      if (isMapped) return prev;
+                      if (n.has(item.id)) n.delete(item.id); else n.add(item.id);
+                      return n;
+                    });
+                  }}
+                  className={cn(
+                    'mt-0.5 h-3.5 w-3.5 rounded-sm border flex items-center justify-center flex-shrink-0 transition-colors',
+                    checked
+                      ? 'bg-emerald-500/20 border-emerald-500/40 hover:bg-emerald-500/30'
+                      : item.required
+                        ? 'border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10'
+                        : 'border-border/60 hover:bg-secondary/60',
+                    isMapped && 'cursor-default'
+                  )}
+                >
+                  {checked && <CheckCircle2 className="h-2.5 w-2.5 text-emerald-400" />}
+                </button>
+                <div className="flex-1 min-w-0 select-none">
                   <div className="flex items-center gap-1.5">
-                    <span className={cn('leading-tight truncate', isMapped && 'text-muted-foreground')}>
+                    <span className={cn('leading-tight truncate', checked && 'text-muted-foreground')}>
                       {item.label}
                     </span>
-                    {item.required && !isMapped && (
+                    {item.required && !checked && (
                       <span className="text-[9px] text-amber-400 font-medium flex-shrink-0">REQ</span>
                     )}
                   </div>
@@ -512,7 +513,7 @@ export function VdrThreeColumnWorkspace({
                     </span>
                   )}
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -726,21 +727,6 @@ export function VdrThreeColumnWorkspace({
               <PackagePlus className="h-3 w-3" /> Bulk
             </Button>
           </div>
-
-          {selectedChecklistId && (
-            <div className="px-3 py-1.5 bg-primary/5 border-b border-white/5 flex items-center gap-2">
-              <span className="text-[10px] text-muted-foreground">Filtering files by:</span>
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                {checklistItemsForMapping.find(i => i.id === selectedChecklistId)?.name || '—'}
-              </Badge>
-              <button
-                onClick={() => setSelectedChecklistId(null)}
-                className="ml-auto text-[10px] text-muted-foreground hover:text-foreground"
-              >
-                Clear
-              </button>
-            </div>
-          )}
 
           <div className="flex-1 overflow-auto">
             {checklistLoading ? (
