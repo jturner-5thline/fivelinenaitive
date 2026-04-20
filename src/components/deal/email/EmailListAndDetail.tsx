@@ -63,6 +63,7 @@ import type { EmailLabel } from '@/hooks/useEmailLabels';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { EmailCategoryChips } from './EmailCategoryChips';
 
 // ─── Sentiment badge ─────────────────────────────────────────
 function SentimentBadge({ sentiment }: { sentiment?: MockEmail['ai_sentiment'] }) {
@@ -268,6 +269,7 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
                 {thread.dealName}
               </Badge>
             )}
+            <EmailCategoryChips email={latest} />
             {autoLabels?.map(lbl => (
               <Badge
                 key={lbl.id}
