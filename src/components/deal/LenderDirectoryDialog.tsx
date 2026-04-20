@@ -18,6 +18,28 @@ import { Virtuoso } from 'react-virtuoso';
 import { cn } from '@/lib/utils';
 import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderDetailDialog';
 import { toast } from 'sonner';
+import { MultiSelectFilter } from '@/components/deals/MultiSelectFilter';
+import { Badge } from '@/components/ui/badge';
+
+// Parse a raw lender_type string into a list of normalized atomic tags.
+// - splits on commas
+// - trims whitespace, collapses repeated whitespace
+// - filters out emails, urls, phone-like strings, and obvious junk
+function parseTypeTags(value: string | null | undefined): string[] {
+  if (!value || typeof value !== 'string') return [];
+  return value
+    .split(',')
+    .map(s => s.replace(/\s+/g, ' ').trim())
+    .filter(s => {
+      if (!s) return false;
+      if (s.length > 60) return false;
+      if (/[@]/.test(s)) return false; // emails
+      if (/^https?:\/\//i.test(s)) return false; // urls
+      if (/^\+?\d[\d\s().-]{6,}$/.test(s)) return false; // phone numbers
+      if (!/[a-zA-Z]/.test(s)) return false; // must contain letters
+      return true;
+    });
+}
 
 interface LenderDirectoryDialogProps {
   existingLenderNames: string[];
@@ -121,7 +143,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
 }: LenderDirectoryDialogProps) {
   const { lenders: masterLenders, loading, updateLender } = useMasterLenders();
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [tierFilter, setTierFilter] = useState<string>('all');
   const [groupByTier, setGroupByTier] = useState(true);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
@@ -225,9 +247,14 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
   const existingSet = useMemo(() => new Set(existingLenderNames.map(n => n.toLowerCase())), [existingLenderNames]);
 
   const lenderTypes = useMemo(() => {
-    const types = new Set<string>();
-    masterLenders.forEach(l => { if (l.lender_type) types.add(l.lender_type); });
-    return Array.from(types).sort();
+    const seen = new Map<string, string>(); // lower -> canonical
+    masterLenders.forEach(l => {
+      parseTypeTags(l.lender_type).forEach(tag => {
+        const key = tag.toLowerCase();
+        if (!seen.has(key)) seen.set(key, tag);
+      });
+    });
+    return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
   }, [masterLenders]);
 
   const handleHeaderClick = useCallback((key: string, sortable: boolean) => {
@@ -252,14 +279,18 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
       const q = search.toLowerCase().replace(/\s+/g, '');
       list = list.filter(l => l.name.toLowerCase().replace(/\s+/g, '').includes(q));
     }
-    if (typeFilter !== 'all') {
-      list = list.filter(l => l.lender_type === typeFilter);
+    if (selectedTypes.length > 0) {
+      const wanted = selectedTypes.map(t => t.toLowerCase());
+      list = list.filter(l => {
+        const tags = parseTypeTags(l.lender_type).map(t => t.toLowerCase());
+        return wanted.some(w => tags.includes(w));
+      });
     }
     if (tierFilter !== 'all') {
       list = list.filter(l => (l.tier || 'None') === tierFilter);
     }
     return list;
-  }, [masterLenders, search, typeFilter, tierFilter]);
+  }, [masterLenders, search, selectedTypes, tierFilter]);
 
   const sorted = useMemo(() => {
     const items = filtered.map(l => ({ ...l, isOnDeal: existingSet.has(l.name.toLowerCase()) }));
@@ -350,14 +381,13 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Search lenders..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
           </div>
-          <select
-            value={typeFilter}
-            onChange={e => setTypeFilter(e.target.value)}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-          >
-            <option value="all">All Types</option>
-            {lenderTypes.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+          <MultiSelectFilter
+            label="All Types"
+            options={lenderTypes.map(t => ({ value: t, label: t }))}
+            selected={selectedTypes}
+            onChange={setSelectedTypes}
+            className="h-9 w-[200px]"
+          />
           <select
             value={tierFilter}
             onChange={e => setTierFilter(e.target.value)}
@@ -382,6 +412,30 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
             {sorted.length} lenders · {totalOnDeal} on deal
           </div>
         </div>
+        {selectedTypes.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            {selectedTypes.map(t => (
+              <Badge key={t} variant="secondary" className="gap-1 pl-2 pr-1 py-0.5 text-xs">
+                {t}
+                <button
+                  type="button"
+                  onClick={() => setSelectedTypes(prev => prev.filter(x => x !== t))}
+                  className="rounded hover:bg-muted-foreground/20 p-0.5"
+                  aria-label={`Remove ${t}`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+            <button
+              type="button"
+              onClick={() => setSelectedTypes([])}
+              className="text-xs text-muted-foreground hover:text-foreground ml-1"
+            >
+              Clear
+            </button>
+          </div>
+        )}
       </DialogHeader>
 
       <div className="flex-1 overflow-hidden">
