@@ -429,8 +429,8 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             />
           )}
 
-          {/* Result */}
-          {!loading && !error && result && (
+          {/* Draft area — always rendered as a shell so the panel never blocks. */}
+          {!error && (
             <>
               {/* Context snapshot */}
               <div className="rounded-md border border-white/[0.06] bg-background/40 p-3 space-y-2">
@@ -439,7 +439,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                   <span className="text-[11px] font-medium text-foreground/90 truncate">
                     {dealName || 'Email-only context'}
                   </span>
-                  {result.confidence && (
+                  {result?.confidence && (
                     <Badge
                       variant="outline"
                       className={cn(
@@ -451,12 +451,14 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                     </Badge>
                   )}
                 </div>
-                {result.detected_intent && (
+                {result?.detected_intent ? (
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
                     {result.detected_intent}
                   </p>
+                ) : (
+                  <Skeleton className="h-3 w-3/4" />
                 )}
-                {result.cited_context_sources && result.cited_context_sources.length > 0 && (
+                {result?.cited_context_sources && result.cited_context_sources.length > 0 && (
                   <div>
                     <button
                       onClick={() => setShowSources((s) => !s)}
