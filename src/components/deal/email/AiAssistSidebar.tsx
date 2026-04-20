@@ -30,31 +30,44 @@ import { useEmailToDataRoom, type DataRoomDestinationSuggestion } from '@/hooks/
 /**
  * AiAssistSidebar
  * ----------------
- * Right-side sidebar that lives inside the email popup border. Generates 3
- * draft reply options (Concise / Balanced / Detailed) using the
- * `smart-email-ai` edge function with full deal context (deal metadata,
- * writeup, lenders, milestones, recent activity, notes).
+ * Right-side sidebar that lives inside the email popup border. Generates 2
+ * draft reply options (Concise / Balanced) using the `smart-email-ai`
+ * edge function with full deal context (deal metadata, writeup, lenders,
+ * milestones, recent activity, notes).
  *
- * The user picks an option and clicks "Insert into reply" — the chosen
- * draft body is passed up to the parent which loads it into the existing
- * inline reply composer for review and sending.
+ * Speed model:
+ *   • Renders the shell + skeletons immediately (sub-200ms perceived load).
+ *   • Generates only the *Balanced* draft on open (single-tone, fast model).
+ *   • Generates *Concise* lazily the first time the user clicks that tab.
+ *   • Caches per-thread/per-tone in sessionStorage so re-opening the same
+ *     thread is instant and tone switches use the cached version.
+ *   • 8s timeout with a graceful fallback message.
+ *   • Workflow Intelligence and draft generation run in parallel.
  */
 
 interface DraftOption {
-  index: 1 | 2 | 3;
+  index: number;
   subject: string;
   body: string;
-  toneLabel: string;
+  toneLabel: string;          // "Concise" | "Balanced"
+  toneKey: ToneKey;           // canonical key
   rationale: string;
 }
+
+type ToneKey = 'concise' | 'balanced';
+const TONE_ORDER: ToneKey[] = ['concise', 'balanced'];
+const TONE_LABELS: Record<ToneKey, string> = {
+  concise: 'Concise',
+  balanced: 'Balanced',
+};
 
 interface DraftResult {
   detected_intent?: string;
   confidence?: 'high' | 'medium' | 'low';
   used_deal_context?: boolean;
-  recommended_option?: 1 | 2 | 3;
+  recommended_tone?: ToneKey;
   cited_context_sources?: string[];
-  options: DraftOption[];
+  options: Partial<Record<ToneKey, DraftOption>>;
 }
 
 interface Props {
