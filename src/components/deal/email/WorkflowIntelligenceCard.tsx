@@ -97,12 +97,66 @@ export function WorkflowIntelligenceCard({
   onDismiss,
   onMaybeLater,
 }: Props) {
-  const [editing, setEditing] = useState(false);
-  const [reason, setReason] = useState(analysis.recommended_update.reason_note || '');
-
   const rec = analysis.recommended_update;
   const hasUpdate = rec.kind !== 'none' && !!rec.title;
   const needsDealLink = !hasLinkedDeal && !!analysis.likely_deal.id && rec.kind !== 'none';
+  const aiSuggestedStatus = normalizeSuggested(rec.new_stage);
+
+  const [editing, setEditing] = useState(false);
+  const [reason, setReason] = useState(rec.reason_note || '');
+  const [confirmedStatus, setConfirmedStatus] = useState<string>(aiSuggestedStatus);
+  const [renderedKey, setRenderedKey] = useState<string | null>(null);
+
+  // Reset local state when the underlying analysis changes (e.g. new email).
+  // Tracked by signal+lender+stage so we don't clobber an in-progress edit.
+  const analysisKey = `${analysis.signal.type}::${rec.lender_id || rec.lender_name}::${rec.new_stage}`;
+  if (renderedKey !== analysisKey) {
+    setRenderedKey(analysisKey);
+    setConfirmedStatus(aiSuggestedStatus);
+    setReason(rec.reason_note || '');
+    if (hasUpdate && rec.kind === 'lender_status') {
+      logAnalytics('ai_suggested_update_rendered', {
+        deal_id: rec.deal_id || analysis.likely_deal.id,
+        lender_id: rec.lender_id,
+        lender_name: rec.lender_name,
+        ai_suggested_status: aiSuggestedStatus,
+        signal_type: analysis.signal.type,
+        confidence: rec.confidence,
+      });
+    }
+  }
+
+  const userOverrodeSuggestion = confirmedStatus !== aiSuggestedStatus;
+  const isLenderStatus = rec.kind === 'lender_status';
+  const lenderResolved = !isLenderStatus || !!rec.lender_id;
+  const dealResolved = !!(rec.deal_id || analysis.likely_deal.id);
+  const canConfirm = !committing && !needsDealLink && lenderResolved && dealResolved;
+
+  const handleStatusChange = (next: string) => {
+    setConfirmedStatus(next);
+    logAnalytics('ai_suggested_update_modified', {
+      deal_id: rec.deal_id,
+      lender_id: rec.lender_id,
+      lender_name: rec.lender_name,
+      original_suggested_status: aiSuggestedStatus,
+      final_confirmed_status: next,
+    });
+  };
+
+  const handleConfirm = () => {
+    logAnalytics('ai_suggested_update_confirmed', {
+      deal_id: rec.deal_id,
+      lender_id: rec.lender_id,
+      lender_name: rec.lender_name,
+      original_suggested_status: aiSuggestedStatus,
+      final_confirmed_status: confirmedStatus,
+      user_overrode_suggestion: userOverrodeSuggestion,
+    });
+    onConfirm({
+      reasonNote: reason || rec.reason_note || '',
+      confirmedStatus,
+    });
+  };
 
   return (
     <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-3 space-y-3">
