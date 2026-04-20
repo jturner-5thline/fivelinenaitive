@@ -454,7 +454,8 @@ export function VdrThreeColumnWorkspace({
       );
     }
     const sorted = [...round.items].sort((a, b) => a.order - b.order);
-    const completed = sorted.filter(i => mappedChecklistIds.has(i.id)).length;
+    const isChecked = (id: string) => mappedChecklistIds.has(id) || manuallyCheckedChecklist.has(id);
+    const completed = sorted.filter(i => isChecked(i.id)).length;
     return (
       <div className="px-2 py-2">
         <div className="flex items-center justify-between px-1 mb-1">
@@ -464,33 +465,45 @@ export function VdrThreeColumnWorkspace({
         <div className="space-y-0.5">
           {sorted.map(item => {
             const isMapped = mappedChecklistIds.has(item.id);
-            const isSelected = selectedChecklistId === item.id;
+            const isManual = manuallyCheckedChecklist.has(item.id);
+            const checked = isMapped || isManual;
             const fileCount = checklistFileMap.get(item.id)?.size || 0;
             return (
-              <button
+              <div
                 key={item.id}
-                onClick={() => setSelectedChecklistId(isSelected ? null : item.id)}
-                className={cn(
-                  'w-full flex items-start gap-2 py-1.5 px-2 rounded-md text-left text-xs transition-colors',
-                  isSelected ? 'bg-primary/10 ring-1 ring-primary/30' : 'hover:bg-secondary/40'
-                )}
+                className="w-full flex items-start gap-2 py-1.5 px-2 rounded-md text-left text-xs transition-colors hover:bg-secondary/40"
               >
-                <div className={cn(
-                  'mt-0.5 h-3.5 w-3.5 rounded-sm border flex items-center justify-center flex-shrink-0',
-                  isMapped
-                    ? 'bg-emerald-500/20 border-emerald-500/40'
-                    : item.required
-                      ? 'border-amber-500/40 bg-amber-500/5'
-                      : 'border-border/60'
-                )}>
-                  {isMapped && <CheckCircle2 className="h-2.5 w-2.5 text-emerald-400" />}
-                </div>
-                <div className="flex-1 min-w-0">
+                <button
+                  type="button"
+                  aria-label={checked ? `Mark ${item.label} incomplete` : `Mark ${item.label} complete`}
+                  onClick={() => {
+                    setManuallyCheckedChecklist(prev => {
+                      const n = new Set(prev);
+                      // If auto-mapped, manual toggle just adds an "explicit uncheck" override is not supported —
+                      // mapped state remains source of truth. Only allow toggling when not auto-mapped.
+                      if (isMapped) return prev;
+                      if (n.has(item.id)) n.delete(item.id); else n.add(item.id);
+                      return n;
+                    });
+                  }}
+                  className={cn(
+                    'mt-0.5 h-3.5 w-3.5 rounded-sm border flex items-center justify-center flex-shrink-0 transition-colors',
+                    checked
+                      ? 'bg-emerald-500/20 border-emerald-500/40 hover:bg-emerald-500/30'
+                      : item.required
+                        ? 'border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10'
+                        : 'border-border/60 hover:bg-secondary/60',
+                    isMapped && 'cursor-default'
+                  )}
+                >
+                  {checked && <CheckCircle2 className="h-2.5 w-2.5 text-emerald-400" />}
+                </button>
+                <div className="flex-1 min-w-0 select-none">
                   <div className="flex items-center gap-1.5">
-                    <span className={cn('leading-tight truncate', isMapped && 'text-muted-foreground')}>
+                    <span className={cn('leading-tight truncate', checked && 'text-muted-foreground')}>
                       {item.label}
                     </span>
-                    {item.required && !isMapped && (
+                    {item.required && !checked && (
                       <span className="text-[9px] text-amber-400 font-medium flex-shrink-0">REQ</span>
                     )}
                   </div>
@@ -500,7 +513,7 @@ export function VdrThreeColumnWorkspace({
                     </span>
                   )}
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
