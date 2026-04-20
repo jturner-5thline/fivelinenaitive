@@ -16,7 +16,7 @@ export const HomepageHeader = () => {
             className="text-white/80 hover:text-white hover:bg-white/10"
             asChild
           >
-            <Link to="/waitlist">Log in</Link>
+            <Link to="/login">Log in</Link>
           </Button>
           <Button 
             size="sm" 
