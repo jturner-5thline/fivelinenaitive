@@ -509,6 +509,43 @@ export function VdrThreeColumnWorkspace({
   const indexedCount = vdrDocs.ingestionStats?.complete || 0;
   const processingCount = vdrDocs.ingestionStats?.processing || 0;
 
+  // Data Room metrics
+  const totalDocsCount = useMemo(
+    () => documents.filter(d => !d.is_folder).length,
+    [documents]
+  );
+  const requiredItems = useMemo(() => {
+    const all = [...(initialRound?.items || []), ...(kickOffRound?.items || [])];
+    return all.filter(i => i.required);
+  }, [initialRound, kickOffRound]);
+  const requiredFulfilled = useMemo(
+    () => requiredItems.filter(i => mappedChecklistIds.has(i.id)).length,
+    [requiredItems, mappedChecklistIds]
+  );
+  const requiredTotal = requiredItems.length;
+  const lastSharedAt = useMemo(() => {
+    if (!dataroomDocs.length) return null;
+    const ts = dataroomDocs
+      .map(d => (d as any).updated_at || (d as any).created_at)
+      .filter(Boolean)
+      .map(s => new Date(s).getTime())
+      .filter(n => !isNaN(n));
+    if (!ts.length) return null;
+    return new Date(Math.max(...ts));
+  }, [dataroomDocs]);
+  const lastSharedLabel = useMemo(() => {
+    if (!lastSharedAt) return '—';
+    const diffMs = Date.now() - lastSharedAt.getTime();
+    const min = Math.floor(diffMs / 60000);
+    if (min < 1) return 'just now';
+    if (min < 60) return `${min}m ago`;
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return `${hr}h ago`;
+    const d = Math.floor(hr / 24);
+    if (d < 30) return `${d}d ago`;
+    return lastSharedAt.toLocaleDateString();
+  }, [lastSharedAt]);
+
   return (
     <ResizablePanelGroup direction="horizontal" className="h-full">
       {/* ════════ COLUMN 1: CHECKLIST ════════ */}
@@ -739,12 +776,37 @@ export function VdrThreeColumnWorkspace({
             </div>
           </div>
 
-          {/* Banner */}
-          <div className="px-3 py-1.5 border-b border-white/5 bg-muted/10">
-            <p className="text-[10px] text-muted-foreground flex items-center gap-1.5">
-              <Globe className="h-2.5 w-2.5" />
-              External-facing — files here are shared with the deal's data room.
-            </p>
+          {/* Metrics block — matches Internal dropzone height for symmetric file-row alignment */}
+          <div className="px-3 pt-2 pb-1.5 border-b border-white/5">
+            <div className="grid grid-cols-4 gap-1.5 h-12">
+              <div className="rounded-md border border-white/10 bg-secondary/20 px-2 py-1 flex flex-col justify-center min-w-0">
+                <div className="text-[9px] uppercase tracking-wider text-muted-foreground/80 truncate">Shared</div>
+                <div className="text-sm font-semibold tabular-nums leading-tight">
+                  {dataroomCount}
+                  <span className="text-[10px] text-muted-foreground font-normal">/{totalDocsCount}</span>
+                </div>
+              </div>
+              <div className="rounded-md border border-white/10 bg-secondary/20 px-2 py-1 flex flex-col justify-center min-w-0">
+                <div className="text-[9px] uppercase tracking-wider text-muted-foreground/80 truncate">Required</div>
+                <div className="text-sm font-semibold tabular-nums leading-tight">
+                  {requiredFulfilled}
+                  <span className="text-[10px] text-muted-foreground font-normal">/{requiredTotal || 0}</span>
+                </div>
+              </div>
+              <div className="rounded-md border border-white/10 bg-secondary/20 px-2 py-1 flex flex-col justify-center min-w-0">
+                <div className="text-[9px] uppercase tracking-wider text-muted-foreground/80 truncate">Indexed</div>
+                <div className="text-sm font-semibold tabular-nums leading-tight flex items-center gap-1">
+                  {indexedCount}
+                  {processingCount > 0 && (
+                    <Loader2 className="h-2.5 w-2.5 text-amber-400 animate-spin" />
+                  )}
+                </div>
+              </div>
+              <div className="rounded-md border border-white/10 bg-secondary/20 px-2 py-1 flex flex-col justify-center min-w-0">
+                <div className="text-[9px] uppercase tracking-wider text-muted-foreground/80 truncate">Last shared</div>
+                <div className="text-[11px] font-medium leading-tight truncate">{lastSharedLabel}</div>
+              </div>
+            </div>
           </div>
 
           {/* Bulk action bar */}
