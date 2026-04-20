@@ -4,6 +4,7 @@ import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import type { WorkflowAnalysis, WorkflowConfidence } from '@/hooks/useThreadWorkflowAnalysis';
 
@@ -12,7 +13,7 @@ interface Props {
   loading?: boolean;
   committing: boolean;
   hasLinkedDeal: boolean;
-  onConfirm: (overrides?: { reasonNote?: string }) => void;
+  onConfirm: (overrides?: { reasonNote?: string; confirmedStatus?: string }) => void;
   onDismiss: () => void;
   onMaybeLater: () => void;
 }
@@ -35,6 +36,49 @@ const SIGNAL_TONE: Record<string, string> = {
   internal_note: 'bg-muted text-muted-foreground border-border',
   no_signal: 'bg-muted text-muted-foreground border-border',
 };
+
+/**
+ * Editable lender disposition options. The internal value is the canonical
+ * status that we hand to `confirmRecommendation` — the human label is what
+ * the user sees. "Passed" and "Not a Fit" are intentionally distinct.
+ */
+const STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: 'passed', label: 'Passed' },
+  { value: 'not_a_fit', label: 'Not a Fit' },
+  { value: 'interested', label: 'Interested' },
+  { value: 'in_diligence', label: 'In Diligence' },
+  { value: 'follow_up', label: 'Follow Up' },
+  { value: 'declined', label: 'Declined' },
+];
+
+const STATUS_LABEL: Record<string, string> = STATUS_OPTIONS.reduce((acc, o) => {
+  acc[o.value] = o.label;
+  return acc;
+}, {} as Record<string, string>);
+
+/** Map a model-suggested `new_stage` to one of our editable status options. */
+function normalizeSuggested(stage: string | undefined): string {
+  if (!stage) return 'follow_up';
+  const s = stage.toLowerCase();
+  if (STATUS_LABEL[s]) return s;
+  if (s === 'terms_issued') return 'in_diligence';
+  if (s === 'info_requested' || s === 'engaged') return 'follow_up';
+  return 'follow_up';
+}
+
+function logAnalytics(event: string, payload: Record<string, unknown>) {
+  try {
+    // Lightweight analytics hook — fans out to dataLayer / window event for
+    // any analytics listener wired up elsewhere in the app.
+    (window as any).dataLayer = (window as any).dataLayer || [];
+    (window as any).dataLayer.push({ event, ...payload });
+    window.dispatchEvent(new CustomEvent(event, { detail: payload }));
+    // eslint-disable-next-line no-console
+    console.debug('[WorkflowIntelligenceCard]', event, payload);
+  } catch {
+    /* ignore */
+  }
+}
 
 /**
  * WorkflowIntelligenceCard
