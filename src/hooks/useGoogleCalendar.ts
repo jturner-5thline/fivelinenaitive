@@ -60,13 +60,21 @@ export function useGoogleCalendar() {
   const checkStatus = useCallback(async () => {
     if (!user) { setIsStatusLoading(false); return; }
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session?.access_token) {
+        setIsStatusLoading(false);
+        return;
+      }
       const { data, error } = await supabase.functions.invoke('calendar-status');
       if (error) throw error;
       setStatus(data);
       setError(null);
     } catch (err: any) {
-      console.error('Calendar status error:', err);
-      setError(err.message);
+      const msg = err?.message || '';
+      if (!/401|Unauthorized|Invalid token/i.test(msg)) {
+        console.error('Calendar status error:', err);
+        setError(msg);
+      }
     } finally {
       setIsStatusLoading(false);
     }
