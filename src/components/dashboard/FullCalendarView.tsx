@@ -889,12 +889,12 @@ function DayColumn({
 
   return (
     <div className={cn(
-      'relative flex-1 min-w-0 border-l border-border/40 first:border-l-0',
+      'relative flex-1 min-w-0 border-l border-border/15 first:border-l-0',
       today && 'bg-primary/[0.04]',
     )}>
       {showDayLabel && (
         <div className={cn(
-          'sticky top-0 z-10 backdrop-blur-sm border-b border-border/40 text-center py-2',
+          'sticky top-0 z-10 backdrop-blur-sm border-b border-border/15 text-center py-2',
           today ? 'bg-primary/[0.06]' : 'bg-background/95',
         )}>
           <p className={cn(
@@ -914,7 +914,7 @@ function DayColumn({
             key={h}
             className={cn(
               'absolute left-0 right-0 hover:bg-primary/5 transition-colors',
-              h !== 0 && 'border-t border-border/40',
+              h !== 0 && 'border-t border-border/15',
             )}
             style={{ top: h * HOUR_HEIGHT, height: HOUR_HEIGHT }}
           />
@@ -1165,7 +1165,7 @@ function AllDayBar({
 }) {
   if (events.length === 0) return null;
   return (
-    <div className="border-b border-border/40 px-14 py-1.5 flex flex-wrap gap-1">
+    <div className="border-b border-border/15 px-14 py-1.5 flex flex-wrap gap-1">
       {events.map((event, idx) => (
         <button
           key={event.id}
@@ -1760,10 +1760,10 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                 />
                 <ScrollArea className="flex-1" ref={timeGridScrollRef}>
                   <div className="flex min-h-0">
-                    <div className="shrink-0 w-14 border-r border-border/40">
+                    <div className="shrink-0 w-14 border-r border-border/15">
                       {/* Header spacer to match day column headers */}
                       {view === 'week' ? (
-                        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/40 py-2">
+                        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/15 py-2">
                           <Popover open={showTzDropdown} onOpenChange={setShowTzDropdown}>
                             <PopoverTrigger asChild>
                               <button className="w-full text-center text-[9px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors font-medium flex items-center justify-center gap-0.5 py-1">
@@ -1792,7 +1792,7 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                       ) : (
                         <Popover open={showTzDropdown} onOpenChange={setShowTzDropdown}>
                           <PopoverTrigger asChild>
-                            <button className="w-full text-center py-1 text-[9px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors font-medium border-b border-border/40 flex items-center justify-center gap-0.5">
+                            <button className="w-full text-center py-1 text-[9px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors font-medium border-b border-border/15 flex items-center justify-center gap-0.5">
                               <Globe className="h-2.5 w-2.5" />
                               {displayTimezone}
                               <ChevronDown className="h-2 w-2" />
