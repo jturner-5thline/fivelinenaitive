@@ -301,6 +301,11 @@ export function useGmail() {
 
     setIsLoading(true);
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session?.access_token) {
+        setIsLoading(false);
+        return null;
+      }
       const { data, error } = await supabase.functions.invoke('gmail-messages', {
         body: {
           action: 'list',
@@ -325,8 +330,11 @@ export function useGmail() {
       setError(null);
       return data;
     } catch (err: any) {
-      console.error('Gmail list error:', err);
-      setError(err.message);
+      const msg = err?.message || '';
+      if (!/401|Unauthorized|Invalid token/i.test(msg)) {
+        console.error('Gmail list error:', err);
+        setError(msg);
+      }
       return null;
     } finally {
       setIsLoading(false);
