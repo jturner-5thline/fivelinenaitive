@@ -541,6 +541,7 @@ function CatchUpTab({ enabled }: { enabled: boolean; onNavigate: (path: string) 
 import { classifyEmail, filterEmailsByCategory, EMAIL_CATEGORY_TABS, type EmailCategoryTab } from '@/utils/emailClassifier';
 import { useEmailClassifierData } from '@/hooks/useEmailClassifierData';
 import { useAutoEmailLabelEvaluator } from '@/hooks/useAutoEmailLabelEvaluator';
+import { EmailCategoryChips } from '@/components/deal/email/EmailCategoryChips';
 
 // ── Tab: Email ─────────────────────────────────────────────────
 function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onNavigate: (path: string) => void; targetUserId?: string }) {
@@ -636,21 +637,26 @@ function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onN
                   badgeVariant={e.analysis?.priority === 'high' ? 'destructive' : 'secondary'}
                   time={e.received_at ? formatDistanceToNow(new Date(e.received_at), { addSuffix: true }) : ''}
                   onClick={() => setDetail(e)}
-                  extras={autoLabels.length > 0 ? autoLabels.map(lbl => (
-                    <Badge
-                      key={lbl.id}
-                      variant="outline"
-                      className="text-[9px] h-[16px] px-1 border"
-                      style={{
-                        borderColor: `${lbl.color}55`,
-                        backgroundColor: `${lbl.color}1F`,
-                        color: lbl.color,
-                      }}
-                      title={lbl.description || lbl.name}
-                    >
-                      {lbl.name}
-                    </Badge>
-                  )) : undefined}
+                  extras={
+                    <>
+                      <EmailCategoryChips email={e} />
+                      {autoLabels.map(lbl => (
+                        <Badge
+                          key={lbl.id}
+                          variant="outline"
+                          className="text-[9px] h-[16px] px-1 border"
+                          style={{
+                            borderColor: `${lbl.color}55`,
+                            backgroundColor: `${lbl.color}1F`,
+                            color: lbl.color,
+                          }}
+                          title={lbl.description || lbl.name}
+                        >
+                          {lbl.name}
+                        </Badge>
+                      ))}
+                    </>
+                  }
                 />
               );
             })()
