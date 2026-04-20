@@ -756,7 +756,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   return (
     <Card className="overflow-hidden w-full max-w-full h-full flex flex-col border-0 rounded-none bg-transparent">
       {/* Outlook-style top toolbar */}
-      <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-white/[0.06] bg-card/60 backdrop-blur-sm">
+      <div className="flex items-center gap-1.5 px-3 py-1.5 pr-12 border-b border-white/[0.06] bg-card/60 backdrop-blur-sm">
         {/* New mail — outlined, Outlook style */}
         <Button
           variant="outline"
@@ -773,7 +773,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         {/* Keyboard shortcuts help */}
         <Popover open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7">
+            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Keyboard shortcuts" title="Keyboard shortcuts">
               <Keyboard className="h-3.5 w-3.5" />
             </Button>
           </PopoverTrigger>
@@ -802,15 +802,20 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIntelligenceOpen(true)}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIntelligenceOpen(true)}>
               <Settings2 className="h-3.5 w-3.5" />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs">Email Intelligence Settings</TooltipContent>
         </Tooltip>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleRefresh} disabled={effectiveRefreshing}>
-          <RefreshCw className={cn('h-3.5 w-3.5', effectiveRefreshing && 'animate-spin')} />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRefresh} disabled={effectiveRefreshing}>
+              <RefreshCw className={cn('h-3.5 w-3.5', effectiveRefreshing && 'animate-spin')} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">Refresh</TooltipContent>
+        </Tooltip>
         {!externalEmails && <Badge variant="secondary" className="text-[10px] h-5">Mock</Badge>}
       </div>
 
