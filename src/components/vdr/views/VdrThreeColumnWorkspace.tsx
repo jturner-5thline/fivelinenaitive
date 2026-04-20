@@ -1042,7 +1042,7 @@ export function VdrThreeColumnWorkspace({
                 </p>
               </div>
             ) : (
-              visibleDataroom.map(d => renderFileRow(d, 'dataroom'))
+              renderCategoryGroups(dataroomGrouped, 'dataroom')
             )}
           </div>
 
