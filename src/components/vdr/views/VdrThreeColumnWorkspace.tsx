@@ -3,7 +3,7 @@ import {
   Search, FolderOpen, FolderClosed, ChevronRight, ChevronDown, Plus, FileText,
   FileSpreadsheet, Presentation, Eye, Loader2, CheckCircle2, AlertCircle,
   ClipboardList, PackagePlus, Send, FolderPlus, Trash2, Download,
-  ArrowRight, ArrowLeft, Lock, Globe, MoreHorizontal,
+  ArrowRight, ArrowLeft, Lock, Globe, MoreHorizontal, Upload,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -597,6 +597,23 @@ export function VdrThreeColumnWorkspace({
               >
                 <Plus className="h-3.5 w-3.5" />
               </Button>
+            </div>
+          </div>
+
+          {/* Integrated upload / dropzone (Internal is the staging intake) */}
+          <div className="px-3 pt-2 pb-1.5 border-b border-white/5">
+            <div
+              onClick={() => internalFileInput.current?.click()}
+              className={cn(
+                'flex items-center justify-center gap-2 h-12 rounded-md border border-dashed cursor-pointer transition-colors',
+                dropTarget === 'internal'
+                  ? 'border-primary/60 bg-primary/10 text-primary'
+                  : 'border-white/10 bg-secondary/20 text-muted-foreground hover:border-primary/30 hover:text-foreground/80 hover:bg-secondary/30'
+              )}
+            >
+              <Upload className="h-3.5 w-3.5" />
+              <span className="text-[11px] font-medium">Drop files here</span>
+              <span className="text-[10px] opacity-60">or click to browse</span>
             </div>
           </div>
 
