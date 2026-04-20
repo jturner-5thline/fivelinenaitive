@@ -723,50 +723,62 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         aria-label={item.label}
         title={!railExpanded ? item.label : undefined}
         className={cn(
-          'group relative w-full flex items-center text-left transition-colors duration-150 border-l-2',
-          railExpanded ? 'gap-2.5 px-3 py-2' : 'justify-center px-0 py-2.5',
+          'group relative w-full flex items-center text-left border-l-2 py-2 px-0',
+          'transition-colors duration-150',
           isActive
             ? 'border-l-[hsl(var(--outlook-blue))] bg-[hsl(var(--outlook-blue)/0.12)] text-foreground font-medium'
             : 'border-l-transparent text-foreground/85 hover:bg-[hsl(var(--foreground)/0.05)] hover:text-foreground'
         )}
       >
-        {item.indicatorColor ? (
-          <span className={cn('w-2 h-2 rounded-full shrink-0', item.indicatorColor)} />
-        ) : (
-          <item.icon
-            className={cn(
-              'shrink-0 transition-all',
-              railExpanded ? 'h-4 w-4' : 'h-[18px] w-[18px]',
-              isActive ? 'text-foreground' : 'text-foreground/90',
-              !railExpanded && 'stroke-[2.25]'
-            )}
-          />
-        )}
-        {railExpanded && (
-          <>
-            <span className="flex-1 truncate text-[12px]">{item.label}</span>
-            {hasCount && (
-              <span
-                className={cn(
-                  'text-[10px] font-semibold tabular-nums min-w-[18px] text-center',
-                  isHighlightCount
-                    ? 'text-[hsl(var(--outlook-blue))] font-bold'
-                    : 'text-muted-foreground'
-                )}
-              >
-                {item.count}
-              </span>
-            )}
-          </>
-        )}
-        {!railExpanded && hasCount && (
+        {/* Fixed-width icon column so labels reveal without reflow */}
+        <span className="w-[52px] flex items-center justify-center shrink-0">
+          {item.indicatorColor ? (
+            <span className={cn('w-2 h-2 rounded-full', item.indicatorColor)} />
+          ) : (
+            <item.icon
+              className={cn(
+                'h-[18px] w-[18px] shrink-0',
+                isActive ? 'text-foreground' : 'text-foreground/90'
+              )}
+              strokeWidth={2.25}
+            />
+          )}
+        </span>
+        {/* Label + count: always mounted, fade via opacity only — no layout shift */}
+        <span
+          className={cn(
+            'flex-1 min-w-0 flex items-center gap-2 pr-3',
+            'transition-opacity duration-150 ease-out',
+            railExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          )}
+          aria-hidden={!railExpanded}
+        >
+          <span className="flex-1 truncate text-[12px]">{item.label}</span>
+          {hasCount && (
+            <span
+              className={cn(
+                'text-[10px] font-semibold tabular-nums min-w-[18px] text-center',
+                isHighlightCount
+                  ? 'text-[hsl(var(--outlook-blue))] font-bold'
+                  : 'text-muted-foreground'
+              )}
+            >
+              {item.count}
+            </span>
+          )}
+        </span>
+        {/* Collapsed-state count badge — hidden when expanded */}
+        {hasCount && (
           <span
             className={cn(
               'absolute top-1 right-1 min-w-[14px] h-[14px] rounded-full px-1 text-[9px] font-bold tabular-nums leading-[14px] text-center',
+              'transition-opacity duration-150 ease-out',
+              railExpanded ? 'opacity-0' : 'opacity-100',
               isHighlightCount
                 ? 'bg-[hsl(var(--outlook-blue))] text-white'
                 : 'bg-foreground/15 text-foreground/90'
             )}
+            aria-hidden={railExpanded}
           >
             {item.count}
           </span>
