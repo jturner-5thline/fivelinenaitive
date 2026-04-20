@@ -9,7 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
+import {
+  ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger,
+  ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent, ContextMenuSeparator,
+} from '@/components/ui/context-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { cn } from '@/lib/utils';
@@ -22,6 +25,7 @@ import { useDefaultChecklistConfig, findMatchingConfig, type RoundConfig } from 
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useUploadedItems } from '@/hooks/useUploadedItems';
+import { useChecklistCategories } from '@/hooks/useChecklistCategories';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
@@ -70,6 +74,11 @@ export function VdrThreeColumnWorkspace({
   // Shared state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedChecklistId, setSelectedChecklistId] = useState<string | null>(null);
+  // Active category context — uploads and new files default to this
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  // Collapsed category sections (per column)
+  const [collapsedInternal, setCollapsedInternal] = useState<Set<string>>(new Set());
+  const [collapsedDataroom, setCollapsedDataroom] = useState<Set<string>>(new Set());
 
   // Per-column selection
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
@@ -91,6 +100,9 @@ export function VdrThreeColumnWorkspace({
 
   const internalFileInput = useRef<HTMLInputElement>(null);
   const dataroomFileInput = useRef<HTMLInputElement>(null);
+
+  // Load default categories (Settings-driven via data_room_checklist_categories)
+  const { categories } = useChecklistCategories();
 
   // Checklist
   const uploadedItems = useUploadedItems(dealId, bulkBatchId);
@@ -204,6 +216,52 @@ export function VdrThreeColumnWorkspace({
   const visibleInternal = useMemo(() => filterDocs(internalDocs), [filterDocs, internalDocs]);
   const visibleDataroom = useMemo(() => filterDocs(dataroomDocs), [filterDocs, dataroomDocs]);
 
+  // ── Category grouping ────────────────────────────────────
+  // Build the ordered list of category names from settings (source of truth)
+  const categoryNames = useMemo(() => categories.map(c => c.name), [categories]);
+  const categoryNameSet = useMemo(() => new Set(categoryNames), [categoryNames]);
+  const UNCATEGORIZED = '__uncategorized__';
+
+  /** Derive the category bucket for a document from its folder_path. */
+  const docCategory = useCallback((doc: VdrDocument): string => {
+    const fp = (doc.folder_path || '/').replace(/^\/+|\/+$/g, '');
+    if (!fp) return UNCATEGORIZED;
+    const top = fp.split('/')[0];
+    return categoryNameSet.has(top) ? top : UNCATEGORIZED;
+  }, [categoryNameSet]);
+
+  /** Group an array of docs by category (preserving Settings order, then Uncategorized). */
+  const groupByCategory = useCallback((docs: VdrDocument[]) => {
+    const map = new Map<string, VdrDocument[]>();
+    for (const cat of categoryNames) map.set(cat, []);
+    map.set(UNCATEGORIZED, []);
+    for (const d of docs) {
+      const k = docCategory(d);
+      const arr = map.get(k) || [];
+      arr.push(d);
+      map.set(k, arr);
+    }
+    return map;
+  }, [categoryNames, docCategory]);
+
+  const internalGrouped = useMemo(() => groupByCategory(visibleInternal), [groupByCategory, visibleInternal]);
+  const dataroomGrouped = useMemo(() => groupByCategory(visibleDataroom), [groupByCategory, visibleDataroom]);
+
+  /** "Active" folder path for new uploads, based on selected category. */
+  const uploadFolderPath = useMemo(() => {
+    if (!activeCategory || activeCategory === UNCATEGORIZED) return '/';
+    return `/${activeCategory}/`;
+  }, [activeCategory]);
+
+  const toggleCollapsed = useCallback((column: 'internal' | 'dataroom', cat: string) => {
+    const setter = column === 'internal' ? setCollapsedInternal : setCollapsedDataroom;
+    setter(prev => {
+      const n = new Set(prev);
+      if (n.has(cat)) n.delete(cat); else n.add(cat);
+      return n;
+    });
+  }, []);
+
   // Selection helpers
   const toggleInternal = useCallback((id: string) => {
     setInternalSelected(prev => {
@@ -250,6 +308,22 @@ export function VdrThreeColumnWorkspace({
     toast.success(`Moved ${ids.length} file${ids.length === 1 ? '' : 's'} to Internal`);
   }, [vdrDocs]);
 
+  // Move file(s) to a category folder (just changes folder_path)
+  const moveToCategory = useCallback(async (ids: string[], categoryName: string | null) => {
+    if (!ids.length) return;
+    const newPath = !categoryName ? '/' : `/${categoryName}/`;
+    for (const id of ids) {
+      await vdrDocs.moveDocument(id, newPath);
+    }
+    setInternalSelected(new Set());
+    setDataroomSelected(new Set());
+    toast.success(
+      categoryName
+        ? `Moved to ${categoryName}`
+        : 'Moved to Uncategorized'
+    );
+  }, [vdrDocs]);
+
   // Drag & drop
   const handleDragStart = (e: React.DragEvent, doc: VdrDocument, source: 'internal' | 'dataroom') => {
     const selected = source === 'internal' ? internalSelected : dataroomSelected;
@@ -265,7 +339,7 @@ export function VdrThreeColumnWorkspace({
     if (e.dataTransfer.files.length > 0) {
       const files = Array.from(e.dataTransfer.files);
       for (const file of files) {
-        await vdrDocs.uploadFile(file, '/');
+        await vdrDocs.uploadFile(file, uploadFolderPath);
       }
       // If dropped on data room, share them right after upload — best-effort by filename match
       if (dest === 'dataroom') {
@@ -294,13 +368,13 @@ export function VdrThreeColumnWorkspace({
 
   const handleInternalUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    for (const f of files) await vdrDocs.uploadFile(f, '/');
+    for (const f of files) await vdrDocs.uploadFile(f, uploadFolderPath);
     if (internalFileInput.current) internalFileInput.current.value = '';
   };
   const handleDataroomUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const beforeIds = new Set(documents.filter(d => !d.is_folder).map(d => d.id));
-    for (const f of files) await vdrDocs.uploadFile(f, '/');
+    for (const f of files) await vdrDocs.uploadFile(f, uploadFolderPath);
     // After upload, share newly uploaded files
     setTimeout(async () => {
       const fresh = (await (supabase as any)
@@ -493,6 +567,22 @@ export function VdrThreeColumnWorkspace({
           ) : (
             <ContextMenuItem onClick={() => moveToInternal([doc.id])}>Move to Internal</ContextMenuItem>
           )}
+          {categoryNames.length > 0 && (
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>Move to category</ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                {categoryNames.map(cat => (
+                  <ContextMenuItem key={cat} onClick={() => moveToCategory([doc.id], cat)}>
+                    {cat}
+                  </ContextMenuItem>
+                ))}
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={() => moveToCategory([doc.id], null)}>
+                  Uncategorized
+                </ContextMenuItem>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          )}
           <ContextMenuItem onClick={() => { setRenameDialog({ id: doc.id, currentName: doc.filename }); setRenameName(doc.filename); }}>
             Rename
           </ContextMenuItem>
@@ -501,6 +591,77 @@ export function VdrThreeColumnWorkspace({
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
+    );
+  };
+
+  /** Render a column's docs grouped by category (Settings-driven taxonomy). */
+  const renderCategoryGroups = (
+    grouped: Map<string, VdrDocument[]>,
+    column: 'internal' | 'dataroom',
+  ) => {
+    const collapsed = column === 'internal' ? collapsedInternal : collapsedDataroom;
+    const fileInputRef = column === 'internal' ? internalFileInput : dataroomFileInput;
+    // Render in Settings order; show empty categories too so the taxonomy is always visible.
+    const order = [...categoryNames, UNCATEGORIZED];
+    return (
+      <div className="space-y-1">
+        {order.map(cat => {
+          const docs = grouped.get(cat) || [];
+          // Hide the empty Uncategorized bucket to reduce noise
+          if (cat === UNCATEGORIZED && docs.length === 0) return null;
+          const isCollapsed = collapsed.has(cat);
+          const isActive = activeCategory === cat || (cat === UNCATEGORIZED && activeCategory === UNCATEGORIZED);
+          const label = cat === UNCATEGORIZED ? 'Uncategorized' : cat;
+          return (
+            <div key={cat} className="">
+              <div
+                className={cn(
+                  'group/cat flex items-center gap-1.5 px-1.5 py-1 rounded-md text-[11px] font-medium uppercase tracking-wider transition-colors cursor-pointer',
+                  isActive
+                    ? 'bg-primary/10 text-foreground'
+                    : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground/90'
+                )}
+                onClick={() => toggleCollapsed(column, cat)}
+              >
+                {isCollapsed
+                  ? <ChevronRight className="h-3 w-3 flex-shrink-0" />
+                  : <ChevronDown className="h-3 w-3 flex-shrink-0" />}
+                {isCollapsed
+                  ? <FolderClosed className="h-3 w-3 flex-shrink-0" />
+                  : <FolderOpen className="h-3 w-3 flex-shrink-0" />}
+                <span className="truncate">{label}</span>
+                <span className="ml-1 text-[10px] tabular-nums text-muted-foreground/70 normal-case font-normal">
+                  {docs.length}
+                </span>
+                {column === 'internal' && cat !== UNCATEGORIZED && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveCategory(cat);
+                      fileInputRef.current?.click();
+                    }}
+                    className="ml-auto opacity-0 group-hover/cat:opacity-100 transition-opacity p-0.5 rounded hover:bg-secondary/60"
+                    title={`Upload to ${label}`}
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+              {!isCollapsed && (
+                <div className="mt-0.5">
+                  {docs.length === 0 ? (
+                    <div className="px-3 py-1 text-[10px] text-muted-foreground/50 italic">
+                      No files
+                    </div>
+                  ) : (
+                    docs.map(d => renderFileRow(d, column))
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     );
   };
 
@@ -723,7 +884,7 @@ export function VdrThreeColumnWorkspace({
                 )}
               </div>
             ) : (
-              visibleInternal.map(d => renderFileRow(d, 'internal'))
+              renderCategoryGroups(internalGrouped, 'internal')
             )}
           </div>
 
@@ -881,7 +1042,7 @@ export function VdrThreeColumnWorkspace({
                 </p>
               </div>
             ) : (
-              visibleDataroom.map(d => renderFileRow(d, 'dataroom'))
+              renderCategoryGroups(dataroomGrouped, 'dataroom')
             )}
           </div>
 
