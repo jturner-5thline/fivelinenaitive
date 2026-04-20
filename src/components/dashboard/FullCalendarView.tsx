@@ -1760,10 +1760,10 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                 />
                 <ScrollArea className="flex-1" ref={timeGridScrollRef}>
                   <div className="flex min-h-0">
-                    <div className="shrink-0 w-14 border-r">
+                    <div className="shrink-0 w-14 border-r border-border/40">
                       {/* Header spacer to match day column headers */}
                       {view === 'week' ? (
-                        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b py-2">
+                        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/40 py-2">
                           <Popover open={showTzDropdown} onOpenChange={setShowTzDropdown}>
                             <PopoverTrigger asChild>
                               <button className="w-full text-center text-[9px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors font-medium flex items-center justify-center gap-0.5 py-1">
@@ -1792,7 +1792,7 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                       ) : (
                         <Popover open={showTzDropdown} onOpenChange={setShowTzDropdown}>
                           <PopoverTrigger asChild>
-                            <button className="w-full text-center py-1 text-[9px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors font-medium border-b flex items-center justify-center gap-0.5">
+                            <button className="w-full text-center py-1 text-[9px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors font-medium border-b border-border/40 flex items-center justify-center gap-0.5">
                               <Globe className="h-2.5 w-2.5" />
                               {displayTimezone}
                               <ChevronDown className="h-2 w-2" />
