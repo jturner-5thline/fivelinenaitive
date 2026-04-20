@@ -323,7 +323,7 @@ export function VdrThreeColumnWorkspace({
     if (e.dataTransfer.files.length > 0) {
       const files = Array.from(e.dataTransfer.files);
       for (const file of files) {
-        await vdrDocs.uploadFile(file, '/');
+        await vdrDocs.uploadFile(file, uploadFolderPath);
       }
       // If dropped on data room, share them right after upload — best-effort by filename match
       if (dest === 'dataroom') {
@@ -352,13 +352,13 @@ export function VdrThreeColumnWorkspace({
 
   const handleInternalUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    for (const f of files) await vdrDocs.uploadFile(f, '/');
+    for (const f of files) await vdrDocs.uploadFile(f, uploadFolderPath);
     if (internalFileInput.current) internalFileInput.current.value = '';
   };
   const handleDataroomUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const beforeIds = new Set(documents.filter(d => !d.is_folder).map(d => d.id));
-    for (const f of files) await vdrDocs.uploadFile(f, '/');
+    for (const f of files) await vdrDocs.uploadFile(f, uploadFolderPath);
     // After upload, share newly uploaded files
     setTimeout(async () => {
       const fresh = (await (supabase as any)
