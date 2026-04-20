@@ -175,7 +175,8 @@ function buildContextString(ctx: any, companyName: string, userName: string) {
     lines.push(`\n## My Open Tasks (assigned to ${userName}) — ${tasks.length}`);
     tasks.slice(0, 40).forEach((t: any) => {
       const dealCompany = deals.find((d: any) => d.id === t.deal_id)?.company;
-      lines.push(`- [${t.priority || "normal"}] ${t.title}${t.due_date ? ` | due ${t.due_date}` : ""}${dealCompany ? ` | deal: ${dealCompany}` : ""}${t.status ? ` | ${t.status}` : ""}`);
+      const dueLabel = t.due_date ? formatRelativeDue(t.due_date) : null;
+      lines.push(`- task_id=${t.id} | [${t.priority || "normal"}] ${t.title}${dueLabel ? ` | ${dueLabel}` : ""}${dealCompany ? ` | deal: ${dealCompany}` : ""}${t.status ? ` | ${t.status}` : ""}`);
     });
   }
 
