@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { toast } from 'sonner';
@@ -92,6 +93,11 @@ function logEvent(event: string, payload: Record<string, unknown>) {
   } catch { /* ignore */ }
 }
 
+function debugStep(step: string, payload: Record<string, unknown>) {
+  // eslint-disable-next-line no-console
+  console.info(`[useThreadWorkflowAnalysis] ${step}`, payload);
+}
+
 /**
  * Map a confirmed status to its underlying lender stage + tracking status.
  * "Passed" and "Not a Fit" both close the lender out, but with distinct
@@ -105,6 +111,10 @@ const STATUS_STAGE_MAP: Record<string, { stage: string; trackingStatus: string; 
   in_diligence: { stage: 'reviewing-drl',  trackingStatus: 'active',  closes: false },
   follow_up:    { stage: 'engaged',        trackingStatus: 'active',  closes: false },
 };
+
+type DealLenderInsert = Database['public']['Tables']['deal_lenders']['Insert'];
+type DealLenderUpdate = Database['public']['Tables']['deal_lenders']['Update'];
+type LenderDisqualificationInsert = Database['public']['Tables']['lender_disqualifications']['Insert'];
 
 /**
  * useThreadWorkflowAnalysis
@@ -128,7 +138,7 @@ export function useThreadWorkflowAnalysis({
   autoRun = true,
 }: UseThreadWorkflowAnalysisOptions) {
   const { user } = useAuth();
-  const { updateLender, addLenderToDeal, refreshDeals } = useDealsContext();
+  const { refreshDeals } = useDealsContext();
   const [analysis, setAnalysis] = useState<WorkflowAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [committing, setCommitting] = useState(false);
@@ -224,30 +234,84 @@ export function useThreadWorkflowAnalysis({
     masterLenderId: string | undefined,
     lenderName: string,
   ): Promise<{ dealLenderId: string; created: boolean } | null> => {
+    debugStep('ensureLenderOnDeal:start', {
+      targetDealId,
+      suggestedLenderId: suggestedLenderId || null,
+      masterLenderId: masterLenderId || null,
+      lenderName: lenderName || null,
+    });
+
     if (suggestedLenderId) {
-      return { dealLenderId: suggestedLenderId, created: false };
+      const { data: existingLinked, error: existingLinkedError } = await supabase
+        .from('deal_lenders')
+        .select('id, deal_id, name')
+        .eq('id', suggestedLenderId)
+        .eq('deal_id', targetDealId)
+        .maybeSingle();
+
+      if (existingLinkedError) {
+        debugStep('ensureLenderOnDeal:existing-linked-error', {
+          targetDealId,
+          suggestedLenderId,
+          error: existingLinkedError.message,
+        });
+      }
+
+      if (existingLinked?.id) {
+        debugStep('ensureLenderOnDeal:existing-linked-success', {
+          targetDealId,
+          dealLenderId: existingLinked.id,
+          lenderName: existingLinked.name,
+        });
+        return { dealLenderId: existingLinked.id, created: false };
+      }
     }
-    if (!lenderName && !masterLenderId) return null;
+
+    let resolvedLenderName = lenderName?.trim() || '';
+    if (!resolvedLenderName && masterLenderId) {
+      const { data: masterLender, error: masterLenderError } = await supabase
+        .from('master_lenders')
+        .select('id, name')
+        .eq('id', masterLenderId)
+        .maybeSingle();
+
+      if (masterLenderError) {
+        debugStep('ensureLenderOnDeal:master-lender-lookup-error', {
+          masterLenderId,
+          error: masterLenderError.message,
+        });
+      }
+
+      resolvedLenderName = masterLender?.name?.trim() || resolvedLenderName;
+    }
+
+    if (!resolvedLenderName) return null;
 
     logEvent('ai_suggested_update_autolink_started', {
       dealId: targetDealId,
       masterLenderId: masterLenderId || null,
-      lenderName,
+      lenderName: resolvedLenderName,
     });
 
     try {
-      // Look up by case-insensitive name match against existing deal lenders
-      // first — this avoids duplicates if the row exists but the AI didn't
-      // pick it up (e.g. fuzzy spellings).
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from('deal_lenders')
-        .select('id, name')
+        .select('id, name, deal_id')
         .eq('deal_id', targetDealId)
-        .ilike('name', lenderName);
+        .ilike('name', resolvedLenderName);
+
+      if (existingError) throw existingError;
+
       const match = (existing || []).find((l: any) =>
-        (l.name || '').trim().toLowerCase() === lenderName.trim().toLowerCase()
+        (l.name || '').trim().toLowerCase() === resolvedLenderName.toLowerCase()
       );
+
       if (match?.id) {
+        debugStep('ensureLenderOnDeal:name-match-success', {
+          targetDealId,
+          dealLenderId: match.id,
+          lenderName: match.name,
+        });
         logEvent('ai_suggested_update_autolink_succeeded', {
           dealId: targetDealId,
           dealLenderId: match.id,
@@ -257,20 +321,30 @@ export function useThreadWorkflowAnalysis({
         return { dealLenderId: match.id, created: false };
       }
 
-      // Create the deal_lenders row.
-      const created = await addLenderToDeal(targetDealId, {
-        name: lenderName,
+      const insertPayload: DealLenderInsert = {
+        deal_id: targetDealId,
+        name: resolvedLenderName,
         stage: 'reviewing-drl',
-      } as any);
-      if (!created?.id) throw new Error('addLenderToDeal returned no id');
+        tracking_status: 'active',
+        notes: null,
+      };
+      debugStep('ensureLenderOnDeal:create-attempt', { insertPayload, masterLenderId: masterLenderId || null });
 
-      // Best-effort: stamp master_lender_id so the link is canonical.
-      if (masterLenderId) {
-        await supabase
-          .from('deal_lenders')
-          .update({ master_lender_id: masterLenderId })
-          .eq('id', created.id);
-      }
+      const { data: created, error: createError } = await supabase
+        .from('deal_lenders')
+        .insert(insertPayload)
+        .select('id, deal_id, name')
+        .single();
+
+      if (createError) throw createError;
+      if (!created?.id) throw new Error('Failed to create lender relationship');
+
+      debugStep('ensureLenderOnDeal:create-success', {
+        targetDealId,
+        dealLenderId: created.id,
+        lenderName: created.name,
+        relationshipCreated: true,
+      });
 
       logEvent('ai_suggested_update_autolink_succeeded', {
         dealId: targetDealId,
@@ -281,16 +355,22 @@ export function useThreadWorkflowAnalysis({
       });
       return { dealLenderId: created.id, created: true };
     } catch (err: any) {
+      debugStep('ensureLenderOnDeal:error', {
+        targetDealId,
+        masterLenderId: masterLenderId || null,
+        lenderName: resolvedLenderName || null,
+        error: err?.message || String(err),
+      });
       logEvent('ai_suggested_update_autolink_failed', {
         dealId: targetDealId,
         masterLenderId: masterLenderId || null,
-        lenderName,
+        lenderName: resolvedLenderName,
         error: err?.message || String(err),
       });
       console.error('[ensureLenderOnDeal] failed:', err);
       return null;
     }
-  }, [addLenderToDeal]);
+  }, []);
 
   /**
    * Final confirm action. Accepts user-edited overrides (status, detail,
@@ -307,8 +387,8 @@ export function useThreadWorkflowAnalysis({
     if (!rec || rec.kind === 'none') return false;
 
     setCommitting(true);
+    let currentStep = 'resolveDealAndLenderFromSuggestion';
     try {
-      // ── Step 1: resolveDealAndLenderFromSuggestion ─────────────────
       const targetDealId = rec.deal_id || dealId || analysis.likely_deal.id;
       if (!targetDealId) {
         toast.error('No deal identified — please link a deal first.');
@@ -324,11 +404,23 @@ export function useThreadWorkflowAnalysis({
         (!!overrides?.confirmedStatus && overrides.confirmedStatus.toLowerCase() !== aiSuggestedStatus) ||
         (overrides?.confirmedDetail !== undefined && overrides.confirmedDetail.toLowerCase() !== aiSuggestedDetail);
 
+      debugStep('resolveDealAndLenderFromSuggestion:success', {
+        targetDealId,
+        suggestedDealId: rec.deal_id || null,
+        suggestedLenderId: rec.lender_id || null,
+        suggestedMasterLenderId: rec.master_lender_id || null,
+        lenderName: rec.lender_name || analysis.likely_lender_firm.name || null,
+        aiSuggestedStatus,
+        aiSuggestedDetail: aiSuggestedDetail || null,
+        finalStatus,
+        finalDetail: finalDetail || null,
+      });
+
       let resolvedLenderId: string | null = rec.lender_id || null;
       let relationshipCreated = false;
 
-      // ── Step 2: ensureLenderOnDeal (auto-link if needed) ───────────
       if (rec.kind === 'lender_status') {
+        currentStep = 'ensureLenderOnDeal';
         const lenderName = rec.lender_name || analysis.likely_lender_firm.name || '';
         const ensured = await ensureLenderOnDeal(
           targetDealId,
@@ -342,10 +434,16 @@ export function useThreadWorkflowAnalysis({
         }
         resolvedLenderId = ensured.dealLenderId;
         relationshipCreated = ensured.created;
+        debugStep('ensureLenderOnDeal:resolved', {
+          targetDealId,
+          dealLenderId: resolvedLenderId,
+          relationshipCreated,
+          masterLenderId: rec.master_lender_id || null,
+        });
       }
 
-      // ── Step 3: apply confirmed disposition ────────────────────────
       if (rec.kind === 'lender_status' && resolvedLenderId) {
+        currentStep = 'applyDisposition';
         const mapped = STATUS_STAGE_MAP[finalStatus] || STATUS_STAGE_MAP.passed;
         const detailLabel = finalDetail && PASS_REASON_LABELS[finalDetail as LenderPassReasonCategory]
           ? PASS_REASON_LABELS[finalDetail as LenderPassReasonCategory]
@@ -358,32 +456,66 @@ export function useThreadWorkflowAnalysis({
             ].filter(Boolean).join(' ')
           : undefined;
 
-        await updateLender(resolvedLenderId, {
+        const lenderUpdatePayload: DealLenderUpdate = {
           stage: mapped.stage,
-          trackingStatus: mapped.trackingStatus,
-          passReason: passReasonText,
-        } as any);
+          tracking_status: mapped.trackingStatus,
+          pass_reason: passReasonText ?? null,
+          updated_at: new Date().toISOString(),
+        };
+        debugStep('applyDisposition:update-attempt', {
+          dealLenderId: resolvedLenderId,
+          lenderUpdatePayload,
+        });
 
-        // Step 3b: persist disqualification using the SHARED taxonomy from
-        // useLenderDisqualifications, so reporting and the lenders modal
-        // stay aligned.
+        const { data: updatedLender, error: updateError } = await supabase
+          .from('deal_lenders')
+          .update(lenderUpdatePayload)
+          .eq('id', resolvedLenderId)
+          .eq('deal_id', targetDealId)
+          .select('id, deal_id, name, stage, tracking_status, pass_reason')
+          .maybeSingle();
+
+        if (updateError) throw updateError;
+        if (!updatedLender?.id) throw new Error('Disposition update did not persist');
+
+        debugStep('applyDisposition:update-success', {
+          dealLenderId: updatedLender.id,
+          dealId: updatedLender.deal_id,
+          lenderName: updatedLender.name,
+          stage: updatedLender.stage,
+          trackingStatus: updatedLender.tracking_status,
+          passReason: updatedLender.pass_reason,
+        });
+
         if (mapped.closes && finalDetail && PASS_REASON_LABELS[finalDetail as LenderPassReasonCategory]) {
-          await supabase.from('lender_disqualifications').insert({
+          const disqualificationPayload: LenderDisqualificationInsert = {
             deal_id: targetDealId,
             deal_lender_id: resolvedLenderId,
             lender_name: rec.lender_name || analysis.likely_lender_firm.name || 'Lender',
             master_lender_id: rec.master_lender_id || null,
             disqualified_by: user.id,
-            reason_category: finalDetail,
+            reason_category: finalDetail as LenderPassReasonCategory,
             reason_details: reason || null,
+          };
+          debugStep('applyDisposition:disqualification-attempt', disqualificationPayload);
+
+          const { error: disqualificationError } = await supabase
+            .from('lender_disqualifications')
+            .insert(disqualificationPayload);
+
+          if (disqualificationError) throw disqualificationError;
+          debugStep('applyDisposition:disqualification-success', {
+            dealId: targetDealId,
+            dealLenderId: resolvedLenderId,
+            reasonCategory: finalDetail,
           });
         }
       }
 
-      // ── Step 4: write activity log entry ───────────────────────────
+      currentStep = 'writeActivityLog';
       const sourceMessageId =
         latestInbound?.gmail_message_id || latestInbound?.id || messageId || null;
-      await supabase.from('activity_logs').insert({
+      const activityPayload = {
         deal_id: targetDealId,
         activity_type: rec.kind === 'lender_status' ? 'lender_update' : 'status_update',
         description: userOverrodeSuggestion
@@ -411,6 +543,20 @@ export function useThreadWorkflowAnalysis({
           source_thread_id: threadData?.threadId || null,
           source_message_id: sourceMessageId,
         },
+      };
+      debugStep('writeActivityLog:attempt', activityPayload);
+
+      const { data: activityRow, error: activityError } = await supabase
+        .from('activity_logs')
+        .insert(activityPayload)
+        .select('id')
+        .single();
+
+      if (activityError) throw activityError;
+      debugStep('writeActivityLog:success', {
+        activityLogId: activityRow.id,
+        dealId: targetDealId,
+        dealLenderId: resolvedLenderId,
       });
 
       logEvent('ai_suggested_update_confirmed', {
@@ -431,16 +577,22 @@ export function useThreadWorkflowAnalysis({
         ? `${successMsg} — lender auto-linked to deal`
         : successMsg);
       dismiss();
+      currentStep = 'finalUIRefresh';
       await refreshDeals();
+      debugStep('finalUIRefresh:success', {
+        dealId: targetDealId,
+        dealLenderId: resolvedLenderId,
+      });
       return true;
     } catch (err: any) {
-      console.error('confirmRecommendation error:', err);
-      toast.error(err?.message || 'Failed to apply update');
+      console.error(`confirmRecommendation error during ${currentStep}:`, err);
+      debugStep(`${currentStep}:error`, { error: err?.message || String(err) });
+      toast.error(err?.message ? `Confirm failed at ${currentStep}: ${err.message}` : `Confirm failed at ${currentStep}`);
       return false;
     } finally {
       setCommitting(false);
     }
-  }, [analysis, user, dealId, updateLender, ensureLenderOnDeal, refreshDeals, dismiss, latestInbound, messageId, threadData]);
+  }, [analysis, user, dealId, ensureLenderOnDeal, refreshDeals, dismiss, latestInbound, messageId, threadData]);
 
   return {
     analysis,
