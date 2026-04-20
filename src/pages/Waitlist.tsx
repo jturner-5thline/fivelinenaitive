@@ -148,7 +148,8 @@ const Waitlist = () => {
             <img 
               src={naitiveLogoFull} 
               alt="naitive" 
-              className="w-[70vw] max-w-[844px] animate-fade-in opacity-80"
+              className="w-[70vw] max-w-[844px] h-auto shrink-0 object-contain animate-fade-in opacity-80"
+              style={{ aspectRatio: 'auto' }}
             />
           </div>
 

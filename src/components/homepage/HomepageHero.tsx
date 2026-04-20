@@ -52,7 +52,8 @@ export const HomepageHero = () => {
           <img
             src={naitiveLogoDark}
             alt="naitive"
-            className="h-32 sm:h-48 md:h-72 lg:h-80 -ml-8 sm:-ml-12 md:-ml-[5.5rem] lg:-ml-24 -mb-6 sm:-mb-10 md:-mb-14"
+            className="h-32 sm:h-48 md:h-72 lg:h-80 w-auto shrink-0 object-contain -ml-8 sm:-ml-12 md:-ml-[5.5rem] lg:-ml-24 -mb-6 sm:-mb-10 md:-mb-14"
+            style={{ aspectRatio: 'auto' }}
           />
 
           {/* Tagline — shares left edge with the "n" in the wordmark */}
