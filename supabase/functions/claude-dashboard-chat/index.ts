@@ -248,6 +248,22 @@ Deno.serve(async (req) => {
     const ctx = await fetchUserContext(supabase, user.id, companyId);
     const userContext = buildContextString(ctx, companyName, userName);
 
+    console.log("[claude-dashboard-chat] context loaded", {
+      user_id: user.id,
+      company_id: companyId,
+      company_name: companyName,
+      counts: {
+        deals: ctx.deals?.length || 0,
+        tasks: ctx.tasks?.length || 0,
+        lenders: ctx.lenders?.length || 0,
+        milestones: ctx.milestones?.length || 0,
+        activities: ctx.activities?.length || 0,
+        lenderStats: ctx.lenderStats?.length || 0,
+        staleDeals: ctx.staleDeals?.length || 0,
+      },
+      context_chars: userContext.length,
+    });
+
     const lastUserText = [...messages].reverse().find((m: any) => m.role === "user")?.content || "";
     const promptAddendum = getPromptAddendum(lastUserText);
 
