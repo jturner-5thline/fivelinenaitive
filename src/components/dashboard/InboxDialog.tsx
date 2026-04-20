@@ -420,8 +420,8 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
         className="max-w-none w-[95vw] h-[92vh] sm:h-[92vh] xl:w-[93vw] 2xl:w-[92vw] p-0 flex flex-col overflow-hidden rounded-lg border-white/[0.08]"
         style={{
           background:
-            'radial-gradient(circle at top right, rgba(88, 28, 135, 0.16), transparent 35%), linear-gradient(135deg, rgba(10, 10, 14, 0.98) 0%, rgba(22, 18, 32, 0.96) 55%, rgba(32, 20, 48, 0.94) 100%)',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.45)',
+            'radial-gradient(circle at top right, rgba(72, 38, 110, 0.08), transparent 32%), linear-gradient(145deg, rgba(8, 8, 11, 0.985) 0%, rgba(14, 14, 18, 0.975) 52%, rgba(20, 16, 28, 0.965) 100%)',
+          boxShadow: '0 18px 48px rgba(0, 0, 0, 0.42)',
           backdropFilter: 'blur(10px)',
           WebkitBackdropFilter: 'blur(10px)',
         }}
