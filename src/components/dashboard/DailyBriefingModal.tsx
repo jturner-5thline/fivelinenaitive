@@ -111,6 +111,7 @@ function BriefingRow({
   badgeVariant,
   time,
   onClick,
+  extras,
 }: {
   icon: React.ElementType;
   title: string;
@@ -119,6 +120,7 @@ function BriefingRow({
   badgeVariant?: 'default' | 'secondary' | 'destructive' | 'outline';
   time?: string;
   onClick?: () => void;
+  extras?: React.ReactNode;
 }) {
   return (
     <div
@@ -139,6 +141,7 @@ function BriefingRow({
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-foreground truncate">{title}</p>
         {subtitle && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{subtitle}</p>}
+        {extras && <div className="flex items-center gap-1 mt-1 flex-wrap">{extras}</div>}
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {badge && (
@@ -621,16 +624,36 @@ function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onN
       ) : (
         <div className="space-y-1.5">
           {filtered.map((e: any) => (
-            <BriefingRow
-              key={e.id}
-              icon={Mail}
-              title={e.subject || '(no subject)'}
-              subtitle={`${e.from_name || e.from_email || 'Unknown'} — ${e.analysis?.summary || e.snippet || ''}`}
-              badge={e.analysis?.category?.replace(/_/g, ' ') || 'email'}
-              badgeVariant={e.analysis?.priority === 'high' ? 'destructive' : 'secondary'}
-              time={e.received_at ? formatDistanceToNow(new Date(e.received_at), { addSuffix: true }) : ''}
-              onClick={() => setDetail(e)}
-            />
+            (() => {
+              const autoLabels = evaluateAutoLabels(e);
+              return (
+                <BriefingRow
+                  key={e.id}
+                  icon={Mail}
+                  title={e.subject || '(no subject)'}
+                  subtitle={`${e.from_name || e.from_email || 'Unknown'} — ${e.analysis?.summary || e.snippet || ''}`}
+                  badge={e.analysis?.category?.replace(/_/g, ' ') || 'email'}
+                  badgeVariant={e.analysis?.priority === 'high' ? 'destructive' : 'secondary'}
+                  time={e.received_at ? formatDistanceToNow(new Date(e.received_at), { addSuffix: true }) : ''}
+                  onClick={() => setDetail(e)}
+                  extras={autoLabels.length > 0 ? autoLabels.map(lbl => (
+                    <Badge
+                      key={lbl.id}
+                      variant="outline"
+                      className="text-[9px] h-[16px] px-1 border"
+                      style={{
+                        borderColor: `${lbl.color}55`,
+                        backgroundColor: `${lbl.color}1F`,
+                        color: lbl.color,
+                      }}
+                      title={lbl.description || lbl.name}
+                    >
+                      {lbl.name}
+                    </Badge>
+                  )) : undefined}
+                />
+              );
+            })()
           ))}
         </div>
       )}
