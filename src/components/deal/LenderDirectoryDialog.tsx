@@ -121,7 +121,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
 }: LenderDirectoryDialogProps) {
   const { lenders: masterLenders, loading, updateLender } = useMasterLenders();
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [tierFilter, setTierFilter] = useState<string>('all');
   const [groupByTier, setGroupByTier] = useState(true);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
