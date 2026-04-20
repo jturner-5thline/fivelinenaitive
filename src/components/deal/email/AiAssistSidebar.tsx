@@ -177,9 +177,13 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   // ── Per-thread cache (sessionStorage) ─────────────────────────────────
   // Key includes the latest message id so a new inbound message busts the cache.
   const cacheKey = useMemo(() => {
-    const latestId = thread.latestEmail?.id || thread.latestEmail?.gmail_message_id || '';
+    const latestId =
+      thread.latestEmail?.id ||
+      ((thread.latestEmail as any)?.gmail_message_id as string | undefined) ||
+      '';
     return `naitive.aiAssist.draft.${thread.threadId}::${latestId}`;
-  }, [thread.threadId, thread.latestEmail?.id, (thread.latestEmail as any)?.gmail_message_id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thread.threadId, thread.latestEmail?.id]);
 
   const readCache = useCallback((): DraftResult | null => {
     try {
