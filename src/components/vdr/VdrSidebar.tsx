@@ -1,7 +1,5 @@
-import { useState, useCallback, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Upload } from 'lucide-react';
 import type { Deal } from '@/types/deal';
 
 export type VdrView = 'workspace';
@@ -28,24 +26,8 @@ export function VdrSidebar({
   dealId,
   deals,
   currentDeal,
-  onFilesDropped,
 }: VdrSidebarProps) {
   const statusBadge = getStatusBadge(currentDeal?.status);
-  const [isDragOver, setIsDragOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0 && onFilesDropped) onFilesDropped(files);
-  }, [onFilesDropped]);
-
-  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length > 0 && onFilesDropped) onFilesDropped(files);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [onFilesDropped]);
 
   return (
     <aside className="flex flex-col w-[220px] min-w-[220px] text-sidebar-foreground overflow-y-auto">
@@ -84,27 +66,6 @@ export function VdrSidebar({
       </div>
 
       <div className="flex-1" />
-
-      {/* Upload Drop Zone */}
-      <div className="px-4 pb-4" style={{ minHeight: '40%' }}>
-        <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileInput} />
-        <div
-          onDragOver={e => { e.preventDefault(); setIsDragOver(true); }}
-          onDragLeave={() => setIsDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className={cn(
-            'h-full min-h-[180px] rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors',
-            isDragOver
-              ? 'border-primary bg-primary/10 text-primary'
-              : 'border-border/50 text-muted-foreground hover:border-primary/40 hover:text-foreground/70'
-          )}
-        >
-          <Upload className="h-6 w-6" />
-          <p className="text-xs font-medium text-center px-3">Drag & drop files here</p>
-          <p className="text-[10px] opacity-60">or click to browse</p>
-        </div>
-      </div>
     </aside>
   );
 }
