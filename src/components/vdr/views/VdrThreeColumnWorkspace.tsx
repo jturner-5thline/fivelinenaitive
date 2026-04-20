@@ -78,6 +78,8 @@ export function VdrThreeColumnWorkspace({
   // Collapsed category sections (per column)
   const [collapsedInternal, setCollapsedInternal] = useState<Set<string>>(new Set());
   const [collapsedDataroom, setCollapsedDataroom] = useState<Set<string>>(new Set());
+  // Manually-checked checklist items (independent from file-pane filtering)
+  const [manuallyCheckedChecklist, setManuallyCheckedChecklist] = useState<Set<string>>(new Set());
 
   // Per-column selection
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
