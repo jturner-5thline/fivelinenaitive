@@ -379,7 +379,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
   const totalOnDeal = useMemo(() => sorted.filter(l => l.isOnDeal).length, [sorted]);
 
   return (
-    <DialogContent className="max-w-[95vw] h-[85vh] flex flex-col p-0 gap-0 border-border/50 bg-background shadow-[0_24px_64px_-20px_rgba(0,0,0,0.45)] overflow-hidden">
+    <DialogContent className="max-w-[95vw] h-[85vh] flex flex-col p-0 gap-0 border-white/5 bg-background shadow-[0_24px_64px_-20px_rgba(0,0,0,0.55)] overflow-hidden">
       {/* ── Header: title + KPI metadata ── */}
       <DialogHeader className="px-6 pt-5 pb-4 shrink-0 space-y-0 bg-gradient-to-b from-muted/20 to-transparent">
         <div className="flex items-end justify-between gap-6 flex-wrap">
@@ -387,7 +387,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
             <DialogTitle className="text-[15px] font-semibold tracking-tight text-foreground leading-none">
               Lender Directory
             </DialogTitle>
-            <div className="flex items-center gap-4 pl-4 border-l border-border/40">
+            <div className="flex items-center gap-4 pl-4 border-l border-white/5">
               <div className="flex items-baseline gap-1.5">
                 <span className="text-[15px] font-semibold tabular-nums text-foreground leading-none">
                   {sorted.length.toLocaleString()}
