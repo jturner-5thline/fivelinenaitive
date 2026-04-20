@@ -360,6 +360,7 @@ interface EmailListProps {
 }
 
 export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink, onToggleStar, isLoading, selectedIds, onSelectionChange, onMarkRead, onMarkUnread, onArchive, onDelete }: EmailListProps) {
+  const { evaluate: evaluateAutoLabels } = useAutoEmailLabelEvaluator();
   if (isLoading) {
     return <EmailListSkeleton />;
   }
@@ -400,6 +401,7 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
             onMarkUnread={onMarkUnread}
             onArchive={onArchive}
             onDelete={onDelete}
+            autoLabels={evaluateAutoLabels(thread.latestEmail)}
           />
         ))}
       </div>
