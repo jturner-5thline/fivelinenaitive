@@ -100,9 +100,10 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
     if (t > prev) lastActivityByDeal.set(l.deal_id, t);
   }
 
-  // "Active" in this platform = anything not archived / on-hold / closed
+  // "Active" for staleness = pipeline-active deals only (exclude archived,
+  // on-hold, dead, won, lost). on-hold deals are intentionally suppressed.
   const isActiveStatus = (s: string) =>
-    !!s && !["archived", "on-hold", "on_hold", "closed-won", "closed-lost", "lost", "won"].includes(s);
+    !!s && !["archived", "on-hold", "on_hold", "closed-won", "closed-lost", "lost", "won", "dead"].includes(s);
 
   const staleDeals = deals
     .filter((d: any) => isActiveStatus(d.status))
