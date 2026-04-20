@@ -723,7 +723,9 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
 
   return (
     <ResizablePanelGroup direction="horizontal" className="h-full">
-      {/* Internal - Checklists */}
+      {/* Internal - Checklists (hidden in Data Room view) */}
+      {!isDataroomView && (
+      <>
       <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
         {bulkUploadStep === 'upload' ? (
           <BulkUploadStep
@@ -806,11 +808,13 @@ export function VdrChatDataroom({ dealId, documents, documentsLoading, onPreview
       <ResizableHandle />
 
       {/* Right Panel - Dataroom File Tree */}
-      <ResizablePanel defaultSize={65} minSize={30}>
+      </>
+      )}
+      <ResizablePanel defaultSize={isDataroomView ? 100 : 65} minSize={30}>
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center gap-2 px-3 h-10 min-h-[2.5rem] border-b border-border/40">
-            <h2 className="text-sm font-semibold">{isDataroomView ? 'Dataroom (External)' : 'Dataroom'}</h2>
+            <h2 className="text-sm font-semibold">{isDataroomView ? 'Data Room (External)' : 'Data Room'}</h2>
             {!isDataroomView && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{vdrDocs.fileCount} files</Badge>}
             {isDataroomView && <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/30 text-primary">Shared</Badge>}
             {!isDataroomView && processingCount > 0 && (

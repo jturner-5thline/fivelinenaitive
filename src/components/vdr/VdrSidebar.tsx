@@ -99,7 +99,7 @@ export function VdrSidebar({
             )}
           >
             <FolderOpen className="h-3.5 w-3.5 text-muted-foreground" />
-            Dataroom
+            Data Room
           </button>
         </div>
       </div>
