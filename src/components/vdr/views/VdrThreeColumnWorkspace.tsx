@@ -509,6 +509,43 @@ export function VdrThreeColumnWorkspace({
   const indexedCount = vdrDocs.ingestionStats?.complete || 0;
   const processingCount = vdrDocs.ingestionStats?.processing || 0;
 
+  // Data Room metrics
+  const totalDocsCount = useMemo(
+    () => documents.filter(d => !d.is_folder).length,
+    [documents]
+  );
+  const requiredItems = useMemo(() => {
+    const all = [...(initialRound?.items || []), ...(kickOffRound?.items || [])];
+    return all.filter(i => i.required);
+  }, [initialRound, kickOffRound]);
+  const requiredFulfilled = useMemo(
+    () => requiredItems.filter(i => mappedChecklistIds.has(i.id)).length,
+    [requiredItems, mappedChecklistIds]
+  );
+  const requiredTotal = requiredItems.length;
+  const lastSharedAt = useMemo(() => {
+    if (!dataroomDocs.length) return null;
+    const ts = dataroomDocs
+      .map(d => (d as any).updated_at || (d as any).created_at)
+      .filter(Boolean)
+      .map(s => new Date(s).getTime())
+      .filter(n => !isNaN(n));
+    if (!ts.length) return null;
+    return new Date(Math.max(...ts));
+  }, [dataroomDocs]);
+  const lastSharedLabel = useMemo(() => {
+    if (!lastSharedAt) return '—';
+    const diffMs = Date.now() - lastSharedAt.getTime();
+    const min = Math.floor(diffMs / 60000);
+    if (min < 1) return 'just now';
+    if (min < 60) return `${min}m ago`;
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return `${hr}h ago`;
+    const d = Math.floor(hr / 24);
+    if (d < 30) return `${d}d ago`;
+    return lastSharedAt.toLocaleDateString();
+  }, [lastSharedAt]);
+
   return (
     <ResizablePanelGroup direction="horizontal" className="h-full">
       {/* ════════ COLUMN 1: CHECKLIST ════════ */}
