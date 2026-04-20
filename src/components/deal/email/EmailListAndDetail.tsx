@@ -58,6 +58,8 @@ import { LenderPassBanner } from './LenderPassBanner';
 import { useLenderPassDetection } from '@/hooks/useLenderPassDetection';
 import { SendToDataRoomDialog } from './SendToDataRoomDialog';
 import { FolderPlus } from 'lucide-react';
+import { useAutoEmailLabelEvaluator } from '@/hooks/useAutoEmailLabelEvaluator';
+import type { EmailLabel } from '@/hooks/useEmailLabels';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
