@@ -102,7 +102,6 @@ export function WorkflowIntelligenceCard({
   const needsDealLink = !hasLinkedDeal && !!analysis.likely_deal.id && rec.kind !== 'none';
   const aiSuggestedStatus = normalizeSuggested(rec.new_stage);
 
-  const [editing, setEditing] = useState(false);
   const [reason, setReason] = useState(rec.reason_note || '');
   const [confirmedStatus, setConfirmedStatus] = useState<string>(aiSuggestedStatus);
   const [renderedKey, setRenderedKey] = useState<string | null>(null);
