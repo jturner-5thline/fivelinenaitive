@@ -20,6 +20,13 @@ import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderD
 import { toast } from 'sonner';
 import { MultiSelectFilter } from '@/components/deals/MultiSelectFilter';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 // Parse a raw lender_type string into a list of normalized atomic tags.
 // - splits on commas
