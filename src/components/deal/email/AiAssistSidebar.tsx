@@ -522,7 +522,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                 </div>
 
                 {/* Selected draft preview */}
-                {selectedOption && (
+                {selectedOption ? (
                   <div className="rounded-md border border-white/[0.06] bg-background/40 overflow-hidden">
                     <div className="px-3 py-2 border-b border-white/[0.04]">
                       <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60">
@@ -550,6 +550,28 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                         </p>
                       </div>
                     )}
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-white/[0.06] bg-background/40 overflow-hidden">
+                    <div className="px-3 py-2 border-b border-white/[0.04] space-y-1.5">
+                      <Skeleton className="h-2 w-12" />
+                      <Skeleton className="h-3.5 w-2/3" />
+                    </div>
+                    <div className="px-3 py-2.5 space-y-1.5">
+                      <Skeleton className="h-2 w-10 mb-1" />
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-11/12" />
+                      <Skeleton className="h-3 w-10/12" />
+                      <Skeleton className="h-3 w-9/12" />
+                      {isSelectedLoading && (
+                        <div className="flex items-center gap-1.5 pt-1">
+                          <Loader2 className="h-3 w-3 animate-spin text-primary/70" />
+                          <span className="text-[10px] text-muted-foreground/70">
+                            Drafting {TONE_LABELS[selected]}…
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
