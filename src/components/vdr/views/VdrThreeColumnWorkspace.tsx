@@ -79,11 +79,9 @@ export function VdrThreeColumnWorkspace({
   // Collapsed category sections (per column)
   const [collapsedInternal, setCollapsedInternal] = useState<Set<string>>(new Set());
   const [collapsedDataroom, setCollapsedDataroom] = useState<Set<string>>(new Set());
-  // Manual overrides for checklist items (independent from file-pane filtering).
-  // - manuallyCheckedChecklist: items user explicitly checked (when not auto-mapped)
-  // - manuallyUncheckedChecklist: items user explicitly unchecked (overrides auto-mapped state)
-  const [manuallyCheckedChecklist, setManuallyCheckedChecklist] = useState<Set<string>>(new Set());
-  const [manuallyUncheckedChecklist, setManuallyUncheckedChecklist] = useState<Set<string>>(new Set());
+  // Synced with the deal's outstanding_items table — single source of truth for
+  // checklist completion (also reflected in the Outstanding Items panel).
+  const outstandingSync = useDealOutstandingItemsByKey(dealId);
 
   // Per-column selection
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
