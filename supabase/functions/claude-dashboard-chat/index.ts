@@ -35,12 +35,14 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
     console.error("[claude-dashboard-chat] deals query error", {
       message: dealsRes.error.message,
       code: (dealsRes.error as any).code,
-      details: (dealsRes.error as any).details,
-      hint: (dealsRes.error as any).hint,
       companyId,
     });
-  } else {
-    console.log("[claude-dashboard-chat] deals query ok", { rows: dealsRes.data?.length || 0, companyId });
+  }
+  if (tasksRes.error) {
+    console.error("[claude-dashboard-chat] tasks query error", {
+      message: tasksRes.error.message,
+      code: (tasksRes.error as any).code,
+    });
   }
 
   const allDeals = dealsRes.data || [];
