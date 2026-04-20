@@ -39,18 +39,10 @@ export const HomepageCTA = () => {
                 className="marketing-glass-cta px-9 py-6 text-base font-semibold border-0"
                 asChild
               >
-                <Link to="/waitlist">
-                  Join Waitlist
+                <Link to="/auth">
+                  Sign Up
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>
-              </Button>
-              <Button
-                size="lg"
-                variant="ghost"
-                className="px-7 py-6 text-base font-medium text-white/80 hover:text-white hover:bg-white/10 border border-white/10"
-                asChild
-              >
-                <Link to="/waitlist">Talk to the team</Link>
               </Button>
             </div>
           </div>
