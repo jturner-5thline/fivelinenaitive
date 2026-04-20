@@ -616,6 +616,7 @@ export function VdrThreeColumnWorkspace({
           onDragLeave={() => setDropTarget(null)}
           onDrop={e => handleColumnDrop(e, 'internal')}
         >
+          {/* HEADER (h-10) */}
           <div className="flex items-center gap-2 px-3 h-10 min-h-[2.5rem] border-b border-white/5">
             <Lock className="h-3.5 w-3.5 text-muted-foreground" />
             <h2 className="text-sm font-semibold">Internal</h2>
@@ -637,12 +638,12 @@ export function VdrThreeColumnWorkspace({
             </div>
           </div>
 
-          {/* Integrated upload / dropzone (Internal is the staging intake) */}
-          <div className="px-3 pt-2 pb-1.5 border-b border-white/5">
+          {/* TOP UTILITY PANEL — fixed height, mirrored in Data Room */}
+          <div className="h-[72px] px-3 pt-2 pb-2 border-b border-white/5">
             <div
               onClick={() => internalFileInput.current?.click()}
               className={cn(
-                'flex items-center justify-center gap-2 h-12 rounded-md border border-dashed cursor-pointer transition-colors',
+                'flex items-center justify-center gap-2 h-full rounded-md border border-dashed cursor-pointer transition-colors',
                 dropTarget === 'internal'
                   ? 'border-primary/60 bg-primary/10 text-primary'
                   : 'border-white/10 bg-secondary/20 text-muted-foreground hover:border-primary/30 hover:text-foreground/80 hover:bg-secondary/30'
@@ -654,9 +655,9 @@ export function VdrThreeColumnWorkspace({
             </div>
           </div>
 
-          {/* Search shared by both file columns lives here once */}
-          <div className="px-3 py-2 border-b border-white/5">
-            <div className="relative">
+          {/* SEARCH ROW (h-11) */}
+          <div className="h-11 px-3 py-2 border-b border-white/5">
+            <div className="relative h-full">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Filter all files…"
@@ -667,9 +668,10 @@ export function VdrThreeColumnWorkspace({
             </div>
           </div>
 
-          {/* Bulk action bar */}
-          {internalSelected.size > 0 && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/5 border-b border-white/5">
+          {/* BULK ACTION SLOT — reserved-height (h-9) so selection in one column doesn't desync rows */}
+          <div className="h-9 border-b border-white/5 flex items-center px-3">
+            {internalSelected.size > 0 ? (
+              <div className="flex items-center gap-2 w-full bg-primary/5 -mx-3 px-3 h-full">
               <Checkbox
                 checked={internalSelected.size === visibleInternal.length && visibleInternal.length > 0}
                 onCheckedChange={selectAllInternal}
@@ -700,7 +702,12 @@ export function VdrThreeColumnWorkspace({
                 </Button>
               </div>
             </div>
-          )}
+            ) : (
+              <span className="text-[10px] text-muted-foreground/50">
+                Tip: Cmd/Ctrl+click to multi-select.
+              </span>
+            )}
+          </div>
 
           <div className="flex-1 overflow-auto px-1.5 py-1.5">
             {documentsLoading ? (
