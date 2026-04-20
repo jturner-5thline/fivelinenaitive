@@ -379,7 +379,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
   const totalOnDeal = useMemo(() => sorted.filter(l => l.isOnDeal).length, [sorted]);
 
   return (
-    <DialogContent className="max-w-[95vw] h-[85vh] flex flex-col p-0 gap-0 border-border/50 bg-background shadow-[0_24px_64px_-20px_rgba(0,0,0,0.45)] overflow-hidden">
+    <DialogContent className="max-w-[95vw] h-[85vh] flex flex-col p-0 gap-0 border-white/5 bg-background shadow-[0_24px_64px_-20px_rgba(0,0,0,0.55)] overflow-hidden">
       {/* ── Header: title + KPI metadata ── */}
       <DialogHeader className="px-6 pt-5 pb-4 shrink-0 space-y-0 bg-gradient-to-b from-muted/20 to-transparent">
         <div className="flex items-end justify-between gap-6 flex-wrap">
@@ -387,7 +387,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
             <DialogTitle className="text-[15px] font-semibold tracking-tight text-foreground leading-none">
               Lender Directory
             </DialogTitle>
-            <div className="flex items-center gap-4 pl-4 border-l border-border/40">
+            <div className="flex items-center gap-4 pl-4 border-l border-white/5">
               <div className="flex items-baseline gap-1.5">
                 <span className="text-[15px] font-semibold tabular-nums text-foreground leading-none">
                   {sorted.length.toLocaleString()}
@@ -414,7 +414,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
       </DialogHeader>
 
       {/* ── Unified filter rail ── */}
-      <div className="px-6 py-3 border-y border-border/40 bg-muted/20 shrink-0">
+      <div className="px-6 py-3 border-y border-white/5 bg-muted/20 shrink-0">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[240px] max-w-[320px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
@@ -422,19 +422,19 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
               placeholder="Search lenders..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-8 h-8 text-[13px] bg-background border-border/60 shadow-sm focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50"
+              className="pl-8 h-8 text-[13px] bg-background border-white/10 shadow-sm focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50"
             />
           </div>
-          <div className="h-5 w-px bg-border/50 mx-1" />
+          <div className="h-5 w-px bg-white/5 mx-1" />
           <MultiSelectFilter
             label="All Types"
             options={lenderTypes.map(t => ({ value: t, label: t }))}
             selected={selectedTypes}
             onChange={setSelectedTypes}
-            className="h-8 w-[170px] text-[13px] bg-background border-border/60 shadow-sm hover:bg-muted/40 hover:border-border font-normal"
+            className="h-8 w-[170px] text-[13px] bg-background border-white/10 shadow-sm hover:bg-muted/40 hover:border-white/20 font-normal"
           />
           <Select value={tierFilter} onValueChange={setTierFilter}>
-            <SelectTrigger className="h-8 w-[120px] text-[13px] bg-background border-border/60 shadow-sm hover:bg-muted/40 hover:border-border focus:ring-1 focus:ring-primary/20 focus:ring-offset-0">
+            <SelectTrigger className="h-8 w-[120px] text-[13px] bg-background border-white/10 shadow-sm hover:bg-muted/40 hover:border-white/20 focus:ring-1 focus:ring-primary/20 focus:ring-offset-0">
               <SelectValue placeholder="All Tiers" />
             </SelectTrigger>
             <SelectContent>
@@ -458,7 +458,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                 'h-8 inline-flex items-center gap-1.5 px-2.5 rounded-md text-[12px] font-medium border transition-all',
                 groupByTier
                   ? 'bg-primary/10 border-primary/30 text-primary shadow-sm'
-                  : 'bg-background border-border/60 shadow-sm text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/40'
+                  : 'bg-background border-white/10 shadow-sm text-muted-foreground hover:text-foreground hover:border-white/20 hover:bg-muted/40'
               )}
             >
               <Layers className="h-3.5 w-3.5" />
@@ -505,7 +505,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
             <ScrollArea className="w-full h-full">
               <div style={{ minWidth: TOTAL_WIDTH }}>
                 {/* Header Row - identical style to LenderSpreadsheetView */}
-                <div className="flex sticky top-0 z-10 bg-background/95 backdrop-blur-md border-b border-border/60 shadow-[0_1px_0_0_hsl(var(--border)/0.4)]">
+                <div className="flex sticky top-0 z-10 bg-background/95 backdrop-blur-md border-b border-white/5">
                   {/* Row number header */}
                   <div className="flex-shrink-0 w-[50px] px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/60 bg-background/95 sticky left-0 z-20">
                     #
@@ -537,7 +537,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                     if (row.type === 'tier-header') {
                       return (
                         <div
-                          className="flex items-center gap-2.5 px-4 py-2 bg-muted/30 border-y border-border/40 sticky z-[5]"
+                          className="flex items-center gap-2.5 px-4 py-2 bg-muted/30 border-y border-white/5 sticky z-[5]"
                           style={{ minWidth: TOTAL_WIDTH }}
                         >
                           <span className={cn(
@@ -555,7 +555,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                           <span className="text-[11px] text-muted-foreground/60 tabular-nums">
                             {row.count} {row.count === 1 ? 'lender' : 'lenders'}
                           </span>
-                          <div className="flex-1 h-px bg-border/30 ml-2" />
+                          <div className="flex-1 h-px bg-white/5 ml-2" />
                         </div>
                       );
                     }
@@ -564,7 +564,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                     return (
                       <div
                         className={cn(
-                          'group flex border-b border-border/20 hover:bg-muted/40 transition-colors',
+                          'group flex hover:bg-muted/40 transition-colors',
                           lender.isOnDeal && 'bg-primary/[0.035]',
                           isSelected && !lender.isOnDeal && 'bg-primary/[0.06]'
                         )}
@@ -678,7 +678,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                                 (rawValue as string[]).map((tag, i) => (
                                   <span
                                     key={i}
-                                    className="inline-flex shrink-0 items-center rounded bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/90 border border-border/30"
+                                    className="inline-flex shrink-0 items-center rounded bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/90 border border-white/5"
                                   >
                                     {tag}
                                   </span>
@@ -694,7 +694,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                   }}
                   components={{
                     Footer: () => (
-                      <div className="py-5 px-4 text-center text-[11px] text-muted-foreground/50 border-t border-border/30 bg-muted/10">
+                      <div className="py-5 px-4 text-center text-[11px] text-muted-foreground/50 border-t border-white/5 bg-muted/10">
                         <span className="inline-flex items-center gap-1.5">
                           <Building2 className="h-3 w-3" />
                           End of {sorted.length.toLocaleString()} lenders
