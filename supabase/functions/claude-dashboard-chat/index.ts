@@ -31,6 +31,18 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
       .limit(40),
   ]);
 
+  if (dealsRes.error) {
+    console.error("[claude-dashboard-chat] deals query error", {
+      message: dealsRes.error.message,
+      code: (dealsRes.error as any).code,
+      details: (dealsRes.error as any).details,
+      hint: (dealsRes.error as any).hint,
+      companyId,
+    });
+  } else {
+    console.log("[claude-dashboard-chat] deals query ok", { rows: dealsRes.data?.length || 0, companyId });
+  }
+
   const allDeals = dealsRes.data || [];
   const deals = allDeals.filter((d: any) => {
     const n = (d.company || "").toLowerCase().trim();
