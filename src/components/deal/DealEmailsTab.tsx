@@ -771,11 +771,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         <div className="flex-1" />
 
         {/* Keyboard shortcuts help */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Popover open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
+        <Popover open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Keyboard shortcuts" title="Keyboard shortcuts">
               <Keyboard className="h-3.5 w-3.5" />
             </Button>
           </PopoverTrigger>
@@ -800,10 +798,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
               ))}
             </div>
           </PopoverContent>
-            </Popover>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">Keyboard shortcuts</TooltipContent>
-        </Tooltip>
+        </Popover>
 
         <Tooltip>
           <TooltipTrigger asChild>
