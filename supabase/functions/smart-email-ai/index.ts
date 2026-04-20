@@ -140,7 +140,28 @@ ${notes.map((n: any) => `- ${(n.content || n.note || "").substring(0, 200)} (${n
       case "generate_draft_options": {
         // Determine draft type
         const effectiveDraftType = draftType || "reply";
-        const threadEmails = threadData?.emails || [];
+        // Speed: cap thread context at the last 4 messages and strip quoted history.
+        const stripQuoted = (s: string | undefined | null): string => {
+          if (!s) return "";
+          // Cut off at common quoted-reply markers.
+          const cutMarkers = [
+            /\n>+\s/,                           // > quoted lines
+            /\nOn .+ wrote:/i,                  // "On ... wrote:"
+            /\n-{2,}\s*Original Message\s*-{2,}/i,
+            /\nFrom: .+\nSent: /i,
+            /\n_{5,}/,                          // "_____" separator
+          ];
+          let cut = s.length;
+          for (const re of cutMarkers) {
+            const m = s.match(re);
+            if (m && m.index !== undefined && m.index < cut) cut = m.index;
+          }
+          return s.slice(0, cut).trim().slice(0, 1500);
+        };
+        const threadEmails = (threadData?.emails || []).slice(0, 4).map((e: any) => ({
+          ...e,
+          body_preview: stripQuoted(e.body_preview),
+        }));
         const latestEmail = threadEmails[0];
         // "Detailed" tone has been removed. We now support either:
         //   - 2 options ("Concise" + "Balanced"), the default for the AI Assist sidebar
