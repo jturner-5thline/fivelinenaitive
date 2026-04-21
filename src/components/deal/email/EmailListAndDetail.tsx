@@ -1187,7 +1187,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   return (
     <>
       <div className="flex h-full relative overflow-hidden">
-        <div className="flex flex-col flex-1 min-w-0 bg-[hsl(var(--email-reading-bg))]">
+        <div className="flex flex-col flex-1 min-w-0 basis-0 bg-[hsl(var(--email-reading-bg))]">
           {/* Outlook-style command bar */}
           <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-[hsl(var(--email-border))] bg-card/60 backdrop-blur-sm shrink-0">
             <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-7 w-7">
@@ -1374,22 +1374,30 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             />
           )}
 
-          <div className="px-6 pt-5 pb-4 border-b border-[hsl(var(--email-border))]">
+          <div className="px-6 pt-5 pb-4 border-b border-[hsl(var(--email-border))] min-w-0">
             {/* Large subject heading */}
-            <h2 className="text-xl font-semibold text-[hsl(var(--email-text-primary))] leading-snug mb-3">{thread.subject}</h2>
-            
+            <h2
+              className="text-xl font-semibold text-[hsl(var(--email-text-primary))] leading-snug mb-3 break-words"
+              style={{ wordBreak: 'normal', overflowWrap: 'break-word', whiteSpace: 'normal' }}
+            >
+              {thread.subject}
+            </h2>
+
             {/* Sender info block */}
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-3 min-w-0">
               <EmailAvatar name={senderName} email={senderEmail} size="md" />
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-[hsl(var(--email-text-primary))]">{senderName}</span>
-                  <span className="text-xs text-[hsl(var(--email-text-muted))]">&lt;{senderEmail}&gt;</span>
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  <span className="text-sm font-semibold text-[hsl(var(--email-text-primary))] break-words">{senderName}</span>
+                  <span className="text-xs text-[hsl(var(--email-text-muted))] break-all">&lt;{senderEmail}&gt;</span>
                 </div>
-                <div className="text-xs text-[hsl(var(--email-text-muted))] mt-0.5">
+                <div
+                  className="text-xs text-[hsl(var(--email-text-muted))] mt-0.5 break-words"
+                  style={{ wordBreak: 'normal', overflowWrap: 'break-word', whiteSpace: 'normal' }}
+                >
                   {format(new Date(latest.received_at), 'EEEE, MMMM d, yyyy h:mm a')}
                 </div>
-                <div className="text-xs text-[hsl(var(--email-text-muted))] mt-0.5">
+                <div className="text-xs text-[hsl(var(--email-text-muted))] mt-0.5 break-words">
                   To: <span className="text-[hsl(var(--email-text-secondary))]">me</span>
                   {linkedDealName && (
                     <span className="ml-2 text-[hsl(var(--outlook-blue))]">• Linked to: {linkedDealName}</span>
