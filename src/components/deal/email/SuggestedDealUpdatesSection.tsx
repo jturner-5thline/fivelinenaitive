@@ -493,9 +493,15 @@ function QASuggestionCard({
   const [working, setWorking] = useState(false);
   const [draft, setDraft] = useState<PendingQAPayload>(initialPayload);
 
-  // "Merge" mode is offered when an existing Q&A note already references
-  // this thread's id — append cleanly under the same heading.
-  const threadAlreadySaved = !!(existingQANoteContent && existingQANoteContent.includes(initialPayload.source.threadId));
+  // Detect prior Q&A entries for this exact source thread and compute a diff
+  // of incoming pairs vs what was previously saved. Powers "Merge / Update".
+  const parsedExisting = parseExistingQAForThread(
+    existingQANoteContent,
+    initialPayload.source.threadId,
+  );
+  const diff = diffQAPairs(draft.pairs, parsedExisting);
+  const threadAlreadySaved = parsedExisting.entryCount > 0;
+  const hasMergeWork = diff.changed.length + diff.added.length > 0;
 
   const handleConfirm = async (mode: 'append' | 'merge') => {
     setWorking(true);
