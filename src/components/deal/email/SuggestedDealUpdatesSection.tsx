@@ -22,6 +22,12 @@ import { useDealSpaceNotes } from '@/hooks/useDealSpaceNotes';
 import { useDealAuditLog } from '@/hooks/useDealAuditLog';
 import { useAutoDealNoteSuggestionPref } from '@/hooks/useAutoDealNoteSuggestionPref';
 import { format } from 'date-fns';
+import {
+  parseExistingQAForThread,
+  diffQAPairs,
+  classifyPair,
+  type QADiffResult,
+} from '@/lib/diffThreadQAndA';
 
 interface Props {
   dealId?: string;
@@ -57,6 +63,41 @@ function buildQANoteEntry(payload: PendingQAPayload): string {
     lines.push(`**Q${i + 1}.** ${p.question}`);
     lines.push(`**A.** ${p.answer}`);
     lines.push('');
+  });
+  lines.push(`_Source thread: ${payload.source.threadId}_`);
+  lines.push(`_Captured ${ts}_`);
+  lines.push('');
+  return lines.join('\n');
+}
+
+/**
+ * Delta-only entry used in Merge mode: writes ONLY the changed/new pairs
+ * under a "Q&A — Update" sub-heading, preserving the previous entries.
+ */
+function buildQAMergeEntry(payload: PendingQAPayload, diff: QADiffResult): string {
+  const ts = format(new Date(), 'PPp');
+  const dateStr = payload.source.receivedAt
+    ? format(new Date(payload.source.receivedAt), 'PP')
+    : '';
+  const lines: string[] = [
+    `### Client Q&A — Update — ${dateStr || ts}`,
+    `_From **${payload.source.fromName}** <${payload.source.fromEmail}> · Re: ${payload.source.subject}_`,
+    `_${diff.changed.length} updated · ${diff.added.length} new · ${diff.unchanged.length} unchanged_`,
+    '',
+  ];
+  let n = 1;
+  diff.changed.forEach(({ previous, next }) => {
+    lines.push(`**Q${n}.** ${next.question}  _(updated)_`);
+    lines.push(`**A.** ${next.answer}`);
+    lines.push(`> _Previous:_ ${previous}`);
+    lines.push('');
+    n++;
+  });
+  diff.added.forEach(pair => {
+    lines.push(`**Q${n}.** ${pair.question}  _(new)_`);
+    lines.push(`**A.** ${pair.answer}`);
+    lines.push('');
+    n++;
   });
   lines.push(`_Source thread: ${payload.source.threadId}_`);
   lines.push(`_Captured ${ts}_`);
