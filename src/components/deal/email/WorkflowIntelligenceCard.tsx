@@ -62,10 +62,22 @@ const STATUS_LABEL: Record<string, string> = STATUS_OPTIONS.reduce((acc, o) => {
 /** Statuses that close out a lender — show the disposition detail dropdown. */
 const CLOSING_STATUSES = new Set(['passed', 'not_a_fit', 'declined']);
 
-const DETAIL_OPTIONS = (Object.keys(PASS_REASON_LABELS) as LenderPassReasonCategory[]).map((k) => ({
-  value: k,
-  label: PASS_REASON_LABELS[k],
-}));
+/**
+ * Convert "AI suggested" detail tokens (the old hardcoded enum keys returned
+ * by Claude) into a human label so we can pre-select against the
+ * company-configured pass-reason list. Best-effort only — if no match is
+ * found we just show nothing and the user picks reasons themselves.
+ */
+const AI_DETAIL_TOKEN_TO_LABEL_HINT: Record<string, string[]> = {
+  deal_size_mismatch: ['deal size', 'size'],
+  industry_exclusion: ['industry', 'sector'],
+  geographic_restriction: ['geograph', 'location', 'region'],
+  risk_profile_concerns: ['risk', 'credit', 'leverage', 'burn'],
+  timing_issues: ['timing', 'capacity'],
+  relationship_issues: ['relationship'],
+  terms_mismatch: ['terms', 'pricing', 'structure'],
+  other: [],
+};
 
 function normalizeSuggested(stage: string | undefined): string {
   if (!stage) return 'follow_up';
