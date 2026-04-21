@@ -1480,6 +1480,31 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
     return () => clearInterval(interval);
   }, [open, refreshEvents]);
 
+  // Fetch the user's connected calendars once when the dialog opens so we
+  // can color events using each calendar's Google-assigned hex color.
+  useEffect(() => {
+    if (!open || !calendarStatus?.connected) return;
+    if (liveCalendars.length === 0) {
+      listCalendars();
+    }
+  }, [open, calendarStatus?.connected, liveCalendars.length, listCalendars]);
+
+  // Build a calendar_id -> {background, foreground} hex map. When events come
+  // from Google via Nylas, each event's calendar_id resolves to that
+  // calendar's color (matches Google Calendar's default render hierarchy).
+  const calendarColors = useMemo<CalendarColorMap>(() => {
+    const map: CalendarColorMap = new Map();
+    liveCalendars.forEach(c => {
+      if (c.background_color) {
+        map.set(c.id, {
+          background: c.background_color,
+          foreground: c.foreground_color,
+        });
+      }
+    });
+    return map;
+  }, [liveCalendars]);
+
   const handleSaveEvent = useCallback(async (eventData: {
     summary: string;
     description?: string;
