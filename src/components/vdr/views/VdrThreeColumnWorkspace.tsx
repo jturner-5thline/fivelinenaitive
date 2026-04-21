@@ -26,6 +26,7 @@ import { useDealTypes } from '@/contexts/DealTypesContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useUploadedItems } from '@/hooks/useUploadedItems';
 import { useChecklistCategories } from '@/hooks/useChecklistCategories';
+import { useDealOutstandingItemsByKey } from '@/hooks/useDealOutstandingItemsByKey';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
@@ -78,11 +79,9 @@ export function VdrThreeColumnWorkspace({
   // Collapsed category sections (per column)
   const [collapsedInternal, setCollapsedInternal] = useState<Set<string>>(new Set());
   const [collapsedDataroom, setCollapsedDataroom] = useState<Set<string>>(new Set());
-  // Manual overrides for checklist items (independent from file-pane filtering).
-  // - manuallyCheckedChecklist: items user explicitly checked (when not auto-mapped)
-  // - manuallyUncheckedChecklist: items user explicitly unchecked (overrides auto-mapped state)
-  const [manuallyCheckedChecklist, setManuallyCheckedChecklist] = useState<Set<string>>(new Set());
-  const [manuallyUncheckedChecklist, setManuallyUncheckedChecklist] = useState<Set<string>>(new Set());
+  // Synced with the deal's outstanding_items table — single source of truth for
+  // checklist completion (also reflected in the Outstanding Items panel).
+  const outstandingSync = useDealOutstandingItemsByKey(dealId);
 
   // Per-column selection
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
@@ -457,10 +456,15 @@ export function VdrThreeColumnWorkspace({
       );
     }
     const sorted = [...round.items].sort((a, b) => a.order - b.order);
-    const isChecked = (id: string) =>
-      !manuallyUncheckedChecklist.has(id) &&
-      (mappedChecklistIds.has(id) || manuallyCheckedChecklist.has(id));
-    const completed = sorted.filter(i => isChecked(i.id)).length;
+    // Completion is the union of:
+    //   • the linked outstanding item being marked received + approved, OR
+    //   • supporting files having been auto-mapped to this checklist item
+    const isChecked = (item: typeof sorted[number]) => {
+      const linked = outstandingSync.lookup(title, item.label);
+      if (linked) return linked.complete;
+      return mappedChecklistIds.has(item.id);
+    };
+    const completed = sorted.filter(i => isChecked(i)).length;
     return (
       <div className="px-2 py-2">
         <div className="flex items-center justify-between px-1 mb-1">
@@ -469,10 +473,9 @@ export function VdrThreeColumnWorkspace({
         </div>
         <div className="space-y-0.5">
           {sorted.map(item => {
+            const linked = outstandingSync.lookup(title, item.label);
             const isMapped = mappedChecklistIds.has(item.id);
-            const isManualChecked = manuallyCheckedChecklist.has(item.id);
-            const isManualUnchecked = manuallyUncheckedChecklist.has(item.id);
-            const checked = !isManualUnchecked && (isMapped || isManualChecked);
+            const checked = linked ? linked.complete : isMapped;
             const fileCount = checklistFileMap.get(item.id)?.size || 0;
             return (
               <div
@@ -483,29 +486,10 @@ export function VdrThreeColumnWorkspace({
                   type="button"
                   aria-label={checked ? `Mark ${item.label} incomplete` : `Mark ${item.label} complete`}
                   onClick={() => {
-                    if (checked) {
-                      // Uncheck: remove manual check, and if auto-mapped, add manual uncheck override
-                      setManuallyCheckedChecklist(prev => {
-                        if (!prev.has(item.id)) return prev;
-                        const n = new Set(prev); n.delete(item.id); return n;
-                      });
-                      if (isMapped) {
-                        setManuallyUncheckedChecklist(prev => {
-                          const n = new Set(prev); n.add(item.id); return n;
-                        });
-                      }
-                    } else {
-                      // Check: clear any uncheck override and add manual check
-                      setManuallyUncheckedChecklist(prev => {
-                        if (!prev.has(item.id)) return prev;
-                        const n = new Set(prev); n.delete(item.id); return n;
-                      });
-                      if (!isMapped) {
-                        setManuallyCheckedChecklist(prev => {
-                          const n = new Set(prev); n.add(item.id); return n;
-                        });
-                      }
-                    }
+                    void outstandingSync.setChecked(
+                      { roundTitle: title, label: item.label, dealTypeMatch: dealTypeLabel },
+                      !checked
+                    );
                   }}
                   className={cn(
                     'mt-0.5 h-3.5 w-3.5 rounded-sm border flex items-center justify-center flex-shrink-0 transition-colors',
