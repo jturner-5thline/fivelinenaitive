@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { format, formatDistanceToNow, isPast, isToday } from 'date-fns';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -957,6 +958,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
+          useCarouselSwipeClass(),
           'max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] p-0 overflow-hidden rounded-2xl',
           'bg-background/60 backdrop-blur-3xl',
           'border-transparent glass-border-soft',

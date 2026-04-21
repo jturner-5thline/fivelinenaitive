@@ -13,6 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -283,7 +284,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
         <DialogTrigger asChild>
           {trigger || defaultTrigger}
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[680px] max-h-[90vh] overflow-y-auto border-transparent glass-border-soft shadow-2xl shadow-black/20">
+        <DialogContent className={`${useCarouselSwipeClass()} sm:max-w-[680px] max-h-[90vh] overflow-y-auto border-transparent glass-border-soft shadow-2xl shadow-black/20`}>
           <DialogHeader>
             <DialogTitle>Create New Deal</DialogTitle>
             <DialogDescription>
