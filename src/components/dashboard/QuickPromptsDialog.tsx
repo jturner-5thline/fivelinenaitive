@@ -254,7 +254,7 @@ export function QuickPromptsDialog({ trigger, open: controlledOpen, onOpenChange
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-hidden flex flex-col w-[calc(100vw-2rem)] border-transparent glass-border-soft shadow-2xl shadow-black/20">
+      <DialogContent className={`${useCarouselSwipeClass()} sm:max-w-[500px] max-h-[80vh] overflow-hidden flex flex-col w-[calc(100vw-2rem)] border-transparent glass-border-soft shadow-2xl shadow-black/20`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-success" />

@@ -416,10 +416,11 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
 
   const hasMore = hasMoreInbox || hasMoreSent;
 
+  const swipeClass = useCarouselSwipeClass();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-none w-[95vw] h-[92vh] sm:h-[92vh] xl:w-[93vw] 2xl:w-[92vw] p-0 flex flex-col overflow-hidden border-transparent glass-border-soft shadow-2xl shadow-black/20"
+        className={cn(swipeClass, "max-w-none w-[95vw] h-[92vh] sm:h-[92vh] xl:w-[93vw] 2xl:w-[92vw] p-0 flex flex-col overflow-hidden border-transparent glass-border-soft shadow-2xl shadow-black/20")}
       >
         <div className="flex-1 min-h-0 overflow-hidden">
           <DealEmailsTab
