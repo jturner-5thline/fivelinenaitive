@@ -1,20 +1,28 @@
 import { useState } from 'react';
-import { Loader2, Check, X, Quote, AlertCircle, Briefcase, User, Building2, Zap, Link2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Check, X, Quote, AlertCircle, Briefcase, User, Building2, Zap, Link2, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import type { WorkflowAnalysis, WorkflowConfidence } from '@/hooks/useThreadWorkflowAnalysis';
-import { PASS_REASON_LABELS, type LenderPassReasonCategory } from '@/hooks/useLenderDisqualifications';
+import { useLenderStages } from '@/contexts/LenderStagesContext';
 
 interface Props {
   analysis: WorkflowAnalysis;
   loading?: boolean;
   committing: boolean;
   hasLinkedDeal: boolean;
-  onConfirm: (overrides?: { reasonNote?: string; confirmedStatus?: string; confirmedDetail?: string }) => void;
+  onConfirm: (overrides?: {
+    reasonNote?: string;
+    confirmedStatus?: string;
+    /** Comma-joined label string (back-compat, written into deal_lenders.pass_reason). */
+    confirmedDetail?: string;
+    /** Multi-select: array of pass-reason LABELS (from useLenderStages().passReasons). */
+    confirmedDetailLabels?: string[];
+  }) => void;
   onDismiss: () => void;
   onMaybeLater: () => void;
 }
