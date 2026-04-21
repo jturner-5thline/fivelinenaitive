@@ -53,14 +53,14 @@ export function CalendarDayView({ date, events, onEventEdit }: CalendarDayViewPr
       <div>
         {/* All-day */}
         {allDayEvents.length > 0 && (
-          <div className="border-b border-border mb-2 pb-2">
+          <div className="cal-grid-b mb-2 pb-2">
             <div className="text-xs text-muted-foreground mb-1">All Day</div>
             <div className="space-y-1">
               {allDayEvents.map(event => (
                 <div
                   key={event.id}
                   onClick={() => onEventEdit(event)}
-                  className="text-xs py-1 px-2 bg-primary/[0.15] border-l-4 border-l-primary rounded-lg cursor-pointer hover:bg-primary/30 truncate shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-all"
+                  className="text-xs py-1 px-2 bg-primary/[0.15] border-l-4 border-l-primary rounded-[5px] cursor-pointer hover:bg-primary/30 truncate shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-all"
                 >
                   {event.summary}
                 </div>
