@@ -252,9 +252,7 @@ export function QuickPromptsDialog({ trigger, open: controlledOpen, onOpenChange
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger}
-      </DialogTrigger>
+      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-hidden flex flex-col w-[calc(100vw-2rem)]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
