@@ -1918,11 +1918,11 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                       </div>
                     </div>
                     {view === 'day' ? (
-                      <DayColumn date={currentDate} events={getEventsForDay(currentDate)} onEventClick={setSelectedEvent} showDayLabel={false} onSlotClick={handleSlotClick} />
+                      <DayColumn date={currentDate} events={getEventsForDay(currentDate)} onEventClick={setSelectedEvent} showDayLabel={false} onSlotClick={handleSlotClick} calendarColors={calendarColors} />
                     ) : (
                       <div className="flex flex-1">
                         {weekDays.map(day => (
-                          <DayColumn key={day.toISOString()} date={day} events={getEventsForDay(day)} onEventClick={setSelectedEvent} showDayLabel={true} onSlotClick={handleSlotClick} />
+                          <DayColumn key={day.toISOString()} date={day} events={getEventsForDay(day)} onEventClick={setSelectedEvent} showDayLabel={true} onSlotClick={handleSlotClick} calendarColors={calendarColors} />
                         ))}
                       </div>
                     )}
