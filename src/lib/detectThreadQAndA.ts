@@ -28,6 +28,12 @@ export interface DetectedThreadQA {
   inboundIndex: number;
   /** Why we matched (debug-friendly). */
   reasons: string[];
+  /** Detection confidence bucket. */
+  confidence: 'high' | 'medium' | 'low';
+  /** Raw 0..1 score that produced the bucket; useful for tooltips. */
+  confidenceScore: number;
+  /** Per-signal contributions, for the tooltip breakdown. */
+  confidenceSignals: { label: string; weight: number; hit: boolean }[];
 }
 
 export interface ThreadMessageLite {
