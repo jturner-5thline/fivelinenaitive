@@ -5,10 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  PASS_REASON_LABELS,
-  type LenderPassReasonCategory,
-} from '@/hooks/useLenderDisqualifications';
+import { type LenderPassReasonCategory } from '@/hooks/useLenderDisqualifications';
 
 export type WorkflowConfidence = 'low' | 'medium' | 'high';
 export type WorkflowSignalType =
@@ -525,13 +522,15 @@ export function useThreadWorkflowAnalysis({
       name.replace(/\bCap\b/gi, 'Capital').trim(),
     ].filter(Boolean)));
 
-    const { data: crmMatches, error: crmError } = await supabase
-      .from('crm_companies')
-      .select('id, name, domain, additional_domains')
-      .or(aliases.map((alias) => `name.ilike.${alias}`).join(','));
-    if (crmError) throw crmError;
-
-    let candidates: any[] = crmMatches || [];
+    let candidates: any[] = [];
+    if (aliases.length > 0) {
+      const { data: crmMatches, error: crmError } = await supabase
+        .from('crm_companies')
+        .select('id, name, domain, additional_domains')
+        .or(aliases.map((alias) => `name.ilike.${alias}`).join(','));
+      if (crmError) throw crmError;
+      candidates = crmMatches || [];
+    }
     if (senderDomain) {
       const { data: domainMatches, error: domainError } = await supabase
         .from('crm_companies')
