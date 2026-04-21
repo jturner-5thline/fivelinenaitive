@@ -82,7 +82,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { useGoogleCalendar, CalendarEvent } from '@/hooks/useGoogleCalendar';
+import { useGoogleCalendar, CalendarEvent, Calendar } from '@/hooks/useGoogleCalendar';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
