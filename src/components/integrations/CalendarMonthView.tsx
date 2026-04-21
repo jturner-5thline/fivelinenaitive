@@ -83,7 +83,7 @@ export function CalendarMonthView({ currentDate, events, onEventEdit }: Calendar
                   <div
                     key={event.id}
                     onClick={() => onEventEdit(event)}
-                    className="text-[10px] px-1.5 py-0.5 bg-primary/[0.15] border-l-2 border-l-primary rounded-[3px] cursor-pointer hover:bg-primary/30 truncate transition-all"
+                    className="text-[10px] px-1.5 py-0.5 bg-primary/[0.15] border-l-2 border-l-primary rounded-[2px] cursor-pointer hover:bg-primary/30 truncate transition-all"
                   >
                     {event.summary}
                   </div>
