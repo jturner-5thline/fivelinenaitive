@@ -502,7 +502,7 @@ export default function DealDetail() {
   const { canPushFlex: demoCanPushFlex } = useDemoCapabilities();
   const canPushToFlex = hasPageAccess('flex_push') && demoCanPushFlex;
   const { formatCurrencyValue, preferences } = usePreferences();
-  const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deleteLenderNoteHistory, deleteDeal, deals, isLoading: isDealsLoading } = useDealsContext();
+  const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deleteLenderNoteHistory, deleteDeal, deals, isLoading: isDealsLoading, refreshDeals } = useDealsContext();
   const { activities: activityLogs, logActivity, isLoading: isLoadingActivities } = useActivityLog(id);
   
   // Real-time FLEx activity notifications
