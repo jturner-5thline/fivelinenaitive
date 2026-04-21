@@ -112,6 +112,42 @@ const EVENT_PALETTE = [
   { bg: 'bg-indigo-600/15 border-indigo-500/30', text: 'text-foreground', dot: 'bg-indigo-600', label: 'Indigo', glow: 'shadow-[0_0_12px_rgba(79,70,229,0.15)]' },
 ];
 
+// ─── Google Calendar color resolution ────────────────────────
+// Each connected calendar in Google has an assigned hex color (returned by
+// Nylas as `hex_color` / surfaced as `background_color` on our Calendar type).
+// We honor that hex so events on /dashboard match Google Calendar's web UI.
+// Per-event color overrides (Banana, Sage, etc.) are not exposed by Nylas v3,
+// so we fall back to the calendar's color, which matches Google's render
+// hierarchy when no per-event color is set.
+export interface CalendarColorInfo { background: string; foreground?: string }
+export type CalendarColorMap = Map<string, CalendarColorInfo>;
+
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  if ([r, g, b].some(n => Number.isNaN(n))) return `rgba(99,102,241,${alpha})`;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/** Inline style derived from the event's owning calendar's Google hex color. */
+export function getEventColorStyle(
+  event: CalendarEvent,
+  calendarColors: CalendarColorMap,
+): React.CSSProperties | null {
+  const info = calendarColors.get(event.calendar_id);
+  if (!info?.background) return null;
+  const bg = info.background;
+  return {
+    backgroundColor: hexToRgba(bg, 0.18),
+    borderColor: hexToRgba(bg, 0.45),
+    boxShadow: `0 0 12px ${hexToRgba(bg, 0.18)}`,
+    color: 'hsl(var(--foreground))',
+  };
+}
+
 const TIMEZONE_OPTIONS = [
   { label: 'EST', value: 'America/New_York' },
   { label: 'CST', value: 'America/Chicago' },
