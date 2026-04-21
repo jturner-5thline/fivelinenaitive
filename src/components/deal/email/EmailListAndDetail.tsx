@@ -1188,8 +1188,22 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
   return (
     <>
-      <div className="flex h-full min-w-0 w-full flex-col overflow-hidden min-[1100px]:flex-row">
-        <div className="flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden bg-[hsl(var(--email-reading-bg))]">
+      {/* Reactive grid: detail column uses minmax(0,1fr) so it can shrink below
+          its intrinsic content width when the AI Assist column appears, which
+          forces body text to re-wrap. Animated via grid-template-columns
+          transition so toggling Assist feels fluid. Below 1100px the grid
+          stacks (detail on top, assist below) so the middle column always has
+          room to wrap. */}
+      <div
+        className="grid h-full min-w-0 w-full overflow-hidden transition-[grid-template-columns,grid-template-rows] duration-200 ease-out"
+        style={{
+          gridTemplateColumns: showAiAssist
+            ? 'minmax(0, 1fr) minmax(300px, 380px)'
+            : 'minmax(0, 1fr)',
+          gridTemplateRows: '1fr',
+        }}
+      >
+        <div className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-[hsl(var(--email-reading-bg))]">
           {/* Outlook-style command bar */}
           <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-[hsl(var(--email-border))] bg-card/60 backdrop-blur-sm shrink-0">
             <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-7 w-7">
