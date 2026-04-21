@@ -1563,9 +1563,48 @@ export default function Metrics() {
   } = useDashboardFolders();
 
   const unfolderedIds = useMemo(
-    () => getUnfolderedDashboardIds(DASHBOARD_OPTIONS.map(d => d.id)),
+    () => {
+      // Exclude any dashboards that belong to a code-defined default folder so
+      // they don't render twice (once inside the default folder, once at the root).
+      const candidateIds = DASHBOARD_OPTIONS
+        .filter(d => !DEFAULT_FOLDER_IDS.has(d.id))
+        .map(d => d.id);
+      return getUnfolderedDashboardIds(candidateIds);
+    },
     [folders, getUnfolderedDashboardIds]
   );
+
+  // Per-folder expand/collapse state for the 3 code-defined default folders,
+  // persisted in localStorage. Defaults all folders to expanded on first load.
+  const [defaultFolderExpanded, setDefaultFolderExpanded] = useState<Record<string, boolean>>(() => {
+    if (typeof window === 'undefined') {
+      return Object.fromEntries(DEFAULT_FOLDER_GROUPS.map(g => [g.id, true]));
+    }
+    try {
+      const raw = window.localStorage.getItem(DEFAULT_FOLDER_EXPANDED_STORAGE_KEY);
+      const stored = raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
+      return Object.fromEntries(
+        DEFAULT_FOLDER_GROUPS.map(g => [g.id, stored[g.id] ?? true])
+      );
+    } catch {
+      return Object.fromEntries(DEFAULT_FOLDER_GROUPS.map(g => [g.id, true]));
+    }
+  });
+
+  const toggleDefaultFolder = useCallback((folderId: string) => {
+    setDefaultFolderExpanded(prev => {
+      const next = { ...prev, [folderId]: !(prev[folderId] ?? true) };
+      try {
+        window.localStorage.setItem(
+          DEFAULT_FOLDER_EXPANDED_STORAGE_KEY,
+          JSON.stringify(next),
+        );
+      } catch {
+        /* ignore quota / privacy mode errors */
+      }
+      return next;
+    });
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -1837,7 +1876,62 @@ export default function Metrics() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-80 max-h-[70vh] overflow-y-auto bg-popover border border-border shadow-lg z-50">
-                    {/* Folders */}
+                    {/* Default code-defined folders (Management Insights, Financial, Sales & BD) */}
+                    {DEFAULT_FOLDER_GROUPS.map((group) => {
+                      const isExpanded = defaultFolderExpanded[group.id] ?? true;
+                      const groupDashboards = group.dashboardIds
+                        .map(id => DASHBOARD_OPTIONS.find(d => d.id === id))
+                        .filter(Boolean) as typeof DASHBOARD_OPTIONS;
+
+                      return (
+                        <div key={group.id}>
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            aria-expanded={isExpanded}
+                            className="flex items-center justify-between px-2 py-1.5 hover:bg-accent rounded-sm cursor-pointer"
+                            onClick={() => toggleDefaultFolder(group.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                toggleDefaultFolder(group.id);
+                              }
+                            }}
+                          >
+                            <div className="flex items-center gap-2">
+                              {isExpanded ? (
+                                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                              ) : (
+                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                              )}
+                              <Folder className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm font-medium">{group.name}</span>
+                              <span className="text-xs text-muted-foreground">({groupDashboards.length})</span>
+                            </div>
+                          </div>
+                          {isExpanded && groupDashboards.map((dashboard) => (
+                            <DropdownMenuItem
+                              key={dashboard.id}
+                              className={cn(
+                                "flex items-center justify-between py-1.5 pl-10",
+                                selectedDashboard === dashboard.id && "bg-accent"
+                              )}
+                              onClick={() => setSelectedDashboard(dashboard.id)}
+                            >
+                              <div className="flex items-center gap-2">
+                                <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="text-sm">{dashboard.name}</span>
+                              </div>
+                              {dashboard.isFavorite && (
+                                <Star className="h-3.5 w-3.5 text-primary fill-primary" />
+                              )}
+                            </DropdownMenuItem>
+                          ))}
+                        </div>
+                      );
+                    })}
+
+                    {/* User-created folders (DB-backed) */}
                     {folders.map((folder) => {
                       const folderDashboards = folder.dashboardIds
                         .map(id => DASHBOARD_OPTIONS.find(d => d.id === id))
