@@ -31,6 +31,10 @@ export interface PendingQAPayload {
   };
   detectedAt: string;
   reasons: string[];
+  /** Detection confidence captured at the time of suggestion creation. */
+  confidence?: 'high' | 'medium' | 'low';
+  confidenceScore?: number;
+  confidenceSignals?: { label: string; weight: number; hit: boolean }[];
 }
 
 export interface PendingDealSuggestion {
