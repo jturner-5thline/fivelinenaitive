@@ -22,6 +22,12 @@ import { useDealSpaceNotes } from '@/hooks/useDealSpaceNotes';
 import { useDealAuditLog } from '@/hooks/useDealAuditLog';
 import { useAutoDealNoteSuggestionPref } from '@/hooks/useAutoDealNoteSuggestionPref';
 import { format } from 'date-fns';
+import {
+  parseExistingQAForThread,
+  diffQAPairs,
+  classifyPair,
+  type QADiffResult,
+} from '@/lib/diffThreadQAndA';
 
 interface Props {
   dealId?: string;
@@ -57,6 +63,41 @@ function buildQANoteEntry(payload: PendingQAPayload): string {
     lines.push(`**Q${i + 1}.** ${p.question}`);
     lines.push(`**A.** ${p.answer}`);
     lines.push('');
+  });
+  lines.push(`_Source thread: ${payload.source.threadId}_`);
+  lines.push(`_Captured ${ts}_`);
+  lines.push('');
+  return lines.join('\n');
+}
+
+/**
+ * Delta-only entry used in Merge mode: writes ONLY the changed/new pairs
+ * under a "Q&A — Update" sub-heading, preserving the previous entries.
+ */
+function buildQAMergeEntry(payload: PendingQAPayload, diff: QADiffResult): string {
+  const ts = format(new Date(), 'PPp');
+  const dateStr = payload.source.receivedAt
+    ? format(new Date(payload.source.receivedAt), 'PP')
+    : '';
+  const lines: string[] = [
+    `### Client Q&A — Update — ${dateStr || ts}`,
+    `_From **${payload.source.fromName}** <${payload.source.fromEmail}> · Re: ${payload.source.subject}_`,
+    `_${diff.changed.length} updated · ${diff.added.length} new · ${diff.unchanged.length} unchanged_`,
+    '',
+  ];
+  let n = 1;
+  diff.changed.forEach(({ previous, next }) => {
+    lines.push(`**Q${n}.** ${next.question}  _(updated)_`);
+    lines.push(`**A.** ${next.answer}`);
+    lines.push(`> _Previous:_ ${previous}`);
+    lines.push('');
+    n++;
+  });
+  diff.added.forEach(pair => {
+    lines.push(`**Q${n}.** ${pair.question}  _(new)_`);
+    lines.push(`**A.** ${pair.answer}`);
+    lines.push('');
+    n++;
   });
   lines.push(`_Source thread: ${payload.source.threadId}_`);
   lines.push(`_Captured ${ts}_`);
@@ -144,17 +185,38 @@ export function SuggestedDealUpdatesSection({ dealId, dealName }: Props) {
                 onConfirm={async (finalPayload, mode) => {
                   if (!dealId) return;
                   try {
-                    const noteEntry = buildQANoteEntry(finalPayload);
                     const existing = notes.find(n => n.title === QA_NOTE_TITLE);
+                    const parsed = parseExistingQAForThread(
+                      existing?.content,
+                      finalPayload.source.threadId,
+                    );
+                    const diff = diffQAPairs(finalPayload.pairs, parsed);
+
+                    // Merge mode writes ONLY changed + new pairs. If nothing
+                    // changed and nothing is new, skip the write entirely.
+                    let noteEntry: string | null;
+                    if (mode === 'merge' && parsed.entryCount > 0) {
+                      if (diff.changed.length === 0 && diff.added.length === 0) {
+                        noteEntry = null;
+                      } else {
+                        noteEntry = buildQAMergeEntry(finalPayload, diff);
+                      }
+                    } else {
+                      noteEntry = buildQANoteEntry(finalPayload);
+                    }
+
                     let noteId: string | null = null;
-                    if (existing) {
+                    if (noteEntry === null && existing) {
+                      // No-op merge — keep the note as-is.
+                      noteId = existing.id;
+                    } else if (existing) {
                       const newContent = existing.content
                         ? `${existing.content}\n\n${noteEntry}`
                         : noteEntry;
                       await updateNote(existing.id, { content: newContent });
                       noteId = existing.id;
                     } else {
-                      const created = await createNote(QA_NOTE_TITLE, noteEntry);
+                      const created = await createNote(QA_NOTE_TITLE, noteEntry!);
                       noteId = created?.id ?? null;
                     }
 
@@ -169,14 +231,27 @@ export function SuggestedDealUpdatesSection({ dealId, dealName }: Props) {
                         from_email: finalPayload.source.fromEmail,
                         pair_count: finalPayload.pairs.length,
                         mode, // 'append' | 'merge'
+                        prior_entry_count: parsed.entryCount,
+                        changed_count: diff.changed.length,
+                        added_count: diff.added.length,
+                        unchanged_count: diff.unchanged.length,
                         suggestion_id: s.id,
                       },
                     );
 
                     await confirm(s.id, noteId);
-                    toast.success(mode === 'merge' ? 'Q&A merged into deal notes' : 'Q&A saved to deal notes', {
-                      description: dealName ? `Saved to ${dealName} → ${QA_NOTE_TITLE}` : undefined,
-                    });
+                    if (mode === 'merge' && noteEntry === null) {
+                      toast.info('No changes to merge', {
+                        description: 'All Q&A pairs already match the saved note.',
+                      });
+                    } else {
+                      toast.success(
+                        mode === 'merge'
+                          ? `Merged ${diff.changed.length + diff.added.length} pair(s) into deal notes`
+                          : 'Q&A saved to deal notes',
+                        { description: dealName ? `Saved to ${dealName} → ${QA_NOTE_TITLE}` : undefined },
+                      );
+                    }
                   } catch (err: any) {
                     console.error(err);
                     toast.error('Failed to save Q&A to deal notes');
@@ -418,9 +493,15 @@ function QASuggestionCard({
   const [working, setWorking] = useState(false);
   const [draft, setDraft] = useState<PendingQAPayload>(initialPayload);
 
-  // "Merge" mode is offered when an existing Q&A note already references
-  // this thread's id — append cleanly under the same heading.
-  const threadAlreadySaved = !!(existingQANoteContent && existingQANoteContent.includes(initialPayload.source.threadId));
+  // Detect prior Q&A entries for this exact source thread and compute a diff
+  // of incoming pairs vs what was previously saved. Powers "Merge / Update".
+  const parsedExisting = parseExistingQAForThread(
+    existingQANoteContent,
+    initialPayload.source.threadId,
+  );
+  const diff = diffQAPairs(draft.pairs, parsedExisting);
+  const threadAlreadySaved = parsedExisting.entryCount > 0;
+  const hasMergeWork = diff.changed.length + diff.added.length > 0;
 
   const handleConfirm = async (mode: 'append' | 'merge') => {
     setWorking(true);
@@ -470,12 +551,17 @@ function QASuggestionCard({
             </span>
           </div>
           <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
-            {draft.pairs.map((p, i) => (
+            {draft.pairs.map((p, i) => {
+              const status = classifyPair(p, parsedExisting);
+              return (
               <div key={i} className="rounded border border-white/[0.04] bg-background/30 px-2 py-1.5 space-y-1">
                 {!editing ? (
                   <>
-                    <div className="text-[11px] text-foreground/85 leading-snug">
-                      <span className="text-muted-foreground/80 font-semibold">Q{i + 1}.</span> {p.question}
+                    <div className="flex items-start gap-1.5">
+                      <div className="text-[11px] text-foreground/85 leading-snug flex-1">
+                        <span className="text-muted-foreground/80 font-semibold">Q{i + 1}.</span> {p.question}
+                      </div>
+                      {threadAlreadySaved && <ChangeBadge status={status} />}
                     </div>
                     <div className="text-[11px] text-foreground/95 leading-snug pl-3 border-l border-primary/30">
                       {p.answer}
@@ -498,13 +584,33 @@ function QASuggestionCard({
                   </>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
         {threadAlreadySaved && (
           <div className="text-[10px] text-amber-400/90 leading-snug border border-amber-400/20 bg-amber-400/[0.04] rounded px-2 py-1.5">
-            This thread already has a Q&A entry. Use <span className="font-semibold">Merge / Update</span> to append the new pairs cleanly under the same heading.
+            {parsedExisting.entryCount} prior entr{parsedExisting.entryCount === 1 ? 'y' : 'ies'} for this thread.
+            {' '}
+            {hasMergeWork ? (
+              <>
+                <span className="font-semibold">Merge / Update</span> will write only{' '}
+                {diff.changed.length > 0 && (
+                  <>{diff.changed.length} updated</>
+                )}
+                {diff.changed.length > 0 && diff.added.length > 0 && ' · '}
+                {diff.added.length > 0 && (
+                  <>{diff.added.length} new</>
+                )}
+                {diff.unchanged.length > 0 && (
+                  <span className="text-muted-foreground/70"> ({diff.unchanged.length} unchanged skipped)</span>
+                )}
+                .
+              </>
+            ) : (
+              <span className="text-muted-foreground/70"> All pairs match — nothing to merge.</span>
+            )}
           </div>
         )}
       </div>
@@ -535,12 +641,36 @@ function QASuggestionCard({
           size="sm"
           className="h-7 text-[11px] gap-1.5 bg-[hsl(160,60%,40%)] hover:bg-[hsl(160,60%,35%)] text-white"
           onClick={() => handleConfirm(threadAlreadySaved ? 'merge' : 'append')}
-          disabled={working || draft.pairs.length === 0}
+          disabled={working || draft.pairs.length === 0 || (threadAlreadySaved && !hasMergeWork)}
         >
           {working ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-          {threadAlreadySaved ? 'Merge / Update' : 'Confirm & Save to Deal Notes'}
+          {threadAlreadySaved
+            ? `Merge / Update${hasMergeWork ? ` (${diff.changed.length + diff.added.length})` : ''}`
+            : 'Confirm & Save to Deal Notes'}
         </Button>
       </div>
     </div>
+  );
+}
+
+function ChangeBadge({ status }: { status: 'unchanged' | 'changed' | 'new' }) {
+  if (status === 'unchanged') {
+    return (
+      <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted/40 text-muted-foreground/70 shrink-0">
+        Unchanged
+      </span>
+    );
+  }
+  if (status === 'changed') {
+    return (
+      <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-300 shrink-0">
+        Updated
+      </span>
+    );
+  }
+  return (
+    <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-400/15 text-emerald-300 shrink-0">
+      New
+    </span>
   );
 }
