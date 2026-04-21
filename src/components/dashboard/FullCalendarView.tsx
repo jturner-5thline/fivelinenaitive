@@ -1353,7 +1353,17 @@ function KeyboardShortcutsOverlay({ onClose }: { onClose: () => void }) {
 
 // ─── Main Component ──────────────────────────────────────────
 export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) {
-  const { events: liveEvents, status: calendarStatus, listEvents, isLoading: calendarLoading, createEvent, updateEvent, deleteEvent } = useGoogleCalendar();
+  const {
+    events: liveEvents,
+    status: calendarStatus,
+    listEvents,
+    isLoading: calendarLoading,
+    createEvent,
+    updateEvent,
+    deleteEvent,
+    calendars: liveCalendars,
+    listCalendars,
+  } = useGoogleCalendar();
   const [view, setView] = useState<CalendarViewMode>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
