@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Loader2, Check, X, Quote, AlertCircle, Briefcase, User, Building2, Zap, Link2 } from 'lucide-react';
+import { Loader2, Check, X, Quote, AlertCircle, Briefcase, User, Building2, Zap, Link2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -96,6 +96,8 @@ export function WorkflowIntelligenceCard({
   const [confirmedStatus, setConfirmedStatus] = useState<string>(aiSuggestedStatus);
   const [confirmedDetail, setConfirmedDetail] = useState<string>(aiSuggestedDetail);
   const [renderedKey, setRenderedKey] = useState<string | null>(null);
+  // Two-panel slider: 'suggested' (primary, default) <-> 'intelligence' (entities + signal context).
+  const [activePanel, setActivePanel] = useState<'suggested' | 'intelligence'>('suggested');
 
   const analysisKey = `${analysis.signal.type}::${rec.lender_id || rec.master_lender_id || rec.lender_name}::${rec.new_stage}::${rec.suggested_detail || ''}`;
   if (renderedKey !== analysisKey) {
@@ -160,17 +162,199 @@ export function WorkflowIntelligenceCard({
   };
 
   return (
-    <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-3 space-y-3">
+    <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-3 space-y-3 overflow-hidden">
+      {/* Header — title swaps with the active panel; arrow controls slide between the two. */}
       <div className="flex items-center gap-2">
+        {activePanel === 'intelligence' && (
+          <button
+            type="button"
+            onClick={() => setActivePanel('suggested')}
+            className="h-5 w-5 -ml-1 rounded hover:bg-primary/10 flex items-center justify-center text-primary/80"
+            aria-label="Back to suggested update"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </button>
+        )}
         <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
         <span className="text-[11px] font-semibold uppercase tracking-wider text-primary/90">
-          Workflow Intelligence
+          {activePanel === 'suggested' ? 'Suggested Update' : 'Workflow Intelligence'}
         </span>
-        {loading && <Loader2 className="h-3 w-3 animate-spin text-primary/60 ml-auto" />}
+        {loading && <Loader2 className="h-3 w-3 animate-spin text-primary/60" />}
+        <div className="ml-auto flex items-center gap-1">
+          <span className="text-[9px] uppercase tracking-wider text-muted-foreground/70">
+            {activePanel === 'suggested' ? '1 / 2' : '2 / 2'}
+          </span>
+          {activePanel === 'suggested' ? (
+            <button
+              type="button"
+              onClick={() => setActivePanel('intelligence')}
+              className="h-5 w-5 rounded hover:bg-primary/10 flex items-center justify-center text-primary/80"
+              aria-label="View workflow intelligence"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setActivePanel('suggested')}
+              className="h-5 w-5 rounded hover:bg-primary/10 flex items-center justify-center text-primary/80"
+              aria-label="Back to suggested update"
+            >
+              <ChevronRight className="h-3.5 w-3.5 rotate-180" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Identified entities */}
-      <div className="space-y-1.5 text-[11px]">
+      {/* Sliding viewport — two panels share width; transform controls which is visible. */}
+      <div className="relative">
+        <div
+          className="flex w-[200%] transition-transform duration-300 ease-out"
+          style={{ transform: activePanel === 'suggested' ? 'translateX(0%)' : 'translateX(-50%)' }}
+        >
+          {/* PANEL 1 — Suggested Update (primary) */}
+          <div className="w-1/2 shrink-0 pr-2 space-y-3">
+            {hasUpdate ? (
+              <div className="space-y-2">
+                <p className="text-[12px] text-foreground font-medium leading-snug">{rec.title}</p>
+
+                {isLenderStatus && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Status
+                    </label>
+                    <Select value={confirmedStatus} onValueChange={handleStatusChange}>
+                      <SelectTrigger className="h-8 text-[11px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUS_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value} className="text-[11px]">
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {userOverrodeStatus && (
+                      <div className="text-[10px] leading-tight pt-0.5">
+                        <span className="text-muted-foreground">AI suggested: </span>
+                        <span className="text-foreground/70">{STATUS_LABEL[aiSuggestedStatus]}</span>
+                        <span className="text-muted-foreground"> · You are confirming: </span>
+                        <span className="text-primary font-medium">{STATUS_LABEL[confirmedStatus]}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {showDetailField && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Detail / reason category
+                    </label>
+                    <Select value={confirmedDetail || 'other'} onValueChange={handleDetailChange}>
+                      <SelectTrigger className="h-8 text-[11px]">
+                        <SelectValue placeholder="Select a reason" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DETAIL_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value} className="text-[11px]">
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {userOverrodeDetail && aiSuggestedDetail && (
+                      <div className="text-[10px] leading-tight pt-0.5">
+                        <span className="text-muted-foreground">AI suggested: </span>
+                        <span className="text-foreground/70">
+                          {PASS_REASON_LABELS[aiSuggestedDetail as LenderPassReasonCategory] || aiSuggestedDetail}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Note
+                  </label>
+                  <Input
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    className="h-8 text-[11px]"
+                    placeholder="Reason / context for this update"
+                  />
+                </div>
+
+                {needsDealLink && (
+                  <div className="flex items-start gap-1.5 text-[10px] text-amber-300/90 bg-amber-500/[0.04] rounded p-2">
+                    <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
+                    <span>Link this thread to {analysis.likely_deal.name} first to apply this update.</span>
+                  </div>
+                )}
+
+                {willAutoLink && !needsDealLink && (
+                  <div className="flex items-start gap-1.5 text-[10px] text-primary/80 bg-primary/[0.05] rounded p-2">
+                    <Link2 className="h-3 w-3 mt-0.5 shrink-0" />
+                    <span>
+                      {rec.lender_name || 'This lender'} isn't on this deal yet — confirming will
+                      auto-link them and apply the update in one step.
+                    </span>
+                  </div>
+                )}
+
+                {isLenderStatus && !lenderResolvable && (
+                  <div className="flex items-start gap-1.5 text-[10px] text-amber-300/90 bg-amber-500/[0.04] rounded p-2">
+                    <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
+                    <span>Lender match is uncertain. Add the lender to the deal manually, then retry.</span>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-1.5 pt-1">
+                  <Button
+                    size="sm"
+                    className="h-7 px-2 text-[11px] gap-1 flex-1"
+                    disabled={!canConfirm}
+                    onClick={handleConfirm}
+                  >
+                    {committing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                    Confirm
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-[11px] text-muted-foreground"
+                    onClick={onMaybeLater}
+                  >
+                    Maybe later
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 w-7 p-0 text-muted-foreground"
+                    onClick={onDismiss}
+                    title="Dismiss"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-[11px] text-muted-foreground italic">
+                No workflow update suggested for this thread.
+              </p>
+            )}
+
+            {analysis.secondary_action.kind !== 'none' && analysis.secondary_action.title && (
+              <p className="text-[10px] text-muted-foreground/80 pt-1 border-t border-primary/10">
+                Also consider: <span className="text-foreground/70">{analysis.secondary_action.title}</span>
+              </p>
+            )}
+          </div>
+
+          {/* PANEL 2 — Workflow Intelligence (entities + detected signal) */}
+          <div className="w-1/2 shrink-0 pl-2 space-y-3">
+            <div className="space-y-1.5 text-[11px]">
         <div className="flex items-start gap-1.5">
           <Briefcase className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
           <span className="text-muted-foreground shrink-0">Deal:</span>
@@ -204,179 +388,34 @@ export function WorkflowIntelligenceCard({
         </div>
       </div>
 
-      {/* Detected signal */}
-      {analysis.signal.type !== 'no_signal' && (
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-1.5">
-            <Zap className="h-3 w-3 text-muted-foreground" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Detected signal
-            </span>
-            <Badge variant="outline" className={cn('ml-auto text-[9px] h-4 px-1.5 border', SIGNAL_TONE[analysis.signal.type] || CONFIDENCE_TONE.low)}>
-              {analysis.signal.label || analysis.signal.type}
-            </Badge>
-          </div>
-          {analysis.signal.supporting_quote && (
-            <blockquote className="text-[11px] text-muted-foreground italic border-l-2 border-primary/30 pl-2 leading-relaxed">
-              <Quote className="h-2.5 w-2.5 inline mr-1 text-primary/40" />
-              {analysis.signal.supporting_quote}
-            </blockquote>
-          )}
-          {analysis.signal.nuance && (
-            <p className="text-[10px] text-amber-300/90 leading-relaxed">
-              <AlertCircle className="h-2.5 w-2.5 inline mr-1" />
-              {analysis.signal.nuance}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Recommended update */}
-      {hasUpdate && (
-        <div className="space-y-2 pt-1 border-t border-primary/10">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Suggested update
-          </div>
-          <p className="text-[12px] text-foreground font-medium leading-snug">{rec.title}</p>
-
-          {isLenderStatus && (
-            <div className="space-y-1">
-              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Status
-              </label>
-              <Select value={confirmedStatus} onValueChange={handleStatusChange}>
-                <SelectTrigger className="h-8 text-[11px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value} className="text-[11px]">
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {userOverrodeStatus && (
-                <div className="text-[10px] leading-tight pt-0.5">
-                  <span className="text-muted-foreground">AI suggested: </span>
-                  <span className="text-foreground/70">{STATUS_LABEL[aiSuggestedStatus]}</span>
-                  <span className="text-muted-foreground"> · You are confirming: </span>
-                  <span className="text-primary font-medium">{STATUS_LABEL[confirmedStatus]}</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Disposition detail — same taxonomy as the lenders-page modal. */}
-          {showDetailField && (
-            <div className="space-y-1">
-              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Detail / reason category
-              </label>
-              <Select value={confirmedDetail || 'other'} onValueChange={handleDetailChange}>
-                <SelectTrigger className="h-8 text-[11px]">
-                  <SelectValue placeholder="Select a reason" />
-                </SelectTrigger>
-                <SelectContent>
-                  {DETAIL_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value} className="text-[11px]">
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {userOverrodeDetail && aiSuggestedDetail && (
-                <div className="text-[10px] leading-tight pt-0.5">
-                  <span className="text-muted-foreground">AI suggested: </span>
-                  <span className="text-foreground/70">
-                    {PASS_REASON_LABELS[aiSuggestedDetail as LenderPassReasonCategory] || aiSuggestedDetail}
+            {analysis.signal.type !== 'no_signal' && (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <Zap className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Detected signal
                   </span>
+                  <Badge variant="outline" className={cn('ml-auto text-[9px] h-4 px-1.5 border', SIGNAL_TONE[analysis.signal.type] || CONFIDENCE_TONE.low)}>
+                    {analysis.signal.label || analysis.signal.type}
+                  </Badge>
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* Note — always editable. */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Note
-            </label>
-            <Input
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="h-8 text-[11px]"
-              placeholder="Reason / context for this update"
-            />
-          </div>
-
-          {needsDealLink && (
-            <div className="flex items-start gap-1.5 text-[10px] text-amber-300/90 bg-amber-500/[0.04] rounded p-2">
-              <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
-              <span>Link this thread to {analysis.likely_deal.name} first to apply this update.</span>
-            </div>
-          )}
-
-          {/* Smart linking notice — replaces the dead-end warning. */}
-          {willAutoLink && !needsDealLink && (
-            <div className="flex items-start gap-1.5 text-[10px] text-primary/80 bg-primary/[0.05] rounded p-2">
-              <Link2 className="h-3 w-3 mt-0.5 shrink-0" />
-              <span>
-                {rec.lender_name || 'This lender'} isn't on this deal yet — confirming will
-                auto-link them and apply the update in one step.
-              </span>
-            </div>
-          )}
-
-          {/* Genuine ambiguity fallback (no firm name AND no confident match). */}
-          {isLenderStatus && !lenderResolvable && (
-            <div className="flex items-start gap-1.5 text-[10px] text-amber-300/90 bg-amber-500/[0.04] rounded p-2">
-              <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
-              <span>Lender match is uncertain. Add the lender to the deal manually, then retry.</span>
-            </div>
-          )}
-
-          <div className="flex items-center gap-1.5 pt-1">
-            <Button
-              size="sm"
-              className="h-7 px-2 text-[11px] gap-1 flex-1"
-              disabled={!canConfirm}
-              onClick={handleConfirm}
-            >
-              {committing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-              Confirm
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 px-2 text-[11px] text-muted-foreground"
-              onClick={onMaybeLater}
-            >
-              Maybe later
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 w-7 p-0 text-muted-foreground"
-              onClick={onDismiss}
-              title="Dismiss"
-            >
-              <X className="h-3 w-3" />
-            </Button>
+                {analysis.signal.supporting_quote && (
+                  <blockquote className="text-[11px] text-muted-foreground italic border-l-2 border-primary/30 pl-2 leading-relaxed">
+                    <Quote className="h-2.5 w-2.5 inline mr-1 text-primary/40" />
+                    {analysis.signal.supporting_quote}
+                  </blockquote>
+                )}
+                {analysis.signal.nuance && (
+                  <p className="text-[10px] text-amber-300/90 leading-relaxed">
+                    <AlertCircle className="h-2.5 w-2.5 inline mr-1" />
+                    {analysis.signal.nuance}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
-      )}
-
-      {!hasUpdate && analysis.signal.type === 'no_signal' && (
-        <p className="text-[11px] text-muted-foreground italic">
-          No workflow update suggested for this thread.
-        </p>
-      )}
-
-      {analysis.secondary_action.kind !== 'none' && analysis.secondary_action.title && (
-        <p className="text-[10px] text-muted-foreground/80 pt-1 border-t border-primary/10">
-          Also consider: <span className="text-foreground/70">{analysis.secondary_action.title}</span>
-        </p>
-      )}
+      </div>
     </div>
   );
 }
