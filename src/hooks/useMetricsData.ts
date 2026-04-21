@@ -69,7 +69,7 @@ interface DbDeal {
 }
 
 export function useMetricsData() {
-  const { data: deals, isLoading, error } = useQuery({
+  const { data: deals, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ['metrics-deals'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -320,7 +320,9 @@ export function useMetricsData() {
     data: metricsData,
     rawDeals: deals || [],
     isLoading,
+    isFetching,
     error,
+    refetch,
   };
 }
 

@@ -110,6 +110,7 @@ import { evaluateFormula, FormulaContext } from "@/lib/customMetricEngine";
 import { SyncStatusBar } from "@/components/metrics/SyncStatusBar";
 import { getTimePeriodRange, getTimePeriodLabel, isInRange } from "@/lib/timePeriodUtils";
 import { DatarailsLiveStat, DatarailsLiveChart } from "@/components/metrics/DatarailsLiveWidget";
+import { InsightsLoadingSkeleton, InsightsErrorState } from "@/components/insights/InsightsStateViews";
 // Dashboard options
 const DASHBOARD_OPTIONS = [
   { id: 'management-snapshot', name: 'Weekly Rundown', isFavorite: true },
@@ -1342,7 +1343,7 @@ function renderStatContent(
 
 export default function Metrics() {
   const [reportingMonth, setReportingMonth] = useState(format(new Date(), "MMM-yy"));
-  const { data: metrics, rawDeals, isLoading, error } = useMetricsData();
+  const { data: metrics, rawDeals, isLoading, isFetching, error, refetch } = useMetricsData();
   const { data: qbMetrics, rawInvoices, rawPayments, rawExpenses } = useQuickBooksMetrics();
   const { data: hsMetrics } = useHubSpotMetrics();
   const { metrics: customMetricDefs } = useCustomMetrics();
@@ -1758,17 +1759,22 @@ export default function Metrics() {
         <Helmet>
           <title>Insights | 5thLine</title>
         </Helmet>
-        <div className="bg-transparent">
-          <div className="flex items-center gap-2">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span>Loading insights...</span>
-          </div>
-          <div className="grid lg:grid-cols-4 gap-4 mt-4">
-            {[...Array(8)].map((_, i) => (
-              <Skeleton key={i} className="h-[200px]" />
-            ))}
-          </div>
-        </div>
+        <InsightsLoadingSkeleton />
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <Helmet>
+          <title>Insights | 5thLine</title>
+        </Helmet>
+        <InsightsErrorState
+          error={error as Error}
+          onRetry={() => refetch()}
+          isRetrying={isFetching}
+        />
       </>
     );
   }
