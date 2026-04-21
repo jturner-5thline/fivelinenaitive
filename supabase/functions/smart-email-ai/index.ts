@@ -535,13 +535,18 @@ Classify and return strict JSON only.`;
         const subject: string = latestEmail?.subject || threadData?.subject || "";
 
         // Build lender candidate list from the linked deal (for high-precision matching).
-        let lenderCandidates: Array<{ id: string; name: string; stage?: string }> = [];
+        let lenderCandidates: Array<{ id: string; name: string; stage?: string; tracking_status?: string }> = [];
         if (dealId) {
           const { data: ls } = await supabase
             .from("deal_lenders")
-            .select("id, name, stage")
+            .select("id, name, stage, tracking_status")
             .eq("deal_id", dealId);
-          lenderCandidates = (ls || []).map((l: any) => ({ id: l.id, name: l.name, stage: l.stage }));
+          lenderCandidates = (ls || []).map((l: any) => ({
+            id: l.id,
+            name: l.name,
+            stage: l.stage,
+            tracking_status: l.tracking_status,
+          }));
         }
 
         // Build deal candidates — when no deal is linked yet, surface deals the
@@ -560,7 +565,7 @@ Classify and return strict JSON only.`;
 
           let dealsQuery = supabase
             .from("deals")
-            .select("id, company, name, stage, status")
+            .select("id, company, stage, status")
             .order("updated_at", { ascending: false })
             .limit(300);
           if (companyIds.length > 0) {
@@ -574,9 +579,8 @@ Classify and return strict JSON only.`;
           const haystack = `${subject} ${(latestEmail?.body_preview || "").substring(0, 2000)}`.toLowerCase();
           const scored = all.map((d) => {
             const company = (d.company || "").toLowerCase().trim();
-            const altName = (d.name || "").toLowerCase().trim();
             let score = 0;
-            for (const candidate of [company, altName]) {
+            for (const candidate of [company]) {
               if (!candidate || candidate.length < 3) continue;
               if (subject.toLowerCase().includes(candidate)) score += 10;
               else if (haystack.includes(candidate)) score += 5;
@@ -592,8 +596,7 @@ Classify and return strict JSON only.`;
           const ordered = [...matched, ...rest].slice(0, 80);
           dealCandidates = ordered.map((d: any) => ({
             id: d.id,
-            company: d.company || d.name || "",
-            name: d.name && d.name !== d.company ? d.name : undefined,
+            company: d.company || "",
             stage: d.stage,
           }));
         }
@@ -717,8 +720,8 @@ If the email is internal commentary only (kind="internal_note"), recommended_upd
 
         userPrompt = `${dealContext}
 
-LENDER CANDIDATES ON LINKED DEAL:
-${lenderCandidates.length > 0 ? lenderCandidates.map(l => `- id=${l.id} name="${l.name}" stage=${l.stage || "?"}`).join("\n") : "(none — deal not linked or has no lenders)"}
+LENDER CANDIDATES ON LINKED DEAL (authoritative — these are the lenders already on this specific deal; ALWAYS prefer matching against this list before MASTER LENDER CANDIDATES):
+${lenderCandidates.length > 0 ? lenderCandidates.map(l => `- id=${l.id} name="${l.name}" stage=${l.stage || "?"} tracking=${l.tracking_status || "?"}`).join("\n") : "(none — deal not linked or has no lenders)"}
 
 MASTER LENDER CANDIDATES (firm-level directory — use these when the firm is not yet on this deal so the client can auto-link):
 ${masterLenderCandidates.length > 0 ? masterLenderCandidates.slice(0, 200).map(l => `- id=${l.id} name="${l.name}"${l.tier ? ` tier=${l.tier}` : ""}`).join("\n") : "(none)"}
@@ -847,7 +850,7 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
         // 1) If id missing but name present, find by name.
         if (!ld.id && ld.name) {
           const wanted = norm(ld.name);
-          const match = candidates.find((c) => norm(c.company) === wanted || norm(c.name || "") === wanted)
+          const match = candidates.find((c) => norm(c.company) === wanted)
             || candidates.find((c) => norm(c.company).includes(wanted) || wanted.includes(norm(c.company)));
           if (match) {
             ld.id = match.id;
