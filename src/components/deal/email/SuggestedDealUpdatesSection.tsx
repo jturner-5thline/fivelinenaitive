@@ -185,17 +185,38 @@ export function SuggestedDealUpdatesSection({ dealId, dealName }: Props) {
                 onConfirm={async (finalPayload, mode) => {
                   if (!dealId) return;
                   try {
-                    const noteEntry = buildQANoteEntry(finalPayload);
                     const existing = notes.find(n => n.title === QA_NOTE_TITLE);
+                    const parsed = parseExistingQAForThread(
+                      existing?.content,
+                      finalPayload.source.threadId,
+                    );
+                    const diff = diffQAPairs(finalPayload.pairs, parsed);
+
+                    // Merge mode writes ONLY changed + new pairs. If nothing
+                    // changed and nothing is new, skip the write entirely.
+                    let noteEntry: string | null;
+                    if (mode === 'merge' && parsed.entryCount > 0) {
+                      if (diff.changed.length === 0 && diff.added.length === 0) {
+                        noteEntry = null;
+                      } else {
+                        noteEntry = buildQAMergeEntry(finalPayload, diff);
+                      }
+                    } else {
+                      noteEntry = buildQANoteEntry(finalPayload);
+                    }
+
                     let noteId: string | null = null;
-                    if (existing) {
+                    if (noteEntry === null && existing) {
+                      // No-op merge — keep the note as-is.
+                      noteId = existing.id;
+                    } else if (existing) {
                       const newContent = existing.content
                         ? `${existing.content}\n\n${noteEntry}`
                         : noteEntry;
                       await updateNote(existing.id, { content: newContent });
                       noteId = existing.id;
                     } else {
-                      const created = await createNote(QA_NOTE_TITLE, noteEntry);
+                      const created = await createNote(QA_NOTE_TITLE, noteEntry!);
                       noteId = created?.id ?? null;
                     }
 
@@ -210,14 +231,27 @@ export function SuggestedDealUpdatesSection({ dealId, dealName }: Props) {
                         from_email: finalPayload.source.fromEmail,
                         pair_count: finalPayload.pairs.length,
                         mode, // 'append' | 'merge'
+                        prior_entry_count: parsed.entryCount,
+                        changed_count: diff.changed.length,
+                        added_count: diff.added.length,
+                        unchanged_count: diff.unchanged.length,
                         suggestion_id: s.id,
                       },
                     );
 
                     await confirm(s.id, noteId);
-                    toast.success(mode === 'merge' ? 'Q&A merged into deal notes' : 'Q&A saved to deal notes', {
-                      description: dealName ? `Saved to ${dealName} → ${QA_NOTE_TITLE}` : undefined,
-                    });
+                    if (mode === 'merge' && noteEntry === null) {
+                      toast.info('No changes to merge', {
+                        description: 'All Q&A pairs already match the saved note.',
+                      });
+                    } else {
+                      toast.success(
+                        mode === 'merge'
+                          ? `Merged ${diff.changed.length + diff.added.length} pair(s) into deal notes`
+                          : 'Q&A saved to deal notes',
+                        { description: dealName ? `Saved to ${dealName} → ${QA_NOTE_TITLE}` : undefined },
+                      );
+                    }
                   } catch (err: any) {
                     console.error(err);
                     toast.error('Failed to save Q&A to deal notes');
