@@ -493,7 +493,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
     )}>
       <button
         onClick={toggleExpand}
-        className="w-full flex items-center gap-3 px-5 py-2.5 text-left"
+        className="w-full min-w-0 flex items-center gap-3 px-5 py-2.5 text-left"
       >
         <EmailAvatar name={email.from_name === 'You' ? 'J' : email.from_name} email={email.from_email} size="md" />
         <div className="flex-1 min-w-0 flex items-center gap-2">
@@ -519,7 +519,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
       </button>
 
       {expanded && (
-        <div className="px-6 pb-5 pl-[64px] min-w-0">
+        <div className="min-w-0 max-w-full overflow-x-hidden px-6 pb-5 pl-[64px]">
           <div className="flex items-center gap-2 mb-3 text-xs text-[hsl(var(--email-text-muted))]">
             <span>to {email.folder === 'sent' ? (email.to_name || email.to_email) : 'me'}</span>
           </div>
@@ -566,15 +566,17 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
           {/* Body — HTML preferred, plain text fallback. Inline attachments
               are passed so signature logos / embedded images can resolve their
               `cid:` references. */}
-          {resolvedHtml ? (
-            <EmailBodyRenderer
-              html={resolvedHtml}
-              messageId={email.id}
-              inlineAttachments={fullData?.inline_attachments}
-            />
-          ) : (
-            <EmailBodyRenderer text={textMain} />
-          )}
+          <div className="min-w-0 max-w-full overflow-x-hidden">
+            {resolvedHtml ? (
+              <EmailBodyRenderer
+                html={resolvedHtml}
+                messageId={email.id}
+                inlineAttachments={fullData?.inline_attachments}
+              />
+            ) : (
+              <EmailBodyRenderer text={textMain} />
+            )}
+          </div>
 
           {/* Quoted text (only meaningful for plain text bodies) */}
           {!resolvedHtml && textQuoted && (
@@ -588,7 +590,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
                   <span>Show quoted text</span>
                 </button>
               ) : (
-                <>
+                <div className="min-w-0 max-w-full overflow-x-hidden">
                   <button
                     onClick={(e) => { e.stopPropagation(); setShowQuoted(false); }}
                     className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 mb-2"
@@ -599,7 +601,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
                   <div className="border-l-2 border-[hsl(var(--outlook-blue)/0.35)] pl-4 text-[13px] text-[hsl(var(--email-text-secondary))] leading-[1.65] max-w-full" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                     {textQuoted}
                   </div>
-                </>
+                </div>
               )}
             </div>
           )}
@@ -1186,8 +1188,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
   return (
     <>
-      <div className="flex h-full relative overflow-hidden min-w-0 w-full">
-        <div className="flex flex-col flex-1 min-w-0 basis-0 overflow-hidden bg-[hsl(var(--email-reading-bg))]">
+      <div className="flex h-full min-w-0 w-full flex-col overflow-hidden min-[1100px]:flex-row">
+        <div className="flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden bg-[hsl(var(--email-reading-bg))]">
           {/* Outlook-style command bar */}
           <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-[hsl(var(--email-border))] bg-card/60 backdrop-blur-sm shrink-0">
             <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-7 w-7">
@@ -1426,8 +1428,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           </div>
 
           {/* Thread content - scrollable */}
-          <ScrollArea className="flex-1 min-w-0">
-            <div className="py-2 space-y-0 min-w-0 pb-24">
+          <ScrollArea className="flex-1 min-h-0 min-w-0 overflow-hidden">
+            <div className="min-w-0 max-w-full overflow-x-hidden py-2 space-y-0 pb-24">
               <div className="px-5 mb-3">
                 <AiSummaryStrip email={thread.latestEmail} />
               </div>
@@ -1543,11 +1545,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             the toolbar button. */}
         <div
           className={cn(
-            'h-full shrink-0',
-            // Desktop (>=1100px): always visible as a persistent right column
-            'hidden min-[1100px]:flex',
-            // Below 1100px: slides over from the right when toggled
-            showAiAssist && 'flex absolute inset-y-0 right-0 z-20 min-[1100px]:static min-[1100px]:z-auto shadow-2xl min-[1100px]:shadow-none',
+            'min-h-0 shrink-0 overflow-hidden border-[hsl(var(--email-border))] bg-card/40',
+            'min-[1100px]:h-full min-[1100px]:border-l min-[1100px]:border-t-0',
+            showAiAssist
+              ? 'flex h-[min(40vh,420px)] w-full border-t min-[1100px]:h-full min-[1100px]:w-auto min-[1100px]:border-t-0'
+              : 'hidden min-[1100px]:flex',
           )}
         >
           <AiAssistSidebar

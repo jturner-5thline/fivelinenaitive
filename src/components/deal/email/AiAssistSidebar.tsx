@@ -337,7 +337,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
 
   return (
     <aside
-      className="flex flex-col h-full w-[300px] xl:w-[340px] 2xl:w-[380px] min-w-[300px] max-w-[420px] shrink-0 overflow-hidden border-l border-white/[0.06] bg-card/40 backdrop-blur-sm"
+      className="flex h-full w-full min-w-0 flex-col overflow-hidden bg-card/40 backdrop-blur-sm min-[1100px]:w-[300px] min-[1100px]:min-w-[300px] min-[1100px]:max-w-[420px] min-[1280px]:w-[340px] min-[1536px]:w-[380px]"
       aria-label="AI Assist"
     >
       {/* Header */}
@@ -358,8 +358,8 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       </div>
 
       {/* Content */}
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="p-4 space-y-4">
+      <ScrollArea className="flex-1 min-h-0 min-w-0 overflow-hidden">
+        <div className="min-w-0 max-w-full p-4 space-y-4">
           {/* Error (non-blocking — shell still renders below) */}
           {error && (
             <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-center space-y-2">
@@ -466,7 +466,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                       <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60">
                         Subject
                       </div>
-                      <div className="text-[12px] text-foreground/90 font-medium leading-snug mt-0.5">
+                      <div className="mt-0.5 max-w-full break-words text-[12px] font-medium leading-snug text-foreground/90" style={{ whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'normal' }}>
                         {selectedOption.subject}
                       </div>
                     </div>
@@ -475,8 +475,8 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                         Body
                       </div>
                       <div
-                        className="text-[12px] text-foreground/85 leading-relaxed"
-                        style={{ whiteSpace: 'pre-wrap' }}
+                        className="max-w-full break-words text-[12px] leading-relaxed text-foreground/85"
+                        style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'normal' }}
                       >
                         {selectedOption.body}
                       </div>
