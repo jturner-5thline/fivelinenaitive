@@ -751,7 +751,7 @@ function TimeGridEvent({
           <button
             onClick={onClick}
             className={cn(
-              'absolute left-1 right-1 rounded-[5px] px-2 py-1 text-left overflow-hidden cursor-pointer transition-all z-[2]',
+              'absolute left-1 right-1 rounded-[2px] px-2 py-1 text-left overflow-hidden cursor-pointer transition-all z-[2]',
               'backdrop-blur-md border shadow-lg',
               'hover:shadow-xl hover:scale-[1.02] hover:brightness-110',
               !colorStyle && colorClass,
@@ -1083,7 +1083,7 @@ function MonthView({
                         key={event.id}
                         onClick={(e) => { e.stopPropagation(); onEventClick(event); }}
                         className={cn(
-                          'w-full text-left rounded-[3px] px-1 py-0.5 text-[10px] leading-tight truncate border',
+                          'w-full text-left rounded-[2px] px-1 py-0.5 text-[10px] leading-tight truncate border',
                           !calendarColors.get(event.calendar_id)?.background && getEventColorClass(event, idx),
                         )}
                         style={getEventColorStyle(event, calendarColors) || undefined}
@@ -1110,7 +1110,7 @@ function MonthView({
                                 key={event.id}
                                 onClick={() => { onEventClick(event); setMorePopoverDay(null); }}
                                 className={cn(
-                                  'w-full text-left rounded-[5px] px-2 py-1.5 text-xs truncate hover:brightness-110 border',
+                                  'w-full text-left rounded-[2px] px-2 py-1.5 text-xs truncate hover:brightness-110 border',
                                   !calendarColors.get(event.calendar_id)?.background && getEventColorClass(event, idx),
                                 )}
                                 style={getEventColorStyle(event, calendarColors) || undefined}
@@ -1264,7 +1264,7 @@ function AllDayBar({
           key={event.id}
           onClick={() => onEventClick(event)}
           className={cn(
-            'text-[10px] font-medium px-2 py-0.5 rounded-[3px] truncate max-w-[180px] border',
+            'text-[10px] font-medium px-2 py-0.5 rounded-[2px] truncate max-w-[180px] border',
             !calendarColors.get(event.calendar_id)?.background && getEventColorClass(event, idx),
           )}
           style={getEventColorStyle(event, calendarColors) || undefined}
