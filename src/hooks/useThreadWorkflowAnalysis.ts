@@ -527,9 +527,44 @@ export function useThreadWorkflowAnalysis({
       if (rec.kind === 'lender_status') {
         currentStep = 'ensureLenderOnDeal';
         const lenderName = rec.lender_name || analysis.likely_lender_firm.name || '';
+        // CRITICAL: ignore the AI's `rec.lender_id` if it does NOT belong to
+        // the resolved target deal. The AI sometimes returns a deal_lenders
+        // id from a different deal that has the same lender (e.g. "Advantage
+        // Capital" appears on 18 different deals). Passing that id through
+        // would either no-op or, worse, flip the wrong row.
+        let safeSuggestedLenderId: string | undefined = rec.lender_id || undefined;
+        if (safeSuggestedLenderId) {
+          const { data: belongs } = await supabase
+            .from('deal_lenders')
+            .select('id, deal_id')
+            .eq('id', safeSuggestedLenderId)
+            .maybeSingle();
+          if (!belongs || belongs.deal_id !== targetDealId) {
+            debugStep('confirmRecommendation:rejecting-cross-deal-lender-id', {
+              suggestedLenderId: safeSuggestedLenderId,
+              suggestedLenderActualDealId: belongs?.deal_id || null,
+              targetDealId,
+            });
+            safeSuggestedLenderId = undefined;
+          }
+        }
+        // Prefer the DB-backed resolver result (already scoped to the right
+        // deal by the useEffect above). Fallback to ensureLenderOnDeal which
+        // re-runs the same name lookup as a safety net.
+        if (!safeSuggestedLenderId && resolvedDealLenderId) {
+          // Verify the resolver-cached id is still pointed at THIS deal
+          // (analysis can change between auto-runs).
+          const { data: cached } = await supabase
+            .from('deal_lenders')
+            .select('id, deal_id, name')
+            .eq('id', resolvedDealLenderId)
+            .eq('deal_id', targetDealId)
+            .maybeSingle();
+          if (cached?.id) safeSuggestedLenderId = cached.id;
+        }
         const ensured = await ensureLenderOnDeal(
           targetDealId,
-          rec.lender_id,
+          safeSuggestedLenderId,
           rec.master_lender_id,
           lenderName,
         );
