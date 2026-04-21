@@ -13,6 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
 import {
   AlertDialog,
   AlertDialogAction,

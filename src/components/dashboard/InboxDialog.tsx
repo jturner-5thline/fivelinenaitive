@@ -8,6 +8,8 @@ import { DealEmailsTab } from '@/components/deal/DealEmailsTab';
 import { MockEmail } from '@/components/deal/email/mockEmailData';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
+import { cn } from '@/lib/utils';
 
 interface InboxDialogProps {
   open: boolean;

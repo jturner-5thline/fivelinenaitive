@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { format, formatDistanceToNow, isPast, isToday } from 'date-fns';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
