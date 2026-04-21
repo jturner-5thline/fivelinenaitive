@@ -2075,7 +2075,9 @@ export default function Metrics() {
           {/* Dashboard Content - always show pre-built dashboards */}
           <EditableDashboardWrapper isEditMode={isEditMode} onCardEdit={handlePrebuiltCardEdit}>
             {selectedDashboard === 'management-snapshot' && (
-              <ManagementSnapshotDashboard
+              <WeeklyRundownCarousel
+                page1={
+                  <ManagementSnapshotDashboard
                 isEditMode={isEditMode}
                 onEditCard={handleEditManagementSnapshotCard}
                 onDeleteCard={handleDeleteManagementSnapshotCard}
@@ -2123,7 +2125,9 @@ export default function Metrics() {
                     </div>
                   );
                 })}
-              </ManagementSnapshotDashboard>
+                  </ManagementSnapshotDashboard>
+                }
+              />
             )}
             {selectedDashboard === 'sales-bd-roi' && <SalesBDROIDashboard />}
             {selectedDashboard === 'sales-team-board' && <SalesTeamBoardDashboard />}
