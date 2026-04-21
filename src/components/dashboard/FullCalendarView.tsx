@@ -811,10 +811,14 @@ function MiniCalendar({
   currentDate,
   onDateSelect,
   events,
+  calendars,
+  calendarColors,
 }: {
   currentDate: Date;
   onDateSelect: (date: Date) => void;
   events: CalendarEvent[];
+  calendars: Calendar[];
+  calendarColors: CalendarColorMap;
 }) {
   const [miniMonth, setMiniMonth] = useState(startOfMonth(currentDate));
 
@@ -899,16 +903,33 @@ function MiniCalendar({
 
       <Separator />
 
-      {/* Color Legend */}
+      {/* Calendar legend — connected calendars with their Google-assigned colors */}
       <div className="space-y-1.5">
-        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Colors</p>
+        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Calendars</p>
         <div className="space-y-1">
-          {EVENT_PALETTE.slice(0, 5).map((c, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <div className={cn('h-2.5 w-2.5 rounded-full', c.dot)} />
-              <span className="text-[11px] text-muted-foreground">{c.label}</span>
-            </div>
-          ))}
+          {calendars.length > 0 ? (
+            calendars.map(cal => {
+              const hex = calendarColors.get(cal.id)?.background;
+              return (
+                <div key={cal.id} className="flex items-center gap-2 min-w-0">
+                  <div
+                    className={cn('h-2.5 w-2.5 rounded-full shrink-0', !hex && 'bg-primary')}
+                    style={hex ? { backgroundColor: hex } : undefined}
+                  />
+                  <span className="text-[11px] text-muted-foreground truncate" title={cal.summary}>
+                    {cal.primary ? `${cal.summary} · Primary` : cal.summary}
+                  </span>
+                </div>
+              );
+            })
+          ) : (
+            EVENT_PALETTE.slice(0, 5).map((c, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className={cn('h-2.5 w-2.5 rounded-full', c.dot)} />
+                <span className="text-[11px] text-muted-foreground">{c.label}</span>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
