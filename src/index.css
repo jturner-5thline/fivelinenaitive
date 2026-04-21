@@ -586,6 +586,32 @@
     border-left-color: hsl(0 0% 100% / 0.06);
   }
 
+  /* ─── Widget carousel directional swipe ───────────────────────────────
+     Applied to the active widget's DialogContent at mount time so the
+     new panel slides in from the navigation direction instead of the
+     default zoom/fade. The shell, backdrop, header, and arrow chrome
+     stay fixed (they live in a separate portal). */
+  @keyframes widget-swipe-in-from-right {
+    0%   { opacity: 0; transform: translate(calc(-50% + 32px), -50%); }
+    100% { opacity: 1; transform: translate(-50%, -50%); }
+  }
+  @keyframes widget-swipe-in-from-left {
+    0%   { opacity: 0; transform: translate(calc(-50% - 32px), -50%); }
+    100% { opacity: 1; transform: translate(-50%, -50%); }
+  }
+  .widget-swipe-from-right[data-state='open'] {
+    animation: widget-swipe-in-from-right 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .widget-swipe-from-left[data-state='open'] {
+    animation: widget-swipe-in-from-left 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .widget-swipe-from-right[data-state='open'],
+    .widget-swipe-from-left[data-state='open'] {
+      animation: none;
+    }
+  }
+
   /* Translucent surface layers for nested cards inside the carousel.
      Use background separation + blur instead of a bright border. */
   .glass-surface-1 {
