@@ -1,4 +1,5 @@
-import { AlertCircle, ChevronRight } from 'lucide-react';
+import { AlertCircle, ChevronRight, Clock } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
@@ -102,11 +103,6 @@ export function RecentPipelineActivitySection({
   onRowClick?: (activity: any) => void;
   emptyMessage?: string;
 }) {
-  // Lazy import to avoid a React import in the icon position
-  // (Clock icon is the same one used in the modal source).
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { Clock } = require('lucide-react');
-  const { formatDistanceToNow } = require('date-fns');
   return (
     <Section title="Recent Pipeline Activity">
       {recentActivity.length === 0 ? (

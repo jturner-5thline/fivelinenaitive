@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef, ReactNode, TouchEvent } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { WeeklyRundownReadOnlyCashflow } from './WeeklyRundownReadOnlyCashflow';
+import { WeeklyRundownPipelineClientsPage } from './WeeklyRundownPipelineClientsPage';
 
 interface WeeklyRundownCarouselProps {
   /** The existing Weekly Rundown (ManagementSnapshotDashboard) content rendered as Page 1. */
@@ -51,12 +52,7 @@ export function WeeklyRundownCarousel({ page1 }: WeeklyRundownCarouselProps) {
     { title: 'Weekly Cashflow', render: () => <WeeklyRundownReadOnlyCashflow /> },
     {
       title: 'Pipeline & Clients',
-      render: () => (
-        <PlaceholderPage
-          title="Pipeline & Clients"
-          description="This page will surface Pipeline Activity widgets, Proposals Issued breakdown (FinServ vs Debt), and Clients/Deals Signed totals for the selected period."
-        />
-      ),
+      render: () => <WeeklyRundownPipelineClientsPage />,
     },
     {
       title: 'Ops & Projects',
