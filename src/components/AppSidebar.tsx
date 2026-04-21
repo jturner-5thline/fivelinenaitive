@@ -42,9 +42,7 @@ const menuItems = [
   // { title: "News Feed", url: "/dashboard?tab=news-feed", icon: Newspaper, featureKey: "newsfeed" },
   
   { title: "AI Agents", url: "/agents", icon: Bot, featureKey: "agents" },
-  { title: "Metrics", url: "/metrics", icon: BarChart3, featureKey: "metrics" },
-  
-  { title: "Insights", url: "/insights", icon: Lightbulb, featureKey: "insights" },
+  { title: "Insights", url: "/insights", icon: BarChart3, featureKey: "metrics" },
   { title: "Sales & BD", url: "/sales-bd", icon: Users, featureKey: "sales_bd" },
   { title: "HR", url: "/hr", icon: UserCog, featureKey: "hr" },
   { title: "Operations", url: "/operations", icon: Cog, featureKey: "operations" },
