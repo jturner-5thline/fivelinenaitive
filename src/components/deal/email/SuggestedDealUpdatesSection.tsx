@@ -551,12 +551,17 @@ function QASuggestionCard({
             </span>
           </div>
           <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
-            {draft.pairs.map((p, i) => (
+            {draft.pairs.map((p, i) => {
+              const status = classifyPair(p, parsedExisting);
+              return (
               <div key={i} className="rounded border border-white/[0.04] bg-background/30 px-2 py-1.5 space-y-1">
                 {!editing ? (
                   <>
-                    <div className="text-[11px] text-foreground/85 leading-snug">
-                      <span className="text-muted-foreground/80 font-semibold">Q{i + 1}.</span> {p.question}
+                    <div className="flex items-start gap-1.5">
+                      <div className="text-[11px] text-foreground/85 leading-snug flex-1">
+                        <span className="text-muted-foreground/80 font-semibold">Q{i + 1}.</span> {p.question}
+                      </div>
+                      {threadAlreadySaved && <ChangeBadge status={status} />}
                     </div>
                     <div className="text-[11px] text-foreground/95 leading-snug pl-3 border-l border-primary/30">
                       {p.answer}
@@ -579,13 +584,33 @@ function QASuggestionCard({
                   </>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
         {threadAlreadySaved && (
           <div className="text-[10px] text-amber-400/90 leading-snug border border-amber-400/20 bg-amber-400/[0.04] rounded px-2 py-1.5">
-            This thread already has a Q&A entry. Use <span className="font-semibold">Merge / Update</span> to append the new pairs cleanly under the same heading.
+            {parsedExisting.entryCount} prior entr{parsedExisting.entryCount === 1 ? 'y' : 'ies'} for this thread.
+            {' '}
+            {hasMergeWork ? (
+              <>
+                <span className="font-semibold">Merge / Update</span> will write only{' '}
+                {diff.changed.length > 0 && (
+                  <>{diff.changed.length} updated</>
+                )}
+                {diff.changed.length > 0 && diff.added.length > 0 && ' · '}
+                {diff.added.length > 0 && (
+                  <>{diff.added.length} new</>
+                )}
+                {diff.unchanged.length > 0 && (
+                  <span className="text-muted-foreground/70"> ({diff.unchanged.length} unchanged skipped)</span>
+                )}
+                .
+              </>
+            ) : (
+              <span className="text-muted-foreground/70"> All pairs match — nothing to merge.</span>
+            )}
           </div>
         )}
       </div>
@@ -616,12 +641,36 @@ function QASuggestionCard({
           size="sm"
           className="h-7 text-[11px] gap-1.5 bg-[hsl(160,60%,40%)] hover:bg-[hsl(160,60%,35%)] text-white"
           onClick={() => handleConfirm(threadAlreadySaved ? 'merge' : 'append')}
-          disabled={working || draft.pairs.length === 0}
+          disabled={working || draft.pairs.length === 0 || (threadAlreadySaved && !hasMergeWork)}
         >
           {working ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-          {threadAlreadySaved ? 'Merge / Update' : 'Confirm & Save to Deal Notes'}
+          {threadAlreadySaved
+            ? `Merge / Update${hasMergeWork ? ` (${diff.changed.length + diff.added.length})` : ''}`
+            : 'Confirm & Save to Deal Notes'}
         </Button>
       </div>
     </div>
+  );
+}
+
+function ChangeBadge({ status }: { status: 'unchanged' | 'changed' | 'new' }) {
+  if (status === 'unchanged') {
+    return (
+      <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted/40 text-muted-foreground/70 shrink-0">
+        Unchanged
+      </span>
+    );
+  }
+  if (status === 'changed') {
+    return (
+      <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-300 shrink-0">
+        Updated
+      </span>
+    );
+  }
+  return (
+    <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-400/15 text-emerald-300 shrink-0">
+      New
+    </span>
   );
 }
