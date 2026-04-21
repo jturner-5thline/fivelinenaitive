@@ -959,14 +959,14 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
         className={cn(
           'max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] p-0 overflow-hidden rounded-2xl',
           'bg-background/60 backdrop-blur-3xl',
-          'border border-white/[0.06]',
+          'border-transparent glass-border-soft',
           'shadow-[0_32px_80px_-20px_hsl(var(--primary)/0.25),inset_0_1px_0_hsl(0_0%_100%/0.04)]',
         )}
         overlayClassName="bg-black/80"
       >
         <div className="flex flex-col h-full relative">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-white/[0.02]">
+          <div className="flex items-center justify-between px-6 py-4 glass-divider-b glass-surface-1">
             <div>
               <h2 className="text-lg font-bold text-foreground tracking-tight">{title}</h2>
               <p className="text-xs text-muted-foreground/60 mt-0.5">
@@ -977,8 +977,8 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
-            <div className="px-6 pt-3 bg-white/[0.01]">
-              <TabsList className="w-full bg-white/[0.03] border border-white/[0.05] backdrop-blur-xl">
+            <div className="px-6 pt-3 glass-surface-1">
+              <TabsList className="w-full glass-surface-1 glass-border-softer backdrop-blur-xl">
                 {TABS.map(tab => {
                   const Icon = tab.icon;
                   return (
