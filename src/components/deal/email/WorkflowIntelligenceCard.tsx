@@ -447,14 +447,17 @@ export function WorkflowIntelligenceCard({
                   />
                 </div>
 
-                {needsDealLink && (
-                  <div className="flex items-start gap-1.5 text-[10px] text-amber-300/90 bg-amber-500/[0.04] rounded p-2">
-                    <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
-                    <span>Link this thread to {analysis.likely_deal.name} first to apply this update.</span>
+                {willAutoLinkThread && (
+                  <div className="flex items-start gap-1.5 text-[10px] text-primary/80 bg-primary/[0.05] rounded p-2">
+                    <Link2 className="h-3 w-3 mt-0.5 shrink-0" />
+                    <span>
+                      This thread isn't linked to {analysis.likely_deal.name} yet — confirming will
+                      apply the update on that deal directly.
+                    </span>
                   </div>
                 )}
 
-                {willAutoLink && !needsDealLink && (
+                {willAutoLink && (
                   <div className="flex items-start gap-1.5 text-[10px] text-primary/80 bg-primary/[0.05] rounded p-2">
                     <Link2 className="h-3 w-3 mt-0.5 shrink-0" />
                     <span>
