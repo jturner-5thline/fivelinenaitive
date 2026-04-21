@@ -1264,7 +1264,7 @@ function AllDayBar({
           key={event.id}
           onClick={() => onEventClick(event)}
           className={cn(
-            'text-[10px] font-medium px-2 py-0.5 rounded truncate max-w-[180px] border',
+            'text-[10px] font-medium px-2 py-0.5 rounded-[3px] truncate max-w-[180px] border',
             !calendarColors.get(event.calendar_id)?.background && getEventColorClass(event, idx),
           )}
           style={getEventColorStyle(event, calendarColors) || undefined}
