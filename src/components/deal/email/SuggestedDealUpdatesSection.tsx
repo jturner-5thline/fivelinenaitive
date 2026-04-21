@@ -34,10 +34,14 @@ import {
   classifyPair,
   type QADiffResult,
 } from '@/lib/diffThreadQAndA';
+import { usePendingDealResolutionsStore } from '@/stores/pendingDealResolutionsStore';
+import { DealPickerCard } from './DealPickerCard';
 
 interface Props {
   dealId?: string;
   dealName?: string;
+  /** Current thread context — enables the multi-deal picker prompt. */
+  threadId?: string;
 }
 
 const CONTACTS_NOTE_TITLE = 'Deal Contacts';
@@ -111,14 +115,19 @@ function buildQAMergeEntry(payload: PendingQAPayload, diff: QADiffResult): strin
   return lines.join('\n');
 }
 
-export function SuggestedDealUpdatesSection({ dealId, dealName }: Props) {
+export function SuggestedDealUpdatesSection({ dealId, dealName, threadId }: Props) {
   const { enabled, setEnabled } = useAutoDealNoteSuggestionPref();
   const { suggestions, dismiss, confirm, updatePayload } = usePendingDealSuggestions(dealId);
   const { notes, createNote, updateNote } = useDealSpaceNotes(dealId);
   const { logAuditAction } = useDealAuditLog(dealId);
 
+  // Pending deal-picker prompts for this thread (multiple-match fallback).
+  const pendingResolutions = usePendingDealResolutionsStore((s) =>
+    threadId ? s.byThread(threadId) : [],
+  );
+
   // Always render the header (so the toggle is reachable). Cards only render when present.
-  const hasItems = suggestions.length > 0;
+  const hasItems = suggestions.length > 0 || pendingResolutions.length > 0;
   const totalCount = suggestions.length;
 
   return (
@@ -166,6 +175,14 @@ export function SuggestedDealUpdatesSection({ dealId, dealName }: Props) {
           <p className="text-[11px] text-muted-foreground/70 leading-snug">
             None right now. We'll surface contact captures and client Q&A responses here as they're detected.
           </p>
+        </div>
+      )}
+
+      {pendingResolutions.length > 0 && (
+        <div className="space-y-2 mb-2">
+          {pendingResolutions.map((r) => (
+            <DealPickerCard key={r.id} resolution={r} />
+          ))}
         </div>
       )}
 

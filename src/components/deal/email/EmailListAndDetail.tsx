@@ -55,6 +55,7 @@ import { detectThreadQAndA, buildQADedupKey, type ThreadMessageLite } from '@/li
 import { usePendingDealSuggestions } from '@/hooks/usePendingDealSuggestions';
 import { useResolveDealForEmail } from '@/hooks/useResolveDealForEmail';
 import { isAutoDealNoteSuggestionEnabled } from '@/hooks/useAutoDealNoteSuggestionPref';
+import { usePendingDealResolutionsStore } from '@/stores/pendingDealResolutionsStore';
 import { EmailContextMenu } from './EmailContextMenu';
 import { EmailBodyRenderer } from './EmailBodyRenderer';
 import { EmailAttachmentList } from './EmailAttachmentList';
@@ -770,6 +771,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   // the suggestion to the resolved deal's space.
   const resolveDeal = useResolveDealForEmail();
   const { create: createPendingSuggestion } = usePendingDealSuggestions(dealId);
+  const enqueueResolution = usePendingDealResolutionsStore((s) => s.enqueue);
 
   // Token context for snippet resolution
   const snippetTokenContext = {
@@ -916,7 +918,39 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           if (candidates.length === 1) {
             targetDealId = candidates[0].deal.id;
           }
-          // 0 or many → don't auto-create; user can re-trigger from a deal-linked thread.
+          // Many candidates → defer to the user via a picker card in the
+          // AI Assist sidebar. We capture the full intent so creation happens
+          // against the chosen deal once they pick.
+          if (!targetDealId && candidates.length > 1) {
+            enqueueResolution({
+              threadId: thread.threadId,
+              threadSubject: thread.subject,
+              dedupKey: `draft-email::${thread.threadId}::${det.email}`,
+              reason: `Subject + domain match ${candidates.length} deals`,
+              intent: {
+                kind: 'contact_email_from_draft',
+                payload: {
+                  email: det.email,
+                  domain: det.domain,
+                  inferredName: det.inferredName,
+                  contextSnippet: det.contextSnippet,
+                  proposedNote: '',
+                  detectedAt: new Date().toISOString(),
+                },
+              },
+              candidates: candidates.map((c) => ({
+                dealId: c.deal.id,
+                dealName: c.deal.company || c.deal.name || 'Unnamed deal',
+                stage: c.deal.stage ?? null,
+                domainMatch: c.domainMatch,
+                nameMatch: c.nameMatch,
+                score: c.score,
+              })),
+            });
+            continue;
+          }
+          // 0 candidates → nothing we can do automatically; user can link the
+          // thread to a deal and we'll re-detect on the next blur.
           if (!targetDealId) continue;
         }
 
@@ -1037,6 +1071,41 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             senderEmail: inbound.fromEmail,
           });
           if (candidates.length === 1) targetDealId = candidates[0].deal.id;
+          if (!targetDealId && candidates.length > 1) {
+            enqueueResolution({
+              threadId: thread.threadId,
+              threadSubject: thread.subject,
+              dedupKey: buildQADedupKey(thread.threadId, detection.pairs),
+              reason: `Subject + sender domain match ${candidates.length} deals`,
+              intent: {
+                kind: 'qa_from_thread',
+                payload: {
+                  pairs: detection.pairs,
+                  source: {
+                    fromName: inbound.fromName || '',
+                    fromEmail: inbound.fromEmail || '',
+                    receivedAt: inbound.receivedAt || new Date().toISOString(),
+                    subject: thread.subject,
+                    threadId: thread.threadId,
+                  },
+                  detectedAt: new Date().toISOString(),
+                  reasons: detection.reasons,
+                  confidence: detection.confidence,
+                  confidenceScore: detection.confidenceScore,
+                  confidenceSignals: detection.confidenceSignals,
+                },
+              },
+              candidates: candidates.map((c) => ({
+                dealId: c.deal.id,
+                dealName: c.deal.company || c.deal.name || 'Unnamed deal',
+                stage: c.deal.stage ?? null,
+                domainMatch: c.domainMatch,
+                nameMatch: c.nameMatch,
+                score: c.score,
+              })),
+            });
+            return;
+          }
           if (!targetDealId) return;
         }
         const { data: dealRow } = await supabase
