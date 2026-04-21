@@ -40,8 +40,6 @@ export default function Dashboard() {
   const isJTurner = user?.email === 'jturner@5thline.co';
   const canSeeNiki = canSeeNikiBriefing(user?.email);
   const isNikiViewingHerself = user?.email?.toLowerCase() === NIKI_EMAIL;
-  const [isBriefingOpen, setIsBriefingOpen] = useState(false);
-  const [isNikiBriefingOpen, setIsNikiBriefingOpen] = useState(false);
   const {
     presets,
     activePreset,
