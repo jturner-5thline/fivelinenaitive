@@ -88,6 +88,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import { CalendarEventDialog } from '@/components/integrations/CalendarEventDialog';
+import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
 
 // ─── Types ───────────────────────────────────────────────────
 type CalendarViewMode = 'day' | 'week' | 'month' | 'agenda';
