@@ -1009,11 +1009,13 @@ function MonthView({
   events: allEvents,
   onEventClick,
   onDayClick,
+  calendarColors,
 }: {
   currentDate: Date;
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
   onDayClick: (date: Date) => void;
+  calendarColors: CalendarColorMap;
 }) {
   const [morePopoverDay, setMorePopoverDay] = useState<Date | null>(null);
 
@@ -1059,7 +1061,11 @@ function MonthView({
                       <button
                         key={event.id}
                         onClick={(e) => { e.stopPropagation(); onEventClick(event); }}
-                        className={cn('w-full text-left rounded px-1 py-0.5 text-[10px] leading-tight truncate', getEventColorClass(event, idx))}
+                        className={cn(
+                          'w-full text-left rounded px-1 py-0.5 text-[10px] leading-tight truncate border',
+                          !calendarColors.get(event.calendar_id)?.background && getEventColorClass(event, idx),
+                        )}
+                        style={getEventColorStyle(event, calendarColors) || undefined}
                       >
                         {!event.all_day && <span className="opacity-80">{format(parseISO(event.start), 'h:mm')} </span>}
                         {event.summary}
@@ -1082,7 +1088,11 @@ function MonthView({
                               <button
                                 key={event.id}
                                 onClick={() => { onEventClick(event); setMorePopoverDay(null); }}
-                                className={cn('w-full text-left rounded px-2 py-1.5 text-xs truncate hover:brightness-110', getEventColorClass(event, idx))}
+                                className={cn(
+                                  'w-full text-left rounded px-2 py-1.5 text-xs truncate hover:brightness-110 border',
+                                  !calendarColors.get(event.calendar_id)?.background && getEventColorClass(event, idx),
+                                )}
+                                style={getEventColorStyle(event, calendarColors) || undefined}
                               >
                                 {!event.all_day && <span className="opacity-80 mr-1">{format(parseISO(event.start), 'h:mm a')}</span>}
                                 {event.summary}
