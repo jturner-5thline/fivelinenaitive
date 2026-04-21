@@ -1758,17 +1758,22 @@ export default function Metrics() {
         <Helmet>
           <title>Insights | 5thLine</title>
         </Helmet>
-        <div className="bg-transparent">
-          <div className="flex items-center gap-2">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span>Loading insights...</span>
-          </div>
-          <div className="grid lg:grid-cols-4 gap-4 mt-4">
-            {[...Array(8)].map((_, i) => (
-              <Skeleton key={i} className="h-[200px]" />
-            ))}
-          </div>
-        </div>
+        <InsightsLoadingSkeleton />
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <Helmet>
+          <title>Insights | 5thLine</title>
+        </Helmet>
+        <InsightsErrorState
+          error={error as Error}
+          onRetry={() => refetch()}
+          isRetrying={isFetching}
+        />
       </>
     );
   }
