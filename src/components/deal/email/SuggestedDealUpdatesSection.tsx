@@ -529,6 +529,11 @@ function QASuggestionCard({
         <span className="text-[11px] font-medium text-foreground/85 truncate flex-1">
           Save Q&A responses to Deal Notes
         </span>
+        <ConfidenceBadge
+          confidence={initialPayload.confidence}
+          score={initialPayload.confidenceScore}
+          signals={initialPayload.confidenceSignals}
+        />
         {pagerLabel && (
           <span className="text-[10px] text-muted-foreground/70 font-mono shrink-0">{pagerLabel}</span>
         )}
