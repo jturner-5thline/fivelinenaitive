@@ -113,17 +113,47 @@ import { DatarailsLiveStat, DatarailsLiveChart } from "@/components/metrics/Data
 import { InsightsLoadingSkeleton, InsightsErrorState } from "@/components/insights/InsightsStateViews";
 // Dashboard options
 const DASHBOARD_OPTIONS = [
-  { id: 'management-snapshot', name: 'Weekly Rundown', isFavorite: true },
-  { id: 'revenue-customers', name: 'Revenue & Customers', isFavorite: false },
-  { id: 'controller-dashboard', name: 'Controller Dashboard', isFavorite: false },
-  { id: 'sales-team-board', name: 'Sales Team Board', isFavorite: false },
-  { id: 'finserv-financial-metrics', name: 'FinServ Financial Metrics', isFavorite: false },
-  { id: 'consolidated-debt-pipeline', name: 'Consolidated Debt Pipeline Board', isFavorite: false },
-  { id: 'executive-dashboard', name: 'Executive Dashboard', isFavorite: false },
-  { id: 'sales-bd-roi', name: 'Sales & BD ROI', isFavorite: false },
-  { id: 'quickbooks-financial', name: 'QuickBooks Financial', isFavorite: false },
-  { id: 'management-review', name: 'Insights Dashboard', isFavorite: false },
+  { id: 'management-snapshot', name: 'Weekly Rundown', isFavorite: true, folder: 'management-insights' as const },
+  { id: 'revenue-customers', name: 'Revenue & Customers', isFavorite: false, folder: 'financial' as const },
+  { id: 'controller-dashboard', name: 'Controller Dashboard', isFavorite: false, folder: 'financial' as const },
+  { id: 'sales-team-board', name: 'Sales Team Board', isFavorite: false, folder: 'sales-bd' as const },
+  { id: 'finserv-financial-metrics', name: 'FinServ Financial Metrics', isFavorite: false, folder: null },
+  { id: 'consolidated-debt-pipeline', name: 'Consolidated Debt Pipeline Board', isFavorite: false, folder: 'sales-bd' as const },
+  { id: 'executive-dashboard', name: 'Executive Dashboard', isFavorite: false, folder: 'management-insights' as const },
+  { id: 'sales-bd-roi', name: 'Sales & BD ROI', isFavorite: false, folder: 'sales-bd' as const },
+  { id: 'quickbooks-financial', name: 'QuickBooks Financial', isFavorite: false, folder: 'financial' as const },
+  { id: 'management-review', name: 'Insights Dashboard', isFavorite: false, folder: 'management-insights' as const },
 ];
+
+/**
+ * Code-defined ("default") folder groups for the Insights dashboard selector.
+ * Render order is fixed and dashboards inside each folder are rendered in the
+ * order listed here. Membership matches the `folder` field on DASHBOARD_OPTIONS.
+ * Per-folder expand/collapse state is persisted in localStorage (default: open).
+ */
+const DEFAULT_FOLDER_GROUPS: { id: string; name: string; dashboardIds: string[] }[] = [
+  {
+    id: 'management-insights',
+    name: 'Management Insights',
+    dashboardIds: ['management-snapshot', 'management-review', 'executive-dashboard'],
+  },
+  {
+    id: 'financial',
+    name: 'Financial',
+    dashboardIds: ['revenue-customers', 'controller-dashboard', 'quickbooks-financial'],
+  },
+  {
+    id: 'sales-bd',
+    name: 'Sales & BD',
+    dashboardIds: ['sales-team-board', 'sales-bd-roi', 'consolidated-debt-pipeline'],
+  },
+];
+
+const DEFAULT_FOLDER_IDS = new Set(
+  DEFAULT_FOLDER_GROUPS.flatMap(g => g.dashboardIds)
+);
+
+const DEFAULT_FOLDER_EXPANDED_STORAGE_KEY = 'insights-default-folder-expanded-v1';
 
 type ManagementSnapshotCardState = Omit<MetricWidgetConfig, 'id' | 'createdAt'>;
 
