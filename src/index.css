@@ -542,6 +542,53 @@
     overflow-wrap: anywhere;
   }
 
+  /* ─── Soft glass border tokens ───────────────────────────────────────────
+     Used by the shared widget carousel modal (Calendar, Email, New Deal,
+     Quick Prompts, Daily Briefing, etc.) and any nested glass cards inside
+     those flows. These intentionally render as nearly-invisible separators
+     so depth is created by translucent surface tint + blur + soft shadow,
+     not by hard outlines. They are theme-aware so they don't appear as
+     bright white outlines on light backgrounds. */
+  .glass-border-soft {
+    border: 1px solid hsl(0 0% 0% / 0.06);
+  }
+  .dark .glass-border-soft {
+    border-color: hsl(0 0% 100% / 0.06);
+  }
+  .glass-border-softer {
+    border: 1px solid hsl(0 0% 0% / 0.04);
+  }
+  .dark .glass-border-softer {
+    border-color: hsl(0 0% 100% / 0.04);
+  }
+  .glass-divider-b {
+    border-bottom: 1px solid hsl(0 0% 0% / 0.06);
+  }
+  .dark .glass-divider-b {
+    border-bottom-color: hsl(0 0% 100% / 0.06);
+  }
+  .glass-divider-t {
+    border-top: 1px solid hsl(0 0% 0% / 0.06);
+  }
+  .dark .glass-divider-t {
+    border-top-color: hsl(0 0% 100% / 0.06);
+  }
+
+  /* Translucent surface layers for nested cards inside the carousel.
+     Use background separation + blur instead of a bright border. */
+  .glass-surface-1 {
+    background-color: hsl(0 0% 0% / 0.02);
+  }
+  .dark .glass-surface-1 {
+    background-color: hsl(0 0% 100% / 0.03);
+  }
+  .glass-surface-2 {
+    background-color: hsl(0 0% 0% / 0.035);
+  }
+  .dark .glass-surface-2 {
+    background-color: hsl(0 0% 100% / 0.05);
+  }
+
   /* Marketing site — lighter airy-blue frosted glass CTA (logo-derived palette).
      Tokens: --glass-blue-50 #C9DCFF / --glass-blue-100 #A9C6FF / --glass-blue-200 #7FB3FF.
      Hover stays translucent — bg alpha hard-capped ~0.30. */

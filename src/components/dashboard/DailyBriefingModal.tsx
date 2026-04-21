@@ -54,9 +54,13 @@ interface DailyBriefingModalProps {
 }
 
 // ── Glass surface classes ──────────────────────────────────────
-const GLASS_SURFACE = 'bg-background/40 backdrop-blur-2xl border border-white/[0.06]';
-const GLASS_CARD = 'bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-lg';
-const GLASS_ROW = 'bg-white/[0.02] border border-white/[0.05] rounded-lg backdrop-blur-sm';
+// Borders are intentionally near-invisible — depth comes from translucent
+// surface tint + blur + soft shadow, not bright outlines. `glass-border-soft`
+// / `glass-border-softer` are theme-aware so they don't appear as harsh
+// white outlines on light backgrounds.
+const GLASS_SURFACE = 'bg-background/40 backdrop-blur-2xl glass-border-softer';
+const GLASS_CARD = 'glass-surface-1 backdrop-blur-xl glass-border-softer rounded-lg';
+const GLASS_ROW = 'glass-surface-1 glass-border-softer rounded-lg backdrop-blur-sm';
 
 // ── Loading skeleton for tab content ───────────────────────────
 function TabSkeleton() {
@@ -80,8 +84,8 @@ function DetailPopup({
   onClose: () => void;
 }) {
   return (
-    <div className="absolute inset-0 z-10 bg-background/90 backdrop-blur-2xl flex flex-col rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+      <div className="absolute inset-0 z-10 bg-background/90 backdrop-blur-2xl flex flex-col rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-3 glass-divider-b">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={onClose}>
           <X className="h-4 w-4" />
@@ -132,7 +136,7 @@ function BriefingRow({
         GLASS_ROW,
         'flex items-start gap-3 p-3',
         'transition-all duration-200',
-        onClick && 'cursor-pointer hover:bg-white/[0.06] hover:border-white/[0.1] hover:shadow-[0_2px_12px_hsl(var(--primary)/0.08)]',
+        onClick && 'cursor-pointer hover:bg-white/[0.06] hover:glass-border-soft hover:shadow-[0_2px_12px_hsl(var(--primary)/0.08)]',
       )}
     >
       <div className="p-1.5 rounded-md bg-primary/10 shrink-0 mt-0.5">
@@ -145,7 +149,7 @@ function BriefingRow({
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {badge && (
-          <Badge variant={badgeVariant || 'secondary'} className="text-[10px] border-white/[0.08]">
+          <Badge variant={badgeVariant || 'secondary'} className="text-[10px] glass-border-soft">
             {badge}
           </Badge>
         )}
@@ -300,7 +304,7 @@ function NewsImage({ src, topic, className, variant = 'standard' }: { src?: stri
       {variant === 'featured' && hasImage && (
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
       )}
-      <div className="absolute inset-0 border border-white/[0.06] rounded-[inherit]" />
+      <div className="absolute inset-0 glass-border-soft rounded-[inherit]" />
     </div>
   );
 }
@@ -316,7 +320,7 @@ function FeaturedNewsTile({ item }: { item: NewsfeedItem }) {
       className={cn(
         GLASS_CARD,
         'group overflow-hidden flex flex-col transition-all duration-200',
-        'hover:bg-white/[0.06] hover:border-white/[0.1] hover:shadow-[0_4px_20px_hsl(var(--primary)/0.1)]',
+        'hover:bg-white/[0.06] hover:glass-border-soft hover:shadow-[0_4px_20px_hsl(var(--primary)/0.1)]',
         item.url !== '#' && 'cursor-pointer',
       )}
     >
@@ -327,7 +331,7 @@ function FeaturedNewsTile({ item }: { item: NewsfeedItem }) {
             <div className="flex items-center gap-2 mb-1.5">
               <span className={cn(
                 'px-2 py-0.5 rounded text-[10px] font-semibold border backdrop-blur-sm',
-                TOPIC_COLORS[item.topic] || 'bg-white/[0.05] text-muted-foreground border-white/[0.08]',
+                TOPIC_COLORS[item.topic] || 'bg-white/[0.05] text-muted-foreground glass-border-soft',
               )}>
                 {item.topic}
               </span>
@@ -349,7 +353,7 @@ function FeaturedNewsTile({ item }: { item: NewsfeedItem }) {
             <div className="flex items-center gap-2 mb-2">
               <span className={cn(
                 'px-2 py-0.5 rounded text-[10px] font-semibold border',
-                TOPIC_COLORS[item.topic] || 'bg-white/[0.05] text-muted-foreground border-white/[0.08]',
+                TOPIC_COLORS[item.topic] || 'bg-white/[0.05] text-muted-foreground glass-border-soft',
               )}>
                 {item.topic}
               </span>
@@ -380,7 +384,7 @@ function StandardNewsTile({ item }: { item: NewsfeedItem }) {
       className={cn(
         GLASS_ROW,
         'group overflow-hidden flex gap-0 transition-all duration-200',
-        'hover:bg-white/[0.06] hover:border-white/[0.1] hover:shadow-[0_2px_12px_hsl(var(--primary)/0.06)]',
+        'hover:bg-white/[0.06] hover:glass-border-soft hover:shadow-[0_2px_12px_hsl(var(--primary)/0.06)]',
         item.url !== '#' && 'cursor-pointer',
       )}
     >
@@ -389,7 +393,7 @@ function StandardNewsTile({ item }: { item: NewsfeedItem }) {
         <div className="flex items-center gap-1.5 mb-1">
           <span className={cn(
             'px-1.5 py-px rounded text-[9px] font-semibold border',
-            TOPIC_COLORS[item.topic] || 'bg-white/[0.05] text-muted-foreground border-white/[0.08]',
+            TOPIC_COLORS[item.topic] || 'bg-white/[0.05] text-muted-foreground glass-border-soft',
           )}>
             {item.topic}
           </span>
@@ -476,7 +480,7 @@ function CatchUpTab({ enabled }: { enabled: boolean; onNavigate: (path: string) 
       <div className="flex flex-col items-center justify-center py-16 gap-4">
         <AlertCircle className="h-8 w-8 text-destructive/60" />
         <p className="text-sm text-muted-foreground text-center max-w-xs">{error}</p>
-        <Button variant="outline" size="sm" className="border-white/[0.08]" onClick={handleRefresh}>
+        <Button variant="outline" size="sm" className="glass-border-soft" onClick={handleRefresh}>
           <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Retry
         </Button>
       </div>
@@ -496,7 +500,7 @@ function CatchUpTab({ enabled }: { enabled: boolean; onNavigate: (path: string) 
                 'px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all duration-150',
                 activeTopics.has(topic)
                   ? TOPIC_COLORS[topic] || 'bg-primary/20 text-primary border-primary/30'
-                  : 'bg-white/[0.02] text-muted-foreground/40 border-white/[0.04] hover:bg-white/[0.04]',
+                  : 'bg-white/[0.02] text-muted-foreground/40 glass-border-softer hover:bg-white/[0.04]',
               )}
             >
               {topic}
@@ -588,7 +592,7 @@ function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onN
             {detail.analysis?.summary && <div className="text-sm"><strong>AI Summary:</strong> {detail.analysis.summary}</div>}
             {detail.analysis?.deal_name && <div className="text-sm"><strong>Related Deal:</strong> {detail.analysis.deal_name}</div>}
             <div className="text-sm text-muted-foreground">{detail.snippet}</div>
-            <Button size="sm" variant="outline" className="border-white/[0.08]" onClick={() => onNavigate('/email-intelligence')}>
+            <Button size="sm" variant="outline" className="glass-border-soft" onClick={() => onNavigate('/email-intelligence')}>
               Open Email Intelligence <ExternalLink className="h-3 w-3 ml-1" />
             </Button>
           </div>
@@ -605,7 +609,7 @@ function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onN
               'px-3 py-1 rounded-full text-xs font-medium transition-all duration-150 border',
               subTab === t.key
                 ? 'bg-primary/15 text-primary border-primary/30'
-                : 'bg-white/[0.03] text-muted-foreground/70 border-white/[0.06] hover:bg-white/[0.06] hover:text-foreground/80',
+                : 'bg-white/[0.03] text-muted-foreground/70 glass-border-soft hover:bg-white/[0.06] hover:text-foreground/80',
             )}
           >
             {t.label}
@@ -686,7 +690,7 @@ function FinancialTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (
             <div className="text-sm"><strong>Amount:</strong> ${(detail.total_amt || 0).toLocaleString()}</div>
             <div className="text-sm"><strong>Date:</strong> {detail.txn_date}</div>
             {detail.doc_number && <div className="text-sm"><strong>Invoice #:</strong> {detail.doc_number}</div>}
-            <Button size="sm" variant="outline" className="border-white/[0.08]" onClick={() => onNavigate('/metrics')}>
+            <Button size="sm" variant="outline" className="glass-border-soft" onClick={() => onNavigate('/metrics')}>
               Open Financial Dashboard <ExternalLink className="h-3 w-3 ml-1" />
             </Button>
           </div>
@@ -765,7 +769,7 @@ function PipelineTab({
             {detail.meta?.lender_name && <div className="text-sm"><strong>Lender:</strong> {detail.meta.lender_name}</div>}
             {detail.timestamp && <div className="text-sm"><strong>Time:</strong> {format(new Date(detail.timestamp), 'PPp')}</div>}
             {detail.action && (
-              <Button size="sm" variant="outline" className="border-white/[0.08]" onClick={() => onNavigate(detail.action!.path)}>
+              <Button size="sm" variant="outline" className="glass-border-soft" onClick={() => onNavigate(detail.action!.path)}>
                 {detail.action.label} <ExternalLink className="h-3 w-3 ml-1" />
               </Button>
             )}
@@ -782,7 +786,7 @@ function PipelineTab({
             {dealDetail.description && <div className="text-sm">{dealDetail.description}</div>}
             {dealDetail.user_display_name && <div className="text-sm"><strong>By:</strong> {dealDetail.user_display_name}</div>}
             {dealDetail.created_at && <div className="text-sm"><strong>Time:</strong> {format(new Date(dealDetail.created_at), 'PPp')}</div>}
-            <Button size="sm" variant="outline" className="border-white/[0.08]" onClick={() => onNavigate(`/deal/${dealDetail.id || dealDetail.deal_id}`)}>
+            <Button size="sm" variant="outline" className="glass-border-soft" onClick={() => onNavigate(`/deal/${dealDetail.id || dealDetail.deal_id}`)}>
               Open Deal <ExternalLink className="h-3 w-3 ml-1" />
             </Button>
           </div>
@@ -884,7 +888,7 @@ function StatusChip({ status }: { status: string | null }) {
   return (
     <span className={cn(
       'px-1.5 py-0.5 rounded text-[10px] font-semibold border whitespace-nowrap',
-      colors[status] || 'bg-white/[0.05] text-muted-foreground border-white/[0.08]',
+      colors[status] || 'bg-white/[0.05] text-muted-foreground glass-border-soft',
     )}>
       {label}
     </span>
@@ -955,14 +959,14 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
         className={cn(
           'max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] p-0 overflow-hidden rounded-2xl',
           'bg-background/60 backdrop-blur-3xl',
-          'border border-white/[0.06]',
+          'border-transparent glass-border-soft',
           'shadow-[0_32px_80px_-20px_hsl(var(--primary)/0.25),inset_0_1px_0_hsl(0_0%_100%/0.04)]',
         )}
         overlayClassName="bg-black/80"
       >
         <div className="flex flex-col h-full relative">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-white/[0.02]">
+          <div className="flex items-center justify-between px-6 py-4 glass-divider-b glass-surface-1">
             <div>
               <h2 className="text-lg font-bold text-foreground tracking-tight">{title}</h2>
               <p className="text-xs text-muted-foreground/60 mt-0.5">
@@ -973,8 +977,8 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
-            <div className="px-6 pt-3 bg-white/[0.01]">
-              <TabsList className="w-full bg-white/[0.03] border border-white/[0.05] backdrop-blur-xl">
+            <div className="px-6 pt-3 glass-surface-1">
+              <TabsList className="w-full glass-surface-1 glass-border-softer backdrop-blur-xl">
                 {TABS.map(tab => {
                   const Icon = tab.icon;
                   return (
@@ -1004,7 +1008,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
                   className={cn(
                     'absolute left-1.5 top-1/2 -translate-y-1/2 z-20',
                     'h-9 w-9 sm:h-10 sm:w-10 min-h-[44px] min-w-[44px] flex items-center justify-center',
-                    'rounded-full bg-white/[0.08] backdrop-blur-md border border-white/[0.1]',
+                    'rounded-full bg-white/[0.08] backdrop-blur-md glass-border-soft',
                     'text-muted-foreground hover:text-foreground hover:bg-white/[0.15] hover:shadow-lg',
                     'transition-all duration-200',
                   )}
@@ -1021,7 +1025,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
                   className={cn(
                     'absolute right-1.5 top-1/2 -translate-y-1/2 z-20',
                     'h-9 w-9 sm:h-10 sm:w-10 min-h-[44px] min-w-[44px] flex items-center justify-center',
-                    'rounded-full bg-white/[0.08] backdrop-blur-md border border-white/[0.1]',
+                    'rounded-full bg-white/[0.08] backdrop-blur-md glass-border-soft',
                     'text-muted-foreground hover:text-foreground hover:bg-white/[0.15] hover:shadow-lg',
                     'transition-all duration-200',
                   )}

@@ -52,7 +52,7 @@ const PRIORITY_STYLES: Record<string, string> = {
 };
 
 // Glass card wrapper class
-const GLASS_CARD = 'h-full flex flex-col border-white/[0.06] bg-card/80 backdrop-blur-md shadow-glass';
+const GLASS_CARD = 'h-full flex flex-col glass-border-soft bg-card/80 backdrop-blur-md shadow-glass';
 
 function EmailRow({ email, onClick }: { email: EnrichedEmail; onClick: () => void }) {
   const navigate = useNavigate();
@@ -68,12 +68,12 @@ function EmailRow({ email, onClick }: { email: EnrichedEmail; onClick: () => voi
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
       className={cn(
         'flex items-start gap-3 p-2.5 rounded-lg border group cursor-pointer transition-all duration-200',
-        'hover:bg-white/[0.04] hover:border-white/[0.1] hover:shadow-sm',
+        'hover:bg-white/[0.04] hover:glass-border-soft hover:shadow-sm',
         'active:scale-[0.995]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
         !email.is_read
           ? 'bg-primary/[0.06] border-primary/15'
-          : 'bg-white/[0.02] border-white/[0.06]',
+          : 'bg-white/[0.02] glass-border-soft',
         PRIORITY_STYLES[analysis?.priority || 'medium']
       )}
     >
@@ -92,7 +92,7 @@ function EmailRow({ email, onClick }: { email: EnrichedEmail; onClick: () => voi
             <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
           )}
           {analysis?.category && analysis.category !== 'other' && (
-            <Badge variant="outline" className={cn('text-[9px] h-4 px-1.5 shrink-0 border-white/[0.08]', CATEGORY_COLORS[analysis.category])}>
+            <Badge variant="outline" className={cn('text-[9px] h-4 px-1.5 shrink-0 glass-border-soft', CATEGORY_COLORS[analysis.category])}>
               {CATEGORY_LABELS[analysis.category] || analysis.category}
             </Badge>
           )}
@@ -203,7 +203,7 @@ export function EmailIntelligenceWidget() {
               Link your email in Integrations to see your inbox here.
             </p>
           </div>
-          <Button variant="outline" size="sm" className="mt-1 border-white/[0.1] bg-white/[0.04] hover:bg-white/[0.08]" onClick={() => navigate('/integrations')}>
+          <Button variant="outline" size="sm" className="mt-1 glass-border-soft bg-white/[0.04] hover:bg-white/[0.08]" onClick={() => navigate('/integrations')}>
             Go to Integrations
           </Button>
         </CardContent>
