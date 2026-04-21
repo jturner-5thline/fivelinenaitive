@@ -261,14 +261,9 @@ function useDealMatches(events: CalendarEvent[]) {
 }
 
 // ─── Mock events ─────────────────────────────────────────────
-const now = new Date();
-const todayStr = format(now, 'yyyy-MM-dd');
-const tomorrowStr = format(addDays(now, 1), 'yyyy-MM-dd');
-const day2Str = format(addDays(now, 2), 'yyyy-MM-dd');
-const day3Str = format(addDays(now, 3), 'yyyy-MM-dd');
-const day4Str = format(addDays(now, 4), 'yyyy-MM-dd');
-
-const mockEvents: CalendarEvent[] = [
+// (Mock/sample events were removed. The Calendar widget now always renders
+// the live calendar — with an explicit loading / empty / error state — so
+// users never see fake events flash in.)
   {
     id: 'mock-1', calendar_id: 'primary', summary: 'Team Standup', description: 'Daily sync on active deals and pipeline updates.',
     location: null, start: `${todayStr}T09:00:00`, end: `${todayStr}T09:30:00`,
