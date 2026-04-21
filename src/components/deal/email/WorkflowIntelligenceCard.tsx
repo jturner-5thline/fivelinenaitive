@@ -106,24 +106,46 @@ export function WorkflowIntelligenceCard({
   onDismiss,
   onMaybeLater,
 }: Props) {
+  // Source of truth for pass-reason options — same list shown in the
+  // deal-detail Lenders tab "Confirm Pass" dialog so the two stay in sync.
+  const { passReasons: passReasonOptions } = useLenderStages();
+
   const rec = analysis.recommended_update;
   const hasUpdate = rec.kind !== 'none' && !!rec.title;
   const needsDealLink = !hasLinkedDeal && !!analysis.likely_deal.id && rec.kind !== 'none';
   const aiSuggestedStatus = normalizeSuggested(rec.new_stage);
-  const aiSuggestedDetail = (rec.suggested_detail || '').toLowerCase();
+  const aiSuggestedDetailToken = (rec.suggested_detail || '').toLowerCase();
+
+  /**
+   * Map the AI's suggested-detail token (legacy enum) to a label from the
+   * company-configured pass-reason list. This is best-effort — if we can't
+   * find a match, we leave the selection empty and let the user pick.
+   */
+  const aiSuggestedLabels = (() => {
+    if (!aiSuggestedDetailToken) return [] as string[];
+    const hints = AI_DETAIL_TOKEN_TO_LABEL_HINT[aiSuggestedDetailToken] || [];
+    if (hints.length === 0) return [];
+    const match = passReasonOptions.find((opt) =>
+      hints.some((h) => opt.label.toLowerCase().includes(h)),
+    );
+    return match ? [match.label] : [];
+  })();
 
   const [reason, setReason] = useState(rec.reason_note || '');
   const [confirmedStatus, setConfirmedStatus] = useState<string>(aiSuggestedStatus);
-  const [confirmedDetail, setConfirmedDetail] = useState<string>(aiSuggestedDetail);
+  // Selected pass-reason LABELS — multi-select, capped at 3 to match the
+  // deal-detail dialog UX.
+  const [selectedReasonLabels, setSelectedReasonLabels] = useState<string[]>(aiSuggestedLabels);
+  const [reasonPickerOpen, setReasonPickerOpen] = useState(false);
   const [renderedKey, setRenderedKey] = useState<string | null>(null);
   // Two-panel slider: 'suggested' (primary, default) <-> 'intelligence' (entities + signal context).
   const [activePanel, setActivePanel] = useState<'suggested' | 'intelligence'>('suggested');
 
-  const analysisKey = `${analysis.signal.type}::${rec.lender_id || rec.master_lender_id || rec.lender_name}::${rec.new_stage}::${rec.suggested_detail || ''}`;
+  const analysisKey = `${analysis.signal.type}::${rec.lender_id || rec.master_lender_id || rec.lender_name}::${rec.new_stage}::${rec.suggested_detail || ''}::${passReasonOptions.length}`;
   if (renderedKey !== analysisKey) {
     setRenderedKey(analysisKey);
     setConfirmedStatus(aiSuggestedStatus);
-    setConfirmedDetail(aiSuggestedDetail);
+    setSelectedReasonLabels(aiSuggestedLabels);
     setReason(rec.reason_note || '');
     if (hasUpdate && rec.kind === 'lender_status') {
       logAnalytics('ai_suggested_update_rendered', {
@@ -132,7 +154,8 @@ export function WorkflowIntelligenceCard({
         master_lender_id: rec.master_lender_id || null,
         lender_name: rec.lender_name,
         ai_suggested_status: aiSuggestedStatus,
-        ai_suggested_detail: aiSuggestedDetail || null,
+        ai_suggested_detail: aiSuggestedDetailToken || null,
+        ai_suggested_labels: aiSuggestedLabels,
         signal_type: analysis.signal.type,
         confidence: rec.confidence,
         ambiguity_flags: rec.ambiguity_flags || [],
@@ -141,7 +164,8 @@ export function WorkflowIntelligenceCard({
   }
 
   const userOverrodeStatus = confirmedStatus !== aiSuggestedStatus;
-  const userOverrodeDetail = confirmedDetail !== aiSuggestedDetail;
+  const userOverrodeDetail =
+    selectedReasonLabels.join('||') !== aiSuggestedLabels.join('||');
   const userOverrodeSuggestion = userOverrodeStatus || userOverrodeDetail;
   const isLenderStatus = rec.kind === 'lender_status';
   const showDetailField = isLenderStatus && CLOSING_STATUSES.has(confirmedStatus);
