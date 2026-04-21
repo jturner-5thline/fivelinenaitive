@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Edit3, X, FileText, Loader2, Mail, Settings } from 'lucide-react';
+import { Check, Edit3, X, FileText, Loader2, Mail, MessageSquareQuote, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,6 +16,7 @@ import {
   usePendingDealSuggestions,
   type PendingDealSuggestion,
   type PendingDealSuggestionPayload,
+  type PendingQAPayload,
 } from '@/hooks/usePendingDealSuggestions';
 import { useDealSpaceNotes } from '@/hooks/useDealSpaceNotes';
 import { useDealAuditLog } from '@/hooks/useDealAuditLog';
@@ -28,6 +29,7 @@ interface Props {
 }
 
 const CONTACTS_NOTE_TITLE = 'Deal Contacts';
+const QA_NOTE_TITLE = 'Client Q&A';
 
 function buildNoteEntry(payload: PendingDealSuggestionPayload, threadSubject: string | null): string {
   const ts = format(new Date(), 'PPp');
@@ -41,6 +43,27 @@ function buildNoteEntry(payload: PendingDealSuggestionPayload, threadSubject: st
   return lines.join('\n');
 }
 
+function buildQANoteEntry(payload: PendingQAPayload): string {
+  const ts = format(new Date(), 'PPp');
+  const dateStr = payload.source.receivedAt
+    ? format(new Date(payload.source.receivedAt), 'PP')
+    : '';
+  const lines: string[] = [
+    `### Client Q&A — ${dateStr || ts}`,
+    `_From **${payload.source.fromName}** <${payload.source.fromEmail}> · Re: ${payload.source.subject}_`,
+    '',
+  ];
+  payload.pairs.forEach((p, i) => {
+    lines.push(`**Q${i + 1}.** ${p.question}`);
+    lines.push(`**A.** ${p.answer}`);
+    lines.push('');
+  });
+  lines.push(`_Source thread: ${payload.source.threadId}_`);
+  lines.push(`_Captured ${ts}_`);
+  lines.push('');
+  return lines.join('\n');
+}
+
 export function SuggestedDealUpdatesSection({ dealId, dealName }: Props) {
   const { enabled, setEnabled } = useAutoDealNoteSuggestionPref();
   const { suggestions, dismiss, confirm, updatePayload } = usePendingDealSuggestions(dealId);
@@ -49,12 +72,18 @@ export function SuggestedDealUpdatesSection({ dealId, dealName }: Props) {
 
   // Always render the header (so the toggle is reachable). Cards only render when present.
   const hasItems = suggestions.length > 0;
+  const totalCount = suggestions.length;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
           Suggested Deal Updates
+          {totalCount > 1 && (
+            <span className="ml-1.5 text-muted-foreground/50 normal-case tracking-normal">
+              · {totalCount} pending
+            </span>
+          )}
         </p>
         <Popover>
           <PopoverTrigger asChild>
@@ -88,19 +117,82 @@ export function SuggestedDealUpdatesSection({ dealId, dealName }: Props) {
       {!hasItems && (
         <div className="rounded-md border border-dashed border-white/[0.06] bg-background/20 px-3 py-2.5">
           <p className="text-[11px] text-muted-foreground/70 leading-snug">
-            None right now. Add a contact's email on its own line in a reply to capture them here.
+            None right now. We'll surface contact captures and client Q&A responses here as they're detected.
           </p>
         </div>
       )}
 
       <div className="space-y-2">
-        {suggestions.map(s => (
-          <SuggestionCard
-            key={s.id}
-            suggestion={s}
-            dealName={dealName}
-            existingContactsNoteId={notes.find(n => n.title === CONTACTS_NOTE_TITLE)?.id}
-            existingContactsNoteContent={notes.find(n => n.title === CONTACTS_NOTE_TITLE)?.content}
+        {suggestions.map((s, idx) => {
+          const pagerLabel = totalCount > 1 ? `${idx + 1}/${totalCount}` : null;
+          if (s.suggestion_type === 'qa_from_thread') {
+            return (
+              <QASuggestionCard
+                key={s.id}
+                suggestion={s}
+                dealName={dealName}
+                pagerLabel={pagerLabel}
+                existingQANoteId={notes.find(n => n.title === QA_NOTE_TITLE)?.id}
+                existingQANoteContent={notes.find(n => n.title === QA_NOTE_TITLE)?.content}
+                onDismiss={async () => {
+                  await dismiss(s.id);
+                  toast.info('Suggestion dismissed');
+                }}
+                onSavePayload={async (next) => {
+                  await updatePayload(s.id, next as any);
+                }}
+                onConfirm={async (finalPayload, mode) => {
+                  if (!dealId) return;
+                  try {
+                    const noteEntry = buildQANoteEntry(finalPayload);
+                    const existing = notes.find(n => n.title === QA_NOTE_TITLE);
+                    let noteId: string | null = null;
+                    if (existing) {
+                      const newContent = existing.content
+                        ? `${existing.content}\n\n${noteEntry}`
+                        : noteEntry;
+                      await updateNote(existing.id, { content: newContent });
+                      noteId = existing.id;
+                    } else {
+                      const created = await createNote(QA_NOTE_TITLE, noteEntry);
+                      noteId = created?.id ?? null;
+                    }
+
+                    await logAuditAction(
+                      'qa_responses_saved_from_thread',
+                      'note',
+                      noteId || undefined,
+                      QA_NOTE_TITLE,
+                      {
+                        thread_id: finalPayload.source.threadId,
+                        thread_subject: finalPayload.source.subject,
+                        from_email: finalPayload.source.fromEmail,
+                        pair_count: finalPayload.pairs.length,
+                        mode, // 'append' | 'merge'
+                        suggestion_id: s.id,
+                      },
+                    );
+
+                    await confirm(s.id, noteId);
+                    toast.success(mode === 'merge' ? 'Q&A merged into deal notes' : 'Q&A saved to deal notes', {
+                      description: dealName ? `Saved to ${dealName} → ${QA_NOTE_TITLE}` : undefined,
+                    });
+                  } catch (err: any) {
+                    console.error(err);
+                    toast.error('Failed to save Q&A to deal notes');
+                  }
+                }}
+              />
+            );
+          }
+          return (
+            <SuggestionCard
+              key={s.id}
+              suggestion={s}
+              dealName={dealName}
+              pagerLabel={pagerLabel}
+              existingContactsNoteId={notes.find(n => n.title === CONTACTS_NOTE_TITLE)?.id}
+              existingContactsNoteContent={notes.find(n => n.title === CONTACTS_NOTE_TITLE)?.content}
             onDismiss={async () => {
               await dismiss(s.id);
               toast.info('Suggestion dismissed');
@@ -149,8 +241,9 @@ export function SuggestedDealUpdatesSection({ dealId, dealName }: Props) {
                 toast.error('Failed to add to deal notes');
               }
             }}
-          />
-        ))}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -159,6 +252,7 @@ export function SuggestedDealUpdatesSection({ dealId, dealName }: Props) {
 interface SuggestionCardProps {
   suggestion: PendingDealSuggestion;
   dealName?: string;
+  pagerLabel?: string | null;
   existingContactsNoteId?: string;
   existingContactsNoteContent?: string;
   onConfirm: (payload: PendingDealSuggestionPayload) => Promise<void>;
@@ -169,15 +263,17 @@ interface SuggestionCardProps {
 function SuggestionCard({
   suggestion,
   dealName,
+  pagerLabel,
   onConfirm,
   onDismiss,
   onSavePayload,
 }: SuggestionCardProps) {
   const [editing, setEditing] = useState(false);
   const [working, setWorking] = useState(false);
+  const contactPayload = suggestion.payload as PendingDealSuggestionPayload;
   const [draft, setDraft] = useState<PendingDealSuggestionPayload>({
-    ...suggestion.payload,
-    contactName: suggestion.payload.contactName || suggestion.payload.inferredName,
+    ...contactPayload,
+    contactName: contactPayload.contactName || contactPayload.inferredName,
   });
 
   const handleConfirm = async () => {
