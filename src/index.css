@@ -290,6 +290,10 @@
 .email-html-body h5,
 .email-html-body h6 {
   color: hsl(var(--email-text-primary)) !important;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .email-html-body p { margin: 0 0 0.75rem 0; }
@@ -353,6 +357,7 @@
   max-width: 100%;
   width: 100% !important;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .email-html-body a,
