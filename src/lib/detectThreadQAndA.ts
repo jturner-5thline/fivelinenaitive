@@ -359,7 +359,24 @@ export function detectThreadQAndA(messages: ThreadMessageLite[]): DetectedThread
         question: `Question ${i + 1}`,
         answer: a,
       }));
-      return { pairs, outboundIndex, inboundIndex, reasons };
+      const conf = computeQAConfidence({
+        pairs,
+        questionCount: questions.length,
+        answerCount: usedAnswers.length,
+        pairingMode,
+        keywordHit,
+        outboundMentionsQuestions,
+      });
+      reasons.push(`confidence=${conf.confidence}(${conf.score.toFixed(2)})`);
+      return {
+        pairs,
+        outboundIndex,
+        inboundIndex,
+        reasons,
+        confidence: conf.confidence,
+        confidenceScore: conf.score,
+        confidenceSignals: conf.signals,
+      };
     }
     return null;
   }
@@ -371,7 +388,24 @@ export function detectThreadQAndA(messages: ThreadMessageLite[]): DetectedThread
       answer: usedAnswers[i].trim(),
     });
   }
-  return { pairs, outboundIndex, inboundIndex, reasons };
+  const conf = computeQAConfidence({
+    pairs,
+    questionCount: questions.length,
+    answerCount: usedAnswers.length,
+    pairingMode,
+    keywordHit,
+    outboundMentionsQuestions,
+  });
+  reasons.push(`confidence=${conf.confidence}(${conf.score.toFixed(2)})`);
+  return {
+    pairs,
+    outboundIndex,
+    inboundIndex,
+    reasons,
+    confidence: conf.confidence,
+    confidenceScore: conf.score,
+    confidenceSignals: conf.signals,
+  };
 }
 
 /** Stable dedup key: thread + count of pairs + first-answer fingerprint. */
