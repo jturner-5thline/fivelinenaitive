@@ -162,7 +162,7 @@ export function WorkflowIntelligenceCard({
   };
 
   return (
-    <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-3 space-y-3 overflow-hidden">
+    <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-3 space-y-3 overflow-hidden max-w-full">
       {/* Header — title swaps with the active panel; arrow controls slide between the two. */}
       <div className="flex items-center gap-2">
         {activePanel === 'intelligence' && (
@@ -207,7 +207,7 @@ export function WorkflowIntelligenceCard({
       </div>
 
       {/* Sliding viewport — two panels share width; transform controls which is visible. */}
-      <div className="relative">
+      <div className="relative overflow-hidden max-w-full">
         <div
           className="flex w-[200%] transition-transform duration-300 ease-out"
           style={{ transform: activePanel === 'suggested' ? 'translateX(0%)' : 'translateX(-50%)' }}
