@@ -958,6 +958,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
+          useCarouselSwipeClass(),
           'max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] p-0 overflow-hidden rounded-2xl',
           'bg-background/60 backdrop-blur-3xl',
           'border-transparent glass-border-soft',
