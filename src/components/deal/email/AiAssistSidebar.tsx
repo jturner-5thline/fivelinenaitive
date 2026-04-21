@@ -379,6 +379,8 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               loading={workflowLoading}
               committing={workflowCommitting}
               hasLinkedDeal={!!dealId}
+              isThreadLinkedToDeal={workflowThreadLinked}
+              isLenderOnDeal={workflowLenderOnDeal}
               onConfirm={(o) => confirmWorkflow(o)}
               onDismiss={dismissWorkflow}
               onMaybeLater={dismissWorkflow}
