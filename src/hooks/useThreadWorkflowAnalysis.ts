@@ -527,9 +527,44 @@ export function useThreadWorkflowAnalysis({
       if (rec.kind === 'lender_status') {
         currentStep = 'ensureLenderOnDeal';
         const lenderName = rec.lender_name || analysis.likely_lender_firm.name || '';
+        // CRITICAL: ignore the AI's `rec.lender_id` if it does NOT belong to
+        // the resolved target deal. The AI sometimes returns a deal_lenders
+        // id from a different deal that has the same lender (e.g. "Advantage
+        // Capital" appears on 18 different deals). Passing that id through
+        // would either no-op or, worse, flip the wrong row.
+        let safeSuggestedLenderId: string | undefined = rec.lender_id || undefined;
+        if (safeSuggestedLenderId) {
+          const { data: belongs } = await supabase
+            .from('deal_lenders')
+            .select('id, deal_id')
+            .eq('id', safeSuggestedLenderId)
+            .maybeSingle();
+          if (!belongs || belongs.deal_id !== targetDealId) {
+            debugStep('confirmRecommendation:rejecting-cross-deal-lender-id', {
+              suggestedLenderId: safeSuggestedLenderId,
+              suggestedLenderActualDealId: belongs?.deal_id || null,
+              targetDealId,
+            });
+            safeSuggestedLenderId = undefined;
+          }
+        }
+        // Prefer the DB-backed resolver result (already scoped to the right
+        // deal by the useEffect above). Fallback to ensureLenderOnDeal which
+        // re-runs the same name lookup as a safety net.
+        if (!safeSuggestedLenderId && resolvedDealLenderId) {
+          // Verify the resolver-cached id is still pointed at THIS deal
+          // (analysis can change between auto-runs).
+          const { data: cached } = await supabase
+            .from('deal_lenders')
+            .select('id, deal_id, name')
+            .eq('id', resolvedDealLenderId)
+            .eq('deal_id', targetDealId)
+            .maybeSingle();
+          if (cached?.id) safeSuggestedLenderId = cached.id;
+        }
         const ensured = await ensureLenderOnDeal(
           targetDealId,
-          rec.lender_id,
+          safeSuggestedLenderId,
           rec.master_lender_id,
           lenderName,
         );
@@ -592,6 +627,37 @@ export function useThreadWorkflowAnalysis({
           trackingStatus: updatedLender.tracking_status,
           passReason: updatedLender.pass_reason,
         });
+
+        // READ-BACK VERIFICATION: re-query the row independently and assert
+        // the new state actually persisted. Catches RLS-silenced updates
+        // and any race where the update returned a stale projection.
+        const { data: verifyRow, error: verifyError } = await supabase
+          .from('deal_lenders')
+          .select('id, deal_id, stage, tracking_status, pass_reason')
+          .eq('id', resolvedLenderId)
+          .eq('deal_id', targetDealId)
+          .maybeSingle();
+        debugStep('applyDisposition:read-back', {
+          dealLenderId: resolvedLenderId,
+          targetDealId,
+          verifyError: verifyError?.message || null,
+          verifyRow,
+          expectedStage: mapped.stage,
+          expectedTrackingStatus: mapped.trackingStatus,
+        });
+        if (verifyError) throw verifyError;
+        if (!verifyRow) {
+          throw new Error(
+            `Read-back failed — could not find deal_lenders row id=${resolvedLenderId} on deal_id=${targetDealId}. ` +
+            `The update may have been blocked by RLS or the row was deleted.`,
+          );
+        }
+        if (verifyRow.stage !== mapped.stage || verifyRow.tracking_status !== mapped.trackingStatus) {
+          throw new Error(
+            `Read-back mismatch on deal_lenders ${resolvedLenderId}: expected stage="${mapped.stage}"/tracking="${mapped.trackingStatus}" ` +
+            `but found stage="${verifyRow.stage}"/tracking="${verifyRow.tracking_status}". Update did not apply.`,
+          );
+        }
 
         // Insert one lender_disqualifications row per selected reason label.
         // We map labels back to the LenderPassReasonCategory enum (best-effort
@@ -702,6 +768,19 @@ export function useThreadWorkflowAnalysis({
       dismiss();
       currentStep = 'finalUIRefresh';
       await refreshDeals();
+      // Broadcast a deal-scoped refresh event so any open DealDetail page or
+      // Lenders tab can re-fetch its local state without a full reload.
+      try {
+        window.dispatchEvent(
+          new CustomEvent('deal:lender-updated', {
+            detail: {
+              dealId: targetDealId,
+              dealLenderId: resolvedLenderId,
+              source: 'ai_thread_workflow',
+            },
+          }),
+        );
+      } catch { /* ignore */ }
       debugStep('finalUIRefresh:success', {
         dealId: targetDealId,
         dealLenderId: resolvedLenderId,
@@ -715,7 +794,7 @@ export function useThreadWorkflowAnalysis({
     } finally {
       setCommitting(false);
     }
-  }, [analysis, user, dealId, ensureLenderOnDeal, refreshDeals, dismiss, latestInbound, messageId, threadData]);
+  }, [analysis, user, dealId, ensureLenderOnDeal, refreshDeals, dismiss, latestInbound, messageId, threadData, resolvedDealLenderId]);
 
   return {
     analysis,

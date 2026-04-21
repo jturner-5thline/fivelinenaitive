@@ -502,7 +502,7 @@ export default function DealDetail() {
   const { canPushFlex: demoCanPushFlex } = useDemoCapabilities();
   const canPushToFlex = hasPageAccess('flex_push') && demoCanPushFlex;
   const { formatCurrencyValue, preferences } = usePreferences();
-  const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deleteLenderNoteHistory, deleteDeal, deals, isLoading: isDealsLoading } = useDealsContext();
+  const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deleteLenderNoteHistory, deleteDeal, deals, isLoading: isDealsLoading, refreshDeals } = useDealsContext();
   const { activities: activityLogs, logActivity, isLoading: isLoadingActivities } = useActivityLog(id);
   
   // Real-time FLEx activity notifications
@@ -968,6 +968,24 @@ export default function DealDetail() {
       markInfoRequestsAsRead();
     }
   }, [dealInfoTab, infoRequestPendingCount, markInfoRequestsAsRead]);
+
+  // Listen for AI-driven lender updates dispatched from the email modal
+  // (useThreadWorkflowAnalysis). When the broadcast targets THIS deal,
+  // refresh the DealsContext so the Lenders tab reflects the change
+  // immediately without requiring a full page reload.
+  useEffect(() => {
+    if (!id) return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent).detail || {};
+      if (detail.dealId && detail.dealId === id) {
+        // eslint-disable-next-line no-console
+        console.debug('[DealDetail] received deal:lender-updated, refreshing', detail);
+        refreshDeals();
+      }
+    };
+    window.addEventListener('deal:lender-updated', handler);
+    return () => window.removeEventListener('deal:lender-updated', handler);
+  }, [id, refreshDeals]);
 
   // Scroll to hash element after tab change
   useEffect(() => {
