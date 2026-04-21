@@ -479,17 +479,49 @@ export default function Dashboard() {
           </Tabs>
         </div>
       </div>
-      {isJTurner && <DailyBriefingModal open={isBriefingOpen} onOpenChange={setIsBriefingOpen} />}
+
+      {/* ────────────────────────────────────────────────────────────────
+        Carousel-driven widget pop-ups.
+
+        Each widget keeps its existing Dialog wrapper and styling. The
+        shared `WidgetCarouselChrome` overlay renders persistent
+        navigation controls (arrows, header, indicator) on top, so users
+        can swipe / arrow between widgets without ever closing the
+        modal experience.
+      ──────────────────────────────────────────────────────────────── */}
+      <FullCalendarView
+        open={isWidgetActive('calendar')}
+        onOpenChange={handleCarouselDialogOpenChange}
+      />
+      <InboxDialog
+        open={isWidgetActive('email')}
+        onOpenChange={handleCarouselDialogOpenChange}
+      />
+      <CreateDealDialog
+        open={isWidgetActive('new-deal')}
+        onOpenChange={handleCarouselDialogOpenChange}
+      />
+      <QuickPromptsDialog
+        open={isWidgetActive('quick-prompts')}
+        onOpenChange={handleCarouselDialogOpenChange}
+      />
+      {isJTurner && (
+        <DailyBriefingModal
+          open={isWidgetActive('daily-briefing')}
+          onOpenChange={handleCarouselDialogOpenChange}
+        />
+      )}
       {canSeeNiki && (
         <DailyBriefingModal
-          open={isNikiBriefingOpen}
-          onOpenChange={setIsNikiBriefingOpen}
+          open={isWidgetActive('niki-briefing')}
+          onOpenChange={handleCarouselDialogOpenChange}
           title={isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
           targetUserId={NIKI_USER_ID}
           targetAssigneeName={NIKI_ASSIGNEE_NAME}
           excludeTabs={['financial']}
         />
       )}
+      <WidgetCarouselChrome />
     </>
   );
 }
