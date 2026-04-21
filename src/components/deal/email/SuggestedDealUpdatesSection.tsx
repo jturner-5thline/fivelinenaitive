@@ -292,9 +292,12 @@ function SuggestionCard({
     <div className="rounded-md border border-white/[0.08] bg-background/40 overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.04] bg-muted/20">
         <Mail className="h-3 w-3 text-primary/80 shrink-0" />
-        <span className="text-[11px] font-medium text-foreground/85 truncate">
+        <span className="text-[11px] font-medium text-foreground/85 truncate flex-1">
           Add contact to {dealName || 'deal'} notes
         </span>
+        {pagerLabel && (
+          <span className="text-[10px] text-muted-foreground/70 font-mono shrink-0">{pagerLabel}</span>
+        )}
       </div>
 
       <div className="px-3 py-2.5 space-y-2">
@@ -384,6 +387,160 @@ function Row({ label, value, mono }: { label: string; value: string; mono?: bool
     <div className="flex items-baseline gap-2 text-[11px]">
       <span className="text-muted-foreground/70 w-12 shrink-0">{label}</span>
       <span className={mono ? 'text-foreground/90 font-mono break-all' : 'text-foreground/90'}>{value}</span>
+    </div>
+  );
+}
+
+// ─── Q&A suggestion card ─────────────────────────────────────
+interface QASuggestionCardProps {
+  suggestion: PendingDealSuggestion;
+  dealName?: string;
+  pagerLabel?: string | null;
+  existingQANoteId?: string;
+  existingQANoteContent?: string;
+  onConfirm: (payload: PendingQAPayload, mode: 'append' | 'merge') => Promise<void>;
+  onDismiss: () => Promise<void>;
+  onSavePayload: (payload: PendingQAPayload) => Promise<void>;
+}
+
+function QASuggestionCard({
+  suggestion,
+  dealName,
+  pagerLabel,
+  existingQANoteId,
+  existingQANoteContent,
+  onConfirm,
+  onDismiss,
+  onSavePayload,
+}: QASuggestionCardProps) {
+  const initialPayload = suggestion.payload as PendingQAPayload;
+  const [editing, setEditing] = useState(false);
+  const [working, setWorking] = useState(false);
+  const [draft, setDraft] = useState<PendingQAPayload>(initialPayload);
+
+  // "Merge" mode is offered when an existing Q&A note already references
+  // this thread's id — append cleanly under the same heading.
+  const threadAlreadySaved = !!(existingQANoteContent && existingQANoteContent.includes(initialPayload.source.threadId));
+
+  const handleConfirm = async (mode: 'append' | 'merge') => {
+    setWorking(true);
+    try {
+      if (editing) {
+        await onSavePayload(draft);
+      }
+      await onConfirm(draft, mode);
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const updatePair = (idx: number, key: 'question' | 'answer', value: string) => {
+    setDraft(d => ({
+      ...d,
+      pairs: d.pairs.map((p, i) => (i === idx ? { ...p, [key]: value } : p)),
+    }));
+  };
+
+  return (
+    <div className="rounded-md border border-white/[0.08] bg-background/40 overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.04] bg-muted/20">
+        <MessageSquareQuote className="h-3 w-3 text-primary/80 shrink-0" />
+        <span className="text-[11px] font-medium text-foreground/85 truncate flex-1">
+          Save Q&A responses to Deal Notes
+        </span>
+        {pagerLabel && (
+          <span className="text-[10px] text-muted-foreground/70 font-mono shrink-0">{pagerLabel}</span>
+        )}
+      </div>
+
+      <div className="px-3 py-2.5 space-y-2">
+        <Row label="Deal" value={dealName || '—'} />
+        <Row label="From" value={`${draft.source.fromName} <${draft.source.fromEmail}>`} mono />
+        {draft.source.subject && <Row label="Re" value={draft.source.subject} />}
+        {draft.source.receivedAt && (
+          <Row label="Date" value={format(new Date(draft.source.receivedAt), 'PP p')} />
+        )}
+
+        {/* Preview of what will be written */}
+        <div className="mt-2 border-t border-white/[0.04] pt-2">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <FileText className="h-3 w-3 text-muted-foreground/70" />
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+              Preview ({draft.pairs.length} pair{draft.pairs.length === 1 ? '' : 's'})
+            </span>
+          </div>
+          <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+            {draft.pairs.map((p, i) => (
+              <div key={i} className="rounded border border-white/[0.04] bg-background/30 px-2 py-1.5 space-y-1">
+                {!editing ? (
+                  <>
+                    <div className="text-[11px] text-foreground/85 leading-snug">
+                      <span className="text-muted-foreground/80 font-semibold">Q{i + 1}.</span> {p.question}
+                    </div>
+                    <div className="text-[11px] text-foreground/95 leading-snug pl-3 border-l border-primary/30">
+                      {p.answer}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Textarea
+                      value={p.question}
+                      onChange={e => updatePair(i, 'question', e.target.value)}
+                      className="text-[11px] min-h-[36px] py-1"
+                      placeholder={`Question ${i + 1}`}
+                    />
+                    <Textarea
+                      value={p.answer}
+                      onChange={e => updatePair(i, 'answer', e.target.value)}
+                      className="text-[11px] min-h-[44px] py-1"
+                      placeholder="Answer"
+                    />
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {threadAlreadySaved && (
+          <div className="text-[10px] text-amber-400/90 leading-snug border border-amber-400/20 bg-amber-400/[0.04] rounded px-2 py-1.5">
+            This thread already has a Q&A entry. Use <span className="font-semibold">Merge / Update</span> to append the new pairs cleanly under the same heading.
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center gap-1 px-3 py-2 border-t border-white/[0.04] bg-muted/10 flex-wrap">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-[11px] gap-1 px-2"
+          onClick={() => setEditing(e => !e)}
+          disabled={working}
+        >
+          {editing ? <X className="h-3 w-3" /> : <Edit3 className="h-3 w-3" />}
+          {editing ? 'Cancel edit' : 'Edit'}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-[11px] gap-1 px-2 text-muted-foreground hover:text-destructive"
+          onClick={onDismiss}
+          disabled={working}
+        >
+          <X className="h-3 w-3" />
+          Dismiss
+        </Button>
+        <div className="flex-1" />
+        <Button
+          size="sm"
+          className="h-7 text-[11px] gap-1.5 bg-[hsl(160,60%,40%)] hover:bg-[hsl(160,60%,35%)] text-white"
+          onClick={() => handleConfirm(threadAlreadySaved ? 'merge' : 'append')}
+          disabled={working || draft.pairs.length === 0}
+        >
+          {working ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+          {threadAlreadySaved ? 'Merge / Update' : 'Confirm & Save to Deal Notes'}
+        </Button>
+      </div>
     </div>
   );
 }
