@@ -1853,14 +1853,15 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
           {/* Main content */}
           <div className="flex-1 min-w-0 flex flex-col">
             {view === 'month' ? (
-              <MonthView currentDate={currentDate} events={allEvents} onEventClick={setSelectedEvent} onDayClick={handleDayClick} />
+              <MonthView currentDate={currentDate} events={allEvents} onEventClick={setSelectedEvent} onDayClick={handleDayClick} calendarColors={calendarColors} />
             ) : view === 'agenda' ? (
-              <AgendaView currentDate={currentDate} events={allEvents} onEventClick={setSelectedEvent} />
+              <AgendaView currentDate={currentDate} events={allEvents} onEventClick={setSelectedEvent} calendarColors={calendarColors} />
             ) : (
               <>
                 <AllDayBar
                   events={allDayEvents.filter(e => view === 'day' ? isSameDay(parseISO(e.start), currentDate) : true)}
                   onEventClick={setSelectedEvent}
+                  calendarColors={calendarColors}
                 />
                 <ScrollArea className="flex-1" ref={timeGridScrollRef}>
                   <div className="flex min-h-0">
