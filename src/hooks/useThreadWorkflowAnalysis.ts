@@ -656,6 +656,7 @@ export function useThreadWorkflowAnalysis({
       currentStep = 'updateDealLender';
       const lenderUpdatePayload: DealLenderUpdate = {
         stage: 'passed',
+        substage: null,
         tracking_status: 'passed',
         pass_reason: passReasonText,
         notes: reason || targetRow.notes || null,
@@ -689,7 +690,7 @@ export function useThreadWorkflowAnalysis({
       currentStep = 'readBackVerification';
       const { data: verifyRow, error: verifyError } = await supabase
         .from('deal_lenders')
-        .select('id, deal_id, name, stage, tracking_status, pass_reason, notes, updated_at')
+        .select('id, deal_id, name, stage, substage, tracking_status, pass_reason, notes, updated_at')
         .eq('id', targetRow.id)
         .eq('deal_id', canonicalDealId)
         .maybeSingle();
