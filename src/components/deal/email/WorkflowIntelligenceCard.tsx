@@ -188,20 +188,31 @@ export function WorkflowIntelligenceCard({
       final_confirmed_status: next,
     });
   };
-  const handleDetailChange = (next: string) => {
-    setConfirmedDetail(next);
-    logAnalytics('ai_suggested_update_modified', {
-      field: 'detail',
-      original_suggested_detail: aiSuggestedDetail,
-      final_confirmed_detail: next,
+  const toggleReasonLabel = (label: string) => {
+    setSelectedReasonLabels((prev) => {
+      const isSelected = prev.includes(label);
+      // Cap at 3 to mirror the deal-detail "Confirm Pass" dialog UX.
+      if (!isSelected && prev.length >= 3) return prev;
+      const next = isSelected ? prev.filter((l) => l !== label) : [...prev, label];
+      logAnalytics('ai_suggested_update_modified', {
+        field: 'detail',
+        original_suggested_labels: aiSuggestedLabels,
+        final_confirmed_labels: next,
+      });
+      return next;
     });
   };
 
   const handleConfirm = () => {
+    // Match the deal-detail Lenders tab format: comma-joined label string
+    // saved to deal_lenders.pass_reason. Also pass the array so downstream
+    // logging / disqualification rows can preserve granularity.
+    const joinedDetail = showDetailField ? selectedReasonLabels.join(', ') : '';
     onConfirm({
       reasonNote: reason || rec.reason_note || '',
       confirmedStatus,
-      confirmedDetail: showDetailField ? confirmedDetail : '',
+      confirmedDetail: joinedDetail,
+      confirmedDetailLabels: showDetailField ? selectedReasonLabels : [],
     });
   };
 
