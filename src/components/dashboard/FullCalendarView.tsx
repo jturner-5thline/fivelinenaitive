@@ -1708,7 +1708,65 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
           </div>
 
           {/* Main content */}
-          <div className="flex-1 min-w-0 flex flex-col">
+          <div className="flex-1 min-w-0 flex flex-col relative">
+            {/* Loading / error / not-connected overlay. Sits above the grid
+                but inside the main content area so the carousel chrome,
+                modal header, sidebar, and close button stay fully usable. */}
+            {(showInitialLoading || showError || showNotConnected) && (
+              <div
+                className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background/70 backdrop-blur-md"
+                role="status"
+                aria-live="polite"
+              >
+                {showInitialLoading && (
+                  <>
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden />
+                    <p className="text-sm text-muted-foreground">Loading calendar…</p>
+                  </>
+                )}
+                {showError && (
+                  <>
+                    <AlertTriangle className="h-6 w-6 text-destructive" aria-hidden />
+                    <p className="text-sm text-foreground">Couldn’t load your calendar.</p>
+                    <p className="text-xs text-muted-foreground max-w-xs text-center">
+                      {calendarError}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-1"
+                      onClick={() => {
+                        checkStatus();
+                        refreshEvents();
+                      }}
+                    >
+                      Retry
+                    </Button>
+                  </>
+                )}
+                {showNotConnected && (
+                  <>
+                    <CalendarIcon className="h-6 w-6 text-muted-foreground" aria-hidden />
+                    <p className="text-sm text-foreground">Calendar isn’t connected yet.</p>
+                    <p className="text-xs text-muted-foreground max-w-xs text-center">
+                      Connect a calendar to see your real events here.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Empty state — connected, finished loading, but no events in
+                the visible window. Rendered inline (not as overlay) so the
+                date header / view switcher remain in place. */}
+            {!showInitialLoading && !showError && !showNotConnected &&
+              calendarStatus?.connected && allEvents.length === 0 && !calendarLoading && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 pointer-events-none">
+                  <CalendarIcon className="h-6 w-6 text-muted-foreground/50" aria-hidden />
+                  <p className="text-sm text-muted-foreground">No events in this view.</p>
+                </div>
+              )}
+
             {view === 'month' ? (
               <MonthView currentDate={currentDate} events={allEvents} onEventClick={setSelectedEvent} onDayClick={handleDayClick} calendarColors={calendarColors} />
             ) : view === 'agenda' ? (
