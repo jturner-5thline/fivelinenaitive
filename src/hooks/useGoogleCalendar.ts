@@ -47,12 +47,30 @@ interface CalendarStatus {
   email?: string;
 }
 
+/**
+ * Module-level cache so reopening the Calendar widget rehydrates instantly
+ * with the last successful response while the network revalidates in the
+ * background. Scoped per-user.
+ *
+ * This keeps `useGoogleCalendar` ergonomic (still a plain hook) without
+ * pulling React Query into the call sites, and avoids ever showing fake /
+ * stale "demo" data while real data loads.
+ */
+const calendarCache: Record<
+  string,
+  { events: CalendarEvent[]; calendars: Calendar[]; status?: CalendarStatus }
+> = {};
+
 export function useGoogleCalendar() {
   const { user } = useAuth();
-  const [status, setStatus] = useState<CalendarStatus>({ connected: false });
-  const [isStatusLoading, setIsStatusLoading] = useState(true);
-  const [calendars, setCalendars] = useState<Calendar[]>([]);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const cacheKey = user?.id || 'anon';
+  const cached = calendarCache[cacheKey];
+  const [status, setStatus] = useState<CalendarStatus>(cached?.status || { connected: false });
+  // If we have cached data we are NOT in the initial loading state — render
+  // the cached calendar immediately and silently revalidate.
+  const [isStatusLoading, setIsStatusLoading] = useState(!cached?.status);
+  const [calendars, setCalendars] = useState<Calendar[]>(cached?.calendars || []);
+  const [events, setEvents] = useState<CalendarEvent[]>(cached?.events || []);
   const [isLoading, setIsLoading] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +86,7 @@ export function useGoogleCalendar() {
       const { data, error } = await supabase.functions.invoke('calendar-status');
       if (error) throw error;
       setStatus(data);
+      calendarCache[cacheKey] = { ...(calendarCache[cacheKey] || { events: [], calendars: [] }), status: data };
       setError(null);
     } catch (err: any) {
       const msg = err?.message || '';
@@ -78,7 +97,7 @@ export function useGoogleCalendar() {
     } finally {
       setIsStatusLoading(false);
     }
-  }, [user]);
+  }, [user, cacheKey]);
 
   const connect = useCallback(async () => {
     if (!user) return;
@@ -147,6 +166,7 @@ export function useGoogleCalendar() {
       });
       if (error) throw error;
       setCalendars(data.calendars || []);
+      calendarCache[cacheKey] = { ...(calendarCache[cacheKey] || { events: [], calendars: [] }), calendars: data.calendars || [] };
       setError(null);
       return data.calendars;
     } catch (err: any) {
@@ -156,7 +176,7 @@ export function useGoogleCalendar() {
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, cacheKey]);
 
   const listEvents = useCallback(async (options?: {
     calendarId?: string;
@@ -180,6 +200,7 @@ export function useGoogleCalendar() {
       });
       if (error) throw error;
       setEvents(data.events || []);
+      calendarCache[cacheKey] = { ...(calendarCache[cacheKey] || { events: [], calendars: [] }), events: data.events || [] };
       setError(null);
       return data;
     } catch (err: any) {
@@ -189,7 +210,7 @@ export function useGoogleCalendar() {
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, cacheKey]);
 
   const getEvent = useCallback(async (eventId: string, calendarId?: string) => {
     if (!user) return null;
