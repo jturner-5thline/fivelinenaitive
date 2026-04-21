@@ -121,14 +121,22 @@ function renderPromptWithChips(text: string) {
 }
 
 interface QuickPromptsDialogProps {
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function QuickPromptsDialog({ trigger }: QuickPromptsDialogProps) {
+export function QuickPromptsDialog({ trigger, open: controlledOpen, onOpenChange }: QuickPromptsDialogProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (v: boolean) => {
+    if (!isControlled) setInternalOpen(v);
+    onOpenChange?.(v);
+  };
   const [showAddForm, setShowAddForm] = useState(false);
   const [customPrompts, setCustomPrompts] = useState<QuickPrompt[]>([]);
   const [isLoading, setIsLoading] = useState(false);
