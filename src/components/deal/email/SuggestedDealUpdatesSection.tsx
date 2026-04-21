@@ -38,6 +38,8 @@ import {
 interface Props {
   dealId?: string;
   dealName?: string;
+  /** Current thread context — enables the multi-deal picker prompt. */
+  threadId?: string;
 }
 
 const CONTACTS_NOTE_TITLE = 'Deal Contacts';
