@@ -535,13 +535,18 @@ Classify and return strict JSON only.`;
         const subject: string = latestEmail?.subject || threadData?.subject || "";
 
         // Build lender candidate list from the linked deal (for high-precision matching).
-        let lenderCandidates: Array<{ id: string; name: string; stage?: string }> = [];
+        let lenderCandidates: Array<{ id: string; name: string; stage?: string; tracking_status?: string }> = [];
         if (dealId) {
           const { data: ls } = await supabase
             .from("deal_lenders")
-            .select("id, name, stage")
+            .select("id, name, stage, tracking_status")
             .eq("deal_id", dealId);
-          lenderCandidates = (ls || []).map((l: any) => ({ id: l.id, name: l.name, stage: l.stage }));
+          lenderCandidates = (ls || []).map((l: any) => ({
+            id: l.id,
+            name: l.name,
+            stage: l.stage,
+            tracking_status: l.tracking_status,
+          }));
         }
 
         // Build deal candidates — when no deal is linked yet, surface deals the
