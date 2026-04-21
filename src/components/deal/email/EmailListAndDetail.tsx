@@ -50,6 +50,11 @@ import { MockEmail, EmailThread, getAvatarColor, groupEmailsByThread } from './m
 import { InlineReplyComposer, type ReplyDraft } from './InlineReplyComposer';
 import { PopOutComposer } from './PopOutComposer';
 import { useEmailDraft, useUnsavedDraftGuard } from '@/hooks/useEmailDraft';
+import { detectBareEmailsInDraft } from '@/lib/detectDraftEmails';
+import { usePendingDealSuggestions } from '@/hooks/usePendingDealSuggestions';
+import { useResolveDealForEmail } from '@/hooks/useResolveDealForEmail';
+import { isAutoDealNoteSuggestionEnabled } from '@/hooks/useAutoDealNoteSuggestionPref';
+import { supabase } from '@/integrations/supabase/client';
 import { EmailContextMenu } from './EmailContextMenu';
 import { EmailBodyRenderer } from './EmailBodyRenderer';
 import { EmailAttachmentList } from './EmailAttachmentList';
