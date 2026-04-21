@@ -723,13 +723,6 @@ export function VdrThreeColumnWorkspace({
             {dealTypeLabel && (
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{dealTypeLabel}</Badge>
             )}
-            <Button
-              variant="outline" size="sm"
-              className="ml-auto h-6 gap-1 text-[10px] px-2"
-              onClick={() => setBulkUploadStep('upload')}
-            >
-              <PackagePlus className="h-3 w-3" /> Bulk
-            </Button>
           </div>
 
           <div className="flex-1 overflow-auto">
