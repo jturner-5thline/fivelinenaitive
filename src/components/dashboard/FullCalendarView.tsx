@@ -180,6 +180,23 @@ function getEventColorClass(event: CalendarEvent, idx: number): string {
   return `${c.bg} ${c.text} ${c.glow}`;
 }
 
+/**
+ * Returns the dot style + class for the small color swatch shown next to
+ * events in agenda/upcoming/search lists. Prefers the calendar's Google
+ * hex color; falls back to the palette dot class.
+ */
+function getEventDot(
+  event: CalendarEvent,
+  idx: number,
+  calendarColors: CalendarColorMap,
+): { className: string; style?: React.CSSProperties } {
+  const info = calendarColors.get(event.calendar_id);
+  if (info?.background) {
+    return { className: '', style: { backgroundColor: info.background } };
+  }
+  return { className: EVENT_PALETTE[getColorIndex(event, idx)].dot };
+}
+
 function getLocalTimezoneAbbr(): string {
   try {
     const fmt = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' });
