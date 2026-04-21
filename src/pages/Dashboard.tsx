@@ -290,7 +290,7 @@ export default function Dashboard() {
               onClick={(e) => openCarouselWidget('calendar', e.currentTarget as HTMLElement)}
             >
               <div className="flex flex-col items-center text-center space-y-3">
-                <div className="relative h-12 w-12 rounded-xl border border-primary/30 bg-primary/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--primary)/0.2),inset_0_1px_1px_hsl(var(--primary)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-primary/20 before:to-transparent before:rounded-xl">
+                <div className="relative h-12 w-12 rounded-xl border border-primary/30 bg-primary/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
                   <CalendarIcon className="relative z-10 h-7 w-7 text-primary" />
                 </div>
                 <span className="text-sm font-medium text-foreground">Calendar</span>
@@ -301,7 +301,7 @@ export default function Dashboard() {
               onClick={(e) => openCarouselWidget('email', e.currentTarget as HTMLElement)}
             >
               <div className="flex flex-col items-center text-center space-y-3">
-                <div className="relative h-12 w-12 rounded-xl border border-[hsl(280,85%,65%,0.55)] bg-[hsl(275,80%,40%,0.3)] backdrop-blur-xl flex items-center justify-center overflow-hidden shadow-[inset_0_1px_1px_hsl(280,85%,75%,0.35),0_4px_24px_hsl(275,80%,45%,0.4)] before:absolute before:inset-0 before:bg-[linear-gradient(135deg,hsl(280,85%,75%,0.3)_0%,transparent_50%,hsl(275,80%,40%,0.15)_100%)] before:rounded-xl">
+                <div className="relative h-12 w-12 rounded-xl border border-[hsl(280,85%,65%,0.55)] bg-[hsl(275,80%,40%,0.3)] backdrop-blur-xl flex items-center justify-center overflow-hidden">
                   <Mail className="relative z-10 h-7 w-7 text-foreground" />
                 </div>
                 <span className="text-sm font-medium text-foreground">Email</span>
@@ -312,7 +312,7 @@ export default function Dashboard() {
               onClick={(e) => openCarouselWidget('new-deal', e.currentTarget as HTMLElement)}
             >
               <div className="flex flex-col items-center text-center space-y-3">
-                <div className="relative h-12 w-12 rounded-xl border border-accent/30 bg-accent/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--accent)/0.2),inset_0_1px_1px_hsl(var(--accent)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-accent/20 before:to-transparent before:rounded-xl">
+                <div className="relative h-12 w-12 rounded-xl border border-accent/30 bg-accent/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
                   <Briefcase className="relative z-10 h-7 w-7 text-accent-foreground" />
                 </div>
                 <span className="text-sm font-medium text-foreground">New Deal</span>
@@ -323,7 +323,7 @@ export default function Dashboard() {
               onClick={(e) => openCarouselWidget('quick-prompts', e.currentTarget as HTMLElement)}
             >
               <div className="flex flex-col items-center text-center space-y-3">
-                <div className="relative h-12 w-12 rounded-xl border border-success/30 bg-success/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--success)/0.2),inset_0_1px_1px_hsl(var(--success)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-success/20 before:to-transparent before:rounded-xl">
+                <div className="relative h-12 w-12 rounded-xl border border-success/30 bg-success/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
                   <Zap className="relative z-10 h-7 w-7 text-success" />
                 </div>
                 <span className="text-sm font-medium text-foreground">Quick Prompts</span>
@@ -335,7 +335,7 @@ export default function Dashboard() {
                 onClick={(e) => openCarouselWidget('daily-briefing', e.currentTarget as HTMLElement)}
               >
                 <div className="flex flex-col items-center text-center space-y-3">
-                  <div className="relative h-12 w-12 rounded-xl border border-warning/30 bg-warning/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--warning)/0.2),inset_0_1px_1px_hsl(var(--warning)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-warning/20 before:to-transparent before:rounded-xl">
+                  <div className="relative h-12 w-12 rounded-xl border border-warning/30 bg-warning/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
                     <Newspaper className="relative z-10 h-7 w-7 text-warning" />
                   </div>
                   <span className="text-sm font-medium text-foreground">Daily Briefing</span>
@@ -348,7 +348,7 @@ export default function Dashboard() {
                 onClick={(e) => openCarouselWidget('niki-briefing', e.currentTarget as HTMLElement)}
               >
                 <div className="flex flex-col items-center text-center space-y-3">
-                  <div className="relative h-12 w-12 rounded-xl border border-[hsl(190,90%,55%,0.4)] bg-[hsl(190,90%,45%,0.18)] backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(190,90%,50%,0.25),inset_0_1px_1px_hsl(190,90%,70%,0.2)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-[hsl(190,90%,60%,0.25)] before:to-transparent before:rounded-xl">
+                  <div className="relative h-12 w-12 rounded-xl border border-[hsl(190,90%,55%,0.4)] bg-[hsl(190,90%,45%,0.18)] backdrop-blur-sm flex items-center justify-center overflow-hidden">
                     <Newspaper className="relative z-10 h-7 w-7 text-[hsl(190,90%,70%)]" />
                   </div>
                   <span className="text-sm font-medium text-foreground">
