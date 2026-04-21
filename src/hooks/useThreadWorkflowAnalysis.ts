@@ -158,6 +158,7 @@ export function useThreadWorkflowAnalysis({
 }: UseThreadWorkflowAnalysisOptions) {
   const { user } = useAuth();
   const { refreshDeals } = useDealsContext();
+  const queryClient = useQueryClient();
   const [analysis, setAnalysis] = useState<WorkflowAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [committing, setCommitting] = useState(false);
