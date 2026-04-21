@@ -1270,7 +1270,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 <button
                   onClick={() => setShowAiAssist(!showAiAssist)}
                   className={cn(
-                    'flex flex-col items-center gap-0.5 px-3 py-1 rounded transition-colors border lg:hidden',
+                    'flex flex-col items-center gap-0.5 px-3 py-1 rounded transition-colors border min-[1100px]:hidden',
                     showAiAssist
                       ? 'bg-[hsl(var(--outlook-blue)/0.1)] border-[hsl(var(--outlook-blue)/0.3)] text-[hsl(var(--outlook-blue))]'
                       : 'border-transparent hover:bg-muted/40'
