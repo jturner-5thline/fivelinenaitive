@@ -413,10 +413,15 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             />
           )}
 
-          {/* Suggested Deal Updates — pending confirm-first writes (e.g., contact emails detected in drafts) */}
-          {dealId && (
-            <SuggestedDealUpdatesSection dealId={dealId} dealName={dealName} />
-          )}
+          {/* Suggested Deal Updates — pending confirm-first writes (e.g., contact
+              emails detected in drafts) plus the multi-deal picker prompt when
+              auto-resolution was ambiguous. Render even without a linked deal so
+              the user can still pick. */}
+          <SuggestedDealUpdatesSection
+            dealId={dealId}
+            dealName={dealName}
+            threadId={thread.threadId}
+          />
 
           {/* Draft area — always rendered as a shell so the panel never blocks. */}
           {!error && (
