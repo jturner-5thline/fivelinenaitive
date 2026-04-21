@@ -803,7 +803,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   return (
     <Card className="overflow-hidden w-full max-w-full h-full flex flex-col border-0 rounded-none bg-transparent">
       {/* Outlook-style top toolbar */}
-      <div className="flex items-center gap-1.5 px-3 py-1.5 pr-12 border-b border-white/[0.06] bg-card/60 backdrop-blur-sm">
+      <div className="flex items-center gap-1.5 px-3 py-1.5 pr-12 glass-divider-b">
         {/* New mail — outlined, Outlook style */}
         <Button
           variant="outline"
@@ -882,7 +882,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
               transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)',
               contain: 'layout paint',
             }}
-            className="border-r border-white/[0.06] flex-shrink-0 flex flex-col bg-card/60 overflow-hidden"
+            className="glass-divider-r flex-shrink-0 flex flex-col overflow-hidden"
           >
             {/* Hamburger / pin toggle */}
             <div className="flex items-center justify-center border-b border-white/[0.04] h-9 w-[52px] shrink-0">
@@ -918,7 +918,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
           {/* ─── Middle: Email list ─── */}
           <div
             className={cn(
-              'relative flex flex-col min-w-0 overflow-hidden bg-card/30 backdrop-blur-sm transition-[opacity] duration-200',
+              'relative flex flex-col min-w-0 overflow-hidden transition-[opacity] duration-200',
               readingPaneExpanded ? 'hidden' :
               (currentThread || composeOpen) ? 'hidden md:flex shrink-0' : 'flex-1'
             )}
@@ -1293,7 +1293,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
           {/* ─── Right: Reading pane / Compose ─── */}
           <div className={cn(
             'flex-1 flex flex-col min-w-0 overflow-hidden w-0',
-            (currentThread || composeOpen) ? 'bg-[hsl(var(--email-reading-bg))]' : 'bg-card/30 backdrop-blur-sm',
+            (currentThread || composeOpen) ? 'bg-[hsl(var(--email-reading-bg))]' : '',
             !currentThread && !composeOpen ? 'hidden md:flex' : 'flex'
           )}>
             {composeOpen ? (

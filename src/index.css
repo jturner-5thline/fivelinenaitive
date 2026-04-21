@@ -573,6 +573,18 @@
   .dark .glass-divider-t {
     border-top-color: hsl(0 0% 100% / 0.06);
   }
+  .glass-divider-r {
+    border-right: 1px solid hsl(0 0% 0% / 0.06);
+  }
+  .dark .glass-divider-r {
+    border-right-color: hsl(0 0% 100% / 0.06);
+  }
+  .glass-divider-l {
+    border-left: 1px solid hsl(0 0% 0% / 0.06);
+  }
+  .dark .glass-divider-l {
+    border-left-color: hsl(0 0% 100% / 0.06);
+  }
 
   /* Translucent surface layers for nested cards inside the carousel.
      Use background separation + blur instead of a bright border. */
