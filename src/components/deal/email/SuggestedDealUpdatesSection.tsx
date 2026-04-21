@@ -47,6 +47,17 @@ interface Props {
 const CONTACTS_NOTE_TITLE = 'Deal Contacts';
 const QA_NOTE_TITLE = 'Client Q&A';
 
+/**
+ * Build a stable deep-link to the source email thread for audit-trail entries.
+ * Format: `/deal/<dealId>?tab=emails&thread=<threadId>`. The audit-trail UI
+ * can render this as a clickable link; future work in DealEmailsTab can read
+ * the `thread` query param to auto-open the thread on navigation.
+ */
+function buildSourceThreadUrl(dealId: string | undefined, threadId: string | null | undefined): string | null {
+  if (!dealId || !threadId) return null;
+  return `/deal/${dealId}?tab=emails&thread=${encodeURIComponent(threadId)}`;
+}
+
 function buildNoteEntry(payload: PendingDealSuggestionPayload, threadSubject: string | null): string {
   const ts = format(new Date(), 'PPp');
   const lines = [
@@ -258,6 +269,8 @@ export function SuggestedDealUpdatesSection({ dealId, dealName, threadId }: Prop
                         changed_count: diff.changed.length,
                         added_count: diff.added.length,
                         unchanged_count: diff.unchanged.length,
+                        source_thread_url: buildSourceThreadUrl(dealId, finalPayload.source.threadId),
+                        confirmed_at: new Date().toISOString(),
                         suggestion_id: s.id,
                       },
                     );
@@ -326,6 +339,8 @@ export function SuggestedDealUpdatesSection({ dealId, dealName, threadId }: Prop
                     contact_name: finalPayload.contactName || finalPayload.inferredName,
                     source_thread_id: s.source_thread_id,
                     source_thread_subject: s.source_thread_subject,
+                    source_thread_url: buildSourceThreadUrl(dealId, s.source_thread_id),
+                    confirmed_at: new Date().toISOString(),
                     suggestion_id: s.id,
                   },
                 );
