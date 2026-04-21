@@ -56,12 +56,12 @@ export function CalendarAgendaView({ events, onEventEdit }: CalendarAgendaViewPr
             {/* Date header */}
             <div className={`sticky top-0 z-10 py-2 px-3 text-xs font-semibold ${
               today ? 'text-primary bg-primary/5' : 'text-muted-foreground bg-background'
-            } border-b border-[rgba(255,255,255,0.06)]`}>
+            } cal-grid-b`}>
               {label}
             </div>
 
             {/* Events */}
-            <div className="divide-y divide-[rgba(255,255,255,0.04)]">
+            <div className="divide-y divide-black/[0.04] dark:divide-white/[0.04]">
               {dayEvents.map(event => {
                 let timeLabel = 'All day';
                 let duration = '';
@@ -92,7 +92,7 @@ export function CalendarAgendaView({ events, onEventEdit }: CalendarAgendaViewPr
                     </div>
 
                     {/* Event content */}
-                    <div className="flex-1 min-w-0 border-l-4 border-l-primary pl-3 rounded-r-lg bg-primary/[0.08] py-2 px-3 group-hover:bg-primary/[0.15] transition-all">
+                    <div className="flex-1 min-w-0 border-l-4 border-l-primary pl-3 rounded-r-md bg-primary/[0.08] py-2 px-3 group-hover:bg-primary/[0.15] transition-all">
                       <p className="font-semibold text-[13px] text-foreground truncate">{event.summary}</p>
                       <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground/50">
                         {duration && <span>{duration}</span>}

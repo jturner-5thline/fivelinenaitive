@@ -751,7 +751,7 @@ function TimeGridEvent({
           <button
             onClick={onClick}
             className={cn(
-              'absolute left-1 right-1 rounded-md px-2 py-1 text-left overflow-hidden cursor-pointer transition-all z-[2]',
+              'absolute left-1 right-1 rounded-[5px] px-2 py-1 text-left overflow-hidden cursor-pointer transition-all z-[2]',
               'backdrop-blur-md border shadow-lg',
               'hover:shadow-xl hover:scale-[1.02] hover:brightness-110',
               !colorStyle && colorClass,
@@ -968,12 +968,12 @@ function DayColumn({
 
   return (
     <div className={cn(
-      'relative flex-1 min-w-0 border-l border-border/15 first:border-l-0',
+      'relative flex-1 min-w-0 cal-grid-l first:border-l-0',
       today && 'bg-primary/[0.04]',
     )}>
       {showDayLabel && (
         <div className={cn(
-          'sticky top-0 z-10 backdrop-blur-sm border-b border-border/15 text-center py-2',
+          'sticky top-0 z-10 backdrop-blur-sm cal-grid-b text-center py-2',
           today ? 'bg-primary/[0.06]' : 'bg-background/95',
         )}>
           <p className={cn(
@@ -993,7 +993,7 @@ function DayColumn({
             key={h}
             className={cn(
               'absolute left-0 right-0 hover:bg-primary/5 transition-colors',
-              h !== 0 && 'border-t border-border/15',
+              h !== 0 && 'cal-grid-t',
             )}
             style={{ top: h * HOUR_HEIGHT, height: HOUR_HEIGHT }}
           />
@@ -1052,14 +1052,14 @@ function MonthView({
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="grid grid-cols-7 border-b">
+      <div className="grid grid-cols-7 cal-grid-b">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
           <div key={d} className="text-center py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{d}</div>
         ))}
       </div>
       <div className="flex-1 grid grid-rows-[repeat(auto-fill,1fr)]">
         {weeks.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-7 border-b last:border-b-0 min-h-[80px]">
+          <div key={wi} className="grid grid-cols-7 cal-grid-b last:border-b-0 min-h-[80px]">
             {week.map(day => {
               const dayEvents = getEventsForDay(day);
               const inMonth = isSameMonth(day, currentDate);
@@ -1067,7 +1067,7 @@ function MonthView({
               return (
                 <div
                   key={day.toISOString()}
-                  className={cn('border-r last:border-r-0 p-1 cursor-pointer transition-colors hover:bg-muted/30', !inMonth && 'opacity-40')}
+                  className={cn('cal-grid-r last:border-r-0 p-1 cursor-pointer transition-colors hover:bg-muted/30', !inMonth && 'opacity-40')}
                   onClick={() => onDayClick(day)}
                 >
                   <p className={cn(
@@ -1083,7 +1083,7 @@ function MonthView({
                         key={event.id}
                         onClick={(e) => { e.stopPropagation(); onEventClick(event); }}
                         className={cn(
-                          'w-full text-left rounded px-1 py-0.5 text-[10px] leading-tight truncate border',
+                          'w-full text-left rounded-[3px] px-1 py-0.5 text-[10px] leading-tight truncate border',
                           !calendarColors.get(event.calendar_id)?.background && getEventColorClass(event, idx),
                         )}
                         style={getEventColorStyle(event, calendarColors) || undefined}
@@ -1110,7 +1110,7 @@ function MonthView({
                                 key={event.id}
                                 onClick={() => { onEventClick(event); setMorePopoverDay(null); }}
                                 className={cn(
-                                  'w-full text-left rounded px-2 py-1.5 text-xs truncate hover:brightness-110 border',
+                                  'w-full text-left rounded-[5px] px-2 py-1.5 text-xs truncate hover:brightness-110 border',
                                   !calendarColors.get(event.calendar_id)?.background && getEventColorClass(event, idx),
                                 )}
                                 style={getEventColorStyle(event, calendarColors) || undefined}
@@ -1163,7 +1163,7 @@ function AgendaView({
             <div key={day.toISOString()}>
               {/* Full-width day divider */}
               <div className={cn(
-                "flex items-center gap-3 px-4 py-2.5 border-b bg-muted/30",
+                "flex items-center gap-3 px-4 py-2.5 cal-grid-b bg-muted/30",
                 isToday(day) && "bg-primary/5"
               )}>
                 <div className={cn(
@@ -1258,13 +1258,13 @@ function AllDayBar({
 }) {
   if (events.length === 0) return null;
   return (
-    <div className="border-b border-border/15 px-14 py-1.5 flex flex-wrap gap-1">
+    <div className="cal-grid-b px-14 py-1.5 flex flex-wrap gap-1">
       {events.map((event, idx) => (
         <button
           key={event.id}
           onClick={() => onEventClick(event)}
           className={cn(
-            'text-[10px] font-medium px-2 py-0.5 rounded truncate max-w-[180px] border',
+            'text-[10px] font-medium px-2 py-0.5 rounded-[3px] truncate max-w-[180px] border',
             !calendarColors.get(event.calendar_id)?.background && getEventColorClass(event, idx),
           )}
           style={getEventColorStyle(event, calendarColors) || undefined}
@@ -1821,7 +1821,7 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
         {/* ─── Body with sidebar ─── */}
         <div className="flex-1 min-h-0 overflow-hidden flex">
           {/* Mini calendar sidebar */}
-          <div className="w-56 shrink-0 border-r bg-background/50 p-3 overflow-y-auto hidden md:block">
+          <div className="w-56 shrink-0 cal-grid-r bg-background/50 p-3 overflow-y-auto hidden md:block">
             <MiniCalendar
               currentDate={currentDate}
               onDateSelect={handleMiniDateSelect}
@@ -1899,10 +1899,10 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                 />
                 <ScrollArea className="flex-1" ref={timeGridScrollRef}>
                   <div className="flex min-h-0">
-                    <div className="shrink-0 w-14 border-r border-border/15">
+                    <div className="shrink-0 w-14 cal-grid-r">
                       {/* Header spacer to match day column headers */}
                       {view === 'week' ? (
-                        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/15 py-2">
+                        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm cal-grid-b py-2">
                           <Popover open={showTzDropdown} onOpenChange={setShowTzDropdown}>
                             <PopoverTrigger asChild>
                               <button className="w-full text-center text-[9px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors font-medium flex items-center justify-center gap-0.5 py-1">
@@ -1931,7 +1931,7 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                       ) : (
                         <Popover open={showTzDropdown} onOpenChange={setShowTzDropdown}>
                           <PopoverTrigger asChild>
-                            <button className="w-full text-center py-1 text-[9px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors font-medium border-b border-border/15 flex items-center justify-center gap-0.5">
+                            <button className="w-full text-center py-1 text-[9px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors font-medium cal-grid-b flex items-center justify-center gap-0.5">
                               <Globe className="h-2.5 w-2.5" />
                               {displayTimezone}
                               <ChevronDown className="h-2 w-2" />

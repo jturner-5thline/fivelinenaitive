@@ -46,7 +46,7 @@ export function CalendarMonthView({ currentDate, events, onEventEdit }: Calendar
   return (
     <div>
       {/* Day headers */}
-      <div className="grid grid-cols-7 border-b border-border">
+      <div className="grid grid-cols-7 cal-grid-b">
         {weekDays.map(d => (
           <div key={d} className="text-center text-[11px] font-medium text-muted-foreground py-2">
             {d}
@@ -68,7 +68,7 @@ export function CalendarMonthView({ currentDate, events, onEventEdit }: Calendar
           return (
             <div
               key={i}
-              className={`border-r border-b border-[rgba(255,255,255,0.06)] p-1 min-h-[80px] transition-colors ${
+              className={`cal-grid-r cal-grid-b p-1 min-h-[80px] transition-colors ${
                 !inMonth ? 'opacity-40' : ''
               } ${today ? 'bg-[rgba(59,130,246,0.05)]' : ''}`}
             >
@@ -83,7 +83,7 @@ export function CalendarMonthView({ currentDate, events, onEventEdit }: Calendar
                   <div
                     key={event.id}
                     onClick={() => onEventEdit(event)}
-                    className="text-[10px] px-1.5 py-0.5 bg-primary/[0.15] border-l-2 border-l-primary rounded cursor-pointer hover:bg-primary/30 truncate transition-all"
+                    className="text-[10px] px-1.5 py-0.5 bg-primary/[0.15] border-l-2 border-l-primary rounded-[3px] cursor-pointer hover:bg-primary/30 truncate transition-all"
                   >
                     {event.summary}
                   </div>
