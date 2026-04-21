@@ -255,16 +255,32 @@ export function detectThreadQAndA(messages: ThreadMessageLite[]): DetectedThread
   if (questions.length < 2 && !keywordHit) return null;
 
   const answers = extractAnswers(inboundText, Math.max(questions.length, 2));
-  if (answers.length < 2) return null;
-  reasons.push(`inbound-answers=${answers.length}`);
+  let usedAnswers = answers;
+  let pairingMode: 'structured' | 'positional' = 'structured';
+
+  // Fallback: when structured extraction yields too few answers (no/inconsistent
+  // numbering, no bullets, no Q:/A: prefixes) but we DO have a known question
+  // list from the outbound, align by paragraph position instead.
+  if (usedAnswers.length < 2 && questions.length >= 2) {
+    const blocks = extractPositionalBlocks(inboundText);
+    if (blocks.length >= 2) {
+      // Trim to at most the question count so we don't capture trailing prose.
+      usedAnswers = blocks.slice(0, questions.length);
+      pairingMode = 'positional';
+    }
+  }
+
+  if (usedAnswers.length < 2) return null;
+  reasons.push(`inbound-answers=${usedAnswers.length}`);
+  reasons.push(`pairing=${pairingMode}`);
 
   // Pair questions to answers by index. Trim to the smaller of the two.
-  const pairCount = Math.min(questions.length, answers.length);
+  const pairCount = Math.min(questions.length, usedAnswers.length);
   if (pairCount < 2) {
     // If we have lots of answers but few extracted questions, still surface
     // the answers under a generic "Question N" label so the user can edit.
-    if (answers.length >= 2 && questions.length === 0) {
-      const pairs: QAPair[] = answers.map((a, i) => ({
+    if (usedAnswers.length >= 2 && questions.length === 0) {
+      const pairs: QAPair[] = usedAnswers.map((a, i) => ({
         question: `Question ${i + 1}`,
         answer: a,
       }));
@@ -277,7 +293,7 @@ export function detectThreadQAndA(messages: ThreadMessageLite[]): DetectedThread
   for (let i = 0; i < pairCount; i++) {
     pairs.push({
       question: questions[i].replace(/[?:]+\s*$/, '').trim() + '?',
-      answer: answers[i].trim(),
+      answer: usedAnswers[i].trim(),
     });
   }
   return { pairs, outboundIndex, inboundIndex, reasons };
