@@ -391,6 +391,13 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
     autoPaginate(firstInbox.nextPageToken);
   }, [status.connected, mergeUniqueById, autoPaginate]);
 
+  // IMPORTANT: call every hook on every render BEFORE any conditional return,
+  // otherwise the hook order changes when `status.connected` flips and React
+  // throws (which surfaces as the chained "Maximum update depth exceeded" /
+  // React error #185 inside the carousel). Compute the swipe class up-front
+  // so both branches below render with an identical hook sequence.
+  const swipeClass = useCarouselSwipeClass();
+
   if (!status.connected) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -415,8 +422,6 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
   }
 
   const hasMore = hasMoreInbox || hasMoreSent;
-
-  const swipeClass = useCarouselSwipeClass();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
