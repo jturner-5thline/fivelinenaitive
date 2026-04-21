@@ -425,7 +425,15 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className={cn(swipeClass, "max-w-none w-[95vw] h-[92vh] sm:h-[92vh] xl:w-[93vw] 2xl:w-[92vw] p-0 flex flex-col overflow-hidden border-transparent glass-border-soft shadow-2xl shadow-black/20")}
+        className={cn(
+          swipeClass,
+          // Responsive width: scales with viewport, capped at 1400px, never overflows.
+          "p-0 flex flex-col border-transparent glass-border-soft shadow-2xl shadow-black/20",
+          "h-[92vh] sm:h-[92vh]",
+          "w-[95vw] max-w-[1400px] sm:max-w-[1400px]",
+          "overflow-hidden"
+        )}
+        style={{ width: 'min(1400px, 95vw)' }}
       >
         <div className="flex-1 min-h-0 overflow-hidden">
           <DealEmailsTab
