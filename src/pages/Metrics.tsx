@@ -122,7 +122,7 @@ const DASHBOARD_OPTIONS = [
   { id: 'executive-dashboard', name: 'Executive Dashboard', isFavorite: false },
   { id: 'sales-bd-roi', name: 'Sales & BD ROI', isFavorite: false },
   { id: 'quickbooks-financial', name: 'QuickBooks Financial', isFavorite: false },
-  { id: 'management-review', name: 'Management Review', isFavorite: false },
+  { id: 'management-review', name: 'Insights Dashboard', isFavorite: false },
 ];
 
 type ManagementSnapshotCardState = Omit<MetricWidgetConfig, 'id' | 'createdAt'>;
