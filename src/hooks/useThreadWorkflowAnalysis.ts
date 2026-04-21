@@ -794,7 +794,7 @@ export function useThreadWorkflowAnalysis({
     } finally {
       setCommitting(false);
     }
-  }, [analysis, user, dealId, ensureLenderOnDeal, refreshDeals, dismiss, latestInbound, messageId, threadData]);
+  }, [analysis, user, dealId, ensureLenderOnDeal, refreshDeals, dismiss, latestInbound, messageId, threadData, resolvedDealLenderId]);
 
   return {
     analysis,
