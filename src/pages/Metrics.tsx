@@ -111,7 +111,7 @@ import { getTimePeriodRange, getTimePeriodLabel, isInRange } from "@/lib/timePer
 import { DatarailsLiveStat, DatarailsLiveChart } from "@/components/metrics/DatarailsLiveWidget";
 // Dashboard options
 const DASHBOARD_OPTIONS = [
-  { id: 'management-snapshot', name: 'Management Snapshot', isFavorite: true },
+  { id: 'management-snapshot', name: 'Weekly Rundown', isFavorite: true },
   { id: 'revenue-customers', name: 'Revenue & Customers', isFavorite: false },
   { id: 'controller-dashboard', name: 'Controller Dashboard', isFavorite: false },
   { id: 'sales-team-board', name: 'Sales Team Board', isFavorite: false },

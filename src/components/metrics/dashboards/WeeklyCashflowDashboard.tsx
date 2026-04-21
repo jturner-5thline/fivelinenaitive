@@ -56,10 +56,10 @@ export function WeeklyCashflowDashboard() {
         <NoPermissionCard title="Comments" />
       </div>
 
-      {/* Second Row: Due Next 9 weeks & Management Snapshot */}
+      {/* Second Row: Due Next 9 weeks & Weekly Rundown */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <NoPermissionCard title="Due Next 9 weeks" />
-        <NoPermissionCard title="Management Snapshot" />
+        <NoPermissionCard title="Weekly Rundown" />
       </div>
 
       {/* Bottom Row: Notes, Next 8 Weeks, Cash In/Out */}

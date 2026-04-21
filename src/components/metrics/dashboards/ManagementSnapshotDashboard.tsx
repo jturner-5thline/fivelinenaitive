@@ -586,7 +586,7 @@ export function ManagementSnapshotDashboard({
       {/* Global Dashboard Period Selector */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Management Snapshot</h2>
+          <h2 className="text-lg font-semibold text-foreground">Weekly Rundown</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             All sections synchronized to the selected period
           </p>
