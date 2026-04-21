@@ -64,10 +64,9 @@ export function DraggableCalendarEvent({ event, onEdit }: DraggableCalendarEvent
         className={`
           rounded-lg py-[8px] px-[10px]
           ${isPersonal
-            ? 'bg-primary/10 border-l-4 border-l-primary border-dashed hover:bg-primary/20'
-            : 'bg-primary/[0.15] border-l-4 border-l-primary border-solid hover:bg-primary/30'
+            ? 'bg-primary/20 border-l-4 border-l-primary border-dashed hover:bg-primary/30'
+            : 'bg-primary/25 border-l-4 border-l-primary border-solid hover:bg-primary/35'
           }
-          shadow-[0_1px_3px_rgba(0,0,0,0.3)]
           transition-all
         `}
       >
