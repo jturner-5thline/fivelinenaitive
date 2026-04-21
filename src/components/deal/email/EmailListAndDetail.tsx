@@ -1186,8 +1186,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
   return (
     <>
-      <div className="flex h-full relative overflow-hidden">
-        <div className="flex flex-col flex-1 min-w-0 basis-0 bg-[hsl(var(--email-reading-bg))]">
+      <div className="flex h-full relative overflow-hidden min-w-0 w-full">
+        <div className="flex flex-col flex-1 min-w-0 basis-0 overflow-hidden bg-[hsl(var(--email-reading-bg))]">
           {/* Outlook-style command bar */}
           <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-[hsl(var(--email-border))] bg-card/60 backdrop-blur-sm shrink-0">
             <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-7 w-7">
