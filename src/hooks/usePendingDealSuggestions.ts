@@ -15,14 +15,33 @@ export interface PendingDealSuggestionPayload {
   contactName?: string;
 }
 
+/**
+ * Payload for `qa_from_thread` suggestion type — Q&A responses extracted from
+ * an inbound reply that answers a prior outbound question list.
+ */
+export interface PendingQAPayload {
+  pairs: { question: string; answer: string }[];
+  /** Source email metadata (sender / date / subject). */
+  source: {
+    fromName: string;
+    fromEmail: string;
+    receivedAt: string;
+    subject: string;
+    threadId: string;
+  };
+  detectedAt: string;
+  reasons: string[];
+}
+
 export interface PendingDealSuggestion {
   id: string;
   deal_id: string;
   company_id: string;
   user_id: string;
+  /** Discriminator: 'contact_email_from_draft' | 'qa_from_thread' | other. */
   suggestion_type: string;
   status: PendingSuggestionStatus | string;
-  payload: PendingDealSuggestionPayload;
+  payload: PendingDealSuggestionPayload | PendingQAPayload | Record<string, any>;
   source_thread_id: string | null;
   source_thread_subject: string | null;
   confirmed_at: string | null;
@@ -35,7 +54,9 @@ export interface PendingDealSuggestion {
 interface CreateInput {
   dealId: string;
   companyId: string;
-  payload: PendingDealSuggestionPayload;
+  payload: PendingDealSuggestionPayload | PendingQAPayload | Record<string, any>;
+  /** Defaults to 'contact_email_from_draft' for back-compat. */
+  suggestionType?: string;
   sourceThreadId: string | null;
   sourceThreadSubject: string | null;
   dedupKey: string;
@@ -104,7 +125,7 @@ export function usePendingDealSuggestions(dealId?: string) {
           deal_id: input.dealId,
           company_id: input.companyId,
           user_id: user.id,
-          suggestion_type: 'contact_email_from_draft',
+          suggestion_type: input.suggestionType || 'contact_email_from_draft',
           status: 'pending',
           payload: input.payload,
           source_thread_id: input.sourceThreadId,

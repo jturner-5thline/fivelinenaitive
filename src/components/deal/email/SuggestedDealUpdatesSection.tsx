@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Edit3, X, FileText, Loader2, Mail, Settings } from 'lucide-react';
+import { Check, Edit3, X, FileText, Loader2, Mail, MessageSquareQuote, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,6 +16,7 @@ import {
   usePendingDealSuggestions,
   type PendingDealSuggestion,
   type PendingDealSuggestionPayload,
+  type PendingQAPayload,
 } from '@/hooks/usePendingDealSuggestions';
 import { useDealSpaceNotes } from '@/hooks/useDealSpaceNotes';
 import { useDealAuditLog } from '@/hooks/useDealAuditLog';
@@ -28,6 +29,7 @@ interface Props {
 }
 
 const CONTACTS_NOTE_TITLE = 'Deal Contacts';
+const QA_NOTE_TITLE = 'Client Q&A';
 
 function buildNoteEntry(payload: PendingDealSuggestionPayload, threadSubject: string | null): string {
   const ts = format(new Date(), 'PPp');
@@ -41,6 +43,27 @@ function buildNoteEntry(payload: PendingDealSuggestionPayload, threadSubject: st
   return lines.join('\n');
 }
 
+function buildQANoteEntry(payload: PendingQAPayload): string {
+  const ts = format(new Date(), 'PPp');
+  const dateStr = payload.source.receivedAt
+    ? format(new Date(payload.source.receivedAt), 'PP')
+    : '';
+  const lines: string[] = [
+    `### Client Q&A — ${dateStr || ts}`,
+    `_From **${payload.source.fromName}** <${payload.source.fromEmail}> · Re: ${payload.source.subject}_`,
+    '',
+  ];
+  payload.pairs.forEach((p, i) => {
+    lines.push(`**Q${i + 1}.** ${p.question}`);
+    lines.push(`**A.** ${p.answer}`);
+    lines.push('');
+  });
+  lines.push(`_Source thread: ${payload.source.threadId}_`);
+  lines.push(`_Captured ${ts}_`);
+  lines.push('');
+  return lines.join('\n');
+}
+
 export function SuggestedDealUpdatesSection({ dealId, dealName }: Props) {
   const { enabled, setEnabled } = useAutoDealNoteSuggestionPref();
   const { suggestions, dismiss, confirm, updatePayload } = usePendingDealSuggestions(dealId);
@@ -49,12 +72,18 @@ export function SuggestedDealUpdatesSection({ dealId, dealName }: Props) {
 
   // Always render the header (so the toggle is reachable). Cards only render when present.
   const hasItems = suggestions.length > 0;
+  const totalCount = suggestions.length;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
           Suggested Deal Updates
+          {totalCount > 1 && (
+            <span className="ml-1.5 text-muted-foreground/50 normal-case tracking-normal">
+              · {totalCount} pending
+            </span>
+          )}
         </p>
         <Popover>
           <PopoverTrigger asChild>
@@ -88,19 +117,82 @@ export function SuggestedDealUpdatesSection({ dealId, dealName }: Props) {
       {!hasItems && (
         <div className="rounded-md border border-dashed border-white/[0.06] bg-background/20 px-3 py-2.5">
           <p className="text-[11px] text-muted-foreground/70 leading-snug">
-            None right now. Add a contact's email on its own line in a reply to capture them here.
+            None right now. We'll surface contact captures and client Q&A responses here as they're detected.
           </p>
         </div>
       )}
 
       <div className="space-y-2">
-        {suggestions.map(s => (
-          <SuggestionCard
-            key={s.id}
-            suggestion={s}
-            dealName={dealName}
-            existingContactsNoteId={notes.find(n => n.title === CONTACTS_NOTE_TITLE)?.id}
-            existingContactsNoteContent={notes.find(n => n.title === CONTACTS_NOTE_TITLE)?.content}
+        {suggestions.map((s, idx) => {
+          const pagerLabel = totalCount > 1 ? `${idx + 1}/${totalCount}` : null;
+          if (s.suggestion_type === 'qa_from_thread') {
+            return (
+              <QASuggestionCard
+                key={s.id}
+                suggestion={s}
+                dealName={dealName}
+                pagerLabel={pagerLabel}
+                existingQANoteId={notes.find(n => n.title === QA_NOTE_TITLE)?.id}
+                existingQANoteContent={notes.find(n => n.title === QA_NOTE_TITLE)?.content}
+                onDismiss={async () => {
+                  await dismiss(s.id);
+                  toast.info('Suggestion dismissed');
+                }}
+                onSavePayload={async (next) => {
+                  await updatePayload(s.id, next as any);
+                }}
+                onConfirm={async (finalPayload, mode) => {
+                  if (!dealId) return;
+                  try {
+                    const noteEntry = buildQANoteEntry(finalPayload);
+                    const existing = notes.find(n => n.title === QA_NOTE_TITLE);
+                    let noteId: string | null = null;
+                    if (existing) {
+                      const newContent = existing.content
+                        ? `${existing.content}\n\n${noteEntry}`
+                        : noteEntry;
+                      await updateNote(existing.id, { content: newContent });
+                      noteId = existing.id;
+                    } else {
+                      const created = await createNote(QA_NOTE_TITLE, noteEntry);
+                      noteId = created?.id ?? null;
+                    }
+
+                    await logAuditAction(
+                      'qa_responses_saved_from_thread',
+                      'note',
+                      noteId || undefined,
+                      QA_NOTE_TITLE,
+                      {
+                        thread_id: finalPayload.source.threadId,
+                        thread_subject: finalPayload.source.subject,
+                        from_email: finalPayload.source.fromEmail,
+                        pair_count: finalPayload.pairs.length,
+                        mode, // 'append' | 'merge'
+                        suggestion_id: s.id,
+                      },
+                    );
+
+                    await confirm(s.id, noteId);
+                    toast.success(mode === 'merge' ? 'Q&A merged into deal notes' : 'Q&A saved to deal notes', {
+                      description: dealName ? `Saved to ${dealName} → ${QA_NOTE_TITLE}` : undefined,
+                    });
+                  } catch (err: any) {
+                    console.error(err);
+                    toast.error('Failed to save Q&A to deal notes');
+                  }
+                }}
+              />
+            );
+          }
+          return (
+            <SuggestionCard
+              key={s.id}
+              suggestion={s}
+              dealName={dealName}
+              pagerLabel={pagerLabel}
+              existingContactsNoteId={notes.find(n => n.title === CONTACTS_NOTE_TITLE)?.id}
+              existingContactsNoteContent={notes.find(n => n.title === CONTACTS_NOTE_TITLE)?.content}
             onDismiss={async () => {
               await dismiss(s.id);
               toast.info('Suggestion dismissed');
@@ -149,8 +241,9 @@ export function SuggestedDealUpdatesSection({ dealId, dealName }: Props) {
                 toast.error('Failed to add to deal notes');
               }
             }}
-          />
-        ))}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -159,6 +252,7 @@ export function SuggestedDealUpdatesSection({ dealId, dealName }: Props) {
 interface SuggestionCardProps {
   suggestion: PendingDealSuggestion;
   dealName?: string;
+  pagerLabel?: string | null;
   existingContactsNoteId?: string;
   existingContactsNoteContent?: string;
   onConfirm: (payload: PendingDealSuggestionPayload) => Promise<void>;
@@ -169,15 +263,17 @@ interface SuggestionCardProps {
 function SuggestionCard({
   suggestion,
   dealName,
+  pagerLabel,
   onConfirm,
   onDismiss,
   onSavePayload,
 }: SuggestionCardProps) {
   const [editing, setEditing] = useState(false);
   const [working, setWorking] = useState(false);
+  const contactPayload = suggestion.payload as PendingDealSuggestionPayload;
   const [draft, setDraft] = useState<PendingDealSuggestionPayload>({
-    ...suggestion.payload,
-    contactName: suggestion.payload.contactName || suggestion.payload.inferredName,
+    ...contactPayload,
+    contactName: contactPayload.contactName || contactPayload.inferredName,
   });
 
   const handleConfirm = async () => {
@@ -196,9 +292,12 @@ function SuggestionCard({
     <div className="rounded-md border border-white/[0.08] bg-background/40 overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.04] bg-muted/20">
         <Mail className="h-3 w-3 text-primary/80 shrink-0" />
-        <span className="text-[11px] font-medium text-foreground/85 truncate">
+        <span className="text-[11px] font-medium text-foreground/85 truncate flex-1">
           Add contact to {dealName || 'deal'} notes
         </span>
+        {pagerLabel && (
+          <span className="text-[10px] text-muted-foreground/70 font-mono shrink-0">{pagerLabel}</span>
+        )}
       </div>
 
       <div className="px-3 py-2.5 space-y-2">
@@ -288,6 +387,160 @@ function Row({ label, value, mono }: { label: string; value: string; mono?: bool
     <div className="flex items-baseline gap-2 text-[11px]">
       <span className="text-muted-foreground/70 w-12 shrink-0">{label}</span>
       <span className={mono ? 'text-foreground/90 font-mono break-all' : 'text-foreground/90'}>{value}</span>
+    </div>
+  );
+}
+
+// ─── Q&A suggestion card ─────────────────────────────────────
+interface QASuggestionCardProps {
+  suggestion: PendingDealSuggestion;
+  dealName?: string;
+  pagerLabel?: string | null;
+  existingQANoteId?: string;
+  existingQANoteContent?: string;
+  onConfirm: (payload: PendingQAPayload, mode: 'append' | 'merge') => Promise<void>;
+  onDismiss: () => Promise<void>;
+  onSavePayload: (payload: PendingQAPayload) => Promise<void>;
+}
+
+function QASuggestionCard({
+  suggestion,
+  dealName,
+  pagerLabel,
+  existingQANoteId,
+  existingQANoteContent,
+  onConfirm,
+  onDismiss,
+  onSavePayload,
+}: QASuggestionCardProps) {
+  const initialPayload = suggestion.payload as PendingQAPayload;
+  const [editing, setEditing] = useState(false);
+  const [working, setWorking] = useState(false);
+  const [draft, setDraft] = useState<PendingQAPayload>(initialPayload);
+
+  // "Merge" mode is offered when an existing Q&A note already references
+  // this thread's id — append cleanly under the same heading.
+  const threadAlreadySaved = !!(existingQANoteContent && existingQANoteContent.includes(initialPayload.source.threadId));
+
+  const handleConfirm = async (mode: 'append' | 'merge') => {
+    setWorking(true);
+    try {
+      if (editing) {
+        await onSavePayload(draft);
+      }
+      await onConfirm(draft, mode);
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const updatePair = (idx: number, key: 'question' | 'answer', value: string) => {
+    setDraft(d => ({
+      ...d,
+      pairs: d.pairs.map((p, i) => (i === idx ? { ...p, [key]: value } : p)),
+    }));
+  };
+
+  return (
+    <div className="rounded-md border border-white/[0.08] bg-background/40 overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.04] bg-muted/20">
+        <MessageSquareQuote className="h-3 w-3 text-primary/80 shrink-0" />
+        <span className="text-[11px] font-medium text-foreground/85 truncate flex-1">
+          Save Q&A responses to Deal Notes
+        </span>
+        {pagerLabel && (
+          <span className="text-[10px] text-muted-foreground/70 font-mono shrink-0">{pagerLabel}</span>
+        )}
+      </div>
+
+      <div className="px-3 py-2.5 space-y-2">
+        <Row label="Deal" value={dealName || '—'} />
+        <Row label="From" value={`${draft.source.fromName} <${draft.source.fromEmail}>`} mono />
+        {draft.source.subject && <Row label="Re" value={draft.source.subject} />}
+        {draft.source.receivedAt && (
+          <Row label="Date" value={format(new Date(draft.source.receivedAt), 'PP p')} />
+        )}
+
+        {/* Preview of what will be written */}
+        <div className="mt-2 border-t border-white/[0.04] pt-2">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <FileText className="h-3 w-3 text-muted-foreground/70" />
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+              Preview ({draft.pairs.length} pair{draft.pairs.length === 1 ? '' : 's'})
+            </span>
+          </div>
+          <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+            {draft.pairs.map((p, i) => (
+              <div key={i} className="rounded border border-white/[0.04] bg-background/30 px-2 py-1.5 space-y-1">
+                {!editing ? (
+                  <>
+                    <div className="text-[11px] text-foreground/85 leading-snug">
+                      <span className="text-muted-foreground/80 font-semibold">Q{i + 1}.</span> {p.question}
+                    </div>
+                    <div className="text-[11px] text-foreground/95 leading-snug pl-3 border-l border-primary/30">
+                      {p.answer}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Textarea
+                      value={p.question}
+                      onChange={e => updatePair(i, 'question', e.target.value)}
+                      className="text-[11px] min-h-[36px] py-1"
+                      placeholder={`Question ${i + 1}`}
+                    />
+                    <Textarea
+                      value={p.answer}
+                      onChange={e => updatePair(i, 'answer', e.target.value)}
+                      className="text-[11px] min-h-[44px] py-1"
+                      placeholder="Answer"
+                    />
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {threadAlreadySaved && (
+          <div className="text-[10px] text-amber-400/90 leading-snug border border-amber-400/20 bg-amber-400/[0.04] rounded px-2 py-1.5">
+            This thread already has a Q&A entry. Use <span className="font-semibold">Merge / Update</span> to append the new pairs cleanly under the same heading.
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center gap-1 px-3 py-2 border-t border-white/[0.04] bg-muted/10 flex-wrap">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-[11px] gap-1 px-2"
+          onClick={() => setEditing(e => !e)}
+          disabled={working}
+        >
+          {editing ? <X className="h-3 w-3" /> : <Edit3 className="h-3 w-3" />}
+          {editing ? 'Cancel edit' : 'Edit'}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-[11px] gap-1 px-2 text-muted-foreground hover:text-destructive"
+          onClick={onDismiss}
+          disabled={working}
+        >
+          <X className="h-3 w-3" />
+          Dismiss
+        </Button>
+        <div className="flex-1" />
+        <Button
+          size="sm"
+          className="h-7 text-[11px] gap-1.5 bg-[hsl(160,60%,40%)] hover:bg-[hsl(160,60%,35%)] text-white"
+          onClick={() => handleConfirm(threadAlreadySaved ? 'merge' : 'append')}
+          disabled={working || draft.pairs.length === 0}
+        >
+          {working ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+          {threadAlreadySaved ? 'Merge / Update' : 'Confirm & Save to Deal Notes'}
+        </Button>
+      </div>
     </div>
   );
 }
