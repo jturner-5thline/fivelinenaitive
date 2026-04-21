@@ -112,8 +112,6 @@ import { DatarailsLiveStat, DatarailsLiveChart } from "@/components/metrics/Data
 // Dashboard options
 const DASHBOARD_OPTIONS = [
   { id: 'management-snapshot', name: 'Management Snapshot', isFavorite: true },
-  { id: 'pnl', name: 'P&L', isFavorite: false },
-  { id: 'cash-flow', name: 'Cash Flow', isFavorite: false },
   { id: 'revenue-customers', name: 'Revenue & Customers', isFavorite: false },
   { id: 'controller-dashboard', name: 'Controller Dashboard', isFavorite: false },
   { id: 'sales-team-board', name: 'Sales Team Board', isFavorite: false },
