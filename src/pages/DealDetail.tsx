@@ -969,6 +969,24 @@ export default function DealDetail() {
     }
   }, [dealInfoTab, infoRequestPendingCount, markInfoRequestsAsRead]);
 
+  // Listen for AI-driven lender updates dispatched from the email modal
+  // (useThreadWorkflowAnalysis). When the broadcast targets THIS deal,
+  // refresh the DealsContext so the Lenders tab reflects the change
+  // immediately without requiring a full page reload.
+  useEffect(() => {
+    if (!id) return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent).detail || {};
+      if (detail.dealId && detail.dealId === id) {
+        // eslint-disable-next-line no-console
+        console.debug('[DealDetail] received deal:lender-updated, refreshing', detail);
+        refreshDeals();
+      }
+    };
+    window.addEventListener('deal:lender-updated', handler);
+    return () => window.removeEventListener('deal:lender-updated', handler);
+  }, [id, refreshDeals]);
+
   // Scroll to hash element after tab change
   useEffect(() => {
     if (location.hash) {
