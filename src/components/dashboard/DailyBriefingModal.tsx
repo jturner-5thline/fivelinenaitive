@@ -1008,7 +1008,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
                   className={cn(
                     'absolute left-1.5 top-1/2 -translate-y-1/2 z-20',
                     'h-9 w-9 sm:h-10 sm:w-10 min-h-[44px] min-w-[44px] flex items-center justify-center',
-                    'rounded-full bg-white/[0.08] backdrop-blur-md border border-white/[0.1]',
+                    'rounded-full bg-white/[0.08] backdrop-blur-md glass-border-soft',
                     'text-muted-foreground hover:text-foreground hover:bg-white/[0.15] hover:shadow-lg',
                     'transition-all duration-200',
                   )}
@@ -1025,7 +1025,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
                   className={cn(
                     'absolute right-1.5 top-1/2 -translate-y-1/2 z-20',
                     'h-9 w-9 sm:h-10 sm:w-10 min-h-[44px] min-w-[44px] flex items-center justify-center',
-                    'rounded-full bg-white/[0.08] backdrop-blur-md border border-white/[0.1]',
+                    'rounded-full bg-white/[0.08] backdrop-blur-md glass-border-soft',
                     'text-muted-foreground hover:text-foreground hover:bg-white/[0.15] hover:shadow-lg',
                     'transition-all duration-200',
                   )}

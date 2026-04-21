@@ -203,7 +203,7 @@ export function EmailIntelligenceWidget() {
               Link your email in Integrations to see your inbox here.
             </p>
           </div>
-          <Button variant="outline" size="sm" className="mt-1 border-white/[0.1] bg-white/[0.04] hover:bg-white/[0.08]" onClick={() => navigate('/integrations')}>
+          <Button variant="outline" size="sm" className="mt-1 glass-border-soft bg-white/[0.04] hover:bg-white/[0.08]" onClick={() => navigate('/integrations')}>
             Go to Integrations
           </Button>
         </CardContent>
