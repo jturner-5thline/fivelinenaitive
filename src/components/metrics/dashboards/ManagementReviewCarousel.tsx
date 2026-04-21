@@ -5,7 +5,7 @@ import { BenchmarkForecastsPage } from './BenchmarkForecastsPage';
 import { KeyMetricsPage } from './KeyMetricsPage';
 
 const PAGES = [
-  { title: 'Management Review', component: ManagementReviewDashboard },
+  { title: 'Insights Dashboard', component: ManagementReviewDashboard },
   { title: 'Benchmark Forecasts', component: BenchmarkForecastsPage },
   { title: 'Key Metrics', component: KeyMetricsPage },
 ];
