@@ -487,31 +487,41 @@ export default function Dashboard() {
         can swipe / arrow between widgets without ever closing the
         modal experience.
       ──────────────────────────────────────────────────────────────── */}
-      <FullCalendarView
-        open={isWidgetActive('calendar')}
-        onOpenChange={handleCarouselDialogOpenChange}
-      />
-      <InboxDialog
-        open={isWidgetActive('email')}
-        onOpenChange={handleCarouselDialogOpenChange}
-      />
-      <CreateDealDialog
-        open={isWidgetActive('new-deal')}
-        onOpenChange={handleCarouselDialogOpenChange}
-      />
-      <QuickPromptsDialog
-        open={isWidgetActive('quick-prompts')}
-        onOpenChange={handleCarouselDialogOpenChange}
-      />
-      {isJTurner && (
-        <DailyBriefingModal
-          open={isWidgetActive('daily-briefing')}
-          onOpenChange={handleCarouselDialogOpenChange}
-        />
+      {/*
+        IMPORTANT: Only mount the active widget's Dialog at any given time.
+
+        Previously every widget Dialog was always mounted with
+        `open={isWidgetActive(id)}` and a shared onOpenChange handler that
+        closed the carousel when `open` flipped to false. That caused arrow
+        navigation to dismiss the modal entirely: pressing → on Calendar
+        flipped Calendar's `open` from true to false, which fired Radix's
+        onOpenChange(false) and triggered closeCarousel() before Email
+        could open.
+
+        By conditionally rendering only the active widget, switching tabs
+        unmounts the previous Dialog (no onOpenChange fires on unmount) and
+        mounts the next one already open. The carousel only closes via the
+        widget's own X / Esc / backdrop, which still calls
+        handleCarouselDialogOpenChange(false).
+      */}
+      {isWidgetActive('calendar') && (
+        <FullCalendarView open onOpenChange={handleCarouselDialogOpenChange} />
       )}
-      {canSeeNiki && (
+      {isWidgetActive('email') && (
+        <InboxDialog open onOpenChange={handleCarouselDialogOpenChange} />
+      )}
+      {isWidgetActive('new-deal') && (
+        <CreateDealDialog open onOpenChange={handleCarouselDialogOpenChange} />
+      )}
+      {isWidgetActive('quick-prompts') && (
+        <QuickPromptsDialog open onOpenChange={handleCarouselDialogOpenChange} />
+      )}
+      {isJTurner && isWidgetActive('daily-briefing') && (
+        <DailyBriefingModal open onOpenChange={handleCarouselDialogOpenChange} />
+      )}
+      {canSeeNiki && isWidgetActive('niki-briefing') && (
         <DailyBriefingModal
-          open={isWidgetActive('niki-briefing')}
+          open
           onOpenChange={handleCarouselDialogOpenChange}
           title={isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
           targetUserId={NIKI_USER_ID}
