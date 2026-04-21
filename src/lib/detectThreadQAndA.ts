@@ -321,17 +321,21 @@ export function detectThreadQAndA(messages: ThreadMessageLite[]): DetectedThread
 
   const answers = extractAnswers(inboundText, Math.max(questions.length, 2));
   let usedAnswers = answers;
-  let pairingMode: 'structured' | 'positional' = 'structured';
+  let pairingMode: 'structured' | 'positional' | 'positional-merged' = 'structured';
 
   // Fallback: when structured extraction yields too few answers (no/inconsistent
   // numbering, no bullets, no Q:/A: prefixes) but we DO have a known question
-  // list from the outbound, align by paragraph position instead.
+  // list from the outbound, align by paragraph position instead. Adjacent blocks
+  // are merged when an answer spans multiple paragraphs.
   if (usedAnswers.length < 2 && questions.length >= 2) {
-    const blocks = extractPositionalBlocks(inboundText);
-    if (blocks.length >= 2) {
-      // Trim to at most the question count so we don't capture trailing prose.
-      usedAnswers = blocks.slice(0, questions.length);
-      pairingMode = 'positional';
+    const detailed = extractPositionalBlocksDetailed(inboundText);
+    if (detailed.length >= 2) {
+      const merged = mergeBlocksToAnswers(detailed, questions.length);
+      if (merged.length >= 2) {
+        usedAnswers = merged.slice(0, questions.length);
+        pairingMode =
+          merged.length < detailed.length ? 'positional-merged' : 'positional';
+      }
     }
   }
 
