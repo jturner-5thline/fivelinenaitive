@@ -379,3 +379,53 @@ export function buildQADedupKey(threadId: string, pairs: QAPair[]): string {
   const fp = (pairs[0]?.answer || '').slice(0, 40).replace(/\s+/g, ' ').trim();
   return `qa-from-thread::${threadId}::${pairs.length}::${fp}`;
 }
+
+/**
+ * Score a detected Q&A set using a weighted-signal model. Each signal
+ * contributes up to its weight; the sum is normalized to 0..1 and then
+ * bucketed into high (≥0.75), medium (≥0.5), low (<0.5).
+ */
+function computeQAConfidence(args: {
+  pairs: QAPair[];
+  questionCount: number;
+  answerCount: number;
+  pairingMode: 'structured' | 'positional' | 'positional-merged';
+  keywordHit: boolean;
+  outboundMentionsQuestions: boolean;
+}): { confidence: 'high' | 'medium' | 'low'; score: number; signals: { label: string; weight: number; hit: boolean }[] } {
+  const { pairs, questionCount, answerCount, pairingMode, keywordHit, outboundMentionsQuestions } = args;
+
+  // Quality of pair contents.
+  const meaningfulAnswers = pairs.filter(p => p.answer.replace(/\s+/g, ' ').trim().length >= 12).length;
+  const meaningfulRatio = pairs.length > 0 ? meaningfulAnswers / pairs.length : 0;
+  const allMeaningful = pairs.length > 0 && meaningfulAnswers === pairs.length;
+
+  // Did we keep every outbound question (counts line up exactly)?
+  const countsAlign = questionCount > 0 && answerCount === questionCount;
+
+  // 3+ pairs is a much stronger signal than the 2-pair minimum.
+  const richPairCount = pairs.length >= 3;
+
+  const signals: { label: string; weight: number; hit: boolean }[] = [
+    { label: 'Inbound contains "answers to your questions" / "see below" cue', weight: 0.20, hit: keywordHit },
+    { label: 'Outbound list followed a "questions" cue', weight: 0.10, hit: outboundMentionsQuestions },
+    { label: 'Structured pairing (numbered / bulleted / Q:A)', weight: 0.25, hit: pairingMode === 'structured' },
+    { label: 'Positional pairing with merged paragraphs', weight: 0.10, hit: pairingMode === 'positional-merged' },
+    { label: 'Question and answer counts line up exactly', weight: 0.15, hit: countsAlign },
+    { label: '3 or more Q&A pairs detected', weight: 0.10, hit: richPairCount },
+    { label: 'Every answer has substantive content (≥12 chars)', weight: 0.15, hit: allMeaningful },
+    { label: 'Most answers have substantive content (≥60%)', weight: 0.05, hit: meaningfulRatio >= 0.6 && !allMeaningful },
+  ];
+
+  const totalWeight = signals.reduce((s, x) => s + x.weight, 0);
+  const earned = signals.reduce((s, x) => s + (x.hit ? x.weight : 0), 0);
+  const score = totalWeight > 0 ? earned / totalWeight : 0;
+
+  // Floor: a positional-only pairing with no keyword hit and no count alignment
+  // can never be "high" — the user should review more carefully.
+  const cap = !keywordHit && pairingMode !== 'structured' && !countsAlign ? 'medium' : null;
+  let confidence: 'high' | 'medium' | 'low' = score >= 0.75 ? 'high' : score >= 0.5 ? 'medium' : 'low';
+  if (cap === 'medium' && confidence === 'high') confidence = 'medium';
+
+  return { confidence, score, signals };
+}
