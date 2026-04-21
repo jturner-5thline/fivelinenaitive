@@ -1756,12 +1756,12 @@ export default function Metrics() {
     return (
       <>
         <Helmet>
-          <title>Deal Metrics | 5thLine</title>
+          <title>Insights | 5thLine</title>
         </Helmet>
         <div className="bg-transparent">
           <div className="flex items-center gap-2">
             <Loader2 className="h-5 w-5 animate-spin" />
-            <span>Loading metrics...</span>
+            <span>Loading insights...</span>
           </div>
           <div className="grid lg:grid-cols-4 gap-4 mt-4">
             {[...Array(8)].map((_, i) => (
@@ -1779,7 +1779,7 @@ export default function Metrics() {
   return (
     <>
       <Helmet>
-        <title>Deal Metrics | 5thLine</title>
+        <title>Insights | 5thLine</title>
       </Helmet>
       <div className="bg-transparent">
         <div className="container mx-auto py-6 px-4 space-y-6">

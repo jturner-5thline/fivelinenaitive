@@ -12,7 +12,7 @@ import {
 const routeLabels: Record<string, string> = {
   deals: "Deals",
   deal: "Deal",
-  metrics: "Metrics",
+  metrics: "Insights",
   insights: "Insights",
   "sales-bd": "Sales & BD",
   settings: "Settings",

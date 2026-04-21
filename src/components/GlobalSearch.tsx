@@ -16,8 +16,7 @@ import { useLenders } from "@/contexts/LendersContext";
 
 const quickActions = [
   { name: "Dashboard", icon: Briefcase, path: "/deals" },
-  { name: "Metrics", icon: BarChart3, path: "/metrics" },
-  { name: "Insights", icon: Lightbulb, path: "/insights" },
+  { name: "Insights", icon: BarChart3, path: "/insights" },
   { name: "Sales & BD", icon: Users, path: "/sales-bd" },
   { name: "Settings", icon: Settings, path: "/settings" },
 ];
