@@ -1118,10 +1118,12 @@ function AgendaView({
   currentDate,
   events: allEvents,
   onEventClick,
+  calendarColors,
 }: {
   currentDate: Date;
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
+  calendarColors: CalendarColorMap;
 }) {
   const agendaDays = eachDayOfInterval({
     start: currentDate,
@@ -1172,8 +1174,7 @@ function AgendaView({
                   dayEvents.map((event, idx) => {
                     const start = parseISO(event.start);
                     const end = parseISO(event.end);
-                    const ci = getColorIndex(event, idx);
-                    const palette = EVENT_PALETTE[ci];
+                    const dot = getEventDot(event, idx, calendarColors);
                     const hasVideo = !!(event.hangout_link || event.conference_data);
                     const attendeeCount = event.attendees?.filter(a => !a.self).length || 0;
 
@@ -1183,7 +1184,7 @@ function AgendaView({
                         onClick={() => onEventClick(event)}
                         className="w-full flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left group"
                       >
-                        <div className={cn('h-full w-1 rounded-full self-stretch min-h-[36px]', palette.dot)} />
+                        <div className={cn('h-full w-1 rounded-full self-stretch min-h-[36px]', dot.className)} style={dot.style} />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
                             {event.summary}
