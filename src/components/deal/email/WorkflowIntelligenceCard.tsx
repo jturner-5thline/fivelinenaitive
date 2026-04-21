@@ -112,7 +112,14 @@ export function WorkflowIntelligenceCard({
 
   const rec = analysis.recommended_update;
   const hasUpdate = rec.kind !== 'none' && !!rec.title;
-  const needsDealLink = !hasLinkedDeal && !!analysis.likely_deal.id && rec.kind !== 'none';
+  // The AI recommendation carries its own resolved deal id. As long as we
+  // have a deal id from EITHER the persisted thread link OR the AI
+  // recommendation OR the high-confidence likely_deal, we can confirm —
+  // confirmRecommendation() in the hook already falls back through the
+  // same chain (rec.deal_id || dealId || analysis.likely_deal.id) when
+  // applying the update, so a separate manual link step is unnecessary.
+  const resolvedDealId = rec.deal_id || analysis.likely_deal.id || '';
+  const willAutoLinkThread = !hasLinkedDeal && !!resolvedDealId && rec.kind !== 'none';
   const aiSuggestedStatus = normalizeSuggested(rec.new_stage);
   const aiSuggestedDetailToken = (rec.suggested_detail || '').toLowerCase();
 
@@ -177,8 +184,38 @@ export function WorkflowIntelligenceCard({
     || !!rec.master_lender_id
     || (!!rec.lender_name && (rec.confidence === 'high' || rec.confidence === 'medium'));
   const willAutoLink = isLenderStatus && !rec.lender_id && lenderResolvable;
-  const dealResolved = !!(rec.deal_id || analysis.likely_deal.id);
-  const canConfirm = !committing && !needsDealLink && lenderResolvable && dealResolved;
+  const dealResolved = !!resolvedDealId;
+  // Confirm is allowed whenever we have a resolved deal + resolvable lender.
+  // Missing thread→deal link is no longer a hard block; the backend uses
+  // the resolved deal id directly.
+  const canConfirm = !committing && lenderResolvable && dealResolved;
+
+  // Temporary diagnostic logging — surfaces the exact gating state so we
+  // can verify the SoLo Funds / Advantage Capital flow.
+  // eslint-disable-next-line no-console
+  console.debug('[WorkflowIntelligenceCard] confirm gating', {
+    resolvedDealId,
+    aiRecommendedDealId: rec.deal_id || null,
+    likelyDealId: analysis.likely_deal.id || null,
+    hasLinkedDeal,
+    willAutoLinkThread,
+    resolvedLenderId: rec.lender_id || null,
+    masterLenderId: rec.master_lender_id || null,
+    lenderName: rec.lender_name || null,
+    lenderResolvable,
+    willAutoLink,
+    confirmedStatus,
+    selectedReasonLabels,
+    committing,
+    canConfirm,
+    blockingReason: !dealResolved
+      ? 'no resolved deal id (rec.deal_id and analysis.likely_deal.id both empty)'
+      : !lenderResolvable
+      ? 'lender not resolvable (no lender_id / master_lender_id / confident name)'
+      : committing
+      ? 'commit in progress'
+      : null,
+  });
 
   const handleStatusChange = (next: string) => {
     setConfirmedStatus(next);
