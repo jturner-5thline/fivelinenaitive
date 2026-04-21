@@ -102,6 +102,7 @@ import {
   QuickBooksFinancialDashboard,
   ManagementReviewCarousel,
 } from "@/components/metrics/dashboards";
+import { WeeklyRundownCarousel } from "@/components/metrics/dashboards/WeeklyRundownCarousel";
 import { useQuickBooksMetrics } from "@/hooks/useQuickBooksMetrics";
 import { useHubSpotMetrics } from "@/hooks/useHubSpotMetrics";
 import { useCustomMetrics } from "@/hooks/useCustomMetrics";
@@ -2074,7 +2075,9 @@ export default function Metrics() {
           {/* Dashboard Content - always show pre-built dashboards */}
           <EditableDashboardWrapper isEditMode={isEditMode} onCardEdit={handlePrebuiltCardEdit}>
             {selectedDashboard === 'management-snapshot' && (
-              <ManagementSnapshotDashboard
+              <WeeklyRundownCarousel
+                page1={
+                  <ManagementSnapshotDashboard
                 isEditMode={isEditMode}
                 onEditCard={handleEditManagementSnapshotCard}
                 onDeleteCard={handleDeleteManagementSnapshotCard}
@@ -2122,7 +2125,9 @@ export default function Metrics() {
                     </div>
                   );
                 })}
-              </ManagementSnapshotDashboard>
+                  </ManagementSnapshotDashboard>
+                }
+              />
             )}
             {selectedDashboard === 'sales-bd-roi' && <SalesBDROIDashboard />}
             {selectedDashboard === 'sales-team-board' && <SalesTeamBoardDashboard />}
