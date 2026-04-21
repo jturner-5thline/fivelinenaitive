@@ -1052,14 +1052,14 @@ function MonthView({
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="grid grid-cols-7 border-b">
+      <div className="grid grid-cols-7 cal-grid-b">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
           <div key={d} className="text-center py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{d}</div>
         ))}
       </div>
       <div className="flex-1 grid grid-rows-[repeat(auto-fill,1fr)]">
         {weeks.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-7 border-b last:border-b-0 min-h-[80px]">
+          <div key={wi} className="grid grid-cols-7 cal-grid-b last:border-b-0 min-h-[80px]">
             {week.map(day => {
               const dayEvents = getEventsForDay(day);
               const inMonth = isSameMonth(day, currentDate);
@@ -1067,7 +1067,7 @@ function MonthView({
               return (
                 <div
                   key={day.toISOString()}
-                  className={cn('border-r last:border-r-0 p-1 cursor-pointer transition-colors hover:bg-muted/30', !inMonth && 'opacity-40')}
+                  className={cn('cal-grid-r last:border-r-0 p-1 cursor-pointer transition-colors hover:bg-muted/30', !inMonth && 'opacity-40')}
                   onClick={() => onDayClick(day)}
                 >
                   <p className={cn(
@@ -1163,7 +1163,7 @@ function AgendaView({
             <div key={day.toISOString()}>
               {/* Full-width day divider */}
               <div className={cn(
-                "flex items-center gap-3 px-4 py-2.5 border-b bg-muted/30",
+                "flex items-center gap-3 px-4 py-2.5 cal-grid-b bg-muted/30",
                 isToday(day) && "bg-primary/5"
               )}>
                 <div className={cn(
@@ -1821,7 +1821,7 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
         {/* ─── Body with sidebar ─── */}
         <div className="flex-1 min-h-0 overflow-hidden flex">
           {/* Mini calendar sidebar */}
-          <div className="w-56 shrink-0 border-r bg-background/50 p-3 overflow-y-auto hidden md:block">
+          <div className="w-56 shrink-0 cal-grid-r bg-background/50 p-3 overflow-y-auto hidden md:block">
             <MiniCalendar
               currentDate={currentDate}
               onDateSelect={handleMiniDateSelect}
