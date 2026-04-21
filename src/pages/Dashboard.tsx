@@ -92,13 +92,14 @@ export default function Dashboard() {
   // Auto-open Daily Briefing from email link (?briefing=true)
   useEffect(() => {
     if (isJTurner && searchParams.get('briefing') === 'true') {
-      setIsBriefingOpen(true);
+      // Open via the shared carousel so arrow nav works from the link.
+      openCarouselWidget('daily-briefing', null);
       // Clean up the URL params
       searchParams.delete('briefing');
       searchParams.delete('tab');
       setSearchParams(searchParams, { replace: true });
     }
-  }, [isJTurner, searchParams, setSearchParams]);
+  }, [isJTurner, searchParams, setSearchParams, openCarouselWidget]);
 
   // Register the carousel widget order. Order is recomputed when the
   // gating flags (isJTurner, canSeeNiki) change so optional widgets
