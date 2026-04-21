@@ -54,9 +54,13 @@ interface DailyBriefingModalProps {
 }
 
 // ── Glass surface classes ──────────────────────────────────────
-const GLASS_SURFACE = 'bg-background/40 backdrop-blur-2xl border border-white/[0.06]';
-const GLASS_CARD = 'bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-lg';
-const GLASS_ROW = 'bg-white/[0.02] border border-white/[0.05] rounded-lg backdrop-blur-sm';
+// Borders are intentionally near-invisible — depth comes from translucent
+// surface tint + blur + soft shadow, not bright outlines. `glass-border-soft`
+// / `glass-border-softer` are theme-aware so they don't appear as harsh
+// white outlines on light backgrounds.
+const GLASS_SURFACE = 'bg-background/40 backdrop-blur-2xl glass-border-softer';
+const GLASS_CARD = 'glass-surface-1 backdrop-blur-xl glass-border-softer rounded-lg';
+const GLASS_ROW = 'glass-surface-1 glass-border-softer rounded-lg backdrop-blur-sm';
 
 // ── Loading skeleton for tab content ───────────────────────────
 function TabSkeleton() {
@@ -80,8 +84,8 @@ function DetailPopup({
   onClose: () => void;
 }) {
   return (
-    <div className="absolute inset-0 z-10 bg-background/90 backdrop-blur-2xl flex flex-col rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+      <div className="absolute inset-0 z-10 bg-background/90 backdrop-blur-2xl flex flex-col rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-3 glass-divider-b">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={onClose}>
           <X className="h-4 w-4" />
