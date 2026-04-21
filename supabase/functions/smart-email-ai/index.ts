@@ -560,7 +560,7 @@ Classify and return strict JSON only.`;
 
           let dealsQuery = supabase
             .from("deals")
-            .select("id, company, name, stage, status")
+            .select("id, company, stage, status")
             .order("updated_at", { ascending: false })
             .limit(300);
           if (companyIds.length > 0) {
@@ -574,9 +574,8 @@ Classify and return strict JSON only.`;
           const haystack = `${subject} ${(latestEmail?.body_preview || "").substring(0, 2000)}`.toLowerCase();
           const scored = all.map((d) => {
             const company = (d.company || "").toLowerCase().trim();
-            const altName = (d.name || "").toLowerCase().trim();
             let score = 0;
-            for (const candidate of [company, altName]) {
+            for (const candidate of [company]) {
               if (!candidate || candidate.length < 3) continue;
               if (subject.toLowerCase().includes(candidate)) score += 10;
               else if (haystack.includes(candidate)) score += 5;
@@ -592,8 +591,7 @@ Classify and return strict JSON only.`;
           const ordered = [...matched, ...rest].slice(0, 80);
           dealCandidates = ordered.map((d: any) => ({
             id: d.id,
-            company: d.company || d.name || "",
-            name: d.name && d.name !== d.company ? d.name : undefined,
+            company: d.company || "",
             stage: d.stage,
           }));
         }
