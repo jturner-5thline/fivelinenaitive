@@ -1822,7 +1822,13 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
         <div className="flex-1 min-h-0 overflow-hidden flex">
           {/* Mini calendar sidebar */}
           <div className="w-56 shrink-0 border-r bg-background/50 p-3 overflow-y-auto hidden md:block">
-            <MiniCalendar currentDate={currentDate} onDateSelect={handleMiniDateSelect} events={allEvents} />
+            <MiniCalendar
+              currentDate={currentDate}
+              onDateSelect={handleMiniDateSelect}
+              events={allEvents}
+              calendars={liveCalendars}
+              calendarColors={calendarColors}
+            />
 
             {/* Upcoming Events Widget */}
             {upcomingEvents.length > 0 && (
