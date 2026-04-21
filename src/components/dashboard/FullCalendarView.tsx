@@ -1756,15 +1756,15 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                 <div className="absolute top-full right-0 mt-1 w-72 bg-popover border border-border rounded-lg shadow-xl z-50 max-h-[300px] overflow-y-auto">
                   {searchResults.map((event, idx) => {
                     const start = parseISO(event.start);
-                    const ci = getColorIndex(event, idx);
                     const dealMatch = matchEventToDeal(event);
+                    const dot = getEventDot(event, idx, calendarColors);
                     return (
                       <button
                         key={event.id}
                         className="w-full flex items-start gap-2 p-2.5 hover:bg-muted/50 text-left border-b border-border/50 last:border-b-0"
                         onClick={() => { setCurrentDate(start); setView('day'); setSelectedEvent(event); setSearchQuery(''); setShowSearch(false); }}
                       >
-                        <div className={cn('h-2 w-2 rounded-full mt-1.5 shrink-0', EVENT_PALETTE[ci].dot)} />
+                        <div className={cn('h-2 w-2 rounded-full mt-1.5 shrink-0', dot.className)} style={dot.style} />
                         <div className="min-w-0">
                           <p className="text-xs font-medium text-foreground truncate">{event.summary}</p>
                           <p className="text-[10px] text-muted-foreground">{format(start, 'EEE, MMM d · h:mm a')}</p>
