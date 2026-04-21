@@ -1538,11 +1538,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             the toolbar button. */}
         <div
           className={cn(
-            'h-full',
-            // Desktop: always visible, sticky within modal
-            'hidden lg:flex',
-            // Mobile/tablet: only when explicitly opened, slides over
-            showAiAssist && 'flex absolute inset-y-0 right-0 z-20 lg:static lg:z-auto shadow-2xl lg:shadow-none',
+            'h-full shrink-0',
+            // Desktop (>=1100px): always visible as a persistent right column
+            'hidden min-[1100px]:flex',
+            // Below 1100px: slides over from the right when toggled
+            showAiAssist && 'flex absolute inset-y-0 right-0 z-20 min-[1100px]:static min-[1100px]:z-auto shadow-2xl min-[1100px]:shadow-none',
           )}
         >
           <AiAssistSidebar
