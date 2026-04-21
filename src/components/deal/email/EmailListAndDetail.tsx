@@ -1071,6 +1071,41 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             senderEmail: inbound.fromEmail,
           });
           if (candidates.length === 1) targetDealId = candidates[0].deal.id;
+          if (!targetDealId && candidates.length > 1) {
+            enqueueResolution({
+              threadId: thread.threadId,
+              threadSubject: thread.subject,
+              dedupKey: buildQADedupKey(thread.threadId, detection.pairs),
+              reason: `Subject + sender domain match ${candidates.length} deals`,
+              intent: {
+                kind: 'qa_from_thread',
+                payload: {
+                  pairs: detection.pairs,
+                  source: {
+                    fromName: inbound.fromName || '',
+                    fromEmail: inbound.fromEmail || '',
+                    receivedAt: inbound.receivedAt || new Date().toISOString(),
+                    subject: thread.subject,
+                    threadId: thread.threadId,
+                  },
+                  detectedAt: new Date().toISOString(),
+                  reasons: detection.reasons,
+                  confidence: detection.confidence,
+                  confidenceScore: detection.confidenceScore,
+                  confidenceSignals: detection.confidenceSignals,
+                },
+              },
+              candidates: candidates.map((c) => ({
+                dealId: c.deal.id,
+                dealName: c.deal.company || c.deal.name || 'Unnamed deal',
+                stage: c.deal.stage ?? null,
+                domainMatch: c.domainMatch,
+                nameMatch: c.nameMatch,
+                score: c.score,
+              })),
+            });
+            return;
+          }
           if (!targetDealId) return;
         }
         const { data: dealRow } = await supabase
