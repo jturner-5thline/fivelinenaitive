@@ -53,6 +53,42 @@ const NUMBERED_LINE = /^\s*(?:\(?(\d{1,2})[.)\]]|\[(\d{1,2})\])\s+(.+)$/;
 const BULLET_LINE = /^\s*(?:[-*•·●▪◦]|\u2022|\u25E6|\u25AA)\s+(.+)$/;
 const QA_PREFIX_LINE = /^\s*(?:Q\s*[:.\)]\s*(.+)|A\s*[:.\)]\s*(.+))$/i;
 
+/**
+ * Positional fallback: split text into paragraph-style blocks separated by
+ * blank lines. Used when numbering is missing or inconsistent so we can still
+ * align answers to questions by ORDER.
+ *
+ * Each block has any leading list marker (number, bullet, "A:") stripped so
+ * the visible answer text is clean. Blocks shorter than ~3 chars or that look
+ * like signatures/quoted noise are dropped.
+ */
+export function extractPositionalBlocks(text: string): string[] {
+  if (!text) return [];
+  const SIGNATURE_CUE = /^(thanks|thank you|cheers|best|regards|sincerely|sent from my)/i;
+  const paragraphs = text
+    .split(/\n{2,}/) // blank-line separated blocks
+    .map(p => p.replace(/\r/g, '').trim())
+    .filter(Boolean);
+
+  const blocks: string[] = [];
+  for (const p of paragraphs) {
+    // Collapse internal newlines into spaces; strip a single leading marker.
+    const collapsed = p
+      .split(/\n/)
+      .map(l => l.trim())
+      .filter(Boolean)
+      .join(' ')
+      .replace(NUMBERED_LINE, (_m, _n1, _n2, rest) => rest)
+      .replace(BULLET_LINE, (_m, rest) => rest)
+      .replace(/^A\s*[:.\)]\s*/i, '')
+      .trim();
+    if (collapsed.length < 3) continue;
+    if (SIGNATURE_CUE.test(collapsed) && collapsed.length < 60) continue;
+    blocks.push(collapsed);
+  }
+  return blocks;
+}
+
 function normalizeBody(body: string): string {
   if (!body) return '';
   // If it looks like HTML, strip tags first.
