@@ -82,7 +82,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { useGoogleCalendar, CalendarEvent } from '@/hooks/useGoogleCalendar';
+import { useGoogleCalendar, CalendarEvent, Calendar } from '@/hooks/useGoogleCalendar';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -111,6 +111,42 @@ const EVENT_PALETTE = [
   { bg: 'bg-cyan-600/15 border-cyan-500/30', text: 'text-foreground', dot: 'bg-cyan-600', label: 'Cyan', glow: 'shadow-[0_0_12px_rgba(8,145,178,0.15)]' },
   { bg: 'bg-indigo-600/15 border-indigo-500/30', text: 'text-foreground', dot: 'bg-indigo-600', label: 'Indigo', glow: 'shadow-[0_0_12px_rgba(79,70,229,0.15)]' },
 ];
+
+// ─── Google Calendar color resolution ────────────────────────
+// Each connected calendar in Google has an assigned hex color (returned by
+// Nylas as `hex_color` / surfaced as `background_color` on our Calendar type).
+// We honor that hex so events on /dashboard match Google Calendar's web UI.
+// Per-event color overrides (Banana, Sage, etc.) are not exposed by Nylas v3,
+// so we fall back to the calendar's color, which matches Google's render
+// hierarchy when no per-event color is set.
+export interface CalendarColorInfo { background: string; foreground?: string }
+export type CalendarColorMap = Map<string, CalendarColorInfo>;
+
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  if ([r, g, b].some(n => Number.isNaN(n))) return `rgba(99,102,241,${alpha})`;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/** Inline style derived from the event's owning calendar's Google hex color. */
+export function getEventColorStyle(
+  event: CalendarEvent,
+  calendarColors: CalendarColorMap,
+): React.CSSProperties | null {
+  const info = calendarColors.get(event.calendar_id);
+  if (!info?.background) return null;
+  const bg = info.background;
+  return {
+    backgroundColor: hexToRgba(bg, 0.18),
+    borderColor: hexToRgba(bg, 0.45),
+    boxShadow: `0 0 12px ${hexToRgba(bg, 0.18)}`,
+    color: 'hsl(var(--foreground))',
+  };
+}
 
 const TIMEZONE_OPTIONS = [
   { label: 'EST', value: 'America/New_York' },
@@ -142,6 +178,23 @@ function getColorIndex(event: CalendarEvent, idx: number): number {
 function getEventColorClass(event: CalendarEvent, idx: number): string {
   const c = EVENT_PALETTE[getColorIndex(event, idx)];
   return `${c.bg} ${c.text} ${c.glow}`;
+}
+
+/**
+ * Returns the dot style + class for the small color swatch shown next to
+ * events in agenda/upcoming/search lists. Prefers the calendar's Google
+ * hex color; falls back to the palette dot class.
+ */
+function getEventDot(
+  event: CalendarEvent,
+  idx: number,
+  calendarColors: CalendarColorMap,
+): { className: string; style?: React.CSSProperties } {
+  const info = calendarColors.get(event.calendar_id);
+  if (info?.background) {
+    return { className: '', style: { backgroundColor: info.background } };
+  }
+  return { className: EVENT_PALETTE[getColorIndex(event, idx)].dot };
 }
 
 function getLocalTimezoneAbbr(): string {
@@ -655,11 +708,13 @@ function EventDetailPopover({
 function TimeGridEvent({
   event,
   colorClass,
+  colorStyle,
   onClick,
   style,
 }: {
   event: CalendarEvent;
   colorClass: string;
+  colorStyle?: React.CSSProperties | null;
   onClick: () => void;
   style: React.CSSProperties;
 }) {
@@ -699,10 +754,11 @@ function TimeGridEvent({
               'absolute left-1 right-1 rounded-md px-2 py-1 text-left overflow-hidden cursor-pointer transition-all z-[2]',
               'backdrop-blur-md border shadow-lg',
               'hover:shadow-xl hover:scale-[1.02] hover:brightness-110',
-              colorClass,
+              !colorStyle && colorClass,
             )}
             style={{
               ...style,
+              ...(colorStyle || {}),
               background: undefined,
             }}
           >
@@ -755,10 +811,14 @@ function MiniCalendar({
   currentDate,
   onDateSelect,
   events,
+  calendars,
+  calendarColors,
 }: {
   currentDate: Date;
   onDateSelect: (date: Date) => void;
   events: CalendarEvent[];
+  calendars: Calendar[];
+  calendarColors: CalendarColorMap;
 }) {
   const [miniMonth, setMiniMonth] = useState(startOfMonth(currentDate));
 
@@ -843,16 +903,33 @@ function MiniCalendar({
 
       <Separator />
 
-      {/* Color Legend */}
+      {/* Calendar legend — connected calendars with their Google-assigned colors */}
       <div className="space-y-1.5">
-        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Colors</p>
+        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Calendars</p>
         <div className="space-y-1">
-          {EVENT_PALETTE.slice(0, 5).map((c, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <div className={cn('h-2.5 w-2.5 rounded-full', c.dot)} />
-              <span className="text-[11px] text-muted-foreground">{c.label}</span>
-            </div>
-          ))}
+          {calendars.length > 0 ? (
+            calendars.map(cal => {
+              const hex = calendarColors.get(cal.id)?.background;
+              return (
+                <div key={cal.id} className="flex items-center gap-2 min-w-0">
+                  <div
+                    className={cn('h-2.5 w-2.5 rounded-full shrink-0', !hex && 'bg-primary')}
+                    style={hex ? { backgroundColor: hex } : undefined}
+                  />
+                  <span className="text-[11px] text-muted-foreground truncate" title={cal.summary}>
+                    {cal.primary ? `${cal.summary} · Primary` : cal.summary}
+                  </span>
+                </div>
+              );
+            })
+          ) : (
+            EVENT_PALETTE.slice(0, 5).map((c, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className={cn('h-2.5 w-2.5 rounded-full', c.dot)} />
+                <span className="text-[11px] text-muted-foreground">{c.label}</span>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
@@ -866,12 +943,14 @@ function DayColumn({
   onEventClick,
   showDayLabel,
   onSlotClick,
+  calendarColors,
 }: {
   date: Date;
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
   showDayLabel: boolean;
   onSlotClick?: (date: Date, hour: number) => void;
+  calendarColors: CalendarColorMap;
 }) {
   const timedEvents = dayEvents.filter(e => !e.all_day);
   const today = isToday(date);
@@ -934,6 +1013,7 @@ function DayColumn({
               key={event.id}
               event={event}
               colorClass={getEventColorClass(event, idx)}
+              colorStyle={getEventColorStyle(event, calendarColors)}
               onClick={() => onEventClick(event)}
               style={{ top, height: Math.max(height, MIN_EVENT_HEIGHT), minHeight: MIN_EVENT_HEIGHT }}
             />
@@ -950,11 +1030,13 @@ function MonthView({
   events: allEvents,
   onEventClick,
   onDayClick,
+  calendarColors,
 }: {
   currentDate: Date;
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
   onDayClick: (date: Date) => void;
+  calendarColors: CalendarColorMap;
 }) {
   const [morePopoverDay, setMorePopoverDay] = useState<Date | null>(null);
 
@@ -1000,7 +1082,11 @@ function MonthView({
                       <button
                         key={event.id}
                         onClick={(e) => { e.stopPropagation(); onEventClick(event); }}
-                        className={cn('w-full text-left rounded px-1 py-0.5 text-[10px] leading-tight truncate', getEventColorClass(event, idx))}
+                        className={cn(
+                          'w-full text-left rounded px-1 py-0.5 text-[10px] leading-tight truncate border',
+                          !calendarColors.get(event.calendar_id)?.background && getEventColorClass(event, idx),
+                        )}
+                        style={getEventColorStyle(event, calendarColors) || undefined}
                       >
                         {!event.all_day && <span className="opacity-80">{format(parseISO(event.start), 'h:mm')} </span>}
                         {event.summary}
@@ -1023,7 +1109,11 @@ function MonthView({
                               <button
                                 key={event.id}
                                 onClick={() => { onEventClick(event); setMorePopoverDay(null); }}
-                                className={cn('w-full text-left rounded px-2 py-1.5 text-xs truncate hover:brightness-110', getEventColorClass(event, idx))}
+                                className={cn(
+                                  'w-full text-left rounded px-2 py-1.5 text-xs truncate hover:brightness-110 border',
+                                  !calendarColors.get(event.calendar_id)?.background && getEventColorClass(event, idx),
+                                )}
+                                style={getEventColorStyle(event, calendarColors) || undefined}
                               >
                                 {!event.all_day && <span className="opacity-80 mr-1">{format(parseISO(event.start), 'h:mm a')}</span>}
                                 {event.summary}
@@ -1049,10 +1139,12 @@ function AgendaView({
   currentDate,
   events: allEvents,
   onEventClick,
+  calendarColors,
 }: {
   currentDate: Date;
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
+  calendarColors: CalendarColorMap;
 }) {
   const agendaDays = eachDayOfInterval({
     start: currentDate,
@@ -1103,8 +1195,7 @@ function AgendaView({
                   dayEvents.map((event, idx) => {
                     const start = parseISO(event.start);
                     const end = parseISO(event.end);
-                    const ci = getColorIndex(event, idx);
-                    const palette = EVENT_PALETTE[ci];
+                    const dot = getEventDot(event, idx, calendarColors);
                     const hasVideo = !!(event.hangout_link || event.conference_data);
                     const attendeeCount = event.attendees?.filter(a => !a.self).length || 0;
 
@@ -1114,7 +1205,7 @@ function AgendaView({
                         onClick={() => onEventClick(event)}
                         className="w-full flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left group"
                       >
-                        <div className={cn('h-full w-1 rounded-full self-stretch min-h-[36px]', palette.dot)} />
+                        <div className={cn('h-full w-1 rounded-full self-stretch min-h-[36px]', dot.className)} style={dot.style} />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
                             {event.summary}
@@ -1159,9 +1250,11 @@ function AgendaView({
 function AllDayBar({
   events,
   onEventClick,
+  calendarColors,
 }: {
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
+  calendarColors: CalendarColorMap;
 }) {
   if (events.length === 0) return null;
   return (
@@ -1170,7 +1263,11 @@ function AllDayBar({
         <button
           key={event.id}
           onClick={() => onEventClick(event)}
-          className={cn('text-[10px] font-medium px-2 py-0.5 rounded truncate max-w-[180px]', getEventColorClass(event, idx))}
+          className={cn(
+            'text-[10px] font-medium px-2 py-0.5 rounded truncate max-w-[180px] border',
+            !calendarColors.get(event.calendar_id)?.background && getEventColorClass(event, idx),
+          )}
+          style={getEventColorStyle(event, calendarColors) || undefined}
         >
           {event.summary}
         </button>
@@ -1300,7 +1397,17 @@ function KeyboardShortcutsOverlay({ onClose }: { onClose: () => void }) {
 
 // ─── Main Component ──────────────────────────────────────────
 export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) {
-  const { events: liveEvents, status: calendarStatus, listEvents, isLoading: calendarLoading, createEvent, updateEvent, deleteEvent } = useGoogleCalendar();
+  const {
+    events: liveEvents,
+    status: calendarStatus,
+    listEvents,
+    isLoading: calendarLoading,
+    createEvent,
+    updateEvent,
+    deleteEvent,
+    calendars: liveCalendars,
+    listCalendars,
+  } = useGoogleCalendar();
   const [view, setView] = useState<CalendarViewMode>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -1416,6 +1523,31 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
     const interval = setInterval(refreshEvents, 3 * 60 * 1000); // refresh every 3 minutes
     return () => clearInterval(interval);
   }, [open, refreshEvents]);
+
+  // Fetch the user's connected calendars once when the dialog opens so we
+  // can color events using each calendar's Google-assigned hex color.
+  useEffect(() => {
+    if (!open || !calendarStatus?.connected) return;
+    if (liveCalendars.length === 0) {
+      listCalendars();
+    }
+  }, [open, calendarStatus?.connected, liveCalendars.length, listCalendars]);
+
+  // Build a calendar_id -> {background, foreground} hex map. When events come
+  // from Google via Nylas, each event's calendar_id resolves to that
+  // calendar's color (matches Google Calendar's default render hierarchy).
+  const calendarColors = useMemo<CalendarColorMap>(() => {
+    const map: CalendarColorMap = new Map();
+    liveCalendars.forEach(c => {
+      if (c.background_color) {
+        map.set(c.id, {
+          background: c.background_color,
+          foreground: c.foreground_color,
+        });
+      }
+    });
+    return map;
+  }, [liveCalendars]);
 
   const handleSaveEvent = useCallback(async (eventData: {
     summary: string;
@@ -1624,15 +1756,15 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                 <div className="absolute top-full right-0 mt-1 w-72 bg-popover border border-border rounded-lg shadow-xl z-50 max-h-[300px] overflow-y-auto">
                   {searchResults.map((event, idx) => {
                     const start = parseISO(event.start);
-                    const ci = getColorIndex(event, idx);
                     const dealMatch = matchEventToDeal(event);
+                    const dot = getEventDot(event, idx, calendarColors);
                     return (
                       <button
                         key={event.id}
                         className="w-full flex items-start gap-2 p-2.5 hover:bg-muted/50 text-left border-b border-border/50 last:border-b-0"
                         onClick={() => { setCurrentDate(start); setView('day'); setSelectedEvent(event); setSearchQuery(''); setShowSearch(false); }}
                       >
-                        <div className={cn('h-2 w-2 rounded-full mt-1.5 shrink-0', EVENT_PALETTE[ci].dot)} />
+                        <div className={cn('h-2 w-2 rounded-full mt-1.5 shrink-0', dot.className)} style={dot.style} />
                         <div className="min-w-0">
                           <p className="text-xs font-medium text-foreground truncate">{event.summary}</p>
                           <p className="text-[10px] text-muted-foreground">{format(start, 'EEE, MMM d · h:mm a')}</p>
@@ -1690,7 +1822,13 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
         <div className="flex-1 min-h-0 overflow-hidden flex">
           {/* Mini calendar sidebar */}
           <div className="w-56 shrink-0 border-r bg-background/50 p-3 overflow-y-auto hidden md:block">
-            <MiniCalendar currentDate={currentDate} onDateSelect={handleMiniDateSelect} events={allEvents} />
+            <MiniCalendar
+              currentDate={currentDate}
+              onDateSelect={handleMiniDateSelect}
+              events={allEvents}
+              calendars={liveCalendars}
+              calendarColors={calendarColors}
+            />
 
             {/* Upcoming Events Widget */}
             {upcomingEvents.length > 0 && (
@@ -1704,12 +1842,12 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                   <div className="space-y-1.5 max-h-[320px] overflow-y-auto">
                     {upcomingEvents.map((event, idx) => {
                       const start = parseISO(event.start);
-                      const ci = getColorIndex(event, idx);
                       const minutesUntil = differenceInMinutes(start, new Date());
                       const eventIsToday = isToday(start);
                       const timeLabel = eventIsToday
                         ? (minutesUntil <= 0 ? 'Now' : minutesUntil < 60 ? `in ${minutesUntil}m` : `in ${Math.floor(minutesUntil / 60)}h`)
                         : null;
+                      const dot = getEventDot(event, idx, calendarColors);
 
                       return (
                         <button
@@ -1717,7 +1855,7 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                           onClick={() => { setCurrentDate(start); setView('day'); setSelectedEvent(event); }}
                           className="w-full flex items-start gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
                         >
-                          <div className={cn('h-2 w-2 rounded-full mt-1.5 shrink-0', EVENT_PALETTE[ci].dot)} />
+                          <div className={cn('h-2 w-2 rounded-full mt-1.5 shrink-0', dot.className)} style={dot.style} />
                           <div className="min-w-0 flex-1">
                             <p className="text-[11px] font-medium text-foreground truncate">{event.summary}</p>
                             <div className="flex items-center justify-between gap-1">
@@ -1749,14 +1887,15 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
           {/* Main content */}
           <div className="flex-1 min-w-0 flex flex-col">
             {view === 'month' ? (
-              <MonthView currentDate={currentDate} events={allEvents} onEventClick={setSelectedEvent} onDayClick={handleDayClick} />
+              <MonthView currentDate={currentDate} events={allEvents} onEventClick={setSelectedEvent} onDayClick={handleDayClick} calendarColors={calendarColors} />
             ) : view === 'agenda' ? (
-              <AgendaView currentDate={currentDate} events={allEvents} onEventClick={setSelectedEvent} />
+              <AgendaView currentDate={currentDate} events={allEvents} onEventClick={setSelectedEvent} calendarColors={calendarColors} />
             ) : (
               <>
                 <AllDayBar
                   events={allDayEvents.filter(e => view === 'day' ? isSameDay(parseISO(e.start), currentDate) : true)}
                   onEventClick={setSelectedEvent}
+                  calendarColors={calendarColors}
                 />
                 <ScrollArea className="flex-1" ref={timeGridScrollRef}>
                   <div className="flex min-h-0">
@@ -1824,11 +1963,11 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                       </div>
                     </div>
                     {view === 'day' ? (
-                      <DayColumn date={currentDate} events={getEventsForDay(currentDate)} onEventClick={setSelectedEvent} showDayLabel={false} onSlotClick={handleSlotClick} />
+                      <DayColumn date={currentDate} events={getEventsForDay(currentDate)} onEventClick={setSelectedEvent} showDayLabel={false} onSlotClick={handleSlotClick} calendarColors={calendarColors} />
                     ) : (
                       <div className="flex flex-1">
                         {weekDays.map(day => (
-                          <DayColumn key={day.toISOString()} date={day} events={getEventsForDay(day)} onEventClick={setSelectedEvent} showDayLabel={true} onSlotClick={handleSlotClick} />
+                          <DayColumn key={day.toISOString()} date={day} events={getEventsForDay(day)} onEventClick={setSelectedEvent} showDayLabel={true} onSlotClick={handleSlotClick} calendarColors={calendarColors} />
                         ))}
                       </div>
                     )}
