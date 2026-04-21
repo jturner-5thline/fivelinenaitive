@@ -54,25 +54,38 @@ const BULLET_LINE = /^\s*(?:[-*•·●▪◦]|\u2022|\u25E6|\u25AA)\s+(.+)$/;
 const QA_PREFIX_LINE = /^\s*(?:Q\s*[:.\)]\s*(.+)|A\s*[:.\)]\s*(.+))$/i;
 
 /**
+ * A positional block plus a flag indicating whether the source paragraph
+ * started with an explicit list marker (number, bullet, or "A:"). Markers
+ * mark the START of a new answer; unmarked paragraphs are continuations of
+ * the previous answer.
+ */
+export interface PositionalBlock {
+  text: string;
+  hasMarker: boolean;
+}
+
+const SIGNATURE_CUE = /^(thanks|thank you|cheers|best|regards|sincerely|sent from my)/i;
+
+/**
  * Positional fallback: split text into paragraph-style blocks separated by
  * blank lines. Used when numbering is missing or inconsistent so we can still
  * align answers to questions by ORDER.
- *
- * Each block has any leading list marker (number, bullet, "A:") stripped so
- * the visible answer text is clean. Blocks shorter than ~3 chars or that look
- * like signatures/quoted noise are dropped.
  */
-export function extractPositionalBlocks(text: string): string[] {
+export function extractPositionalBlocksDetailed(text: string): PositionalBlock[] {
   if (!text) return [];
-  const SIGNATURE_CUE = /^(thanks|thank you|cheers|best|regards|sincerely|sent from my)/i;
   const paragraphs = text
-    .split(/\n{2,}/) // blank-line separated blocks
+    .split(/\n{2,}/)
     .map(p => p.replace(/\r/g, '').trim())
     .filter(Boolean);
 
-  const blocks: string[] = [];
+  const blocks: PositionalBlock[] = [];
   for (const p of paragraphs) {
-    // Collapse internal newlines into spaces; strip a single leading marker.
+    const firstLine = p.split(/\n/, 1)[0] || '';
+    const hasMarker =
+      NUMBERED_LINE.test(firstLine) ||
+      BULLET_LINE.test(firstLine) ||
+      /^\s*A\s*[:.\)]\s+/i.test(firstLine);
+
     const collapsed = p
       .split(/\n/)
       .map(l => l.trim())
@@ -84,9 +97,61 @@ export function extractPositionalBlocks(text: string): string[] {
       .trim();
     if (collapsed.length < 3) continue;
     if (SIGNATURE_CUE.test(collapsed) && collapsed.length < 60) continue;
-    blocks.push(collapsed);
+    blocks.push({ text: collapsed, hasMarker });
   }
   return blocks;
+}
+
+/** Back-compat: returns just the text of each block. */
+export function extractPositionalBlocks(text: string): string[] {
+  return extractPositionalBlocksDetailed(text).map(b => b.text);
+}
+
+/**
+ * Merge adjacent blocks that belong to the same answer.
+ *
+ * Strategy:
+ *   1. If ANY block has an explicit list marker, treat marker-starting blocks
+ *      as answer boundaries and append unmarked blocks to the previous answer.
+ *      This handles "1. ...\n\nMore detail.\n\n2. ..." cleanly.
+ *   2. Otherwise (no markers anywhere), if there are MORE blocks than
+ *      questions, distribute blocks evenly across the questions, joining
+ *      adjacent blocks into the same answer.
+ */
+export function mergeBlocksToAnswers(
+  blocks: PositionalBlock[],
+  questionCount: number,
+): string[] {
+  if (blocks.length === 0) return [];
+  if (questionCount <= 0) return blocks.map(b => b.text);
+
+  const anyMarker = blocks.some(b => b.hasMarker);
+
+  if (anyMarker) {
+    const grouped: string[] = [];
+    for (const b of blocks) {
+      if (b.hasMarker || grouped.length === 0) {
+        grouped.push(b.text);
+      } else {
+        grouped[grouped.length - 1] += '\n\n' + b.text;
+      }
+    }
+    return grouped;
+  }
+
+  // No markers at all: distribute blocks proportionally across questions.
+  if (blocks.length <= questionCount) {
+    return blocks.map(b => b.text);
+  }
+  const perQuestion = blocks.length / questionCount;
+  const grouped: string[] = [];
+  for (let q = 0; q < questionCount; q++) {
+    const start = Math.floor(q * perQuestion);
+    const end = q === questionCount - 1 ? blocks.length : Math.floor((q + 1) * perQuestion);
+    const slice = blocks.slice(start, Math.max(end, start + 1));
+    grouped.push(slice.map(b => b.text).join('\n\n'));
+  }
+  return grouped;
 }
 
 function normalizeBody(body: string): string {
@@ -256,17 +321,21 @@ export function detectThreadQAndA(messages: ThreadMessageLite[]): DetectedThread
 
   const answers = extractAnswers(inboundText, Math.max(questions.length, 2));
   let usedAnswers = answers;
-  let pairingMode: 'structured' | 'positional' = 'structured';
+  let pairingMode: 'structured' | 'positional' | 'positional-merged' = 'structured';
 
   // Fallback: when structured extraction yields too few answers (no/inconsistent
   // numbering, no bullets, no Q:/A: prefixes) but we DO have a known question
-  // list from the outbound, align by paragraph position instead.
+  // list from the outbound, align by paragraph position instead. Adjacent blocks
+  // are merged when an answer spans multiple paragraphs.
   if (usedAnswers.length < 2 && questions.length >= 2) {
-    const blocks = extractPositionalBlocks(inboundText);
-    if (blocks.length >= 2) {
-      // Trim to at most the question count so we don't capture trailing prose.
-      usedAnswers = blocks.slice(0, questions.length);
-      pairingMode = 'positional';
+    const detailed = extractPositionalBlocksDetailed(inboundText);
+    if (detailed.length >= 2) {
+      const merged = mergeBlocksToAnswers(detailed, questions.length);
+      if (merged.length >= 2) {
+        usedAnswers = merged.slice(0, questions.length);
+        pairingMode =
+          merged.length < detailed.length ? 'positional-merged' : 'positional';
+      }
     }
   }
 
