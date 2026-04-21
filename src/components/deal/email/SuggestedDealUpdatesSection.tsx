@@ -337,6 +337,8 @@ export function SuggestedDealUpdatesSection({ dealId, dealName, threadId }: Prop
                     contact_name: finalPayload.contactName || finalPayload.inferredName,
                     source_thread_id: s.source_thread_id,
                     source_thread_subject: s.source_thread_subject,
+                    source_thread_url: buildSourceThreadUrl(dealId, s.source_thread_id),
+                    confirmed_at: new Date().toISOString(),
                     suggestion_id: s.id,
                   },
                 );
