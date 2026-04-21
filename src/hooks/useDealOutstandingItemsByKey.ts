@@ -189,9 +189,8 @@ export function useDealOutstandingItemsByKey(dealId: string | undefined) {
       }
 
       // ── No linked outstanding item yet — create one ─────────
-      // Only create on "check"; uncheck on a non-existent item is a no-op.
-      if (!checked) return true;
-
+      // Create the row in either state so that an "uncheck" on an auto-mapped
+      // (file-derived) item still persists as an explicit override.
       // Find next position
       const { data: posData } = await supabase
         .from('outstanding_items')
@@ -202,7 +201,11 @@ export function useDealOutstandingItemsByKey(dealId: string | undefined) {
         .maybeSingle();
       const nextPosition = (posData?.position ?? -1) + 1;
 
-      const status = buildStatus({ received: true, approved: true, requestedBy: ['5th Line'] });
+      const status = buildStatus({
+        received: checked,
+        approved: checked,
+        requestedBy: ['5th Line'],
+      });
       const sourceMetadata = {
         source_type: 'data_room_checklist',
         source_round: roundTitle,
