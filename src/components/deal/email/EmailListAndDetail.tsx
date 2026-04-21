@@ -51,6 +51,7 @@ import { InlineReplyComposer, type ReplyDraft } from './InlineReplyComposer';
 import { PopOutComposer } from './PopOutComposer';
 import { useEmailDraft, useUnsavedDraftGuard } from '@/hooks/useEmailDraft';
 import { detectBareEmailsInDraft } from '@/lib/detectDraftEmails';
+import { detectThreadQAndA, buildQADedupKey, type ThreadMessageLite } from '@/lib/detectThreadQAndA';
 import { usePendingDealSuggestions } from '@/hooks/usePendingDealSuggestions';
 import { useResolveDealForEmail } from '@/hooks/useResolveDealForEmail';
 import { isAutoDealNoteSuggestionEnabled } from '@/hooks/useAutoDealNoteSuggestionPref';
@@ -990,6 +991,90 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     setOlderExpanded(false);
     setUserExpandedMessages(new Set());
   }, [thread.threadId]);
+
+  // ─── Q&A detection (inbound reply containing answers to prior outbound questions) ───
+  // Runs once per thread open, debounced. Respects the global Auto-suggest toggle
+  // and writes a pending suggestion the user must confirm.
+  useEffect(() => {
+    if (!dealId) return;
+    if (!isAutoDealNoteSuggestionEnabled()) return;
+    if (thread.emails.length < 2) return;
+
+    const t = setTimeout(async () => {
+      try {
+        // Build lite message list in chronological order (mockEmailData groups
+        // emails newest-first inside threads sometimes; sort defensively).
+        const sorted = [...thread.emails].sort(
+          (a, b) => new Date(a.received_at).getTime() - new Date(b.received_at).getTime(),
+        );
+        const messages: ThreadMessageLite[] = sorted.map((e) => {
+          const isOutbound = e.folder === 'sent' || e.from_name === 'You';
+          // Prefer the freshest body source for the latest message (already hydrated by the hoisted load).
+          const isLatest = e.id === thread.latestEmail.id;
+          const hydratedBody = isLatest
+            ? (latestFullData?.body_text || latestFullData?.body_html || '')
+            : '';
+          return {
+            isOutbound,
+            body: hydratedBody || e.body_text || e.body_html || e.body_preview || e.snippet || '',
+            fromEmail: e.from_email,
+            fromName: e.from_name,
+            subject: e.subject,
+            receivedAt: e.received_at,
+          };
+        });
+
+        const detection = detectThreadQAndA(messages);
+        if (!detection) return;
+
+        const inbound = messages[detection.inboundIndex];
+        // Resolve target deal — prefer linked dealId, otherwise fuzzy.
+        let targetDealId = dealId;
+        let targetCompanyId: string | undefined;
+        if (!targetDealId) {
+          const candidates = resolveDeal({
+            subject: thread.subject,
+            senderEmail: inbound.fromEmail,
+          });
+          if (candidates.length === 1) targetDealId = candidates[0].deal.id;
+          if (!targetDealId) return;
+        }
+        const { data: dealRow } = await supabase
+          .from('deals')
+          .select('company_id')
+          .eq('id', targetDealId)
+          .single();
+        targetCompanyId = dealRow?.company_id || undefined;
+        if (!targetCompanyId) return;
+
+        await createPendingSuggestion({
+          dealId: targetDealId,
+          companyId: targetCompanyId,
+          suggestionType: 'qa_from_thread',
+          payload: {
+            pairs: detection.pairs,
+            source: {
+              fromName: inbound.fromName || '',
+              fromEmail: inbound.fromEmail || '',
+              receivedAt: inbound.receivedAt || new Date().toISOString(),
+              subject: thread.subject,
+              threadId: thread.threadId,
+            },
+            detectedAt: new Date().toISOString(),
+            reasons: detection.reasons,
+          },
+          sourceThreadId: thread.threadId,
+          sourceThreadSubject: thread.subject,
+          dedupKey: buildQADedupKey(thread.threadId, detection.pairs),
+        });
+      } catch (err) {
+        console.warn('[qa-detect] error', err);
+      }
+    }, 800);
+
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thread.threadId, thread.latestEmail.id, dealId, latestFullData?.body_text, latestFullData?.body_html]);
 
   const hiddenCount = shouldAutoCollapse && !olderExpanded
     ? totalMessages - VISIBLE_RECENT
