@@ -178,6 +178,14 @@ export function SuggestedDealUpdatesSection({ dealId, dealName, threadId }: Prop
         </div>
       )}
 
+      {pendingResolutions.length > 0 && (
+        <div className="space-y-2 mb-2">
+          {pendingResolutions.map((r) => (
+            <DealPickerCard key={r.id} resolution={r} />
+          ))}
+        </div>
+      )}
+
       <div className="space-y-2">
         {suggestions.map((s, idx) => {
           const pagerLabel = totalCount > 1 ? `${idx + 1}/${totalCount}` : null;
