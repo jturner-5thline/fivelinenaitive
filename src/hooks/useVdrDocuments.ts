@@ -192,6 +192,15 @@ export function useVdrDocuments(dealId: string) {
 
     if (inserted?.id) {
       triggerIngestion([inserted.id]);
+      // Fire-and-forget AI classification — runs in background while UI loads file.
+      // The classify-file edge function inserts a "processing" row immediately so the
+      // UI can show an "Analyzing with AI…" pill via useFileAiClassifications.
+      supabase.functions.invoke('classify-file', {
+        body: { document_id: inserted.id },
+      }).catch((e) => {
+        // Failures show in the UI as a "Retry AI" badge — don't toast here.
+        console.warn('classify-file invoke failed (will surface in UI):', e);
+      });
     }
   }, [dealId, company?.id, user?.id, fetchDocuments, triggerIngestion, logAudit]);
 
