@@ -9111,6 +9111,124 @@ export type Database = {
           },
         ]
       }
+      file_ai_classifications: {
+        Row: {
+          alternate_targets: Json
+          attempts: number
+          category: string | null
+          checklist_target: string | null
+          company_id: string | null
+          confidence: number | null
+          created_at: string
+          deal_id: string
+          detected_document_type: string | null
+          document_id: string
+          entities: Json
+          error_message: string | null
+          external_share_recommended: boolean | null
+          filename: string
+          flags: Json
+          human_reviewed: boolean
+          id: string
+          model: string | null
+          override_category: string | null
+          override_checklist_target: string | null
+          override_external_share: boolean | null
+          raw_response: Json | null
+          reasoning_short: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          sensitivity: string | null
+          status: string
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          alternate_targets?: Json
+          attempts?: number
+          category?: string | null
+          checklist_target?: string | null
+          company_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          deal_id: string
+          detected_document_type?: string | null
+          document_id: string
+          entities?: Json
+          error_message?: string | null
+          external_share_recommended?: boolean | null
+          filename: string
+          flags?: Json
+          human_reviewed?: boolean
+          id?: string
+          model?: string | null
+          override_category?: string | null
+          override_checklist_target?: string | null
+          override_external_share?: boolean | null
+          raw_response?: Json | null
+          reasoning_short?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sensitivity?: string | null
+          status?: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          alternate_targets?: Json
+          attempts?: number
+          category?: string | null
+          checklist_target?: string | null
+          company_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          deal_id?: string
+          detected_document_type?: string | null
+          document_id?: string
+          entities?: Json
+          error_message?: string | null
+          external_share_recommended?: boolean | null
+          filename?: string
+          flags?: Json
+          human_reviewed?: boolean
+          id?: string
+          model?: string | null
+          override_category?: string | null
+          override_checklist_target?: string | null
+          override_external_share?: boolean | null
+          raw_response?: Json | null
+          reasoning_short?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sensitivity?: string | null
+          status?: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "file_ai_classifications_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_ai_classifications_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_ai_classifications_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: true
+            referencedRelation: "vdr_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       file_checklist_map: {
         Row: {
           checklist_item_id: string

@@ -212,3 +212,6 @@ verify_jwt = false
 
 [functions.hubspot-create-deal]
 verify_jwt = false
+
+[functions.classify-file]
+verify_jwt = false
