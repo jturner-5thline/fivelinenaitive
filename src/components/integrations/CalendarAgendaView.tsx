@@ -92,7 +92,7 @@ export function CalendarAgendaView({ events, onEventEdit }: CalendarAgendaViewPr
                     </div>
 
                     {/* Event content */}
-                    <div className="flex-1 min-w-0 border-l-4 border-l-primary pl-3 rounded-r-[3px] bg-primary/[0.08] py-2 px-3 group-hover:bg-primary/[0.15] transition-all">
+                    <div className="flex-1 min-w-0 border-l-4 border-l-primary pl-3 rounded-r-[3px] bg-primary/20 py-2 px-3 group-hover:bg-primary/30 transition-all">
                       <p className="font-semibold text-[13px] text-foreground truncate">{event.summary}</p>
                       <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground/50">
                         {duration && <span>{duration}</span>}
