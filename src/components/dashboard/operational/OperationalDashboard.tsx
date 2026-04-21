@@ -10,7 +10,7 @@ import { PieGlassDefs, pieGlassFill, GlassActiveShape } from '@/components/metri
 import { differenceInDays, parseISO, isAfter, isBefore, addDays, startOfDay, endOfDay, startOfWeek, endOfWeek } from 'date-fns';
 
 // ── Glass surface tokens ───────────────────────────────────────
-const GLASS_CARD = 'bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-lg';
+const GLASS_CARD = 'bg-white/[0.03] backdrop-blur-xl glass-border-soft rounded-lg';
 
 const CHART_COLORS = [
   'hsl(var(--primary))',
@@ -99,7 +99,7 @@ function ChartCard({
       {onSeeAll && (
         <button
           onClick={onSeeAll}
-          className="flex items-center justify-center gap-1 text-[10px] font-medium text-primary/80 hover:text-primary py-2 border-t border-white/[0.04] transition-colors"
+          className="flex items-center justify-center gap-1 text-[10px] font-medium text-primary/80 hover:text-primary py-2 border-t glass-border-softer transition-colors"
         >
           See all <ChevronRight className="h-3 w-3" />
         </button>

@@ -115,7 +115,7 @@ function EmailDetailHeader({ email, onClose }: { email: EnrichedEmail; onClose: 
   const SIcon = sentiment.icon;
 
   return (
-    <div className="px-6 pt-6 pb-4 border-b border-white/[0.06] shrink-0">
+    <div className="px-6 pt-6 pb-4 border-b glass-border-soft shrink-0">
       <div className="flex items-start justify-between gap-3">
         {/* Sender info */}
         <div className="flex items-center gap-3 min-w-0">
@@ -157,11 +157,11 @@ function EmailDetailHeader({ email, onClose }: { email: EnrichedEmail; onClose: 
       {/* Tags row */}
       <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
         {analysis?.category && analysis.category !== 'other' && (
-          <Badge variant="outline" className={cn('text-[10px] h-5 px-2 border-white/[0.08]', CATEGORY_COLORS[analysis.category])}>
+          <Badge variant="outline" className={cn('text-[10px] h-5 px-2 glass-border-soft', CATEGORY_COLORS[analysis.category])}>
             {CATEGORY_LABELS[analysis.category] || analysis.category}
           </Badge>
         )}
-        <Badge variant="outline" className={cn('text-[10px] h-5 px-2 gap-1 border-white/[0.08]', sentiment.className)}>
+        <Badge variant="outline" className={cn('text-[10px] h-5 px-2 gap-1 glass-border-soft', sentiment.className)}>
           <SIcon className="h-3 w-3" />
           {sentiment.label}
         </Badge>
@@ -255,7 +255,7 @@ function SuggestedActionCard({
         'rounded-lg border p-3 transition-all duration-200 backdrop-blur-sm',
         isApproved && 'border-emerald-500/20 bg-emerald-500/[0.06]',
         isRejected && 'border-destructive/15 bg-destructive/[0.04] opacity-60',
-        isPending && 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.1]'
+        isPending && 'glass-border-soft bg-white/[0.02] hover:bg-white/[0.04] hover:glass-border-soft'
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -265,7 +265,7 @@ function SuggestedActionCard({
             <Badge
               variant="outline"
               className={cn(
-                'text-[9px] h-4 px-1.5 gap-0.5 border-white/[0.08]',
+                'text-[9px] h-4 px-1.5 gap-0.5 glass-border-soft',
                 action.executorType === 'ai'
                   ? 'text-primary'
                   : 'text-muted-foreground'
@@ -327,7 +327,7 @@ function ApprovalProgressFooter({
   const canExecute = approvedAI.length > 0;
 
   return (
-    <div className="px-6 py-4 border-t border-white/[0.06] shrink-0 flex items-center justify-between gap-3 bg-white/[0.02]">
+    <div className="px-6 py-4 border-t glass-border-soft shrink-0 flex items-center justify-between gap-3 bg-white/[0.02]">
       <span className="text-xs text-muted-foreground">
         <span className="font-medium text-foreground">{approved.length}</span> of{' '}
         <span className="font-medium text-foreground">{total}</span> approved
@@ -378,7 +378,7 @@ export function EmailDetailModal({ email, open, onOpenChange }: EmailDetailModal
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-2xl w-[95vw] max-h-[85vh] p-0 flex flex-col overflow-hidden gap-0 border-white/[0.06] bg-background/95 backdrop-blur-xl shadow-2xl shadow-black/40"
+        className="max-w-2xl w-[95vw] max-h-[85vh] p-0 flex flex-col overflow-hidden gap-0 glass-border-soft bg-background/95 backdrop-blur-xl shadow-2xl shadow-black/40"
       >
         <EmailDetailHeader email={email} onClose={() => onOpenChange(false)} />
 

@@ -12,8 +12,8 @@ import { cn } from '@/lib/utils';
  * both render identically.
  */
 
-export const GLASS_CARD = 'bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-lg';
-export const GLASS_ROW = 'bg-white/[0.02] border border-white/[0.05] rounded-lg backdrop-blur-sm';
+export const GLASS_CARD = 'bg-white/[0.03] backdrop-blur-xl glass-border-soft rounded-lg';
+export const GLASS_ROW = 'bg-white/[0.02] border glass-border-softer rounded-lg backdrop-blur-sm';
 
 export function EmptySection({ message }: { message: string }) {
   return (
@@ -62,7 +62,7 @@ export function BriefingRow({
         GLASS_ROW,
         'flex items-start gap-3 p-3',
         'transition-all duration-200',
-        onClick && 'cursor-pointer hover:bg-white/[0.06] hover:border-white/[0.1] hover:shadow-[0_2px_12px_hsl(var(--primary)/0.08)]',
+        onClick && 'cursor-pointer hover:bg-white/[0.06] hover:glass-border-soft hover:shadow-[0_2px_12px_hsl(var(--primary)/0.08)]',
       )}
     >
       <div className="p-1.5 rounded-md bg-primary/10 shrink-0 mt-0.5">
@@ -75,7 +75,7 @@ export function BriefingRow({
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {badge && (
-          <Badge variant={badgeVariant || 'secondary'} className="text-[10px] border-white/[0.08]">
+          <Badge variant={badgeVariant || 'secondary'} className="text-[10px] glass-border-soft">
             {badge}
           </Badge>
         )}

@@ -136,7 +136,7 @@ function BriefingRow({
         GLASS_ROW,
         'flex items-start gap-3 p-3',
         'transition-all duration-200',
-        onClick && 'cursor-pointer hover:bg-white/[0.06] hover:border-white/[0.1] hover:shadow-[0_2px_12px_hsl(var(--primary)/0.08)]',
+        onClick && 'cursor-pointer hover:bg-white/[0.06] hover:glass-border-soft hover:shadow-[0_2px_12px_hsl(var(--primary)/0.08)]',
       )}
     >
       <div className="p-1.5 rounded-md bg-primary/10 shrink-0 mt-0.5">
@@ -149,7 +149,7 @@ function BriefingRow({
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {badge && (
-          <Badge variant={badgeVariant || 'secondary'} className="text-[10px] border-white/[0.08]">
+          <Badge variant={badgeVariant || 'secondary'} className="text-[10px] glass-border-soft">
             {badge}
           </Badge>
         )}
@@ -304,7 +304,7 @@ function NewsImage({ src, topic, className, variant = 'standard' }: { src?: stri
       {variant === 'featured' && hasImage && (
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
       )}
-      <div className="absolute inset-0 border border-white/[0.06] rounded-[inherit]" />
+      <div className="absolute inset-0 glass-border-soft rounded-[inherit]" />
     </div>
   );
 }
@@ -320,7 +320,7 @@ function FeaturedNewsTile({ item }: { item: NewsfeedItem }) {
       className={cn(
         GLASS_CARD,
         'group overflow-hidden flex flex-col transition-all duration-200',
-        'hover:bg-white/[0.06] hover:border-white/[0.1] hover:shadow-[0_4px_20px_hsl(var(--primary)/0.1)]',
+        'hover:bg-white/[0.06] hover:glass-border-soft hover:shadow-[0_4px_20px_hsl(var(--primary)/0.1)]',
         item.url !== '#' && 'cursor-pointer',
       )}
     >
@@ -331,7 +331,7 @@ function FeaturedNewsTile({ item }: { item: NewsfeedItem }) {
             <div className="flex items-center gap-2 mb-1.5">
               <span className={cn(
                 'px-2 py-0.5 rounded text-[10px] font-semibold border backdrop-blur-sm',
-                TOPIC_COLORS[item.topic] || 'bg-white/[0.05] text-muted-foreground border-white/[0.08]',
+                TOPIC_COLORS[item.topic] || 'bg-white/[0.05] text-muted-foreground glass-border-soft',
               )}>
                 {item.topic}
               </span>
@@ -353,7 +353,7 @@ function FeaturedNewsTile({ item }: { item: NewsfeedItem }) {
             <div className="flex items-center gap-2 mb-2">
               <span className={cn(
                 'px-2 py-0.5 rounded text-[10px] font-semibold border',
-                TOPIC_COLORS[item.topic] || 'bg-white/[0.05] text-muted-foreground border-white/[0.08]',
+                TOPIC_COLORS[item.topic] || 'bg-white/[0.05] text-muted-foreground glass-border-soft',
               )}>
                 {item.topic}
               </span>
@@ -384,7 +384,7 @@ function StandardNewsTile({ item }: { item: NewsfeedItem }) {
       className={cn(
         GLASS_ROW,
         'group overflow-hidden flex gap-0 transition-all duration-200',
-        'hover:bg-white/[0.06] hover:border-white/[0.1] hover:shadow-[0_2px_12px_hsl(var(--primary)/0.06)]',
+        'hover:bg-white/[0.06] hover:glass-border-soft hover:shadow-[0_2px_12px_hsl(var(--primary)/0.06)]',
         item.url !== '#' && 'cursor-pointer',
       )}
     >
@@ -393,7 +393,7 @@ function StandardNewsTile({ item }: { item: NewsfeedItem }) {
         <div className="flex items-center gap-1.5 mb-1">
           <span className={cn(
             'px-1.5 py-px rounded text-[9px] font-semibold border',
-            TOPIC_COLORS[item.topic] || 'bg-white/[0.05] text-muted-foreground border-white/[0.08]',
+            TOPIC_COLORS[item.topic] || 'bg-white/[0.05] text-muted-foreground glass-border-soft',
           )}>
             {item.topic}
           </span>
@@ -480,7 +480,7 @@ function CatchUpTab({ enabled }: { enabled: boolean; onNavigate: (path: string) 
       <div className="flex flex-col items-center justify-center py-16 gap-4">
         <AlertCircle className="h-8 w-8 text-destructive/60" />
         <p className="text-sm text-muted-foreground text-center max-w-xs">{error}</p>
-        <Button variant="outline" size="sm" className="border-white/[0.08]" onClick={handleRefresh}>
+        <Button variant="outline" size="sm" className="glass-border-soft" onClick={handleRefresh}>
           <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Retry
         </Button>
       </div>
@@ -500,7 +500,7 @@ function CatchUpTab({ enabled }: { enabled: boolean; onNavigate: (path: string) 
                 'px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all duration-150',
                 activeTopics.has(topic)
                   ? TOPIC_COLORS[topic] || 'bg-primary/20 text-primary border-primary/30'
-                  : 'bg-white/[0.02] text-muted-foreground/40 border-white/[0.04] hover:bg-white/[0.04]',
+                  : 'bg-white/[0.02] text-muted-foreground/40 glass-border-softer hover:bg-white/[0.04]',
               )}
             >
               {topic}
@@ -592,7 +592,7 @@ function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onN
             {detail.analysis?.summary && <div className="text-sm"><strong>AI Summary:</strong> {detail.analysis.summary}</div>}
             {detail.analysis?.deal_name && <div className="text-sm"><strong>Related Deal:</strong> {detail.analysis.deal_name}</div>}
             <div className="text-sm text-muted-foreground">{detail.snippet}</div>
-            <Button size="sm" variant="outline" className="border-white/[0.08]" onClick={() => onNavigate('/email-intelligence')}>
+            <Button size="sm" variant="outline" className="glass-border-soft" onClick={() => onNavigate('/email-intelligence')}>
               Open Email Intelligence <ExternalLink className="h-3 w-3 ml-1" />
             </Button>
           </div>
@@ -609,7 +609,7 @@ function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onN
               'px-3 py-1 rounded-full text-xs font-medium transition-all duration-150 border',
               subTab === t.key
                 ? 'bg-primary/15 text-primary border-primary/30'
-                : 'bg-white/[0.03] text-muted-foreground/70 border-white/[0.06] hover:bg-white/[0.06] hover:text-foreground/80',
+                : 'bg-white/[0.03] text-muted-foreground/70 glass-border-soft hover:bg-white/[0.06] hover:text-foreground/80',
             )}
           >
             {t.label}
@@ -690,7 +690,7 @@ function FinancialTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (
             <div className="text-sm"><strong>Amount:</strong> ${(detail.total_amt || 0).toLocaleString()}</div>
             <div className="text-sm"><strong>Date:</strong> {detail.txn_date}</div>
             {detail.doc_number && <div className="text-sm"><strong>Invoice #:</strong> {detail.doc_number}</div>}
-            <Button size="sm" variant="outline" className="border-white/[0.08]" onClick={() => onNavigate('/metrics')}>
+            <Button size="sm" variant="outline" className="glass-border-soft" onClick={() => onNavigate('/metrics')}>
               Open Financial Dashboard <ExternalLink className="h-3 w-3 ml-1" />
             </Button>
           </div>
@@ -769,7 +769,7 @@ function PipelineTab({
             {detail.meta?.lender_name && <div className="text-sm"><strong>Lender:</strong> {detail.meta.lender_name}</div>}
             {detail.timestamp && <div className="text-sm"><strong>Time:</strong> {format(new Date(detail.timestamp), 'PPp')}</div>}
             {detail.action && (
-              <Button size="sm" variant="outline" className="border-white/[0.08]" onClick={() => onNavigate(detail.action!.path)}>
+              <Button size="sm" variant="outline" className="glass-border-soft" onClick={() => onNavigate(detail.action!.path)}>
                 {detail.action.label} <ExternalLink className="h-3 w-3 ml-1" />
               </Button>
             )}
@@ -786,7 +786,7 @@ function PipelineTab({
             {dealDetail.description && <div className="text-sm">{dealDetail.description}</div>}
             {dealDetail.user_display_name && <div className="text-sm"><strong>By:</strong> {dealDetail.user_display_name}</div>}
             {dealDetail.created_at && <div className="text-sm"><strong>Time:</strong> {format(new Date(dealDetail.created_at), 'PPp')}</div>}
-            <Button size="sm" variant="outline" className="border-white/[0.08]" onClick={() => onNavigate(`/deal/${dealDetail.id || dealDetail.deal_id}`)}>
+            <Button size="sm" variant="outline" className="glass-border-soft" onClick={() => onNavigate(`/deal/${dealDetail.id || dealDetail.deal_id}`)}>
               Open Deal <ExternalLink className="h-3 w-3 ml-1" />
             </Button>
           </div>
@@ -888,7 +888,7 @@ function StatusChip({ status }: { status: string | null }) {
   return (
     <span className={cn(
       'px-1.5 py-0.5 rounded text-[10px] font-semibold border whitespace-nowrap',
-      colors[status] || 'bg-white/[0.05] text-muted-foreground border-white/[0.08]',
+      colors[status] || 'bg-white/[0.05] text-muted-foreground glass-border-soft',
     )}>
       {label}
     </span>
