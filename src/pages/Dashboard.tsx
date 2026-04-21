@@ -61,8 +61,21 @@ export default function Dashboard() {
     return searchParams.get('tab') || 'overview';
   });
   const [isEditing, setIsEditing] = useState(false);
-  const [calendarOpen, setCalendarOpen] = useState(false);
-  const [emailOpen, setEmailOpen] = useState(false);
+  // Carousel-driven open state for the top quick-action widgets
+  const carouselIsOpen = useWidgetCarouselStore((s) => s.isOpen);
+  const carouselActiveIndex = useWidgetCarouselStore((s) => s.activeIndex);
+  const carouselOrder = useWidgetCarouselStore((s) => s.order);
+  const setCarouselOrder = useWidgetCarouselStore((s) => s.setOrder);
+  const openCarouselWidget = useWidgetCarouselStore((s) => s.openWidget);
+  const closeCarousel = useWidgetCarouselStore((s) => s.close);
+  const activeCarouselId = carouselIsOpen ? carouselOrder[carouselActiveIndex]?.id : null;
+  const isWidgetActive = (id: string) => activeCarouselId === id;
+  const handleCarouselDialogOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) closeCarousel();
+    },
+    [closeCarousel],
+  );
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   // #24: Always compute firstName regardless of sidebar state
   const firstName = profile?.first_name || (profile?.display_name ? profile.display_name.split(' ')[0] : '') || 'there';
@@ -86,6 +99,30 @@ export default function Dashboard() {
       setSearchParams(searchParams, { replace: true });
     }
   }, [isJTurner, searchParams, setSearchParams]);
+
+  // Register the carousel widget order. Order is recomputed when the
+  // gating flags (isJTurner, canSeeNiki) change so optional widgets
+  // appear/disappear consistently.
+  const widgetOrderEntries = useMemo(() => {
+    const entries: { id: string; label: string }[] = [
+      { id: 'calendar', label: 'Calendar' },
+      { id: 'email', label: 'Email' },
+      { id: 'new-deal', label: 'New Deal' },
+      { id: 'quick-prompts', label: 'Quick Prompts' },
+    ];
+    if (isJTurner) entries.push({ id: 'daily-briefing', label: 'Daily Briefing' });
+    if (canSeeNiki) {
+      entries.push({
+        id: 'niki-briefing',
+        label: isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing",
+      });
+    }
+    return entries;
+  }, [isJTurner, canSeeNiki, isNikiViewingHerself]);
+
+  useEffect(() => {
+    setCarouselOrder(widgetOrderEntries);
+  }, [widgetOrderEntries, setCarouselOrder]);
 
   const handleDashboardTabChange = (tab: string) => {
     setDashboardTab(tab);
