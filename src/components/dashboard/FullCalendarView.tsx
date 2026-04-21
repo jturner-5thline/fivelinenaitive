@@ -708,11 +708,13 @@ function EventDetailPopover({
 function TimeGridEvent({
   event,
   colorClass,
+  colorStyle,
   onClick,
   style,
 }: {
   event: CalendarEvent;
   colorClass: string;
+  colorStyle?: React.CSSProperties | null;
   onClick: () => void;
   style: React.CSSProperties;
 }) {
@@ -752,10 +754,11 @@ function TimeGridEvent({
               'absolute left-1 right-1 rounded-md px-2 py-1 text-left overflow-hidden cursor-pointer transition-all z-[2]',
               'backdrop-blur-md border shadow-lg',
               'hover:shadow-xl hover:scale-[1.02] hover:brightness-110',
-              colorClass,
+              !colorStyle && colorClass,
             )}
             style={{
               ...style,
+              ...(colorStyle || {}),
               background: undefined,
             }}
           >
