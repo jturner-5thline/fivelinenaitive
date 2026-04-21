@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef, ReactNode, TouchEvent } from 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { WeeklyRundownReadOnlyCashflow } from './WeeklyRundownReadOnlyCashflow';
 import { WeeklyRundownPipelineClientsPage } from './WeeklyRundownPipelineClientsPage';
+import { WeeklyRundownOpsProjectsPage } from './WeeklyRundownOpsProjectsPage';
 
 interface WeeklyRundownCarouselProps {
   /** The existing Weekly Rundown (ManagementSnapshotDashboard) content rendered as Page 1. */
@@ -56,12 +57,7 @@ export function WeeklyRundownCarousel({ page1 }: WeeklyRundownCarouselProps) {
     },
     {
       title: 'Ops & Projects',
-      render: () => (
-        <PlaceholderPage
-          title="Ops & Projects"
-          description="This page will mirror the Daily Briefing layout (Asana sync) — overdue, due today, due this week, completed, blockers — aggregated across the entire team."
-        />
-      ),
+      render: () => <WeeklyRundownOpsProjectsPage />,
     },
   ];
 
