@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Check, Edit3, X, FileText, Loader2, Mail, MessageSquareQuote, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -133,9 +133,21 @@ export function SuggestedDealUpdatesSection({ dealId, dealName, threadId }: Prop
   const { logAuditAction } = useDealAuditLog(dealId);
 
   // Pending deal-picker prompts for this thread (multiple-match fallback).
-  const pendingResolutions = usePendingDealResolutionsStore((s) =>
-    threadId ? s.byThread(threadId) : [],
-  );
+  //
+  // IMPORTANT: subscribe to the raw `resolutions` map (a stable reference
+  // unless its contents change) and derive the filtered/sorted list via
+  // `useMemo`. Calling `s.byThread(threadId)` directly inside the selector
+  // returns a NEW array reference on every store read, which makes
+  // useSyncExternalStore treat the snapshot as unstable and triggers an
+  // infinite re-render loop ("Maximum update depth exceeded") the moment
+  // any zustand store anywhere in the tree updates.
+  const resolutionsMap = usePendingDealResolutionsStore((s) => s.resolutions);
+  const pendingResolutions = useMemo(() => {
+    if (!threadId) return [];
+    return Object.values(resolutionsMap)
+      .filter((r) => r.threadId === threadId)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }, [resolutionsMap, threadId]);
 
   // Always render the header (so the toggle is reachable). Cards only render when present.
   const hasItems = suggestions.length > 0 || pendingResolutions.length > 0;
