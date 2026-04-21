@@ -1197,13 +1197,16 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
   const {
     events: liveEvents,
     status: calendarStatus,
+    isStatusLoading,
     listEvents,
     isLoading: calendarLoading,
+    error: calendarError,
     createEvent,
     updateEvent,
     deleteEvent,
     calendars: liveCalendars,
     listCalendars,
+    checkStatus,
   } = useGoogleCalendar();
   const [view, setView] = useState<CalendarViewMode>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -1424,7 +1427,23 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
     setEventDialogOpen(true);
   }, [calendarStatus?.connected]);
 
-  const allEvents = calendarStatus?.connected && liveEvents.length > 0 ? liveEvents : mockEvents;
+  // Always render the live calendar — never fall back to mock/sample events.
+  // The empty / loading / error states below handle the no-data case
+  // explicitly so users never see fake events flash in.
+  const allEvents = liveEvents;
+
+  // Overlay state machine. We show the overlay when:
+  //  • we're still resolving auth/status, OR
+  //  • the calendar is connected, we have no cached events yet, and a
+  //    request is in flight, OR
+  //  • we hit a hard error with no cached data to fall back to, OR
+  //  • the user is not connected at all (prompt to connect).
+  const showInitialLoading =
+    (isStatusLoading && liveEvents.length === 0) ||
+    (calendarStatus?.connected && calendarLoading && liveEvents.length === 0);
+  const showError = !!calendarError && liveEvents.length === 0 && !calendarLoading;
+  const showNotConnected =
+    !isStatusLoading && !calendarStatus?.connected && !calendarLoading && !calendarError;
   const { matchEventToDeal } = useDealMatches(allEvents);
 
   // Search results
@@ -1585,7 +1604,14 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
             </Button>
           )}
 
-          {!calendarStatus?.connected && <Badge variant="secondary" className="text-[10px] h-5 mr-2">Demo Data</Badge>}
+          {/* Connection-state badge — replaces the old "Demo Data" badge.
+              We never render fake events anymore, so the only state worth
+              communicating here is "not connected". */}
+          {!isStatusLoading && !calendarStatus?.connected && (
+            <Badge variant="outline" className="text-[10px] h-5 mr-2 border-transparent glass-border-soft">
+              Not connected
+            </Badge>
+          )}
 
           {/* Keyboard shortcuts button */}
           <TooltipProvider delayDuration={200}>
