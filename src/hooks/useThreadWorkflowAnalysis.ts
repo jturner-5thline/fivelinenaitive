@@ -4,6 +4,7 @@ import type { Database } from '@/integrations/supabase/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   PASS_REASON_LABELS,
   type LenderPassReasonCategory,
@@ -115,6 +116,24 @@ const STATUS_STAGE_MAP: Record<string, { stage: string; trackingStatus: string; 
 type DealLenderInsert = Database['public']['Tables']['deal_lenders']['Insert'];
 type DealLenderUpdate = Database['public']['Tables']['deal_lenders']['Update'];
 type LenderDisqualificationInsert = Database['public']['Tables']['lender_disqualifications']['Insert'];
+
+const normalizeFirmName = (value: string | null | undefined) =>
+  (value || '')
+    .toLowerCase()
+    .replace(/https?:\/\//g, '')
+    .replace(/^www\./, '')
+    .replace(/\.[a-z]{2,}(\/.*)?$/i, '')
+    .replace(/&/g, 'and')
+    .replace(/\b(cap|capital|partners|partner|management|mgmt|llc|inc|corp|corporation|co|company|the)\b/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+
+const getEmailDomain = (value: string | null | undefined) => {
+  const email = (value || '').toLowerCase();
+  const domain = email.includes('@') ? email.split('@').pop() : email;
+  return (domain || '').replace(/^www\./, '').trim() || null;
+};
 
 /**
  * useThreadWorkflowAnalysis
