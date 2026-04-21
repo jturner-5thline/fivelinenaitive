@@ -922,12 +922,14 @@ function DayColumn({
   onEventClick,
   showDayLabel,
   onSlotClick,
+  calendarColors,
 }: {
   date: Date;
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
   showDayLabel: boolean;
   onSlotClick?: (date: Date, hour: number) => void;
+  calendarColors: CalendarColorMap;
 }) {
   const timedEvents = dayEvents.filter(e => !e.all_day);
   const today = isToday(date);
@@ -990,6 +992,7 @@ function DayColumn({
               key={event.id}
               event={event}
               colorClass={getEventColorClass(event, idx)}
+              colorStyle={getEventColorStyle(event, calendarColors)}
               onClick={() => onEventClick(event)}
               style={{ top, height: Math.max(height, MIN_EVENT_HEIGHT), minHeight: MIN_EVENT_HEIGHT }}
             />
