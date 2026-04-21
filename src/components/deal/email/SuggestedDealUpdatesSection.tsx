@@ -269,6 +269,8 @@ export function SuggestedDealUpdatesSection({ dealId, dealName, threadId }: Prop
                         changed_count: diff.changed.length,
                         added_count: diff.added.length,
                         unchanged_count: diff.unchanged.length,
+                        source_thread_url: buildSourceThreadUrl(dealId, finalPayload.source.threadId),
+                        confirmed_at: new Date().toISOString(),
                         suggestion_id: s.id,
                       },
                     );
