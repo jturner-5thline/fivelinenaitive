@@ -10,3 +10,4 @@ export { QuickBooksFinancialDashboard } from './QuickBooksFinancialDashboard';
 export { ManagementReviewDashboard } from './ManagementReviewDashboard';
 export { ManagementReviewCarousel } from './ManagementReviewCarousel';
 export { RevenueQuarterlySection } from './RevenueOverviewDashboard';
+export { WeeklyRundownCarousel } from './WeeklyRundownCarousel';

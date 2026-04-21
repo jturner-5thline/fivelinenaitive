@@ -102,6 +102,7 @@ import {
   QuickBooksFinancialDashboard,
   ManagementReviewCarousel,
 } from "@/components/metrics/dashboards";
+import { WeeklyRundownCarousel } from "@/components/metrics/dashboards/WeeklyRundownCarousel";
 import { useQuickBooksMetrics } from "@/hooks/useQuickBooksMetrics";
 import { useHubSpotMetrics } from "@/hooks/useHubSpotMetrics";
 import { useCustomMetrics } from "@/hooks/useCustomMetrics";
