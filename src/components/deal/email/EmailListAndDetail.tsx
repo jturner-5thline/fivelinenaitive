@@ -1188,8 +1188,22 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
   return (
     <>
-      <div className="flex h-full min-w-0 w-full flex-col overflow-hidden min-[1100px]:flex-row">
-        <div className="flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden bg-[hsl(var(--email-reading-bg))]">
+      {/* Reactive grid: detail column uses minmax(0,1fr) so it can shrink below
+          its intrinsic content width when the AI Assist column appears, which
+          forces body text to re-wrap. Animated via grid-template-columns
+          transition so toggling Assist feels fluid. Below 1100px the grid
+          stacks (detail on top, assist below) so the middle column always has
+          room to wrap. */}
+      <div
+        className="relative grid h-full min-w-0 w-full overflow-hidden transition-[grid-template-columns,grid-template-rows] duration-200 ease-out"
+        style={{
+          gridTemplateColumns: showAiAssist
+            ? 'minmax(0, 1fr) minmax(300px, 380px)'
+            : 'minmax(0, 1fr)',
+          gridTemplateRows: '1fr',
+        }}
+      >
+        <div className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-[hsl(var(--email-reading-bg))]">
           {/* Outlook-style command bar */}
           <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-[hsl(var(--email-border))] bg-card/60 backdrop-blur-sm shrink-0">
             <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-7 w-7">
@@ -1540,18 +1554,20 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           )}
         </div>
 
-        {/* AI Assist right-side sidebar — always rendered on lg+ as a persistent
-            narrow column. On smaller widths it slides in only when toggled via
-            the toolbar button. */}
-        <div
-          className={cn(
-            'min-h-0 shrink-0 overflow-hidden border-[hsl(var(--email-border))] bg-card/40',
-            'min-[1100px]:h-full min-[1100px]:border-l min-[1100px]:border-t-0',
-            showAiAssist
-              ? 'flex h-[min(40vh,420px)] w-full border-t min-[1100px]:h-full min-[1100px]:w-auto min-[1100px]:border-t-0'
-              : 'hidden min-[1100px]:flex',
-          )}
-        >
+        {/* AI Assist column — sibling grid cell. Only rendered when toggled on,
+            so the grid collapses to a single column and the detail pane reclaims
+            the full width. Below 1100px we collapse to slide-over to keep the
+            detail column wide enough for body wrapping. */}
+        {showAiAssist && (
+          <div
+            className={cn(
+              'flex min-h-0 min-w-0 overflow-hidden border-[hsl(var(--email-border))] bg-card/40',
+              // Desktop (>=1100px): persistent right column inside the grid cell
+              'min-[1100px]:h-full min-[1100px]:border-l',
+              // Below 1100px: slide-over so the middle column keeps its width
+              'absolute inset-y-0 right-0 z-20 h-full w-[min(380px,90vw)] border-l shadow-2xl min-[1100px]:static min-[1100px]:z-auto min-[1100px]:w-auto min-[1100px]:shadow-none',
+            )}
+          >
           <AiAssistSidebar
             thread={thread}
             dealId={dealId}
@@ -1577,7 +1593,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               setShowResumeBanner(false);
             }}
           />
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Pop-out composer */}
