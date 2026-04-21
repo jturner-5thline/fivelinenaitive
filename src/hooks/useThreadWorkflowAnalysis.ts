@@ -768,6 +768,19 @@ export function useThreadWorkflowAnalysis({
       dismiss();
       currentStep = 'finalUIRefresh';
       await refreshDeals();
+      // Broadcast a deal-scoped refresh event so any open DealDetail page or
+      // Lenders tab can re-fetch its local state without a full reload.
+      try {
+        window.dispatchEvent(
+          new CustomEvent('deal:lender-updated', {
+            detail: {
+              dealId: targetDealId,
+              dealLenderId: resolvedLenderId,
+              source: 'ai_thread_workflow',
+            },
+          }),
+        );
+      } catch { /* ignore */ }
       debugStep('finalUIRefresh:success', {
         dealId: targetDealId,
         dealLenderId: resolvedLenderId,
