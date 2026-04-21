@@ -13119,6 +13119,65 @@ export type Database = {
           },
         ]
       }
+      pending_deal_suggestions: {
+        Row: {
+          company_id: string
+          confirmed_at: string | null
+          confirmed_note_id: string | null
+          created_at: string
+          deal_id: string
+          dedup_key: string | null
+          id: string
+          payload: Json
+          source_thread_id: string | null
+          source_thread_subject: string | null
+          status: string
+          suggestion_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          confirmed_at?: string | null
+          confirmed_note_id?: string | null
+          created_at?: string
+          deal_id: string
+          dedup_key?: string | null
+          id?: string
+          payload?: Json
+          source_thread_id?: string | null
+          source_thread_subject?: string | null
+          status?: string
+          suggestion_type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          confirmed_at?: string | null
+          confirmed_note_id?: string | null
+          created_at?: string
+          deal_id?: string
+          dedup_key?: string | null
+          id?: string
+          payload?: Json
+          source_thread_id?: string | null
+          source_thread_subject?: string | null
+          status?: string
+          suggestion_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_deal_suggestions_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pending_lender_notifications: {
         Row: {
           change_summary: Json

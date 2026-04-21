@@ -50,6 +50,10 @@ import { MockEmail, EmailThread, getAvatarColor, groupEmailsByThread } from './m
 import { InlineReplyComposer, type ReplyDraft } from './InlineReplyComposer';
 import { PopOutComposer } from './PopOutComposer';
 import { useEmailDraft, useUnsavedDraftGuard } from '@/hooks/useEmailDraft';
+import { detectBareEmailsInDraft } from '@/lib/detectDraftEmails';
+import { usePendingDealSuggestions } from '@/hooks/usePendingDealSuggestions';
+import { useResolveDealForEmail } from '@/hooks/useResolveDealForEmail';
+import { isAutoDealNoteSuggestionEnabled } from '@/hooks/useAutoDealNoteSuggestionPref';
 import { EmailContextMenu } from './EmailContextMenu';
 import { EmailBodyRenderer } from './EmailBodyRenderer';
 import { EmailAttachmentList } from './EmailAttachmentList';
@@ -760,6 +764,12 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const hasActiveDraft = !!(replyTo || popOutDraft);
   useUnsavedDraftGuard(hasActiveDraft);
 
+  // Auto-suggest deal note from emails detected in draft body.
+  // Resolved deal IDs may differ from the linked deal — we still scope
+  // the suggestion to the resolved deal's space.
+  const resolveDeal = useResolveDealForEmail();
+  const { create: createPendingSuggestion } = usePendingDealSuggestions(dealId);
+
   // Token context for snippet resolution
   const snippetTokenContext = {
     recipientName: thread.latestEmail.from_name === 'You' ? thread.latestEmail.to_name : thread.latestEmail.from_name,
@@ -878,7 +888,68 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
   const handleFieldBlur = useCallback(() => {
     flushSave();
-  }, [flushSave]);
+    if (!isAutoDealNoteSuggestionEnabled()) return;
+    const draft = inlineDraft || popOutDraft;
+    if (!draft?.body) return;
+
+    const detected = detectBareEmailsInDraft(draft.body);
+    if (detected.length === 0) return;
+
+    const senderEmail = thread.latestEmail.from_email;
+
+    (async () => {
+      for (const det of detected) {
+        // Skip the sender / current user — we want NEW contacts.
+        if (det.email === senderEmail?.toLowerCase()) continue;
+
+        // Resolve target deal: prefer linked dealId; otherwise fuzzy match.
+        let targetDealId = dealId;
+        let targetCompanyId: string | undefined;
+
+        if (!targetDealId) {
+          const candidates = resolveDeal({
+            subject: thread.subject,
+            senderEmail,
+            detectedEmail: det.email,
+          });
+          if (candidates.length === 1) {
+            targetDealId = candidates[0].deal.id;
+          }
+          // 0 or many → don't auto-create; user can re-trigger from a deal-linked thread.
+          if (!targetDealId) continue;
+        }
+
+        // Fetch company_id for the deal (required for RLS).
+        try {
+          const { data: dealRow } = await supabase
+            .from('deals')
+            .select('company_id')
+            .eq('id', targetDealId)
+            .single();
+          targetCompanyId = dealRow?.company_id || undefined;
+        } catch {
+          continue;
+        }
+        if (!targetCompanyId) continue;
+
+        await createPendingSuggestion({
+          dealId: targetDealId,
+          companyId: targetCompanyId,
+          payload: {
+            email: det.email,
+            domain: det.domain,
+            inferredName: det.inferredName,
+            contextSnippet: det.contextSnippet,
+            proposedNote: '',
+            detectedAt: new Date().toISOString(),
+          },
+          sourceThreadId: thread.threadId,
+          sourceThreadSubject: thread.subject,
+          dedupKey: `draft-email::${thread.threadId}::${det.email}`,
+        });
+      }
+    })();
+  }, [flushSave, inlineDraft, popOutDraft, dealId, thread, resolveDeal, createPendingSuggestion]);
 
   const handleSendFromComposer = useCallback((emailData: Omit<MockEmail, 'id' | 'threadId'>) => {
     onSendReply(emailData, thread.threadId);

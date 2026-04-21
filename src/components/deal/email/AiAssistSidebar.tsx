@@ -22,6 +22,7 @@ import { DataRoomSuggestionCard } from './DataRoomSuggestionCard';
 import { SendToDataRoomDialog } from './SendToDataRoomDialog';
 import { useFullEmailMessage } from './useFullEmailMessage';
 import { useEmailToDataRoom, type DataRoomDestinationSuggestion } from '@/hooks/useEmailToDataRoom';
+import { SuggestedDealUpdatesSection } from './SuggestedDealUpdatesSection';
 
 /**
  * AiAssistSidebar
@@ -410,6 +411,11 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               onConfirm={() => setDrDialogOpen(true)}
               onDismiss={() => setDrDismissed(true)}
             />
+          )}
+
+          {/* Suggested Deal Updates — pending confirm-first writes (e.g., contact emails detected in drafts) */}
+          {dealId && (
+            <SuggestedDealUpdatesSection dealId={dealId} dealName={dealName} />
           )}
 
           {/* Draft area — always rendered as a shell so the panel never blocks. */}
