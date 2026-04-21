@@ -4,10 +4,8 @@ import type { Database } from '@/integrations/supabase/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { toast } from 'sonner';
-import {
-  PASS_REASON_LABELS,
-  type LenderPassReasonCategory,
-} from '@/hooks/useLenderDisqualifications';
+import { useQueryClient } from '@tanstack/react-query';
+import { type LenderPassReasonCategory } from '@/hooks/useLenderDisqualifications';
 
 export type WorkflowConfidence = 'low' | 'medium' | 'high';
 export type WorkflowSignalType =
@@ -116,6 +114,24 @@ type DealLenderInsert = Database['public']['Tables']['deal_lenders']['Insert'];
 type DealLenderUpdate = Database['public']['Tables']['deal_lenders']['Update'];
 type LenderDisqualificationInsert = Database['public']['Tables']['lender_disqualifications']['Insert'];
 
+const normalizeFirmName = (value: string | null | undefined) =>
+  (value || '')
+    .toLowerCase()
+    .replace(/https?:\/\//g, '')
+    .replace(/^www\./, '')
+    .replace(/\.[a-z]{2,}(\/.*)?$/i, '')
+    .replace(/&/g, 'and')
+    .replace(/\b(cap|capital|partners|partner|management|mgmt|llc|inc|corp|corporation|co|company|the)\b/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+
+const getEmailDomain = (value: string | null | undefined) => {
+  const email = (value || '').toLowerCase();
+  const domain = email.includes('@') ? email.split('@').pop() : email;
+  return (domain || '').replace(/^www\./, '').trim() || null;
+};
+
 /**
  * useThreadWorkflowAnalysis
  * --------------------------
@@ -139,6 +155,7 @@ export function useThreadWorkflowAnalysis({
 }: UseThreadWorkflowAnalysisOptions) {
   const { user } = useAuth();
   const { refreshDeals } = useDealsContext();
+  const queryClient = useQueryClient();
   const [analysis, setAnalysis] = useState<WorkflowAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [committing, setCommitting] = useState(false);
@@ -467,17 +484,130 @@ export function useThreadWorkflowAnalysis({
     }
   }, []);
 
+  const resolveCanonicalDealId = useCallback(async () => {
+    const explicitThreadDealId = threadData?.deal_id || threadData?.dealId || threadData?.linkedDealId || null;
+    if (explicitThreadDealId) return explicitThreadDealId as string;
+    if (dealId) return dealId;
+
+    const threadMessageIds: string[] = (threadData?.emails || [])
+      .map((e: any) => e?.gmail_message_id || e?.id)
+      .filter(Boolean);
+    if (threadMessageIds.length === 0) return null;
+
+    const { data, error } = await supabase
+      .from('deal_emails')
+      .select('deal_id, gmail_message_id')
+      .in('gmail_message_id', threadMessageIds);
+    if (error) throw error;
+
+    const uniqueDealIds = Array.from(new Set((data || []).map((row: any) => row.deal_id).filter(Boolean)));
+    if (uniqueDealIds.length === 0) return null;
+    if (uniqueDealIds.length > 1) {
+      console.warn('[useThreadWorkflowAnalysis] multiple thread deal links; using first', {
+        threadId: threadData?.threadId || null,
+        uniqueDealIds,
+        matchedRows: data,
+      });
+    }
+    return uniqueDealIds[0] as string;
+  }, [dealId, threadData]);
+
+  const resolveLenderCompany = useCallback(async (lenderName: string, senderEmail?: string | null) => {
+    const name = lenderName.trim();
+    const senderDomain = getEmailDomain(senderEmail);
+    const nameNorm = normalizeFirmName(name);
+    const aliases = Array.from(new Set([
+      name,
+      name.replace(/\bCapital\b/gi, 'Cap').trim(),
+      name.replace(/\bCap\b/gi, 'Capital').trim(),
+    ].filter(Boolean)));
+
+    let candidates: any[] = [];
+    if (aliases.length > 0) {
+      const { data: crmMatches, error: crmError } = await supabase
+        .from('crm_companies')
+        .select('id, name, domain, additional_domains')
+        .or(aliases.map((alias) => `name.ilike.${alias}`).join(','));
+      if (crmError) throw crmError;
+      candidates = crmMatches || [];
+    }
+    if (senderDomain) {
+      const { data: domainMatches, error: domainError } = await supabase
+        .from('crm_companies')
+        .select('id, name, domain, additional_domains')
+        .or(`domain.eq.${senderDomain},website_url.ilike.%${senderDomain}%`);
+      if (domainError) throw domainError;
+      candidates = [...candidates, ...(domainMatches || [])];
+    }
+
+    if (candidates.length === 0 && nameNorm) {
+      const { data: fuzzy, error: fuzzyError } = await supabase
+        .from('crm_companies')
+        .select('id, name, domain, additional_domains')
+        .ilike('name', `%${name.split(/\s+/)[0]}%`)
+        .limit(25);
+      if (fuzzyError) throw fuzzyError;
+      candidates = fuzzy || [];
+    }
+
+    const deduped = Array.from(new Map(candidates.map((c: any) => [c.id, c])).values());
+    const exactDomain = senderDomain
+      ? deduped.find((c: any) => c.domain === senderDomain || (c.additional_domains || []).includes(senderDomain))
+      : null;
+    const exactName = deduped.find((c: any) => normalizeFirmName(c.name) === nameNorm);
+    const aliasName = deduped.find((c: any) => {
+      const candidate = normalizeFirmName(c.name);
+      return candidate && nameNorm && (candidate === nameNorm || candidate.startsWith(nameNorm) || nameNorm.startsWith(candidate));
+    });
+    const resolved = exactDomain || exactName || aliasName || null;
+
+    debugStep('resolveLenderCompany', {
+      lenderName: name,
+      senderEmail: senderEmail || null,
+      senderDomain,
+      aliases,
+      companyId: resolved?.id || null,
+      companyName: resolved?.name || null,
+      candidateCount: deduped.length,
+    });
+
+    return resolved ? { id: resolved.id as string, name: resolved.name as string } : null;
+  }, []);
+
+  const resolveDealLenderRow = useCallback(async (canonicalDealId: string, companyName: string, companyId: string) => {
+    const { data, error } = await supabase
+      .from('deal_lenders')
+      .select('id, deal_id, name, stage, tracking_status, pass_reason, notes')
+      .eq('deal_id', canonicalDealId);
+    if (error) throw error;
+
+    const targetNorm = normalizeFirmName(companyName);
+    const rows = (data || []).filter((row: any) => {
+      const rowNorm = normalizeFirmName(row.name);
+      return rowNorm === targetNorm || rowNorm.startsWith(targetNorm) || targetNorm.startsWith(rowNorm);
+    });
+
+    if (rows.length === 0) return null;
+    if (rows.length > 1) {
+      console.warn('[useThreadWorkflowAnalysis] multiple lender rows matched resolved company; using canonical deal row', {
+        canonicalDealId,
+        companyId,
+        companyName,
+        rows,
+      });
+    }
+    return rows[0] as any;
+  }, []);
+
   /**
-   * Final confirm action. Accepts user-edited overrides (status, detail,
-   * note). Runs resolve → ensureLenderOnDeal → apply → log in sequence and
-   * surfaces success/failure to the UI.
+   * Final confirm action. Deterministic path: persisted thread→deal link,
+   * resolved CRM company/domain identity, then the existing deal_lenders row
+   * scoped to that deal. No auto-linking in this path.
    */
   const confirmRecommendation = useCallback(async (overrides?: {
     reasonNote?: string;
     confirmedStatus?: string;
-    /** Comma-joined label string saved into deal_lenders.pass_reason. */
     confirmedDetail?: string;
-    /** Multi-select array of label strings — one disqualification row per label. */
     confirmedDetailLabels?: string[];
   }) => {
     if (!analysis || !user) return false;
@@ -485,316 +615,191 @@ export function useThreadWorkflowAnalysis({
     if (!rec || rec.kind === 'none') return false;
 
     setCommitting(true);
-    let currentStep = 'resolveDealAndLenderFromSuggestion';
+    let currentStep = 'resolveCanonicalDealAndLender';
+    let debugContext: Record<string, unknown> = {
+      threadId: threadData?.threadId || null,
+      thread_id: threadData?.id || null,
+    };
+
     try {
-      const targetDealId = rec.deal_id || dealId || analysis.likely_deal.id;
-      if (!targetDealId) {
-        toast.error('No deal identified — please link a deal first.');
+      const canonicalDealId = await resolveCanonicalDealId();
+      debugContext = { ...debugContext, canonicalDealId };
+      if (!canonicalDealId) {
+        toast.error('No deal linked to this thread');
         return false;
       }
 
-      const reason = overrides?.reasonNote ?? rec.reason_note ?? analysis.signal.label;
-      const aiSuggestedStatus = (rec.new_stage || '').toLowerCase();
-      const finalStatus = (overrides?.confirmedStatus || aiSuggestedStatus || 'passed').toLowerCase();
-      const aiSuggestedDetail = (rec.suggested_detail || '').toLowerCase();
-      const finalDetail = (overrides?.confirmedDetail ?? aiSuggestedDetail).toLowerCase();
-      // Multi-select labels (preferred). Falls back to splitting confirmedDetail
-      // by commas for back-compat with the legacy single-value path.
+      const lenderName = rec.lender_name || analysis.likely_lender_firm.name || '';
+      const senderEmail = latestInbound?.from_email || null;
+      const company = await resolveLenderCompany(lenderName, senderEmail);
+      debugContext = { ...debugContext, companyId: company?.id || null, companyName: company?.name || null };
+      if (!company?.id) {
+        throw new Error(`Could not resolve lender company for "${lenderName || 'Unknown lender'}"`);
+      }
+
+      const targetRow = await resolveDealLenderRow(canonicalDealId, company.name, company.id);
+      debugContext = { ...debugContext, dealLenderId: targetRow?.id || null };
+      if (!targetRow?.id) {
+        throw new Error(`Lender not on this deal: ${company.name}`);
+      }
+
       const finalDetailLabels: string[] = (overrides?.confirmedDetailLabels && overrides.confirmedDetailLabels.length > 0)
         ? overrides.confirmedDetailLabels
         : (overrides?.confirmedDetail
-            ? overrides.confirmedDetail.split(',').map((s) => s.trim()).filter(Boolean)
+            ? overrides.confirmedDetail.split(',').map((part) => part.trim()).filter(Boolean)
             : []);
-      const userOverrodeSuggestion =
-        (!!overrides?.confirmedStatus && overrides.confirmedStatus.toLowerCase() !== aiSuggestedStatus) ||
-        (overrides?.confirmedDetail !== undefined && overrides.confirmedDetail.toLowerCase() !== aiSuggestedDetail);
+      const passReasonText = finalDetailLabels.join(', ') || overrides?.confirmedDetail || 'Passed';
+      const reason = overrides?.reasonNote ?? rec.reason_note ?? analysis.signal.label ?? '';
+      const finalStatus = (overrides?.confirmedStatus || rec.new_stage || 'passed').toLowerCase();
+      const sourceMessageId = latestInbound?.gmail_message_id || latestInbound?.id || messageId || null;
 
-      debugStep('resolveDealAndLenderFromSuggestion:success', {
-        targetDealId,
-        suggestedDealId: rec.deal_id || null,
-        suggestedLenderId: rec.lender_id || null,
-        suggestedMasterLenderId: rec.master_lender_id || null,
-        lenderName: rec.lender_name || analysis.likely_lender_firm.name || null,
-        aiSuggestedStatus,
-        aiSuggestedDetail: aiSuggestedDetail || null,
-        finalStatus,
-        finalDetail: finalDetail || null,
+      currentStep = 'updateDealLender';
+      const lenderUpdatePayload: DealLenderUpdate = {
+        stage: 'passed',
+        substage: null,
+        tracking_status: 'passed',
+        pass_reason: passReasonText,
+        notes: reason || targetRow.notes || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      debugStep('confirmMutation:attempt', {
+        ...debugContext,
+        targetDealLendersId: targetRow.id,
+        updatePayload: lenderUpdatePayload,
       });
 
-      let resolvedLenderId: string | null = rec.lender_id || null;
-      let relationshipCreated = false;
+      const { data: updatedRows, error: updateError } = await supabase
+        .from('deal_lenders')
+        .update(lenderUpdatePayload)
+        .eq('id', targetRow.id)
+        .eq('deal_id', canonicalDealId)
+        .select('id, deal_id, name, stage, tracking_status, pass_reason, notes, updated_at');
 
-      if (rec.kind === 'lender_status') {
-        currentStep = 'ensureLenderOnDeal';
-        const lenderName = rec.lender_name || analysis.likely_lender_firm.name || '';
-        // CRITICAL: ignore the AI's `rec.lender_id` if it does NOT belong to
-        // the resolved target deal. The AI sometimes returns a deal_lenders
-        // id from a different deal that has the same lender (e.g. "Advantage
-        // Capital" appears on 18 different deals). Passing that id through
-        // would either no-op or, worse, flip the wrong row.
-        let safeSuggestedLenderId: string | undefined = rec.lender_id || undefined;
-        if (safeSuggestedLenderId) {
-          const { data: belongs } = await supabase
-            .from('deal_lenders')
-            .select('id, deal_id')
-            .eq('id', safeSuggestedLenderId)
-            .maybeSingle();
-          if (!belongs || belongs.deal_id !== targetDealId) {
-            debugStep('confirmRecommendation:rejecting-cross-deal-lender-id', {
-              suggestedLenderId: safeSuggestedLenderId,
-              suggestedLenderActualDealId: belongs?.deal_id || null,
-              targetDealId,
-            });
-            safeSuggestedLenderId = undefined;
-          }
-        }
-        // Prefer the DB-backed resolver result (already scoped to the right
-        // deal by the useEffect above). Fallback to ensureLenderOnDeal which
-        // re-runs the same name lookup as a safety net.
-        if (!safeSuggestedLenderId && resolvedDealLenderId) {
-          // Verify the resolver-cached id is still pointed at THIS deal
-          // (analysis can change between auto-runs).
-          const { data: cached } = await supabase
-            .from('deal_lenders')
-            .select('id, deal_id, name')
-            .eq('id', resolvedDealLenderId)
-            .eq('deal_id', targetDealId)
-            .maybeSingle();
-          if (cached?.id) safeSuggestedLenderId = cached.id;
-        }
-        const ensured = await ensureLenderOnDeal(
-          targetDealId,
-          safeSuggestedLenderId,
-          rec.master_lender_id,
-          lenderName,
-        );
-        if (!ensured) {
-          toast.error(`Could not link ${lenderName || 'lender'} to this deal. Please add them manually and retry.`);
-          return false;
-        }
-        resolvedLenderId = ensured.dealLenderId;
-        relationshipCreated = ensured.created;
-        debugStep('ensureLenderOnDeal:resolved', {
-          targetDealId,
-          dealLenderId: resolvedLenderId,
-          relationshipCreated,
-          masterLenderId: rec.master_lender_id || null,
-        });
+      debugStep('confirmMutation:update-response', {
+        ...debugContext,
+        targetDealLendersId: targetRow.id,
+        data: updatedRows,
+        error: updateError?.message || null,
+      });
+      if (updateError) throw updateError;
+      if (!updatedRows || updatedRows.length !== 1) {
+        throw new Error(`Expected 1 updated lender row but got ${updatedRows?.length || 0}. ids=${JSON.stringify(debugContext)}`);
       }
 
-      if (rec.kind === 'lender_status' && resolvedLenderId) {
-        currentStep = 'applyDisposition';
-        const mapped = STATUS_STAGE_MAP[finalStatus] || STATUS_STAGE_MAP.passed;
-        // Mirror the deal-detail "Confirm Pass" dialog: store the joined
-        // human labels directly into deal_lenders.pass_reason. This keeps
-        // both surfaces interoperable.
-        const joinedLabels = finalDetailLabels.join(', ');
-        const passReasonText = mapped.closes
-          ? (joinedLabels
-              || (finalDetail && PASS_REASON_LABELS[finalDetail as LenderPassReasonCategory]
-                ? PASS_REASON_LABELS[finalDetail as LenderPassReasonCategory]
-                : null)
-              || (finalStatus === 'not_a_fit' ? 'Not a fit' : finalStatus === 'declined' ? 'Declined' : 'Passed'))
-          : undefined;
+      currentStep = 'readBackVerification';
+      const { data: verifyRow, error: verifyError } = await supabase
+        .from('deal_lenders')
+        .select('id, deal_id, name, stage, substage, tracking_status, pass_reason, notes, updated_at')
+        .eq('id', targetRow.id)
+        .eq('deal_id', canonicalDealId)
+        .maybeSingle();
 
-        const lenderUpdatePayload: DealLenderUpdate = {
-          stage: mapped.stage,
-          tracking_status: mapped.trackingStatus,
-          pass_reason: passReasonText ?? null,
-          updated_at: new Date().toISOString(),
+      debugStep('confirmMutation:read-back', {
+        ...debugContext,
+        targetDealLendersId: targetRow.id,
+        readBackStatus: verifyRow?.stage || null,
+        readBackTrackingStatus: verifyRow?.tracking_status || null,
+        readBackPassReason: verifyRow?.pass_reason || null,
+        verifyRow,
+        verifyError: verifyError?.message || null,
+      });
+      if (verifyError) throw verifyError;
+      if (!verifyRow || verifyRow.stage !== 'passed' || verifyRow.tracking_status !== 'passed') {
+        throw new Error(`Read-back mismatch for ids=${JSON.stringify(debugContext)} status=${verifyRow?.stage || 'missing'}`);
+      }
+
+      if (finalDetailLabels.length > 0) {
+        const labelToCategory = (label: string): LenderPassReasonCategory => {
+          const l = label.toLowerCase();
+          if (/(deal\s*size|size|too\s*small|too\s*big|check\s*size)/.test(l)) return 'deal_size_mismatch';
+          if (/(industry|sector|vertical)/.test(l)) return 'industry_exclusion';
+          if (/(geograph|location|region|state|country)/.test(l)) return 'geographic_restriction';
+          if (/(risk|credit|leverage|burn|profitab|concentration)/.test(l)) return 'risk_profile_concerns';
+          if (/(timing|capacity|year[- ]end|paused)/.test(l)) return 'timing_issues';
+          if (/(relationship|conflict)/.test(l)) return 'relationship_issues';
+          if (/(terms|pricing|structure|rate|covenant)/.test(l)) return 'terms_mismatch';
+          return 'other';
         };
-        debugStep('applyDisposition:update-attempt', {
-          dealLenderId: resolvedLenderId,
-          lenderUpdatePayload,
-        });
-
-        const { data: updatedLender, error: updateError } = await supabase
-          .from('deal_lenders')
-          .update(lenderUpdatePayload)
-          .eq('id', resolvedLenderId)
-          .eq('deal_id', targetDealId)
-          .select('id, deal_id, name, stage, tracking_status, pass_reason')
-          .maybeSingle();
-
-        if (updateError) throw updateError;
-        if (!updatedLender?.id) throw new Error('Disposition update did not persist');
-
-        debugStep('applyDisposition:update-success', {
-          dealLenderId: updatedLender.id,
-          dealId: updatedLender.deal_id,
-          lenderName: updatedLender.name,
-          stage: updatedLender.stage,
-          trackingStatus: updatedLender.tracking_status,
-          passReason: updatedLender.pass_reason,
-        });
-
-        // READ-BACK VERIFICATION: re-query the row independently and assert
-        // the new state actually persisted. Catches RLS-silenced updates
-        // and any race where the update returned a stale projection.
-        const { data: verifyRow, error: verifyError } = await supabase
-          .from('deal_lenders')
-          .select('id, deal_id, stage, tracking_status, pass_reason')
-          .eq('id', resolvedLenderId)
-          .eq('deal_id', targetDealId)
-          .maybeSingle();
-        debugStep('applyDisposition:read-back', {
-          dealLenderId: resolvedLenderId,
-          targetDealId,
-          verifyError: verifyError?.message || null,
-          verifyRow,
-          expectedStage: mapped.stage,
-          expectedTrackingStatus: mapped.trackingStatus,
-        });
-        if (verifyError) throw verifyError;
-        if (!verifyRow) {
-          throw new Error(
-            `Read-back failed — could not find deal_lenders row id=${resolvedLenderId} on deal_id=${targetDealId}. ` +
-            `The update may have been blocked by RLS or the row was deleted.`,
-          );
-        }
-        if (verifyRow.stage !== mapped.stage || verifyRow.tracking_status !== mapped.trackingStatus) {
-          throw new Error(
-            `Read-back mismatch on deal_lenders ${resolvedLenderId}: expected stage="${mapped.stage}"/tracking="${mapped.trackingStatus}" ` +
-            `but found stage="${verifyRow.stage}"/tracking="${verifyRow.tracking_status}". Update did not apply.`,
-          );
-        }
-
-        // Insert one lender_disqualifications row per selected reason label.
-        // We map labels back to the LenderPassReasonCategory enum (best-effort
-        // keyword match); unmapped labels fall back to 'other' with the label
-        // preserved in reason_details so reporting still works.
-        if (mapped.closes && finalDetailLabels.length > 0) {
-          const labelToCategory = (label: string): LenderPassReasonCategory => {
-            const l = label.toLowerCase();
-            if (/(deal\s*size|size|too\s*small|too\s*big|check\s*size)/.test(l)) return 'deal_size_mismatch';
-            if (/(industry|sector|vertical)/.test(l)) return 'industry_exclusion';
-            if (/(geograph|location|region|state|country)/.test(l)) return 'geographic_restriction';
-            if (/(risk|credit|leverage|burn|profitab|concentration)/.test(l)) return 'risk_profile_concerns';
-            if (/(timing|capacity|year[- ]end|paused)/.test(l)) return 'timing_issues';
-            if (/(relationship|conflict)/.test(l)) return 'relationship_issues';
-            if (/(terms|pricing|structure|rate|covenant)/.test(l)) return 'terms_mismatch';
-            return 'other';
-          };
-
-          const rows: LenderDisqualificationInsert[] = finalDetailLabels.map((label) => ({
-            deal_id: targetDealId,
-            deal_lender_id: resolvedLenderId,
-            lender_name: rec.lender_name || analysis.likely_lender_firm.name || 'Lender',
-            master_lender_id: rec.master_lender_id || null,
-            disqualified_by: user.id,
-            reason_category: labelToCategory(label),
-            reason_details: [label, reason].filter(Boolean).join(' — ') || null,
-          }));
-
-          debugStep('applyDisposition:disqualification-attempt', { rowCount: rows.length, rows });
-
-          const { error: disqualificationError } = await supabase
-            .from('lender_disqualifications')
-            .insert(rows);
-
-          if (disqualificationError) throw disqualificationError;
-          debugStep('applyDisposition:disqualification-success', {
-            dealId: targetDealId,
-            dealLenderId: resolvedLenderId,
-            labels: finalDetailLabels,
-          });
-        }
+        const rows: LenderDisqualificationInsert[] = finalDetailLabels.map((label) => ({
+          deal_id: canonicalDealId,
+          deal_lender_id: targetRow.id,
+          lender_name: verifyRow.name,
+          master_lender_id: rec.master_lender_id || null,
+          disqualified_by: user.id,
+          reason_category: labelToCategory(label),
+          reason_details: [label, reason].filter(Boolean).join(' — ') || null,
+        }));
+        const { error: disqualificationError } = await supabase
+          .from('lender_disqualifications')
+          .insert(rows);
+        if (disqualificationError) throw disqualificationError;
       }
 
       currentStep = 'writeActivityLog';
-      const sourceMessageId =
-        latestInbound?.gmail_message_id || latestInbound?.id || messageId || null;
       const activityPayload = {
-        deal_id: targetDealId,
-        activity_type: rec.kind === 'lender_status' ? 'lender_update' : 'status_update',
-        description: userOverrodeSuggestion
-          ? `${rec.lender_name || 'Lender'} marked as ${finalStatus.replace('_', ' ')} (user override)`
-          : (rec.title || `Lender update`).replace(/\?$/, ''),
+        deal_id: canonicalDealId,
+        activity_type: 'lender_stage_change',
+        description: `${verifyRow.name} marked as Passed${passReasonText ? ` — ${passReasonText}` : ''}`,
         user_id: user.id,
         metadata: {
           source: 'ai_thread_workflow',
-          signal_type: analysis.signal.type,
-          signal_label: analysis.signal.label,
-          supporting_quote: analysis.signal.supporting_quote,
-          nuance: analysis.signal.nuance,
-          ai_suggested_status: aiSuggestedStatus,
+          lender_id: targetRow.id,
+          lender_name: verifyRow.name,
+          company_id: company.id,
+          from: targetRow.stage,
+          to: 'passed',
           final_confirmed_status: finalStatus,
-          ai_suggested_detail: aiSuggestedDetail || null,
-          final_confirmed_detail: finalDetail || null,
-          user_overrode_suggestion: userOverrodeSuggestion,
-          relationship_created: relationshipCreated,
-          lender_id: resolvedLenderId,
-          lender_name: rec.lender_name || null,
-          master_lender_id: rec.master_lender_id || null,
+          final_confirmed_detail_labels: finalDetailLabels,
           reason_note: reason,
-          confidence: rec.confidence,
-          ambiguity_flags: rec.ambiguity_flags || [],
           source_thread_id: threadData?.threadId || null,
           source_message_id: sourceMessageId,
         },
       };
-      debugStep('writeActivityLog:attempt', activityPayload);
-
       const { data: activityRow, error: activityError } = await supabase
         .from('activity_logs')
         .insert(activityPayload)
         .select('id')
         .single();
-
       if (activityError) throw activityError;
-      debugStep('writeActivityLog:success', {
+
+      currentStep = 'refreshCaches';
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['deal', canonicalDealId] }),
+        queryClient.invalidateQueries({ queryKey: ['deal-detail', canonicalDealId] }),
+        queryClient.invalidateQueries({ queryKey: ['deal-lenders', canonicalDealId] }),
+        queryClient.invalidateQueries({ queryKey: ['activity_logs', canonicalDealId] }),
+        queryClient.invalidateQueries({ queryKey: ['deal-activity', canonicalDealId] }),
+        refreshDeals(),
+      ]);
+
+      window.dispatchEvent(new CustomEvent('deal:lender-updated', {
+        detail: { dealId: canonicalDealId, dealLenderId: targetRow.id, source: 'ai_thread_workflow' },
+      }));
+      window.dispatchEvent(new CustomEvent('deal:activity-updated', {
+        detail: { dealId: canonicalDealId, activityLogId: activityRow.id, source: 'ai_thread_workflow' },
+      }));
+
+      debugStep('confirmMutation:success', {
+        ...debugContext,
+        targetDealLendersId: targetRow.id,
         activityLogId: activityRow.id,
-        dealId: targetDealId,
-        dealLenderId: resolvedLenderId,
+        readBackStatus: verifyRow.stage,
+        readBackTrackingStatus: verifyRow.tracking_status,
       });
 
-      logEvent('ai_suggested_update_confirmed', {
-        dealId: targetDealId,
-        lenderId: resolvedLenderId,
-        relationshipCreated,
-        aiSuggestedStatus,
-        aiSuggestedDetail: aiSuggestedDetail || null,
-        finalConfirmedStatus: finalStatus,
-        finalConfirmedDetail: finalDetail || null,
-        userOverrodeSuggestion,
-      });
-
-      const successMsg = userOverrodeSuggestion
-        ? `${rec.lender_name || 'Lender'} marked as ${finalStatus.replace('_', ' ')}`
-        : (rec.title || 'Update applied').replace(/\?$/, '');
-      toast.success(relationshipCreated
-        ? `${successMsg} — lender auto-linked to deal`
-        : successMsg);
+      toast.success(`${verifyRow.name} marked as Passed — verified write succeeded`);
       dismiss();
-      currentStep = 'finalUIRefresh';
-      await refreshDeals();
-      // Broadcast a deal-scoped refresh event so any open DealDetail page or
-      // Lenders tab can re-fetch its local state without a full reload.
-      try {
-        window.dispatchEvent(
-          new CustomEvent('deal:lender-updated', {
-            detail: {
-              dealId: targetDealId,
-              dealLenderId: resolvedLenderId,
-              source: 'ai_thread_workflow',
-            },
-          }),
-        );
-      } catch { /* ignore */ }
-      debugStep('finalUIRefresh:success', {
-        dealId: targetDealId,
-        dealLenderId: resolvedLenderId,
-      });
       return true;
     } catch (err: any) {
-      console.error(`confirmRecommendation error during ${currentStep}:`, err);
-      debugStep(`${currentStep}:error`, { error: err?.message || String(err) });
+      console.error(`confirmRecommendation error during ${currentStep}:`, { error: err, debugContext });
+      debugStep(`${currentStep}:error`, { ...debugContext, error: err?.message || String(err) });
       toast.error(err?.message ? `Confirm failed at ${currentStep}: ${err.message}` : `Confirm failed at ${currentStep}`);
       return false;
     } finally {
       setCommitting(false);
     }
-  }, [analysis, user, dealId, ensureLenderOnDeal, refreshDeals, dismiss, latestInbound, messageId, threadData, resolvedDealLenderId]);
+  }, [analysis, user, threadData, dealId, latestInbound, messageId, resolveCanonicalDealId, resolveLenderCompany, resolveDealLenderRow, queryClient, refreshDeals, dismiss]);
 
   return {
     analysis,
