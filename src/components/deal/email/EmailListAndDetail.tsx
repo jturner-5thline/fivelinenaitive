@@ -1195,7 +1195,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           stacks (detail on top, assist below) so the middle column always has
           room to wrap. */}
       <div
-        className="grid h-full min-w-0 w-full overflow-hidden transition-[grid-template-columns,grid-template-rows] duration-200 ease-out"
+        className="relative grid h-full min-w-0 w-full overflow-hidden transition-[grid-template-columns,grid-template-rows] duration-200 ease-out"
         style={{
           gridTemplateColumns: showAiAssist
             ? 'minmax(0, 1fr) minmax(300px, 380px)'
