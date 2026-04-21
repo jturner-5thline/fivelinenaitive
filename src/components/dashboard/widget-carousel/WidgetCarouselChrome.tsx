@@ -154,7 +154,19 @@ export function WidgetCarouselChrome() {
       {/* Previous arrow */}
       <button
         type="button"
-        onClick={prev}
+        onClick={(e) => {
+          // Defensive: arrow clicks must NEVER bubble into a backdrop /
+          // dismiss handler. They are navigation only.
+          e.preventDefault();
+          e.stopPropagation();
+          if (import.meta.env.DEV) {
+            // eslint-disable-next-line no-console
+            console.debug('[widget-carousel] prev() click');
+          }
+          prev();
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
         disabled={disablePrev}
         aria-label="Previous widget"
         className={cn(
@@ -173,7 +185,17 @@ export function WidgetCarouselChrome() {
       {/* Next arrow */}
       <button
         type="button"
-        onClick={next}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (import.meta.env.DEV) {
+            // eslint-disable-next-line no-console
+            console.debug('[widget-carousel] next() click');
+          }
+          next();
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
         disabled={disableNext}
         aria-label="Next widget"
         className={cn(
