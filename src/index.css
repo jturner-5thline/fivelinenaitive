@@ -589,6 +589,20 @@
     background-color: hsl(0 0% 100% / 0.05);
   }
 
+  /* ─── Calendar gridlines ─────────────────────────────────────────────────
+     Theme-aware, intentionally faint so the grid recedes behind events.
+     Use these in place of `border-border/15` or bare `border-b`/`border-r`
+     anywhere in the calendar (column separators, hour rows, day cells,
+     all-day row dividers, sticky headers). 1px, very low opacity. */
+  .cal-grid-r { border-right:  1px solid hsl(0 0% 0% / 0.04); }
+  .cal-grid-l { border-left:   1px solid hsl(0 0% 0% / 0.04); }
+  .cal-grid-t { border-top:    1px solid hsl(0 0% 0% / 0.04); }
+  .cal-grid-b { border-bottom: 1px solid hsl(0 0% 0% / 0.04); }
+  .dark .cal-grid-r { border-right-color:  hsl(0 0% 100% / 0.04); }
+  .dark .cal-grid-l { border-left-color:   hsl(0 0% 100% / 0.04); }
+  .dark .cal-grid-t { border-top-color:    hsl(0 0% 100% / 0.04); }
+  .dark .cal-grid-b { border-bottom-color: hsl(0 0% 100% / 0.04); }
+
   /* Marketing site — lighter airy-blue frosted glass CTA (logo-derived palette).
      Tokens: --glass-blue-50 #C9DCFF / --glass-blue-100 #A9C6FF / --glass-blue-200 #7FB3FF.
      Hover stays translucent — bg alpha hard-capped ~0.30. */
