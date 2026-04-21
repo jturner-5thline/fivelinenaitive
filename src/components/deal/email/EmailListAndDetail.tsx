@@ -525,6 +525,38 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
             </div>
           )}
 
+          {/* Attachments header — surfaced above the body so users can see
+              attached files immediately without scrolling through the message. */}
+          {hasRealAttachments && (
+            <div className="mb-3">
+              <EmailAttachmentList
+                messageId={email.id}
+                attachments={attachments}
+                sourceEmail={{
+                  messageId: email.id,
+                  threadId,
+                  subject: threadSubject,
+                  senderName: email.from_name,
+                  senderEmail: email.from_email,
+                }}
+                threadData={{
+                  subject: threadSubject,
+                  threadId,
+                  emails: threadEmails,
+                  latestEmail: threadEmails[0] || email,
+                }}
+                linkedDealId={dealId}
+                linkedDealName={dealName}
+              />
+            </div>
+          )}
+          {showAttachmentsLoading && (
+            <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Loading attachments…</span>
+            </div>
+          )}
+
           {/* Body — HTML preferred, plain text fallback. Inline attachments
               are passed so signature logos / embedded images can resolve their
               `cid:` references. */}
@@ -566,34 +598,6 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
             </div>
           )}
 
-          {/* Attachments */}
-          {hasRealAttachments && (
-            <EmailAttachmentList
-              messageId={email.id}
-              attachments={attachments}
-              sourceEmail={{
-                messageId: email.id,
-                threadId,
-                subject: threadSubject,
-                senderName: email.from_name,
-                senderEmail: email.from_email,
-              }}
-              threadData={{
-                subject: threadSubject,
-                threadId,
-                emails: threadEmails,
-                latestEmail: threadEmails[0] || email,
-              }}
-              linkedDealId={dealId}
-              linkedDealName={dealName}
-            />
-          )}
-          {showAttachmentsLoading && (
-            <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Loading attachments…</span>
-            </div>
-          )}
         </div>
       )}
     </div>
