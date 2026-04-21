@@ -44,7 +44,7 @@ export function WeeklyRundownPipelineClientsPage() {
         <div>
           <h2 className="text-base font-semibold text-foreground">Pipeline & Clients</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Activity since {window?.startLabel || '5 PM ET yesterday'}
+            {window?.label || 'Activity since 5 PM ET yesterday'}
           </p>
         </div>
         <Button
