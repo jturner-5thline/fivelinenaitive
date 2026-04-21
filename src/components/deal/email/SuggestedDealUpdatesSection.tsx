@@ -34,6 +34,8 @@ import {
   classifyPair,
   type QADiffResult,
 } from '@/lib/diffThreadQAndA';
+import { usePendingDealResolutionsStore } from '@/stores/pendingDealResolutionsStore';
+import { DealPickerCard } from './DealPickerCard';
 
 interface Props {
   dealId?: string;
