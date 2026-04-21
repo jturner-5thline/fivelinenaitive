@@ -278,16 +278,18 @@ export default function Dashboard() {
             side="bottom"
           >
           {(() => {
-            const tileCount = 3 + (isJTurner ? 1 : 0) + (canSeeNiki ? 1 : 0);
+            // Quick Prompts is now a tile too (4 base tiles).
+            const tileCount = 4 + (isJTurner ? 1 : 0) + (canSeeNiki ? 1 : 0);
             const gridColsClass =
-              tileCount >= 5 ? 'grid-cols-5'
-              : tileCount === 4 ? 'grid-cols-4'
+              tileCount >= 6 ? 'grid-cols-3 sm:grid-cols-6'
+              : tileCount === 5 ? 'grid-cols-3 sm:grid-cols-5'
+              : tileCount === 4 ? 'grid-cols-2 sm:grid-cols-4'
               : 'grid-cols-3';
             return (
           <div className={`grid gap-3 md:gap-4 ${gridColsClass}`}>
             <Card
               className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
-              onClick={() => setCalendarOpen(true)}
+              onClick={(e) => openCarouselWidget('calendar', e.currentTarget as HTMLElement)}
             >
               <div className="flex flex-col items-center text-center space-y-3">
                 <div className="relative h-12 w-12 rounded-xl border border-primary/30 bg-primary/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--primary)/0.2),inset_0_1px_1px_hsl(var(--primary)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-primary/20 before:to-transparent before:rounded-xl">
@@ -296,10 +298,9 @@ export default function Dashboard() {
                 <span className="text-sm font-medium text-foreground">Calendar</span>
               </div>
             </Card>
-            <FullCalendarView open={calendarOpen} onOpenChange={setCalendarOpen} />
             <Card
               className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
-              onClick={() => setEmailOpen(true)}
+              onClick={(e) => openCarouselWidget('email', e.currentTarget as HTMLElement)}
             >
               <div className="flex flex-col items-center text-center space-y-3">
                 <div className="relative h-12 w-12 rounded-xl border border-[hsl(280,85%,65%,0.55)] bg-[hsl(275,80%,40%,0.3)] backdrop-blur-xl flex items-center justify-center overflow-hidden shadow-[inset_0_1px_1px_hsl(280,85%,75%,0.35),0_4px_24px_hsl(275,80%,45%,0.4)] before:absolute before:inset-0 before:bg-[linear-gradient(135deg,hsl(280,85%,75%,0.3)_0%,transparent_50%,hsl(275,80%,40%,0.15)_100%)] before:rounded-xl">
@@ -308,23 +309,32 @@ export default function Dashboard() {
                 <span className="text-sm font-medium text-foreground">Email</span>
               </div>
             </Card>
-            <InboxDialog open={emailOpen} onOpenChange={setEmailOpen} />
-            <CreateDealDialog
-              trigger={
-                <Card className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]">
-                  <div className="flex flex-col items-center text-center space-y-3">
-                    <div className="relative h-12 w-12 rounded-xl border border-accent/30 bg-accent/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--accent)/0.2),inset_0_1px_1px_hsl(var(--accent)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-accent/20 before:to-transparent before:rounded-xl">
-                      <Briefcase className="relative z-10 h-7 w-7 text-accent-foreground" />
-                    </div>
-                    <span className="text-sm font-medium text-foreground">New Deal</span>
-                  </div>
-                </Card>
-              }
-            />
+            <Card
+              className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
+              onClick={(e) => openCarouselWidget('new-deal', e.currentTarget as HTMLElement)}
+            >
+              <div className="flex flex-col items-center text-center space-y-3">
+                <div className="relative h-12 w-12 rounded-xl border border-accent/30 bg-accent/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--accent)/0.2),inset_0_1px_1px_hsl(var(--accent)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-accent/20 before:to-transparent before:rounded-xl">
+                  <Briefcase className="relative z-10 h-7 w-7 text-accent-foreground" />
+                </div>
+                <span className="text-sm font-medium text-foreground">New Deal</span>
+              </div>
+            </Card>
+            <Card
+              className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
+              onClick={(e) => openCarouselWidget('quick-prompts', e.currentTarget as HTMLElement)}
+            >
+              <div className="flex flex-col items-center text-center space-y-3">
+                <div className="relative h-12 w-12 rounded-xl border border-success/30 bg-success/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--success)/0.2),inset_0_1px_1px_hsl(var(--success)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-success/20 before:to-transparent before:rounded-xl">
+                  <Zap className="relative z-10 h-7 w-7 text-success" />
+                </div>
+                <span className="text-sm font-medium text-foreground">Quick Prompts</span>
+              </div>
+            </Card>
             {isJTurner && (
               <Card
                 className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
-                onClick={() => setIsBriefingOpen(true)}
+                onClick={(e) => openCarouselWidget('daily-briefing', e.currentTarget as HTMLElement)}
               >
                 <div className="flex flex-col items-center text-center space-y-3">
                   <div className="relative h-12 w-12 rounded-xl border border-warning/30 bg-warning/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--warning)/0.2),inset_0_1px_1px_hsl(var(--warning)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-warning/20 before:to-transparent before:rounded-xl">
@@ -337,7 +347,7 @@ export default function Dashboard() {
             {canSeeNiki && (
               <Card
                 className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
-                onClick={() => setIsNikiBriefingOpen(true)}
+                onClick={(e) => openCarouselWidget('niki-briefing', e.currentTarget as HTMLElement)}
               >
                 <div className="flex flex-col items-center text-center space-y-3">
                   <div className="relative h-12 w-12 rounded-xl border border-[hsl(190,90%,55%,0.4)] bg-[hsl(190,90%,45%,0.18)] backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(190,90%,50%,0.25),inset_0_1px_1px_hsl(190,90%,70%,0.2)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-[hsl(190,90%,60%,0.25)] before:to-transparent before:rounded-xl">
