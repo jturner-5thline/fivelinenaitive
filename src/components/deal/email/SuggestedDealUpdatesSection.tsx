@@ -10,6 +10,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -529,6 +535,11 @@ function QASuggestionCard({
         <span className="text-[11px] font-medium text-foreground/85 truncate flex-1">
           Save Q&A responses to Deal Notes
         </span>
+        <ConfidenceBadge
+          confidence={initialPayload.confidence}
+          score={initialPayload.confidenceScore}
+          signals={initialPayload.confidenceSignals}
+        />
         {pagerLabel && (
           <span className="text-[10px] text-muted-foreground/70 font-mono shrink-0">{pagerLabel}</span>
         )}
@@ -672,5 +683,69 @@ function ChangeBadge({ status }: { status: 'unchanged' | 'changed' | 'new' }) {
     <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-400/15 text-emerald-300 shrink-0">
       New
     </span>
+  );
+}
+
+function ConfidenceBadge({
+  confidence,
+  score,
+  signals,
+}: {
+  confidence?: 'high' | 'medium' | 'low';
+  score?: number;
+  signals?: { label: string; weight: number; hit: boolean }[];
+}) {
+  if (!confidence) return null;
+  const styles =
+    confidence === 'high'
+      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25'
+      : confidence === 'medium'
+      ? 'bg-amber-500/15 text-amber-300 border-amber-500/25'
+      : 'bg-red-500/15 text-red-300 border-red-500/25';
+  const label = confidence === 'high' ? 'High' : confidence === 'medium' ? 'Med' : 'Low';
+  const pct = typeof score === 'number' ? Math.round(score * 100) : null;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className={`text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded border shrink-0 cursor-help ${styles}`}
+            aria-label={`Detection confidence: ${label}${pct !== null ? ` (${pct}%)` : ''}`}
+          >
+            {label}
+            {pct !== null && <span className="ml-1 opacity-70 normal-case tracking-normal">{pct}%</span>}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs">
+          <div className="space-y-1.5">
+            <div className="text-[11px] font-medium">
+              Detection confidence: {label}
+              {pct !== null && <span className="text-muted-foreground ml-1">({pct}%)</span>}
+            </div>
+            <div className="text-[10px] text-muted-foreground leading-snug">
+              Based on keyword cues, pairing mode, count alignment, and answer quality.
+            </div>
+            {signals && signals.length > 0 && (
+              <ul className="space-y-0.5 pt-1 border-t border-border/40">
+                {signals.map((s, i) => (
+                  <li key={i} className="flex items-start gap-1.5 text-[10px]">
+                    <span className={s.hit ? 'text-emerald-400' : 'text-muted-foreground/50'}>
+                      {s.hit ? '✓' : '·'}
+                    </span>
+                    <span className={s.hit ? 'text-foreground/85' : 'text-muted-foreground/70 line-through'}>
+                      {s.label}
+                    </span>
+                    <span className="ml-auto text-muted-foreground/60 font-mono">
+                      {Math.round(s.weight * 100)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
