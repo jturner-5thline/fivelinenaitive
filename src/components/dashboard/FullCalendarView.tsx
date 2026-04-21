@@ -1842,12 +1842,12 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                   <div className="space-y-1.5 max-h-[320px] overflow-y-auto">
                     {upcomingEvents.map((event, idx) => {
                       const start = parseISO(event.start);
-                      const ci = getColorIndex(event, idx);
                       const minutesUntil = differenceInMinutes(start, new Date());
                       const eventIsToday = isToday(start);
                       const timeLabel = eventIsToday
                         ? (minutesUntil <= 0 ? 'Now' : minutesUntil < 60 ? `in ${minutesUntil}m` : `in ${Math.floor(minutesUntil / 60)}h`)
                         : null;
+                      const dot = getEventDot(event, idx, calendarColors);
 
                       return (
                         <button
@@ -1855,7 +1855,7 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                           onClick={() => { setCurrentDate(start); setView('day'); setSelectedEvent(event); }}
                           className="w-full flex items-start gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
                         >
-                          <div className={cn('h-2 w-2 rounded-full mt-1.5 shrink-0', EVENT_PALETTE[ci].dot)} />
+                          <div className={cn('h-2 w-2 rounded-full mt-1.5 shrink-0', dot.className)} style={dot.style} />
                           <div className="min-w-0 flex-1">
                             <p className="text-[11px] font-medium text-foreground truncate">{event.summary}</p>
                             <div className="flex items-center justify-between gap-1">
