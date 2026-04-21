@@ -216,10 +216,22 @@ export function useOutstandingItems(dealId: string | undefined) {
 
   // Update an outstanding item
   const updateItem = useCallback(async (id: string, updates: Partial<OutstandingItem>) => {
+    // Submitted implies Received: normalize the update so callers (single toggle,
+    // bulk actions, row UIs) cannot produce the invalid state approved=true & received=false.
+    // - Setting approved=true also sets received=true.
+    // - Setting received=false also clears approved=false.
+    const normalizedUpdates: Partial<OutstandingItem> = { ...updates };
+    if (normalizedUpdates.approved === true) {
+      normalizedUpdates.received = true;
+    }
+    if (normalizedUpdates.received === false) {
+      normalizedUpdates.approved = false;
+    }
+
     // Optimistic update
     setItems(prev => prev.map(item => {
       if (item.id !== id) return item;
-      const updatedItem = { ...item, ...updates };
+      const updatedItem = { ...item, ...normalizedUpdates };
       const wasCompleted = item.received && item.approved;
       const isNowCompleted = updatedItem.received && updatedItem.approved;
       if (!wasCompleted && isNowCompleted) {
@@ -236,15 +248,15 @@ export function useOutstandingItems(dealId: string | undefined) {
       const currentItem = items.find(i => i.id === id);
       if (!currentItem) return;
 
-      const mergedItem = { ...currentItem, ...updates };
+      const mergedItem = { ...currentItem, ...normalizedUpdates };
       const dbUpdates: Record<string, any> = {};
       
-      if (updates.text !== undefined) dbUpdates.description = updates.text;
-      if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
-      if (updates.eta !== undefined) dbUpdates.eta = updates.eta;
-      if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
-      if (updates.assignedTo !== undefined) dbUpdates.assigned_to = updates.assignedTo || null;
-      if (updates.position !== undefined) dbUpdates.position = updates.position;
+      if (normalizedUpdates.text !== undefined) dbUpdates.description = normalizedUpdates.text;
+      if (normalizedUpdates.notes !== undefined) dbUpdates.notes = normalizedUpdates.notes;
+      if (normalizedUpdates.eta !== undefined) dbUpdates.eta = normalizedUpdates.eta;
+      if (normalizedUpdates.priority !== undefined) dbUpdates.priority = normalizedUpdates.priority;
+      if (normalizedUpdates.assignedTo !== undefined) dbUpdates.assigned_to = normalizedUpdates.assignedTo || null;
+      if (normalizedUpdates.position !== undefined) dbUpdates.position = normalizedUpdates.position;
       
       dbUpdates.status = buildStatus({
         received: mergedItem.received,
