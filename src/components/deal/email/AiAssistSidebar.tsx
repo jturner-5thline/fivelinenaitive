@@ -110,6 +110,8 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
     isDismissed: workflowDismissed,
     dismiss: dismissWorkflow,
     confirmRecommendation: confirmWorkflow,
+    isThreadLinkedToDeal: workflowThreadLinked,
+    isLenderOnDeal: workflowLenderOnDeal,
   } = useThreadWorkflowAnalysis({ dealId, threadData: passThreadData, autoRun: true });
   // Hide the workflow card when the more specialized lender-pass card is already
   // surfacing the same recommendation, to avoid duplicate prompts.
@@ -377,6 +379,8 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               loading={workflowLoading}
               committing={workflowCommitting}
               hasLinkedDeal={!!dealId}
+              isThreadLinkedToDeal={workflowThreadLinked}
+              isLenderOnDeal={workflowLenderOnDeal}
               onConfirm={(o) => confirmWorkflow(o)}
               onDismiss={dismissWorkflow}
               onMaybeLater={dismissWorkflow}

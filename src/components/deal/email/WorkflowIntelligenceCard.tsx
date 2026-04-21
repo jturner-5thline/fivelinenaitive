@@ -15,6 +15,13 @@ interface Props {
   loading?: boolean;
   committing: boolean;
   hasLinkedDeal: boolean;
+  /**
+   * Source-of-truth association flags resolved from the database by
+   * useThreadWorkflowAnalysis. When `null`, resolution hasn't completed
+   * yet — treat as "unknown" and suppress speculative warnings.
+   */
+  isThreadLinkedToDeal?: boolean | null;
+  isLenderOnDeal?: boolean | null;
   onConfirm: (overrides?: {
     reasonNote?: string;
     confirmedStatus?: string;
@@ -102,6 +109,8 @@ export function WorkflowIntelligenceCard({
   loading,
   committing,
   hasLinkedDeal,
+  isThreadLinkedToDeal = null,
+  isLenderOnDeal = null,
   onConfirm,
   onDismiss,
   onMaybeLater,
@@ -119,7 +128,12 @@ export function WorkflowIntelligenceCard({
   // same chain (rec.deal_id || dealId || analysis.likely_deal.id) when
   // applying the update, so a separate manual link step is unnecessary.
   const resolvedDealId = rec.deal_id || analysis.likely_deal.id || '';
-  const willAutoLinkThread = !hasLinkedDeal && !!resolvedDealId && rec.kind !== 'none';
+  // Treat the thread as linked when EITHER the parent prop says so OR the
+  // DB-backed resolver confirmed it. Only show the "not linked" banner
+  // when resolution finished AND came back false.
+  const threadLinked = hasLinkedDeal || isThreadLinkedToDeal === true;
+  const willAutoLinkThread =
+    !threadLinked && isThreadLinkedToDeal === false && !!resolvedDealId && rec.kind !== 'none';
   const aiSuggestedStatus = normalizeSuggested(rec.new_stage);
   const aiSuggestedDetailToken = (rec.suggested_detail || '').toLowerCase();
 
@@ -177,18 +191,31 @@ export function WorkflowIntelligenceCard({
   const isLenderStatus = rec.kind === 'lender_status';
   const showDetailField = isLenderStatus && CLOSING_STATUSES.has(confirmedStatus);
 
-  // Smart linking: lender is "resolvable" when it's already on the deal OR
-  // we have a master_lender_id OR a confident firm name we can auto-create.
+  // Lender association: trust the DB-backed resolver first (handles cases
+  // where the AI didn't return a lender_id but the row is already on the
+  // deal). Falls back to AI signals while resolution is in flight.
+  const lenderAlreadyOnDeal = isLenderOnDeal === true || !!rec.lender_id;
   const lenderResolvable = !isLenderStatus
-    || !!rec.lender_id
+    || lenderAlreadyOnDeal
     || !!rec.master_lender_id
     || (!!rec.lender_name && (rec.confidence === 'high' || rec.confidence === 'medium'));
-  const willAutoLink = isLenderStatus && !rec.lender_id && lenderResolvable;
+  // Only flag auto-link when resolution finished AND the lender is
+  // genuinely missing. While `isLenderOnDeal === null` (still loading),
+  // suppress the banner to avoid the false positive.
+  const willAutoLink =
+    isLenderStatus && isLenderOnDeal === false && !rec.lender_id && lenderResolvable;
   const dealResolved = !!resolvedDealId;
   // Confirm is allowed whenever we have a resolved deal + resolvable lender.
   // Missing thread→deal link is no longer a hard block; the backend uses
   // the resolved deal id directly.
   const canConfirm = !committing && lenderResolvable && dealResolved;
+
+  // Final list of warnings to render — derived once so debug logging and
+  // render logic stay in sync.
+  const warningsToShow: string[] = [];
+  if (willAutoLinkThread) warningsToShow.push('thread_not_linked');
+  if (willAutoLink) warningsToShow.push('lender_not_on_deal');
+  if (isLenderStatus && !lenderResolvable) warningsToShow.push('lender_unresolvable');
 
   // Temporary diagnostic logging — surfaces the exact gating state so we
   // can verify the SoLo Funds / Advantage Capital flow.
@@ -198,8 +225,12 @@ export function WorkflowIntelligenceCard({
     aiRecommendedDealId: rec.deal_id || null,
     likelyDealId: analysis.likely_deal.id || null,
     hasLinkedDeal,
+    isThreadLinkedToDeal,
+    threadLinked,
     willAutoLinkThread,
     resolvedLenderId: rec.lender_id || null,
+    isLenderOnDeal,
+    lenderAlreadyOnDeal,
     masterLenderId: rec.master_lender_id || null,
     lenderName: rec.lender_name || null,
     lenderResolvable,
@@ -208,6 +239,7 @@ export function WorkflowIntelligenceCard({
     selectedReasonLabels,
     committing,
     canConfirm,
+    warningsToShow,
     blockingReason: !dealResolved
       ? 'no resolved deal id (rec.deal_id and analysis.likely_deal.id both empty)'
       : !lenderResolvable
