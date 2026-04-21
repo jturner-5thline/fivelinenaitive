@@ -139,8 +139,8 @@ export function WidgetCarouselChrome() {
         <div
           className={cn(
             'pointer-events-auto flex items-center gap-2 rounded-full px-3 py-1.5',
-            'bg-background/40 backdrop-blur-2xl border border-white/[0.08]',
-            'shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]',
+            'bg-background/50 backdrop-blur-2xl glass-border-softer',
+            'shadow-[0_8px_28px_-14px_rgba(0,0,0,0.35)]',
             'animate-fade-in',
           )}
         >
@@ -172,11 +172,11 @@ export function WidgetCarouselChrome() {
         className={cn(
           'pointer-events-auto absolute left-2 top-1/2 -translate-y-1/2 sm:left-4',
           'flex h-12 w-12 items-center justify-center rounded-full',
-          'bg-background/40 backdrop-blur-2xl border border-white/[0.08]',
-          'shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]',
-          'transition-all duration-200 hover:bg-background/60 hover:scale-105',
+          'bg-background/50 backdrop-blur-2xl glass-border-softer',
+          'shadow-[0_8px_28px_-14px_rgba(0,0,0,0.35)]',
+          'transition-all duration-200 hover:bg-background/70 hover:scale-105',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-          'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-background/40',
+          'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-background/50',
         )}
       >
         <ChevronLeft className="h-6 w-6 text-foreground/90" />
@@ -201,11 +201,11 @@ export function WidgetCarouselChrome() {
         className={cn(
           'pointer-events-auto absolute right-2 top-1/2 -translate-y-1/2 sm:right-4',
           'flex h-12 w-12 items-center justify-center rounded-full',
-          'bg-background/40 backdrop-blur-2xl border border-white/[0.08]',
-          'shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]',
-          'transition-all duration-200 hover:bg-background/60 hover:scale-105',
+          'bg-background/50 backdrop-blur-2xl glass-border-softer',
+          'shadow-[0_8px_28px_-14px_rgba(0,0,0,0.35)]',
+          'transition-all duration-200 hover:bg-background/70 hover:scale-105',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-          'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-background/40',
+          'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-background/50',
         )}
       >
         <ChevronRight className="h-6 w-6 text-foreground/90" />
