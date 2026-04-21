@@ -417,15 +417,7 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-none w-[95vw] h-[92vh] sm:h-[92vh] xl:w-[93vw] 2xl:w-[92vw] p-0 flex flex-col overflow-hidden rounded-lg border-transparent glass-border-soft shadow-2xl shadow-black/30"
-        style={{
-          background:
-            'radial-gradient(circle at top right, rgba(76, 42, 118, 0.08), transparent 30%), radial-gradient(circle at bottom left, rgba(0, 0, 0, 0.28), transparent 42%), linear-gradient(155deg, rgba(6, 6, 9, 0.99) 0%, rgba(10, 10, 14, 0.985) 28%, rgba(18, 16, 24, 0.965) 58%, rgba(7, 7, 10, 0.995) 100%)',
-          boxShadow: '0 18px 48px rgba(0, 0, 0, 0.5), inset 0 0 80px rgba(0, 0, 0, 0.35)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
-        }}
-        overlayClassName="bg-black/50 transition-opacity duration-200"
+        className="max-w-none w-[95vw] h-[92vh] sm:h-[92vh] xl:w-[93vw] 2xl:w-[92vw] p-0 flex flex-col overflow-hidden border-transparent glass-border-soft shadow-2xl shadow-black/20"
       >
         <div className="flex-1 min-h-0 overflow-hidden">
           <DealEmailsTab
