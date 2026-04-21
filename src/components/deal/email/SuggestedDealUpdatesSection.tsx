@@ -115,14 +115,19 @@ function buildQAMergeEntry(payload: PendingQAPayload, diff: QADiffResult): strin
   return lines.join('\n');
 }
 
-export function SuggestedDealUpdatesSection({ dealId, dealName }: Props) {
+export function SuggestedDealUpdatesSection({ dealId, dealName, threadId }: Props) {
   const { enabled, setEnabled } = useAutoDealNoteSuggestionPref();
   const { suggestions, dismiss, confirm, updatePayload } = usePendingDealSuggestions(dealId);
   const { notes, createNote, updateNote } = useDealSpaceNotes(dealId);
   const { logAuditAction } = useDealAuditLog(dealId);
 
+  // Pending deal-picker prompts for this thread (multiple-match fallback).
+  const pendingResolutions = usePendingDealResolutionsStore((s) =>
+    threadId ? s.byThread(threadId) : [],
+  );
+
   // Always render the header (so the toggle is reachable). Cards only render when present.
-  const hasItems = suggestions.length > 0;
+  const hasItems = suggestions.length > 0 || pendingResolutions.length > 0;
   const totalCount = suggestions.length;
 
   return (
