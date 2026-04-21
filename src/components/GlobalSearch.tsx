@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Briefcase, Users, FileText, Settings, Lightbulb, BarChart3 } from "lucide-react";
+import { Search, Briefcase, Users, Settings, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   CommandDialog,
