@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWidgetCarouselStore } from '@/stores/widgetCarouselStore';
@@ -103,10 +104,19 @@ export function WidgetCarouselChrome() {
 
   if (!isOpen || total === 0 || !active) return null;
 
-  return (
+  // Render through a portal directly into <body> so the chrome escapes
+  // any transformed / filtered / backdrop-blurred ancestor on the page
+  // (which would otherwise create a new stacking context and trap the
+  // chrome below the dialog's own body-level portal).
+  if (typeof document === 'undefined') return null;
+
+  const chrome = (
     <div
-      // Sits above the Radix dialog overlay (z-50) but below typical toasts.
-      className="pointer-events-none fixed inset-0 z-[60]"
+      // Radix Dialog overlay/content use z-50. Toaster/sonner sits very
+      // high (z-[100000]+), so we pick a value that clearly beats every
+      // dialog layer (including nested popovers using z-[60]/z-[70]
+      // inside FullCalendarView) but stays below the toast layer.
+      className="pointer-events-none fixed inset-0 z-[9999]"
       aria-hidden={false}
     >
       {/* Left swipe edge (mobile only) */}
@@ -180,4 +190,6 @@ export function WidgetCarouselChrome() {
       </button>
     </div>
   );
+
+  return createPortal(chrome, document.body);
 }
