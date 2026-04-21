@@ -628,6 +628,37 @@ export function useThreadWorkflowAnalysis({
           passReason: updatedLender.pass_reason,
         });
 
+        // READ-BACK VERIFICATION: re-query the row independently and assert
+        // the new state actually persisted. Catches RLS-silenced updates
+        // and any race where the update returned a stale projection.
+        const { data: verifyRow, error: verifyError } = await supabase
+          .from('deal_lenders')
+          .select('id, deal_id, stage, tracking_status, pass_reason')
+          .eq('id', resolvedLenderId)
+          .eq('deal_id', targetDealId)
+          .maybeSingle();
+        debugStep('applyDisposition:read-back', {
+          dealLenderId: resolvedLenderId,
+          targetDealId,
+          verifyError: verifyError?.message || null,
+          verifyRow,
+          expectedStage: mapped.stage,
+          expectedTrackingStatus: mapped.trackingStatus,
+        });
+        if (verifyError) throw verifyError;
+        if (!verifyRow) {
+          throw new Error(
+            `Read-back failed — could not find deal_lenders row id=${resolvedLenderId} on deal_id=${targetDealId}. ` +
+            `The update may have been blocked by RLS or the row was deleted.`,
+          );
+        }
+        if (verifyRow.stage !== mapped.stage || verifyRow.tracking_status !== mapped.trackingStatus) {
+          throw new Error(
+            `Read-back mismatch on deal_lenders ${resolvedLenderId}: expected stage="${mapped.stage}"/tracking="${mapped.trackingStatus}" ` +
+            `but found stage="${verifyRow.stage}"/tracking="${verifyRow.tracking_status}". Update did not apply.`,
+          );
+        }
+
         // Insert one lender_disqualifications row per selected reason label.
         // We map labels back to the LenderPassReasonCategory enum (best-effort
         // keyword match); unmapped labels fall back to 'other' with the label
