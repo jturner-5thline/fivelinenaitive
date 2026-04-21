@@ -720,8 +720,8 @@ If the email is internal commentary only (kind="internal_note"), recommended_upd
 
         userPrompt = `${dealContext}
 
-LENDER CANDIDATES ON LINKED DEAL:
-${lenderCandidates.length > 0 ? lenderCandidates.map(l => `- id=${l.id} name="${l.name}" stage=${l.stage || "?"}`).join("\n") : "(none — deal not linked or has no lenders)"}
+LENDER CANDIDATES ON LINKED DEAL (authoritative — these are the lenders already on this specific deal; ALWAYS prefer matching against this list before MASTER LENDER CANDIDATES):
+${lenderCandidates.length > 0 ? lenderCandidates.map(l => `- id=${l.id} name="${l.name}" stage=${l.stage || "?"} tracking=${l.tracking_status || "?"}`).join("\n") : "(none — deal not linked or has no lenders)"}
 
 MASTER LENDER CANDIDATES (firm-level directory — use these when the firm is not yet on this deal so the client can auto-link):
 ${masterLenderCandidates.length > 0 ? masterLenderCandidates.slice(0, 200).map(l => `- id=${l.id} name="${l.name}"${l.tier ? ` tier=${l.tier}` : ""}`).join("\n") : "(none)"}
