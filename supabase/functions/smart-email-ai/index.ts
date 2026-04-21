@@ -845,7 +845,7 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
         // 1) If id missing but name present, find by name.
         if (!ld.id && ld.name) {
           const wanted = norm(ld.name);
-          const match = candidates.find((c) => norm(c.company) === wanted || norm(c.name || "") === wanted)
+          const match = candidates.find((c) => norm(c.company) === wanted)
             || candidates.find((c) => norm(c.company).includes(wanted) || wanted.includes(norm(c.company)));
           if (match) {
             ld.id = match.id;
