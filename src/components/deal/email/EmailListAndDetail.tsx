@@ -1389,7 +1389,12 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap min-w-0">
                   <span className="text-sm font-semibold text-[hsl(var(--email-text-primary))] break-words">{senderName}</span>
-                  <span className="text-xs text-[hsl(var(--email-text-muted))] break-all">&lt;{senderEmail}&gt;</span>
+                  <span
+                    className="text-xs text-[hsl(var(--email-text-muted))] min-w-0"
+                    style={{ wordBreak: 'normal', overflowWrap: 'anywhere' }}
+                  >
+                    &lt;{senderEmail}&gt;
+                  </span>
                 </div>
                 <div
                   className="text-xs text-[hsl(var(--email-text-muted))] mt-0.5 break-words"
