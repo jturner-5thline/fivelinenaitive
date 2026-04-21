@@ -144,6 +144,16 @@ export function useThreadWorkflowAnalysis({
   const [committing, setCommitting] = useState(false);
   const [dismissedKeys, setDismissedKeys] = useState<DismissalState>(() => readDismissed());
   const lastRunKey = useRef<string | null>(null);
+  // Resolved associations from the actual database — these are the source
+  // of truth for the "thread linked?" and "lender on deal?" warnings.
+  // We cannot rely on the parent prop `dealId` because the inbox dialog
+  // passes an empty string, even when the thread is in fact linked
+  // (linkage lives in the `deal_emails` join table, keyed by
+  // gmail_message_id). Likewise, the AI's `rec.lender_id` is sometimes
+  // null even when the lender is already on the deal.
+  const [isThreadLinkedToDeal, setIsThreadLinkedToDeal] = useState<boolean | null>(null);
+  const [resolvedDealLenderId, setResolvedDealLenderId] = useState<string | null>(null);
+  const [isLenderOnDeal, setIsLenderOnDeal] = useState<boolean | null>(null);
 
   // The latest inbound message anchors caching + dismissal.
   const latestInbound =
@@ -214,6 +224,91 @@ export function useThreadWorkflowAnalysis({
     lastRunKey.current = key;
     run();
   }, [cacheKey, dealId, autoRun, run]);
+
+  // Source-of-truth association resolver. Runs whenever the analysis or
+  // thread changes. Reads from the same persisted tables that power the
+  // inbox "linked deal" chip and the deal-detail Lenders tab so both
+  // surfaces agree on what's already linked.
+  useEffect(() => {
+    let cancelled = false;
+    const rec = analysis?.recommended_update;
+    const targetDealId = rec?.deal_id || analysis?.likely_deal?.id || dealId || null;
+    const lenderName = (rec?.lender_name || analysis?.likely_lender_firm?.name || '').trim();
+    const threadId = threadData?.threadId || null;
+    const threadMessageIds: string[] = (threadData?.emails || [])
+      .map((e: any) => e?.gmail_message_id || e?.id)
+      .filter(Boolean);
+
+    if (!targetDealId) {
+      setIsThreadLinkedToDeal(null);
+      setIsLenderOnDeal(null);
+      setResolvedDealLenderId(null);
+      return;
+    }
+
+    (async () => {
+      // 1. Thread→deal link: any message in this thread (or the parent-passed
+      //    dealId already matching) counts as a persisted association.
+      let threadLinked = !!dealId && dealId === targetDealId;
+      if (!threadLinked && threadMessageIds.length > 0) {
+        const { data: linkedRows } = await supabase
+          .from('deal_emails')
+          .select('id, deal_id, gmail_message_id')
+          .eq('deal_id', targetDealId)
+          .in('gmail_message_id', threadMessageIds)
+          .limit(1);
+        threadLinked = !!(linkedRows && linkedRows.length > 0);
+      }
+
+      // 2. Lender on deal: prefer master_lender_id match (canonical), fall
+      //    back to case-insensitive name match. Both mirror how the
+      //    deal-detail Lenders tab dedupes.
+      let dealLenderId: string | null = rec?.lender_id || null;
+      if (!dealLenderId && lenderName) {
+        const { data: nameMatches } = await supabase
+          .from('deal_lenders')
+          .select('id, name')
+          .eq('deal_id', targetDealId)
+          .ilike('name', lenderName);
+        const exact = (nameMatches || []).find(
+          (l: any) => (l.name || '').trim().toLowerCase() === lenderName.toLowerCase(),
+        );
+        // If no exact match, try a fuzzier prefix match ("Advantage" ↔ "Advantage Capital").
+        const fuzzy = exact
+          || (nameMatches || []).find((l: any) => {
+            const ln = (l.name || '').trim().toLowerCase();
+            const target = lenderName.toLowerCase();
+            return ln.startsWith(target) || target.startsWith(ln);
+          });
+        dealLenderId = fuzzy?.id || null;
+      }
+
+      if (cancelled) return;
+      setIsThreadLinkedToDeal(threadLinked);
+      setIsLenderOnDeal(!!dealLenderId);
+      setResolvedDealLenderId(dealLenderId);
+
+      // Temporary diagnostic logging — remove after verification on the
+      // SoLo Funds / Advantage Capital thread.
+      // eslint-disable-next-line no-console
+      console.debug('[useThreadWorkflowAnalysis] association resolution', {
+        threadId,
+        parentDealIdProp: dealId || null,
+        recDealId: rec?.deal_id || null,
+        likelyDealId: analysis?.likely_deal?.id || null,
+        targetDealId,
+        recLenderId: rec?.lender_id || null,
+        lenderNameLookup: lenderName || null,
+        resolvedDealLenderId: dealLenderId,
+        isThreadLinkedToDeal: threadLinked,
+        isLenderOnDeal: !!dealLenderId,
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [analysis, dealId, threadData]);
 
   const dismiss = useCallback(() => {
     if (!cacheKey) return;
@@ -630,5 +725,9 @@ export function useThreadWorkflowAnalysis({
     run,
     dismiss,
     confirmRecommendation,
+    // Persisted association state — UI uses these to gate warnings.
+    isThreadLinkedToDeal,
+    isLenderOnDeal,
+    resolvedDealLenderId,
   };
 }
