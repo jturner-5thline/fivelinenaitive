@@ -1186,8 +1186,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
   return (
     <>
-      <div className="flex h-full relative overflow-hidden">
-        <div className="flex flex-col flex-1 min-w-0 basis-0 bg-[hsl(var(--email-reading-bg))]">
+      <div className="flex h-full relative overflow-hidden min-w-0 w-full">
+        <div className="flex flex-col flex-1 min-w-0 basis-0 overflow-hidden bg-[hsl(var(--email-reading-bg))]">
           {/* Outlook-style command bar */}
           <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-[hsl(var(--email-border))] bg-card/60 backdrop-blur-sm shrink-0">
             <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-7 w-7">
@@ -1270,7 +1270,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 <button
                   onClick={() => setShowAiAssist(!showAiAssist)}
                   className={cn(
-                    'flex flex-col items-center gap-0.5 px-3 py-1 rounded transition-colors border lg:hidden',
+                    'flex flex-col items-center gap-0.5 px-3 py-1 rounded transition-colors border min-[1100px]:hidden',
                     showAiAssist
                       ? 'bg-[hsl(var(--outlook-blue)/0.1)] border-[hsl(var(--outlook-blue)/0.3)] text-[hsl(var(--outlook-blue))]'
                       : 'border-transparent hover:bg-muted/40'
@@ -1389,7 +1389,12 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap min-w-0">
                   <span className="text-sm font-semibold text-[hsl(var(--email-text-primary))] break-words">{senderName}</span>
-                  <span className="text-xs text-[hsl(var(--email-text-muted))] break-all">&lt;{senderEmail}&gt;</span>
+                  <span
+                    className="text-xs text-[hsl(var(--email-text-muted))] min-w-0"
+                    style={{ wordBreak: 'normal', overflowWrap: 'anywhere' }}
+                  >
+                    &lt;{senderEmail}&gt;
+                  </span>
                 </div>
                 <div
                   className="text-xs text-[hsl(var(--email-text-muted))] mt-0.5 break-words"
@@ -1538,11 +1543,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             the toolbar button. */}
         <div
           className={cn(
-            'h-full',
-            // Desktop: always visible, sticky within modal
-            'hidden lg:flex',
-            // Mobile/tablet: only when explicitly opened, slides over
-            showAiAssist && 'flex absolute inset-y-0 right-0 z-20 lg:static lg:z-auto shadow-2xl lg:shadow-none',
+            'h-full shrink-0',
+            // Desktop (>=1100px): always visible as a persistent right column
+            'hidden min-[1100px]:flex',
+            // Below 1100px: slides over from the right when toggled
+            showAiAssist && 'flex absolute inset-y-0 right-0 z-20 min-[1100px]:static min-[1100px]:z-auto shadow-2xl min-[1100px]:shadow-none',
           )}
         >
           <AiAssistSidebar

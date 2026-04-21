@@ -337,7 +337,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
 
   return (
     <aside
-      className="flex flex-col h-full w-[300px] xl:w-[340px] 2xl:w-[380px] shrink-0 border-l border-white/[0.06] bg-card/40 backdrop-blur-sm"
+      className="flex flex-col h-full w-[300px] xl:w-[340px] 2xl:w-[380px] min-w-[300px] max-w-[420px] shrink-0 overflow-hidden border-l border-white/[0.06] bg-card/40 backdrop-blur-sm"
       aria-label="AI Assist"
     >
       {/* Header */}
