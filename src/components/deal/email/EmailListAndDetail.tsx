@@ -771,6 +771,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   // the suggestion to the resolved deal's space.
   const resolveDeal = useResolveDealForEmail();
   const { create: createPendingSuggestion } = usePendingDealSuggestions(dealId);
+  const enqueueResolution = usePendingDealResolutionsStore((s) => s.enqueue);
 
   // Token context for snippet resolution
   const snippetTokenContext = {
