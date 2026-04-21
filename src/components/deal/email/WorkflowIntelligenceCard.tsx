@@ -1,20 +1,28 @@
 import { useState } from 'react';
-import { Loader2, Check, X, Quote, AlertCircle, Briefcase, User, Building2, Zap, Link2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Check, X, Quote, AlertCircle, Briefcase, User, Building2, Zap, Link2, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import type { WorkflowAnalysis, WorkflowConfidence } from '@/hooks/useThreadWorkflowAnalysis';
-import { PASS_REASON_LABELS, type LenderPassReasonCategory } from '@/hooks/useLenderDisqualifications';
+import { useLenderStages } from '@/contexts/LenderStagesContext';
 
 interface Props {
   analysis: WorkflowAnalysis;
   loading?: boolean;
   committing: boolean;
   hasLinkedDeal: boolean;
-  onConfirm: (overrides?: { reasonNote?: string; confirmedStatus?: string; confirmedDetail?: string }) => void;
+  onConfirm: (overrides?: {
+    reasonNote?: string;
+    confirmedStatus?: string;
+    /** Comma-joined label string (back-compat, written into deal_lenders.pass_reason). */
+    confirmedDetail?: string;
+    /** Multi-select: array of pass-reason LABELS (from useLenderStages().passReasons). */
+    confirmedDetailLabels?: string[];
+  }) => void;
   onDismiss: () => void;
   onMaybeLater: () => void;
 }
@@ -54,10 +62,22 @@ const STATUS_LABEL: Record<string, string> = STATUS_OPTIONS.reduce((acc, o) => {
 /** Statuses that close out a lender — show the disposition detail dropdown. */
 const CLOSING_STATUSES = new Set(['passed', 'not_a_fit', 'declined']);
 
-const DETAIL_OPTIONS = (Object.keys(PASS_REASON_LABELS) as LenderPassReasonCategory[]).map((k) => ({
-  value: k,
-  label: PASS_REASON_LABELS[k],
-}));
+/**
+ * Convert "AI suggested" detail tokens (the old hardcoded enum keys returned
+ * by Claude) into a human label so we can pre-select against the
+ * company-configured pass-reason list. Best-effort only — if no match is
+ * found we just show nothing and the user picks reasons themselves.
+ */
+const AI_DETAIL_TOKEN_TO_LABEL_HINT: Record<string, string[]> = {
+  deal_size_mismatch: ['deal size', 'size'],
+  industry_exclusion: ['industry', 'sector'],
+  geographic_restriction: ['geograph', 'location', 'region'],
+  risk_profile_concerns: ['risk', 'credit', 'leverage', 'burn'],
+  timing_issues: ['timing', 'capacity'],
+  relationship_issues: ['relationship'],
+  terms_mismatch: ['terms', 'pricing', 'structure'],
+  other: [],
+};
 
 function normalizeSuggested(stage: string | undefined): string {
   if (!stage) return 'follow_up';
@@ -86,24 +106,46 @@ export function WorkflowIntelligenceCard({
   onDismiss,
   onMaybeLater,
 }: Props) {
+  // Source of truth for pass-reason options — same list shown in the
+  // deal-detail Lenders tab "Confirm Pass" dialog so the two stay in sync.
+  const { passReasons: passReasonOptions } = useLenderStages();
+
   const rec = analysis.recommended_update;
   const hasUpdate = rec.kind !== 'none' && !!rec.title;
   const needsDealLink = !hasLinkedDeal && !!analysis.likely_deal.id && rec.kind !== 'none';
   const aiSuggestedStatus = normalizeSuggested(rec.new_stage);
-  const aiSuggestedDetail = (rec.suggested_detail || '').toLowerCase();
+  const aiSuggestedDetailToken = (rec.suggested_detail || '').toLowerCase();
+
+  /**
+   * Map the AI's suggested-detail token (legacy enum) to a label from the
+   * company-configured pass-reason list. This is best-effort — if we can't
+   * find a match, we leave the selection empty and let the user pick.
+   */
+  const aiSuggestedLabels = (() => {
+    if (!aiSuggestedDetailToken) return [] as string[];
+    const hints = AI_DETAIL_TOKEN_TO_LABEL_HINT[aiSuggestedDetailToken] || [];
+    if (hints.length === 0) return [];
+    const match = passReasonOptions.find((opt) =>
+      hints.some((h) => opt.label.toLowerCase().includes(h)),
+    );
+    return match ? [match.label] : [];
+  })();
 
   const [reason, setReason] = useState(rec.reason_note || '');
   const [confirmedStatus, setConfirmedStatus] = useState<string>(aiSuggestedStatus);
-  const [confirmedDetail, setConfirmedDetail] = useState<string>(aiSuggestedDetail);
+  // Selected pass-reason LABELS — multi-select, capped at 3 to match the
+  // deal-detail dialog UX.
+  const [selectedReasonLabels, setSelectedReasonLabels] = useState<string[]>(aiSuggestedLabels);
+  const [reasonPickerOpen, setReasonPickerOpen] = useState(false);
   const [renderedKey, setRenderedKey] = useState<string | null>(null);
   // Two-panel slider: 'suggested' (primary, default) <-> 'intelligence' (entities + signal context).
   const [activePanel, setActivePanel] = useState<'suggested' | 'intelligence'>('suggested');
 
-  const analysisKey = `${analysis.signal.type}::${rec.lender_id || rec.master_lender_id || rec.lender_name}::${rec.new_stage}::${rec.suggested_detail || ''}`;
+  const analysisKey = `${analysis.signal.type}::${rec.lender_id || rec.master_lender_id || rec.lender_name}::${rec.new_stage}::${rec.suggested_detail || ''}::${passReasonOptions.length}`;
   if (renderedKey !== analysisKey) {
     setRenderedKey(analysisKey);
     setConfirmedStatus(aiSuggestedStatus);
-    setConfirmedDetail(aiSuggestedDetail);
+    setSelectedReasonLabels(aiSuggestedLabels);
     setReason(rec.reason_note || '');
     if (hasUpdate && rec.kind === 'lender_status') {
       logAnalytics('ai_suggested_update_rendered', {
@@ -112,7 +154,8 @@ export function WorkflowIntelligenceCard({
         master_lender_id: rec.master_lender_id || null,
         lender_name: rec.lender_name,
         ai_suggested_status: aiSuggestedStatus,
-        ai_suggested_detail: aiSuggestedDetail || null,
+        ai_suggested_detail: aiSuggestedDetailToken || null,
+        ai_suggested_labels: aiSuggestedLabels,
         signal_type: analysis.signal.type,
         confidence: rec.confidence,
         ambiguity_flags: rec.ambiguity_flags || [],
@@ -121,7 +164,8 @@ export function WorkflowIntelligenceCard({
   }
 
   const userOverrodeStatus = confirmedStatus !== aiSuggestedStatus;
-  const userOverrodeDetail = confirmedDetail !== aiSuggestedDetail;
+  const userOverrodeDetail =
+    selectedReasonLabels.join('||') !== aiSuggestedLabels.join('||');
   const userOverrodeSuggestion = userOverrodeStatus || userOverrodeDetail;
   const isLenderStatus = rec.kind === 'lender_status';
   const showDetailField = isLenderStatus && CLOSING_STATUSES.has(confirmedStatus);
@@ -144,20 +188,31 @@ export function WorkflowIntelligenceCard({
       final_confirmed_status: next,
     });
   };
-  const handleDetailChange = (next: string) => {
-    setConfirmedDetail(next);
-    logAnalytics('ai_suggested_update_modified', {
-      field: 'detail',
-      original_suggested_detail: aiSuggestedDetail,
-      final_confirmed_detail: next,
+  const toggleReasonLabel = (label: string) => {
+    setSelectedReasonLabels((prev) => {
+      const isSelected = prev.includes(label);
+      // Cap at 3 to mirror the deal-detail "Confirm Pass" dialog UX.
+      if (!isSelected && prev.length >= 3) return prev;
+      const next = isSelected ? prev.filter((l) => l !== label) : [...prev, label];
+      logAnalytics('ai_suggested_update_modified', {
+        field: 'detail',
+        original_suggested_labels: aiSuggestedLabels,
+        final_confirmed_labels: next,
+      });
+      return next;
     });
   };
 
   const handleConfirm = () => {
+    // Match the deal-detail Lenders tab format: comma-joined label string
+    // saved to deal_lenders.pass_reason. Also pass the array so downstream
+    // logging / disqualification rows can preserve granularity.
+    const joinedDetail = showDetailField ? selectedReasonLabels.join(', ') : '';
     onConfirm({
       reasonNote: reason || rec.reason_note || '',
       confirmedStatus,
-      confirmedDetail: showDetailField ? confirmedDetail : '',
+      confirmedDetail: joinedDetail,
+      confirmedDetailLabels: showDetailField ? selectedReasonLabels : [],
     });
   };
 
@@ -249,26 +304,95 @@ export function WorkflowIntelligenceCard({
                 {showDetailField && (
                   <div className="space-y-1">
                     <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Detail / reason category
+                      Detail / reason category {selectedReasonLabels.length > 0 && (
+                        <span className="text-muted-foreground/70 normal-case font-normal">
+                          ({selectedReasonLabels.length}/3)
+                        </span>
+                      )}
                     </label>
-                    <Select value={confirmedDetail || 'other'} onValueChange={handleDetailChange}>
-                      <SelectTrigger className="h-8 text-[11px]">
-                        <SelectValue placeholder="Select a reason" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {DETAIL_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value} className="text-[11px]">
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {userOverrodeDetail && aiSuggestedDetail && (
+                    {/* Multi-select reason picker — chips display selected labels.
+                        Options come from useLenderStages().passReasons, the same
+                        list rendered by the deal-detail "Confirm Pass" dialog. */}
+                    <div className="flex flex-wrap items-center gap-1 p-1.5 rounded border border-input bg-background min-h-[2rem]">
+                      {selectedReasonLabels.map((label) => (
+                        <Badge
+                          key={label}
+                          variant="secondary"
+                          className="h-5 pl-2 pr-1 gap-1 text-[10px] font-normal bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15"
+                        >
+                          <span className="truncate max-w-[140px]">{label}</span>
+                          <button
+                            type="button"
+                            onClick={() => toggleReasonLabel(label)}
+                            className="rounded hover:bg-primary/20 p-0.5"
+                            aria-label={`Remove ${label}`}
+                          >
+                            <X className="h-2.5 w-2.5" />
+                          </button>
+                        </Badge>
+                      ))}
+                      <Popover open={reasonPickerOpen} onOpenChange={setReasonPickerOpen}>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            disabled={passReasonOptions.length === 0 || selectedReasonLabels.length >= 3}
+                            className={cn(
+                              'h-5 px-1.5 rounded text-[10px] inline-flex items-center gap-0.5 border border-dashed',
+                              'border-muted-foreground/30 text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+                              'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent',
+                            )}
+                          >
+                            <Plus className="h-2.5 w-2.5" />
+                            {selectedReasonLabels.length === 0 ? 'Add reason' : 'Add'}
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="w-[260px] p-1 z-[60]"
+                          align="start"
+                          side="bottom"
+                          sideOffset={4}
+                          collisionPadding={16}
+                        >
+                          <div className="max-h-[240px] overflow-y-auto overscroll-contain">
+                            {passReasonOptions.length === 0 ? (
+                              <p className="text-[11px] text-muted-foreground p-2">
+                                No pass reasons configured. Add them in Settings.
+                              </p>
+                            ) : (
+                              passReasonOptions.map((opt) => {
+                                const isSelected = selectedReasonLabels.includes(opt.label);
+                                const isDisabled = !isSelected && selectedReasonLabels.length >= 3;
+                                return (
+                                  <button
+                                    key={opt.id}
+                                    type="button"
+                                    disabled={isDisabled}
+                                    onClick={() => toggleReasonLabel(opt.label)}
+                                    className={cn(
+                                      'w-full text-left text-[11px] px-2 py-1.5 rounded hover:bg-accent flex items-center gap-2',
+                                      isSelected && 'bg-accent/60',
+                                      isDisabled && 'opacity-40 cursor-not-allowed hover:bg-transparent',
+                                    )}
+                                  >
+                                    <span className={cn(
+                                      'h-3 w-3 rounded border flex items-center justify-center shrink-0',
+                                      isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/40',
+                                    )}>
+                                      {isSelected && <Check className="h-2 w-2 text-primary-foreground" />}
+                                    </span>
+                                    <span className="flex-1 leading-tight">{opt.label}</span>
+                                  </button>
+                                );
+                              })
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    {userOverrodeDetail && aiSuggestedLabels.length > 0 && (
                       <div className="text-[10px] leading-tight pt-0.5">
                         <span className="text-muted-foreground">AI suggested: </span>
-                        <span className="text-foreground/70">
-                          {PASS_REASON_LABELS[aiSuggestedDetail as LenderPassReasonCategory] || aiSuggestedDetail}
-                        </span>
+                        <span className="text-foreground/70">{aiSuggestedLabels.join(', ')}</span>
                       </div>
                     )}
                   </div>

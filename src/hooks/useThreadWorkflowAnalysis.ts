@@ -380,7 +380,10 @@ export function useThreadWorkflowAnalysis({
   const confirmRecommendation = useCallback(async (overrides?: {
     reasonNote?: string;
     confirmedStatus?: string;
+    /** Comma-joined label string saved into deal_lenders.pass_reason. */
     confirmedDetail?: string;
+    /** Multi-select array of label strings — one disqualification row per label. */
+    confirmedDetailLabels?: string[];
   }) => {
     if (!analysis || !user) return false;
     const rec = analysis.recommended_update;
@@ -400,6 +403,13 @@ export function useThreadWorkflowAnalysis({
       const finalStatus = (overrides?.confirmedStatus || aiSuggestedStatus || 'passed').toLowerCase();
       const aiSuggestedDetail = (rec.suggested_detail || '').toLowerCase();
       const finalDetail = (overrides?.confirmedDetail ?? aiSuggestedDetail).toLowerCase();
+      // Multi-select labels (preferred). Falls back to splitting confirmedDetail
+      // by commas for back-compat with the legacy single-value path.
+      const finalDetailLabels: string[] = (overrides?.confirmedDetailLabels && overrides.confirmedDetailLabels.length > 0)
+        ? overrides.confirmedDetailLabels
+        : (overrides?.confirmedDetail
+            ? overrides.confirmedDetail.split(',').map((s) => s.trim()).filter(Boolean)
+            : []);
       const userOverrodeSuggestion =
         (!!overrides?.confirmedStatus && overrides.confirmedStatus.toLowerCase() !== aiSuggestedStatus) ||
         (overrides?.confirmedDetail !== undefined && overrides.confirmedDetail.toLowerCase() !== aiSuggestedDetail);
@@ -445,15 +455,16 @@ export function useThreadWorkflowAnalysis({
       if (rec.kind === 'lender_status' && resolvedLenderId) {
         currentStep = 'applyDisposition';
         const mapped = STATUS_STAGE_MAP[finalStatus] || STATUS_STAGE_MAP.passed;
-        const detailLabel = finalDetail && PASS_REASON_LABELS[finalDetail as LenderPassReasonCategory]
-          ? PASS_REASON_LABELS[finalDetail as LenderPassReasonCategory]
-          : null;
+        // Mirror the deal-detail "Confirm Pass" dialog: store the joined
+        // human labels directly into deal_lenders.pass_reason. This keeps
+        // both surfaces interoperable.
+        const joinedLabels = finalDetailLabels.join(', ');
         const passReasonText = mapped.closes
-          ? [
-              finalStatus === 'not_a_fit' ? 'Not a fit' : finalStatus === 'declined' ? 'Declined' : 'Passed',
-              detailLabel ? `(${detailLabel})` : null,
-              reason ? `— ${reason}` : null,
-            ].filter(Boolean).join(' ')
+          ? (joinedLabels
+              || (finalDetail && PASS_REASON_LABELS[finalDetail as LenderPassReasonCategory]
+                ? PASS_REASON_LABELS[finalDetail as LenderPassReasonCategory]
+                : null)
+              || (finalStatus === 'not_a_fit' ? 'Not a fit' : finalStatus === 'declined' ? 'Declined' : 'Passed'))
           : undefined;
 
         const lenderUpdatePayload: DealLenderUpdate = {
@@ -487,27 +498,44 @@ export function useThreadWorkflowAnalysis({
           passReason: updatedLender.pass_reason,
         });
 
-        if (mapped.closes && finalDetail && PASS_REASON_LABELS[finalDetail as LenderPassReasonCategory]) {
-          const disqualificationPayload: LenderDisqualificationInsert = {
+        // Insert one lender_disqualifications row per selected reason label.
+        // We map labels back to the LenderPassReasonCategory enum (best-effort
+        // keyword match); unmapped labels fall back to 'other' with the label
+        // preserved in reason_details so reporting still works.
+        if (mapped.closes && finalDetailLabels.length > 0) {
+          const labelToCategory = (label: string): LenderPassReasonCategory => {
+            const l = label.toLowerCase();
+            if (/(deal\s*size|size|too\s*small|too\s*big|check\s*size)/.test(l)) return 'deal_size_mismatch';
+            if (/(industry|sector|vertical)/.test(l)) return 'industry_exclusion';
+            if (/(geograph|location|region|state|country)/.test(l)) return 'geographic_restriction';
+            if (/(risk|credit|leverage|burn|profitab|concentration)/.test(l)) return 'risk_profile_concerns';
+            if (/(timing|capacity|year[- ]end|paused)/.test(l)) return 'timing_issues';
+            if (/(relationship|conflict)/.test(l)) return 'relationship_issues';
+            if (/(terms|pricing|structure|rate|covenant)/.test(l)) return 'terms_mismatch';
+            return 'other';
+          };
+
+          const rows: LenderDisqualificationInsert[] = finalDetailLabels.map((label) => ({
             deal_id: targetDealId,
             deal_lender_id: resolvedLenderId,
             lender_name: rec.lender_name || analysis.likely_lender_firm.name || 'Lender',
             master_lender_id: rec.master_lender_id || null,
             disqualified_by: user.id,
-            reason_category: finalDetail as LenderPassReasonCategory,
-            reason_details: reason || null,
-          };
-          debugStep('applyDisposition:disqualification-attempt', disqualificationPayload);
+            reason_category: labelToCategory(label),
+            reason_details: [label, reason].filter(Boolean).join(' — ') || null,
+          }));
+
+          debugStep('applyDisposition:disqualification-attempt', { rowCount: rows.length, rows });
 
           const { error: disqualificationError } = await supabase
             .from('lender_disqualifications')
-            .insert(disqualificationPayload);
+            .insert(rows);
 
           if (disqualificationError) throw disqualificationError;
           debugStep('applyDisposition:disqualification-success', {
             dealId: targetDealId,
             dealLenderId: resolvedLenderId,
-            reasonCategory: finalDetail,
+            labels: finalDetailLabels,
           });
         }
       }
