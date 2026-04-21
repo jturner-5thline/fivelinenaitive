@@ -1229,9 +1229,11 @@ function AgendaView({
 function AllDayBar({
   events,
   onEventClick,
+  calendarColors,
 }: {
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
+  calendarColors: CalendarColorMap;
 }) {
   if (events.length === 0) return null;
   return (
@@ -1240,7 +1242,11 @@ function AllDayBar({
         <button
           key={event.id}
           onClick={() => onEventClick(event)}
-          className={cn('text-[10px] font-medium px-2 py-0.5 rounded truncate max-w-[180px]', getEventColorClass(event, idx))}
+          className={cn(
+            'text-[10px] font-medium px-2 py-0.5 rounded truncate max-w-[180px] border',
+            !calendarColors.get(event.calendar_id)?.background && getEventColorClass(event, idx),
+          )}
+          style={getEventColorStyle(event, calendarColors) || undefined}
         >
           {event.summary}
         </button>
