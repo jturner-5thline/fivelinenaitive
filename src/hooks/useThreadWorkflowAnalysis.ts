@@ -380,7 +380,10 @@ export function useThreadWorkflowAnalysis({
   const confirmRecommendation = useCallback(async (overrides?: {
     reasonNote?: string;
     confirmedStatus?: string;
+    /** Comma-joined label string saved into deal_lenders.pass_reason. */
     confirmedDetail?: string;
+    /** Multi-select array of label strings — one disqualification row per label. */
+    confirmedDetailLabels?: string[];
   }) => {
     if (!analysis || !user) return false;
     const rec = analysis.recommended_update;
