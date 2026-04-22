@@ -23,6 +23,7 @@ import { DashboardFoldersProvider } from "@/contexts/DashboardFoldersContext";
 import { DashboardWidgetsProvider } from "@/contexts/DashboardWidgetsContext";
 import { DashboardLayoutProvider } from "@/contexts/DashboardLayoutContext";
 import { DealsProvider } from "@/contexts/DealsContext";
+import { UndoSendProvider } from "@/contexts/UndoSendContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { FloatingCopilotDrawer } from "@/components/FloatingCopilotDrawer";
