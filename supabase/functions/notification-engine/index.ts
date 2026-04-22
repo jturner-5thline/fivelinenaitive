@@ -572,7 +572,7 @@ serve(async (req) => {
                 title: renderedSubject,
                 body: renderedBody,
                 error_message: !resendKey ? "RESEND_API_KEY not configured" : "No recipient email",
-                metadata: { rule_id: rule.id },
+                metadata: { ...auditMeta },
               });
             }
           } else if (channel.channel_type === "slack") {
