@@ -106,7 +106,6 @@ export default function Dashboard() {
       { id: 'calendar', label: 'Calendar' },
       { id: 'email', label: 'Email' },
       { id: 'new-deal', label: 'New Deal' },
-      { id: 'quick-prompts', label: 'Quick Prompts' },
     ];
     if (isJTurner) entries.push({ id: 'daily-briefing', label: 'Daily Briefing' });
     if (canSeeNiki) {
