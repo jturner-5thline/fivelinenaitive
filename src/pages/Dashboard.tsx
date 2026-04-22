@@ -61,9 +61,11 @@ const handleTileKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, action: () =>
 function EmailTileWithIntelligence({
   onOpen,
   onKeyDown,
+  className,
 }: {
   onOpen: (el: HTMLElement) => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => void;
+  className?: string;
 }) {
   const [isHovering, setIsHovering] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -88,7 +90,7 @@ function EmailTileWithIntelligence({
 
   return (
     <div
-      className="relative"
+      className={cn('relative', className)}
       onMouseEnter={open}
       onMouseLeave={scheduleClose}
       onFocus={open}
@@ -415,7 +417,7 @@ export default function Dashboard() {
           <>
           <div className={`grid gap-3 md:gap-4 ${gridColsClass}`}>
             <Card
-              className={TILE_INTERACTIVE_CLASSES}
+              className={cn(TILE_INTERACTIVE_CLASSES, isJTurner && 'order-1')}
               onClick={(e) => openCarouselWidget('calendar', e.currentTarget as HTMLElement)}
               role="button"
               tabIndex={0}
@@ -433,6 +435,7 @@ export default function Dashboard() {
               </div>
             </Card>
             <EmailTileWithIntelligence
+              className={isJTurner ? 'order-2' : undefined}
               onOpen={(el) => openCarouselWidget('email', el)}
               onKeyDown={(e) =>
                 handleTileKeyDown(e, () =>
@@ -441,7 +444,7 @@ export default function Dashboard() {
               }
             />
             <Card
-              className={TILE_INTERACTIVE_CLASSES}
+              className={cn(TILE_INTERACTIVE_CLASSES, isJTurner && 'order-4')}
               onClick={(e) => openCarouselWidget('new-deal', e.currentTarget as HTMLElement)}
               role="button"
               tabIndex={0}
@@ -460,7 +463,7 @@ export default function Dashboard() {
             </Card>
             {isJTurner && (
               <Card
-                className={TILE_INTERACTIVE_CLASSES}
+                className={cn(TILE_INTERACTIVE_CLASSES, 'order-5')}
                 onClick={(e) => openCarouselWidget('daily-briefing', e.currentTarget as HTMLElement)}
                 role="button"
                 tabIndex={0}
@@ -502,7 +505,7 @@ export default function Dashboard() {
             )}
             {is5thLine && (
               <Card
-                className={TILE_INTERACTIVE_CLASSES}
+                className={cn(TILE_INTERACTIVE_CLASSES, isJTurner && 'order-3')}
                 onClick={(e) => openCarouselWidget('deal-rundown', e.currentTarget as HTMLElement)}
                 role="button"
                 tabIndex={0}
