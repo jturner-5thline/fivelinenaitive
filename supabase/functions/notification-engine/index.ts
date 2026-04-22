@@ -14,11 +14,39 @@ interface NotifyPayload {
   context: Record<string, unknown>;
 }
 
+// Trigger keys that count as "stale-activity / reminder" and are subject to
+// the global suppression rule for deals in On Hold / Archived / Closed Won /
+// Closed Lost. NON-stale triggers (e.g. lender_access_request, deal_assigned)
+// are NOT in this list and continue to fire normally.
+const STALE_ACTIVITY_TRIGGER_PREFIXES = [
+  'stale_',                       // stale_deal_alert, stale_lender_alert, ...
+  'deal.followup.',               // deal.followup.morning_digest, deal.followup.created_3d, ...
+  'deal.attention.',              // deal.attention.* digests
+  'lenders_needing_attention',    // attention digest
+  'lender_attention',
+];
+
+function isStaleActivityTrigger(triggerKey: string): boolean {
+  const k = (triggerKey || '').toLowerCase();
+  return STALE_ACTIVITY_TRIGGER_PREFIXES.some((p) => k.startsWith(p));
+}
+
+const HARD_SUPPRESSED_DEAL_STATES = new Set<string>([
+  'archived',
+  'on hold', 'on-hold', 'on_hold',
+  'closed won', 'closed-won', 'closed_won', 'won',
+  'closed lost', 'closed-lost', 'closed_lost', 'lost',
+]);
+
+function normState(v: unknown): string {
+  return String(v ?? '').trim().toLowerCase();
+}
+
 async function writeAudit(
   supabase: ReturnType<typeof createClient>,
   row: {
     trigger_key: string;
-    recipient_user_id: string;
+    recipient_user_id: string | null;
     deal_id: string | null;
     channel: string;
     status: string;
@@ -31,7 +59,7 @@ async function writeAudit(
   try {
     await supabase.from("notification_audit").insert({
       trigger_key: row.trigger_key,
-      recipient_user_id: row.recipient_user_id,
+      recipient_user_id: row.recipient_user_id ?? null,
       deal_id: row.deal_id,
       channel: row.channel,
       status: row.status,
