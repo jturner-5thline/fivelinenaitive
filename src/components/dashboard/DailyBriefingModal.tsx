@@ -30,7 +30,7 @@ import { cn } from '@/lib/utils';
 // (prompts, actions, summaries, suggested replies) is identical here.
 import { AiAssistInlinePanel } from '@/components/deal/email/AiAssistInlinePanel';
 import { EmailBodyRenderer } from '@/components/deal/email/EmailBodyRenderer';
-import { useFullEmailMessage } from '@/components/deal/email/useFullEmailMessage';
+import { useFullEmailMessage, useFullEmailThread } from '@/components/deal/email/useFullEmailMessage';
 import type { EmailThread, MockEmail } from '@/components/deal/email/mockEmailData';
 import { EmailAttachmentsStrip } from '@/components/deal/email/EmailAttachmentsStrip';
 
@@ -567,7 +567,7 @@ function briefingRowToThread(e: any): EmailThread {
     e.body_text || e.body_html || e.snippet || e.analysis?.summary || '';
   const email: MockEmail = {
     id: e.id || e.gmail_message_id,
-    threadId: e.id || e.gmail_message_id,
+    threadId: e.thread_id || e.id || e.gmail_message_id,
     subject: e.subject || '(no subject)',
     from_name: fromName,
     from_email: fromEmail,
@@ -583,7 +583,8 @@ function briefingRowToThread(e: any): EmailThread {
     is_starred: false,
     folder: 'inbox',
     labels: e.labels || [],
-    has_attachments: false,
+    has_attachments: !!e.has_attachments || (Array.isArray(e.attachments) && e.attachments.length > 0),
+    attachments: Array.isArray(e.attachments) ? e.attachments : undefined,
     is_linked_to_deal: false,
     is_follow_up: false,
     needs_response: !e.is_read,
@@ -626,6 +627,8 @@ function BriefingEmailDetailPane({
     /* enabled */ true,
     alreadyLoaded,
   );
+  const providerThreadId: string | undefined = email.thread_id || full?.thread_id;
+  const { data: threadMessages, loading: threadLoading } = useFullEmailThread(providerThreadId, !!providerThreadId);
 
   const html = full?.body_html ?? email.body_html;
   const text = full?.body_text ?? email.body_text ?? email.snippet;
@@ -635,16 +638,33 @@ function BriefingEmailDetailPane({
   // will additionally lazy-fetch attachments if `has_attachments` is true and
   // the list is still empty (e.g. before the body call has resolved).
   const stripThread: { emails: MockEmail[] } = {
-    emails: [
-      {
-        ...briefingRowToThread(email).latestEmail,
-        attachments: full?.attachments ?? email.attachments ?? [],
-        has_attachments:
-          (full?.attachments?.length ?? 0) > 0 ||
-          !!email.has_attachments ||
-          (Array.isArray(email.attachments) && email.attachments.length > 0),
-      },
-    ],
+    emails: threadMessages && threadMessages.length > 0
+      ? threadMessages.map((message) => ({
+          ...briefingRowToThread({
+            ...email,
+            id: message.id,
+            gmail_message_id: message.id,
+            thread_id: message.thread_id || providerThreadId,
+            subject: message.subject || email.subject,
+            from_name: message.from_name || email.from_name,
+            from_email: message.from_email || email.from_email,
+            received_at: message.received_at || email.received_at,
+            body_html: message.body_html,
+            body_text: message.body_text,
+            attachments: message.attachments,
+            has_attachments: (message.attachments?.length ?? 0) > 0,
+          }).latestEmail,
+        }))
+      : [
+          {
+            ...briefingRowToThread({ ...email, thread_id: providerThreadId }).latestEmail,
+            attachments: full?.attachments ?? email.attachments ?? [],
+            has_attachments:
+              (full?.attachments?.length ?? 0) > 0 ||
+              !!email.has_attachments ||
+              (Array.isArray(email.attachments) && email.attachments.length > 0),
+          },
+        ],
   };
 
   return (
@@ -703,7 +723,7 @@ function BriefingEmailDetailPane({
       {/* Body */}
       <ScrollArea className="flex-1 min-h-0">
         <div className="px-5 py-4">
-          {loading && !html && !text ? (
+          {(loading || threadLoading) && !html && !text ? (
             <div className="space-y-2">
               <Skeleton className="h-3 w-3/4" />
               <Skeleton className="h-3 w-2/3" />

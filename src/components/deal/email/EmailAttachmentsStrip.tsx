@@ -13,7 +13,6 @@ import {
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
 import {
   Tooltip,
   TooltipContent,
@@ -25,7 +24,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import type { EmailAttachment, EmailThread, MockEmail } from './mockEmailData';
-import { downloadAttachment } from './useFullEmailMessage';
+import { downloadAttachment, fetchFullEmailMessage } from './useFullEmailMessage';
 
 /**
  * EmailAttachmentsStrip
@@ -73,6 +72,13 @@ interface AggregatedAttachment {
   isOlder: boolean;
 }
 
+interface ResolvedAttachmentDebug {
+  messageId: string;
+  hasAttachments: boolean;
+  filenames: string[];
+  attachmentIds: string[];
+}
+
 function formatBytes(bytes: number | undefined): string {
   if (!bytes || bytes < 0) return '';
   if (bytes < 1024) return `${bytes} B`;
@@ -109,18 +115,20 @@ function fileLabel(filename: string, contentType: string | undefined): string {
 function useResolvedThreadAttachments(emails: MockEmail[]): {
   attachmentsByMessage: Record<string, EmailAttachment[]>;
   loading: boolean;
+  debug: ResolvedAttachmentDebug[];
 } {
   const [extra, setExtra] = useState<Record<string, EmailAttachment[]>>({});
   const [loading, setLoading] = useState(false);
 
-  // Stable key: ids of messages that need a fetch (has_attachments, no
-  // hydrated attachments yet, real provider id — not mock).
+  // Stable key: ids of messages that need a fetch. We do not trust only
+  // `has_attachments` because provider list rows can miss nested MIME-part
+  // attachments even when the body clearly references an attached file.
   const needFetchIds = useMemo(() => {
     const ids: string[] = [];
     for (const e of emails) {
       if (!e.id || e.id.startsWith('mock-')) continue;
       const known = e.attachments && e.attachments.length > 0;
-      if (e.has_attachments && !known && extra[e.id] === undefined) {
+      if (!known && extra[e.id] === undefined) {
         ids.push(e.id);
       }
     }
@@ -134,12 +142,8 @@ function useResolvedThreadAttachments(emails: MockEmail[]): {
     Promise.all(
       needFetchIds.map(async (messageId) => {
         try {
-          const { data, error } = await supabase.functions.invoke('gmail-messages', {
-            body: { action: 'get', message_id: messageId },
-          });
-          if (error) return [messageId, [] as EmailAttachment[]] as const;
-          const m = data?.message;
-          const atts: EmailAttachment[] = Array.isArray(m?.attachments) ? m.attachments : [];
+          const m = await fetchFullEmailMessage(messageId);
+          const atts: EmailAttachment[] = Array.isArray(m.attachments) ? m.attachments : [];
           return [messageId, atts] as const;
         } catch {
           return [messageId, [] as EmailAttachment[]] as const;
@@ -152,6 +156,9 @@ function useResolvedThreadAttachments(emails: MockEmail[]): {
         for (const [id, atts] of entries) next[id] = atts;
         return next;
       });
+      setLoading(false);
+    }).catch(() => {
+      if (cancelled) return;
       setLoading(false);
     });
     return () => {
@@ -169,7 +176,19 @@ function useResolvedThreadAttachments(emails: MockEmail[]): {
     return map;
   }, [emails, extra]);
 
-  return { attachmentsByMessage, loading };
+  const debug = useMemo<ResolvedAttachmentDebug[]>(() => (
+    emails.map((email) => {
+      const attachments = attachmentsByMessage[email.id] || [];
+      return {
+        messageId: email.id,
+        hasAttachments: email.has_attachments,
+        filenames: attachments.filter((att) => !att.is_inline).map((att) => att.filename || 'attachment'),
+        attachmentIds: attachments.filter((att) => !att.is_inline).map((att) => att.id || ''),
+      };
+    })
+  ), [attachmentsByMessage, emails]);
+
+  return { attachmentsByMessage, loading, debug };
 }
 
 export function EmailAttachmentsStrip({
@@ -179,7 +198,7 @@ export function EmailAttachmentsStrip({
   maxInline = 2,
 }: EmailAttachmentsStripProps) {
   const emails = thread.emails;
-  const { attachmentsByMessage, loading } = useResolvedThreadAttachments(emails);
+  const { attachmentsByMessage, loading, debug } = useResolvedThreadAttachments(emails);
   const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
 
   // Build the aggregated, newest-first list with version ranking by filename.
@@ -207,10 +226,30 @@ export function EmailAttachmentsStrip({
     return out;
   }, [emails, attachmentsByMessage]);
 
+  useEffect(() => {
+    if (emails.length === 0) return;
+    console.info('[EmailAttachmentsStrip] thread attachment debug', {
+      threadId: (thread as EmailThread).threadId || emails[0]?.threadId || emails[0]?.id,
+      loading,
+      messages: debug.map((item) => ({
+        messageId: item.messageId,
+        has_attachments: item.hasAttachments,
+        parsedFilenames: item.filenames,
+        attachmentIds: item.attachmentIds,
+      })),
+      headerStripItems: aggregated.map((item) => ({
+        messageId: item.source.id,
+        filename: item.attachment.filename,
+        attachmentId: item.attachment.id,
+      })),
+    });
+  }, [aggregated, debug, emails, loading, thread]);
+
   // Render nothing if no attachments anywhere in the thread (and nothing to load).
   const anyMessageClaimsAttachments = emails.some((e) => e.has_attachments);
-  if (aggregated.length === 0 && !loading && !anyMessageClaimsAttachments) return null;
-  if (aggregated.length === 0 && !loading) return null;
+  const hasPendingHydration = loading || emails.some((e) => !e.id?.startsWith('mock-') && !attachmentsByMessage[e.id]);
+  if (aggregated.length === 0 && !hasPendingHydration && !anyMessageClaimsAttachments) return null;
+  if (aggregated.length === 0 && !hasPendingHydration) return null;
 
   const handleOpen = async (item: AggregatedAttachment) => {
     const att = item.attachment;
@@ -333,11 +372,14 @@ export function EmailAttachmentsStrip({
   // Renders compact chips directly into a host action/command row.
   // Shows up to `maxInline` chips inline, then a "+N more" popover.
   if (variant === 'inline') {
-    if (aggregated.length === 0 && loading) {
+    if (aggregated.length === 0 && hasPendingHydration) {
       return (
-        <div className={cn('inline-flex items-center gap-1 text-[11px] text-muted-foreground', className)}>
-          <Loader2 className="h-3 w-3 animate-spin" />
-          <span>Attachments…</span>
+        <div className={cn('inline-flex items-center gap-1.5 min-w-0', className)}>
+          <Paperclip className="h-3 w-3 text-muted-foreground/70 shrink-0" />
+          <div className="inline-flex items-center gap-1.5">
+            <span className="h-6 w-[112px] rounded-md border border-border/40 bg-background/35 animate-pulse" />
+            <span className="h-6 w-[88px] rounded-md border border-border/40 bg-background/25 animate-pulse hidden md:inline-flex" />
+          </div>
         </div>
       );
     }

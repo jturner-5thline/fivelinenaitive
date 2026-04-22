@@ -12,8 +12,9 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 interface MessageRequest {
-  action: "list" | "get" | "send" | "mark_read" | "mark_unread" | "star" | "unstar" | "trash" | "delete" | "sync_state" | "get_attachment";
+  action: "list" | "get" | "get_thread" | "send" | "mark_read" | "mark_unread" | "star" | "unstar" | "trash" | "delete" | "sync_state" | "get_attachment";
   message_id?: string;
+  thread_id?: string;
   message_ids?: string[];
   attachment_id?: string;
   to?: string[];
@@ -55,6 +56,87 @@ function normalizeAttachments(raw: any[]): Array<{
         content_id: cid || undefined,
       };
     });
+}
+
+function flattenMessageParts(part: any): any[] {
+  if (!part || typeof part !== "object") return [];
+  const children = Array.isArray(part.parts)
+    ? part.parts.flatMap((child: any) => flattenMessageParts(child))
+    : [];
+  return [part, ...children];
+}
+
+function extractAttachmentsFromParts(msg: any): Array<{
+  id: string;
+  filename: string;
+  content_type: string;
+  size: number;
+  is_inline: boolean;
+  content_id?: string;
+}> {
+  const roots = [msg?.payload, msg?.message_payload, msg?.mime, msg?.body].filter(Boolean);
+  if (roots.length === 0) return [];
+
+  const seen = new Set<string>();
+  const extracted: Array<{
+    id: string;
+    filename: string;
+    content_type: string;
+    size: number;
+    is_inline: boolean;
+    content_id?: string;
+  }> = [];
+
+  for (const root of roots) {
+    const parts = flattenMessageParts(root);
+    for (const part of parts) {
+      const body = part?.body || {};
+      const attachmentId =
+        body?.attachmentId || body?.attachment_id || part?.attachment_id || part?.attachmentId || part?.id || "";
+      const filename = part?.filename || part?.name || body?.filename || "";
+      const contentType = part?.mimeType || part?.mime_type || part?.content_type || "application/octet-stream";
+      const disposition =
+        part?.contentDisposition || part?.content_disposition || body?.contentDisposition || body?.content_disposition || "";
+      const rawCid = part?.contentId || part?.content_id || body?.contentId || body?.content_id || "";
+      const cid = typeof rawCid === "string" ? rawCid.replace(/^<|>$/g, "") : "";
+      const isInline = !!cid || String(disposition).toLowerCase() === "inline";
+      const size = Number(body?.size || part?.size || 0);
+      const isRealAttachment = !!attachmentId && !!filename;
+
+      if (!isRealAttachment) continue;
+
+      const key = `${attachmentId}::${filename}::${contentType}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      extracted.push({
+        id: String(attachmentId),
+        filename,
+        content_type: contentType,
+        size,
+        is_inline: isInline,
+        content_id: cid || undefined,
+      });
+    }
+  }
+
+  return extracted;
+}
+
+function mergeAndNormalizeAttachments(msg: any) {
+  const normalized = normalizeAttachments(msg.attachments || msg.files || []);
+  const fromParts = extractAttachmentsFromParts(msg);
+  const merged = [...normalized];
+  const seen = new Set(merged.map((att) => `${att.id}::${att.filename}::${att.content_type}`));
+
+  for (const att of fromParts) {
+    const key = `${att.id}::${att.filename}::${att.content_type}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(att);
+  }
+
+  return merged;
 }
 
 function pickBodyHtmlAndText(msg: any): { body_html: string; body_text: string } {
@@ -178,7 +260,7 @@ serve(async (req: Request): Promise<Response> => {
 
         const items = listData.data || [];
         const messages = items.map((msg: any) => {
-          const atts = normalizeAttachments(msg.attachments || msg.files || []);
+          const atts = mergeAndNormalizeAttachments(msg);
           const visibleAtts = atts.filter((a) => !a.is_inline);
           return {
             id: msg.id,
@@ -231,12 +313,20 @@ serve(async (req: Request): Promise<Response> => {
 
         const msg = msgData.data || msgData;
         const { body_html, body_text } = pickBodyHtmlAndText(msg);
-        const allAtts = normalizeAttachments(msg.attachments || msg.files || []);
+        const allAtts = mergeAndNormalizeAttachments(msg);
         const visibleAtts = allAtts.filter((a) => !a.is_inline);
         // Inline attachments power CID resolution for embedded images
         // (signature logos, headshots). Surfaced separately so the client
         // can rewrite `cid:` references without showing them as files.
         const inlineAtts = allAtts.filter((a) => a.is_inline);
+        console.log("[gmail-messages:get] attachment-debug", JSON.stringify({
+          message_id: msg.id,
+          thread_id: msg.thread_id || msg.id,
+          has_attachments: visibleAtts.length > 0,
+          parsed_filenames: visibleAtts.map((a) => a.filename),
+          attachment_ids: visibleAtts.map((a) => a.id),
+          inline_filenames: inlineAtts.map((a) => a.filename),
+        }));
         const message = {
           id: msg.id,
           thread_id: msg.thread_id || msg.id,
@@ -258,6 +348,75 @@ serve(async (req: Request): Promise<Response> => {
         };
 
         return new Response(JSON.stringify({ message }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      case "get_thread": {
+        const { thread_id } = requestData;
+        if (!thread_id) {
+          return new Response(JSON.stringify({ error: "Thread ID required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const threadResponse = await fetch(
+          `${baseUrl}/threads/${thread_id}`,
+          { headers }
+        );
+
+        const threadData = await threadResponse.json();
+
+        if (!threadResponse.ok) {
+          return new Response(JSON.stringify({ error: threadData.message || "Failed to get thread" }), {
+            status: threadResponse.status,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const rawThread = threadData.data || threadData;
+        const rawMessages = Array.isArray(rawThread?.messages)
+          ? rawThread.messages
+          : Array.isArray(rawThread?.data)
+            ? rawThread.data
+            : [];
+
+        const messages = rawMessages.map((msg: any) => {
+          const { body_html, body_text } = pickBodyHtmlAndText(msg);
+          const allAtts = mergeAndNormalizeAttachments(msg);
+          const visibleAtts = allAtts.filter((a) => !a.is_inline);
+          const inlineAtts = allAtts.filter((a) => a.is_inline);
+          console.log("[gmail-messages:get_thread] attachment-debug", JSON.stringify({
+            message_id: msg.id,
+            thread_id: msg.thread_id || thread_id,
+            has_attachments: visibleAtts.length > 0,
+            parsed_filenames: visibleAtts.map((a) => a.filename),
+            attachment_ids: visibleAtts.map((a) => a.id),
+          }));
+          return {
+            id: msg.id,
+            thread_id: msg.thread_id || thread_id,
+            subject: msg.subject || "",
+            from_email: msg.from?.[0]?.email || "",
+            from_name: msg.from?.[0]?.name || "",
+            to_emails: (msg.to || []).map((t: any) => t.email || ""),
+            cc_emails: (msg.cc || []).map((c: any) => c.email || ""),
+            snippet: msg.snippet || "",
+            body_text,
+            body_html,
+            is_read: !msg.unread,
+            is_starred: msg.starred || false,
+            labels: msg.folders || msg.labels || [],
+            received_at: msg.date ? new Date(msg.date * 1000).toISOString() : null,
+            attachments: visibleAtts,
+            inline_attachments: inlineAtts,
+            has_attachments: visibleAtts.length > 0,
+          };
+        });
+
+        return new Response(JSON.stringify({ thread: { id: thread_id, messages } }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

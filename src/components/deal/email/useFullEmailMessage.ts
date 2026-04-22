@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { EmailAttachment } from './mockEmailData';
 
-interface FullMessage {
+export interface FullMessage {
+  id?: string;
+  thread_id?: string;
   body_html?: string;
   body_text?: string;
   attachments?: EmailAttachment[];
@@ -13,6 +15,92 @@ interface FullMessage {
    * attachment cards.
    */
   inline_attachments?: EmailAttachment[];
+}
+
+export interface FullThreadMessage extends FullMessage {
+  subject?: string;
+  from_name?: string;
+  from_email?: string;
+  received_at?: string;
+}
+
+export async function fetchFullEmailMessage(messageId: string): Promise<FullMessage> {
+  const { data: resp, error: err } = await supabase.functions.invoke('gmail-messages', {
+    body: { action: 'get', message_id: messageId },
+  });
+
+  if (err) {
+    throw new Error(err.message || 'Failed to load message');
+  }
+
+  const m = resp?.message;
+  if (!m) {
+    throw new Error('No message returned');
+  }
+
+  return {
+    id: m.id || messageId,
+    thread_id: m.thread_id || undefined,
+    body_html: m.body_html || undefined,
+    body_text: m.body_text || undefined,
+    attachments: Array.isArray(m.attachments) ? m.attachments : [],
+    inline_attachments: Array.isArray(m.inline_attachments) ? m.inline_attachments : [],
+  };
+}
+
+export async function fetchFullEmailThread(threadId: string): Promise<FullThreadMessage[]> {
+  const { data: resp, error: err } = await supabase.functions.invoke('gmail-messages', {
+    body: { action: 'get_thread', thread_id: threadId },
+  });
+
+  if (err) {
+    throw new Error(err.message || 'Failed to load thread');
+  }
+
+  const messages = Array.isArray(resp?.thread?.messages) ? resp.thread.messages : [];
+  return messages.map((m: any) => ({
+    id: m.id,
+    thread_id: m.thread_id || threadId,
+    subject: m.subject || undefined,
+    from_name: m.from_name || undefined,
+    from_email: m.from_email || undefined,
+    received_at: m.received_at || undefined,
+    body_html: m.body_html || undefined,
+    body_text: m.body_text || undefined,
+    attachments: Array.isArray(m.attachments) ? m.attachments : [],
+    inline_attachments: Array.isArray(m.inline_attachments) ? m.inline_attachments : [],
+  }));
+}
+
+export function useFullEmailThread(
+  threadId: string | undefined,
+  enabled: boolean,
+): { data: FullThreadMessage[] | null; loading: boolean; error: string | null } {
+  const [data, setData] = useState<FullThreadMessage[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fetchedThreadRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!enabled || !threadId) return;
+    if (fetchedThreadRef.current === threadId) return;
+
+    fetchedThreadRef.current = threadId;
+    setLoading(true);
+
+    fetchFullEmailThread(threadId)
+      .then((messages) => {
+        setData(messages);
+        setError(null);
+      })
+      .catch((e: any) => {
+        setError(e?.message || 'Failed to load thread');
+        setData(null);
+      })
+      .finally(() => setLoading(false));
+  }, [threadId, enabled]);
+
+  return { data, loading, error };
 }
 
 /**
@@ -33,40 +121,24 @@ export function useFullEmailMessage(
   const [data, setData] = useState<FullMessage | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const hasFetchedRef = useRef(false);
+  const fetchedMessageRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!enabled || alreadyLoaded || hasFetchedRef.current) return;
+    if (!enabled || alreadyLoaded) return;
     if (!messageId || messageId.startsWith('mock-')) return;
+    if (fetchedMessageRef.current === messageId) return;
 
-    hasFetchedRef.current = true;
+    fetchedMessageRef.current = messageId;
     setLoading(true);
 
-    supabase.functions
-      .invoke('gmail-messages', {
-        body: { action: 'get', message_id: messageId },
-      })
-      .then(({ data: resp, error: err }) => {
-        if (err) {
-          setError(err.message || 'Failed to load message');
-          setData(null);
-          return;
-        }
-        const m = resp?.message;
-        if (!m) {
-          setError('No message returned');
-          return;
-        }
-        setData({
-          body_html: m.body_html || undefined,
-          body_text: m.body_text || undefined,
-          attachments: Array.isArray(m.attachments) ? m.attachments : [],
-          inline_attachments: Array.isArray(m.inline_attachments) ? m.inline_attachments : [],
-        });
+    fetchFullEmailMessage(messageId)
+      .then((message) => {
+        setData(message);
         setError(null);
       })
       .catch((e: any) => {
         setError(e?.message || 'Failed to load message');
+        setData(null);
       })
       .finally(() => setLoading(false));
   }, [messageId, enabled, alreadyLoaded]);
