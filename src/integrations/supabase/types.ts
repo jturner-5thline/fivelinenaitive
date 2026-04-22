@@ -12381,6 +12381,56 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_audit: {
+        Row: {
+          body: string | null
+          channel: string
+          created_at: string
+          deal_id: string | null
+          error_message: string | null
+          id: string
+          metadata: Json
+          recipient_user_id: string
+          status: string
+          title: string | null
+          trigger_key: string
+        }
+        Insert: {
+          body?: string | null
+          channel: string
+          created_at?: string
+          deal_id?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json
+          recipient_user_id: string
+          status: string
+          title?: string | null
+          trigger_key: string
+        }
+        Update: {
+          body?: string | null
+          channel?: string
+          created_at?: string
+          deal_id?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json
+          recipient_user_id?: string
+          status?: string
+          title?: string | null
+          trigger_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_audit_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_instances: {
         Row: {
           actor_user_id: string | null
@@ -13427,6 +13477,8 @@ export type Database = {
           last_name: string | null
           lender_updates_app: boolean
           lender_updates_email: boolean
+          morning_digest_enabled: boolean
+          morning_digest_time: string
           notify_activity_deal_created: boolean
           notify_activity_lender_added: boolean
           notify_activity_lender_updated: boolean
@@ -13442,6 +13494,7 @@ export type Database = {
           phone: string | null
           suspended_at: string | null
           suspended_reason: string | null
+          timezone: string
           updated_at: string
           user_id: string
           weekly_summary_email: boolean
@@ -13469,6 +13522,8 @@ export type Database = {
           last_name?: string | null
           lender_updates_app?: boolean
           lender_updates_email?: boolean
+          morning_digest_enabled?: boolean
+          morning_digest_time?: string
           notify_activity_deal_created?: boolean
           notify_activity_lender_added?: boolean
           notify_activity_lender_updated?: boolean
@@ -13484,6 +13539,7 @@ export type Database = {
           phone?: string | null
           suspended_at?: string | null
           suspended_reason?: string | null
+          timezone?: string
           updated_at?: string
           user_id: string
           weekly_summary_email?: boolean
@@ -13511,6 +13567,8 @@ export type Database = {
           last_name?: string | null
           lender_updates_app?: boolean
           lender_updates_email?: boolean
+          morning_digest_enabled?: boolean
+          morning_digest_time?: string
           notify_activity_deal_created?: boolean
           notify_activity_lender_added?: boolean
           notify_activity_lender_updated?: boolean
@@ -13526,6 +13584,7 @@ export type Database = {
           phone?: string | null
           suspended_at?: string | null
           suspended_reason?: string | null
+          timezone?: string
           updated_at?: string
           user_id?: string
           weekly_summary_email?: boolean
@@ -14864,6 +14923,50 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduled_followup_actions: {
+        Row: {
+          context: Json
+          created_at: string
+          deal_id: string
+          error_message: string | null
+          fired_at: string | null
+          id: string
+          scheduled_for: string
+          status: string
+          trigger_key: string
+        }
+        Insert: {
+          context?: Json
+          created_at?: string
+          deal_id: string
+          error_message?: string | null
+          fired_at?: string | null
+          id?: string
+          scheduled_for: string
+          status?: string
+          trigger_key: string
+        }
+        Update: {
+          context?: Json
+          created_at?: string
+          deal_id?: string
+          error_message?: string | null
+          fired_at?: string | null
+          id?: string
+          scheduled_for?: string
+          status?: string
+          trigger_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_followup_actions_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
             referencedColumns: ["id"]
           },
         ]
@@ -19513,6 +19616,7 @@ export type Database = {
         }
         Returns: number
       }
+      normalize_stage: { Args: { stage_text: string }; Returns: string }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
