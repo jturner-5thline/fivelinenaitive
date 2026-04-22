@@ -838,6 +838,19 @@ export function useDealsDatabase() {
               .eq('user_id', userId!)
               .maybeSingle();
             if (mem?.company_id) {
+              // Resolve pipeline name for tenant-scoped pipeline matching.
+              const effectivePipelineId =
+                (updates as any).pipelineId ?? previousDeal.pipelineId ?? null;
+              let pipelineName: string | null = null;
+              if (effectivePipelineId) {
+                const { data: pipe } = await supabase
+                  .from('deal_pipelines')
+                  .select('name')
+                  .eq('id', effectivePipelineId)
+                  .maybeSingle();
+                pipelineName = (pipe as any)?.name || null;
+              }
+
               await checkStageChangeWorkflows(
                 {
                   dealId,
@@ -845,6 +858,8 @@ export function useDealsDatabase() {
                   dealName: previousDeal.company || '',
                   facilitySize: previousDeal.value,
                   lenderCount: previousDeal.lenders?.length,
+                  pipelineId: effectivePipelineId,
+                  pipelineName,
                 },
                 updates.stage!,
                 previousDeal.stage
