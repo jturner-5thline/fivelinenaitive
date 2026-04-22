@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { Component, type ErrorInfo, type ReactNode, useState, useEffect, useCallback, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { SmartEmailPanel } from './SmartEmailPanel';
 import { ThreadLabelsBar } from './ThreadLabelsBar';
@@ -349,6 +349,44 @@ function EmailListSkeleton() {
       ))}
     </div>
   );
+}
+
+class EmailPaneErrorBoundary extends Component<{
+  children: ReactNode;
+  fallbackTitle: string;
+  fallbackMessage: string;
+  resetKey: string;
+}, { hasError: boolean }> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error(`[EmailPaneErrorBoundary] ${this.props.fallbackTitle}`, error, info);
+  }
+
+  componentDidUpdate(prevProps: Readonly<{ resetKey: string }>) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false });
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex h-full min-h-0 w-full min-w-0 items-center justify-center p-6">
+          <div className="max-w-md rounded-lg border border-[hsl(var(--email-border))] bg-card/40 px-5 py-4 text-center">
+            <p className="text-sm font-semibold text-[hsl(var(--email-text-primary))]">{this.props.fallbackTitle}</p>
+            <p className="mt-1 text-xs leading-relaxed text-[hsl(var(--email-text-secondary))]">{this.props.fallbackMessage}</p>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
 }
 
 // ─── Email List (threaded) ───────────────────────────────────
