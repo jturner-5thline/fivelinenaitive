@@ -178,13 +178,13 @@ export function useChecklistCategories() {
   }, [user, fetchCategories]);
 
   const addCategory = async (name: string, icon: CategoryIcon = 'folder', color: CategoryColor = 'gray'): Promise<ChecklistCategory | null> => {
-    if (!user) return null;
+    if (!user || !company?.id) return null;
 
     try {
       const position = categories.length;
       const { data, error } = await supabase
         .from('data_room_checklist_categories')
-        .insert({ user_id: user.id, name, icon, color, position })
+        .insert({ user_id: user.id, company_id: company.id, name, icon, color, position })
         .select()
         .single();
 
