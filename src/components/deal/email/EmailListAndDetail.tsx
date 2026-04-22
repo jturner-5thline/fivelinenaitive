@@ -65,6 +65,7 @@ import { LenderPassBanner } from './LenderPassBanner';
 import { useLenderPassDetection } from '@/hooks/useLenderPassDetection';
 import { SendToDataRoomDialog } from './SendToDataRoomDialog';
 import { FolderPlus } from 'lucide-react';
+import { useThreadWorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
 import { useAutoEmailLabelEvaluator } from '@/hooks/useAutoEmailLabelEvaluator';
 import type { EmailLabel } from '@/hooks/useEmailLabels';
 import { supabase } from '@/integrations/supabase/client';
@@ -788,6 +789,23 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const [showAiDraft, setShowAiDraft] = useState(false);
   const [linkedDealName, setLinkedDealName] = useState<string | undefined>(thread.dealName);
   const [showSendToDataRoom, setShowSendToDataRoom] = useState(false);
+
+  // Lift workflow analysis here so the in-thread Attachments module can show the
+  // "Add to Data Room" CTA whenever a likely-deal match exists (mirrors AI Assist).
+  const workflowThreadData = {
+    subject: thread.subject,
+    threadId: thread.threadId,
+    latestEmail: thread.latestEmail,
+    emails: thread.emails,
+  };
+  const { analysis: detailWorkflowAnalysis } = useThreadWorkflowAnalysis({
+    dealId,
+    threadData: workflowThreadData,
+    autoRun: true,
+  });
+  const effectiveDealId = dealId || detailWorkflowAnalysis?.likely_deal?.id;
+  const effectiveDealName =
+    linkedDealName || thread.dealName || detailWorkflowAnalysis?.likely_deal?.name;
 
   // Hoist the latest message's full body load so the toolbar/dialog can see
   // its attachments (the per-message MessageBlock loads its own copy too —
@@ -1530,8 +1548,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                   threadId={thread.threadId}
                   threadSubject={thread.subject}
                   threadEmails={thread.emails}
-                  dealId={dealId}
-                  dealName={linkedDealName || thread.dealName}
+                  dealId={effectiveDealId}
+                  dealName={effectiveDealName}
                   onExpandChange={(exp) => {
                     setUserExpandedMessages(prev => {
                       const next = new Set(prev);
@@ -1557,8 +1575,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                   threadId={thread.threadId}
                   threadSubject={thread.subject}
                   threadEmails={thread.emails}
-                  dealId={dealId}
-                  dealName={linkedDealName || thread.dealName}
+                  dealId={effectiveDealId}
+                  dealName={effectiveDealName}
                   onExpandChange={(exp) => {
                     setUserExpandedMessages(prev => {
                       const next = new Set(prev);
