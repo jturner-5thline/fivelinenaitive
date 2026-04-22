@@ -168,6 +168,29 @@ export function EmailAttachmentList({
     ? 'Linked to this thread via deal association.'
     : 'Matched based on thread participants, subject line, and linked deal context.';
 
+  // Header-level "Add to Data Room" CTA — visible only when the thread is
+  // tied to a Deal (explicit link OR AI likely-match via sourceEmail flow).
+  // Wires into the same SendToDataRoomDialog used by the AI Assist suggestion.
+  const showHeaderDataRoomCta = canSendToDataRoom && !!linkedDealName;
+  const headerCtaDealLabel = linkedDealName || dealLabel;
+  const HeaderDataRoomButton = showHeaderDataRoomCta ? (
+    <button
+      type="button"
+      onClick={openReview}
+      aria-label={`Add attachments to ${headerCtaDealLabel} data room`}
+      className={cn(
+        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold',
+        'bg-[hsl(var(--outlook-blue)/0.12)] text-[hsl(var(--outlook-blue))]',
+        'hover:bg-[hsl(var(--outlook-blue)/0.2)] transition-colors',
+        'border border-[hsl(var(--outlook-blue)/0.3)]',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--outlook-blue))] focus-visible:ring-offset-1 focus-visible:ring-offset-background',
+      )}
+    >
+      <FolderPlus className="h-3 w-3" />
+      <span>Add to Data Room</span>
+    </button>
+  ) : null;
+
   // ── Success state replaces the entire banner module ──────────
   if (successInfo) {
     return (
@@ -230,9 +253,12 @@ export function EmailAttachmentList({
   if (!canSendToDataRoom) {
     return (
       <div className="mt-5">
-        <div className="flex items-center gap-1.5 mb-2 text-[11px] font-semibold text-[hsl(var(--email-text-secondary))] uppercase tracking-wide">
-          <Paperclip className="h-3 w-3" />
-          <span>{visible.length} {visible.length === 1 ? 'Attachment' : 'Attachments'}</span>
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[hsl(var(--email-text-secondary))] uppercase tracking-wide">
+            <Paperclip className="h-3 w-3" />
+            <span>Attachments · {visible.length}</span>
+          </div>
+          {HeaderDataRoomButton}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {visible.map((att, i) => {
@@ -286,8 +312,11 @@ export function EmailAttachmentList({
             <FolderPlus className="h-4 w-4 text-[hsl(var(--outlook-blue))]" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-[13.5px] font-semibold text-[hsl(var(--email-text-primary))] leading-snug">
-              Ready to add these files to <span className="text-[hsl(var(--outlook-blue))]">{dealLabel}</span> Data Room
+            <div className="flex items-start justify-between gap-2">
+              <div className="text-[13.5px] font-semibold text-[hsl(var(--email-text-primary))] leading-snug">
+                Ready to add these files to <span className="text-[hsl(var(--outlook-blue))]">{dealLabel}</span> Data Room
+              </div>
+              {HeaderDataRoomButton}
             </div>
             <p className="text-[11.5px] text-[hsl(var(--email-text-muted))] mt-0.5 leading-relaxed">
               We found {visible.length} {visible.length === 1 ? 'attachment' : 'attachments'} in this thread.
