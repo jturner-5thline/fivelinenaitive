@@ -9,10 +9,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { EMAIL_WORKFLOW_DEFINITIONS, type EmailWorkflowDefinition } from './emailWorkflowConfig';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
 
-/** Guard: only 5th Line company triggers email workflows */
+/**
+ * Guard for legacy code-defined workflows that are 5th-Line-specific.
+ * DB-stored workflows in `email_workflows` are tenant-scoped via `company_id`
+ * and therefore should NOT be gated by this check.
+ */
 function isFifthLine(companyId: string): boolean {
   return companyId === FIFTH_LINE_COMPANY_ID;
 }
+
+/** Per-deal+stage+user dedup window for re-prompting (minutes). */
+const STAGE_PROMPT_DEDUP_MINUTES = 30;
 
 interface TriggerContext {
   dealId: string;
@@ -26,6 +33,8 @@ interface TriggerContext {
   lenderCount?: number;
   lenderName?: string;
   outstandingItemsCount?: number;
+  pipelineId?: string | null;
+  pipelineName?: string | null;
 }
 
 /**
@@ -38,18 +47,20 @@ export async function checkStageChangeWorkflows(
   newStage: string,
   oldStage?: string
 ): Promise<void> {
-  if (!isFifthLine(ctx.companyId)) return;
-
-  // 1. Legacy code-defined workflows
-  const matched = EMAIL_WORKFLOW_DEFINITIONS.filter(
-    w => w.triggerType === 'stage_enter' && w.triggerStage === newStage
-  );
-
-  for (const workflow of matched) {
-    await createPromptFromWorkflow(workflow, ctx, `Deal moved to stage "${newStage}"${oldStage ? ` from "${oldStage}"` : ''}`);
+  // 1. Legacy code-defined workflows (5th Line only — kept for backwards compat)
+  if (isFifthLine(ctx.companyId)) {
+    const matched = EMAIL_WORKFLOW_DEFINITIONS.filter(
+      w => w.triggerType === 'stage_enter' && w.triggerStage === newStage
+    );
+    for (const workflow of matched) {
+      await createPromptFromWorkflow(
+        workflow, ctx,
+        `Deal moved to stage "${newStage}"${oldStage ? ` from "${oldStage}"` : ''}`
+      );
+    }
   }
 
-  // 2. DB-stored email_workflows (stage_enter trigger type)
+  // 2. DB-stored email_workflows (tenant-scoped, runs for ALL companies)
   await checkDbStageWorkflows(ctx, newStage, oldStage);
 }
 
@@ -230,10 +241,18 @@ async function checkDbStageWorkflows(
 
   const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
   const newNorm = normalize(newStage);
+  const pipelineNameNorm = ctx.pipelineName ? normalize(ctx.pipelineName) : null;
 
   for (const wf of workflows as any[]) {
     const stageNorm = normalize(wf.stage_name || '');
     if (stageNorm !== newNorm) continue;
+
+    // Pipeline scoping — if the workflow is bound to a specific pipeline name,
+    // skip when the deal is on a different pipeline.
+    if (wf.pipeline_name && pipelineNameNorm) {
+      const wfPipeNorm = normalize(wf.pipeline_name);
+      if (wfPipeNorm !== pipelineNameNorm) continue;
+    }
 
     // Duplicate prevention: check if already sent for this workflow + deal
     if (wf.prevent_duplicate_send) {
@@ -247,15 +266,27 @@ async function checkDbStageWorkflows(
       if (existing && existing.length > 0) continue;
     }
 
-    // Also skip if a pending prompt already exists for this workflow+deal
-    const { data: pendingPrompt } = await supabase
+    // Per-deal+stage+workflow dedup window — skip if a prompt for the same
+    // workflow+deal was created within the last STAGE_PROMPT_DEDUP_MINUTES,
+    // regardless of status. Prevents bouncing-stage spam.
+    const cutoff = new Date(Date.now() - STAGE_PROMPT_DEDUP_MINUTES * 60_000).toISOString();
+    const { data: recentPrompt } = await supabase
       .from('deal_email_prompts')
-      .select('id')
+      .select('id, status')
       .eq('deal_id', ctx.dealId)
       .eq('workflow_key', wf.id)
-      .eq('status', 'pending')
+      .gte('triggered_at', cutoff)
       .limit(1);
-    if (pendingPrompt && pendingPrompt.length > 0) continue;
+    if (recentPrompt && recentPrompt.length > 0) {
+      // If a prompt is still pending, surface it to any open listener instead
+      // of creating a duplicate.
+      const existingId = (recentPrompt[0] as any).id;
+      const status = (recentPrompt[0] as any).status;
+      if (status === 'pending') {
+        dispatchWorkflowPromptEvent(existingId, ctx.dealId);
+      }
+      continue;
+    }
 
     // Resolve template — skip prompt if template is inactive or missing
     const { data: template } = await supabase
@@ -308,6 +339,10 @@ async function checkDbStageWorkflows(
         comm_type: wf.comm_type,
         requires_approval: wf.requires_approval,
         prevent_duplicate_send: wf.prevent_duplicate_send,
+        stage_id: newStage,
+        previous_stage_id: oldStage || null,
+        pipeline_id: ctx.pipelineId || null,
+        pipeline_name: ctx.pipelineName || null,
       },
     } as any).select().single();
 
@@ -321,5 +356,39 @@ async function checkDbStageWorkflows(
       status: 'pending_approval',
       prompt_shown_at: new Date().toISOString(),
     } as any);
+
+    // Notification audit — record that the prompt was created (status: prompted)
+    await supabase.from('notification_audit' as any).insert({
+      trigger_key: 'workflow_email_prompt',
+      recipient_user_id: user?.id || null,
+      deal_id: ctx.dealId,
+      channel: 'in_app_modal',
+      status: 'prompted',
+      title: wf.name,
+      body: triggerReason,
+      metadata: {
+        prompt_id: (promptData as any)?.id || null,
+        workflow_id: wf.id,
+        stage_id: newStage,
+        previous_stage_id: oldStage || null,
+        pipeline_id: ctx.pipelineId || null,
+      },
+    } as any);
+
+    // Surface the new prompt to any open listener so the modal opens.
+    if ((promptData as any)?.id) {
+      dispatchWorkflowPromptEvent((promptData as any).id, ctx.dealId);
+    }
   }
+}
+
+/**
+ * Browser-side notifier — listened to by `WorkflowEmailModalListener`
+ * mounted globally in App.tsx. Safe no-op outside the browser.
+ */
+function dispatchWorkflowPromptEvent(promptId: string, dealId: string) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent('workflow-email-prompt', { detail: { promptId, dealId } })
+  );
 }

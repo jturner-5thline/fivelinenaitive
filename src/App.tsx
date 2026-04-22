@@ -25,6 +25,7 @@ import { DashboardLayoutProvider } from "@/contexts/DashboardLayoutContext";
 import { DealsProvider } from "@/contexts/DealsContext";
 import { UndoSendProvider } from "@/contexts/UndoSendContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { WorkflowEmailModalListener } from "@/components/email/WorkflowEmailModalListener";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { FloatingCopilotDrawer } from "@/components/FloatingCopilotDrawer";
 import { CookieConsent } from "@/components/CookieConsent";
@@ -133,6 +134,7 @@ const App = () => (
                       <WelcomeScreenWrapper />
                       <Toaster />
                       <Sonner />
+                      <WorkflowEmailModalListener />
                       
                       <BrowserRouter>
                         <ScrollToTop />
