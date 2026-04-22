@@ -400,9 +400,10 @@ export default function Dashboard() {
           >
           {(() => {
             // Quick Prompts is now a tile too (4 base tiles).
-            const tileCount = 4 + (isJTurner ? 1 : 0) + (canSeeNiki ? 1 : 0);
+            const tileCount = 4 + (isJTurner ? 1 : 0) + (canSeeNiki ? 1 : 0) + (is5thLine ? 1 : 0);
             const gridColsClass =
-              tileCount >= 6 ? 'grid-cols-3 sm:grid-cols-6'
+              tileCount >= 7 ? 'grid-cols-4 sm:grid-cols-7'
+              : tileCount === 6 ? 'grid-cols-3 sm:grid-cols-6'
               : tileCount === 5 ? 'grid-cols-3 sm:grid-cols-5'
               : tileCount === 4 ? 'grid-cols-2 sm:grid-cols-4'
               : 'grid-cols-3';
