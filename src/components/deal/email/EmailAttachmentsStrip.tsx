@@ -249,6 +249,7 @@ export function EmailAttachmentsStrip({
   const emails = thread.emails;
   const { attachmentsByMessage, loading, unresolvedCount, debug } = useResolvedThreadAttachments(emails);
   const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
+  const [openingKey, setOpeningKey] = useState<string | null>(null);
 
   // Build the aggregated, newest-first list with version ranking by filename.
   const aggregated = useMemo<AggregatedAttachment[]>(() => {
