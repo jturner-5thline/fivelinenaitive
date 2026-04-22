@@ -742,9 +742,9 @@ function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onN
       };
 
   return (
-    <div className="relative h-full">
+    <div className="relative h-full flex flex-col min-h-0">
       {/* Sub-tab pills */}
-      <div className="flex items-center gap-1.5 mb-4">
+      <div className="flex items-center gap-1.5 mb-3 shrink-0">
         {EMAIL_CATEGORY_TABS.map(t => (
           <button
             key={t.key}
