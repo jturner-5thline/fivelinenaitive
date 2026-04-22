@@ -402,10 +402,10 @@ export default function Dashboard() {
           >
           {(() => {
             // Quick Prompts is now a tile too (4 base tiles).
-            // For jturner@5thline.co specifically, Niki's Daily Briefing is
-            // pulled OUT of the top row and stacked under the Calendar tile
-            // on its own row below. Other users keep the existing layout.
-            const nikiInTopRow = canSeeNiki && !isJTurner;
+            // Niki's Daily Briefing renders in the top row for every user
+            // who is allowed to see it (jturner included). For jturner the
+            // tiles are also reordered via Tailwind `order-*` classes.
+            const nikiInTopRow = canSeeNiki;
             const tileCount = 4 + (isJTurner ? 1 : 0) + (nikiInTopRow ? 1 : 0) + (is5thLine ? 1 : 0);
             const gridColsClass =
               tileCount >= 7 ? 'grid-cols-4 sm:grid-cols-7'
@@ -483,7 +483,7 @@ export default function Dashboard() {
             )}
             {nikiInTopRow && (
               <Card
-                className={TILE_INTERACTIVE_CLASSES}
+                className={cn(TILE_INTERACTIVE_CLASSES, isJTurner && 'order-6')}
                 onClick={(e) => openCarouselWidget('niki-briefing', e.currentTarget as HTMLElement)}
                 role="button"
                 tabIndex={0}
@@ -524,31 +524,6 @@ export default function Dashboard() {
               </Card>
             )}
           </div>
-          {/* jturner@5thline.co only: Niki's Daily Briefing stacked under Calendar (first column) */}
-          {isJTurner && canSeeNiki && (
-            <div className={`grid gap-3 md:gap-4 ${gridColsClass} mt-3 md:mt-4`}>
-              <Card
-                className={TILE_INTERACTIVE_CLASSES}
-                onClick={(e) => openCarouselWidget('niki-briefing', e.currentTarget as HTMLElement)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) =>
-                  handleTileKeyDown(e, () =>
-                    openCarouselWidget('niki-briefing', e.currentTarget as HTMLElement),
-                  )
-                }
-              >
-                <div className="flex flex-col items-center text-center space-y-3">
-                  <div className="relative h-12 w-12 rounded-xl border border-[hsl(190,90%,55%,0.4)] bg-[hsl(190,90%,45%,0.18)] backdrop-blur-sm flex items-center justify-center overflow-hidden">
-                    <Newspaper className="relative z-10 h-7 w-7 text-[hsl(190,90%,70%)]" />
-                  </div>
-                  <span className="text-sm font-medium text-foreground">
-                    {isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
-                  </span>
-                </div>
-              </Card>
-            </div>
-          )}
           </>
             );
           })()}
