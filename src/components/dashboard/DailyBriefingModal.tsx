@@ -685,8 +685,12 @@ function BriefingEmailDetailPane({
       </div>
 
       {/* Attachments strip — same component used by the main Email widget,
-          rendered directly under the header and above the body. */}
-      {stripThread.emails[0].has_attachments && (
+          rendered directly under the header and above the body. We render it
+          whenever the lazy-loaded full message (or the source row) reports
+          any non-inline attachment. The strip itself returns null when there
+          is genuinely nothing to show. */}
+      {(stripThread.emails[0].attachments?.some((a) => !a.is_inline) ||
+        stripThread.emails[0].has_attachments) && (
         <div className="px-4 pt-3">
           <EmailAttachmentsStrip thread={stripThread} />
         </div>
