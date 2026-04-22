@@ -465,6 +465,19 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               onConfirm={(o) => confirmWorkflow(o)}
               onDismiss={dismissWorkflow}
               onMaybeLater={dismissWorkflow}
+              attachmentFallback={
+                showAttachmentFallback ? (
+                  <DataRoomUploadSuggestionCard
+                    dealName={fallbackDealName}
+                    attachments={drUploadable}
+                    committing={drUploading}
+                    onConfirm={(section, ids) =>
+                      handleAttachmentFallbackConfirm(section, ids)
+                    }
+                    onChangeSection={() => setDrDialogOpen(true)}
+                  />
+                ) : undefined
+              }
             />
           )}
 
