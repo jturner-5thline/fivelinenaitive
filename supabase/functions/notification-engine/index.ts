@@ -297,6 +297,58 @@ serve(async (req) => {
       );
     }
 
+    // ─── Global stale-activity suppression ────────────────────────────────
+    // For stale-activity / reminder triggers ONLY, short-circuit when the
+    // associated deal is in On Hold, Archived, Closed Won, or Closed Lost.
+    // Non-stale triggers (e.g. lender_access_request) are unaffected.
+    if (isStaleActivityTrigger(triggerKey) && context?.deal_id) {
+      try {
+        const { data: dealRow } = await supabase
+          .from("deals")
+          .select("status, stage, company")
+          .eq("id", String(context.deal_id))
+          .maybeSingle();
+        if (dealRow) {
+          const status = normState((dealRow as any).status);
+          const stage = normState((dealRow as any).stage);
+          let suppressionReason: string | null = null;
+          if (HARD_SUPPRESSED_DEAL_STATES.has(status)) {
+            suppressionReason = `deal status ${status}`;
+          } else if (HARD_SUPPRESSED_DEAL_STATES.has(stage)) {
+            suppressionReason = `deal stage ${stage}`;
+          }
+          if (suppressionReason) {
+            await writeAudit(supabase, {
+              trigger_key: triggerKey,
+              recipient_user_id: null,
+              deal_id: String(context.deal_id),
+              channel: "all",
+              status: "suppressed",
+              title: `Suppressed: ${suppressionReason}`,
+              body: `No stale-activity reminders are sent for deals in this state.`,
+              metadata: {
+                suppression_reason: suppressionReason,
+                deal_company: (dealRow as any).company ?? null,
+                rule_id: (rule as any).id,
+              },
+            });
+            return new Response(
+              JSON.stringify({
+                success: true,
+                triggerKey,
+                suppressed: true,
+                reason: suppressionReason,
+              }),
+              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
+      } catch (suppErr) {
+        console.error("Stale-activity suppression check failed:", suppErr);
+        // Fall through — do not block legitimate alerts on a check error.
+      }
+    }
+
     // 2. Resolve recipients
     const recipients = await resolveRecipients(supabase, rule as NotificationRule, context, actorUserId);
 
