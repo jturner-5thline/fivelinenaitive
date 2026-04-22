@@ -463,7 +463,7 @@ export default function Dashboard() {
             </Card>
             {isJTurner && (
               <Card
-                className={TILE_INTERACTIVE_CLASSES}
+                className={cn(TILE_INTERACTIVE_CLASSES, 'order-5')}
                 onClick={(e) => openCarouselWidget('daily-briefing', e.currentTarget as HTMLElement)}
                 role="button"
                 tabIndex={0}
@@ -505,7 +505,7 @@ export default function Dashboard() {
             )}
             {is5thLine && (
               <Card
-                className={TILE_INTERACTIVE_CLASSES}
+                className={cn(TILE_INTERACTIVE_CLASSES, isJTurner && 'order-3')}
                 onClick={(e) => openCarouselWidget('deal-rundown', e.currentTarget as HTMLElement)}
                 role="button"
                 tabIndex={0}
