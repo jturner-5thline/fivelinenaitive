@@ -14,6 +14,37 @@ interface NotifyPayload {
   context: Record<string, unknown>;
 }
 
+async function writeAudit(
+  supabase: ReturnType<typeof createClient>,
+  row: {
+    trigger_key: string;
+    recipient_user_id: string;
+    deal_id: string | null;
+    channel: string;
+    status: string;
+    title?: string | null;
+    body?: string | null;
+    error_message?: string | null;
+    metadata?: Record<string, unknown>;
+  }
+) {
+  try {
+    await supabase.from("notification_audit").insert({
+      trigger_key: row.trigger_key,
+      recipient_user_id: row.recipient_user_id,
+      deal_id: row.deal_id,
+      channel: row.channel,
+      status: row.status,
+      title: row.title ?? null,
+      body: row.body ?? null,
+      error_message: row.error_message ?? null,
+      metadata: row.metadata ?? {},
+    });
+  } catch (e) {
+    console.error("notification_audit insert failed:", e);
+  }
+}
+
 interface ChannelConfig {
   channel_type: string;
   is_enabled: boolean;
