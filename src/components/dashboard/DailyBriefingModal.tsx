@@ -1116,6 +1116,44 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
   const [activeTab, setActiveTab] = useState<string>(TABS[0]?.value ?? 'catchup');
   const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
 
+  // Email sub-tab + unread filter state lifted to the parent so the controls
+  // can render inside the unified top header band (alongside the page title /
+  // date and the primary tab strip), instead of sitting lower in the body.
+  const [emailSubTab, setEmailSubTab] = useState<EmailCategoryTab>('all');
+  const [emailUnreadOnly, setEmailUnreadOnly] = useState<boolean>(true);
+
+  // Reset unread-only to ON every time the modal (re)opens, matching the
+  // documented default behavior for the Email tab.
+  useEffect(() => {
+    if (open) {
+      setEmailUnreadOnly(true);
+      setEmailSubTab('all');
+    }
+  }, [open]);
+
+  // Fetch email + classifier data at the parent level (cached via React Query
+  // — calling these hooks here and inside <EmailTab> shares the same cache)
+  // so we can compute live sub-tab counts in the header without prop-drilling
+  // them up from the tab body.
+  const isEmailActive = activeTab === 'email';
+  const { data: emailHeaderData } = useEmailData(open && isEmailActive, targetUserId);
+  const { entities: classifierEntities, orgCtx } = useEmailClassifierData();
+
+  const emailCounts = useMemo<Record<EmailCategoryTab, number>>(() => {
+    const empty = { all: 0, clients_deals: 0, asana_projects: 0, calendar: 0 } as Record<EmailCategoryTab, number>;
+    if (!emailHeaderData?.emails) return empty;
+    const visible = emailUnreadOnly
+      ? emailHeaderData.emails.filter((e: any) => !e.is_read)
+      : emailHeaderData.emails;
+    const classified = visible.map((e: any) => classifyEmail(e, classifierEntities, orgCtx));
+    return {
+      all: visible.length,
+      clients_deals: classified.filter(c => c.includes('clients_deals')).length,
+      asana_projects: classified.filter(c => c.includes('asana_projects')).length,
+      calendar: classified.filter(c => c.includes('calendar')).length,
+    };
+  }, [emailHeaderData, emailUnreadOnly, classifierEntities, orgCtx]);
+
   // If active tab gets excluded (prop change), fall back to first available
   useEffect(() => {
     if (!TABS.find(t => t.value === activeTab)) {
@@ -1161,39 +1199,98 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
         overlayClassName="bg-black/80"
       >
         <div className="flex flex-col h-full relative">
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 glass-divider-b glass-surface-1">
-            <div>
-              <h2 className="text-lg font-bold text-foreground tracking-tight">{title}</h2>
-              <p className="text-xs text-muted-foreground/60 mt-0.5">
-                {window.label} • {format(new Date(), 'EEEE, MMMM d, yyyy')}
-              </p>
-            </div>
-          </div>
-
-          {/* Tabs */}
+          {/* Unified top header — title + date on the left, primary tab
+              navigation on the right. When the Email tab is active, a second
+              row beneath surfaces the email sub-tabs and the unread/all
+              segmented control so all navigation lives in one cohesive band. */}
           <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
-            <div className="px-6 pt-3 glass-surface-1">
-              <TabsList className="w-full glass-surface-1 glass-border-softer backdrop-blur-xl">
-                {TABS.map(tab => {
-                  const Icon = tab.icon;
-                  return (
-                    <TabsTrigger
-                      key={tab.value}
-                      value={tab.value}
+            <div className="px-6 pt-4 pb-3 glass-divider-b glass-surface-1 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="text-lg font-bold text-foreground tracking-tight">{title}</h2>
+                  <p className="text-xs text-muted-foreground/60 mt-0.5 truncate">
+                    {window.label} • {format(new Date(), 'EEEE, MMMM d, yyyy')}
+                  </p>
+                </div>
+                <TabsList className="glass-surface-1 glass-border-softer backdrop-blur-xl shrink-0 flex-wrap h-auto">
+                  {TABS.map(tab => {
+                    const Icon = tab.icon;
+                    return (
+                      <TabsTrigger
+                        key={tab.value}
+                        value={tab.value}
+                        className={cn(
+                          "gap-1.5 text-xs border-0 transition-all",
+                          activeTab === tab.value
+                            ? "bg-primary/15 text-foreground shadow-[0_0_12px_hsl(var(--primary)/0.1)]"
+                            : "text-muted-foreground"
+                        )}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">{tab.label}</span>
+                      </TabsTrigger>
+                    );
+                  })}
+                </TabsList>
+              </div>
+
+              {isEmailActive && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {EMAIL_CATEGORY_TABS.map(t => (
+                    <button
+                      key={t.key}
+                      onClick={() => setEmailSubTab(t.key)}
                       className={cn(
-                        "gap-1.5 text-xs border-0 transition-all",
-                        activeTab === tab.value
-                          ? "bg-primary/15 text-foreground shadow-[0_0_12px_hsl(var(--primary)/0.1)]"
-                          : "text-muted-foreground"
+                        'px-3 py-1 rounded-full text-xs font-medium transition-all duration-150 border',
+                        emailSubTab === t.key
+                          ? 'bg-primary/15 text-primary border-primary/30'
+                          : 'bg-white/[0.03] text-muted-foreground/70 glass-border-soft hover:bg-white/[0.06] hover:text-foreground/80',
                       )}
                     >
-                      <Icon className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">{tab.label}</span>
-                    </TabsTrigger>
-                  );
-                })}
-              </TabsList>
+                      {t.label}
+                      <span className={cn(
+                        'ml-1.5 text-[10px] tabular-nums',
+                        emailSubTab === t.key ? 'text-primary/70' : 'text-muted-foreground/40',
+                      )}>
+                        {emailCounts[t.key]}
+                      </span>
+                    </button>
+                  ))}
+
+                  <div
+                    className="ml-auto inline-flex items-center rounded-full border border-border/40 bg-white/[0.03] p-0.5"
+                    role="group"
+                    aria-label="Filter emails by read state"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setEmailUnreadOnly(true)}
+                      aria-pressed={emailUnreadOnly}
+                      className={cn(
+                        'px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors',
+                        emailUnreadOnly
+                          ? 'bg-primary/20 text-primary'
+                          : 'text-muted-foreground/70 hover:text-foreground/80',
+                      )}
+                    >
+                      Unread only
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEmailUnreadOnly(false)}
+                      aria-pressed={!emailUnreadOnly}
+                      className={cn(
+                        'px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors',
+                        !emailUnreadOnly
+                          ? 'bg-primary/20 text-primary'
+                          : 'text-muted-foreground/70 hover:text-foreground/80',
+                      )}
+                    >
+                      All emails
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex-1 overflow-hidden relative">
@@ -1231,7 +1328,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
                 </button>
               )}
 
-              <ScrollArea className="h-[calc(92vh-140px)] px-6 pt-4 pb-6">
+              <ScrollArea className={cn('px-6 pt-4 pb-6', isEmailActive ? 'h-[calc(92vh-180px)]' : 'h-[calc(92vh-120px)]')}>
                 <div
                   key={activeTab}
                   className={cn(
@@ -1240,7 +1337,15 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
                   )}
                 >
                   {activeTab === 'catchup' && <CatchUpTab enabled={open} onNavigate={handleNavigate} />}
-                  {activeTab === 'email' && <EmailTab enabled={open} onNavigate={handleNavigate} targetUserId={targetUserId} />}
+                  {activeTab === 'email' && (
+                    <EmailTab
+                      enabled={open}
+                      onNavigate={handleNavigate}
+                      targetUserId={targetUserId}
+                      subTab={emailSubTab}
+                      unreadOnly={emailUnreadOnly}
+                    />
+                  )}
                   {activeTab === 'financial' && <FinancialTab enabled={open} onNavigate={handleNavigate} />}
                   {activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} targetDealOwnerName={targetAssigneeName} />}
                   {activeTab === 'operational' && <OperationalTab enabled={open} onNavigate={handleNavigate} targetAssigneeName={targetAssigneeName} />}
