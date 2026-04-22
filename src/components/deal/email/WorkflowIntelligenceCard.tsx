@@ -121,6 +121,7 @@ export function WorkflowIntelligenceCard({
   onConfirm,
   onDismiss,
   onMaybeLater,
+  attachmentFallback,
 }: Props) {
   // Source of truth for pass-reason options — same list shown in the
   // deal-detail Lenders tab "Confirm Pass" dialog so the two stay in sync.
