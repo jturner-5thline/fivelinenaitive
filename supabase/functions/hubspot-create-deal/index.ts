@@ -199,7 +199,7 @@ Deno.serve(async (req) => {
     // ── Load deal ─────────────────────────────────────────────────────
     const { data: deal, error: dealErr } = await supabase
       .from('deals')
-      .select('id, company, value, stage, pipeline_id, created_at, hubspot_deal_id, company_id')
+      .select('id, company, value, stage, pipeline_id, created_at, hubspot_deal_id, company_id, deal_owner, manager')
       .eq('id', deal_id)
       .single();
 
@@ -296,14 +296,32 @@ Deno.serve(async (req) => {
 
     // ── Create deal in HubSpot ────────────────────────────────────────
     const numericAmount = Number(String(deal.value ?? 0).replace(/[^0-9.-]/g, '')) || 0;
-    const hubspotPayload = {
-      properties: {
-        dealname: deal.company || 'Untitled Deal',
-        amount: String(numericAmount),
-        pipeline: resolved.hubspotPipelineId,
-        dealstage: resolved.hubspotStageId,
-      },
+
+    // Resolve owner + manager
+    const ownerResolution = await resolveHubSpotOwner(supabase, deal.deal_owner, accessToken);
+    let ownerId = ownerResolution.ownerId;
+    if (ownerResolution.unresolved) {
+      ownerId = FALLBACK_OWNER_ID;
+      await logSync(supabase, {
+        company_id: deal.company_id,
+        deal_id: deal.id,
+        action: 'owner_resolution',
+        status: 'error',
+        error_message: `Unresolved deal_owner "${ownerResolution.rawValue}" → fell back to ${FALLBACK_OWNER_ID}`,
+        request_payload: { field: 'deal_owner', raw: ownerResolution.rawValue, resolved_via: ownerResolution.resolvedVia },
+      });
+    }
+
+    const properties: Record<string, string> = {
+      dealname: deal.company || 'Untitled Deal',
+      amount: String(numericAmount),
+      pipeline: resolved.hubspotPipelineId,
+      dealstage: resolved.hubspotStageId,
     };
+    if (ownerId) properties.hubspot_owner_id = ownerId;
+    if (deal.manager) properties.deal_manager = String(deal.manager);
+
+    const hubspotPayload = { properties };
 
     const hsResponse = await fetch('https://api.hubapi.com/crm/v3/objects/deals', {
       method: 'POST',
@@ -356,7 +374,15 @@ Deno.serve(async (req) => {
       action: 'create_deal',
       status: 'success',
       request_payload: hubspotPayload,
-      response_payload: { id: hubspotDealId, mapping_source: resolved.source },
+      response_payload: {
+        id: hubspotDealId,
+        mapping_source: resolved.source,
+        owner_before: null,
+        owner_after: ownerId,
+        owner_resolved_via: ownerResolution.resolvedVia,
+        deal_manager_before: null,
+        deal_manager_after: deal.manager || null,
+      },
     });
 
     console.log(`[hubspot-create-deal] Created HubSpot deal ${hubspotDealId} for Naitive deal ${deal_id} via ${resolved.source}`);
