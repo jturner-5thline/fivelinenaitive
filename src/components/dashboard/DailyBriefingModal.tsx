@@ -125,6 +125,8 @@ function BriefingRow({
   time,
   onClick,
   extras,
+  borderless,
+  selected,
 }: {
   icon: React.ElementType;
   title: string;
@@ -134,6 +136,14 @@ function BriefingRow({
   time?: string;
   onClick?: () => void;
   extras?: React.ReactNode;
+  /**
+   * Drop the standard `glass-border-softer` outline so rows in dense list
+   * surfaces (e.g. the Email tab) read as a clean stack separated by spacing
+   * and very light surface contrast instead of boxed white-bordered tiles.
+   */
+  borderless?: boolean;
+  /** Selected state for borderless lists — soft fill + left accent rail. */
+  selected?: boolean;
 }) {
   return (
     <div
@@ -142,17 +152,27 @@ function BriefingRow({
       onClick={onClick}
       onKeyDown={e => { if (onClick && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onClick(); } }}
       className={cn(
-        GLASS_ROW,
-        'flex items-start gap-3 p-3',
-        'transition-all duration-200',
-        onClick && 'cursor-pointer hover:bg-white/[0.06] hover:glass-border-soft hover:shadow-[0_2px_12px_hsl(var(--primary)/0.08)]',
+        borderless
+          ? cn(
+              // Borderless variant: no outline, rely on spacing + subtle bg.
+              'relative rounded-lg border border-transparent bg-transparent',
+              'flex items-start gap-3 p-3 transition-colors duration-150',
+              onClick && 'cursor-pointer hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+              selected && 'bg-primary/[0.06] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[2px] before:rounded-full before:bg-primary/70',
+            )
+          : cn(
+              GLASS_ROW,
+              'flex items-start gap-3 p-3',
+              'transition-all duration-200',
+              onClick && 'cursor-pointer hover:bg-white/[0.06] hover:glass-border-soft hover:shadow-[0_2px_12px_hsl(var(--primary)/0.08)]',
+            ),
       )}
     >
       <div className="p-1.5 rounded-md bg-primary/10 shrink-0 mt-0.5">
         <Icon className="h-3.5 w-3.5 text-primary" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">{title}</p>
+        <p className={cn('text-sm text-foreground truncate', selected ? 'font-semibold' : 'font-medium')}>{title}</p>
         {subtitle && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{subtitle}</p>}
         {extras && <div className="flex items-center gap-1 mt-1 flex-wrap">{extras}</div>}
       </div>
@@ -820,20 +840,16 @@ function EmailTab({
           {filtered.length === 0 ? (
             <EmptySection message={EMPTY_MESSAGES[subTab]} />
           ) : (
-            <div className="space-y-1.5">
+            <div className="divide-y divide-white/[0.04]">
               {filtered.map((e: any) => {
                 const autoLabels = evaluateAutoLabels(e);
                 const isSelected =
                   detail && (detail.id === e.id || detail.gmail_message_id === e.gmail_message_id);
                 return (
-                  <div
-                    key={e.id}
-                    className={cn(
-                      'rounded-lg transition-colors',
-                      isSelected && 'ring-1 ring-primary/40 bg-primary/[0.04]',
-                    )}
-                  >
-                    <BriefingRow
+                  <BriefingRow
+                      key={e.id}
+                      borderless
+                      selected={!!isSelected}
                       icon={Mail}
                       title={e.subject || '(no subject)'}
                       subtitle={`${e.from_name || e.from_email || 'Unknown'} — ${e.analysis?.summary || e.snippet || ''}`}
@@ -862,7 +878,6 @@ function EmailTab({
                         </>
                       }
                     />
-                  </div>
                 );
               })}
             </div>
