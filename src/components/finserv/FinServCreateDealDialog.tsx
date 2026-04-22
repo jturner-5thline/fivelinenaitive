@@ -134,6 +134,7 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
   const resetForm = () => {
     setCompanyName('');
     setPrimaryContact('');
+    setContactEmail('');
     setLeadSource('');
     setReferralSource('');
     setOpportunityType('');
@@ -164,6 +165,7 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
     const result = formSchema.safeParse({
       companyName,
       primaryContact,
+      contactEmail,
       leadSource,
       referralSource: referralSource || undefined,
       opportunityType,
@@ -198,6 +200,7 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
       const insertPayload: Record<string, any> = {
         company: data.companyName,
         contact: data.primaryContact,
+        contact_email: data.contactEmail,
         stage: data.dealStage,
         deal_owner: data.dealOwner,
         pipeline_id: pipelineId || null,
