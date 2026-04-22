@@ -11,6 +11,61 @@ const corsHeaders = {
 
 const DEFAULT_STALE_DAYS = 14;
 
+// Hard-suppressed deal statuses/stages: ZERO stale-activity reminders are sent
+// for deals in any of these states. Keep in sync with
+// src/utils/lenderAttentionEligibility.ts and the DB function
+// is_deal_notification_suppressed.
+const HARD_SUPPRESSED_DEAL_STATES = new Set<string>([
+  'archived',
+  'on hold', 'on-hold', 'on_hold',
+  'closed won', 'closed-won', 'closed_won', 'won',
+  'closed lost', 'closed-lost', 'closed_lost', 'lost',
+]);
+
+function normState(v: string | null | undefined): string {
+  return String(v ?? '').trim().toLowerCase();
+}
+
+function isHardSuppressedDeal(deal: { status?: string | null; stage?: string | null }): {
+  suppressed: boolean;
+  reason: string | null;
+} {
+  const status = normState(deal.status);
+  const stage = normState(deal.stage);
+  if (HARD_SUPPRESSED_DEAL_STATES.has(status)) {
+    return { suppressed: true, reason: `deal status ${status}` };
+  }
+  if (HARD_SUPPRESSED_DEAL_STATES.has(stage)) {
+    return { suppressed: true, reason: `deal stage ${stage}` };
+  }
+  return { suppressed: false, reason: null };
+}
+
+// Best-effort audit row when a would-be alert is suppressed, so admins can
+// verify the rule is firing.
+async function logSuppressedAudit(
+  supabase: ReturnType<typeof createClient>,
+  args: { trigger_key: string; deal_id: string; reason: string; deal_company?: string | null },
+) {
+  try {
+    await supabase.from('notification_audit').insert({
+      trigger_key: args.trigger_key,
+      recipient_user_id: null,
+      deal_id: args.deal_id,
+      channel: 'all',
+      status: 'suppressed',
+      title: `Suppressed: ${args.reason}`,
+      body: `No stale-activity reminders are sent for deals in this state.`,
+      metadata: {
+        suppression_reason: args.reason,
+        deal_company: args.deal_company ?? null,
+      },
+    });
+  } catch (e) {
+    console.error('logSuppressedAudit insert failed:', e);
+  }
+}
+
 interface StaleAlertConfig {
   enabled: boolean;
   threshold_days: number;
