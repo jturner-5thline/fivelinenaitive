@@ -9,9 +9,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { useAllMilestones, MilestoneWithDeal } from '@/hooks/useAllMilestones';
-import { useAuth } from '@/contexts/AuthContext';
-import { useProfile } from '@/hooks/useProfile';
+// Canonical task data source — same hook the /tasks page uses. The widget
+// MUST stay aligned with it so dashboard counts and rows always match the
+// Tasks page after refresh, navigation, and live updates.
+import { useMyTasks, type Task, type TaskOwnerFilter } from '@/hooks/useTasks';
 import { cn } from '@/lib/utils';
 
 type TaskFilter = 'today' | 'overdue' | 'upcoming' | 'all';
@@ -25,74 +26,93 @@ interface MyTasksWidgetProps {
 
 export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTasksWidgetProps) {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { profile } = useProfile();
-  const { milestones, isLoading } = useAllMilestones();
   const [filter, setFilter] = useState<TaskFilter>('today');
   const [groupBy, setGroupBy] = useState<GroupBy>('date');
   const [scope, setScope] = useState<Scope>('mine');
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
-  // Scope milestones to user's own deals
-  const scopedMilestones = useMemo(() => {
-    if (scope === 'team') return milestones;
-    
-    const displayName = profile?.display_name || profile?.first_name || '';
-    return milestones.filter(m => {
-      // Only show milestones for deals where the user is the owner/manager
-      return m.deal_owner?.toLowerCase() === displayName?.toLowerCase();
-    });
-  }, [milestones, scope, profile]);
+  // Map widget scope -> canonical owner filter used by /tasks. 'team' fetches
+  // the full company task pool (matches /tasks "all"); 'mine' uses the same
+  // assignee + collaborator semantics as the Tasks page.
+  const ownerFilter: TaskOwnerFilter = scope === 'mine' ? 'mine' : 'all';
+  const { tasks: allTasks, isLoading } = useMyTasks(ownerFilter);
 
-  const tasks = useMemo(() => {
-    const incomplete = scopedMilestones.filter(m => !m.completed);
-    const today = startOfDay(new Date());
-    const threeDaysOut = addDays(today, 3);
+  // Treat tasks as "completed" using the EXACT same rule as the Tasks page
+  // (status === 'complete'). `completed_at` is also a positive signal.
+  const isComplete = (t: Task) => t.status === 'complete' || !!t.completed_at;
+
+  // Date helpers mirror /pages/Tasks.tsx so a task that the Tasks page treats
+  // as Today/Overdue/Upcoming is bucketed identically here.
+  const parseDue = (d: string | null) => (d ? new Date(d + 'T00:00:00') : null);
+  const parseDueEnd = (d: string | null) => (d ? new Date(d + 'T23:59:59') : null);
+
+  const filtered = useMemo(() => {
+    const incomplete = allTasks.filter(t => !isComplete(t));
+    const todayDate = startOfDay(new Date());
+    const threeDaysOut = addDays(todayDate, 3);
 
     switch (filter) {
       case 'today':
-        return incomplete.filter(m => m.due_date && isToday(new Date(m.due_date)));
+        return incomplete.filter(t => {
+          const d = parseDue(t.due_date);
+          return d ? isToday(d) : false;
+        });
       case 'overdue':
-        return incomplete.filter(m => m.due_date && isPast(new Date(m.due_date)) && !isToday(new Date(m.due_date)));
+        return incomplete.filter(t => {
+          const dEnd = parseDueEnd(t.due_date);
+          const dStart = parseDue(t.due_date);
+          return !!dEnd && !!dStart && isPast(dEnd) && !isToday(dStart);
+        });
       case 'upcoming':
-        return incomplete.filter(m => {
-          if (!m.due_date) return false;
-          const d = new Date(m.due_date);
+        return incomplete.filter(t => {
+          const d = parseDue(t.due_date);
+          if (!d) return false;
           return !isPast(d) && isBefore(d, threeDaysOut);
         });
       case 'all':
       default:
         return incomplete;
     }
-  }, [scopedMilestones, filter]);
+  }, [allTasks, filter]);
 
   const grouped = useMemo(() => {
     if (groupBy === 'deal') {
-      const byDeal = new Map<string, MilestoneWithDeal[]>();
-      tasks.forEach(t => {
-        const key = t.deal_company || 'No Deal';
+      const byDeal = new Map<string, Task[]>();
+      filtered.forEach(t => {
+        const key = t.deal?.company || t.crm_company?.name || t.contact?.full_name || 'No Deal';
         if (!byDeal.has(key)) byDeal.set(key, []);
         byDeal.get(key)!.push(t);
       });
       return Array.from(byDeal.entries()).sort((a, b) => a[0].localeCompare(b[0]));
     }
-    // Group by date
-    const byDate = new Map<string, MilestoneWithDeal[]>();
-    tasks.forEach(t => {
-      const key = t.due_date ? format(new Date(t.due_date), 'MMM d, yyyy') : 'No date';
+    const byDate = new Map<string, Task[]>();
+    filtered.forEach(t => {
+      const d = parseDue(t.due_date);
+      const key = d ? format(d, 'MMM d, yyyy') : 'No date';
       if (!byDate.has(key)) byDate.set(key, []);
       byDate.get(key)!.push(t);
     });
     return Array.from(byDate.entries());
-  }, [tasks, groupBy]);
+  }, [filtered, groupBy]);
 
-  const overdueCount = useMemo(() => {
-    return scopedMilestones.filter(m => !m.completed && m.due_date && isPast(new Date(m.due_date)) && !isToday(new Date(m.due_date))).length;
-  }, [scopedMilestones]);
+  const overdueCount = useMemo(
+    () => allTasks.filter(t => {
+      if (isComplete(t)) return false;
+      const dEnd = parseDueEnd(t.due_date);
+      const dStart = parseDue(t.due_date);
+      return !!dEnd && !!dStart && isPast(dEnd) && !isToday(dStart);
+    }).length,
+    [allTasks],
+  );
 
-  const todayCount = useMemo(() => {
-    return scopedMilestones.filter(m => !m.completed && m.due_date && isToday(new Date(m.due_date))).length;
-  }, [scopedMilestones]);
+  const todayCount = useMemo(
+    () => allTasks.filter(t => {
+      if (isComplete(t)) return false;
+      const d = parseDue(t.due_date);
+      return d ? isToday(d) : false;
+    }).length,
+    [allTasks],
+  );
 
   if (isLoading) {
     return (
