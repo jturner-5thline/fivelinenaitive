@@ -5,6 +5,52 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const FALLBACK_OWNER_ID = Deno.env.get('HUBSPOT_FALLBACK_OWNER_ID') || '42024321'; // jturner@5thline.co
+
+async function resolveHubSpotOwner(
+  supabase: any,
+  rawValue: string | null | undefined,
+  accessToken: string,
+): Promise<{ ownerId: string | null; resolvedVia: string; unresolved: boolean; rawValue: string | null }> {
+  const value = (rawValue ?? '').toString().trim();
+  if (!value) return { ownerId: null, resolvedVia: 'empty', unresolved: false, rawValue: null };
+  if (/^\d+$/.test(value)) {
+    return { ownerId: value, resolvedVia: 'numeric_id', unresolved: false, rawValue: value };
+  }
+  let candidateEmail: string | null = null;
+  if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)) {
+    candidateEmail = value.toLowerCase();
+  } else {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email')
+      .ilike('display_name', value)
+      .maybeSingle();
+    if (profile?.email) candidateEmail = profile.email.toLowerCase();
+  }
+  if (!candidateEmail) {
+    return { ownerId: null, resolvedVia: 'no_match', unresolved: true, rawValue: value };
+  }
+  try {
+    const res = await fetch(
+      `https://api.hubapi.com/crm/v3/owners?email=${encodeURIComponent(candidateEmail)}&limit=1`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    if (!res.ok) {
+      await res.text();
+      return { ownerId: null, resolvedVia: 'api_error', unresolved: true, rawValue: value };
+    }
+    const body = await res.json();
+    const owner = (body.results ?? [])[0];
+    if (owner?.id) {
+      return { ownerId: String(owner.id), resolvedVia: 'email_match', unresolved: false, rawValue: value };
+    }
+    return { ownerId: null, resolvedVia: 'no_hubspot_owner', unresolved: true, rawValue: value };
+  } catch {
+    return { ownerId: null, resolvedVia: 'fetch_failed', unresolved: true, rawValue: value };
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -15,7 +61,17 @@ Deno.serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
-    const { deal_id, pipeline_id, stage, hubspot_deal_id, company_id, amount } = await req.json();
+    const {
+      deal_id,
+      pipeline_id,
+      stage,
+      hubspot_deal_id,
+      company_id,
+      amount,
+      deal_owner,
+      manager,
+      fields_changed,
+    } = await req.json();
 
     // Skip if no HubSpot link
     if (!hubspot_deal_id) {
