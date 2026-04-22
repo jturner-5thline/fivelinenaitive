@@ -23,6 +23,7 @@ import { DashboardFoldersProvider } from "@/contexts/DashboardFoldersContext";
 import { DashboardWidgetsProvider } from "@/contexts/DashboardWidgetsContext";
 import { DashboardLayoutProvider } from "@/contexts/DashboardLayoutContext";
 import { DealsProvider } from "@/contexts/DealsContext";
+import { UndoSendProvider } from "@/contexts/UndoSendContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { FloatingCopilotDrawer } from "@/components/FloatingCopilotDrawer";
@@ -128,6 +129,7 @@ const App = () => (
                     <DashboardLayoutProvider>
                     <TooltipProvider>
                       <CopyProtection>
+                      <UndoSendProvider>
                       <WelcomeScreenWrapper />
                       <Toaster />
                       <Sonner />
@@ -285,6 +287,7 @@ const App = () => (
                         </Routes>
                         </Suspense>
                       </BrowserRouter>
+                      </UndoSendProvider>
                       </CopyProtection>
                     </TooltipProvider>
                     </DashboardLayoutProvider>

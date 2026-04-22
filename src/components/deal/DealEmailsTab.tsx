@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useUiPreference } from '@/hooks/useUiPreference';
+import { useUndoSend } from '@/contexts/UndoSendContext';
 import { filterEmailsByCategory, EMAIL_CATEGORY_TABS, type EmailCategoryTab } from '@/utils/emailClassifier';
 import { useEmailClassifierData } from '@/hooks/useEmailClassifierData';
 import { Card, CardContent } from '@/components/ui/card';
@@ -208,6 +209,7 @@ function PaginationFooter({
 
 export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingExternal, onGmailSend, onLoadMore, hasMore, isLoadingMore, isAutoPaginating }: DealEmailsTabProps) {
   const navigate = useNavigate();
+  const { queueSend } = useUndoSend();
   const { entities: classifierEntities, orgCtx } = useEmailClassifierData();
   const [emails, setEmails] = useState<MockEmail[]>(() => {
     const source = externalEmails || initialMockEmails;
@@ -599,25 +601,40 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const activeLabel = activeItem?.label || 'Inbox';
 
   const handleComposeSend = useCallback(async (emailData: Omit<MockEmail, 'id' | 'threadId'>) => {
-    if (onGmailSend) {
-      const result = await onGmailSend({
+    const threadId = composeReplyTo?.threadId || `thread-sent-${Date.now()}`;
+    if (!onGmailSend) {
+      // Mock-only path (no Gmail wired up): just append locally.
+      setEmails(prev => [{ ...emailData, id: `mock-sent-${Date.now()}`, threadId }, ...prev]);
+      return;
+    }
+    queueSend({
+      payload: {
         to: [emailData.to_email],
         subject: emailData.subject,
         body: emailData.body_preview,
-      });
-      if (!result) {
-        toast.error('Failed to send email');
-        return;
-      }
-      toast.success('Email sent successfully', { description: `To: ${emailData.to_email}`, icon: '✉️' });
-    }
-    const newEmail: MockEmail = {
-      ...emailData,
-      id: `mock-sent-${Date.now()}`,
-      threadId: composeReplyTo?.threadId || `thread-sent-${Date.now()}`,
-    };
-    setEmails(prev => [newEmail, ...prev]);
-  }, [onGmailSend, composeReplyTo]);
+        meta: { threadId, emailData },
+      },
+      dedupeKey: `compose:${emailData.to_email}:${emailData.subject}:${(emailData.body_preview || '').length}`,
+      performSend: (p) => onGmailSend({
+        to: p.to,
+        subject: p.subject,
+        body: p.body,
+      }),
+      onSent: () => {
+        setEmails(prev => [{ ...emailData, id: `mock-sent-${Date.now()}`, threadId }, ...prev]);
+      },
+      onUndo: () => {
+        // Re-open composer with the original draft preloaded.
+        setComposeReplyTo({
+          subject: emailData.subject,
+          to_email: emailData.to_email,
+          to_name: emailData.to_name || emailData.to_email,
+          threadId,
+        });
+        setComposeOpen(true);
+      },
+    });
+  }, [onGmailSend, composeReplyTo, queueSend]);
 
   const responseCount = filteredEmails.filter(e => e.needs_response).length;
   const filteredUnread = filteredEmails.filter(e => !e.is_read).length;
@@ -1316,24 +1333,48 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 onDelete={handleDeleteEmail}
                 onArchive={handleArchiveEmail}
                 onSendReply={async (emailData, threadId) => {
-                  if (onGmailSend) {
-                    const result = await onGmailSend({
+                  if (!onGmailSend) {
+                    setEmails(prev => [{ ...emailData, id: `mock-sent-${Date.now()}`, threadId }, ...prev]);
+                    return;
+                  }
+                  queueSend({
+                    payload: {
                       to: [emailData.to_email],
                       subject: emailData.subject,
                       body: emailData.body_preview,
-                    });
-                    if (!result) {
-                      toast.error('Failed to send email');
-                      return;
-                    }
-                    toast.success('Email sent successfully', { description: `To: ${emailData.to_email}`, icon: '✉️' });
-                  }
-                  const newEmail: MockEmail = {
-                    ...emailData,
-                    id: `mock-sent-${Date.now()}`,
-                    threadId,
-                  };
-                  setEmails(prev => [newEmail, ...prev]);
+                      meta: { threadId, emailData },
+                    },
+                    dedupeKey: `reply:${threadId}:${(emailData.body_preview || '').length}`,
+                    performSend: (p) => onGmailSend({
+                      to: p.to,
+                      subject: p.subject,
+                      body: p.body,
+                    }),
+                    onSent: () => {
+                      setEmails(prev => [{ ...emailData, id: `mock-sent-${Date.now()}`, threadId }, ...prev]);
+                    },
+                    onUndo: () => {
+                      // Re-open the thread + composer for editing.
+                      const thread = allThreads.find(t => t.threadId === threadId);
+                      if (thread) setSelectedThread(thread);
+                      // Restore the draft into the same localStorage slot
+                      // that useEmailDraft(threadId) reads from on mount.
+                      try {
+                        const restored = {
+                          to: emailData.to_email,
+                          cc: '',
+                          bcc: '',
+                          subject: emailData.subject,
+                          body: emailData.body_preview || '',
+                          attachments: [],
+                          threadId,
+                          toName: emailData.to_name || emailData.to_email,
+                          savedAt: Date.now(),
+                        };
+                        localStorage.setItem(`email_draft_${threadId}`, JSON.stringify(restored));
+                      } catch { /* quota etc. */ }
+                    },
+                  });
                 }}
               />
             ) : (
