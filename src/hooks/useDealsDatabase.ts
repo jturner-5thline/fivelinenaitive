@@ -789,6 +789,63 @@ export function useDealsDatabase() {
         }
       }
 
+      // Auto-populate Initial Items when deal enters NDA/Needs List Sent in Active Pipeline.
+      // Mirrors the Final Credit Items → Kick Off pattern. Re-adds any missing Initial Items
+      // (e.g. deal was imported or items were manually deleted) without duplicating existing ones.
+      if (
+        updates.stage &&
+        previousDeal &&
+        isNdaNeedsListSentStage(updates.stage) &&
+        !isNdaNeedsListSentStage(previousDeal.stage)
+      ) {
+        try {
+          const { data: membership } = await supabase
+            .from('company_members')
+            .select('company_id')
+            .eq('user_id', userId!)
+            .maybeSingle();
+          const companyId = membership?.company_id;
+          if (companyId) {
+            const effectivePipelineId = updates.pipelineId ?? previousDeal?.pipelineId ?? null;
+            const isActive = await isActivePipeline(effectivePipelineId, companyId);
+            if (isActive) {
+              const { data: dealRecord } = await supabase
+                .from('deals')
+                .select('deal_type')
+                .eq('id', dealId)
+                .single();
+              const dealTypes: string[] = dealRecord?.deal_type
+                ? (() => { try { return JSON.parse(dealRecord.deal_type); } catch { return []; } })()
+                : [];
+              if (dealTypes.length > 0) {
+                const initialResult = await autoPopulateOutstandingItems(
+                  dealId, dealTypes, companyId, userId!, 'initial items'
+                );
+                console.log('[UpdateDeal] Stage entry NDA/Needs List Sent Initial Items:', initialResult);
+
+                if (initialResult.inserted > 0) {
+                  await supabase.from('activity_logs').insert({
+                    deal_id: dealId,
+                    user_id: userId,
+                    activity_type: 'outstanding_items_auto_populated',
+                    description: `Auto-added ${initialResult.inserted} Initial Item(s) on entry to NDA/Needs List Sent`,
+                    metadata: {
+                      trigger: 'stage_entered_nda_needs_list_sent',
+                      round: 'initial items',
+                      inserted: initialResult.inserted,
+                      skipped_duplicates: initialResult.skippedDuplicates,
+                      matched_deal_type: initialResult.matchedDealType,
+                    },
+                  });
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error auto-populating Initial Items on NDA/Needs List Sent stage entry:', err);
+        }
+      }
+
       // Auto-dismiss notifications when deal moves to archived or in_development
       if (updates.status && ['archived', 'in_development'].includes(updates.status)) {
         // Mark all activity_logs-based notifications as seen by updating localStorage
