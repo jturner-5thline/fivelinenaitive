@@ -136,18 +136,45 @@ async function resolveUserIdByDisplayName(
   return data?.[0]?.user_id || null;
 }
 
+/**
+ * Per-recipient resolution metadata. Each recipient may be resolved via one
+ * or more roles (e.g. the deal manager who is also an admin) — we track the
+ * full set so the audit log can attribute correctly.
+ *
+ * `fallback_to_owner` is true when the rule asked for DEAL_MANAGER but the
+ * manager could not be resolved, so the deal owner was used instead. This is
+ * surfaced into notification_audit.metadata for visibility.
+ */
+interface RecipientMeta {
+  roles: Set<string>;
+  fallback_to_owner: boolean;
+}
+
 async function resolveRecipients(
   supabase: ReturnType<typeof createClient>,
   rule: NotificationRule,
   context: Record<string, unknown>,
   actorUserId?: string
-): Promise<string[]> {
-  const recipientSet = new Set<string>();
+): Promise<Map<string, RecipientMeta>> {
+  const recipientMap = new Map<string, RecipientMeta>();
+  const addRecipient = (uid: string, role: string, fallback = false) => {
+    if (!uid) return;
+    const existing = recipientMap.get(uid);
+    if (existing) {
+      existing.roles.add(role);
+      if (fallback) existing.fallback_to_owner = true;
+    } else {
+      recipientMap.set(uid, {
+        roles: new Set([role]),
+        fallback_to_owner: fallback,
+      });
+    }
+  };
 
   // Add explicit user IDs
   if (rule.default_recipients.user_ids) {
     for (const uid of rule.default_recipients.user_ids) {
-      recipientSet.add(uid);
+      addRecipient(uid, "EXPLICIT");
     }
   }
 
