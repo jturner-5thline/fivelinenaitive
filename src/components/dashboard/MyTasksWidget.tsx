@@ -176,14 +176,14 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
             </div>
 
             <ScrollArea className="flex-1 min-h-0">
-              {tasks.length === 0 ? (
+              {filtered.length === 0 ? (
                 <div className="text-center py-8">
                   <CheckCircle2 className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">
                     {filter === 'today' ? 'No tasks due today.' : 'No tasks match this filter.'}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {filter === 'today' ? 'Check your deals for upcoming milestones or create a new task.' : 'Try a different filter or scope.'}
+                    {filter === 'today' ? 'Try Overdue, Next 3 days, or All — or create a new task.' : 'Try a different filter or scope.'}
                   </p>
                   <Button
                     variant="outline"
@@ -206,11 +206,17 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
                       </h5>
                       <div className="space-y-1">
                         {items.map(task => {
-                          const isOverdue = task.due_date && isPast(new Date(task.due_date)) && !isToday(new Date(task.due_date));
+                          const dStart = parseDue(task.due_date);
+                          const dEnd = parseDueEnd(task.due_date);
+                          const isOverdue = !!dEnd && !!dStart && isPast(dEnd) && !isToday(dStart);
+                          const dealLabel = task.deal?.company || task.crm_company?.name || task.contact?.full_name || '';
+                          // Route to the canonical Task detail in /tasks (matches
+                          // the Tasks page query param contract used elsewhere).
+                          const onOpen = () => navigate(`/tasks?task=${task.id}`);
                           return (
                             <button
                               key={task.id}
-                              onClick={() => navigate(`/deal/${task.deal_id}`)}
+                              onClick={onOpen}
                               className={cn(
                                 "w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left",
                                 isOverdue && "border-l-2 border-destructive"
@@ -220,10 +226,12 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm text-foreground truncate">{task.title}</p>
                                 <div className="flex items-center gap-2 mt-0.5">
-                                  <span className="text-xs text-primary font-medium truncate max-w-[120px]">{task.deal_company}</span>
-                                  {task.due_date && (
+                                  {dealLabel && (
+                                    <span className="text-xs text-primary font-medium truncate max-w-[120px]">{dealLabel}</span>
+                                  )}
+                                  {dStart && (
                                     <span className={cn("text-xs", isOverdue ? "text-destructive font-medium" : "text-muted-foreground")}>
-                                      {isToday(new Date(task.due_date)) ? 'Today' : format(new Date(task.due_date), 'MMM d')}
+                                      {isToday(dStart) ? 'Today' : format(dStart, 'MMM d')}
                                     </span>
                                   )}
                                 </div>
