@@ -83,8 +83,8 @@ export function FlexAutoRemovalRules({ companyId, canEdit }: FlexAutoRemovalRule
           </div>
         )}
 
-        <div className="flex items-start gap-2 rounded-md border border-blue-500/20 bg-blue-500/5 p-3 text-xs text-muted-foreground">
-          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-400" />
+        <div className="flex items-start gap-2 rounded-md border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
           <p>
             <span className="font-medium text-foreground">Re-add behavior: </span>
             If a deal later leaves all of these states (e.g. the Archived tag is removed and the

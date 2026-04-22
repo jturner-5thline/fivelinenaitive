@@ -49,6 +49,8 @@ import { ClaapIntegration } from "@/components/integrations/ClaapIntegration";
 import { ZapierIntegration } from "@/components/integrations/ZapierIntegration";
 import { AsanaSetupModal } from "@/components/integrations/AsanaSetupModal";
 import { AsanaSyncSettingsModal } from "@/components/integrations/asana/AsanaSyncSettingsModal";
+import { FlexAutoRemovalRules } from "@/components/integrations/FlexAutoRemovalRules";
+import { useCanSeeFlexSync } from "@/hooks/useCanSeeFlexSync";
 
 const BANNER_DISMISSED_KEY = "naitive_integrations_banner_dismissed";
 
@@ -64,7 +66,8 @@ const COMING_SOON_INTEGRATIONS = [
 export default function Integrations() {
   const { user } = useAuth();
   const is5thLine = user?.email?.endsWith("@5thline.co") ?? false;
-  const { isAdmin: isCompanyAdmin } = useCompany();
+  const { company, isAdmin: isCompanyAdmin } = useCompany();
+  const { canSeeFlexSync } = useCanSeeFlexSync();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Banner
