@@ -511,9 +511,6 @@ export default function Dashboard() {
       {isWidgetActive('new-deal') && (
         <CreateDealDialog open onOpenChange={handleCarouselDialogOpenChange} />
       )}
-      {isWidgetActive('quick-prompts') && (
-        <QuickPromptsDialog open onOpenChange={handleCarouselDialogOpenChange} />
-      )}
       {isJTurner && isWidgetActive('daily-briefing') && (
         <DailyBriefingModal open onOpenChange={handleCarouselDialogOpenChange} />
       )}
