@@ -312,8 +312,11 @@ export function EmailAttachmentList({
             <FolderPlus className="h-4 w-4 text-[hsl(var(--outlook-blue))]" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-[13.5px] font-semibold text-[hsl(var(--email-text-primary))] leading-snug">
-              Ready to add these files to <span className="text-[hsl(var(--outlook-blue))]">{dealLabel}</span> Data Room
+            <div className="flex items-start justify-between gap-2">
+              <div className="text-[13.5px] font-semibold text-[hsl(var(--email-text-primary))] leading-snug">
+                Ready to add these files to <span className="text-[hsl(var(--outlook-blue))]">{dealLabel}</span> Data Room
+              </div>
+              {HeaderDataRoomButton}
             </div>
             <p className="text-[11.5px] text-[hsl(var(--email-text-muted))] mt-0.5 leading-relaxed">
               We found {visible.length} {visible.length === 1 ? 'attachment' : 'attachments'} in this thread.
