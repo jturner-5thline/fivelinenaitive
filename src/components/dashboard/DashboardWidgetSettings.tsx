@@ -133,7 +133,7 @@ export function DashboardWidgetSettings({ trigger }: DashboardWidgetSettingsProp
   };
 
   const quickActionWidgets = widgets.filter(w => 
-    ['calendar', 'email', 'quick-prompts', 'create-deal'].includes(w.id)
+    ['calendar', 'email', 'create-deal'].includes(w.id)
   );
   const mainWidgets = widgets.filter(w => 
     ['notifications', 'deals-calendar', 'news-feed', 'recent-activity'].includes(w.id)
