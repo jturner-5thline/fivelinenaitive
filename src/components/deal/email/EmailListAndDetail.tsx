@@ -1488,6 +1488,13 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           {/* Thread content - scrollable */}
           <ScrollArea className="flex-1 min-h-0 min-w-0 overflow-hidden">
             <div className="min-w-0 max-w-full overflow-hidden overflow-x-hidden py-2 space-y-0 pb-24">
+              {/* Aggregated attachments strip — surfaces every attachment in the
+                  thread at the very top so users can open them in one click
+                  without scrolling through individual messages. */}
+              <div className="px-5 mb-3">
+                <EmailAttachmentsStrip thread={thread} />
+              </div>
+
               <div className="px-5 mb-3">
                 <AiSummaryStrip email={thread.latestEmail} />
               </div>
