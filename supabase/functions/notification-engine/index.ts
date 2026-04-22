@@ -362,6 +362,16 @@ serve(async (req) => {
 
             if (insertError) throw insertError;
             results.push({ recipient: recipientId, channel: "in_app", status: "sent" });
+            await writeAudit(supabase, {
+              trigger_key: triggerKey,
+              recipient_user_id: recipientId,
+              deal_id: (enrichedContext.deal_id as string) || null,
+              channel: "in_app",
+              status: "sent",
+              title: renderedTitle,
+              body: renderedBody,
+              metadata: { rule_id: rule.id },
+            });
           } else if (channel.channel_type === "email") {
             // Send email via Resend
             const resendKey = Deno.env.get("RESEND_API_KEY");
@@ -396,6 +406,17 @@ serve(async (req) => {
                 status: emailError ? "failed" : "sent",
                 error: emailError ? String(emailError) : undefined,
               });
+              await writeAudit(supabase, {
+                trigger_key: triggerKey,
+                recipient_user_id: recipientId,
+                deal_id: (enrichedContext.deal_id as string) || null,
+                channel: "email",
+                status: emailError ? "failed" : "sent",
+                title: renderedSubject,
+                body: renderedBody,
+                error_message: emailError ? String(emailError) : null,
+                metadata: { rule_id: rule.id, to: recipientProfile.email },
+              });
             } else {
               // Log as skipped if no email config
               await supabase.from("notification_instances").insert({
@@ -411,6 +432,17 @@ serve(async (req) => {
                 error_message: !resendKey ? "RESEND_API_KEY not configured" : "No recipient email",
               });
               results.push({ recipient: recipientId, channel: "email", status: "skipped" });
+              await writeAudit(supabase, {
+                trigger_key: triggerKey,
+                recipient_user_id: recipientId,
+                deal_id: (enrichedContext.deal_id as string) || null,
+                channel: "email",
+                status: "skipped",
+                title: renderedSubject,
+                body: renderedBody,
+                error_message: !resendKey ? "RESEND_API_KEY not configured" : "No recipient email",
+                metadata: { rule_id: rule.id },
+              });
             }
           } else if (channel.channel_type === "slack") {
             // Slack dispatch via existing slack gateway pattern
