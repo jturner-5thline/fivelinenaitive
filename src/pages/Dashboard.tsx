@@ -309,8 +309,15 @@ export default function Dashboard() {
             return (
           <div className={`grid gap-3 md:gap-4 ${gridColsClass}`}>
             <Card
-              className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
+              className={TILE_INTERACTIVE_CLASSES}
               onClick={(e) => openCarouselWidget('calendar', e.currentTarget as HTMLElement)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) =>
+                handleTileKeyDown(e, () =>
+                  openCarouselWidget('calendar', e.currentTarget as HTMLElement),
+                )
+              }
             >
               <div className="flex flex-col items-center text-center space-y-3">
                 <div className="relative h-12 w-12 rounded-xl border border-primary/30 bg-primary/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
@@ -320,8 +327,15 @@ export default function Dashboard() {
               </div>
             </Card>
             <Card
-              className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
+              className={TILE_INTERACTIVE_CLASSES}
               onClick={(e) => openCarouselWidget('email', e.currentTarget as HTMLElement)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) =>
+                handleTileKeyDown(e, () =>
+                  openCarouselWidget('email', e.currentTarget as HTMLElement),
+                )
+              }
             >
               <div className="flex flex-col items-center text-center space-y-3">
                 <div className="relative h-12 w-12 rounded-xl border border-[hsl(280,85%,65%,0.55)] bg-[hsl(275,80%,40%,0.3)] backdrop-blur-xl flex items-center justify-center overflow-hidden">
@@ -331,8 +345,15 @@ export default function Dashboard() {
               </div>
             </Card>
             <Card
-              className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
+              className={TILE_INTERACTIVE_CLASSES}
               onClick={(e) => openCarouselWidget('new-deal', e.currentTarget as HTMLElement)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) =>
+                handleTileKeyDown(e, () =>
+                  openCarouselWidget('new-deal', e.currentTarget as HTMLElement),
+                )
+              }
             >
               <div className="flex flex-col items-center text-center space-y-3">
                 <div className="relative h-12 w-12 rounded-xl border border-accent/30 bg-accent/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
@@ -343,8 +364,15 @@ export default function Dashboard() {
             </Card>
             {isJTurner && (
               <Card
-                className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
+                className={TILE_INTERACTIVE_CLASSES}
                 onClick={(e) => openCarouselWidget('daily-briefing', e.currentTarget as HTMLElement)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) =>
+                  handleTileKeyDown(e, () =>
+                    openCarouselWidget('daily-briefing', e.currentTarget as HTMLElement),
+                  )
+                }
               >
                 <div className="flex flex-col items-center text-center space-y-3">
                   <div className="relative h-12 w-12 rounded-xl border border-warning/30 bg-warning/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
@@ -356,8 +384,15 @@ export default function Dashboard() {
             )}
             {canSeeNiki && (
               <Card
-                className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
+                className={TILE_INTERACTIVE_CLASSES}
                 onClick={(e) => openCarouselWidget('niki-briefing', e.currentTarget as HTMLElement)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) =>
+                  handleTileKeyDown(e, () =>
+                    openCarouselWidget('niki-briefing', e.currentTarget as HTMLElement),
+                  )
+                }
               >
                 <div className="flex flex-col items-center text-center space-y-3">
                   <div className="relative h-12 w-12 rounded-xl border border-[hsl(190,90%,55%,0.4)] bg-[hsl(190,90%,45%,0.18)] backdrop-blur-sm flex items-center justify-center overflow-hidden">
