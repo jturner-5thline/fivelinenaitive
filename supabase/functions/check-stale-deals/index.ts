@@ -378,8 +378,14 @@ const handler = async (req: Request): Promise<Response> => {
       const activeDeals = deals.filter(deal => {
         if (config.excluded_stages.includes(deal.status)) return false;
         if (config.excluded_stages.includes(deal.stage)) return false;
-        // Skip test deals (names starting with "TEST" or "test")
-        if (/^test\b/i.test((deal.company || '').trim())) return false;
+        // Globally excluded test/example deals — keep in sync with src/utils/excludedDeals.ts
+        const normalized = (deal.company || '').toLowerCase().trim();
+        if (!normalized) return true;
+        if (normalized === "test - niki's store") return false;
+        if (normalized === 'example deal') return false;
+        if (normalized === 'test') return false;
+        if (normalized.startsWith('test ')) return false;
+        if (/^test\b/i.test(normalized)) return false;
         return true;
       });
 
