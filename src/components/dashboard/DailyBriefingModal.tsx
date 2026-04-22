@@ -68,6 +68,11 @@ interface DailyBriefingModalProps {
    * Hidden tabs do not render their content and skip data fetching entirely.
    */
   excludeTabs?: Array<'catchup' | 'email' | 'financial' | 'pipeline' | 'operational'>;
+  /**
+   * Tab to select when the modal opens (and re-opens). If the value is
+   * excluded or unknown, falls back to the first available tab.
+   */
+  initialTab?: 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational';
 }
 
 // Initial tab to open with. Defaults to the first available tab.
@@ -1228,15 +1233,28 @@ const ALL_TABS = [
 ] as const;
 
 // ── Main modal component ───────────────────────────────────────
-export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing', targetUserId, targetAssigneeName, excludeTabs }: DailyBriefingModalProps) {
+export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing', targetUserId, targetAssigneeName, excludeTabs, initialTab }: DailyBriefingModalProps) {
   const navigate = useNavigate();
   const window = useBriefingWindow();
   const TABS = useMemo(
     () => ALL_TABS.filter(t => !excludeTabs?.includes(t.value as any)),
     [excludeTabs],
   );
-  const [activeTab, setActiveTab] = useState<string>(TABS[0]?.value ?? 'catchup');
+  const resolveInitialTab = () => {
+    if (initialTab && TABS.find(t => t.value === initialTab)) return initialTab;
+    return TABS[0]?.value ?? 'catchup';
+  };
+  const [activeTab, setActiveTab] = useState<string>(resolveInitialTab());
   const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
+
+  // When the modal (re)opens, honor `initialTab` so callers can deep-link
+  // into a specific tab (e.g., "Pipeline & Clients" from the Deal Rundown
+  // dashboard tile).
+  useEffect(() => {
+    if (open && initialTab && TABS.find(t => t.value === initialTab)) {
+      setActiveTab(initialTab);
+    }
+  }, [open, initialTab, TABS]);
 
   // Email sub-tab + unread filter state lifted to the parent so the controls
   // can render inside the unified top header band (alongside the page title /
