@@ -495,6 +495,26 @@ export default function Dashboard() {
                 </div>
               </Card>
             )}
+            {is5thLine && (
+              <Card
+                className={TILE_INTERACTIVE_CLASSES}
+                onClick={(e) => openCarouselWidget('deal-rundown', e.currentTarget as HTMLElement)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) =>
+                  handleTileKeyDown(e, () =>
+                    openCarouselWidget('deal-rundown', e.currentTarget as HTMLElement),
+                  )
+                }
+              >
+                <div className="flex flex-col items-center text-center space-y-3">
+                  <div className="relative h-12 w-12 rounded-xl border border-primary/30 bg-primary/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                    <Briefcase className="relative z-10 h-7 w-7 text-primary" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">Deal Rundown</span>
+                </div>
+              </Card>
+            )}
           </div>
             );
           })()}
@@ -662,6 +682,14 @@ export default function Dashboard() {
           targetUserId={NIKI_USER_ID}
           targetAssigneeName={NIKI_ASSIGNEE_NAME}
           excludeTabs={['financial']}
+        />
+      )}
+      {is5thLine && isWidgetActive('deal-rundown') && (
+        <DailyBriefingModal
+          open
+          onOpenChange={handleCarouselDialogOpenChange}
+          title="Deal Rundown"
+          initialTab="pipeline"
         />
       )}
       <WidgetCarouselChrome />
