@@ -26,6 +26,13 @@ import { OperationalDashboard } from './operational/OperationalDashboard';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
+// Reused from the main Email widget pop-up so the AI Assist experience
+// (prompts, actions, summaries, suggested replies) is identical here.
+import { AiAssistInlinePanel } from '@/components/deal/email/AiAssistInlinePanel';
+import { EmailBodyRenderer } from '@/components/deal/email/EmailBodyRenderer';
+import { useFullEmailMessage } from '@/components/deal/email/useFullEmailMessage';
+import type { EmailThread, MockEmail } from '@/components/deal/email/mockEmailData';
+
 interface DailyBriefingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
