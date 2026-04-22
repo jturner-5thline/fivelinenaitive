@@ -1499,6 +1499,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 thread={thread}
                 maxInline={3}
                 forceVisible
+                loadingOverride={latestFullLoading}
                 fallbackReason={attachmentFallbackReason}
                 className="w-full"
               />
