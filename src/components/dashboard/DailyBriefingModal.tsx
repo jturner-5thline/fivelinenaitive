@@ -35,7 +35,7 @@ import type { EmailThread, MockEmail } from '@/components/deal/email/mockEmailDa
 import { EmailAttachmentsStrip, detectAttachmentFallbackReason } from '@/components/deal/email/EmailAttachmentsStrip';
 import { PipelineMemoView } from '@/pages/pipeline/PipelineMemoView';
 import { useUiPreference } from '@/hooks/useUiPreference';
-import { LayoutGrid, FileText } from 'lucide-react';
+import { LayoutGrid } from 'lucide-react';
 
 interface DailyBriefingModalProps {
   open: boolean;
