@@ -13492,6 +13492,8 @@ export type Database = {
           notify_stale_alerts: boolean
           onboarding_completed: boolean
           phone: string | null
+          stale_deal_threshold_days: number
+          stale_lender_threshold_days: number
           suspended_at: string | null
           suspended_reason: string | null
           timezone: string
@@ -13537,6 +13539,8 @@ export type Database = {
           notify_stale_alerts?: boolean
           onboarding_completed?: boolean
           phone?: string | null
+          stale_deal_threshold_days?: number
+          stale_lender_threshold_days?: number
           suspended_at?: string | null
           suspended_reason?: string | null
           timezone?: string
@@ -13582,6 +13586,8 @@ export type Database = {
           notify_stale_alerts?: boolean
           onboarding_completed?: boolean
           phone?: string | null
+          stale_deal_threshold_days?: number
+          stale_lender_threshold_days?: number
           suspended_at?: string | null
           suspended_reason?: string | null
           timezone?: string
