@@ -802,49 +802,93 @@ function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onN
       </div>
 
       {/* Email list */}
-      {filtered.length === 0 ? (
-        <EmptySection message={EMPTY_MESSAGES[subTab]} />
-      ) : (
-        <div className="space-y-1.5">
-          {filtered.map((e: any) => (
-            (() => {
-              const autoLabels = evaluateAutoLabels(e);
-              return (
-                <BriefingRow
-                  key={e.id}
-                  icon={Mail}
-                  title={e.subject || '(no subject)'}
-                  subtitle={`${e.from_name || e.from_email || 'Unknown'} — ${e.analysis?.summary || e.snippet || ''}`}
-                  badge={e.analysis?.category?.replace(/_/g, ' ') || 'email'}
-                  badgeVariant={e.analysis?.priority === 'high' ? 'destructive' : 'secondary'}
-                  time={e.received_at ? formatDistanceToNow(new Date(e.received_at), { addSuffix: true }) : ''}
-                  onClick={() => setDetail(e)}
-                  extras={
-                    <>
-                      <EmailCategoryChips email={e} />
-                      {autoLabels.map(lbl => (
-                        <Badge
-                          key={lbl.id}
-                          variant="outline"
-                          className="text-[9px] h-[16px] px-1 border"
-                          style={{
-                            borderColor: `${lbl.color}55`,
-                            backgroundColor: `${lbl.color}1F`,
-                            color: lbl.color,
-                          }}
-                          title={lbl.description || lbl.name}
-                        >
-                          {lbl.name}
-                        </Badge>
-                      ))}
-                    </>
-                  }
-                />
-              );
-            })()
-          ))}
+      {/* Workspace: when no email is selected, the grouped list takes the full
+          width. When an email IS selected, we switch to the same 3-column
+          layout the main Email widget uses — list (left) / message (middle) /
+          AI Assist (right) — without leaving the Email tab or opening a modal. */}
+      <div
+        className={cn(
+          'flex-1 min-h-0 grid gap-3',
+          detail
+            ? 'grid-cols-[280px_minmax(0,1fr)_360px]'
+            : 'grid-cols-1',
+        )}
+      >
+        {/* LEFT — grouped briefing email list (preserves grouping/filters/counts) */}
+        <div className="min-w-0 min-h-0 overflow-y-auto pr-1">
+          {filtered.length === 0 ? (
+            <EmptySection message={EMPTY_MESSAGES[subTab]} />
+          ) : (
+            <div className="space-y-1.5">
+              {filtered.map((e: any) => {
+                const autoLabels = evaluateAutoLabels(e);
+                const isSelected =
+                  detail && (detail.id === e.id || detail.gmail_message_id === e.gmail_message_id);
+                return (
+                  <div
+                    key={e.id}
+                    className={cn(
+                      'rounded-lg transition-colors',
+                      isSelected && 'ring-1 ring-primary/40 bg-primary/[0.04]',
+                    )}
+                  >
+                    <BriefingRow
+                      icon={Mail}
+                      title={e.subject || '(no subject)'}
+                      subtitle={`${e.from_name || e.from_email || 'Unknown'} — ${e.analysis?.summary || e.snippet || ''}`}
+                      badge={e.analysis?.category?.replace(/_/g, ' ') || 'email'}
+                      badgeVariant={e.analysis?.priority === 'high' ? 'destructive' : 'secondary'}
+                      time={e.received_at ? formatDistanceToNow(new Date(e.received_at), { addSuffix: true }) : ''}
+                      onClick={() => setDetail(e)}
+                      extras={
+                        <>
+                          <EmailCategoryChips email={e} />
+                          {autoLabels.map(lbl => (
+                            <Badge
+                              key={lbl.id}
+                              variant="outline"
+                              className="text-[9px] h-[16px] px-1 border"
+                              style={{
+                                borderColor: `${lbl.color}55`,
+                                backgroundColor: `${lbl.color}1F`,
+                                color: lbl.color,
+                              }}
+                              title={lbl.description || lbl.name}
+                            >
+                              {lbl.name}
+                            </Badge>
+                          ))}
+                        </>
+                      }
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
+
+        {/* MIDDLE — selected email body. Only rendered in open state. */}
+        {detail && (
+          <BriefingEmailDetailPane
+            key={detail.id || detail.gmail_message_id}
+            email={detail}
+            onBack={() => setDetail(null)}
+            onOpenIntelligence={() => onNavigate('/email-intelligence')}
+          />
+        )}
+
+        {/* RIGHT — same AI Assist panel used by the main Email pop-up. */}
+        {detail && (
+          <div className="min-w-0 min-h-0 overflow-y-auto rounded-xl border border-border/40 bg-white/[0.02]">
+            <AiAssistInlinePanel
+              key={`ai-${detail.id || detail.gmail_message_id}`}
+              thread={briefingRowToThread(detail)}
+              onClose={() => setDetail(null)}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
