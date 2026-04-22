@@ -105,7 +105,7 @@ export function VdrThreeColumnWorkspace({
   const dataroomFileInput = useRef<HTMLInputElement>(null);
 
   // Load default categories (Settings-driven via data_room_checklist_categories)
-  const { categories } = useChecklistCategories();
+  const { categories, loading: categoriesLoading } = useChecklistCategories();
 
   // Checklist
   const uploadedItems = useUploadedItems(dealId, bulkBatchId);
@@ -656,7 +656,7 @@ export function VdrThreeColumnWorkspace({
                 <div className="mt-0.5">
                   {docs.length === 0 ? (
                     <div className="px-3 py-1 text-[10px] text-muted-foreground/50 italic">
-                      No files
+                      {searchQuery.trim() ? 'No matching files' : 'No files yet'}
                     </div>
                   ) : (
                     docs.map(d => renderFileRow(d, column))
@@ -672,6 +672,9 @@ export function VdrThreeColumnWorkspace({
 
   const internalCount = internalDocs.length;
   const dataroomCount = dataroomDocs.length;
+  const hasConfiguredCategories = categoryNames.length > 0;
+  const shouldRenderInternalFolders = hasConfiguredCategories || visibleInternal.length > 0;
+  const shouldRenderDataroomFolders = hasConfiguredCategories || visibleDataroom.length > 0;
   const indexedCount = vdrDocs.ingestionStats?.complete || 0;
   const processingCount = vdrDocs.ingestionStats?.processing || 0;
 
