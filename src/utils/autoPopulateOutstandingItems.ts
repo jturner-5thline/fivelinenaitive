@@ -282,3 +282,18 @@ export function isFinalCreditItemsStage(stage: string | null | undefined): boole
   if (!stage) return false;
   return FINAL_CREDIT_ITEMS_SLUGS.has(stage.toLowerCase().trim());
 }
+
+/** Canonical stage slugs for NDA/Needs List Sent */
+const NDA_NEEDS_LIST_SENT_SLUGS = new Set([
+  'ndaneeds-list-sent',
+  'nda-needs-list-sent',
+  'nda_needs_list_sent',
+  'nda/needs list sent',
+  'nda needs list sent',
+]);
+
+/** Check if a stage value represents "NDA/Needs List Sent" */
+export function isNdaNeedsListSentStage(stage: string | null | undefined): boolean {
+  if (!stage) return false;
+  return NDA_NEEDS_LIST_SENT_SLUGS.has(stage.toLowerCase().trim());
+}
