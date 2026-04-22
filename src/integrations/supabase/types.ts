@@ -12390,7 +12390,7 @@ export type Database = {
           error_message: string | null
           id: string
           metadata: Json
-          recipient_user_id: string
+          recipient_user_id: string | null
           status: string
           title: string | null
           trigger_key: string
@@ -12403,7 +12403,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           metadata?: Json
-          recipient_user_id: string
+          recipient_user_id?: string | null
           status: string
           title?: string | null
           trigger_key: string
@@ -12416,7 +12416,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           metadata?: Json
-          recipient_user_id?: string
+          recipient_user_id?: string | null
           status?: string
           title?: string | null
           trigger_key?: string
