@@ -172,11 +172,11 @@ export function EmailBodyRenderer({
     return (
       <div
         className={cn(
-          'email-html-body min-w-0 max-w-full overflow-x-hidden text-[14px] leading-[1.7] text-[hsl(var(--email-text-primary))]',
+          'email-html-body w-full min-w-0 max-w-full overflow-hidden overflow-x-hidden text-[14px] leading-[1.7] text-[hsl(var(--email-text-primary))]',
           'break-words',
           className,
         )}
-        style={{ whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'normal' }}
+        style={{ width: '100%', maxWidth: '100%', whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'break-word' }}
         dangerouslySetInnerHTML={{ __html: sanitized }}
       />
     );
@@ -185,10 +185,10 @@ export function EmailBodyRenderer({
   return (
     <div
       className={cn(
-        'min-w-0 max-w-full overflow-x-hidden text-[14px] leading-[1.7] text-[hsl(var(--email-text-primary))] break-words',
+        'w-full min-w-0 max-w-full overflow-hidden overflow-x-hidden text-[14px] leading-[1.7] text-[hsl(var(--email-text-primary))] break-words',
         className,
       )}
-      style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'normal' }}
+      style={{ width: '100%', maxWidth: '100%', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}
     >
       {text || ''}
     </div>

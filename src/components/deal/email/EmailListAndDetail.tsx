@@ -1195,12 +1195,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           stacks (detail on top, assist below) so the middle column always has
           room to wrap. */}
       <div
-        className="relative grid h-full min-w-0 w-full overflow-hidden transition-[grid-template-columns,grid-template-rows] duration-200 ease-out"
+        className="grid h-full min-w-0 w-full overflow-hidden transition-[grid-template-columns] duration-200 ease-out"
         style={{
           gridTemplateColumns: showAiAssist
-            ? 'minmax(0, 1fr) minmax(300px, 380px)'
+            ? 'minmax(0, 1fr) 360px'
             : 'minmax(0, 1fr)',
-          gridTemplateRows: '1fr',
         }}
       >
         <div className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-[hsl(var(--email-reading-bg))]">
@@ -1443,7 +1442,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
           {/* Thread content - scrollable */}
           <ScrollArea className="flex-1 min-h-0 min-w-0 overflow-hidden">
-            <div className="min-w-0 max-w-full overflow-x-hidden py-2 space-y-0 pb-24">
+            <div className="min-w-0 max-w-full overflow-hidden overflow-x-hidden py-2 space-y-0 pb-24">
               <div className="px-5 mb-3">
                 <AiSummaryStrip email={thread.latestEmail} />
               </div>
@@ -1559,15 +1558,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             the full width. Below 1100px we collapse to slide-over to keep the
             detail column wide enough for body wrapping. */}
         {showAiAssist && (
-          <div
-            className={cn(
-              'flex min-h-0 min-w-0 overflow-hidden border-[hsl(var(--email-border))] bg-card/40',
-              // Desktop (>=1100px): persistent right column inside the grid cell
-              'min-[1100px]:h-full min-[1100px]:border-l',
-              // Below 1100px: slide-over so the middle column keeps its width
-              'absolute inset-y-0 right-0 z-20 h-full w-[min(380px,90vw)] border-l shadow-2xl min-[1100px]:static min-[1100px]:z-auto min-[1100px]:w-auto min-[1100px]:shadow-none',
-            )}
-          >
+          <div className="flex h-full min-h-0 min-w-0 w-full overflow-hidden border-l border-[hsl(var(--email-border))] bg-card/40">
           <AiAssistSidebar
             thread={thread}
             dealId={dealId}
