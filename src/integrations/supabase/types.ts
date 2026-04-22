@@ -7561,6 +7561,7 @@ export type Database = {
           company_id: string | null
           company_url: string | null
           contact: string | null
+          contact_email: string | null
           contact_info: string | null
           contract_end_date: string | null
           contract_start_date: string | null
@@ -7622,6 +7623,7 @@ export type Database = {
           company_id?: string | null
           company_url?: string | null
           contact?: string | null
+          contact_email?: string | null
           contact_info?: string | null
           contract_end_date?: string | null
           contract_start_date?: string | null
@@ -7683,6 +7685,7 @@ export type Database = {
           company_id?: string | null
           company_url?: string | null
           contact?: string | null
+          contact_email?: string | null
           contact_info?: string | null
           contract_end_date?: string | null
           contract_start_date?: string | null

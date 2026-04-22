@@ -68,6 +68,12 @@ const formSchema = z
   .object({
     companyName: z.string().trim().min(1, 'Company Name is required').max(120),
     primaryContact: z.string().trim().min(1, 'Primary Contact is required').max(120),
+    contactEmail: z
+      .string()
+      .trim()
+      .min(1, 'Contact Email is required')
+      .email('Enter a valid email address')
+      .max(255),
     leadSource: z.enum(LEAD_SOURCES, { required_error: 'Lead Source is required' }),
     referralSource: z.string().trim().max(200).optional(),
     opportunityType: z.enum(OPPORTUNITY_TYPES, { required_error: 'Opportunity Type is required' }),
@@ -110,6 +116,7 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
   // Form state
   const [companyName, setCompanyName] = useState('');
   const [primaryContact, setPrimaryContact] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
   const [leadSource, setLeadSource] = useState<string>('');
   const [referralSource, setReferralSource] = useState('');
   const [opportunityType, setOpportunityType] = useState<string>('');
@@ -127,6 +134,7 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
   const resetForm = () => {
     setCompanyName('');
     setPrimaryContact('');
+    setContactEmail('');
     setLeadSource('');
     setReferralSource('');
     setOpportunityType('');
@@ -157,6 +165,7 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
     const result = formSchema.safeParse({
       companyName,
       primaryContact,
+      contactEmail,
       leadSource,
       referralSource: referralSource || undefined,
       opportunityType,
@@ -191,6 +200,7 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
       const insertPayload: Record<string, any> = {
         company: data.companyName,
         contact: data.primaryContact,
+        contact_email: data.contactEmail,
         stage: data.dealStage,
         deal_owner: data.dealOwner,
         pipeline_id: pipelineId || null,
@@ -272,61 +282,100 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <div className="flex-1 overflow-y-auto px-6 pt-6 pb-4">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-y-3.5 gap-x-4 [grid-auto-rows:min-content] items-start">
-              {/* ── Section 1 — Company ── */}
-              <SectionHeader>Company</SectionHeader>
+              {/* ── Section 1 — Company & Contact (two-column stacked block) ── */}
+              <SectionHeader>Company &amp; Contact</SectionHeader>
 
-              <div className="md:col-span-6">
-                <FieldLabel htmlFor="companyName">Company Name <Req /></FieldLabel>
-                <Input
-                  id="companyName"
-                  value={companyName}
-                  onChange={e => setCompanyName(e.target.value)}
-                  maxLength={120}
-                  placeholder="Enter company name"
-                  className="h-10"
-                />
-                <Helper>{errors.companyName ? <span className="text-destructive">{errors.companyName}</span> : null}</Helper>
+              {/* LEFT column — contact stack */}
+              <div className="md:col-span-6 grid grid-cols-1 gap-y-3.5 [grid-auto-rows:min-content] items-start">
+                <div>
+                  <FieldLabel htmlFor="companyName">Company Name <Req /></FieldLabel>
+                  <Input
+                    id="companyName"
+                    value={companyName}
+                    onChange={e => setCompanyName(e.target.value)}
+                    maxLength={120}
+                    placeholder="Enter company name"
+                    className="h-10"
+                  />
+                  <Helper>{errors.companyName ? <span className="text-destructive">{errors.companyName}</span> : null}</Helper>
+                </div>
+                <div>
+                  <FieldLabel htmlFor="primaryContact">Primary Contact <Req /></FieldLabel>
+                  <Input
+                    id="primaryContact"
+                    value={primaryContact}
+                    onChange={e => setPrimaryContact(e.target.value)}
+                    maxLength={120}
+                    placeholder="e.g., Jane Doe"
+                    className="h-10"
+                  />
+                  <Helper>{errors.primaryContact ? <span className="text-destructive">{errors.primaryContact}</span> : null}</Helper>
+                </div>
+                <div>
+                  <FieldLabel htmlFor="contactEmail">Contact Email <Req /></FieldLabel>
+                  <Input
+                    id="contactEmail"
+                    type="email"
+                    autoComplete="email"
+                    value={contactEmail}
+                    onChange={e => setContactEmail(e.target.value)}
+                    maxLength={255}
+                    placeholder="jane@company.com"
+                    className="h-10"
+                  />
+                  <Helper>{errors.contactEmail ? <span className="text-destructive">{errors.contactEmail}</span> : null}</Helper>
+                </div>
               </div>
 
-              <div className="md:col-span-6">
-                <FieldLabel htmlFor="primaryContact">Primary Contact <Req /></FieldLabel>
-                <Input
-                  id="primaryContact"
-                  value={primaryContact}
-                  onChange={e => setPrimaryContact(e.target.value)}
-                  maxLength={120}
-                  placeholder="e.g., Jane Doe"
-                  className="h-10"
-                />
-                <Helper>
-                  {errors.primaryContact ? (
-                    <span className="text-destructive">{errors.primaryContact}</span>
-                  ) : (
-                    'Name of the key person at the company (not just the company itself).'
-                  )}
-                </Helper>
+              {/* RIGHT column — classification stack (aligned row-for-row) */}
+              <div className="md:col-span-6 grid grid-cols-1 gap-y-3.5 [grid-auto-rows:min-content] items-start">
+                <div>
+                  <FieldLabel>Lead Source <Req /></FieldLabel>
+                  <Select value={leadSource} onValueChange={setLeadSource}>
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Select lead source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LEAD_SOURCES.map(s => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Helper>{errors.leadSource ? <span className="text-destructive">{errors.leadSource}</span> : null}</Helper>
+                </div>
+                <div>
+                  <FieldLabel>Opportunity Type <Req /></FieldLabel>
+                  <Select value={opportunityType} onValueChange={setOpportunityType}>
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Select opportunity type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {OPPORTUNITY_TYPES.map(t => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Helper>{errors.opportunityType ? <span className="text-destructive">{errors.opportunityType}</span> : null}</Helper>
+                </div>
+                <div>
+                  <FieldLabel>Deal Owner <Req /></FieldLabel>
+                  <Select value={dealOwner} onValueChange={setDealOwner}>
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Select owner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FINSERV_OWNERS.map(o => (
+                        <SelectItem key={o} value={o}>{o}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Helper>{errors.dealOwner ? <span className="text-destructive">{errors.dealOwner}</span> : null}</Helper>
+                </div>
               </div>
 
-              {/* ── Section 2 — Source ── */}
-              <SectionHeader>Source</SectionHeader>
-
-              <div className={showReferral ? 'md:col-span-4' : 'md:col-span-6'}>
-                <FieldLabel>Lead Source <Req /></FieldLabel>
-                <Select value={leadSource} onValueChange={setLeadSource}>
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="Select lead source" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LEAD_SOURCES.map(s => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Helper>{errors.leadSource ? <span className="text-destructive">{errors.leadSource}</span> : null}</Helper>
-              </div>
-
+              {/* Conditional Referral Source — full-width row beneath the two-column block */}
               {showReferral && (
-                <div className="md:col-span-8">
+                <div className="md:col-span-12">
                   <FieldLabel htmlFor="referralSource">Referral Source <Req /></FieldLabel>
                   <Input
                     id="referralSource"
@@ -345,36 +394,6 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
                   </Helper>
                 </div>
               )}
-
-              <div className="md:col-span-6">
-                <FieldLabel>Opportunity Type <Req /></FieldLabel>
-                <Select value={opportunityType} onValueChange={setOpportunityType}>
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="Select opportunity type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {OPPORTUNITY_TYPES.map(t => (
-                      <SelectItem key={t} value={t}>{t}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Helper>{errors.opportunityType ? <span className="text-destructive">{errors.opportunityType}</span> : null}</Helper>
-              </div>
-
-              <div className="md:col-span-6">
-                <FieldLabel>Deal Owner <Req /></FieldLabel>
-                <Select value={dealOwner} onValueChange={setDealOwner}>
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="Select owner" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FINSERV_OWNERS.map(o => (
-                      <SelectItem key={o} value={o}>{o}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Helper>{errors.dealOwner ? <span className="text-destructive">{errors.dealOwner}</span> : null}</Helper>
-              </div>
 
               {/* ── Section 3 — Scope & Fees ── */}
               <SectionHeader>Scope &amp; Fees</SectionHeader>
