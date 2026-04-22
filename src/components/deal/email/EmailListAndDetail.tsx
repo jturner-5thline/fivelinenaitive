@@ -1497,11 +1497,9 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             <div className="px-6 py-3 border-b border-[hsl(var(--email-border))] bg-card/30">
               <EmailAttachmentsStrip
                 thread={thread}
-                maxInline={3}
                 forceVisible
                 loadingOverride={latestFullLoading}
                 fallbackReason={attachmentFallbackReason}
-                className="w-full"
               />
             </div>
           )}
