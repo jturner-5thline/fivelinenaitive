@@ -743,21 +743,6 @@ function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onN
 
   return (
     <div className="relative h-full">
-      {detail && (
-        <DetailPopup title={detail.subject || 'Email Detail'} onClose={() => setDetail(null)}>
-          <div className="space-y-3">
-            <div className="text-sm"><strong>From:</strong> {detail.from_name} ({detail.from_email})</div>
-            <div className="text-sm"><strong>Subject:</strong> {detail.subject}</div>
-            {detail.analysis?.summary && <div className="text-sm"><strong>AI Summary:</strong> {detail.analysis.summary}</div>}
-            {detail.analysis?.deal_name && <div className="text-sm"><strong>Related Deal:</strong> {detail.analysis.deal_name}</div>}
-            <div className="text-sm text-muted-foreground">{detail.snippet}</div>
-            <Button size="sm" variant="outline" className="glass-border-soft" onClick={() => onNavigate('/email-intelligence')}>
-              Open Email Intelligence <ExternalLink className="h-3 w-3 ml-1" />
-            </Button>
-          </div>
-        </DetailPopup>
-      )}
-
       {/* Sub-tab pills */}
       <div className="flex items-center gap-1.5 mb-4">
         {EMAIL_CATEGORY_TABS.map(t => (
