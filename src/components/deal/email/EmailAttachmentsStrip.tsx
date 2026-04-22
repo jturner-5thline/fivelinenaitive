@@ -501,8 +501,13 @@ export function EmailAttachmentsStrip({
               · {aggregated.length}
             </span>
           )}
+          {aggregated.length === 0 && hasPendingHydration && (
+            <span className="ml-1 text-muted-foreground/60 normal-case font-normal tracking-normal">
+              · loading…
+            </span>
+          )}
         </span>
-        {loading && (
+        {(loading || loadingOverride) && (
           <Loader2 className="h-3 w-3 animate-spin text-muted-foreground/60 ml-1" />
         )}
       </div>
