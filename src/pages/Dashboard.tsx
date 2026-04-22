@@ -328,24 +328,14 @@ export default function Dashboard() {
                 <span className="text-sm font-medium text-foreground">Calendar</span>
               </div>
             </Card>
-            <Card
-              className={TILE_INTERACTIVE_CLASSES}
-              onClick={(e) => openCarouselWidget('email', e.currentTarget as HTMLElement)}
-              role="button"
-              tabIndex={0}
+            <EmailTileWithIntelligence
+              onOpen={(el) => openCarouselWidget('email', el)}
               onKeyDown={(e) =>
                 handleTileKeyDown(e, () =>
                   openCarouselWidget('email', e.currentTarget as HTMLElement),
                 )
               }
-            >
-              <div className="flex flex-col items-center text-center space-y-3">
-                <div className="relative h-12 w-12 rounded-xl border border-[hsl(280,85%,65%,0.55)] bg-[hsl(275,80%,40%,0.3)] backdrop-blur-xl flex items-center justify-center overflow-hidden">
-                  <Mail className="relative z-10 h-7 w-7 text-foreground" />
-                </div>
-                <span className="text-sm font-medium text-foreground">Email</span>
-              </div>
-            </Card>
+            />
             <Card
               className={TILE_INTERACTIVE_CLASSES}
               onClick={(e) => openCarouselWidget('new-deal', e.currentTarget as HTMLElement)}
