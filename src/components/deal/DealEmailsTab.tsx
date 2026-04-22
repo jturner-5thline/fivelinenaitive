@@ -224,9 +224,10 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const [readingPaneExpanded, setReadingPaneExpanded] = useState(false);
 
   // ─── Resizable middle column ───────────────────────────────
-  const DEFAULT_INBOX_WIDTH = 240;
-  const MIN_INBOX_WIDTH = 200;
-  const MAX_INBOX_WIDTH = 360;
+  // Inbox column widths reduced ~30% for a more compact layout.
+  const DEFAULT_INBOX_WIDTH = 168;
+  const MIN_INBOX_WIDTH = 140;
+  const MAX_INBOX_WIDTH = 252;
   const [savedInboxWidth, persistInboxWidth] = useUiPreference<number>('email_inbox_column_width', DEFAULT_INBOX_WIDTH);
   const [liveInboxWidth, setLiveInboxWidth] = useState<number | null>(null);
   const isDragging = useRef(false);
