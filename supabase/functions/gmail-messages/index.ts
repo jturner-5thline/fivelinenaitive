@@ -47,12 +47,17 @@ function normalizeAttachments(raw: any[]): Array<{
       // angle brackets that some providers wrap around the value.
       const rawCid = a.content_id || a.contentId || "";
       const cid = typeof rawCid === "string" ? rawCid.replace(/^<|>$/g, "") : "";
+      // IMPORTANT: A bare `content_id` does NOT make a part inline. Many real
+      // attachments (PDFs, decks, docs) carry a Content-ID even when their
+      // disposition is `attachment`. Treat as inline only when the source
+      // explicitly says so via `is_inline` or `content_disposition === "inline"`.
+      const dispo = String(a.content_disposition || a.contentDisposition || "").toLowerCase();
       return {
         id: String(a.id || ""),
         filename: a.filename || a.name || "attachment",
         content_type: a.content_type || a.contentType || "application/octet-stream",
         size: Number(a.size || 0),
-        is_inline: !!(a.is_inline || a.content_disposition === "inline" || cid),
+        is_inline: a.is_inline === true || dispo === "inline",
         content_id: cid || undefined,
       };
     });
@@ -99,7 +104,13 @@ function extractAttachmentsFromParts(msg: any): Array<{
         part?.contentDisposition || part?.content_disposition || body?.contentDisposition || body?.content_disposition || "";
       const rawCid = part?.contentId || part?.content_id || body?.contentId || body?.content_id || "";
       const cid = typeof rawCid === "string" ? rawCid.replace(/^<|>$/g, "") : "";
-      const isInline = !!cid || String(disposition).toLowerCase() === "inline";
+      // A Content-ID alone does NOT mean a MIME part is inline. Real
+      // attachments (PDFs forwarded along threads, decks, etc.) often carry
+      // a Content-ID. Treat as inline ONLY when the disposition header
+      // explicitly says so. Otherwise it's a user-visible attachment that
+      // we additionally keep `content_id` on so the body renderer can still
+      // resolve `cid:` references against it when needed.
+      const isInline = String(disposition).toLowerCase() === "inline";
       const size = Number(body?.size || part?.size || 0);
       const isRealAttachment = !!attachmentId && !!filename;
 
