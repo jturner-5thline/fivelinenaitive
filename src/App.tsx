@@ -265,6 +265,9 @@ const App = () => (
                           <Route path="/integrations" element={
                             <ProtectedRoute><Integrations /></ProtectedRoute>
                           } />
+                          <Route path="/integrations/hubspot/health" element={
+                            <ProtectedRoute><AppLayout><HubspotSyncHealth /></AppLayout></ProtectedRoute>
+                          } />
                           <Route path="/agents" element={
                             <ProtectedRoute><Agents /></ProtectedRoute>
                           } />
