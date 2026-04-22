@@ -23,6 +23,9 @@ import { SendToDataRoomDialog } from './SendToDataRoomDialog';
 import { useFullEmailMessage } from './useFullEmailMessage';
 import { useEmailToDataRoom, type DataRoomDestinationSuggestion } from '@/hooks/useEmailToDataRoom';
 import { SuggestedDealUpdatesSection } from './SuggestedDealUpdatesSection';
+import { DataRoomUploadSuggestionCard } from './DataRoomUploadSuggestionCard';
+import { toast } from 'sonner';
+import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
 
 /**
  * AiAssistSidebar
