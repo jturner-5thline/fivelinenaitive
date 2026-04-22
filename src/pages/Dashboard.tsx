@@ -47,6 +47,99 @@ const handleTileKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, action: () =>
   }
 };
 
+/**
+ * Email tile + hover-anchored Email Intelligence panel.
+ *
+ * The Email Intelligence panel is hidden by default and only appears when
+ * the user hovers (or keyboard-focuses) the Email tile itself. It is
+ * positioned absolutely inside this relatively-positioned container so it
+ * stays anchored to the tile and slightly overlaps below it. The panel
+ * stays open while the pointer is over either the trigger tile or the
+ * panel, and fades out on leave. On touch devices (no hover), the panel
+ * is suppressed entirely.
+ */
+function EmailTileWithIntelligence({
+  onOpen,
+  onKeyDown,
+}: {
+  onOpen: (el: HTMLElement) => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => void;
+}) {
+  const [isHovering, setIsHovering] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const open = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+    setIsHovering(true);
+  };
+  const scheduleClose = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => setIsHovering(false), 120);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+    };
+  }, []);
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={open}
+      onMouseLeave={scheduleClose}
+      onFocus={open}
+      onBlur={(e) => {
+        // Only close if focus actually leaves the wrapper subtree
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) scheduleClose();
+      }}
+    >
+      <Card
+        className={TILE_INTERACTIVE_CLASSES}
+        onClick={(e) => onOpen(e.currentTarget as HTMLElement)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={onKeyDown}
+      >
+        <div className="flex flex-col items-center text-center space-y-3">
+          <div className="relative h-12 w-12 rounded-xl border border-[hsl(280,85%,65%,0.55)] bg-[hsl(275,80%,40%,0.3)] backdrop-blur-xl flex items-center justify-center overflow-hidden">
+            <Mail className="relative z-10 h-7 w-7 text-foreground" />
+          </div>
+          <span className="text-sm font-medium text-foreground">Email</span>
+        </div>
+      </Card>
+
+      {/*
+        Hover-anchored Email Intelligence panel.
+        - Absolutely positioned so it overlays/sits adjacent to this tile
+          rather than reflowing the dashboard.
+        - Visibility is gated on hover/focus state of the tile or panel.
+        - Suppressed on touch / no-hover devices via media query.
+      */}
+      <div
+        className={cn(
+          'pointer-events-none absolute left-1/2 top-full z-40 mt-2 w-[360px] max-w-[92vw] -translate-x-1/2',
+          'transition-all duration-150 ease-out',
+          '[@media(hover:none)]:hidden',
+          isHovering
+            ? 'translate-y-0 opacity-100 pointer-events-auto'
+            : '-translate-y-1 opacity-0',
+        )}
+        role="region"
+        aria-label="Email Intelligence"
+        aria-hidden={!isHovering}
+      >
+        <div className="rounded-xl border border-border/40 bg-popover/95 shadow-xl backdrop-blur-xl">
+          <EmailIntelligenceWidget />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { DashboardTemplatesDialog } from '@/components/dashboard/DashboardTemplates';
 import { FullCalendarView } from '@/components/dashboard/FullCalendarView';
