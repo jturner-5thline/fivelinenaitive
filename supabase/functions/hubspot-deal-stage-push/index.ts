@@ -166,7 +166,8 @@ Deno.serve(async (req) => {
       properties.deal_manager = manager == null ? '' : String(manager);
     }
 
-    const hubspotPayload = { properties, fields_changed: fields_changed ?? null };
+    const hubspotPayload = { properties };
+    const fieldsChangedMeta = fields_changed ?? null;
 
     const hsResponse = await fetch(
       `https://api.hubapi.com/crm/v3/objects/deals/${hubspot_deal_id}`,
