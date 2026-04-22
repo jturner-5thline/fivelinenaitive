@@ -1333,24 +1333,37 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 onDelete={handleDeleteEmail}
                 onArchive={handleArchiveEmail}
                 onSendReply={async (emailData, threadId) => {
-                  if (onGmailSend) {
-                    const result = await onGmailSend({
+                  if (!onGmailSend) {
+                    setEmails(prev => [{ ...emailData, id: `mock-sent-${Date.now()}`, threadId }, ...prev]);
+                    return;
+                  }
+                  queueSend({
+                    payload: {
                       to: [emailData.to_email],
                       subject: emailData.subject,
                       body: emailData.body_preview,
-                    });
-                    if (!result) {
-                      toast.error('Failed to send email');
-                      return;
-                    }
-                    toast.success('Email sent successfully', { description: `To: ${emailData.to_email}`, icon: '✉️' });
-                  }
-                  const newEmail: MockEmail = {
-                    ...emailData,
-                    id: `mock-sent-${Date.now()}`,
-                    threadId,
-                  };
-                  setEmails(prev => [newEmail, ...prev]);
+                      meta: { threadId, emailData },
+                    },
+                    dedupeKey: `reply:${threadId}:${(emailData.body_preview || '').length}`,
+                    performSend: (p) => onGmailSend({
+                      to: p.to,
+                      subject: p.subject,
+                      body: p.body,
+                    }),
+                    onSent: () => {
+                      setEmails(prev => [{ ...emailData, id: `mock-sent-${Date.now()}`, threadId }, ...prev]);
+                    },
+                    onUndo: () => {
+                      // Re-open the thread + composer for editing.
+                      const thread = allThreads.find(t => t.threadId === threadId);
+                      if (thread) setSelectedThread(thread);
+                      // The composer reads its draft from localStorage via
+                      // useEmailDraft(threadId); that draft was preserved
+                      // because clearDraftOnSend only fires after queueing,
+                      // not after actual send. Nothing else to restore.
+                      toast.info('Draft restored — keep editing.');
+                    },
+                  });
                 }}
               />
             ) : (
