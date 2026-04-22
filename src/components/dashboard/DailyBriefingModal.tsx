@@ -555,6 +555,144 @@ import { useEmailClassifierData } from '@/hooks/useEmailClassifierData';
 import { useAutoEmailLabelEvaluator } from '@/hooks/useAutoEmailLabelEvaluator';
 import { EmailCategoryChips } from '@/components/deal/email/EmailCategoryChips';
 
+// Build a minimal EmailThread from a Daily-Briefing email row so we can pass
+// it to the same `AiAssistInlinePanel` the main Email widget uses. Briefing
+// rows are single emails (not real threads), but the panel only needs the
+// fields it reads for its prompt — subject, from, body preview, participants.
+function briefingRowToThread(e: any): EmailThread {
+  const fromName = e.from_name || e.from_email || 'Unknown';
+  const fromEmail = e.from_email || '';
+  const bodyPreview =
+    e.body_text || e.body_html || e.snippet || e.analysis?.summary || '';
+  const email: MockEmail = {
+    id: e.id || e.gmail_message_id,
+    threadId: e.id || e.gmail_message_id,
+    subject: e.subject || '(no subject)',
+    from_name: fromName,
+    from_email: fromEmail,
+    to_name: 'You',
+    to_email: '',
+    snippet: e.snippet || '',
+    body_preview: bodyPreview,
+    body_html: e.body_html || undefined,
+    body_text: e.body_text || undefined,
+    body_loaded: !!(e.body_html || e.body_text),
+    received_at: e.received_at || new Date().toISOString(),
+    is_read: !!e.is_read,
+    is_starred: false,
+    folder: 'inbox',
+    labels: e.labels || [],
+    has_attachments: false,
+    is_linked_to_deal: false,
+    is_follow_up: false,
+    needs_response: !e.is_read,
+    category: 'deal',
+    deal_name: e.analysis?.deal_name,
+    ai_summary: e.analysis?.summary,
+  };
+  return {
+    threadId: email.threadId,
+    subject: email.subject,
+    emails: [email],
+    latestEmail: email,
+    participants: [fromName],
+    hasUnread: !email.is_read,
+    isStarred: false,
+    isLinked: false,
+    hasAttachments: false,
+    needsResponse: email.needs_response,
+    dealName: email.deal_name,
+    category: 'deal',
+  };
+}
+
+// Middle-column detail pane for a single selected briefing email.
+// Lazy-loads the full body via `useFullEmailMessage` (the same hook the
+// Email widget uses), then renders it through `EmailBodyRenderer`.
+function BriefingEmailDetailPane({
+  email,
+  onBack,
+  onOpenIntelligence,
+}: {
+  email: any;
+  onBack: () => void;
+  onOpenIntelligence: () => void;
+}) {
+  const messageId: string = email.gmail_message_id || email.id;
+  const alreadyLoaded = !!(email.body_html || email.body_text);
+  const { data: full, loading, error } = useFullEmailMessage(
+    messageId,
+    /* enabled */ true,
+    alreadyLoaded,
+  );
+
+  const html = full?.body_html ?? email.body_html;
+  const text = full?.body_text ?? email.body_text ?? email.snippet;
+
+  return (
+    <div className="flex flex-col h-full min-h-0 rounded-xl border border-border/40 bg-white/[0.02] overflow-hidden">
+      {/* Header */}
+      <div className="flex items-start gap-2 px-4 py-3 border-b border-border/30">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          onClick={onBack}
+          aria-label="Back to email list"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold text-foreground truncate">
+            {email.subject || '(no subject)'}
+          </div>
+          <div className="text-xs text-muted-foreground truncate mt-0.5">
+            <strong className="text-foreground/80">{email.from_name || 'Unknown'}</strong>
+            {email.from_email && <span> &lt;{email.from_email}&gt;</span>}
+            {email.received_at && (
+              <span className="ml-2">
+                · {formatDistanceToNow(new Date(email.received_at), { addSuffix: true })}
+              </span>
+            )}
+          </div>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="glass-border-soft shrink-0 h-7"
+          onClick={onOpenIntelligence}
+        >
+          Open in Intelligence <ExternalLink className="h-3 w-3 ml-1" />
+        </Button>
+      </div>
+
+      {/* Body */}
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="px-5 py-4">
+          {loading && !html && !text ? (
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-3/4" />
+              <Skeleton className="h-3 w-2/3" />
+              <Skeleton className="h-3 w-5/6" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          ) : error && !html && !text ? (
+            <div className="text-sm text-destructive">{error}</div>
+          ) : (
+            <EmailBodyRenderer
+              html={html}
+              text={text}
+              messageId={messageId}
+              inlineAttachments={full?.inline_attachments}
+              className="prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed"
+            />
+          )}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
+
 // ── Tab: Email ─────────────────────────────────────────────────
 function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onNavigate: (path: string) => void; targetUserId?: string }) {
   const { data, isLoading } = useEmailData(enabled, targetUserId);
