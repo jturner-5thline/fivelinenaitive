@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Mail, Send, X, Eye, Clock, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +27,52 @@ interface EmailPromptCenterProps {
 
 export function EmailPromptCenterButton({ dealId, dealName }: EmailPromptCenterProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { pendingCount } = useDealEmailPrompts(dealId);
+  const { pendingCount, data: prompts } = useDealEmailPrompts(dealId);
+
+  // Per-tab session dedup: track which pending prompt ids we've already
+  // dispatched an auto-open event for, so revisiting the deal page doesn't
+  // re-fire for the same prompt within the same session. The
+  // WorkflowEmailModalListener has its own per-tab dedup as well.
+  const autoOpenedRef = useRef<Set<string>>(new Set());
+
+  // Trigger A: when the deal page mounts (or pending prompts arrive after
+  // a stage change committed in the background), auto-open the modal for
+  // the oldest pending prompt that hasn't been shown yet this session.
+  useEffect(() => {
+    if (!dealId || !prompts || prompts.length === 0) return;
+    const oldestPending = [...prompts]
+      .filter((p) => p.status === 'pending')
+      .sort((a, b) => new Date(a.triggered_at).getTime() - new Date(b.triggered_at).getTime())[0];
+    if (!oldestPending) return;
+    if (autoOpenedRef.current.has(oldestPending.id)) return;
+    autoOpenedRef.current.add(oldestPending.id);
+    console.log('[email-prompt-center] auto-opening pending workflow prompt', {
+      dealId,
+      promptId: oldestPending.id,
+      workflow: oldestPending.workflow_name,
+    });
+    window.dispatchEvent(
+      new CustomEvent('workflow-email-prompt', {
+        detail: { promptId: oldestPending.id, dealId },
+      }),
+    );
+  }, [dealId, prompts]);
+
+  // Badge click: when there is at least one pending prompt, open the
+  // editable Workflow Email modal for the oldest one. Otherwise fall back
+  // to the prompt-center list (history / sent / dismissed view).
+  const handleClick = () => {
+    if (pendingCount > 0) {
+      console.log('[email-prompt-center] badge click → open oldest pending modal', { dealId });
+      window.dispatchEvent(
+        new CustomEvent('workflow-email-prompt-open-oldest', {
+          detail: { dealId },
+        }),
+      );
+      return;
+    }
+    setIsOpen(true);
+  };
 
   return (
     <>
@@ -36,7 +81,13 @@ export function EmailPromptCenterButton({ dealId, dealName }: EmailPromptCenterP
         size="icon"
         className="relative overflow-visible h-8 w-8 border-[hsl(220,70%,55%,0.5)] bg-[hsl(220,40%,12%,0.35)] text-[hsl(220,70%,72%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(220,80%,75%,0.15),0_2px_12px_hsl(220,60%,35%,0.2)] hover:border-[hsl(220,70%,60%,0.7)] hover:bg-[hsl(220,40%,15%,0.45)] hover:shadow-[inset_0_1px_1px_hsl(220,80%,80%,0.25),0_4px_20px_hsl(220,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(220,80%,80%,0.12)_0%,transparent_50%,hsl(220,70%,55%,0.06)_100%)]"
         title="Email Prompt Center"
-        onClick={() => setIsOpen(true)}
+        onClick={handleClick}
+        onContextMenu={(e) => {
+          // Right-click → always open the prompt-center list, even when
+          // there are pending prompts.
+          e.preventDefault();
+          setIsOpen(true);
+        }}
       >
         <Mail className="h-4 w-4" />
         {pendingCount > 0 && (
