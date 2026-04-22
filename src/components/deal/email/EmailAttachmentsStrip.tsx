@@ -8,6 +8,7 @@ import {
   FileArchive,
   File as FileIconLucide,
   Loader2,
+  ChevronDown,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -18,6 +19,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import type { EmailAttachment, EmailThread, MockEmail } from './mockEmailData';
 import { downloadAttachment } from './useFullEmailMessage';
 
@@ -45,6 +51,16 @@ import { downloadAttachment } from './useFullEmailMessage';
 export interface EmailAttachmentsStripProps {
   thread: Pick<EmailThread, 'emails'>;
   className?: string;
+  /**
+   * `block` (default): full-width labeled card rendered above the body.
+   * `inline`: compact, no header/border — drops chips directly into another
+   * horizontal row (e.g. the email detail action / command bar). Excess
+   * attachments collapse into a "+N more" popover so the action row stays
+   * legible even on narrow widths.
+   */
+  variant?: 'block' | 'inline';
+  /** Inline-only: how many chips to render before collapsing to "+N more". */
+  maxInline?: number;
 }
 
 interface AggregatedAttachment {
