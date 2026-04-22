@@ -104,6 +104,8 @@ export interface Deal {
   dashboardClosingDate?: string | null;
   sourcedVia?: string;
   dealClass?: DealClass;
+  /** FinServ-only: paused without changing stage. */
+  onHold?: boolean;
 }
 
 export const LENDER_STATUS_CONFIG: Record<LenderStatus, { label: string }> = {
