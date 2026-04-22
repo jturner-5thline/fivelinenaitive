@@ -90,7 +90,7 @@ function EmailTileWithIntelligence({
 
   return (
     <div
-      className={cn('relative', className)}
+      className={cn('relative h-full', className)}
       onMouseEnter={open}
       onMouseLeave={scheduleClose}
       onFocus={open}
@@ -100,13 +100,13 @@ function EmailTileWithIntelligence({
       }}
     >
       <Card
-        className={TILE_INTERACTIVE_CLASSES}
+        className={cn(TILE_INTERACTIVE_CLASSES, 'h-full overflow-hidden')}
         onClick={(e) => onOpen(e.currentTarget as HTMLElement)}
         role="button"
         tabIndex={0}
         onKeyDown={onKeyDown}
       >
-        <div className="flex flex-col items-center text-center space-y-3">
+        <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
           <div className="relative h-12 w-12 rounded-xl border border-[hsl(280,85%,65%,0.55)] bg-[hsl(275,80%,40%,0.3)] backdrop-blur-xl flex items-center justify-center overflow-hidden">
             <Mail className="relative z-10 h-7 w-7 text-foreground" />
           </div>
@@ -134,7 +134,7 @@ function EmailTileWithIntelligence({
         aria-label="Email Intelligence"
         aria-hidden={!isHovering}
       >
-        <div className="rounded-xl border border-border/40 bg-popover/95 shadow-xl backdrop-blur-xl">
+        <div className="rounded-xl border border-border/40 bg-popover/95 shadow-xl backdrop-blur-xl flex flex-col max-h-[360px] overflow-hidden">
           <EmailIntelligenceWidget />
         </div>
       </div>
