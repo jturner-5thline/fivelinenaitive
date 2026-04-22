@@ -168,6 +168,29 @@ export function EmailAttachmentList({
     ? 'Linked to this thread via deal association.'
     : 'Matched based on thread participants, subject line, and linked deal context.';
 
+  // Header-level "Add to Data Room" CTA — visible only when the thread is
+  // tied to a Deal (explicit link OR AI likely-match via sourceEmail flow).
+  // Wires into the same SendToDataRoomDialog used by the AI Assist suggestion.
+  const showHeaderDataRoomCta = canSendToDataRoom && !!linkedDealName;
+  const headerCtaDealLabel = linkedDealName || dealLabel;
+  const HeaderDataRoomButton = showHeaderDataRoomCta ? (
+    <button
+      type="button"
+      onClick={openReview}
+      aria-label={`Add attachments to ${headerCtaDealLabel} data room`}
+      className={cn(
+        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold',
+        'bg-[hsl(var(--outlook-blue)/0.12)] text-[hsl(var(--outlook-blue))]',
+        'hover:bg-[hsl(var(--outlook-blue)/0.2)] transition-colors',
+        'border border-[hsl(var(--outlook-blue)/0.3)]',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--outlook-blue))] focus-visible:ring-offset-1 focus-visible:ring-offset-background',
+      )}
+    >
+      <FolderPlus className="h-3 w-3" />
+      <span>Add to Data Room</span>
+    </button>
+  ) : null;
+
   // ── Success state replaces the entire banner module ──────────
   if (successInfo) {
     return (
