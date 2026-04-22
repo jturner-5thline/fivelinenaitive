@@ -227,14 +227,18 @@ serve(async (req: Request): Promise<Response> => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
 
-    if (userError || !user) {
+    if (claimsError || !claimsData?.claims?.sub) {
+      console.error("[gmail-messages] auth error:", claimsError?.message || "no claims");
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const userId = claimsData.claims.sub as string;
+    const user = { id: userId } as { id: string };
 
     const grantId = await getGrantId(supabase, user.id);
     if (!grantId) {
