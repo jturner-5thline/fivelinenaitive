@@ -402,10 +402,10 @@ export default function Dashboard() {
           >
           {(() => {
             // Quick Prompts is now a tile too (4 base tiles).
-            // For jturner@5thline.co specifically, Niki's Daily Briefing is
-            // pulled OUT of the top row and stacked under the Calendar tile
-            // on its own row below. Other users keep the existing layout.
-            const nikiInTopRow = canSeeNiki && !isJTurner;
+            // Niki's Daily Briefing renders in the top row for every user
+            // who is allowed to see it (jturner included). For jturner the
+            // tiles are also reordered via Tailwind `order-*` classes.
+            const nikiInTopRow = canSeeNiki;
             const tileCount = 4 + (isJTurner ? 1 : 0) + (nikiInTopRow ? 1 : 0) + (is5thLine ? 1 : 0);
             const gridColsClass =
               tileCount >= 7 ? 'grid-cols-4 sm:grid-cols-7'
