@@ -420,6 +420,14 @@ serve(async (req) => {
 
     // 3. For each recipient, check user preferences and dispatch
     for (const recipientId of recipients) {
+      // Resolve roles + fallback flag for this recipient (for audit metadata)
+      const recipientResolution = recipientMap.get(recipientId);
+      const auditMeta: Record<string, unknown> = {
+        rule_id: rule.id,
+        roles: recipientResolution ? Array.from(recipientResolution.roles) : [],
+        fallback_to_owner: recipientResolution?.fallback_to_owner ?? false,
+      };
+
       // Load user preferences for this trigger
       const { data: userPref } = await supabase
         .from("user_notification_preferences")
