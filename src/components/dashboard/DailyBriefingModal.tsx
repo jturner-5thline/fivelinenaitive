@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
 import { format, formatDistanceToNow, isPast, isToday } from 'date-fns';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
@@ -33,7 +33,12 @@ import { EmailBodyRenderer } from '@/components/deal/email/EmailBodyRenderer';
 import { useFullEmailMessage, useFullEmailThread } from '@/components/deal/email/useFullEmailMessage';
 import type { EmailThread, MockEmail } from '@/components/deal/email/mockEmailData';
 import { EmailAttachmentsStrip, detectAttachmentFallbackReason } from '@/components/deal/email/EmailAttachmentsStrip';
-import { PipelineMemoView } from '@/pages/pipeline/PipelineMemoView';
+// Code-split: keeps the Memo view (and @tanstack/react-virtual) out of the
+// initial Daily Briefing bundle. Only loaded when the user actually opens the
+// Pipeline & Clients tab in Memo mode.
+const PipelineMemoView = lazy(() =>
+  import('@/pages/pipeline/PipelineMemoView').then(m => ({ default: m.PipelineMemoView })),
+);
 import { useUiPreference } from '@/hooks/useUiPreference';
 import { LayoutGrid } from 'lucide-react';
 
@@ -1046,15 +1051,23 @@ function PipelineTab({
     return (
       <div className="relative h-full">
         {ViewToggle}
-        <PipelineMemoView
-          deals={scopedDeals as any}
-          emptyMessage={
-            isDelegated
-              ? `No active deals for ${targetDealOwnerName}.`
-              : 'No active deals to summarize.'
+        <Suspense
+          fallback={
+            <div className="pipeline-memo-page rounded-xl py-12 px-4 text-center">
+              <p className="text-[#4a6070] text-sm font-light italic">Loading memo view…</p>
+            </div>
           }
-          onOpenDeal={id => onNavigate(`/deal/${id}`)}
-        />
+        >
+          <PipelineMemoView
+            deals={scopedDeals as any}
+            emptyMessage={
+              isDelegated
+                ? `No active deals for ${targetDealOwnerName}.`
+                : 'No active deals to summarize.'
+            }
+            onOpenDeal={id => onNavigate(`/deal/${id}`)}
+          />
+        </Suspense>
       </div>
     );
   }
