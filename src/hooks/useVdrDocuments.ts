@@ -116,6 +116,22 @@ export function useVdrDocuments(dealId: string) {
     }
   }, [dealId, company?.id]);
 
+  // Re-mirror Settings categories into per-deal VDR folder rows whenever the
+  // category taxonomy changes (add/rename/delete/reorder). This guarantees the
+  // Data Room and Internal sections always reflect the Settings source of truth.
+  useEffect(() => {
+    if (!dealId || !company?.id) return;
+    const channel = supabase
+      .channel(`vdr-categories-sync-${dealId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'data_room_checklist_categories' },
+        () => { syncFoldersWithCategories(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [dealId, company?.id, syncFoldersWithCategories]);
+
   // Realtime subscription for live sync across company users
   useEffect(() => {
     if (!dealId) return;
