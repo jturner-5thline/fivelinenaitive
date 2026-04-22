@@ -439,6 +439,19 @@ const handler = async (req: Request): Promise<Response> => {
 
       // Exclude archived/on_hold/etc. and test deals
       const activeDeals = deals.filter(deal => {
+        // Hard suppression — write an audit row so admins can verify.
+        const supp = isHardSuppressedDeal(deal);
+        if (supp.suppressed) {
+          // fire-and-forget; do not await inside filter
+          logSuppressedAudit(supabaseAdmin, {
+            trigger_key: 'stale_deal_alert',
+            deal_id: deal.id,
+            reason: `suppressed: ${supp.reason}`,
+            deal_company: deal.company,
+          });
+          return false;
+        }
+        // Other configured exclusions (e.g. in_development pipeline name)
         if (config.excluded_stages.includes(deal.status)) return false;
         if (config.excluded_stages.includes(deal.stage)) return false;
         // Globally excluded test/example deals — keep in sync with src/utils/excludedDeals.ts
