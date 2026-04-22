@@ -400,6 +400,9 @@ export function usePipelineData(enabled: boolean, targetDealOwnerName?: string) 
         recentActivity: activities.slice(0, 30),
         isDelegated,
         targetUserName: targetDealOwnerName,
+        // Full scoped deal list (Owner/Manager filtered when delegated, else
+        // all org deals minus suppressed). Consumed by the Memo view.
+        scopedDeals: activeDeals,
       };
     },
   });

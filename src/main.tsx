@@ -3,6 +3,15 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import App from "./App.tsx";
 import "./index.css";
 
+// ── Pipeline Memo typography ───────────────────────────────
+// DM Sans (body) + DM Serif Display (deal names) — used by the
+// Pipeline & Clients "Memo" view inside the Daily Briefing modal.
+import "@fontsource/dm-sans/300.css";
+import "@fontsource/dm-sans/400.css";
+import "@fontsource/dm-sans/500.css";
+import "@fontsource/dm-sans/600.css";
+import "@fontsource/dm-serif-display/400.css";
+
 const rootEl = document.getElementById("root");
 
 if (rootEl) {
