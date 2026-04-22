@@ -25,13 +25,22 @@ Deno.serve(async (req) => {
     }
 
     // Look up mapping
-    const { data: mapping, error: mapError } = await supabase
+    // Normalizes stage strings so kebab-case slugs (e.g. "agreement-pending") and
+    // Title Case names (e.g. "Agreement Pending") collapse to the same key.
+    const normalize = (s: string) =>
+      String(s ?? '')
+        .toLowerCase()
+        .replace(/[\s_\-/]+/g, '')
+        .replace(/[^a-z0-9]/g, '')
+        .trim();
+
+    // Pull all candidate mappings for the pipeline once, then match in-memory using
+    // both exact (case-insensitive) and normalized comparisons. This avoids the
+    // strict-equality miss that was silently skipping every stage-push.
+    const { data: candidates, error: mapError } = await supabase
       .from('hubspot_pipeline_stage_map')
-      .select('hubspot_pipeline_id, hubspot_dealstage_id')
-      .eq('naitive_pipeline_id', pipeline_id)
-      .eq('naitive_stage_name', stage)
-      .limit(1)
-      .maybeSingle();
+      .select('hubspot_pipeline_id, hubspot_dealstage_id, naitive_stage_name')
+      .eq('naitive_pipeline_id', pipeline_id);
 
     if (mapError) {
       console.error('[hubspot-deal-stage-push] Map lookup error:', mapError.message);
@@ -41,8 +50,17 @@ Deno.serve(async (req) => {
       });
     }
 
+    const targetNorm = normalize(stage);
+    const mapping =
+      (candidates ?? []).find(
+        (c) => String(c.naitive_stage_name).toLowerCase() === String(stage).toLowerCase(),
+      ) ??
+      (candidates ?? []).find((c) => normalize(c.naitive_stage_name) === targetNorm) ??
+      null;
+
     if (!mapping) {
-      const msg = `No mapping for pipeline=${pipeline_id}, stage=${stage}`;
+      const available = (candidates ?? []).map((c) => c.naitive_stage_name).join(', ');
+      const msg = `No mapping for pipeline=${pipeline_id}, stage=${stage}. Available stages: [${available}]`;
       console.warn('[hubspot-deal-stage-push]', msg);
       await logSync(supabase, { company_id, deal_id, hubspot_deal_id, action: 'stage_push', status: 'skipped', error_message: msg });
       return new Response(JSON.stringify({ skipped: true, reason: 'no_mapping', pipeline_id, stage }), {
