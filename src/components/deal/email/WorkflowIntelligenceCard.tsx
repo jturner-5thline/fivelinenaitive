@@ -536,6 +536,8 @@ export function WorkflowIntelligenceCard({
                   </Button>
                 </div>
               </div>
+            ) : attachmentFallback ? (
+              attachmentFallback
             ) : (
               <p className="text-[11px] text-muted-foreground italic">
                 No workflow update suggested for this thread.
