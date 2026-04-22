@@ -774,64 +774,6 @@ function EmailTab({
 
   return (
     <div className="relative h-full flex flex-col min-h-0">
-      {/* Sub-tab pills */}
-      <div className="flex items-center gap-1.5 mb-3 shrink-0">
-        {EMAIL_CATEGORY_TABS.map(t => (
-          <button
-            key={t.key}
-            onClick={() => setSubTab(t.key)}
-            className={cn(
-              'px-3 py-1 rounded-full text-xs font-medium transition-all duration-150 border',
-              subTab === t.key
-                ? 'bg-primary/15 text-primary border-primary/30'
-                : 'bg-white/[0.03] text-muted-foreground/70 glass-border-soft hover:bg-white/[0.06] hover:text-foreground/80',
-            )}
-          >
-            {t.label}
-            <span className={cn(
-              'ml-1.5 text-[10px] tabular-nums',
-              subTab === t.key ? 'text-primary/70' : 'text-muted-foreground/40',
-            )}>
-              {counts[t.key]}
-            </span>
-          </button>
-        ))}
-
-        {/* Unread / All segmented control — applies across every sub-tab */}
-        <div
-          className="ml-auto inline-flex items-center rounded-full border border-border/40 bg-white/[0.03] p-0.5"
-          role="group"
-          aria-label="Filter emails by read state"
-        >
-          <button
-            type="button"
-            onClick={() => setUnreadOnly(true)}
-            aria-pressed={unreadOnly}
-            className={cn(
-              'px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors',
-              unreadOnly
-                ? 'bg-primary/20 text-primary'
-                : 'text-muted-foreground/70 hover:text-foreground/80',
-            )}
-          >
-            Unread only
-          </button>
-          <button
-            type="button"
-            onClick={() => setUnreadOnly(false)}
-            aria-pressed={!unreadOnly}
-            className={cn(
-              'px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors',
-              !unreadOnly
-                ? 'bg-primary/20 text-primary'
-                : 'text-muted-foreground/70 hover:text-foreground/80',
-            )}
-          >
-            All emails
-          </button>
-        </div>
-      </div>
-
       {/* Email list */}
       {/* Workspace: when no email is selected, the grouped list takes the full
           width. When an email IS selected, we switch to the same 3-column
