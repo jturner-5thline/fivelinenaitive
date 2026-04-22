@@ -460,7 +460,7 @@ function EventDetailPopover({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="max-w-[240px] text-xs">
-                    Generate an AI-powered meeting brief with attendee context, deal background, and suggested talking points.
+                    Search email history for attendee and company context. Find who introduced you, prior conversations, related threads, and internal context tied to meeting participants and their company.
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -479,8 +479,8 @@ function EventDetailPopover({
                   {isResearching ? (
                     <div className="flex flex-col items-center justify-center py-12 gap-3">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      <p className="text-sm text-muted-foreground">Researching companies & attendees...</p>
-                      <p className="text-xs text-muted-foreground/60">Analyzing LinkedIn, websites, and deal context</p>
+                      <p className="text-sm text-muted-foreground">Searching email history & researching attendees…</p>
+                      <p className="text-xs text-muted-foreground/60">Scanning your inbox for prior threads, intros, and adjacent context</p>
                     </div>
                   ) : research ? (
                     <div className="prose prose-sm max-w-none text-foreground/90 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1 [&_ul]:my-1 [&_ul]:pl-4 [&_li]:my-0.5 [&_li]:text-xs [&_p]:my-1 [&_p]:text-xs [&_strong]:text-foreground [&_hr]:my-3">
