@@ -1387,6 +1387,15 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               }}
             />
 
+            {/* Inline thread attachments — surfaced directly in the action bar
+                so users can open files in one click without scrolling into
+                the thread body. The same component (block variant) used to
+                render below; we removed that duplicate to keep this row as
+                the single primary surface for attachments. */}
+            <div className="ml-auto flex items-center min-w-0">
+              <EmailAttachmentsStrip thread={thread} variant="inline" maxInline={2} />
+            </div>
+
             {onToggleExpand && (
               <>
                 <div className="w-px h-8 bg-border/50 mx-1" />
