@@ -337,18 +337,18 @@ export function WorkflowIntelligenceCard({
           style={{ transform: activePanel === 'suggested' ? 'translateX(0%)' : 'translateX(-50%)' }}
         >
           {/* PANEL 1 — Suggested Update (primary) */}
-          <div className="w-1/2 shrink-0 pr-2 space-y-3">
+          <div className="w-1/2 shrink-0 pr-2 space-y-2">
             {hasUpdate ? (
               <div className="space-y-2">
-                <p className="text-[12px] text-foreground font-medium leading-snug">{rec.title}</p>
+                <p className="text-[13px] text-foreground font-semibold leading-snug">{rec.title}</p>
 
                 {isLenderStatus && (
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0">
                       Status
                     </label>
                     <Select value={confirmedStatus} onValueChange={handleStatusChange}>
-                      <SelectTrigger className="h-8 text-[11px]">
+                      <SelectTrigger className="h-7 text-[11px] flex-1">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -359,14 +359,14 @@ export function WorkflowIntelligenceCard({
                         ))}
                       </SelectContent>
                     </Select>
-                    {userOverrodeStatus && (
-                      <div className="text-[10px] leading-tight pt-0.5">
-                        <span className="text-muted-foreground">AI suggested: </span>
-                        <span className="text-foreground/70">{STATUS_LABEL[aiSuggestedStatus]}</span>
-                        <span className="text-muted-foreground"> · You are confirming: </span>
-                        <span className="text-primary font-medium">{STATUS_LABEL[confirmedStatus]}</span>
-                      </div>
-                    )}
+                  </div>
+                )}
+                {isLenderStatus && userOverrodeStatus && (
+                  <div className="text-[10px] leading-tight -mt-1 line-clamp-1">
+                    <span className="text-muted-foreground">AI: </span>
+                    <span className="text-foreground/70">{STATUS_LABEL[aiSuggestedStatus]}</span>
+                    <span className="text-muted-foreground"> → </span>
+                    <span className="text-primary font-medium">{STATUS_LABEL[confirmedStatus]}</span>
                   </div>
                 )}
 
