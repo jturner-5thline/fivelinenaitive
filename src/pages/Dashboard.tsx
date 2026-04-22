@@ -444,7 +444,7 @@ export default function Dashboard() {
               }
             />
             <Card
-              className={cn(TILE_INTERACTIVE_CLASSES, isJTurner && 'order-4')}
+              className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-4')}
               onClick={(e) => openCarouselWidget('new-deal', e.currentTarget as HTMLElement)}
               role="button"
               tabIndex={0}
@@ -454,7 +454,7 @@ export default function Dashboard() {
                 )
               }
             >
-              <div className="flex flex-col items-center text-center space-y-3">
+              <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
                 <div className="relative h-12 w-12 rounded-xl border border-accent/30 bg-accent/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
                   <Briefcase className="relative z-10 h-7 w-7 text-accent-foreground" />
                 </div>
@@ -463,7 +463,7 @@ export default function Dashboard() {
             </Card>
             {isJTurner && (
               <Card
-                className={cn(TILE_INTERACTIVE_CLASSES, 'order-5')}
+                className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', 'order-5')}
                 onClick={(e) => openCarouselWidget('daily-briefing', e.currentTarget as HTMLElement)}
                 role="button"
                 tabIndex={0}
@@ -473,7 +473,7 @@ export default function Dashboard() {
                   )
                 }
               >
-                <div className="flex flex-col items-center text-center space-y-3">
+                <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
                   <div className="relative h-12 w-12 rounded-xl border border-warning/30 bg-warning/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
                     <Newspaper className="relative z-10 h-7 w-7 text-warning" />
                   </div>
@@ -483,7 +483,7 @@ export default function Dashboard() {
             )}
             {nikiInTopRow && (
               <Card
-                className={cn(TILE_INTERACTIVE_CLASSES, isJTurner && 'order-6')}
+                className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-6')}
                 onClick={(e) => openCarouselWidget('niki-briefing', e.currentTarget as HTMLElement)}
                 role="button"
                 tabIndex={0}
@@ -493,7 +493,7 @@ export default function Dashboard() {
                   )
                 }
               >
-                <div className="flex flex-col items-center text-center space-y-3">
+                <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
                   <div className="relative h-12 w-12 rounded-xl border border-[hsl(190,90%,55%,0.4)] bg-[hsl(190,90%,45%,0.18)] backdrop-blur-sm flex items-center justify-center overflow-hidden">
                     <Newspaper className="relative z-10 h-7 w-7 text-[hsl(190,90%,70%)]" />
                   </div>
@@ -505,7 +505,7 @@ export default function Dashboard() {
             )}
             {is5thLine && (
               <Card
-                className={cn(TILE_INTERACTIVE_CLASSES, isJTurner && 'order-3')}
+                className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-3')}
                 onClick={(e) => openCarouselWidget('deal-rundown', e.currentTarget as HTMLElement)}
                 role="button"
                 tabIndex={0}
@@ -515,7 +515,7 @@ export default function Dashboard() {
                   )
                 }
               >
-                <div className="flex flex-col items-center text-center space-y-3">
+                <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
                   <div className="relative h-12 w-12 rounded-xl border border-primary/30 bg-primary/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
                     <Briefcase className="relative z-10 h-7 w-7 text-primary" />
                   </div>
