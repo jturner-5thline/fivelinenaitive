@@ -7,18 +7,14 @@ import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
 const FINSERV_PIPELINE_NAME = 'FinServ Pipeline';
 
 export const FINSERV_STAGES: DealStageOption[] = [
-  { id: 'fs-unresponsive', label: 'Unresponsive', color: 'bg-slate-500' },
-  { id: 'fs-on-hold', label: 'On Hold', color: 'bg-yellow-600' },
-  { id: 'fs-indication-of-interest', label: 'Indication of Interest', color: 'bg-blue-500' },
-  { id: 'fs-not-a-fit', label: 'Not a Fit; Do Not Contact', color: 'bg-red-400' },
-  { id: 'fs-dropped-client', label: 'Dropped Client', color: 'bg-orange-500' },
-  { id: 'fs-evaluation', label: 'Evaluation', color: 'bg-indigo-500' },
-  { id: 'fs-proposal-dev', label: 'Proposal in Development', color: 'bg-violet-500' },
+  { id: 'fs-qualification', label: 'Qualification', color: 'bg-slate-500' },
+  { id: 'fs-discovery', label: 'Discovery', color: 'bg-blue-500' },
+  { id: 'fs-qualified', label: 'Qualified', color: 'bg-indigo-500' },
+  { id: 'fs-scoping', label: 'Scoping', color: 'bg-violet-500' },
   { id: 'fs-proposal-sent', label: 'Proposal Sent', color: 'bg-purple-500' },
-  { id: 'fs-agreement-pending', label: 'Agreement Pending', color: 'bg-amber-500' },
-  { id: 'fs-active-client', label: 'Active Client', color: 'bg-green-500' },
-  { id: 'fs-client-churned', label: 'Client Churned', color: 'bg-red-500' },
-  { id: 'fs-client-lost', label: 'Client Lost', color: 'bg-red-700' },
+  { id: 'fs-negotiation', label: 'Negotiation', color: 'bg-amber-500' },
+  { id: 'fs-closed-won', label: 'Closed Won', color: 'bg-green-500' },
+  { id: 'fs-closed-lost', label: 'Closed Lost', color: 'bg-red-500' },
 ];
 
 interface FinServPipelineData {
@@ -128,6 +124,7 @@ export function useFinServPipelineData(): FinServPipelineData {
       closingDate: d.closing_date || null,
       sourcedVia: d.sourced_via || undefined,
       dealClass: 'finserv' as const,
+      onHold: d.on_hold === true,
       lenders: (d.deal_lenders || []).map((l: any) => ({
         id: l.id,
         name: l.name || '',
