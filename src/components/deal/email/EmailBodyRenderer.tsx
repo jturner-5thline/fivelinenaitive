@@ -12,6 +12,14 @@ interface Props {
   messageId?: string;
   /** Inline attachments keyed by Content-ID. Used to swap `cid:` URLs into real ones. */
   inlineAttachments?: EmailAttachment[];
+  /**
+   * Visible (non-inline) attachments. Some providers carry a Content-ID on
+   * regular attachments, so we also scan this list when resolving `cid:`
+   * references in the HTML body. Without this, signature logos that the
+   * provider classified as `attachment` instead of `inline` would show as
+   * broken images.
+   */
+  attachments?: EmailAttachment[];
 }
 
 /**
@@ -46,6 +54,7 @@ export function EmailBodyRenderer({
   className,
   messageId,
   inlineAttachments,
+  attachments,
 }: Props) {
   // Resolved CID -> data URL map, populated as inline attachments are fetched.
   const [cidUrls, setCidUrls] = useState<Record<string, string>>({});
@@ -53,9 +62,16 @@ export function EmailBodyRenderer({
   // Lazily resolve every inline attachment that has a content_id, so that
   // `cid:image001.jpg@01D9...` references in the body can be rewritten.
   useEffect(() => {
-    if (!messageId || !inlineAttachments?.length) return;
+    if (!messageId) return;
+    // Merge inline + visible attachments — both buckets may contain parts
+    // with a `content_id` that the body references via `cid:`.
+    const candidates: EmailAttachment[] = [
+      ...(inlineAttachments || []),
+      ...(attachments || []),
+    ];
+    if (candidates.length === 0) return;
     let cancelled = false;
-    const toFetch = inlineAttachments.filter(
+    const toFetch = candidates.filter(
       (a) => a.content_id && !cidUrls[a.content_id],
     );
     if (toFetch.length === 0) return;
@@ -76,7 +92,7 @@ export function EmailBodyRenderer({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messageId, inlineAttachments]);
+  }, [messageId, inlineAttachments, attachments]);
 
   const sanitized = useMemo(() => {
     if (!html) return null;
