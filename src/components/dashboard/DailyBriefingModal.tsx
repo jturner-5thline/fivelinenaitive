@@ -33,7 +33,13 @@ import { EmailBodyRenderer } from '@/components/deal/email/EmailBodyRenderer';
 import { useFullEmailMessage, useFullEmailThread } from '@/components/deal/email/useFullEmailMessage';
 import type { EmailThread, MockEmail } from '@/components/deal/email/mockEmailData';
 import { EmailAttachmentsStrip, detectAttachmentFallbackReason } from '@/components/deal/email/EmailAttachmentsStrip';
-import { PipelineMemoView } from '@/pages/pipeline/PipelineMemoView';
+import { lazy, Suspense } from 'react';
+// Code-split: keeps the Memo view (and @tanstack/react-virtual) out of the
+// initial Daily Briefing bundle. Only loaded when the user actually opens the
+// Pipeline & Clients tab in Memo mode.
+const PipelineMemoView = lazy(() =>
+  import('@/pages/pipeline/PipelineMemoView').then(m => ({ default: m.PipelineMemoView })),
+);
 import { useUiPreference } from '@/hooks/useUiPreference';
 import { LayoutGrid } from 'lucide-react';
 
