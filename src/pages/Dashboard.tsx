@@ -159,6 +159,8 @@ export default function Dashboard() {
   const isJTurner = user?.email === 'jturner@5thline.co';
   const canSeeNiki = canSeeNikiBriefing(user?.email);
   const isNikiViewingHerself = user?.email?.toLowerCase() === NIKI_EMAIL;
+  // 5th Line workspace gating for the Deal Rundown quick-action tile.
+  const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
   const {
     presets,
     activePreset,
@@ -234,8 +236,11 @@ export default function Dashboard() {
         label: isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing",
       });
     }
+    if (is5thLine) {
+      entries.push({ id: 'deal-rundown', label: 'Deal Rundown' });
+    }
     return entries;
-  }, [isJTurner, canSeeNiki, isNikiViewingHerself]);
+  }, [isJTurner, canSeeNiki, isNikiViewingHerself, is5thLine]);
 
   useEffect(() => {
     setCarouselOrder(widgetOrderEntries);
