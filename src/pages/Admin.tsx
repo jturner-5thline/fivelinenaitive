@@ -34,6 +34,7 @@ import { DataManagementPanel } from "@/components/admin/DataManagementPanel";
 import { PageAccessPanel } from "@/components/admin/PageAccessPanel";
 import { UserPermissionsPanel } from "@/components/admin/UserPermissionsPanel";
 import { NotificationRulesPanel } from "@/components/admin/NotificationRulesPanel";
+import { NotificationAuditPanel } from "@/components/admin/NotificationAuditPanel";
 import { DealsHeader } from "@/components/deals/DealsHeader";
 import { UXRecommendationsPanel } from "@/components/admin/ux-analytics/UXRecommendationsPanel";
 import { PendingApprovalsPanel } from "@/components/admin/PendingApprovalsPanel";
@@ -58,6 +59,7 @@ const accessSubPages = [
   { id: "company-features", label: "Company Features", icon: ToggleRight },
   { id: "permissions", label: "User Permissions", icon: Shield },
   { id: "notifications-admin", label: "Notifications", icon: Bell },
+  { id: "notification-audit", label: "Notification Audit", icon: ClipboardList },
   { id: "announcements", label: "Announcements", icon: Megaphone },
   { id: "waitlist", label: "Waitlist", icon: ListTodo },
 ];
@@ -267,6 +269,8 @@ const Admin = () => {
             <CardContent><NotificationRulesPanel /></CardContent>
           </Card>
         );
+      case "notification-audit":
+        return <NotificationAuditPanel />;
       case "permissions":
         return (
           <Card>
