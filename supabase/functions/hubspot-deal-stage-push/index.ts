@@ -141,7 +141,32 @@ Deno.serve(async (req) => {
     if (amount !== undefined && amount !== null) {
       properties.amount = String(amount);
     }
-    const hubspotPayload = { properties };
+
+    // Owner resolution
+    let ownerResolvedVia: string | null = null;
+    if (deal_owner !== undefined) {
+      const ownerResolution = await resolveHubSpotOwner(supabase, deal_owner, accessToken);
+      ownerResolvedVia = ownerResolution.resolvedVia;
+      if (ownerResolution.unresolved) {
+        properties.hubspot_owner_id = FALLBACK_OWNER_ID;
+        await logSync(supabase, {
+          company_id, deal_id, hubspot_deal_id,
+          action: 'owner_resolution',
+          status: 'error',
+          error_message: `Unresolved deal_owner "${ownerResolution.rawValue}" → fell back to ${FALLBACK_OWNER_ID}`,
+          request_payload: { field: 'deal_owner', raw: ownerResolution.rawValue, resolved_via: ownerResolution.resolvedVia },
+        });
+      } else if (ownerResolution.ownerId) {
+        properties.hubspot_owner_id = ownerResolution.ownerId;
+      }
+    }
+
+    if (manager !== undefined) {
+      // Allow clearing the manager by sending empty string
+      properties.deal_manager = manager == null ? '' : String(manager);
+    }
+
+    const hubspotPayload = { properties, fields_changed: fields_changed ?? null };
 
     const hsResponse = await fetch(
       `https://api.hubapi.com/crm/v3/objects/deals/${hubspot_deal_id}`,
