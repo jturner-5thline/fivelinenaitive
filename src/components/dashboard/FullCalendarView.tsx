@@ -309,6 +309,7 @@ function EventDetailPopover({
               email: a.email,
               status: a.response_status,
               is_organizer: a.organizer,
+              is_self: a.self,
             })),
             has_video: hasVideo,
           },
