@@ -210,13 +210,9 @@ export function EmailIntelligenceWidget() {
   // Loading state — checking Gmail connection
   if (isStatusLoading) {
     return (
-      <Card className={GLASS_CARD}>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base font-medium flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            Email Intelligence
-          </CardTitle>
-        </CardHeader>
+      <Card className={cn(GLASS_CARD, 'group relative')}>
+        <EmailIntelligenceHoverLabel status="connecting" />
+        <CardHeader className="pb-2 pt-3" />
         <CardContent className="flex-1 flex flex-col gap-3 pt-2">
           <Skeleton className="h-4 w-3/4" />
           <Skeleton className="h-4 w-1/2" />
@@ -229,13 +225,9 @@ export function EmailIntelligenceWidget() {
   // Not connected state
   if (!status.connected) {
     return (
-      <Card className={GLASS_CARD}>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base font-medium flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            Email Intelligence
-          </CardTitle>
-        </CardHeader>
+      <Card className={cn(GLASS_CARD, 'group relative')}>
+        <EmailIntelligenceHoverLabel status="offline" />
+        <CardHeader className="pb-2 pt-3" />
         <CardContent className="flex-1 flex flex-col items-center justify-center gap-3 text-center">
           <div className="p-3 rounded-full bg-primary/10">
             <Mail className="h-6 w-6 text-primary" />
@@ -257,14 +249,9 @@ export function EmailIntelligenceWidget() {
   // Loading
   if (isLoading && emails.length === 0) {
     return (
-      <Card className={GLASS_CARD}>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base font-medium flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            Email Intelligence
-            <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/20 bg-green-500/[0.06]">Connected</Badge>
-          </CardTitle>
-        </CardHeader>
+      <Card className={cn(GLASS_CARD, 'group relative')}>
+        <EmailIntelligenceHoverLabel status="live" />
+        <CardHeader className="pb-2 pt-3" />
         <CardContent className="space-y-2">
           {[1, 2, 3].map(i => (
             <Skeleton key={i} className="h-14 w-full rounded-lg" />
