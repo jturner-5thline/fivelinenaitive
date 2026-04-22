@@ -478,7 +478,7 @@ export default function Dashboard() {
                 </div>
               </Card>
             )}
-            {canSeeNiki && (
+            {nikiInTopRow && (
               <Card
                 className={TILE_INTERACTIVE_CLASSES}
                 onClick={(e) => openCarouselWidget('niki-briefing', e.currentTarget as HTMLElement)}
