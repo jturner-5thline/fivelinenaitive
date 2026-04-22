@@ -630,6 +630,23 @@ function BriefingEmailDetailPane({
   const html = full?.body_html ?? email.body_html;
   const text = full?.body_text ?? email.body_text ?? email.snippet;
 
+  // Build a single-message "thread" so we can reuse the same
+  // <EmailAttachmentsStrip> the main Email widget renders. The strip itself
+  // will additionally lazy-fetch attachments if `has_attachments` is true and
+  // the list is still empty (e.g. before the body call has resolved).
+  const stripThread: { emails: MockEmail[] } = {
+    emails: [
+      {
+        ...briefingRowToThread(email).latestEmail,
+        attachments: full?.attachments ?? email.attachments ?? [],
+        has_attachments:
+          (full?.attachments?.length ?? 0) > 0 ||
+          !!email.has_attachments ||
+          (Array.isArray(email.attachments) && email.attachments.length > 0),
+      },
+    ],
+  };
+
   return (
     <div className="flex flex-col h-full min-h-0 rounded-xl border border-border/40 bg-white/[0.02] overflow-hidden">
       {/* Header */}
@@ -666,6 +683,14 @@ function BriefingEmailDetailPane({
           Open in Intelligence <ExternalLink className="h-3 w-3 ml-1" />
         </Button>
       </div>
+
+      {/* Attachments strip — same component used by the main Email widget,
+          rendered directly under the header and above the body. */}
+      {stripThread.emails[0].has_attachments && (
+        <div className="px-4 pt-3">
+          <EmailAttachmentsStrip thread={stripThread} />
+        </div>
+      )}
 
       {/* Body */}
       <ScrollArea className="flex-1 min-h-0">
