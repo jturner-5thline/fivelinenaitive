@@ -790,6 +790,23 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const [linkedDealName, setLinkedDealName] = useState<string | undefined>(thread.dealName);
   const [showSendToDataRoom, setShowSendToDataRoom] = useState(false);
 
+  // Lift workflow analysis here so the in-thread Attachments module can show the
+  // "Add to Data Room" CTA whenever a likely-deal match exists (mirrors AI Assist).
+  const workflowThreadData = {
+    subject: thread.subject,
+    threadId: thread.threadId,
+    latestEmail: thread.latestEmail,
+    emails: thread.emails,
+  };
+  const { analysis: detailWorkflowAnalysis } = useThreadWorkflowAnalysis({
+    dealId,
+    threadData: workflowThreadData,
+    autoRun: true,
+  });
+  const effectiveDealId = dealId || detailWorkflowAnalysis?.likely_deal?.id;
+  const effectiveDealName =
+    linkedDealName || thread.dealName || detailWorkflowAnalysis?.likely_deal?.name;
+
   // Hoist the latest message's full body load so the toolbar/dialog can see
   // its attachments (the per-message MessageBlock loads its own copy too —
   // both share the Nylas cache so this is cheap).
