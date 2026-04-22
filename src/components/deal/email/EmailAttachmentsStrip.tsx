@@ -60,6 +60,19 @@ export interface EmailAttachmentsStripProps {
   variant?: 'block' | 'inline';
   /** Inline-only: how many chips to render before collapsing to "+N more". */
   maxInline?: number;
+  /**
+   * Force the row to stay mounted even if provider attachment metadata has not
+   * materialized yet. Used by detail panes that already know the selected
+   * message/thread likely contains files.
+   */
+  forceVisible?: boolean;
+  /** Extra loading signal from the host pane (e.g. thread hydration in Daily Briefing). */
+  loadingOverride?: boolean;
+  /**
+   * Explicit fallback copy from the host pane when the thread references an
+   * attachment but the provider returned no attachment metadata.
+   */
+  fallbackReason?: string | null;
 }
 
 interface AggregatedAttachment {
@@ -78,6 +91,16 @@ interface ResolvedAttachmentDebug {
   filenames: string[];
   attachmentIds: string[];
 }
+
+const ATTACHMENT_REFERENCE_PATTERNS = [
+  /\bplease\s+find\s+attached\b/i,
+  /\bsee\s+(?:the\s+)?(?:attached|attachment)\b/i,
+  /\battached\s+is\b/i,
+  /\battached\s+are\b/i,
+  /\b(?:file|files|document|documents|proposal|term\s*sheet|outline|deck|model|pdf|xlsx?)\s+attached\b/i,
+  /\battachment(?:s)?\b/i,
+  /\benclosed\b/i,
+];
 
 function formatBytes(bytes: number | undefined): string {
   if (!bytes || bytes < 0) return '';
@@ -106,6 +129,27 @@ function fileLabel(filename: string, contentType: string | undefined): string {
   return 'FILE';
 }
 
+function flattenText(value: string | undefined): string {
+  if (!value) return '';
+  return value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+export function detectAttachmentFallbackReason(emails: Pick<MockEmail, 'subject' | 'snippet' | 'body_preview' | 'body_text' | 'body_html'>[]): string | null {
+  const mentionsAttachment = emails.some((email) => {
+    const haystack = [
+      email.subject,
+      email.snippet,
+      email.body_preview,
+      email.body_text,
+      flattenText(email.body_html),
+    ].join(' ');
+    return ATTACHMENT_REFERENCE_PATTERNS.some((pattern) => pattern.test(haystack));
+  });
+
+  if (!mentionsAttachment) return null;
+  return 'This thread references an attachment, but file details are still loading or unavailable.';
+}
+
 /**
  * Lazily resolve attachments for any thread message that has
  * `has_attachments` but no hydrated `attachments[]` yet. Fires one fetch per
@@ -115,6 +159,7 @@ function fileLabel(filename: string, contentType: string | undefined): string {
 function useResolvedThreadAttachments(emails: MockEmail[]): {
   attachmentsByMessage: Record<string, EmailAttachment[]>;
   loading: boolean;
+  unresolvedCount: number;
   debug: ResolvedAttachmentDebug[];
 } {
   const [extra, setExtra] = useState<Record<string, EmailAttachment[]>>({});
@@ -188,7 +233,7 @@ function useResolvedThreadAttachments(emails: MockEmail[]): {
     })
   ), [attachmentsByMessage, emails]);
 
-  return { attachmentsByMessage, loading, debug };
+  return { attachmentsByMessage, loading, unresolvedCount: needFetchIds.length, debug };
 }
 
 export function EmailAttachmentsStrip({
@@ -196,9 +241,12 @@ export function EmailAttachmentsStrip({
   className,
   variant = 'block',
   maxInline = 2,
+  forceVisible = false,
+  loadingOverride = false,
+  fallbackReason,
 }: EmailAttachmentsStripProps) {
   const emails = thread.emails;
-  const { attachmentsByMessage, loading, debug } = useResolvedThreadAttachments(emails);
+  const { attachmentsByMessage, loading, unresolvedCount, debug } = useResolvedThreadAttachments(emails);
   const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
 
   // Build the aggregated, newest-first list with version ranking by filename.
@@ -245,11 +293,13 @@ export function EmailAttachmentsStrip({
     });
   }, [aggregated, debug, emails, loading, thread]);
 
-  // Render nothing if no attachments anywhere in the thread (and nothing to load).
+  // Render nothing only when the thread gives us zero signal that attachments
+  // exist. Otherwise keep the row visible with loading/fallback messaging.
   const anyMessageClaimsAttachments = emails.some((e) => e.has_attachments);
-  const hasPendingHydration = loading || emails.some((e) => !e.id?.startsWith('mock-') && !attachmentsByMessage[e.id]);
-  if (aggregated.length === 0 && !hasPendingHydration && !anyMessageClaimsAttachments) return null;
-  if (aggregated.length === 0 && !hasPendingHydration) return null;
+  const inferredFallbackReason = fallbackReason ?? detectAttachmentFallbackReason(emails);
+  const shouldShowFallback = forceVisible || anyMessageClaimsAttachments || !!inferredFallbackReason;
+  const hasPendingHydration = loading || loadingOverride || unresolvedCount > 0 || emails.some((e) => !e.id?.startsWith('mock-') && !attachmentsByMessage[e.id]);
+  if (aggregated.length === 0 && !hasPendingHydration && !shouldShowFallback) return null;
 
   const handleOpen = async (item: AggregatedAttachment) => {
     const att = item.attachment;
@@ -372,14 +422,20 @@ export function EmailAttachmentsStrip({
   // Renders compact chips directly into a host action/command row.
   // Shows up to `maxInline` chips inline, then a "+N more" popover.
   if (variant === 'inline') {
-    if (aggregated.length === 0 && hasPendingHydration) {
+    if (aggregated.length === 0 && (hasPendingHydration || shouldShowFallback)) {
       return (
         <div className={cn('inline-flex items-center gap-1.5 min-w-0', className)}>
           <Paperclip className="h-3 w-3 text-muted-foreground/70 shrink-0" />
-          <div className="inline-flex items-center gap-1.5">
-            <span className="h-6 w-[112px] rounded-md border border-border/40 bg-background/35 animate-pulse" />
-            <span className="h-6 w-[88px] rounded-md border border-border/40 bg-background/25 animate-pulse hidden md:inline-flex" />
-          </div>
+          {hasPendingHydration ? (
+            <div className="inline-flex items-center gap-1.5">
+              <span className="h-6 w-[112px] rounded-md border border-border/40 bg-background/35 animate-pulse" />
+              <span className="h-6 w-[88px] rounded-md border border-border/40 bg-background/25 animate-pulse hidden md:inline-flex" />
+            </div>
+          ) : (
+            <div className="inline-flex min-w-0 items-center gap-1.5 rounded-md border border-dashed border-border/60 bg-background/30 px-2 py-1 text-[11px] text-muted-foreground">
+              <span className="truncate">{inferredFallbackReason || 'Attachment referenced — file details unavailable.'}</span>
+            </div>
+          )}
         </div>
       );
     }
@@ -452,9 +508,16 @@ export function EmailAttachmentsStrip({
       </div>
 
       {aggregated.length === 0 ? (
-        <div className="text-[11px] text-muted-foreground py-1">
-          Loading attachments…
-        </div>
+        hasPendingHydration ? (
+          <div className="flex flex-wrap gap-1.5">
+            <span className="h-8 w-[176px] rounded-md border border-border/40 bg-background/35 animate-pulse" />
+            <span className="h-8 w-[148px] rounded-md border border-border/40 bg-background/25 animate-pulse" />
+          </div>
+        ) : (
+          <div className="rounded-md border border-dashed border-border/60 bg-background/25 px-3 py-2 text-[11px] text-muted-foreground">
+            {inferredFallbackReason || 'Attachment referenced — file details unavailable.'}
+          </div>
+        )
       ) : (
         <div className="flex flex-wrap gap-1.5">
           {aggregated.map((item) => renderChip(item))}
