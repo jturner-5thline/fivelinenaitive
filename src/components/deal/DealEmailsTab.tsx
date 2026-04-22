@@ -209,6 +209,7 @@ function PaginationFooter({
 
 export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingExternal, onGmailSend, onLoadMore, hasMore, isLoadingMore, isAutoPaginating }: DealEmailsTabProps) {
   const navigate = useNavigate();
+  const { queueSend } = useUndoSend();
   const { entities: classifierEntities, orgCtx } = useEmailClassifierData();
   const [emails, setEmails] = useState<MockEmail[]>(() => {
     const source = externalEmails || initialMockEmails;
