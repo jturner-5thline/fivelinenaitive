@@ -286,45 +286,45 @@ export function WorkflowIntelligenceCard({
   };
 
   return (
-    <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-3 space-y-3 overflow-hidden max-w-full">
+    <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-2.5 space-y-2 overflow-hidden max-w-full">
       {/* Header — title swaps with the active panel; arrow controls slide between the two. */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         {activePanel === 'intelligence' && (
           <button
             type="button"
             onClick={() => setActivePanel('suggested')}
-            className="h-5 w-5 -ml-1 rounded hover:bg-primary/10 flex items-center justify-center text-primary/80"
+            className="h-4 w-4 -ml-0.5 rounded hover:bg-primary/10 flex items-center justify-center text-primary/80"
             aria-label="Back to suggested update"
           >
-            <ChevronLeft className="h-3.5 w-3.5" />
+            <ChevronLeft className="h-3 w-3" />
           </button>
         )}
-        <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-primary/90">
+        <Sparkles className="h-3 w-3 text-primary shrink-0" />
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-primary/90">
           {activePanel === 'suggested' ? 'Suggested Update' : 'Workflow Intelligence'}
         </span>
-        {loading && <Loader2 className="h-3 w-3 animate-spin text-primary/60" />}
-        <div className="ml-auto flex items-center gap-1">
-          <span className="text-[9px] uppercase tracking-wider text-muted-foreground/70">
+        {loading && <Loader2 className="h-2.5 w-2.5 animate-spin text-primary/60" />}
+        <div className="ml-auto flex items-center gap-0.5">
+          <span className="text-[9px] tabular-nums text-muted-foreground/70">
             {activePanel === 'suggested' ? '1 / 2' : '2 / 2'}
           </span>
           {activePanel === 'suggested' ? (
             <button
               type="button"
               onClick={() => setActivePanel('intelligence')}
-              className="h-5 w-5 rounded hover:bg-primary/10 flex items-center justify-center text-primary/80"
+              className="h-4 w-4 rounded hover:bg-primary/10 flex items-center justify-center text-primary/80"
               aria-label="View workflow intelligence"
             >
-              <ChevronRight className="h-3.5 w-3.5" />
+              <ChevronRight className="h-3 w-3" />
             </button>
           ) : (
             <button
               type="button"
               onClick={() => setActivePanel('suggested')}
-              className="h-5 w-5 rounded hover:bg-primary/10 flex items-center justify-center text-primary/80"
+              className="h-4 w-4 rounded hover:bg-primary/10 flex items-center justify-center text-primary/80"
               aria-label="Back to suggested update"
             >
-              <ChevronRight className="h-3.5 w-3.5 rotate-180" />
+              <ChevronRight className="h-3 w-3 rotate-180" />
             </button>
           )}
         </div>
