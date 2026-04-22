@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { Component, type ErrorInfo, type ReactNode, useState, useEffect, useCallback, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { SmartEmailPanel } from './SmartEmailPanel';
 import { ThreadLabelsBar } from './ThreadLabelsBar';
@@ -351,6 +351,44 @@ function EmailListSkeleton() {
   );
 }
 
+class EmailPaneErrorBoundary extends Component<{
+  children: ReactNode;
+  fallbackTitle: string;
+  fallbackMessage: string;
+  resetKey: string;
+}, { hasError: boolean }> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error(`[EmailPaneErrorBoundary] ${this.props.fallbackTitle}`, error, info);
+  }
+
+  componentDidUpdate(prevProps: Readonly<{ resetKey: string }>) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false });
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex h-full min-h-0 w-full min-w-0 items-center justify-center p-6">
+          <div className="max-w-md rounded-lg border border-[hsl(var(--email-border))] bg-card/40 px-5 py-4 text-center">
+            <p className="text-sm font-semibold text-[hsl(var(--email-text-primary))]">{this.props.fallbackTitle}</p>
+            <p className="mt-1 text-xs leading-relaxed text-[hsl(var(--email-text-secondary))]">{this.props.fallbackMessage}</p>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 // ─── Email List (threaded) ───────────────────────────────────
 interface EmailListProps {
   emails: MockEmail[];
@@ -567,15 +605,21 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
               are passed so signature logos / embedded images can resolve their
               `cid:` references. */}
           <div className="min-w-0 max-w-full overflow-x-hidden">
-            {resolvedHtml ? (
-              <EmailBodyRenderer
-                html={resolvedHtml}
-                messageId={email.id}
-                inlineAttachments={fullData?.inline_attachments}
-              />
-            ) : (
-              <EmailBodyRenderer text={textMain} />
-            )}
+            <EmailPaneErrorBoundary
+              resetKey={`${email.id}-${resolvedHtml ? 'html' : 'text'}-${expanded ? 'open' : 'closed'}`}
+              fallbackTitle="This message couldn’t be rendered"
+              fallbackMessage="Try another email in the thread or collapse and reopen this message."
+            >
+              {resolvedHtml ? (
+                <EmailBodyRenderer
+                  html={resolvedHtml}
+                  messageId={email.id}
+                  inlineAttachments={fullData?.inline_attachments}
+                />
+              ) : (
+                <EmailBodyRenderer text={textMain} />
+              )}
+            </EmailPaneErrorBoundary>
           </div>
 
           {/* Quoted text (only meaningful for plain text bodies) */}
@@ -1559,31 +1603,36 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             detail column wide enough for body wrapping. */}
         {showAiAssist && (
           <div className="flex h-full min-h-0 min-w-0 w-full overflow-hidden border-l border-[hsl(var(--email-border))] bg-card/40">
-          <AiAssistSidebar
-            thread={thread}
-            dealId={dealId}
-            dealName={linkedDealName || thread.dealName}
-            onClose={() => setShowAiAssist(false)}
-            onInsertDraft={(subject, body) => {
-              const target = getReplyTarget();
-              const finalSubject = subject?.startsWith('Re:') ? subject : `Re: ${thread.subject}`;
-              // If composer not open yet, open it
-              if (!replyTo) {
-                setReplyTo(target);
-              }
-              setInlineDraft({
-                to: target.to_email,
-                toName: target.to_name,
-                subject: finalSubject,
-                body,
-                cc: inlineDraft?.cc || '',
-                bcc: inlineDraft?.bcc || '',
-                attachments: inlineDraft?.attachments || [],
-                threadId: thread.threadId,
-              });
-              setShowResumeBanner(false);
-            }}
-          />
+            <EmailPaneErrorBoundary
+              resetKey={`ai-assist-${thread.threadId}`}
+              fallbackTitle="AI Assist is temporarily unavailable"
+              fallbackMessage="The email is still available to read — close and reopen AI Assist to retry."
+            >
+              <AiAssistSidebar
+                thread={thread}
+                dealId={dealId}
+                dealName={linkedDealName || thread.dealName}
+                onClose={() => setShowAiAssist(false)}
+                onInsertDraft={(subject, body) => {
+                  const target = getReplyTarget();
+                  const finalSubject = subject?.startsWith('Re:') ? subject : `Re: ${thread.subject}`;
+                  if (!replyTo) {
+                    setReplyTo(target);
+                  }
+                  setInlineDraft({
+                    to: target.to_email,
+                    toName: target.to_name,
+                    subject: finalSubject,
+                    body,
+                    cc: inlineDraft?.cc || '',
+                    bcc: inlineDraft?.bcc || '',
+                    attachments: inlineDraft?.attachments || [],
+                    threadId: thread.threadId,
+                  });
+                  setShowResumeBanner(false);
+                }}
+              />
+            </EmailPaneErrorBoundary>
           </div>
         )}
       </div>
