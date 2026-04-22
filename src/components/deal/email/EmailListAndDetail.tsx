@@ -793,7 +793,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   // both share the Nylas cache so this is cheap).
   const latestMessageId = thread.latestEmail.id;
   const isMockLatest = !latestMessageId || latestMessageId.startsWith('mock-');
-  const { data: latestFullData } = useFullEmailMessage(
+  const { data: latestFullData, loading: latestFullLoading } = useFullEmailMessage(
     latestMessageId,
     !isMockLatest,
     !!(thread.latestEmail.body_html || thread.latestEmail.body_text),
