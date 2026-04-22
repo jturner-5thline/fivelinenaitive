@@ -1,4 +1,5 @@
 import type { Deal, DealLender } from '@/types/deal';
+import { Badge } from '@/components/ui/badge';
 
 interface LendersPanelProps {
   deal: Deal;
@@ -13,10 +14,13 @@ function bucketOf(l: DealLender): Bucket {
   return 'active';
 }
 
-const BUCKET_META: Record<Bucket, { label: string; dot: string; tagBg: string; tagText: string }> = {
-  active:  { label: 'Active',   dot: 'bg-[#1a7a52]', tagBg: 'bg-[#1a7a52]/10 border-[#1a7a52]/25', tagText: 'text-[#1a7a52]' },
-  ondeck:  { label: 'On Deck',  dot: 'bg-[#9a6800]', tagBg: 'bg-[#9a6800]/10 border-[#9a6800]/25', tagText: 'text-[#9a6800]' },
-  passed:  { label: 'Passed',   dot: 'bg-[#7a9aaa]', tagBg: 'bg-white/55 border-white/70',         tagText: 'text-[#4a6070]' },
+const BUCKET_META: Record<
+  Bucket,
+  { label: string; dot: string; badgeVariant: 'green' | 'amber' | 'gray' }
+> = {
+  active: { label: 'Active', dot: 'bg-emerald-500', badgeVariant: 'green' },
+  ondeck: { label: 'On Deck', dot: 'bg-amber-500', badgeVariant: 'amber' },
+  passed: { label: 'Passed', dot: 'bg-muted-foreground', badgeVariant: 'gray' },
 };
 
 export function LendersPanel({ deal }: LendersPanelProps) {
@@ -26,12 +30,12 @@ export function LendersPanel({ deal }: LendersPanelProps) {
 
   return (
     <div className="p-5 flex flex-col h-full">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7a9aaa] mb-3">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-3">
         Lenders
       </div>
 
       {lenders.length === 0 ? (
-        <p className="text-[12px] text-[#4a6070] font-light italic">No lenders engaged.</p>
+        <p className="text-xs text-muted-foreground italic">No lenders engaged.</p>
       ) : (
         <div className="overflow-y-auto pr-1 space-y-3 max-h-[280px] lg:max-h-[340px]">
           {(['active', 'ondeck', 'passed'] as Bucket[]).map(b => {
@@ -42,7 +46,7 @@ export function LendersPanel({ deal }: LendersPanelProps) {
               <div key={b}>
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[#4a6070]">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     {meta.label} · {items.length}
                   </span>
                 </div>
@@ -50,16 +54,19 @@ export function LendersPanel({ deal }: LendersPanelProps) {
                   {items.map(l => (
                     <div
                       key={l.id}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-white/40 border border-white/55"
+                      className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/40 border border-border/60"
                     >
                       <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${meta.dot}`} />
-                      <span className="flex-1 text-[12px] text-[#1a2b38] font-medium truncate" title={l.name}>
+                      <span
+                        className="flex-1 text-xs text-foreground font-medium truncate"
+                        title={l.name}
+                      >
                         {l.name}
                       </span>
                       {l.stage && (
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium border whitespace-nowrap ${meta.tagBg} ${meta.tagText}`}>
+                        <Badge variant={meta.badgeVariant} className="text-[9px] px-1.5 py-0">
                           {l.stage}
-                        </span>
+                        </Badge>
                       )}
                     </div>
                   ))}
