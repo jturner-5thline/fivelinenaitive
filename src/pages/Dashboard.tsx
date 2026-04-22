@@ -400,7 +400,11 @@ export default function Dashboard() {
           >
           {(() => {
             // Quick Prompts is now a tile too (4 base tiles).
-            const tileCount = 4 + (isJTurner ? 1 : 0) + (canSeeNiki ? 1 : 0) + (is5thLine ? 1 : 0);
+            // For jturner@5thline.co specifically, Niki's Daily Briefing is
+            // pulled OUT of the top row and stacked under the Calendar tile
+            // on its own row below. Other users keep the existing layout.
+            const nikiInTopRow = canSeeNiki && !isJTurner;
+            const tileCount = 4 + (isJTurner ? 1 : 0) + (nikiInTopRow ? 1 : 0) + (is5thLine ? 1 : 0);
             const gridColsClass =
               tileCount >= 7 ? 'grid-cols-4 sm:grid-cols-7'
               : tileCount === 6 ? 'grid-cols-3 sm:grid-cols-6'
@@ -408,6 +412,7 @@ export default function Dashboard() {
               : tileCount === 4 ? 'grid-cols-2 sm:grid-cols-4'
               : 'grid-cols-3';
             return (
+          <>
           <div className={`grid gap-3 md:gap-4 ${gridColsClass}`}>
             <Card
               className={TILE_INTERACTIVE_CLASSES}
