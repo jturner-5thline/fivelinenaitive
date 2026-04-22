@@ -87,7 +87,7 @@ export function useCatchUpData(enabled: boolean, targetDealOwnerName?: string) {
           .limit(50),
         supabase
           .from('email_cache')
-          .select('id, gmail_message_id, subject, snippet, from_email, from_name, received_at, is_read, labels')
+          .select('id, gmail_message_id, thread_id, subject, snippet, from_email, from_name, received_at, is_read, labels')
           .eq('user_id', user!.id)
           .gte('received_at', startISO)
           .lte('received_at', endISO)
@@ -272,7 +272,7 @@ export function useEmailData(enabled: boolean, targetUserId?: string) {
       const [emailCacheRes, emailAnalysisRes] = await Promise.all([
         supabase
           .from('email_cache')
-          .select('id, gmail_message_id, subject, snippet, from_email, from_name, received_at, is_read, labels')
+          .select('id, gmail_message_id, thread_id, subject, snippet, from_email, from_name, received_at, is_read, labels')
           .eq('user_id', effectiveUserId!)
           .gte('received_at', startISO)
           .lte('received_at', endISO)

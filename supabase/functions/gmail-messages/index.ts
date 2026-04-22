@@ -12,8 +12,9 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 interface MessageRequest {
-  action: "list" | "get" | "send" | "mark_read" | "mark_unread" | "star" | "unstar" | "trash" | "delete" | "sync_state" | "get_attachment";
+  action: "list" | "get" | "get_thread" | "send" | "mark_read" | "mark_unread" | "star" | "unstar" | "trash" | "delete" | "sync_state" | "get_attachment";
   message_id?: string;
+  thread_id?: string;
   message_ids?: string[];
   attachment_id?: string;
   to?: string[];
@@ -347,6 +348,75 @@ serve(async (req: Request): Promise<Response> => {
         };
 
         return new Response(JSON.stringify({ message }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      case "get_thread": {
+        const { thread_id } = requestData;
+        if (!thread_id) {
+          return new Response(JSON.stringify({ error: "Thread ID required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const threadResponse = await fetch(
+          `${baseUrl}/threads/${thread_id}`,
+          { headers }
+        );
+
+        const threadData = await threadResponse.json();
+
+        if (!threadResponse.ok) {
+          return new Response(JSON.stringify({ error: threadData.message || "Failed to get thread" }), {
+            status: threadResponse.status,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const rawThread = threadData.data || threadData;
+        const rawMessages = Array.isArray(rawThread?.messages)
+          ? rawThread.messages
+          : Array.isArray(rawThread?.data)
+            ? rawThread.data
+            : [];
+
+        const messages = rawMessages.map((msg: any) => {
+          const { body_html, body_text } = pickBodyHtmlAndText(msg);
+          const allAtts = mergeAndNormalizeAttachments(msg);
+          const visibleAtts = allAtts.filter((a) => !a.is_inline);
+          const inlineAtts = allAtts.filter((a) => a.is_inline);
+          console.log("[gmail-messages:get_thread] attachment-debug", JSON.stringify({
+            message_id: msg.id,
+            thread_id: msg.thread_id || thread_id,
+            has_attachments: visibleAtts.length > 0,
+            parsed_filenames: visibleAtts.map((a) => a.filename),
+            attachment_ids: visibleAtts.map((a) => a.id),
+          }));
+          return {
+            id: msg.id,
+            thread_id: msg.thread_id || thread_id,
+            subject: msg.subject || "",
+            from_email: msg.from?.[0]?.email || "",
+            from_name: msg.from?.[0]?.name || "",
+            to_emails: (msg.to || []).map((t: any) => t.email || ""),
+            cc_emails: (msg.cc || []).map((c: any) => c.email || ""),
+            snippet: msg.snippet || "",
+            body_text,
+            body_html,
+            is_read: !msg.unread,
+            is_starred: msg.starred || false,
+            labels: msg.folders || msg.labels || [],
+            received_at: msg.date ? new Date(msg.date * 1000).toISOString() : null,
+            attachments: visibleAtts,
+            inline_attachments: inlineAtts,
+            has_attachments: visibleAtts.length > 0,
+          };
+        });
+
+        return new Response(JSON.stringify({ thread: { id: thread_id, messages } }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
