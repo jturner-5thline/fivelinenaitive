@@ -840,20 +840,16 @@ function EmailTab({
           {filtered.length === 0 ? (
             <EmptySection message={EMPTY_MESSAGES[subTab]} />
           ) : (
-            <div className="space-y-1.5">
+            <div className="divide-y divide-white/[0.04]">
               {filtered.map((e: any) => {
                 const autoLabels = evaluateAutoLabels(e);
                 const isSelected =
                   detail && (detail.id === e.id || detail.gmail_message_id === e.gmail_message_id);
                 return (
-                  <div
-                    key={e.id}
-                    className={cn(
-                      'rounded-lg transition-colors',
-                      isSelected && 'ring-1 ring-primary/40 bg-primary/[0.04]',
-                    )}
-                  >
-                    <BriefingRow
+                  <BriefingRow
+                      key={e.id}
+                      borderless
+                      selected={!!isSelected}
                       icon={Mail}
                       title={e.subject || '(no subject)'}
                       subtitle={`${e.from_name || e.from_email || 'Unknown'} — ${e.analysis?.summary || e.snippet || ''}`}
@@ -882,7 +878,6 @@ function EmailTab({
                         </>
                       }
                     />
-                  </div>
                 );
               })}
             </div>
