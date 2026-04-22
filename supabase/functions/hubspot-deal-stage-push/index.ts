@@ -202,6 +202,12 @@ Deno.serve(async (req) => {
       company_id, deal_id, hubspot_deal_id,
       action: 'stage_push', status: 'success',
       request_payload: hubspotPayload,
+      response_payload: {
+        fields_changed: fieldsChangedMeta,
+        owner_resolved_via: ownerResolvedVia,
+        owner_after: properties.hubspot_owner_id ?? null,
+        deal_manager_after: properties.deal_manager ?? null,
+      },
     });
 
     // Update hubspot_last_synced_at on the deal
