@@ -70,6 +70,9 @@ interface DailyBriefingModalProps {
   excludeTabs?: Array<'catchup' | 'email' | 'financial' | 'pipeline' | 'operational'>;
 }
 
+// Initial tab to open with. Defaults to the first available tab.
+export type BriefingTabValue = 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational';
+
 // ── Glass surface classes ──────────────────────────────────────
 // Borders are intentionally near-invisible — depth comes from translucent
 // surface tint + blur + soft shadow, not bright outlines. `glass-border-soft`
