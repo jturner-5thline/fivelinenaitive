@@ -47,10 +47,16 @@ export function useVdrDocuments(dealId: string) {
   const syncFoldersWithCategories = useCallback(async () => {
     if (!dealId || !company?.id || !user?.id) return;
 
-    const { data: categories } = await supabase
+    const { data: categories, error: categoriesError } = await supabase
       .from('data_room_checklist_categories')
       .select('name, position')
+      .eq('company_id', company.id)
       .order('position', { ascending: true });
+
+    if (categoriesError) {
+      console.error('Error syncing VDR folders from settings categories:', categoriesError);
+      return;
+    }
 
     const categoryNames = (categories || []).map((c: any) => c.name as string);
     if (categoryNames.length === 0) return;
