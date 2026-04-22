@@ -220,26 +220,34 @@ async function resolveRecipients(
 
   // Resolve role-based recipients
   if (rule.default_recipients.roles) {
-    for (const role of rule.default_recipients.roles) {
+    const requestedRoles = rule.default_recipients.roles;
+    const wantsManager = requestedRoles.includes("DEAL_MANAGER");
+    const wantsOwner = requestedRoles.includes("DEAL_OWNER");
+    let managerResolved = false;
+
+    for (const role of requestedRoles) {
       switch (role) {
         case "DEAL_OWNER":
-          if (context.deal_owner_id) recipientSet.add(String(context.deal_owner_id));
+          if (context.deal_owner_id) addRecipient(String(context.deal_owner_id), "DEAL_OWNER");
           break;
         case "DEAL_MANAGER":
           if (context.deal_manager_ids && Array.isArray(context.deal_manager_ids)) {
-            for (const id of context.deal_manager_ids) recipientSet.add(String(id));
+            for (const id of context.deal_manager_ids) {
+              addRecipient(String(id), "DEAL_MANAGER");
+              managerResolved = true;
+            }
           }
           break;
         case "ANALYST":
           if (context.analyst_ids && Array.isArray(context.analyst_ids)) {
-            for (const id of context.analyst_ids) recipientSet.add(String(id));
+            for (const id of context.analyst_ids) addRecipient(String(id), "ANALYST");
           }
           break;
         case "ASSIGNEE":
-          if (context.assignee_id) recipientSet.add(String(context.assignee_id));
+          if (context.assignee_id) addRecipient(String(context.assignee_id), "ASSIGNEE");
           break;
         case "TAGGED_USER":
-          if (context.tagged_user_id) recipientSet.add(String(context.tagged_user_id));
+          if (context.tagged_user_id) addRecipient(String(context.tagged_user_id), "TAGGED_USER");
           break;
         case "ADMIN": {
           // Scope admins to the deal's company when we know it; otherwise fall back to global admins.
