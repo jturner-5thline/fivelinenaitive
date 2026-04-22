@@ -806,7 +806,10 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const shouldRenderAttachmentsRow =
     thread.hasAttachments ||
     thread.emails.some((email) => email.has_attachments || (email.attachments?.length ?? 0) > 0) ||
-    !!attachmentFallbackReason;
+    !!attachmentFallbackReason ||
+    // Keep the row mounted during initial thread hydration so the user sees a
+    // loading state instead of an empty header band that silently snaps in.
+    latestFullLoading;
   
   // Reply state
   const [replyTo, setReplyTo] = useState<{ subject: string; to_email: string; to_name: string; threadId: string } | null>(null);
