@@ -83,6 +83,7 @@ const PendingCompanyApproval = lazy(lazyRetry(() => import("./pages/PendingCompa
 const Homepage = lazy(lazyRetry(() => import("./pages/Homepage")));
 const Promo = lazy(lazyRetry(() => import("./pages/Promo")));
 const FieldLayoutEditorPage = lazy(lazyRetry(() => import("./pages/FieldLayoutEditorPage")));
+const HubspotSyncHealth = lazy(lazyRetry(() => import("./pages/HubspotSyncHealth")));
 /** Forces DealDetail to fully remount when navigating between deals */
 function DealDetailKeyedWrapper() {
   const { id } = useParams<{ id: string }>();
