@@ -618,6 +618,14 @@ export default function Integrations() {
           </div>
         )}
 
+        {/* FLEx Auto-Removal Rules — only for FLEx-authorized 5th Line users */}
+        {canSeeFlexSync && (
+          <div>
+            <h2 className="text-lg font-semibold mb-3">FLEx Sync Configuration</h2>
+            <FlexAutoRemovalRules companyId={company?.id ?? null} canEdit={!!isCompanyAdmin} />
+          </div>
+        )}
+
         {/* Coming Soon */}
         <div>
           <h2 className="text-lg font-semibold mb-3">Coming Soon</h2>
