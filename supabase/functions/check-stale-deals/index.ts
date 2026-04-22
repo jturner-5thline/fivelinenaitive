@@ -477,6 +477,101 @@ const handler = async (req: Request): Promise<Response> => {
 
       console.log(`Company ${settings.company_id}: ${attentionDeals.length} deals need attention`);
 
+      // ─────────────────────────────────────────────────────────────────────
+      // PER-USER stale-deal alerts via notification-engine (owner + manager).
+      // Fires only when a deal crosses a NEW threshold boundary
+      // (config.threshold_days, 2x, 3x, 4x). Dedup is enforced by checking
+      // notification_audit for an entry within the last (threshold_days - 1)
+      // days for the same (deal, trigger).
+      // ─────────────────────────────────────────────────────────────────────
+      try {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+        const supabaseSrk = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+        const baseT = Math.max(1, config.threshold_days || DEFAULT_STALE_DAYS);
+        const boundaries = [baseT, baseT * 2, baseT * 3, baseT * 4];
+        const dedupWindowDays = Math.max(1, baseT - 1);
+
+        for (const deal of attentionDeals) {
+          const updatedAt = new Date(deal.updated_at);
+          const daysSince = Math.floor((now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24));
+          const matchedBoundary = boundaries.filter((b) => daysSince >= b).pop();
+          if (!matchedBoundary) continue;
+
+          // Dedup: skip if we already audited a stale_deal_alert for this deal
+          // in the recent window.
+          const sinceIso = new Date(now.getTime() - dedupWindowDays * 86400_000).toISOString();
+          const { count: recentCount } = await supabaseAdmin
+            .from('notification_audit')
+            .select('id', { count: 'exact', head: true })
+            .eq('deal_id', deal.id)
+            .eq('trigger_key', 'stale_deal_alert')
+            .gte('created_at', sinceIso);
+          if ((recentCount || 0) > 0) continue;
+
+          await fetch(`${supabaseUrl}/functions/v1/notification-engine`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseSrk}`,
+            },
+            body: JSON.stringify({
+              triggerKey: 'stale_deal_alert',
+              context: {
+                deal_id: deal.id,
+                deal_company: deal.company,
+                days_since: daysSince,
+                threshold_days: matchedBoundary,
+              },
+            }),
+          });
+        }
+      } catch (perUserErr) {
+        console.error('Per-user stale_deal_alert dispatch failed:', perUserErr);
+      }
+
+      // Per-deal stale-LENDER alerts (one trigger per deal that has stale
+      // lenders). The engine resolves owner+manager and respects channel
+      // prefs. Dedup window mirrors stale_deal_alert (boundary-based).
+      try {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+        const supabaseSrk = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+        const lenderT = Math.max(1, config.lender_stale_days || config.threshold_days || DEFAULT_STALE_DAYS);
+        const dedupWindowDays = Math.max(1, lenderT - 1);
+
+        for (const deal of attentionDeals) {
+          const lenderCount = deal.stale_lender_count || 0;
+          if (lenderCount <= 0) continue;
+
+          const sinceIso = new Date(now.getTime() - dedupWindowDays * 86400_000).toISOString();
+          const { count: recentCount } = await supabaseAdmin
+            .from('notification_audit')
+            .select('id', { count: 'exact', head: true })
+            .eq('deal_id', deal.id)
+            .eq('trigger_key', 'stale_lender_alert')
+            .gte('created_at', sinceIso);
+          if ((recentCount || 0) > 0) continue;
+
+          await fetch(`${supabaseUrl}/functions/v1/notification-engine`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseSrk}`,
+            },
+            body: JSON.stringify({
+              triggerKey: 'stale_lender_alert',
+              context: {
+                deal_id: deal.id,
+                deal_company: deal.company,
+                lender_name: `${lenderCount} lender${lenderCount !== 1 ? 's' : ''}`,
+                days_since: lenderT,
+              },
+            }),
+          });
+        }
+      } catch (lenderErr) {
+        console.error('Per-deal stale_lender_alert dispatch failed:', lenderErr);
+      }
+
       // Get company members
       const { data: members } = await supabaseAdmin
         .from('company_members')

@@ -30,4 +30,25 @@ describe('isLenderEligibleForAttention', () => {
     expect(isLenderEligibleForAttention({ ...validLender, is_archived: true }, validDeal)).toBe(false);
     expect(isLenderEligibleForAttention(validLender, { ...validDeal, is_archived: true })).toBe(false);
   });
+
+  // Required regression cases from the stale-alert spec:
+  // (1) Lender in "On Deck" on an Active deal → MUST NOT notify.
+  // (2) Lender in "Contacted" on an Archived deal → MUST NOT notify.
+  it('On Deck lender on Active deal is not eligible', () => {
+    const onDeckLender = { stage: 'On Deck', trackingStatus: 'active', is_archived: false };
+    const activeDeal = { status: 'on-track', stage: 'submitted-to-lenders', is_archived: false };
+    expect(isLenderEligibleForAttention(onDeckLender, activeDeal)).toBe(false);
+  });
+
+  it('Contacted lender on Archived deal is not eligible', () => {
+    const contactedLender = { stage: 'Contacted', trackingStatus: 'active', is_archived: false };
+    const archivedDeal = { status: 'archived', stage: 'submitted-to-lenders', is_archived: true };
+    expect(isLenderEligibleForAttention(contactedLender, archivedDeal)).toBe(false);
+  });
+
+  it('On Hold lender on any deal is not eligible', () => {
+    const onHoldLender = { stage: 'On Hold', trackingStatus: 'on-hold', is_archived: false };
+    const activeDeal = { status: 'on-track', stage: 'submitted-to-lenders', is_archived: false };
+    expect(isLenderEligibleForAttention(onHoldLender, activeDeal)).toBe(false);
+  });
 });

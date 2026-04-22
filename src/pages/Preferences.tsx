@@ -24,6 +24,7 @@ import { NotificationSettings } from '@/components/settings/NotificationSettings
 import { UserNotificationSettings } from '@/components/settings/UserNotificationSettings';
 import { MorningDigestSettings } from '@/components/settings/MorningDigestSettings';
 import { SuggestionSettings } from '@/components/settings/SuggestionSettings';
+import { PerUserStaleThresholdSettings } from '@/components/settings/PerUserStaleThresholdSettings';
 import { useLenderStages } from '@/contexts/LenderStagesContext';
 import { useCompany } from '@/hooks/useCompany';
 import { cn } from '@/lib/utils';
@@ -186,6 +187,7 @@ export default function Preferences() {
                 {/* Notifications Tab */}
                 <TabsContent value="notifications" className="space-y-4 mt-4">
                   {isVisible('notifications') && <MorningDigestSettings />}
+                  {isVisible('notifications') && <PerUserStaleThresholdSettings />}
                   {isVisible('notifications') && <UserNotificationSettings />}
                   {isVisible('notifications') && <NotificationSettings />}
                   {isVisible('suggestions') && <SuggestionSettings />}
