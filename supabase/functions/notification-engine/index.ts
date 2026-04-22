@@ -501,7 +501,7 @@ serve(async (req) => {
               status: "sent",
               title: renderedTitle,
               body: renderedBody,
-              metadata: { rule_id: rule.id },
+              metadata: { ...auditMeta },
             });
           } else if (channel.channel_type === "email") {
             // Send email via Resend
