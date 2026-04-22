@@ -53,8 +53,8 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
 
   if (sorted.length === 0) {
     return (
-      <div className="pipeline-memo-page rounded-xl py-12 px-4 text-center">
-        <p className="text-[#4a6070] text-sm font-light italic">{emptyMessage}</p>
+      <div className="rounded-xl py-12 px-4 text-center">
+        <p className="text-muted-foreground text-sm italic">{emptyMessage}</p>
       </div>
     );
   }
@@ -65,7 +65,8 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
   return (
     <div
       ref={scrollRef}
-      className="pipeline-memo-page pipeline-memo-scroll -mx-1 px-3 py-5 rounded-xl overflow-y-auto max-h-[78vh]"
+      className="-mx-1 px-3 py-2 overflow-y-auto max-h-[78vh]"
+      style={{ overscrollBehavior: 'contain' }}
     >
       <div className="max-w-[1100px] mx-auto relative" style={{ height: totalHeight }}>
         {items.map(virtualRow => {
@@ -76,7 +77,7 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
               key={deal.id}
               data-index={virtualRow.index}
               ref={virtualizer.measureElement}
-              className="absolute left-0 right-0 pb-5"
+              className="absolute left-0 right-0 pb-3"
               style={{ transform: `translateY(${virtualRow.start}px)` }}
             >
               <PipelineMemoCard
