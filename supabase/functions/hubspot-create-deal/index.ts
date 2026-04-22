@@ -24,6 +24,70 @@ interface StageResolution {
 }
 
 /**
+ * Resolve a naitive deal_owner / manager value to a HubSpot owner id.
+ * Handles three input shapes:
+ *   1. Numeric HubSpot owner id stored directly (e.g. "644662541")
+ *   2. Email address (matched against HubSpot owner email)
+ *   3. Display name (matched against profiles.display_name → email → HubSpot owner)
+ *
+ * Returns { ownerId, resolvedVia, unresolved } where unresolved=true means we
+ * could not map the value and the caller should fall back + log an error.
+ */
+async function resolveHubSpotOwner(
+  supabase: any,
+  rawValue: string | null | undefined,
+  accessToken: string,
+): Promise<{ ownerId: string | null; resolvedVia: string; unresolved: boolean; rawValue: string | null }> {
+  const value = (rawValue ?? '').toString().trim();
+  if (!value) return { ownerId: null, resolvedVia: 'empty', unresolved: false, rawValue: null };
+
+  // 1. Numeric → assume it's already a HubSpot owner id
+  if (/^\d+$/.test(value)) {
+    return { ownerId: value, resolvedVia: 'numeric_id', unresolved: false, rawValue: value };
+  }
+
+  // 2. Looks like an email
+  let candidateEmail: string | null = null;
+  if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)) {
+    candidateEmail = value.toLowerCase();
+  } else {
+    // 3. Display name → look up via profiles
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email, display_name')
+      .ilike('display_name', value)
+      .maybeSingle();
+    if (profile?.email) candidateEmail = profile.email.toLowerCase();
+  }
+
+  if (!candidateEmail) {
+    return { ownerId: null, resolvedVia: 'no_match', unresolved: true, rawValue: value };
+  }
+
+  // Look up owner by email in HubSpot
+  try {
+    const res = await fetch(
+      `https://api.hubapi.com/crm/v3/owners?email=${encodeURIComponent(candidateEmail)}&limit=1`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    if (!res.ok) {
+      await res.text();
+      return { ownerId: null, resolvedVia: 'api_error', unresolved: true, rawValue: value };
+    }
+    const body = await res.json();
+    const owner = (body.results ?? [])[0];
+    if (owner?.id) {
+      return { ownerId: String(owner.id), resolvedVia: 'email_match', unresolved: false, rawValue: value };
+    }
+    return { ownerId: null, resolvedVia: 'no_hubspot_owner', unresolved: true, rawValue: value };
+  } catch {
+    return { ownerId: null, resolvedVia: 'fetch_failed', unresolved: true, rawValue: value };
+  }
+}
+
+const FALLBACK_OWNER_ID = Deno.env.get('HUBSPOT_FALLBACK_OWNER_ID') || '42024321'; // jturner@5thline.co
+
+/**
  * Resolve HubSpot pipeline + stage:
  * 1. Try the hubspot_pipeline_stage_map DB table (preferred — explicit per-company config).
  * 2. Fall back to fetching HubSpot pipelines and matching stage labels case-insensitively.
