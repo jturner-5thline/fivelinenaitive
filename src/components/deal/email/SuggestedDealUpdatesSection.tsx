@@ -149,9 +149,14 @@ export function SuggestedDealUpdatesSection({ dealId, dealName, threadId }: Prop
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }, [resolutionsMap, threadId]);
 
-  // Always render the header (so the toggle is reachable). Cards only render when present.
+  // Only render the section when there is at least one actual suggested update
+  // or a pending deal-picker resolution. When empty, hide the entire section
+  // (heading, settings toggle, and helper text) so the AI Assist sidebar
+  // doesn't show a "None right now…" placeholder.
   const hasItems = suggestions.length > 0 || pendingResolutions.length > 0;
   const totalCount = suggestions.length;
+
+  if (!hasItems) return null;
 
   return (
     <div>
@@ -192,14 +197,6 @@ export function SuggestedDealUpdatesSection({ dealId, dealName, threadId }: Prop
           </PopoverContent>
         </Popover>
       </div>
-
-      {!hasItems && (
-        <div className="rounded-md border border-dashed border-white/[0.06] bg-background/20 px-3 py-2.5">
-          <p className="text-[11px] text-muted-foreground/70 leading-snug">
-            None right now. We'll surface contact captures and client Q&A responses here as they're detected.
-          </p>
-        </div>
-      )}
 
       {pendingResolutions.length > 0 && (
         <div className="space-y-2 mb-2">
