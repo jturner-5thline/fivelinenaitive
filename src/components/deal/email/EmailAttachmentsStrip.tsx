@@ -577,14 +577,14 @@ export function EmailAttachmentsStrip({
             <PopoverContent
               align="end"
               side="bottom"
-              className="p-2 w-[320px] max-h-[60vh] overflow-y-auto"
+              className="p-2 w-[380px] max-h-[60vh] overflow-y-auto"
             >
               <div className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 flex items-center gap-1">
                 <Paperclip className="h-3 w-3" />
                 <span>All attachments · {aggregated.length}</span>
               </div>
-              <div className="flex flex-col gap-1">
-                {aggregated.map((item) => renderChip(item))}
+              <div className="flex flex-col gap-1.5">
+                {aggregated.map((item) => renderOverflowRow(item))}
               </div>
             </PopoverContent>
           </Popover>
