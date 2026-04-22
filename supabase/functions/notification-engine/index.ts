@@ -392,7 +392,8 @@ serve(async (req) => {
     }
 
     // 2. Resolve recipients
-    const recipients = await resolveRecipients(supabase, rule as NotificationRule, context, actorUserId);
+    const recipientMap = await resolveRecipients(supabase, rule as NotificationRule, context, actorUserId);
+    const recipients = Array.from(recipientMap.keys());
 
     if (recipients.length === 0) {
       return new Response(
