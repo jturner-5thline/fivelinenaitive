@@ -553,6 +553,8 @@ function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onN
   const { data, isLoading } = useEmailData(enabled, targetUserId);
   const [detail, setDetail] = useState<any>(null);
   const [subTab, setSubTab] = useState<EmailCategoryTab>('all');
+  // Default to unread-only on every open of the Email tab.
+  const [unreadOnly, setUnreadOnly] = useState<boolean>(true);
   const { entities: classifierEntities, orgCtx } = useEmailClassifierData();
   const { evaluate: evaluateAutoLabels } = useAutoEmailLabelEvaluator();
 
@@ -560,12 +562,16 @@ function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onN
 
   const { emails } = data;
 
+  // Apply the unread-only visibility filter BEFORE classification/grouping
+  // so counts, groupings, and the rendered list all stay consistent.
+  const visibleEmails = unreadOnly ? emails.filter((e: any) => !e.is_read) : emails;
+
   // Classify each email once
-  const classified = emails.map((e: any) => ({ email: e, cats: classifyEmail(e, classifierEntities, orgCtx) }));
+  const classified = visibleEmails.map((e: any) => ({ email: e, cats: classifyEmail(e, classifierEntities, orgCtx) }));
 
   // Counts per sub-tab
   const counts: Record<EmailCategoryTab, number> = {
-    all: emails.length,
+    all: visibleEmails.length,
     clients_deals: classified.filter(c => c.cats.includes('clients_deals')).length,
     asana_projects: classified.filter(c => c.cats.includes('asana_projects')).length,
     calendar: classified.filter(c => c.cats.includes('calendar')).length,
@@ -573,15 +579,22 @@ function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onN
 
   // Filtered list
   const filtered = subTab === 'all'
-    ? emails
+    ? visibleEmails
     : classified.filter(c => c.cats.includes(subTab)).map(c => c.email);
 
-  const EMPTY_MESSAGES: Record<EmailCategoryTab, string> = {
-    all: 'No emails found in this window.',
-    clients_deals: 'No client or deal emails since yesterday.',
-    asana_projects: 'No Asana emails since yesterday.',
-    calendar: 'No calendar notifications since yesterday.',
-  };
+  const EMPTY_MESSAGES: Record<EmailCategoryTab, string> = unreadOnly
+    ? {
+        all: 'No unread emails in this window.',
+        clients_deals: 'No unread client or deal emails in this section.',
+        asana_projects: 'No unread Asana emails in this section.',
+        calendar: 'No unread calendar notifications in this section.',
+      }
+    : {
+        all: 'No emails found in this window.',
+        clients_deals: 'No client or deal emails since yesterday.',
+        asana_projects: 'No Asana emails since yesterday.',
+        calendar: 'No calendar notifications since yesterday.',
+      };
 
   return (
     <div className="relative h-full">
@@ -622,6 +635,40 @@ function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onN
             </span>
           </button>
         ))}
+
+        {/* Unread / All segmented control — applies across every sub-tab */}
+        <div
+          className="ml-auto inline-flex items-center rounded-full border border-border/40 bg-white/[0.03] p-0.5"
+          role="group"
+          aria-label="Filter emails by read state"
+        >
+          <button
+            type="button"
+            onClick={() => setUnreadOnly(true)}
+            aria-pressed={unreadOnly}
+            className={cn(
+              'px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors',
+              unreadOnly
+                ? 'bg-primary/20 text-primary'
+                : 'text-muted-foreground/70 hover:text-foreground/80',
+            )}
+          >
+            Unread only
+          </button>
+          <button
+            type="button"
+            onClick={() => setUnreadOnly(false)}
+            aria-pressed={!unreadOnly}
+            className={cn(
+              'px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors',
+              !unreadOnly
+                ? 'bg-primary/20 text-primary'
+                : 'text-muted-foreground/70 hover:text-foreground/80',
+            )}
+          >
+            All emails
+          </button>
+        </div>
       </div>
 
       {/* Email list */}
