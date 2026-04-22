@@ -415,9 +415,9 @@ export default function Dashboard() {
               : 'grid-cols-3';
             return (
           <>
-          <div className={`grid gap-3 md:gap-4 ${gridColsClass}`}>
+          <div className={`grid items-stretch gap-3 md:gap-4 ${gridColsClass}`}>
             <Card
-              className={cn(TILE_INTERACTIVE_CLASSES, isJTurner && 'order-1')}
+              className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-1')}
               onClick={(e) => openCarouselWidget('calendar', e.currentTarget as HTMLElement)}
               role="button"
               tabIndex={0}
@@ -427,7 +427,7 @@ export default function Dashboard() {
                 )
               }
             >
-              <div className="flex flex-col items-center text-center space-y-3">
+              <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
                 <div className="relative h-12 w-12 rounded-xl border border-primary/30 bg-primary/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
                   <CalendarIcon className="relative z-10 h-7 w-7 text-primary" />
                 </div>
