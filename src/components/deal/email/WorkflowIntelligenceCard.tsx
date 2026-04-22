@@ -467,46 +467,39 @@ export function WorkflowIntelligenceCard({
                   </div>
                 )}
 
-                <div className="space-y-1">
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Note
-                  </label>
-                  <Input
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    className="h-8 text-[11px]"
-                    placeholder="Reason / context for this update"
-                  />
-                </div>
+                <Input
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  className="h-7 text-[11px]"
+                  placeholder="Add a note (optional)"
+                />
 
                 {willAutoLinkThread && (
-                  <div className="flex items-start gap-1.5 text-[10px] text-primary/80 bg-primary/[0.05] rounded p-2">
-                    <Link2 className="h-3 w-3 mt-0.5 shrink-0" />
-                    <span>
-                      This thread isn't linked to {analysis.likely_deal.name} yet — confirming will
-                      apply the update on that deal directly.
+                  <div className="flex items-center gap-1 text-[10px] text-primary/80 line-clamp-1">
+                    <Link2 className="h-2.5 w-2.5 shrink-0" />
+                    <span className="truncate">
+                      Will auto-link this thread to {analysis.likely_deal.name}.
                     </span>
                   </div>
                 )}
 
                 {willAutoLink && (
-                  <div className="flex items-start gap-1.5 text-[10px] text-primary/80 bg-primary/[0.05] rounded p-2">
-                    <Link2 className="h-3 w-3 mt-0.5 shrink-0" />
-                    <span>
-                      {rec.lender_name || 'This lender'} isn't on this deal yet — confirming will
-                      auto-link them and apply the update in one step.
+                  <div className="flex items-center gap-1 text-[10px] text-primary/80 line-clamp-1">
+                    <Link2 className="h-2.5 w-2.5 shrink-0" />
+                    <span className="truncate">
+                      Will auto-add {rec.lender_name || 'this lender'} to the deal.
                     </span>
                   </div>
                 )}
 
                 {isLenderStatus && !lenderResolvable && (
-                  <div className="flex items-start gap-1.5 text-[10px] text-amber-300/90 bg-amber-500/[0.04] rounded p-2">
-                    <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
-                    <span>Lender match is uncertain. Add the lender to the deal manually, then retry.</span>
+                  <div className="flex items-center gap-1 text-[10px] text-amber-300/90">
+                    <AlertCircle className="h-2.5 w-2.5 shrink-0" />
+                    <span className="truncate">Lender uncertain — add manually, then retry.</span>
                   </div>
                 )}
 
-                <div className="flex items-center gap-1.5 pt-1">
+                <div className="flex items-center gap-1">
                   <Button
                     size="sm"
                     className="h-7 px-2 text-[11px] gap-1 flex-1"
@@ -519,15 +512,15 @@ export function WorkflowIntelligenceCard({
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-7 px-2 text-[11px] text-muted-foreground"
+                    className="h-7 px-1.5 text-[11px] text-muted-foreground"
                     onClick={onMaybeLater}
                   >
-                    Maybe later
+                    Later
                   </Button>
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-7 w-7 p-0 text-muted-foreground"
+                    className="h-7 w-6 p-0 text-muted-foreground"
                     onClick={onDismiss}
                     title="Dismiss"
                   >
@@ -542,7 +535,7 @@ export function WorkflowIntelligenceCard({
             )}
 
             {analysis.secondary_action.kind !== 'none' && analysis.secondary_action.title && (
-              <p className="text-[10px] text-muted-foreground/80 pt-1 border-t border-primary/10">
+              <p className="text-[10px] text-muted-foreground/80 pt-1 border-t border-primary/10 line-clamp-1">
                 Also consider: <span className="text-foreground/70">{analysis.secondary_action.title}</span>
               </p>
             )}
