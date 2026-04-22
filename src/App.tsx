@@ -134,6 +134,7 @@ const App = () => (
                       <WelcomeScreenWrapper />
                       <Toaster />
                       <Sonner />
+                      <WorkflowEmailModalListener />
                       
                       <BrowserRouter>
                         <ScrollToTop />
