@@ -9,6 +9,7 @@ import {
   File as FileIconLucide,
   Loader2,
   ChevronDown,
+  ExternalLink,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
