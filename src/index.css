@@ -275,6 +275,15 @@
   color: hsl(var(--email-text-primary)) !important;
   background-color: transparent !important;
   background-image: none !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+.email-html-body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .email-html-body p,
@@ -358,6 +367,13 @@
   width: 100% !important;
   border-collapse: collapse;
   table-layout: fixed;
+}
+
+.email-html-body pre,
+.email-html-body code,
+.email-html-body table,
+.email-html-body img {
+  max-width: 100% !important;
 }
 
 .email-html-body a,
