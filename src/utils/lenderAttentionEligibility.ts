@@ -33,6 +33,14 @@ export const EXCLUDED_DEAL_STATUSES_NORMALIZED = new Set<string>([
   'on-hold',
   'on_hold',
   'archived',
+  'closed won',
+  'closed-won',
+  'closed_won',
+  'won',
+  'closed lost',
+  'closed-lost',
+  'closed_lost',
+  'lost',
 ]);
 
 function norm(value: unknown): string {
@@ -71,8 +79,8 @@ export function isLenderEligibleForAttention(
   const dealStatus = norm(deal.status);
   const dealStage = norm(deal.stage);
   if (EXCLUDED_DEAL_STATUSES_NORMALIZED.has(dealStatus)) return false;
-  // Defensive: deal stage occasionally encodes on-hold
-  if (dealStage === 'on-hold' || dealStage === 'on hold' || dealStage === 'on_hold') return false;
+  // Defensive: deal stage occasionally encodes status-like values (on-hold, closed-won, closed-lost)
+  if (EXCLUDED_DEAL_STATUSES_NORMALIZED.has(dealStage)) return false;
 
   return true;
 }

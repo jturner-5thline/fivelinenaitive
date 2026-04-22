@@ -108,11 +108,18 @@ export function PerUserStaleThresholdSettings() {
 
         <div className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/5 p-3 text-xs text-muted-foreground">
           <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
-          <p>
-            Lenders in <strong>On Deck</strong> or <strong>On Hold</strong> stages, and lenders on
-            <strong> On Hold</strong> or <strong>Archived</strong> deals, are excluded from all stale-alert
-            notifications.
-          </p>
+          <div className="space-y-1.5">
+            <p>
+              No stale-activity reminders are sent for deals in
+              <strong> On Hold</strong>, <strong>Archived</strong>, <strong>Closed Won</strong>, or
+              <strong> Closed Lost</strong>. This applies to both deal-level and lender-level alerts
+              (email, in-platform, and the morning / attention digests).
+            </p>
+            <p>
+              Lenders in <strong>On Deck</strong> or <strong>On Hold</strong> stages are also excluded
+              from stale-lender reminders.
+            </p>
+          </div>
         </div>
 
         <div className="flex justify-end">
