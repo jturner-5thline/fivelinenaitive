@@ -754,10 +754,3 @@
     }
   }
 }
-
-/* ═══════════════════════════════════════════════════════════════
-   Pipeline Memo (Daily Briefing → Pipeline & Clients → Memo view)
-   Glass-morphism deal memo design tokens. Self-contained — does
-   not affect any other surface. Light values match the spec
-   exactly (rgba whites, blur 18px, soft blue gradient page bg).
-   ═══════════════════════════════════════════════════════════════ */
