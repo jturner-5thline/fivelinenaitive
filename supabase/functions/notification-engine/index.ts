@@ -546,7 +546,7 @@ serve(async (req) => {
                 title: renderedSubject,
                 body: renderedBody,
                 error_message: emailError ? String(emailError) : null,
-                metadata: { rule_id: rule.id, to: recipientProfile.email },
+                metadata: { ...auditMeta, to: recipientProfile.email },
               });
             } else {
               // Log as skipped if no email config
