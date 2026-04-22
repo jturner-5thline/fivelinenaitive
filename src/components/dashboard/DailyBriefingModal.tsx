@@ -32,7 +32,7 @@ import { AiAssistInlinePanel } from '@/components/deal/email/AiAssistInlinePanel
 import { EmailBodyRenderer } from '@/components/deal/email/EmailBodyRenderer';
 import { useFullEmailMessage, useFullEmailThread } from '@/components/deal/email/useFullEmailMessage';
 import type { EmailThread, MockEmail } from '@/components/deal/email/mockEmailData';
-import { EmailAttachmentsStrip } from '@/components/deal/email/EmailAttachmentsStrip';
+import { EmailAttachmentsStrip, detectAttachmentFallbackReason } from '@/components/deal/email/EmailAttachmentsStrip';
 
 interface DailyBriefingModalProps {
   open: boolean;
@@ -666,6 +666,10 @@ function BriefingEmailDetailPane({
           },
         ],
   };
+  const attachmentFallbackReason = detectAttachmentFallbackReason(stripThread.emails);
+  const shouldRenderAttachmentsRow =
+    stripThread.emails.some((threadEmail) => threadEmail.has_attachments || (threadEmail.attachments?.length ?? 0) > 0) ||
+    !!attachmentFallbackReason;
 
   return (
     <div className="flex flex-col h-full min-h-0 rounded-xl border border-border/40 bg-white/[0.02] overflow-hidden">
@@ -694,12 +698,6 @@ function BriefingEmailDetailPane({
             )}
           </div>
         </div>
-        {/* Inline thread attachments — rendered in the same header action row
-            so they're the primary surface for opening files (one click, no
-            scrolling into the body). */}
-        <div className="hidden sm:flex items-center min-w-0 max-w-[55%] shrink">
-          <EmailAttachmentsStrip thread={stripThread} variant="inline" maxInline={2} />
-        </div>
         <Button
           size="sm"
           variant="outline"
@@ -710,13 +708,14 @@ function BriefingEmailDetailPane({
         </Button>
       </div>
 
-      {/* Mobile-only fallback: on narrow widths the header chips are hidden
-          to preserve the title/Open-in-Intelligence pairing, so we render the
-          full block strip directly below the header instead. */}
-      {(stripThread.emails[0].attachments?.some((a) => !a.is_inline) ||
-        stripThread.emails[0].has_attachments) && (
-        <div className="px-4 pt-3 sm:hidden">
-          <EmailAttachmentsStrip thread={stripThread} />
+      {shouldRenderAttachmentsRow && (
+        <div className="px-4 py-3 border-b border-border/30 bg-card/20">
+          <EmailAttachmentsStrip
+            thread={stripThread}
+            forceVisible
+            loadingOverride={loading || threadLoading}
+            fallbackReason={attachmentFallbackReason}
+          />
         </div>
       )}
 
