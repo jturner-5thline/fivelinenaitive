@@ -9,6 +9,7 @@ import {
   File as FileIconLucide,
   Loader2,
   ChevronDown,
+  ExternalLink,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -24,7 +25,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import type { EmailAttachment, EmailThread, MockEmail } from './mockEmailData';
-import { downloadAttachment, fetchFullEmailMessage } from './useFullEmailMessage';
+import { downloadAttachment, fetchFullEmailMessage, openAttachmentInNewTab } from './useFullEmailMessage';
 
 /**
  * EmailAttachmentsStrip
@@ -248,6 +249,7 @@ export function EmailAttachmentsStrip({
   const emails = thread.emails;
   const { attachmentsByMessage, loading, unresolvedCount, debug } = useResolvedThreadAttachments(emails);
   const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
+  const [openingKey, setOpeningKey] = useState<string | null>(null);
 
   // Build the aggregated, newest-first list with version ranking by filename.
   const aggregated = useMemo<AggregatedAttachment[]>(() => {
@@ -319,6 +321,23 @@ export function EmailAttachmentsStrip({
       toast.error(e?.message || 'Failed to open attachment');
     } finally {
       setDownloadingKey(null);
+    }
+  };
+
+  const handlePreview = async (item: AggregatedAttachment) => {
+    const att = item.attachment;
+    if (!att.id) {
+      toast.error('Attachment unavailable');
+      return;
+    }
+    const key = `${item.source.id}:${att.id}`;
+    setOpeningKey(key);
+    try {
+      await openAttachmentInNewTab(item.source.id, att);
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to open attachment');
+    } finally {
+      setOpeningKey(null);
     }
   };
 
@@ -418,6 +437,97 @@ export function EmailAttachmentsStrip({
     );
   };
 
+  // Rich row used inside the "+N more" overflow popover. Shows the full,
+  // wrapping filename with explicit type, size, sender, and timestamp metadata
+  // plus separate one-click Open (preview in new tab) and Download actions
+  // for every attachment.
+  const renderOverflowRow = (item: AggregatedAttachment) => {
+    const att = item.attachment;
+    const filename = att.filename || 'Untitled attachment';
+    const Icon = iconForType(att.content_type, filename);
+    const label = fileLabel(filename, att.content_type);
+    const sizeLabel = formatBytes(att.size);
+    const key = `${item.source.id}:${att.id || filename}`;
+    const isDownloading = downloadingKey === key;
+    const isOpening = openingKey === key;
+    const sender = item.source.from_name || item.source.from_email || 'Unknown';
+    const ts = item.source.received_at
+      ? format(new Date(item.source.received_at), "MMM d, yyyy 'at' h:mm a")
+      : '';
+    const disabled = !att.id;
+
+    return (
+      <div
+        key={key}
+        className={cn(
+          'group flex items-start gap-2.5 rounded-md border border-border/50 bg-background/40',
+          'p-2 hover:bg-background/70 hover:border-primary/30 transition-colors',
+          item.isOlder && 'opacity-90',
+        )}
+      >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-muted/40 border border-border/40">
+          <Icon className="h-4 w-4 text-foreground/70" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="text-[12px] font-medium text-foreground break-all leading-snug">
+            {filename}
+          </div>
+          <div className="mt-0.5 text-[10.5px] text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-0.5 leading-tight">
+            <span className="font-medium text-foreground/70">{label}</span>
+            {sizeLabel && (<><span>·</span><span>{sizeLabel}</span></>)}
+            <span>·</span>
+            <span className="truncate max-w-[160px]">From {sender}</span>
+            {ts && (<><span>·</span><span>{ts}</span></>)}
+            {item.isOlder && (
+              <>
+                <span>·</span>
+                <span className="text-amber-400/80">Older v{item.versionRank}</span>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <Tooltip delayDuration={200}>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => handlePreview(item)}
+                disabled={disabled || isOpening || isDownloading}
+                className={cn(
+                  'inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/50 bg-background/40',
+                  'hover:bg-background/70 hover:border-primary/40 text-foreground/70 hover:text-primary',
+                  'transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+                )}
+                aria-label={`Open ${filename} in new tab`}
+              >
+                {isOpening ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-[11px]">Open in new tab</TooltipContent>
+          </Tooltip>
+          <Tooltip delayDuration={200}>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => handleOpen(item)}
+                disabled={disabled || isOpening || isDownloading}
+                className={cn(
+                  'inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/50 bg-background/40',
+                  'hover:bg-background/70 hover:border-primary/40 text-foreground/70 hover:text-primary',
+                  'transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+                )}
+                aria-label={`Download ${filename}`}
+              >
+                {isDownloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-[11px]">Download</TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+    );
+  };
+
   // ── Inline variant ──────────────────────────────────────────────
   // Renders compact chips directly into a host action/command row.
   // Shows up to `maxInline` chips inline, then a "+N more" popover.
@@ -467,14 +577,14 @@ export function EmailAttachmentsStrip({
             <PopoverContent
               align="end"
               side="bottom"
-              className="p-2 w-[320px] max-h-[60vh] overflow-y-auto"
+              className="p-2 w-[380px] max-h-[60vh] overflow-y-auto"
             >
               <div className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 flex items-center gap-1">
                 <Paperclip className="h-3 w-3" />
                 <span>All attachments · {aggregated.length}</span>
               </div>
-              <div className="flex flex-col gap-1">
-                {aggregated.map((item) => renderChip(item))}
+              <div className="flex flex-col gap-1.5">
+                {aggregated.map((item) => renderOverflowRow(item))}
               </div>
             </PopoverContent>
           </Popover>
