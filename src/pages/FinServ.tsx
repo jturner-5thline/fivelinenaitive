@@ -7,10 +7,18 @@ import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Deal, DealStatus } from '@/types/deal';
 import { DealStageOption } from '@/contexts/DealStagesContext';
-import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
+import { FinServCreateDealDialog, FINSERV_OWNERS } from '@/components/finserv/FinServCreateDealDialog';
 import { DealCard } from '@/components/deals/DealCard';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -40,7 +48,24 @@ function DraggableCard({ deal, onStatusChange, isDragging }: {
   const style = { transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.5 : 1 };
 
   return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="touch-none w-full min-w-0">
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={cn(
+        'touch-none w-full min-w-0 relative',
+        deal.onHold && 'opacity-60',
+      )}
+    >
+      {deal.onHold && (
+        <Badge
+          variant="amber"
+          className="absolute top-2 right-2 z-10 text-[10px] px-1.5 py-0.5 pointer-events-none"
+        >
+          On Hold
+        </Badge>
+      )}
       <DealCard deal={deal} onStatusChange={onStatusChange} compact hideStatus />
     </div>
   );
