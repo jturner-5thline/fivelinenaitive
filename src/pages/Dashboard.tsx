@@ -19,6 +19,8 @@ import { PresetManager } from '@/components/dashboard/PresetManager';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { AddWidgetDialog } from '@/components/dashboard/AddWidgetDialog';
 import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
+import { EmailIntelligenceWidget } from '@/components/dashboard/EmailIntelligenceWidget';
+import { cn } from '@/lib/utils';
 
 /**
  * Shared interaction styles for the dashboard widget tiles
