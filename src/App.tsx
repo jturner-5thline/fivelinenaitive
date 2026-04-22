@@ -129,6 +129,7 @@ const App = () => (
                     <DashboardLayoutProvider>
                     <TooltipProvider>
                       <CopyProtection>
+                      <UndoSendProvider>
                       <WelcomeScreenWrapper />
                       <Toaster />
                       <Sonner />
