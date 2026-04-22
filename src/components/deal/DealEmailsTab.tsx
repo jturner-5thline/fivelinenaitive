@@ -262,7 +262,10 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     if (railHoverTimer.current) clearTimeout(railHoverTimer.current);
   }, []);
 
-  const inboxWidth = liveInboxWidth ?? savedInboxWidth;
+  const rawInboxWidth = liveInboxWidth ?? savedInboxWidth;
+  // Clamp persisted preferences to the current allowed range so older
+  // wider values don't survive the 30% reduction.
+  const inboxWidth = Math.max(MIN_INBOX_WIDTH, Math.min(MAX_INBOX_WIDTH, rawInboxWidth));
 
   const [isResizing, setIsResizing] = useState(false);
 
