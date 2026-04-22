@@ -241,6 +241,24 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
 
   const Req = () => <span className="text-destructive">*</span>;
 
+  const SectionHeader = ({ children }: { children: React.ReactNode }) => (
+    <div className="col-span-12 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mt-5 mb-2 first:mt-0">
+      {children}
+    </div>
+  );
+
+  const Helper = ({ children }: { children?: React.ReactNode }) => (
+    <p className="text-[12px] leading-4 text-muted-foreground mt-1 h-4 truncate">{children ?? '\u00A0'}</p>
+  );
+
+  const FieldLabel = ({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) => (
+    <Label htmlFor={htmlFor} className="text-sm font-medium mb-1.5 block leading-5">
+      {children}
+    </Label>
+  );
+
+  const showReferral = leadSource === 'Referral';
+
   return (
     <Dialog
       open={open}
@@ -250,49 +268,57 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
       }}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-[760px] max-h-[90vh] overflow-hidden flex flex-col p-0">
+      <DialogContent className="sm:max-w-[760px] lg:max-w-[960px] max-h-[90vh] overflow-hidden flex flex-col p-0">
         <DialogHeader className="px-6 pt-5 pb-3 border-b">
           <DialogTitle>Create New Deal</DialogTitle>
           <DialogDescription>Add a deal to the FinServ pipeline.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-          <div className="flex-1 overflow-y-auto px-6 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* 1. Company Name */}
-              <div className="grid gap-1.5">
-                <Label htmlFor="companyName">Company Name <Req /></Label>
+          <div className="flex-1 overflow-y-auto px-6 pt-6 pb-4">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-y-3.5 gap-x-4 [grid-auto-rows:min-content] items-start">
+              {/* ── Section 1 — Company ── */}
+              <SectionHeader>Company</SectionHeader>
+
+              <div className="md:col-span-6">
+                <FieldLabel htmlFor="companyName">Company Name <Req /></FieldLabel>
                 <Input
                   id="companyName"
                   value={companyName}
                   onChange={e => setCompanyName(e.target.value)}
                   maxLength={120}
                   placeholder="Enter company name"
+                  className="h-10"
                 />
-                <FieldError name="companyName" />
+                <Helper>{errors.companyName ? <span className="text-destructive">{errors.companyName}</span> : null}</Helper>
               </div>
 
-              {/* 2. Primary Contact */}
-              <div className="grid gap-1.5">
-                <Label htmlFor="primaryContact">Primary Contact <Req /></Label>
+              <div className="md:col-span-6">
+                <FieldLabel htmlFor="primaryContact">Primary Contact <Req /></FieldLabel>
                 <Input
                   id="primaryContact"
                   value={primaryContact}
                   onChange={e => setPrimaryContact(e.target.value)}
                   maxLength={120}
                   placeholder="e.g., Jane Doe"
+                  className="h-10"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Name of the key person at the company (not just the company itself).
-                </p>
-                <FieldError name="primaryContact" />
+                <Helper>
+                  {errors.primaryContact ? (
+                    <span className="text-destructive">{errors.primaryContact}</span>
+                  ) : (
+                    'Name of the key person at the company (not just the company itself).'
+                  )}
+                </Helper>
               </div>
 
-              {/* 3. Lead Source */}
-              <div className="grid gap-1.5">
-                <Label>Lead Source <Req /></Label>
+              {/* ── Section 2 — Source ── */}
+              <SectionHeader>Source</SectionHeader>
+
+              <div className={showReferral ? 'md:col-span-4' : 'md:col-span-6'}>
+                <FieldLabel>Lead Source <Req /></FieldLabel>
                 <Select value={leadSource} onValueChange={setLeadSource}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-10">
                     <SelectValue placeholder="Select lead source" />
                   </SelectTrigger>
                   <SelectContent>
@@ -301,31 +327,34 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
                     ))}
                   </SelectContent>
                 </Select>
-                <FieldError name="leadSource" />
+                <Helper>{errors.leadSource ? <span className="text-destructive">{errors.leadSource}</span> : null}</Helper>
               </div>
 
-              {/* 4. Referral Source */}
-              <div className="grid gap-1.5">
-                <Label htmlFor="referralSource">
-                  Referral Source {leadSource === 'Referral' && <Req />}
-                </Label>
-                <Input
-                  id="referralSource"
-                  value={referralSource}
-                  onChange={e => setReferralSource(e.target.value)}
-                  maxLength={200}
-                  placeholder="Who referred this opportunity"
-                  disabled={leadSource !== '' && leadSource !== 'Referral' ? false : false}
-                />
-                <p className="text-xs text-muted-foreground">Who specifically referred this opportunity.</p>
-                <FieldError name="referralSource" />
-              </div>
+              {showReferral && (
+                <div className="md:col-span-8">
+                  <FieldLabel htmlFor="referralSource">Referral Source <Req /></FieldLabel>
+                  <Input
+                    id="referralSource"
+                    value={referralSource}
+                    onChange={e => setReferralSource(e.target.value)}
+                    maxLength={200}
+                    placeholder="Who referred this opportunity"
+                    className="h-10"
+                  />
+                  <Helper>
+                    {errors.referralSource ? (
+                      <span className="text-destructive">{errors.referralSource}</span>
+                    ) : (
+                      'Who specifically referred this opportunity.'
+                    )}
+                  </Helper>
+                </div>
+              )}
 
-              {/* 5. Opportunity Type */}
-              <div className="grid gap-1.5 md:col-span-2">
-                <Label>Opportunity Type <Req /></Label>
+              <div className="md:col-span-6">
+                <FieldLabel>Opportunity Type <Req /></FieldLabel>
                 <Select value={opportunityType} onValueChange={setOpportunityType}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-10">
                     <SelectValue placeholder="Select opportunity type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -334,174 +363,13 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
                     ))}
                   </SelectContent>
                 </Select>
-                <FieldError name="opportunityType" />
+                <Helper>{errors.opportunityType ? <span className="text-destructive">{errors.opportunityType}</span> : null}</Helper>
               </div>
 
-              {/* 6. Services Offered (multi-chip) */}
-              <div className="grid gap-1.5 md:col-span-2">
-                <Label>Services Offered <Req /></Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full justify-between font-normal h-auto min-h-9 py-1.5"
-                    >
-                      {servicesOffered.length > 0 ? (
-                        <span className="flex flex-wrap gap-1">
-                          {servicesOffered.map(s => (
-                            <Badge key={s} variant="secondary" className="text-xs gap-1">
-                              {s}
-                              <X
-                                className="h-3 w-3 cursor-pointer hover:text-destructive"
-                                onClick={e => {
-                                  e.stopPropagation();
-                                  toggleService(s);
-                                }}
-                              />
-                            </Badge>
-                          ))}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">Select services</span>
-                      )}
-                      <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[400px] p-2" align="start">
-                    <div className="space-y-1">
-                      {SERVICES.map(svc => {
-                        const checked = servicesOffered.includes(svc);
-                        return (
-                          <button
-                            key={svc}
-                            type="button"
-                            className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-muted/50 text-left"
-                            onClick={() => toggleService(svc)}
-                          >
-                            <Checkbox checked={checked} className="pointer-events-none" />
-                            {svc}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-                <FieldError name="servicesOffered" />
-              </div>
-
-              {/* 7. Fee Type */}
-              <div className="grid gap-1.5">
-                <Label>Fee Type <Req /></Label>
-                <Select value={feeType} onValueChange={setFeeType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select fee type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FEE_TYPES.map(f => (
-                      <SelectItem key={f} value={f}>{f}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FieldError name="feeType" />
-              </div>
-
-              {/* spacer to keep grid aligned */}
-              <div className="hidden md:block" />
-
-              {/* 8. MRR */}
-              <div className="grid gap-1.5">
-                <Label htmlFor="mrr">Monthly Recurring Revenue</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                  <Input
-                    id="mrr"
-                    inputMode="numeric"
-                    value={mrr}
-                    onChange={e => setMrr(formatAmountWithCommas(e.target.value))}
-                    placeholder="0"
-                    className="pl-7"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">If applicable.</p>
-              </div>
-
-              {/* 9. One-Time Revenue */}
-              <div className="grid gap-1.5">
-                <Label htmlFor="oneTimeRevenue">One-Time Revenue</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                  <Input
-                    id="oneTimeRevenue"
-                    inputMode="numeric"
-                    value={oneTimeRevenue}
-                    onChange={e => setOneTimeRevenue(formatAmountWithCommas(e.target.value))}
-                    placeholder="0"
-                    className="pl-7"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">If applicable.</p>
-              </div>
-
-              {/* 10. Projected Close Date */}
-              <div className="grid gap-1.5">
-                <Label>Projected Close Date <Req /></Label>
-                <DateField value={projectedCloseDate} onChange={setProjectedCloseDate} />
-                <p className="text-xs text-muted-foreground">
-                  Expected date deal moves to Closed Won or Lost — used for pipeline forecasting.
-                </p>
-                <FieldError name="projectedCloseDate" />
-              </div>
-
-              {/* spacer */}
-              <div className="hidden md:block" />
-
-              {/* 11. Contract Start Date */}
-              <div className="grid gap-1.5">
-                <Label>Contract Start Date</Label>
-                <DateField value={contractStartDate} onChange={setContractStartDate} />
-              </div>
-
-              {/* 12. Contract End Date */}
-              <div className="grid gap-1.5">
-                <Label>Contract End Date</Label>
-                <DateField value={contractEndDate} onChange={setContractEndDate} />
-                <FieldError name="contractEndDate" />
-              </div>
-
-              {/* 13. Deal Stage */}
-              <div className="grid gap-1.5">
-                <Label>Deal Stage <Req /></Label>
-                <Select value={dealStage} onValueChange={setDealStage}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select stage" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEAL_STAGES.map(s => (
-                      <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FieldError name="dealStage" />
-              </div>
-
-              {/* 14. On Hold */}
-              <div className="grid gap-1.5">
-                <Label htmlFor="onHold">On Hold</Label>
-                <div className="flex items-center gap-3 h-9">
-                  <Switch id="onHold" checked={onHold} onCheckedChange={setOnHold} />
-                  <span className="text-sm text-muted-foreground">{onHold ? 'Yes' : 'No'}</span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Can be set at any stage; preserves stage position while pausing activity.
-                </p>
-              </div>
-
-              {/* 15. Deal Owner */}
-              <div className="grid gap-1.5 md:col-span-2">
-                <Label>Deal Owner <Req /></Label>
+              <div className="md:col-span-6">
+                <FieldLabel>Deal Owner <Req /></FieldLabel>
                 <Select value={dealOwner} onValueChange={setDealOwner}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-10">
                     <SelectValue placeholder="Select owner" />
                   </SelectTrigger>
                   <SelectContent>
@@ -510,7 +378,133 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
                     ))}
                   </SelectContent>
                 </Select>
-                <FieldError name="dealOwner" />
+                <Helper>{errors.dealOwner ? <span className="text-destructive">{errors.dealOwner}</span> : null}</Helper>
+              </div>
+
+              {/* ── Section 3 — Scope & Fees ── */}
+              <SectionHeader>Scope &amp; Fees</SectionHeader>
+
+              <div className="md:col-span-12">
+                <FieldLabel>Services Offered <Req /></FieldLabel>
+                <div className="flex flex-wrap gap-1.5 max-h-[88px] overflow-hidden">
+                  {SERVICES.map(svc => {
+                    const checked = servicesOffered.includes(svc);
+                    return (
+                      <button
+                        key={svc}
+                        type="button"
+                        onClick={() => toggleService(svc)}
+                        className={cn(
+                          'h-8 px-3 rounded-full text-xs font-medium border transition-colors',
+                          checked
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-background text-foreground border-input hover:bg-muted',
+                        )}
+                      >
+                        {svc}
+                      </button>
+                    );
+                  })}
+                </div>
+                <Helper>{errors.servicesOffered ? <span className="text-destructive">{errors.servicesOffered}</span> : null}</Helper>
+              </div>
+
+              <div className="md:col-span-4">
+                <FieldLabel>Fee Type <Req /></FieldLabel>
+                <Select value={feeType} onValueChange={setFeeType}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="Select fee type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FEE_TYPES.map(f => (
+                      <SelectItem key={f} value={f}>{f}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Helper>{errors.feeType ? <span className="text-destructive">{errors.feeType}</span> : null}</Helper>
+              </div>
+
+              <div className="md:col-span-4">
+                <FieldLabel htmlFor="mrr">Monthly Recurring Revenue</FieldLabel>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">$</span>
+                  <Input
+                    id="mrr"
+                    inputMode="numeric"
+                    value={mrr}
+                    onChange={e => setMrr(formatAmountWithCommas(e.target.value))}
+                    placeholder="0"
+                    className="h-10 pl-7"
+                  />
+                </div>
+                <Helper>If applicable.</Helper>
+              </div>
+
+              <div className="md:col-span-4">
+                <FieldLabel htmlFor="oneTimeRevenue">One-Time Revenue</FieldLabel>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">$</span>
+                  <Input
+                    id="oneTimeRevenue"
+                    inputMode="numeric"
+                    value={oneTimeRevenue}
+                    onChange={e => setOneTimeRevenue(formatAmountWithCommas(e.target.value))}
+                    placeholder="0"
+                    className="h-10 pl-7"
+                  />
+                </div>
+                <Helper>If applicable.</Helper>
+              </div>
+
+              {/* ── Section 4 — Dates & Status ── */}
+              <SectionHeader>Dates &amp; Status</SectionHeader>
+
+              <div className="md:col-span-4">
+                <FieldLabel>Projected Close Date <Req /></FieldLabel>
+                <DateField value={projectedCloseDate} onChange={setProjectedCloseDate} />
+                <Helper>
+                  {errors.projectedCloseDate ? (
+                    <span className="text-destructive">{errors.projectedCloseDate}</span>
+                  ) : (
+                    'Used for pipeline forecasting.'
+                  )}
+                </Helper>
+              </div>
+
+              <div className="md:col-span-4">
+                <FieldLabel>Contract Start Date</FieldLabel>
+                <DateField value={contractStartDate} onChange={setContractStartDate} />
+                <Helper />
+              </div>
+
+              <div className="md:col-span-4">
+                <FieldLabel>Contract End Date</FieldLabel>
+                <DateField value={contractEndDate} onChange={setContractEndDate} />
+                <Helper>{errors.contractEndDate ? <span className="text-destructive">{errors.contractEndDate}</span> : null}</Helper>
+              </div>
+
+              <div className="md:col-span-8">
+                <FieldLabel>Deal Stage <Req /></FieldLabel>
+                <Select value={dealStage} onValueChange={setDealStage}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="Select stage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEAL_STAGES.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Helper>{errors.dealStage ? <span className="text-destructive">{errors.dealStage}</span> : null}</Helper>
+              </div>
+
+              <div className="md:col-span-4">
+                <FieldLabel htmlFor="onHold">On Hold</FieldLabel>
+                <div className="h-10 flex items-center justify-between rounded-md border border-input bg-background px-3">
+                  <span className="text-sm text-muted-foreground">{onHold ? 'Yes' : 'No'}</span>
+                  <Switch id="onHold" checked={onHold} onCheckedChange={setOnHold} />
+                </div>
+                <Helper>Preserves stage position while pausing activity.</Helper>
               </div>
             </div>
           </div>
@@ -537,10 +531,13 @@ function DateField({ value, onChange }: { value: Date | undefined; onChange: (d:
         <Button
           type="button"
           variant="outline"
-          className={cn('w-full justify-start text-left font-normal h-9', !value && 'text-muted-foreground')}
+          className={cn(
+            'w-full h-10 justify-between text-left font-normal px-3',
+            !value && 'text-muted-foreground',
+          )}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {value ? format(value, 'PPP') : <span>Pick a date</span>}
+          <span className="truncate">{value ? format(value, 'MMM d, yyyy') : 'Pick a date'}</span>
+          <CalendarIcon className="ml-2 h-4 w-4 opacity-60 shrink-0" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
