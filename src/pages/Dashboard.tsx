@@ -159,6 +159,8 @@ export default function Dashboard() {
   const isJTurner = user?.email === 'jturner@5thline.co';
   const canSeeNiki = canSeeNikiBriefing(user?.email);
   const isNikiViewingHerself = user?.email?.toLowerCase() === NIKI_EMAIL;
+  // 5th Line workspace gating for the Deal Rundown quick-action tile.
+  const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
   const {
     presets,
     activePreset,
@@ -234,8 +236,11 @@ export default function Dashboard() {
         label: isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing",
       });
     }
+    if (is5thLine) {
+      entries.push({ id: 'deal-rundown', label: 'Deal Rundown' });
+    }
     return entries;
-  }, [isJTurner, canSeeNiki, isNikiViewingHerself]);
+  }, [isJTurner, canSeeNiki, isNikiViewingHerself, is5thLine]);
 
   useEffect(() => {
     setCarouselOrder(widgetOrderEntries);
@@ -395,9 +400,10 @@ export default function Dashboard() {
           >
           {(() => {
             // Quick Prompts is now a tile too (4 base tiles).
-            const tileCount = 4 + (isJTurner ? 1 : 0) + (canSeeNiki ? 1 : 0);
+            const tileCount = 4 + (isJTurner ? 1 : 0) + (canSeeNiki ? 1 : 0) + (is5thLine ? 1 : 0);
             const gridColsClass =
-              tileCount >= 6 ? 'grid-cols-3 sm:grid-cols-6'
+              tileCount >= 7 ? 'grid-cols-4 sm:grid-cols-7'
+              : tileCount === 6 ? 'grid-cols-3 sm:grid-cols-6'
               : tileCount === 5 ? 'grid-cols-3 sm:grid-cols-5'
               : tileCount === 4 ? 'grid-cols-2 sm:grid-cols-4'
               : 'grid-cols-3';
@@ -486,6 +492,26 @@ export default function Dashboard() {
                   <span className="text-sm font-medium text-foreground">
                     {isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
                   </span>
+                </div>
+              </Card>
+            )}
+            {is5thLine && (
+              <Card
+                className={TILE_INTERACTIVE_CLASSES}
+                onClick={(e) => openCarouselWidget('deal-rundown', e.currentTarget as HTMLElement)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) =>
+                  handleTileKeyDown(e, () =>
+                    openCarouselWidget('deal-rundown', e.currentTarget as HTMLElement),
+                  )
+                }
+              >
+                <div className="flex flex-col items-center text-center space-y-3">
+                  <div className="relative h-12 w-12 rounded-xl border border-primary/30 bg-primary/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                    <Briefcase className="relative z-10 h-7 w-7 text-primary" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">Deal Rundown</span>
                 </div>
               </Card>
             )}
@@ -656,6 +682,14 @@ export default function Dashboard() {
           targetUserId={NIKI_USER_ID}
           targetAssigneeName={NIKI_ASSIGNEE_NAME}
           excludeTabs={['financial']}
+        />
+      )}
+      {is5thLine && isWidgetActive('deal-rundown') && (
+        <DailyBriefingModal
+          open
+          onOpenChange={handleCarouselDialogOpenChange}
+          title="Deal Rundown"
+          initialTab="pipeline"
         />
       )}
       <WidgetCarouselChrome />
