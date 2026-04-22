@@ -105,7 +105,7 @@ export function VdrThreeColumnWorkspace({
   const dataroomFileInput = useRef<HTMLInputElement>(null);
 
   // Load default categories (Settings-driven via data_room_checklist_categories)
-  const { categories } = useChecklistCategories();
+  const { categories, loading: categoriesLoading } = useChecklistCategories();
 
   // Checklist
   const uploadedItems = useUploadedItems(dealId, bulkBatchId);
@@ -656,7 +656,7 @@ export function VdrThreeColumnWorkspace({
                 <div className="mt-0.5">
                   {docs.length === 0 ? (
                     <div className="px-3 py-1 text-[10px] text-muted-foreground/50 italic">
-                      No files
+                      {searchQuery.trim() ? 'No matching files' : 'No files yet'}
                     </div>
                   ) : (
                     docs.map(d => renderFileRow(d, column))
@@ -672,6 +672,9 @@ export function VdrThreeColumnWorkspace({
 
   const internalCount = internalDocs.length;
   const dataroomCount = dataroomDocs.length;
+  const hasConfiguredCategories = categoryNames.length > 0;
+  const shouldRenderInternalFolders = hasConfiguredCategories || visibleInternal.length > 0;
+  const shouldRenderDataroomFolders = hasConfiguredCategories || visibleDataroom.length > 0;
   const indexedCount = vdrDocs.ingestionStats?.complete || 0;
   const processingCount = vdrDocs.ingestionStats?.processing || 0;
 
@@ -854,9 +857,9 @@ export function VdrThreeColumnWorkspace({
           </div>
 
           <div className="flex-1 overflow-auto px-1.5 py-1.5">
-            {documentsLoading ? (
+            {documentsLoading || categoriesLoading ? (
               <div className="flex items-center justify-center h-24 text-xs text-muted-foreground">Loading…</div>
-            ) : visibleInternal.length === 0 ? (
+            ) : !shouldRenderInternalFolders ? (
               <div className="flex flex-col items-center justify-center h-32 text-xs text-muted-foreground gap-1 px-4 text-center">
                 <Lock className="h-6 w-6 text-muted-foreground/30" />
                 <p>{internalCount === 0 ? 'No internal files yet.' : 'No matches for current filter.'}</p>
@@ -1014,9 +1017,9 @@ export function VdrThreeColumnWorkspace({
           </div>
 
           <div className="flex-1 overflow-auto px-1.5 py-1.5">
-            {documentsLoading ? (
+            {documentsLoading || categoriesLoading ? (
               <div className="flex items-center justify-center h-24 text-xs text-muted-foreground">Loading…</div>
-            ) : visibleDataroom.length === 0 ? (
+            ) : !shouldRenderDataroomFolders ? (
               <div className="flex flex-col items-center justify-center h-32 text-xs text-muted-foreground gap-1 px-4 text-center">
                 <Globe className="h-6 w-6 text-muted-foreground/30" />
                 <p>{dataroomCount === 0 ? 'No files in Data Room yet.' : 'No matches for current filter.'}</p>

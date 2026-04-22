@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 
 export type CategoryColor = 'blue' | 'green' | 'purple' | 'amber' | 'pink' | 'cyan' | 'gray' | 'orange';
@@ -60,6 +61,7 @@ export function getCategoryColorClasses(color: CategoryColor | string) {
 
 export function useChecklistCategories() {
   const { user } = useAuth();
+  const { company, isLoading: companyLoading } = useCompany();
   const [categories, setCategories] = useState<ChecklistCategory[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -70,35 +72,72 @@ export function useChecklistCategories() {
       return;
     }
 
+    if (companyLoading) return;
+
+    if (!company?.id) {
+      setCategories([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data: companyCategories, error: companyError } = await supabase
         .from('data_room_checklist_categories')
         .select('*')
+        .eq('company_id', company.id)
         .order('position', { ascending: true });
 
-      if (error) throw error;
-      
-      // If no categories exist, seed with defaults
-      if (!data || data.length === 0) {
-        await seedDefaultCategories();
-      } else {
-        setCategories(data as ChecklistCategory[]);
+      if (companyError) throw companyError;
+
+      if (companyCategories && companyCategories.length > 0) {
+        setCategories(companyCategories as ChecklistCategory[]);
+        return;
       }
+
+      const { data: legacyCategories, error: legacyError } = await supabase
+        .from('data_room_checklist_categories')
+        .select('*')
+        .eq('user_id', user.id)
+        .is('company_id', null)
+        .order('position', { ascending: true });
+
+      if (legacyError) throw legacyError;
+
+      if (legacyCategories && legacyCategories.length > 0) {
+        console.info('Using legacy user-scoped checklist categories; promoting them to the company source of truth.');
+        setCategories((legacyCategories as ChecklistCategory[]).map(category => ({ ...category, company_id: company.id })));
+
+        const { error: promoteError } = await supabase
+          .from('data_room_checklist_categories')
+          .update({ company_id: company.id })
+          .in('id', legacyCategories.map(category => category.id))
+          .eq('user_id', user.id)
+          .is('company_id', null);
+
+        if (promoteError) {
+          console.warn('Failed to promote legacy checklist categories to company scope:', promoteError);
+        }
+
+        return;
+      }
+
+      await seedDefaultCategories();
     } catch (err) {
       console.error('Error fetching checklist categories:', err);
       toast.error('Failed to load checklist categories');
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, company?.id, companyLoading]);
 
   const seedDefaultCategories = async () => {
-    if (!user) return;
+    if (!user || !company?.id) return;
 
     try {
       const inserts = DEFAULT_CATEGORIES.map((cat, index) => ({
         user_id: user.id,
+        company_id: company.id,
         name: cat.name,
         icon: cat.icon,
         color: cat.color,
@@ -139,13 +178,13 @@ export function useChecklistCategories() {
   }, [user, fetchCategories]);
 
   const addCategory = async (name: string, icon: CategoryIcon = 'folder', color: CategoryColor = 'gray'): Promise<ChecklistCategory | null> => {
-    if (!user) return null;
+    if (!user || !company?.id) return null;
 
     try {
       const position = categories.length;
       const { data, error } = await supabase
         .from('data_room_checklist_categories')
-        .insert({ user_id: user.id, name, icon, color, position })
+        .insert({ user_id: user.id, company_id: company.id, name, icon, color, position })
         .select()
         .single();
 
