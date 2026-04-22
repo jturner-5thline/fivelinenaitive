@@ -51,4 +51,20 @@ describe('isLenderEligibleForAttention', () => {
     const activeDeal = { status: 'on-track', stage: 'submitted-to-lenders', is_archived: false };
     expect(isLenderEligibleForAttention(onHoldLender, activeDeal)).toBe(false);
   });
+
+  it('suppresses ALL lenders on Closed Won / Closed Lost deals (regardless of lender stage)', () => {
+    const closedWonDeal = { status: 'closed-won', stage: 'closed-won' };
+    const closedLostDeal = { status: 'closed_lost', stage: 'submitted-to-lenders' };
+    const activeLender = { stage: 'in-review', trackingStatus: 'active' };
+    expect(isLenderEligibleForAttention(activeLender, closedWonDeal)).toBe(false);
+    expect(isLenderEligibleForAttention(activeLender, closedLostDeal)).toBe(false);
+  });
+
+  it('suppresses lenders when deal stage encodes closed-won/closed-lost', () => {
+    const stagedWon = { status: 'on-track', stage: 'closed-won' };
+    const stagedLost = { status: 'on-track', stage: 'closed-lost' };
+    const activeLender = { stage: 'in-review', trackingStatus: 'active' };
+    expect(isLenderEligibleForAttention(activeLender, stagedWon)).toBe(false);
+    expect(isLenderEligibleForAttention(activeLender, stagedLost)).toBe(false);
+  });
 });
