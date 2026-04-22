@@ -724,12 +724,21 @@ function BriefingEmailDetailPane({
 }
 
 // ── Tab: Email ─────────────────────────────────────────────────
-function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onNavigate: (path: string) => void; targetUserId?: string }) {
+function EmailTab({
+  enabled,
+  onNavigate,
+  targetUserId,
+  subTab,
+  unreadOnly,
+}: {
+  enabled: boolean;
+  onNavigate: (path: string) => void;
+  targetUserId?: string;
+  subTab: EmailCategoryTab;
+  unreadOnly: boolean;
+}) {
   const { data, isLoading } = useEmailData(enabled, targetUserId);
   const [detail, setDetail] = useState<any>(null);
-  const [subTab, setSubTab] = useState<EmailCategoryTab>('all');
-  // Default to unread-only on every open of the Email tab.
-  const [unreadOnly, setUnreadOnly] = useState<boolean>(true);
   const { entities: classifierEntities, orgCtx } = useEmailClassifierData();
   const { evaluate: evaluateAutoLabels } = useAutoEmailLabelEvaluator();
 
@@ -743,14 +752,6 @@ function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onN
 
   // Classify each email once
   const classified = visibleEmails.map((e: any) => ({ email: e, cats: classifyEmail(e, classifierEntities, orgCtx) }));
-
-  // Counts per sub-tab
-  const counts: Record<EmailCategoryTab, number> = {
-    all: visibleEmails.length,
-    clients_deals: classified.filter(c => c.cats.includes('clients_deals')).length,
-    asana_projects: classified.filter(c => c.cats.includes('asana_projects')).length,
-    calendar: classified.filter(c => c.cats.includes('calendar')).length,
-  };
 
   // Filtered list
   const filtered = subTab === 'all'
