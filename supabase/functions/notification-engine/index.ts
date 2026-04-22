@@ -269,7 +269,7 @@ async function resolveRecipients(
                 .eq("role", "admin")
                 .in("user_id", memberIds);
               if (admins) {
-                for (const a of admins) recipientSet.add(a.user_id);
+                for (const a of admins) addRecipient(a.user_id, "ADMIN");
               }
             }
           } else {
@@ -278,21 +278,28 @@ async function resolveRecipients(
               .select("user_id")
               .eq("role", "admin");
             if (admins) {
-              for (const a of admins) recipientSet.add(a.user_id);
+              for (const a of admins) addRecipient(a.user_id, "ADMIN");
             }
           }
           break;
         }
       }
     }
+
+    // Fallback: rule wanted DEAL_MANAGER but none could be resolved.
+    // Fall back to the deal owner so the message still reaches a human, and
+    // flag fallback_to_owner=true so the audit log shows it was a fallback.
+    if (wantsManager && !managerResolved && !wantsOwner && context.deal_owner_id) {
+      addRecipient(String(context.deal_owner_id), "DEAL_OWNER", /*fallback*/ true);
+    }
   }
 
   // Remove actor to avoid self-notification (unless metadata says otherwise)
   if (actorUserId && !rule.metadata?.notify_actor) {
-    recipientSet.delete(actorUserId);
+    recipientMap.delete(actorUserId);
   }
 
-  return Array.from(recipientSet);
+  return recipientMap;
 }
 
 serve(async (req) => {
