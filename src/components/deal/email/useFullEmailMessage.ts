@@ -206,3 +206,57 @@ export async function fetchAttachmentDataUrl(
     return null;
   }
 }
+
+/**
+ * Open an attachment inline in a new browser tab when the type is viewable
+ * (PDF, image, text). Falls back to a download for non-viewable types so the
+ * user always gets the file in one click.
+ */
+export async function openAttachmentInNewTab(
+  messageId: string,
+  attachment: EmailAttachment,
+): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('gmail-messages', {
+    body: {
+      action: 'get_attachment',
+      message_id: messageId,
+      attachment_id: attachment.id,
+    },
+  });
+  if (error || !data?.data) {
+    throw new Error(error?.message || 'Failed to open attachment');
+  }
+  const binary = atob(data.data);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+  const ct = data.content_type || attachment.content_type || 'application/octet-stream';
+  const blob = new Blob([bytes], { type: ct });
+  const url = URL.createObjectURL(blob);
+
+  const viewable =
+    ct.startsWith('image/') ||
+    ct.includes('pdf') ||
+    ct.startsWith('text/');
+
+  if (viewable) {
+    const win = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!win) {
+      // Pop-up blocked — fall back to a download so the user still gets the file.
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = attachment.filename || 'attachment';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  } else {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = attachment.filename || 'attachment';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
