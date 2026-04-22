@@ -32,6 +32,7 @@ import { AiAssistInlinePanel } from '@/components/deal/email/AiAssistInlinePanel
 import { EmailBodyRenderer } from '@/components/deal/email/EmailBodyRenderer';
 import { useFullEmailMessage } from '@/components/deal/email/useFullEmailMessage';
 import type { EmailThread, MockEmail } from '@/components/deal/email/mockEmailData';
+import { EmailAttachmentsStrip } from '@/components/deal/email/EmailAttachmentsStrip';
 
 interface DailyBriefingModalProps {
   open: boolean;
