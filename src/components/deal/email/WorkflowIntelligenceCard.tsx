@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Loader2, Check, X, Quote, AlertCircle, Briefcase, User, Building2, Zap, Link2, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,13 @@ interface Props {
   }) => void;
   onDismiss: () => void;
   onMaybeLater: () => void;
+  /**
+   * Optional actionable card rendered in place of the
+   * "No workflow update suggested for this thread." empty state.
+   * Used to surface the data-room-upload suggestion when the thread
+   * carries attachments and is linked to (or likely-matched to) a deal.
+   */
+  attachmentFallback?: ReactNode;
 }
 
 const CONFIDENCE_TONE: Record<WorkflowConfidence, string> = {
@@ -114,6 +121,7 @@ export function WorkflowIntelligenceCard({
   onConfirm,
   onDismiss,
   onMaybeLater,
+  attachmentFallback,
 }: Props) {
   // Source of truth for pass-reason options — same list shown in the
   // deal-detail Lenders tab "Confirm Pass" dialog so the two stay in sync.
@@ -528,6 +536,8 @@ export function WorkflowIntelligenceCard({
                   </Button>
                 </div>
               </div>
+            ) : attachmentFallback ? (
+              attachmentFallback
             ) : (
               <p className="text-[11px] text-muted-foreground italic">
                 No workflow update suggested for this thread.

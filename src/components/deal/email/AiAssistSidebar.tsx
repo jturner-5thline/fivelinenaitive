@@ -23,6 +23,9 @@ import { SendToDataRoomDialog } from './SendToDataRoomDialog';
 import { useFullEmailMessage } from './useFullEmailMessage';
 import { useEmailToDataRoom, type DataRoomDestinationSuggestion } from '@/hooks/useEmailToDataRoom';
 import { SuggestedDealUpdatesSection } from './SuggestedDealUpdatesSection';
+import { DataRoomUploadSuggestionCard } from './DataRoomUploadSuggestionCard';
+import { toast } from 'sonner';
+import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
 
 /**
  * AiAssistSidebar
@@ -130,8 +133,85 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
     ? latestFull.attachments
     : (thread.latestEmail.attachments || []);
   const drUploadable = drAttachments.filter(a => !a.is_inline && !!a.id);
-  const { suggest: drSuggest, suggesting: drSuggesting } = useEmailToDataRoom();
+  const { suggest: drSuggest, suggesting: drSuggesting, commitUpload: drCommitUpload, uploading: drUploading } = useEmailToDataRoom();
   const showDrCard = !drDismissed && drUploadable.length > 0;
+
+  // Resolved deal for the attachment-fallback "Suggested Update" card. Use
+  // the explicitly linked deal first, then fall back to the AI's
+  // likely-match. The card renders only when we have BOTH a deal id AND
+  // uploadable attachments, mirroring the rule the user requested.
+  const fallbackDealId = dealId || workflowAnalysis?.likely_deal?.id || '';
+  const fallbackDealName =
+    dealName || workflowAnalysis?.likely_deal?.name || '';
+  const showAttachmentFallback =
+    drUploadable.length > 0 && !!fallbackDealId && !!fallbackDealName;
+
+  /**
+   * Commit upload directly from the inline "Add to Data Room" CTA — no
+   * dialog. Mirrors the path the SendToDataRoomDialog uses, but with the
+   * card's section + selected files.
+   */
+  const handleAttachmentFallbackConfirm = useCallback(
+    async (
+      section: DealAttachmentCategory,
+      selectedAttachmentIds: string[],
+    ) => {
+      if (!fallbackDealId) {
+        toast.error('No deal resolved for this thread');
+        return;
+      }
+      const selected = drUploadable.filter((a) =>
+        selectedAttachmentIds.includes(a.id || `${a.filename}-${a.size}`),
+      );
+      if (selected.length === 0) {
+        toast.warning('No files selected');
+        return;
+      }
+      const result = await drCommitUpload({
+        dealId: fallbackDealId,
+        messageId: latestId,
+        sourceEmail: {
+          messageId: latestId,
+          threadId: thread.threadId,
+          subject: thread.subject,
+          senderName: thread.latestEmail.from_name,
+          senderEmail: thread.latestEmail.from_email,
+        },
+        plan: selected.map((a) => ({
+          attachment: a,
+          desiredName: a.filename || 'attachment',
+          category: section,
+          include: true,
+        })),
+      });
+      if (result && result.uploaded > 0) {
+        toast.success(
+          `Added ${result.uploaded} file${result.uploaded === 1 ? '' : 's'} to ${fallbackDealName} Data Room`,
+          {
+            action: {
+              label: 'View Data Room',
+              onClick: () => {
+                window.location.href = `/deals/${fallbackDealId}`;
+              },
+            },
+          },
+        );
+        // Hide the proactive card too — the work is done.
+        setDrDismissed(true);
+      }
+    },
+    [
+      fallbackDealId,
+      fallbackDealName,
+      drCommitUpload,
+      drUploadable,
+      latestId,
+      thread.threadId,
+      thread.subject,
+      thread.latestEmail.from_name,
+      thread.latestEmail.from_email,
+    ],
+  );
 
   useEffect(() => {
     if (!showDrCard || drSuggestion || drSuggesting) return;
@@ -385,6 +465,19 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               onConfirm={(o) => confirmWorkflow(o)}
               onDismiss={dismissWorkflow}
               onMaybeLater={dismissWorkflow}
+              attachmentFallback={
+                showAttachmentFallback ? (
+                  <DataRoomUploadSuggestionCard
+                    dealName={fallbackDealName}
+                    attachments={drUploadable}
+                    committing={drUploading}
+                    onConfirm={(section, ids) =>
+                      handleAttachmentFallbackConfirm(section, ids)
+                    }
+                    onChangeSection={() => setDrDialogOpen(true)}
+                  />
+                ) : undefined
+              }
             />
           )}
 
