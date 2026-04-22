@@ -105,6 +105,34 @@ export function WorkflowEmailModalListener() {
     return () => window.removeEventListener('workflow-email-prompt', handler);
   }, [loadPrompt]);
 
+  // Open the OLDEST pending prompt for a deal (used by deal-page auto-open
+  // and the email-icon badge click).
+  const loadOldestForDeal = useCallback(async (dealId: string) => {
+    const { data, error } = await supabase
+      .from('deal_email_prompts')
+      .select('id')
+      .eq('deal_id', dealId)
+      .eq('status', 'pending')
+      .order('triggered_at', { ascending: true })
+      .limit(1);
+    if (error || !data || data.length === 0) {
+      console.log('[workflow-email-modal] no pending prompt for deal', dealId);
+      return;
+    }
+    const promptId = (data[0] as any).id as string;
+    console.log('[workflow-email-modal] auto-opening oldest pending prompt', { dealId, promptId });
+    await loadPrompt(promptId);
+  }, [loadPrompt]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.dealId) loadOldestForDeal(detail.dealId);
+    };
+    window.addEventListener('workflow-email-prompt-open-oldest', handler);
+    return () => window.removeEventListener('workflow-email-prompt-open-oldest', handler);
+  }, [loadOldestForDeal]);
+
   const close = () => {
     setPrompt(null);
     setBusy(false);
