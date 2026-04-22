@@ -24,7 +24,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import type { EmailAttachment, EmailThread, MockEmail } from './mockEmailData';
-import { downloadAttachment, fetchFullEmailMessage } from './useFullEmailMessage';
+import { downloadAttachment, fetchFullEmailMessage, openAttachmentInNewTab } from './useFullEmailMessage';
 
 /**
  * EmailAttachmentsStrip
