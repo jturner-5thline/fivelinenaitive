@@ -33,6 +33,9 @@ import { EmailBodyRenderer } from '@/components/deal/email/EmailBodyRenderer';
 import { useFullEmailMessage, useFullEmailThread } from '@/components/deal/email/useFullEmailMessage';
 import type { EmailThread, MockEmail } from '@/components/deal/email/mockEmailData';
 import { EmailAttachmentsStrip, detectAttachmentFallbackReason } from '@/components/deal/email/EmailAttachmentsStrip';
+import { PipelineMemoView } from '@/pages/pipeline/PipelineMemoView';
+import { useUiPreference } from '@/hooks/useUiPreference';
+import { LayoutGrid, FileText } from 'lucide-react';
 
 interface DailyBriefingModalProps {
   open: boolean;
@@ -977,10 +980,16 @@ function PipelineTab({
   const { data: catchUpData, isLoading: catchUpLoading } = useCatchUpData(enabled, targetDealOwnerName);
   const [detail, setDetail] = useState<NewsItem | null>(null);
   const [dealDetail, setDealDetail] = useState<any>(null);
+  const [viewMode, setViewMode] = useUiPreference<'grid' | 'memo'>(
+    'briefing_pipeline_view_mode',
+    'memo',
+  );
 
   if ((isLoading && !data) || (catchUpLoading && !catchUpData)) return <TabSkeleton />;
 
-  const { newDeals, riskDeals, stageChanges, recentActivity } = data || { newDeals: [], riskDeals: [], stageChanges: [], recentActivity: [] };
+  const { newDeals, riskDeals, stageChanges, recentActivity, scopedDeals } = data || {
+    newDeals: [], riskDeals: [], stageChanges: [], recentActivity: [], scopedDeals: [],
+  };
   const highlights = catchUpData?.highlights || [];
   const newsItems = catchUpData?.newsItems || [];
   const dealAlerts = (catchUpData?.alerts || []).filter((a: any) => a.deal_id);
@@ -998,8 +1007,61 @@ function PipelineTab({
     );
   }
 
+  const ViewToggle = (
+    <div className="flex items-center justify-end mb-3 px-0.5">
+      <div className="inline-flex items-center rounded-lg bg-white/[0.06] glass-border-softer p-0.5">
+        <button
+          type="button"
+          onClick={() => setViewMode('grid')}
+          aria-pressed={viewMode === 'grid'}
+          className={cn(
+            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors',
+            viewMode === 'grid'
+              ? 'bg-primary/15 text-foreground'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          <LayoutGrid className="h-3 w-3" />
+          Grid
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewMode('memo')}
+          aria-pressed={viewMode === 'memo'}
+          className={cn(
+            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors',
+            viewMode === 'memo'
+              ? 'bg-primary/15 text-foreground'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          <FileText className="h-3 w-3" />
+          Memo
+        </button>
+      </div>
+    </div>
+  );
+
+  if (viewMode === 'memo') {
+    return (
+      <div className="relative h-full">
+        {ViewToggle}
+        <PipelineMemoView
+          deals={scopedDeals as any}
+          emptyMessage={
+            isDelegated
+              ? `No active deals for ${targetDealOwnerName}.`
+              : 'No active deals to summarize.'
+          }
+          onOpenDeal={id => onNavigate(`/deal/${id}`)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="relative h-full">
+      {ViewToggle}
       {detail && (
         <DetailPopup title={detail.title} onClose={() => setDetail(null)}>
           <div className="space-y-3">
