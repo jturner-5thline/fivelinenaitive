@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useSearchParams } from 'react-router-dom';
-import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Briefcase, LayoutTemplate, Newspaper, Zap } from 'lucide-react';
+import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Briefcase, LayoutTemplate, Newspaper } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
 import { InboxDialog } from '@/components/dashboard/InboxDialog';
