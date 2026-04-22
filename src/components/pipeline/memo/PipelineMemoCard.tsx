@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import type { Deal } from '@/types/deal';
 import type { Deal24hDigest } from '@/hooks/useDeal24hDigest';
+import { Card } from '@/components/ui/card';
 import { MemoHeader } from './MemoHeader';
 import { ActivityPanel } from './ActivityPanel';
 import { MilestonesPanel } from './MilestonesPanel';
@@ -31,14 +32,14 @@ function PipelineMemoCardImpl({ deal, digest, isDigestLoading, showLiveDot = tru
   const handleOpen = () => onOpenDeal?.(deal.id);
 
   return (
-    <article
-      className="pipeline-memo-card overflow-hidden cursor-pointer transition-transform duration-150 hover:-translate-y-0.5"
-      style={{ contain: 'layout paint', willChange: 'transform' }}
+    <Card
       onClick={handleOpen}
       onKeyDown={e => { if (e.key === 'Enter') handleOpen(); }}
       tabIndex={0}
       role="button"
       aria-label={`Open deal memo for ${deal.company || deal.name}`}
+      className="overflow-hidden cursor-pointer transition-colors duration-150 hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+      style={{ contain: 'layout paint', contentVisibility: 'auto', containIntrinsicSize: '320px' } as React.CSSProperties}
     >
       <MemoHeader deal={deal} />
 
@@ -48,7 +49,7 @@ function PipelineMemoCardImpl({ deal, digest, isDigestLoading, showLiveDot = tru
           [grid-template-columns:1fr]
           md:[grid-template-columns:1fr_1fr]
           lg:[grid-template-columns:1fr_1fr_280px]
-          divide-y md:divide-y-0 md:divide-x divide-white/45
+          divide-y md:divide-y-0 md:divide-x divide-border
         "
       >
         <ActivityPanel digest={digest} isLoading={!!isDigestLoading} />
@@ -57,7 +58,7 @@ function PipelineMemoCardImpl({ deal, digest, isDigestLoading, showLiveDot = tru
       </div>
 
       <MemoFooter showLiveDot={showLiveDot} />
-    </article>
+    </Card>
   );
 }
 
