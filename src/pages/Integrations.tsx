@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -271,7 +271,14 @@ export default function Integrations() {
               toast.error("HubSpot connection failed");
             }
           }}
-        />
+        >
+          <Link
+            to="/integrations/hubspot/health"
+            className="text-xs text-primary hover:underline inline-flex items-center"
+          >
+            View sync health & logs →
+          </Link>
+        </IntegrationCard>
       ),
     });
   }
