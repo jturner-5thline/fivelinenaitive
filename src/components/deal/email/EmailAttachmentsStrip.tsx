@@ -249,7 +249,7 @@ export function EmailAttachmentsStrip({
   const anyMessageClaimsAttachments = emails.some((e) => e.has_attachments);
   const hasPendingHydration = loading || emails.some((e) => !e.id?.startsWith('mock-') && !attachmentsByMessage[e.id]);
   if (aggregated.length === 0 && !hasPendingHydration && !anyMessageClaimsAttachments) return null;
-  if (aggregated.length === 0 && !loading) return null;
+  if (aggregated.length === 0 && !hasPendingHydration) return null;
 
   const handleOpen = async (item: AggregatedAttachment) => {
     const att = item.attachment;
