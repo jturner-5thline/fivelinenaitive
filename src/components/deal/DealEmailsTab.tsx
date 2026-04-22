@@ -869,7 +869,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       <EmailIntelligenceDialog open={intelligenceOpen} onOpenChange={setIntelligenceOpen} />
 
       <CardContent className="p-0 flex-1 min-h-0">
-        <div className="flex h-full overflow-hidden max-w-full min-w-0">
+        <div className="grid h-full min-w-0 max-w-full overflow-hidden" style={{ gridTemplateColumns: `${railExpanded ? 168 : 52}px minmax(0, ${currentThread || composeOpen ? `${Math.round(inboxWidth)}px` : '1fr'}) minmax(0, 1fr)` }}>
           {/* ─── Left: Outlook-style folder sidebar ─── */}
           <div
             ref={railRef}
@@ -919,10 +919,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
           <div
             className={cn(
               'relative flex flex-col min-w-0 overflow-hidden transition-[opacity] duration-200',
-              readingPaneExpanded ? 'hidden' :
-              (currentThread || composeOpen) ? 'hidden md:flex shrink-0' : 'flex-1'
+              readingPaneExpanded ? 'hidden' : (currentThread || composeOpen) ? 'hidden md:flex' : 'flex'
             )}
-            style={(currentThread || composeOpen) && !readingPaneExpanded ? { width: inboxWidth } : undefined}
           >
             {/* Resize handle on right edge — wide hit area, thin visible line */}
             {(currentThread || composeOpen) && !readingPaneExpanded && (
@@ -1263,7 +1261,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             )}
 
             {/* Email list */}
-            <div className="flex-1 min-h-0 overflow-auto">
+            <div className="flex-1 min-h-0 min-w-0 overflow-auto">
               <EmailList
                 emails={filteredEmails}
                 selectedThread={currentThread}
@@ -1292,7 +1290,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
           {/* ─── Right: Reading pane / Compose ─── */}
           <div className={cn(
-            'flex-1 flex flex-col min-w-0 overflow-hidden w-0',
+            'flex flex-col min-w-0 overflow-hidden w-0',
             (currentThread || composeOpen) ? 'bg-[hsl(var(--email-reading-bg))]' : '',
             !currentThread && !composeOpen ? 'hidden md:flex' : 'flex'
           )}>
