@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarIcon, ChevronDown, X } from 'lucide-react';
+import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -25,8 +25,6 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -235,9 +233,6 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
       setIsSubmitting(false);
     }
   };
-
-  const FieldError = ({ name }: { name: keyof FormErrors }) =>
-    errors[name] ? <p className="text-xs text-destructive mt-1">{errors[name]}</p> : null;
 
   const Req = () => <span className="text-destructive">*</span>;
 
