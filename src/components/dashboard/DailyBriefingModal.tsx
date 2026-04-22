@@ -635,6 +635,40 @@ function EmailTab({ enabled, onNavigate, targetUserId }: { enabled: boolean; onN
             </span>
           </button>
         ))}
+
+        {/* Unread / All segmented control — applies across every sub-tab */}
+        <div
+          className="ml-auto inline-flex items-center rounded-full border border-border/40 bg-white/[0.03] p-0.5"
+          role="group"
+          aria-label="Filter emails by read state"
+        >
+          <button
+            type="button"
+            onClick={() => setUnreadOnly(true)}
+            aria-pressed={unreadOnly}
+            className={cn(
+              'px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors',
+              unreadOnly
+                ? 'bg-primary/20 text-primary'
+                : 'text-muted-foreground/70 hover:text-foreground/80',
+            )}
+          >
+            Unread only
+          </button>
+          <button
+            type="button"
+            onClick={() => setUnreadOnly(false)}
+            aria-pressed={!unreadOnly}
+            className={cn(
+              'px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors',
+              !unreadOnly
+                ? 'bg-primary/20 text-primary'
+                : 'text-muted-foreground/70 hover:text-foreground/80',
+            )}
+          >
+            All emails
+          </button>
+        </div>
       </div>
 
       {/* Email list */}
