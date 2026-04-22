@@ -324,6 +324,23 @@ export function EmailAttachmentsStrip({
     }
   };
 
+  const handlePreview = async (item: AggregatedAttachment) => {
+    const att = item.attachment;
+    if (!att.id) {
+      toast.error('Attachment unavailable');
+      return;
+    }
+    const key = `${item.source.id}:${att.id}`;
+    setOpeningKey(key);
+    try {
+      await openAttachmentInNewTab(item.source.id, att);
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to open attachment');
+    } finally {
+      setOpeningKey(null);
+    }
+  };
+
   // Reusable chip renderer — used by both the block list and the inline /
   // "+N more" popover so behaviour stays identical across surfaces.
   const renderChip = (item: AggregatedAttachment, opts?: { compact?: boolean }) => {
