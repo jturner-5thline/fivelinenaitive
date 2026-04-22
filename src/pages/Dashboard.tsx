@@ -5,7 +5,6 @@ import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Briefcase, La
 import { useAuth } from '@/contexts/AuthContext';
 import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
 import { InboxDialog } from '@/components/dashboard/InboxDialog';
-import { QuickPromptsDialog } from '@/components/dashboard/QuickPromptsDialog';
 import { WidgetCarouselChrome } from '@/components/dashboard/widget-carousel/WidgetCarouselChrome';
 import { useWidgetCarouselStore } from '@/stores/widgetCarouselStore';
 import { useProfile } from '@/hooks/useProfile';
