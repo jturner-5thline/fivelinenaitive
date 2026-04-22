@@ -61,9 +61,11 @@ const handleTileKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, action: () =>
 function EmailTileWithIntelligence({
   onOpen,
   onKeyDown,
+  className,
 }: {
   onOpen: (el: HTMLElement) => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => void;
+  className?: string;
 }) {
   const [isHovering, setIsHovering] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -88,7 +90,7 @@ function EmailTileWithIntelligence({
 
   return (
     <div
-      className="relative"
+      className={cn('relative', className)}
       onMouseEnter={open}
       onMouseLeave={scheduleClose}
       onFocus={open}
