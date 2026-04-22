@@ -8,6 +8,7 @@ import {
   FileArchive,
   File as FileIconLucide,
   Loader2,
+  ChevronDown,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -18,6 +19,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import type { EmailAttachment, EmailThread, MockEmail } from './mockEmailData';
 import { downloadAttachment } from './useFullEmailMessage';
 
@@ -45,6 +51,16 @@ import { downloadAttachment } from './useFullEmailMessage';
 export interface EmailAttachmentsStripProps {
   thread: Pick<EmailThread, 'emails'>;
   className?: string;
+  /**
+   * `block` (default): full-width labeled card rendered above the body.
+   * `inline`: compact, no header/border — drops chips directly into another
+   * horizontal row (e.g. the email detail action / command bar). Excess
+   * attachments collapse into a "+N more" popover so the action row stays
+   * legible even on narrow widths.
+   */
+  variant?: 'block' | 'inline';
+  /** Inline-only: how many chips to render before collapsing to "+N more". */
+  maxInline?: number;
 }
 
 interface AggregatedAttachment {
@@ -156,7 +172,12 @@ function useResolvedThreadAttachments(emails: MockEmail[]): {
   return { attachmentsByMessage, loading };
 }
 
-export function EmailAttachmentsStrip({ thread, className }: EmailAttachmentsStripProps) {
+export function EmailAttachmentsStrip({
+  thread,
+  className,
+  variant = 'block',
+  maxInline = 2,
+}: EmailAttachmentsStripProps) {
   const emails = thread.emails;
   const { attachmentsByMessage, loading } = useResolvedThreadAttachments(emails);
   const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
@@ -212,6 +233,159 @@ export function EmailAttachmentsStrip({ thread, className }: EmailAttachmentsStr
     }
   };
 
+  // Reusable chip renderer — used by both the block list and the inline /
+  // "+N more" popover so behaviour stays identical across surfaces.
+  const renderChip = (item: AggregatedAttachment, opts?: { compact?: boolean }) => {
+    const att = item.attachment;
+    const filename = att.filename || 'Untitled attachment';
+    const Icon = iconForType(att.content_type, filename);
+    const label = fileLabel(filename, att.content_type);
+    const sizeLabel = formatBytes(att.size);
+    const key = `${item.source.id}:${att.id || filename}`;
+    const isDownloading = downloadingKey === key;
+    const sender = item.source.from_name || item.source.from_email || 'Unknown';
+    const ts = item.source.received_at
+      ? format(new Date(item.source.received_at), "MMM d, yyyy 'at' h:mm a")
+      : '';
+    const compact = !!opts?.compact;
+
+    return (
+      <Tooltip key={key} delayDuration={200}>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => handleOpen(item)}
+            disabled={isDownloading || !att.id}
+            className={cn(
+              'group inline-flex items-center min-w-0',
+              compact
+                ? 'gap-1.5 max-w-[180px] pl-1 pr-1.5 py-0.5 rounded-md text-left'
+                : 'gap-2 max-w-[260px] pl-1.5 pr-2 py-1 rounded-md text-left',
+              'border border-border/50 bg-background/40 hover:bg-background/70',
+              'hover:border-primary/40 transition-colors',
+              'disabled:opacity-60 disabled:cursor-not-allowed',
+              item.isOlder && 'opacity-80',
+            )}
+            aria-label={`Open ${filename} from ${sender}`}
+          >
+            <span
+              className={cn(
+                'flex items-center justify-center rounded bg-muted/40 border border-border/40 shrink-0',
+                compact ? 'h-5 w-5' : 'h-7 w-7',
+              )}
+            >
+              <Icon className={cn('text-foreground/70', compact ? 'h-3 w-3' : 'h-3.5 w-3.5')} />
+            </span>
+            <span className="flex flex-col min-w-0">
+              <span
+                className={cn(
+                  'font-medium text-foreground truncate leading-tight',
+                  compact ? 'text-[11px]' : 'text-[12px]',
+                )}
+              >
+                {filename}
+              </span>
+              {!compact && (
+                <span className="text-[10px] text-muted-foreground flex items-center gap-1 leading-tight">
+                  <span>{label}</span>
+                  {sizeLabel && (
+                    <>
+                      <span>·</span>
+                      <span>{sizeLabel}</span>
+                    </>
+                  )}
+                  {item.isOlder && (
+                    <>
+                      <span>·</span>
+                      <span className="text-amber-400/80">Older v{item.versionRank}</span>
+                    </>
+                  )}
+                </span>
+              )}
+            </span>
+            <span className="shrink-0 text-muted-foreground/70 group-hover:text-primary ml-1">
+              {isDownloading ? (
+                <Loader2 className={cn('animate-spin', compact ? 'h-3 w-3' : 'h-3.5 w-3.5')} />
+              ) : (
+                <Download className={cn(compact ? 'h-3 w-3' : 'h-3.5 w-3.5')} />
+              )}
+            </span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-[11px] max-w-[280px]">
+          <div className="font-medium">{filename}</div>
+          <div className="text-muted-foreground mt-0.5">
+            From <span className="text-foreground/80">{sender}</span>
+            {ts && <span> · {ts}</span>}
+            {sizeLabel && <span> · {sizeLabel}</span>}
+          </div>
+          {item.isOlder && (
+            <div className="text-amber-300/90 mt-0.5">
+              Older version (v{item.versionRank}) of this filename
+            </div>
+          )}
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
+
+  // ── Inline variant ──────────────────────────────────────────────
+  // Renders compact chips directly into a host action/command row.
+  // Shows up to `maxInline` chips inline, then a "+N more" popover.
+  if (variant === 'inline') {
+    if (aggregated.length === 0 && loading) {
+      return (
+        <div className={cn('inline-flex items-center gap-1 text-[11px] text-muted-foreground', className)}>
+          <Loader2 className="h-3 w-3 animate-spin" />
+          <span>Attachments…</span>
+        </div>
+      );
+    }
+    if (aggregated.length === 0) return null;
+
+    const visible = aggregated.slice(0, maxInline);
+    const overflow = aggregated.slice(maxInline);
+
+    return (
+      <div className={cn('inline-flex items-center gap-1.5 min-w-0', className)}>
+        <Paperclip className="h-3 w-3 text-muted-foreground/70 shrink-0" />
+        {visible.map((item) => renderChip(item, { compact: true }))}
+        {overflow.length > 0 && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  'inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[11px] font-medium',
+                  'border border-border/50 bg-background/40 hover:bg-background/70',
+                  'hover:border-primary/40 transition-colors text-foreground/80',
+                )}
+                aria-label={`Show ${overflow.length} more attachments`}
+              >
+                +{overflow.length} more
+                <ChevronDown className="h-3 w-3" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              side="bottom"
+              className="p-2 w-[320px] max-h-[60vh] overflow-y-auto"
+            >
+              <div className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 flex items-center gap-1">
+                <Paperclip className="h-3 w-3" />
+                <span>All attachments · {aggregated.length}</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                {aggregated.map((item) => renderChip(item))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+      </div>
+    );
+  }
+
+  // ── Block variant (default) ─────────────────────────────────────
   return (
     <div
       className={cn(
@@ -241,83 +415,7 @@ export function EmailAttachmentsStrip({ thread, className }: EmailAttachmentsStr
         </div>
       ) : (
         <div className="flex flex-wrap gap-1.5">
-          {aggregated.map((item) => {
-            const att = item.attachment;
-            const filename = att.filename || 'Untitled attachment';
-            const Icon = iconForType(att.content_type, filename);
-            const label = fileLabel(filename, att.content_type);
-            const sizeLabel = formatBytes(att.size);
-            const key = `${item.source.id}:${att.id || filename}`;
-            const isDownloading = downloadingKey === key;
-            const sender = item.source.from_name || item.source.from_email || 'Unknown';
-            const ts = item.source.received_at
-              ? format(new Date(item.source.received_at), "MMM d, yyyy 'at' h:mm a")
-              : '';
-
-            return (
-              <Tooltip key={key} delayDuration={200}>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => handleOpen(item)}
-                    disabled={isDownloading || !att.id}
-                    className={cn(
-                      'group inline-flex items-center gap-2 max-w-[260px] min-w-0',
-                      'pl-1.5 pr-2 py-1 rounded-md text-left',
-                      'border border-border/50 bg-background/40 hover:bg-background/70',
-                      'hover:border-primary/40 transition-colors',
-                      'disabled:opacity-60 disabled:cursor-not-allowed',
-                      item.isOlder && 'opacity-80',
-                    )}
-                    aria-label={`Open ${filename} from ${sender}`}
-                  >
-                    <span className="flex items-center justify-center h-7 w-7 rounded bg-muted/40 border border-border/40 shrink-0">
-                      <Icon className="h-3.5 w-3.5 text-foreground/70" />
-                    </span>
-                    <span className="flex flex-col min-w-0">
-                      <span className="text-[12px] font-medium text-foreground truncate leading-tight">
-                        {filename}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground flex items-center gap-1 leading-tight">
-                        <span>{label}</span>
-                        {sizeLabel && (
-                          <>
-                            <span>·</span>
-                            <span>{sizeLabel}</span>
-                          </>
-                        )}
-                        {item.isOlder && (
-                          <>
-                            <span>·</span>
-                            <span className="text-amber-400/80">Older v{item.versionRank}</span>
-                          </>
-                        )}
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-muted-foreground/70 group-hover:text-primary ml-1">
-                      {isDownloading ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Download className="h-3.5 w-3.5" />
-                      )}
-                    </span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-[11px] max-w-[280px]">
-                  <div className="font-medium">{filename}</div>
-                  <div className="text-muted-foreground mt-0.5">
-                    From <span className="text-foreground/80">{sender}</span>
-                    {ts && <span> · {ts}</span>}
-                  </div>
-                  {item.isOlder && (
-                    <div className="text-amber-300/90 mt-0.5">
-                      Older version (v{item.versionRank}) of this filename
-                    </div>
-                  )}
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
+          {aggregated.map((item) => renderChip(item))}
         </div>
       )}
     </div>

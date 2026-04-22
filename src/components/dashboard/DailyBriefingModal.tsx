@@ -674,6 +674,12 @@ function BriefingEmailDetailPane({
             )}
           </div>
         </div>
+        {/* Inline thread attachments — rendered in the same header action row
+            so they're the primary surface for opening files (one click, no
+            scrolling into the body). */}
+        <div className="hidden sm:flex items-center min-w-0 max-w-[55%] shrink">
+          <EmailAttachmentsStrip thread={stripThread} variant="inline" maxInline={2} />
+        </div>
         <Button
           size="sm"
           variant="outline"
@@ -684,14 +690,12 @@ function BriefingEmailDetailPane({
         </Button>
       </div>
 
-      {/* Attachments strip — same component used by the main Email widget,
-          rendered directly under the header and above the body. We render it
-          whenever the lazy-loaded full message (or the source row) reports
-          any non-inline attachment. The strip itself returns null when there
-          is genuinely nothing to show. */}
+      {/* Mobile-only fallback: on narrow widths the header chips are hidden
+          to preserve the title/Open-in-Intelligence pairing, so we render the
+          full block strip directly below the header instead. */}
       {(stripThread.emails[0].attachments?.some((a) => !a.is_inline) ||
         stripThread.emails[0].has_attachments) && (
-        <div className="px-4 pt-3">
+        <div className="px-4 pt-3 sm:hidden">
           <EmailAttachmentsStrip thread={stripThread} />
         </div>
       )}
