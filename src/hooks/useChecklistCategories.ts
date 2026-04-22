@@ -121,6 +121,23 @@ export function useChecklistCategories() {
     fetchCategories();
   }, [fetchCategories]);
 
+  // Realtime: keep Settings, Data Room, and Internal in lockstep.
+  // Any insert/update/delete on data_room_checklist_categories propagates to
+  // every consumer of this hook (Settings page, VDR three-column workspace,
+  // checklist panel, folder pickers, etc.) without requiring a manual refresh.
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`checklist-categories-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'data_room_checklist_categories' },
+        () => { fetchCategories(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, fetchCategories]);
+
   const addCategory = async (name: string, icon: CategoryIcon = 'folder', color: CategoryColor = 'gray'): Promise<ChecklistCategory | null> => {
     if (!user) return null;
 
