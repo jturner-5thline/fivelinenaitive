@@ -139,6 +139,31 @@ function mergeAndNormalizeAttachments(msg: any) {
   return merged;
 }
 
+async function fetchThreadMessagesFallback(baseUrl: string, headers: Record<string, string>, threadId: string) {
+  const attempts = [
+    `${baseUrl}/messages?limit=100&thread_id=${encodeURIComponent(threadId)}`,
+    `${baseUrl}/messages?limit=100&threadId=${encodeURIComponent(threadId)}`,
+  ];
+
+  for (const url of attempts) {
+    const response = await fetch(url, { headers });
+    const data = await response.json();
+    if (!response.ok) continue;
+
+    const messages = Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data?.messages)
+        ? data.messages
+        : [];
+
+    if (messages.length > 0) {
+      return messages;
+    }
+  }
+
+  return [];
+}
+
 function pickBodyHtmlAndText(msg: any): { body_html: string; body_text: string } {
   // Nylas v3 returns a single `body` field that is usually HTML when available.
   // Be defensive: accept several shapes.
@@ -377,11 +402,19 @@ serve(async (req: Request): Promise<Response> => {
         }
 
         const rawThread = threadData.data || threadData;
-        const rawMessages = Array.isArray(rawThread?.messages)
+        let rawMessages = Array.isArray(rawThread?.messages)
           ? rawThread.messages
           : Array.isArray(rawThread?.data)
             ? rawThread.data
             : [];
+
+        if (rawMessages.length === 0) {
+          rawMessages = await fetchThreadMessagesFallback(baseUrl, headers, thread_id);
+          console.log("[gmail-messages:get_thread] fallback-list", JSON.stringify({
+            thread_id,
+            fallback_message_count: rawMessages.length,
+          }));
+        }
 
         const messages = rawMessages.map((msg: any) => {
           const { body_html, body_text } = pickBodyHtmlAndText(msg);
