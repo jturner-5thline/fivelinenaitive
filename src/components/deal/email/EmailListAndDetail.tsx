@@ -59,7 +59,7 @@ import { usePendingDealResolutionsStore } from '@/stores/pendingDealResolutionsS
 import { EmailContextMenu } from './EmailContextMenu';
 import { EmailBodyRenderer } from './EmailBodyRenderer';
 import { EmailAttachmentList } from './EmailAttachmentList';
-import { EmailAttachmentsStrip } from './EmailAttachmentsStrip';
+import { EmailAttachmentsStrip, detectAttachmentFallbackReason } from './EmailAttachmentsStrip';
 import { useFullEmailMessage } from './useFullEmailMessage';
 import { LenderPassBanner } from './LenderPassBanner';
 import { useLenderPassDetection } from '@/hooks/useLenderPassDetection';
@@ -802,6 +802,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     ? latestFullData.attachments
     : (thread.latestEmail.attachments || []);
   const hasUploadableAttachments = latestAttachments.some(a => !a.is_inline && !!a.id);
+  const attachmentFallbackReason = detectAttachmentFallbackReason(thread.emails);
+  const shouldRenderAttachmentsRow =
+    thread.hasAttachments ||
+    thread.emails.some((email) => email.has_attachments || (email.attachments?.length ?? 0) > 0) ||
+    !!attachmentFallbackReason;
   
   // Reply state
   const [replyTo, setReplyTo] = useState<{ subject: string; to_email: string; to_name: string; threadId: string } | null>(null);
@@ -1387,15 +1392,6 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               }}
             />
 
-            {/* Inline thread attachments — surfaced directly in the action bar
-                so users can open files in one click without scrolling into
-                the thread body. The same component (block variant) used to
-                render below; we removed that duplicate to keep this row as
-                the single primary surface for attachments. */}
-            <div className="ml-auto flex items-center min-w-0">
-              <EmailAttachmentsStrip thread={thread} variant="inline" maxInline={2} />
-            </div>
-
             {onToggleExpand && (
               <>
                 <div className="w-px h-8 bg-border/50 mx-1" />
@@ -1493,6 +1489,18 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               )}
             </div>
           </div>
+
+          {shouldRenderAttachmentsRow && (
+            <div className="px-6 py-3 border-b border-[hsl(var(--email-border))] bg-card/30">
+              <EmailAttachmentsStrip
+                thread={thread}
+                maxInline={3}
+                forceVisible
+                fallbackReason={attachmentFallbackReason}
+                className="w-full"
+              />
+            </div>
+          )}
 
           {/* Thread content - scrollable */}
           <ScrollArea className="flex-1 min-h-0 min-w-0 overflow-hidden">
