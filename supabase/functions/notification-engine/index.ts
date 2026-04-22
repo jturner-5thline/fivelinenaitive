@@ -136,18 +136,45 @@ async function resolveUserIdByDisplayName(
   return data?.[0]?.user_id || null;
 }
 
+/**
+ * Per-recipient resolution metadata. Each recipient may be resolved via one
+ * or more roles (e.g. the deal manager who is also an admin) — we track the
+ * full set so the audit log can attribute correctly.
+ *
+ * `fallback_to_owner` is true when the rule asked for DEAL_MANAGER but the
+ * manager could not be resolved, so the deal owner was used instead. This is
+ * surfaced into notification_audit.metadata for visibility.
+ */
+interface RecipientMeta {
+  roles: Set<string>;
+  fallback_to_owner: boolean;
+}
+
 async function resolveRecipients(
   supabase: ReturnType<typeof createClient>,
   rule: NotificationRule,
   context: Record<string, unknown>,
   actorUserId?: string
-): Promise<string[]> {
-  const recipientSet = new Set<string>();
+): Promise<Map<string, RecipientMeta>> {
+  const recipientMap = new Map<string, RecipientMeta>();
+  const addRecipient = (uid: string, role: string, fallback = false) => {
+    if (!uid) return;
+    const existing = recipientMap.get(uid);
+    if (existing) {
+      existing.roles.add(role);
+      if (fallback) existing.fallback_to_owner = true;
+    } else {
+      recipientMap.set(uid, {
+        roles: new Set([role]),
+        fallback_to_owner: fallback,
+      });
+    }
+  };
 
   // Add explicit user IDs
   if (rule.default_recipients.user_ids) {
     for (const uid of rule.default_recipients.user_ids) {
-      recipientSet.add(uid);
+      addRecipient(uid, "EXPLICIT");
     }
   }
 
@@ -193,26 +220,34 @@ async function resolveRecipients(
 
   // Resolve role-based recipients
   if (rule.default_recipients.roles) {
-    for (const role of rule.default_recipients.roles) {
+    const requestedRoles = rule.default_recipients.roles;
+    const wantsManager = requestedRoles.includes("DEAL_MANAGER");
+    const wantsOwner = requestedRoles.includes("DEAL_OWNER");
+    let managerResolved = false;
+
+    for (const role of requestedRoles) {
       switch (role) {
         case "DEAL_OWNER":
-          if (context.deal_owner_id) recipientSet.add(String(context.deal_owner_id));
+          if (context.deal_owner_id) addRecipient(String(context.deal_owner_id), "DEAL_OWNER");
           break;
         case "DEAL_MANAGER":
           if (context.deal_manager_ids && Array.isArray(context.deal_manager_ids)) {
-            for (const id of context.deal_manager_ids) recipientSet.add(String(id));
+            for (const id of context.deal_manager_ids) {
+              addRecipient(String(id), "DEAL_MANAGER");
+              managerResolved = true;
+            }
           }
           break;
         case "ANALYST":
           if (context.analyst_ids && Array.isArray(context.analyst_ids)) {
-            for (const id of context.analyst_ids) recipientSet.add(String(id));
+            for (const id of context.analyst_ids) addRecipient(String(id), "ANALYST");
           }
           break;
         case "ASSIGNEE":
-          if (context.assignee_id) recipientSet.add(String(context.assignee_id));
+          if (context.assignee_id) addRecipient(String(context.assignee_id), "ASSIGNEE");
           break;
         case "TAGGED_USER":
-          if (context.tagged_user_id) recipientSet.add(String(context.tagged_user_id));
+          if (context.tagged_user_id) addRecipient(String(context.tagged_user_id), "TAGGED_USER");
           break;
         case "ADMIN": {
           // Scope admins to the deal's company when we know it; otherwise fall back to global admins.
@@ -234,7 +269,7 @@ async function resolveRecipients(
                 .eq("role", "admin")
                 .in("user_id", memberIds);
               if (admins) {
-                for (const a of admins) recipientSet.add(a.user_id);
+                for (const a of admins) addRecipient(a.user_id, "ADMIN");
               }
             }
           } else {
@@ -243,21 +278,28 @@ async function resolveRecipients(
               .select("user_id")
               .eq("role", "admin");
             if (admins) {
-              for (const a of admins) recipientSet.add(a.user_id);
+              for (const a of admins) addRecipient(a.user_id, "ADMIN");
             }
           }
           break;
         }
       }
     }
+
+    // Fallback: rule wanted DEAL_MANAGER but none could be resolved.
+    // Fall back to the deal owner so the message still reaches a human, and
+    // flag fallback_to_owner=true so the audit log shows it was a fallback.
+    if (wantsManager && !managerResolved && !wantsOwner && context.deal_owner_id) {
+      addRecipient(String(context.deal_owner_id), "DEAL_OWNER", /*fallback*/ true);
+    }
   }
 
   // Remove actor to avoid self-notification (unless metadata says otherwise)
   if (actorUserId && !rule.metadata?.notify_actor) {
-    recipientSet.delete(actorUserId);
+    recipientMap.delete(actorUserId);
   }
 
-  return Array.from(recipientSet);
+  return recipientMap;
 }
 
 serve(async (req) => {
@@ -350,7 +392,8 @@ serve(async (req) => {
     }
 
     // 2. Resolve recipients
-    const recipients = await resolveRecipients(supabase, rule as NotificationRule, context, actorUserId);
+    const recipientMap = await resolveRecipients(supabase, rule as NotificationRule, context, actorUserId);
+    const recipients = Array.from(recipientMap.keys());
 
     if (recipients.length === 0) {
       return new Response(
@@ -377,6 +420,14 @@ serve(async (req) => {
 
     // 3. For each recipient, check user preferences and dispatch
     for (const recipientId of recipients) {
+      // Resolve roles + fallback flag for this recipient (for audit metadata)
+      const recipientResolution = recipientMap.get(recipientId);
+      const auditMeta: Record<string, unknown> = {
+        rule_id: rule.id,
+        roles: recipientResolution ? Array.from(recipientResolution.roles) : [],
+        fallback_to_owner: recipientResolution?.fallback_to_owner ?? false,
+      };
+
       // Load user preferences for this trigger
       const { data: userPref } = await supabase
         .from("user_notification_preferences")
@@ -450,7 +501,7 @@ serve(async (req) => {
               status: "sent",
               title: renderedTitle,
               body: renderedBody,
-              metadata: { rule_id: rule.id },
+              metadata: { ...auditMeta },
             });
           } else if (channel.channel_type === "email") {
             // Send email via Resend
@@ -495,7 +546,7 @@ serve(async (req) => {
                 title: renderedSubject,
                 body: renderedBody,
                 error_message: emailError ? String(emailError) : null,
-                metadata: { rule_id: rule.id, to: recipientProfile.email },
+                metadata: { ...auditMeta, to: recipientProfile.email },
               });
             } else {
               // Log as skipped if no email config
@@ -521,7 +572,7 @@ serve(async (req) => {
                 title: renderedSubject,
                 body: renderedBody,
                 error_message: !resendKey ? "RESEND_API_KEY not configured" : "No recipient email",
-                metadata: { rule_id: rule.id },
+                metadata: { ...auditMeta },
               });
             }
           } else if (channel.channel_type === "slack") {
