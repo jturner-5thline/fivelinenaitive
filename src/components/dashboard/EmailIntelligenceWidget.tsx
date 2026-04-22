@@ -279,19 +279,10 @@ export function EmailIntelligenceWidget() {
 
   return (
     <>
-      <Card className={GLASS_CARD}>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-medium flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              Email Intelligence
-              <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/20 bg-green-500/[0.06]">Live</Badge>
-              {isAnalyzing && (
-                <Badge variant="outline" className="text-[10px] text-amber-400 border-amber-400/20 bg-amber-400/[0.06] animate-pulse">
-                  Analyzing...
-                </Badge>
-              )}
-            </CardTitle>
+      <Card className={cn(GLASS_CARD, 'group relative')}>
+        <EmailIntelligenceHoverLabel status="live" analyzing={isAnalyzing} />
+        <CardHeader className="pb-2 pt-2">
+          <div className="flex items-center justify-end">
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
