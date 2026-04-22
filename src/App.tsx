@@ -287,6 +287,7 @@ const App = () => (
                         </Routes>
                         </Suspense>
                       </BrowserRouter>
+                      </UndoSendProvider>
                       </CopyProtection>
                     </TooltipProvider>
                     </DashboardLayoutProvider>
