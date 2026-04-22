@@ -409,6 +409,37 @@ Deno.serve(async (req) => {
               undefined
             );
           }
+
+          // ALSO route through notification-engine so BOTH owner AND manager
+          // are notified (email + in-app) and an audit row is written.
+          // The engine resolves recipients from deals.user_id (owner) +
+          // deals.manager (display-name → user_id), respects per-user channel
+          // preferences, and writes notification_audit entries.
+          try {
+            const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+            const supabaseSrk = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+            const dealUrl = `https://fivelinenaitive.lovable.app/deals/${internalDealId}`;
+            await fetch(`${supabaseUrl}/functions/v1/notification-engine`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseSrk}`,
+              },
+              body: JSON.stringify({
+                triggerKey: 'lender_access_request',
+                context: {
+                  deal_id: internalDealId,
+                  deal_company: deal.company || company_name || 'this deal',
+                  requester_name: user_name || user_email || 'A lender',
+                  requester_email: user_email || '',
+                  requested_at: new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }),
+                  deal_url: dealUrl,
+                },
+              }),
+            });
+          } catch (engineErr) {
+            console.error('notification-engine dispatch for lender_access_request failed:', engineErr);
+          }
         }
       }
 
