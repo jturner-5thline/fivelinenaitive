@@ -293,11 +293,13 @@ export function EmailAttachmentsStrip({
     });
   }, [aggregated, debug, emails, loading, thread]);
 
-  // Render nothing if no attachments anywhere in the thread (and nothing to load).
+  // Render nothing only when the thread gives us zero signal that attachments
+  // exist. Otherwise keep the row visible with loading/fallback messaging.
   const anyMessageClaimsAttachments = emails.some((e) => e.has_attachments);
-  const hasPendingHydration = loading || emails.some((e) => !e.id?.startsWith('mock-') && !attachmentsByMessage[e.id]);
-  if (aggregated.length === 0 && !hasPendingHydration && !anyMessageClaimsAttachments) return null;
-  if (aggregated.length === 0 && !hasPendingHydration) return null;
+  const inferredFallbackReason = fallbackReason ?? detectAttachmentFallbackReason(emails);
+  const shouldShowFallback = forceVisible || anyMessageClaimsAttachments || !!inferredFallbackReason;
+  const hasPendingHydration = loading || loadingOverride || unresolvedCount > 0 || emails.some((e) => !e.id?.startsWith('mock-') && !attachmentsByMessage[e.id]);
+  if (aggregated.length === 0 && !hasPendingHydration && !shouldShowFallback) return null;
 
   const handleOpen = async (item: AggregatedAttachment) => {
     const att = item.attachment;
@@ -420,14 +422,20 @@ export function EmailAttachmentsStrip({
   // Renders compact chips directly into a host action/command row.
   // Shows up to `maxInline` chips inline, then a "+N more" popover.
   if (variant === 'inline') {
-    if (aggregated.length === 0 && hasPendingHydration) {
+    if (aggregated.length === 0 && (hasPendingHydration || shouldShowFallback)) {
       return (
         <div className={cn('inline-flex items-center gap-1.5 min-w-0', className)}>
           <Paperclip className="h-3 w-3 text-muted-foreground/70 shrink-0" />
-          <div className="inline-flex items-center gap-1.5">
-            <span className="h-6 w-[112px] rounded-md border border-border/40 bg-background/35 animate-pulse" />
-            <span className="h-6 w-[88px] rounded-md border border-border/40 bg-background/25 animate-pulse hidden md:inline-flex" />
-          </div>
+          {hasPendingHydration ? (
+            <div className="inline-flex items-center gap-1.5">
+              <span className="h-6 w-[112px] rounded-md border border-border/40 bg-background/35 animate-pulse" />
+              <span className="h-6 w-[88px] rounded-md border border-border/40 bg-background/25 animate-pulse hidden md:inline-flex" />
+            </div>
+          ) : (
+            <div className="inline-flex min-w-0 items-center gap-1.5 rounded-md border border-dashed border-border/60 bg-background/30 px-2 py-1 text-[11px] text-muted-foreground">
+              <span className="truncate">{inferredFallbackReason || 'Attachment referenced — file details unavailable.'}</span>
+            </div>
+          )}
         </div>
       );
     }
@@ -500,9 +508,16 @@ export function EmailAttachmentsStrip({
       </div>
 
       {aggregated.length === 0 ? (
-        <div className="text-[11px] text-muted-foreground py-1">
-          Loading attachments…
-        </div>
+        hasPendingHydration ? (
+          <div className="flex flex-wrap gap-1.5">
+            <span className="h-8 w-[176px] rounded-md border border-border/40 bg-background/35 animate-pulse" />
+            <span className="h-8 w-[148px] rounded-md border border-border/40 bg-background/25 animate-pulse" />
+          </div>
+        ) : (
+          <div className="rounded-md border border-dashed border-border/60 bg-background/25 px-3 py-2 text-[11px] text-muted-foreground">
+            {inferredFallbackReason || 'Attachment referenced — file details unavailable.'}
+          </div>
+        )
       ) : (
         <div className="flex flex-wrap gap-1.5">
           {aggregated.map((item) => renderChip(item))}
