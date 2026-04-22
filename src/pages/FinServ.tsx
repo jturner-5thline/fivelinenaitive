@@ -119,6 +119,7 @@ export default function FinServ() {
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [ownerFilter, setOwnerFilter] = useState<string>('all');
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -129,7 +130,10 @@ export default function FinServ() {
   const dealsByStage = useMemo(() => {
     const grouped = new Map<string, Deal[]>();
     stages.forEach(s => grouped.set(s.id, []));
-    deals.forEach(d => {
+    const filtered = ownerFilter === 'all'
+      ? deals
+      : deals.filter(d => (d.dealOwner || '') === ownerFilter);
+    filtered.forEach(d => {
       const arr = grouped.get(d.stage) || [];
       arr.push(d);
       grouped.set(d.stage, arr);
@@ -138,7 +142,7 @@ export default function FinServ() {
       arr.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     });
     return grouped;
-  }, [deals, stages]);
+  }, [deals, stages, ownerFilter]);
 
   const handleStageChange = async (dealId: string, newStage: string) => {
     try {
@@ -235,19 +239,29 @@ export default function FinServ() {
                 {deals.length} {deals.length === 1 ? 'deal' : 'deals'} in pipeline
               </p>
             </div>
-            <CreateDealDialog
-              trigger={
-                <Button size="sm" className="gap-1.5">
-                  <Plus className="h-4 w-4" />
-                  Add Deal
-                </Button>
-              }
-              initialValues={{
-                pipelineId: pipelineId || undefined,
-                dealStage: stages[0]?.id || 'fs-unresponsive',
-                dealClass: 'finserv',
-              }}
-            />
+            <div className="flex items-center gap-2">
+              <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+                <SelectTrigger className="h-9 w-[180px]">
+                  <SelectValue placeholder="All owners" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Owners</SelectItem>
+                  {FINSERV_OWNERS.map(o => (
+                    <SelectItem key={o} value={o}>{o}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FinServCreateDealDialog
+                pipelineId={pipelineId}
+                onCreated={refetch}
+                trigger={
+                  <Button size="sm" className="gap-1.5">
+                    <Plus className="h-4 w-4" />
+                    Add Deal
+                  </Button>
+                }
+              />
+            </div>
           </div>
 
           {/* Tabs */}
@@ -281,18 +295,15 @@ export default function FinServ() {
                   <p className="mt-1 text-sm text-muted-foreground max-w-md">
                     Get started by adding your first deal to the FinServ pipeline.
                   </p>
-                  <CreateDealDialog
+                  <FinServCreateDealDialog
+                    pipelineId={pipelineId}
+                    onCreated={refetch}
                     trigger={
                       <Button className="mt-4 gap-1.5">
                         <Plus className="h-4 w-4" />
                         Add Your First Deal
                       </Button>
                     }
-                    initialValues={{
-                      pipelineId: pipelineId || undefined,
-                      dealStage: stages[0]?.id || 'fs-unresponsive',
-                      dealClass: 'finserv',
-                    }}
                   />
                 </div>
               ) : (
