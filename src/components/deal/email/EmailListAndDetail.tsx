@@ -59,6 +59,7 @@ import { usePendingDealResolutionsStore } from '@/stores/pendingDealResolutionsS
 import { EmailContextMenu } from './EmailContextMenu';
 import { EmailBodyRenderer } from './EmailBodyRenderer';
 import { EmailAttachmentList } from './EmailAttachmentList';
+import { EmailAttachmentsStrip } from './EmailAttachmentsStrip';
 import { useFullEmailMessage } from './useFullEmailMessage';
 import { LenderPassBanner } from './LenderPassBanner';
 import { useLenderPassDetection } from '@/hooks/useLenderPassDetection';
