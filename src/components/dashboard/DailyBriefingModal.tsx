@@ -669,7 +669,12 @@ function BriefingEmailDetailPane({
   const attachmentFallbackReason = detectAttachmentFallbackReason(stripThread.emails);
   const shouldRenderAttachmentsRow =
     stripThread.emails.some((threadEmail) => threadEmail.has_attachments || (threadEmail.attachments?.length ?? 0) > 0) ||
-    !!attachmentFallbackReason;
+    !!attachmentFallbackReason ||
+    // Keep the header attachments row mounted while we hydrate the message and
+    // thread so users see a loading state in the chip strip instead of an
+    // empty band that pops in only after the fetches resolve.
+    loading ||
+    threadLoading;
 
   return (
     <div className="flex flex-col h-full min-h-0 rounded-xl border border-border/40 bg-white/[0.02] overflow-hidden">
