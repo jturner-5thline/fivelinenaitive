@@ -9629,6 +9629,72 @@ export type Database = {
           },
         ]
       }
+      flex_auto_removal_audit: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          deal_id: string
+          error_message: string | null
+          flex_deal_id: string | null
+          id: string
+          metadata: Json | null
+          new_stage: string | null
+          new_status: string | null
+          previous_stage: string | null
+          previous_status: string | null
+          removal_status: string
+          trigger_rule: string
+          triggered_by: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          deal_id: string
+          error_message?: string | null
+          flex_deal_id?: string | null
+          id?: string
+          metadata?: Json | null
+          new_stage?: string | null
+          new_status?: string | null
+          previous_stage?: string | null
+          previous_status?: string | null
+          removal_status?: string
+          trigger_rule: string
+          triggered_by?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          deal_id?: string
+          error_message?: string | null
+          flex_deal_id?: string | null
+          id?: string
+          metadata?: Json | null
+          new_stage?: string | null
+          new_status?: string | null
+          previous_stage?: string | null
+          previous_status?: string | null
+          removal_status?: string
+          trigger_rule?: string
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flex_auto_removal_audit_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flex_auto_removal_audit_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flex_info_notifications: {
         Row: {
           company_name: string | null
@@ -9763,6 +9829,50 @@ export type Database = {
             columns: ["deal_id"]
             isOneToOne: false
             referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      flex_sync_settings: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          remove_on_archived: boolean
+          remove_on_closed_lost: boolean
+          remove_on_closed_won: boolean
+          remove_on_due_diligence: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          remove_on_archived?: boolean
+          remove_on_closed_lost?: boolean
+          remove_on_closed_won?: boolean
+          remove_on_due_diligence?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          remove_on_archived?: boolean
+          remove_on_closed_lost?: boolean
+          remove_on_closed_won?: boolean
+          remove_on_due_diligence?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flex_sync_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
