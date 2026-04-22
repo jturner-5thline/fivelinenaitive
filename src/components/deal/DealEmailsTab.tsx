@@ -1357,11 +1357,22 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                       // Re-open the thread + composer for editing.
                       const thread = allThreads.find(t => t.threadId === threadId);
                       if (thread) setSelectedThread(thread);
-                      // The composer reads its draft from localStorage via
-                      // useEmailDraft(threadId); that draft was preserved
-                      // because clearDraftOnSend only fires after queueing,
-                      // not after actual send. Nothing else to restore.
-                      toast.info('Draft restored — keep editing.');
+                      // Restore the draft into the same localStorage slot
+                      // that useEmailDraft(threadId) reads from on mount.
+                      try {
+                        const restored = {
+                          to: emailData.to_email,
+                          cc: '',
+                          bcc: '',
+                          subject: emailData.subject,
+                          body: emailData.body_preview || '',
+                          attachments: [],
+                          threadId,
+                          toName: emailData.to_name || emailData.to_email,
+                          savedAt: Date.now(),
+                        };
+                        localStorage.setItem(`email_draft_${threadId}`, JSON.stringify(restored));
+                      } catch { /* quota etc. */ }
                     },
                   });
                 }}
