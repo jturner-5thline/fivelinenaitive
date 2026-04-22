@@ -60,6 +60,19 @@ export interface EmailAttachmentsStripProps {
   variant?: 'block' | 'inline';
   /** Inline-only: how many chips to render before collapsing to "+N more". */
   maxInline?: number;
+  /**
+   * Force the row to stay mounted even if provider attachment metadata has not
+   * materialized yet. Used by detail panes that already know the selected
+   * message/thread likely contains files.
+   */
+  forceVisible?: boolean;
+  /** Extra loading signal from the host pane (e.g. thread hydration in Daily Briefing). */
+  loadingOverride?: boolean;
+  /**
+   * Explicit fallback copy from the host pane when the thread references an
+   * attachment but the provider returned no attachment metadata.
+   */
+  fallbackReason?: string | null;
 }
 
 interface AggregatedAttachment {
@@ -78,6 +91,16 @@ interface ResolvedAttachmentDebug {
   filenames: string[];
   attachmentIds: string[];
 }
+
+const ATTACHMENT_REFERENCE_PATTERNS = [
+  /\bplease\s+find\s+attached\b/i,
+  /\bsee\s+(?:the\s+)?(?:attached|attachment)\b/i,
+  /\battached\s+is\b/i,
+  /\battached\s+are\b/i,
+  /\b(?:file|files|document|documents|proposal|term\s*sheet|outline|deck|model|pdf|xlsx?)\s+attached\b/i,
+  /\battachment(?:s)?\b/i,
+  /\benclosed\b/i,
+];
 
 function formatBytes(bytes: number | undefined): string {
   if (!bytes || bytes < 0) return '';
@@ -106,6 +129,27 @@ function fileLabel(filename: string, contentType: string | undefined): string {
   return 'FILE';
 }
 
+function flattenText(value: string | undefined): string {
+  if (!value) return '';
+  return value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+export function detectAttachmentFallbackReason(emails: Pick<MockEmail, 'subject' | 'snippet' | 'body_preview' | 'body_text' | 'body_html'>[]): string | null {
+  const mentionsAttachment = emails.some((email) => {
+    const haystack = [
+      email.subject,
+      email.snippet,
+      email.body_preview,
+      email.body_text,
+      flattenText(email.body_html),
+    ].join(' ');
+    return ATTACHMENT_REFERENCE_PATTERNS.some((pattern) => pattern.test(haystack));
+  });
+
+  if (!mentionsAttachment) return null;
+  return 'This thread references an attachment, but file details are still loading or unavailable.';
+}
+
 /**
  * Lazily resolve attachments for any thread message that has
  * `has_attachments` but no hydrated `attachments[]` yet. Fires one fetch per
@@ -115,6 +159,7 @@ function fileLabel(filename: string, contentType: string | undefined): string {
 function useResolvedThreadAttachments(emails: MockEmail[]): {
   attachmentsByMessage: Record<string, EmailAttachment[]>;
   loading: boolean;
+  unresolvedCount: number;
   debug: ResolvedAttachmentDebug[];
 } {
   const [extra, setExtra] = useState<Record<string, EmailAttachment[]>>({});
@@ -188,7 +233,7 @@ function useResolvedThreadAttachments(emails: MockEmail[]): {
     })
   ), [attachmentsByMessage, emails]);
 
-  return { attachmentsByMessage, loading, debug };
+  return { attachmentsByMessage, loading, unresolvedCount: needFetchIds.length, debug };
 }
 
 export function EmailAttachmentsStrip({
@@ -196,9 +241,12 @@ export function EmailAttachmentsStrip({
   className,
   variant = 'block',
   maxInline = 2,
+  forceVisible = false,
+  loadingOverride = false,
+  fallbackReason,
 }: EmailAttachmentsStripProps) {
   const emails = thread.emails;
-  const { attachmentsByMessage, loading, debug } = useResolvedThreadAttachments(emails);
+  const { attachmentsByMessage, loading, unresolvedCount, debug } = useResolvedThreadAttachments(emails);
   const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
 
   // Build the aggregated, newest-first list with version ranking by filename.
