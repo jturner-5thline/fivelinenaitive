@@ -253,9 +253,12 @@ export function EmailAttachmentList({
   if (!canSendToDataRoom) {
     return (
       <div className="mt-5">
-        <div className="flex items-center gap-1.5 mb-2 text-[11px] font-semibold text-[hsl(var(--email-text-secondary))] uppercase tracking-wide">
-          <Paperclip className="h-3 w-3" />
-          <span>{visible.length} {visible.length === 1 ? 'Attachment' : 'Attachments'}</span>
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[hsl(var(--email-text-secondary))] uppercase tracking-wide">
+            <Paperclip className="h-3 w-3" />
+            <span>Attachments · {visible.length}</span>
+          </div>
+          {HeaderDataRoomButton}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {visible.map((att, i) => {
