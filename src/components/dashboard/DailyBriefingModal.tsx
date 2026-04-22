@@ -762,6 +762,7 @@ function BriefingEmailDetailPane({
               text={text}
               messageId={messageId}
               inlineAttachments={full?.inline_attachments}
+              attachments={full?.attachments}
               className="prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed"
             />
           )}
