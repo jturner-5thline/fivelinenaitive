@@ -54,6 +54,49 @@ const PRIORITY_STYLES: Record<string, string> = {
 // Glass card wrapper class
 const GLASS_CARD = 'h-full flex flex-col glass-border-soft bg-card/80 backdrop-blur-md shadow-glass';
 
+/**
+ * Lightweight, hover/focus-only "Email Intelligence" affordance.
+ *
+ * The dashboard no longer renders an "Email Intelligence" title or badge as
+ * persistent chrome — instead this chip fades in only when the user hovers
+ * the Email widget (or focuses any element inside it for keyboard users).
+ * It's positioned over the card's top edge so it reads as widget chrome,
+ * not as a separate dashboard section.
+ */
+function EmailIntelligenceHoverLabel({
+  status = 'live',
+  analyzing = false,
+}: {
+  status?: 'live' | 'connecting' | 'offline';
+  analyzing?: boolean;
+}) {
+  return (
+    <div
+      aria-hidden="true"
+      className={cn(
+        'pointer-events-none absolute left-3 top-2 z-10',
+        'flex items-center gap-1.5 rounded-full border border-border/40 bg-background/80 backdrop-blur',
+        'px-2 py-0.5 text-[10.5px] font-medium text-foreground/80 shadow-sm',
+        'opacity-0 -translate-y-0.5 transition-all duration-150',
+        'group-hover:opacity-100 group-hover:translate-y-0',
+        'group-focus-within:opacity-100 group-focus-within:translate-y-0',
+        // Hide on touch devices — there is no hover and the widget is the
+        // only interactive surface, so the label would just add noise.
+        '[@media(hover:none)]:hidden',
+      )}
+    >
+      <Sparkles className="h-3 w-3 text-primary" />
+      <span>Email Intelligence</span>
+      {status === 'live' && (
+        <span className="ml-0.5 text-[9.5px] text-emerald-400">· Live</span>
+      )}
+      {analyzing && (
+        <span className="ml-0.5 text-[9.5px] text-amber-400 animate-pulse">· Analyzing</span>
+      )}
+    </div>
+  );
+}
+
 function EmailRow({ email, onClick }: { email: EnrichedEmail; onClick: () => void }) {
   const navigate = useNavigate();
   const analysis = email.analysis;
