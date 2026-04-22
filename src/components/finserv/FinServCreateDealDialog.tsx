@@ -68,6 +68,12 @@ const formSchema = z
   .object({
     companyName: z.string().trim().min(1, 'Company Name is required').max(120),
     primaryContact: z.string().trim().min(1, 'Primary Contact is required').max(120),
+    contactEmail: z
+      .string()
+      .trim()
+      .min(1, 'Contact Email is required')
+      .email('Enter a valid email address')
+      .max(255),
     leadSource: z.enum(LEAD_SOURCES, { required_error: 'Lead Source is required' }),
     referralSource: z.string().trim().max(200).optional(),
     opportunityType: z.enum(OPPORTUNITY_TYPES, { required_error: 'Opportunity Type is required' }),
@@ -110,6 +116,7 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
   // Form state
   const [companyName, setCompanyName] = useState('');
   const [primaryContact, setPrimaryContact] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
   const [leadSource, setLeadSource] = useState<string>('');
   const [referralSource, setReferralSource] = useState('');
   const [opportunityType, setOpportunityType] = useState<string>('');
