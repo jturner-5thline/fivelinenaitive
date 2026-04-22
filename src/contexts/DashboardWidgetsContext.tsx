@@ -3,7 +3,6 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 export type DashboardWidgetId = 
   | 'calendar'
   | 'email'
-  | 'quick-prompts'
   | 'create-deal'
   | 'notifications'
   | 'deals-calendar'
@@ -22,12 +21,11 @@ export interface DashboardWidgetConfig {
 const DEFAULT_WIDGETS: DashboardWidgetConfig[] = [
   { id: 'calendar', label: 'Calendar', description: 'Quick access to your calendar', icon: 'Calendar', enabled: true, order: 0 },
   { id: 'email', label: 'Email', description: 'Quick access to emails', icon: 'Mail', enabled: true, order: 1 },
-  { id: 'quick-prompts', label: 'Quick Prompts', description: 'AI-powered quick actions', icon: 'Zap', enabled: true, order: 2 },
-  { id: 'create-deal', label: 'Create New Deal', description: 'Quickly create a new deal', icon: 'Briefcase', enabled: true, order: 3 },
-  { id: 'notifications', label: 'Notifications', description: 'Recent notifications carousel', icon: 'Bell', enabled: true, order: 4 },
-  { id: 'deals-calendar', label: 'Deals Calendar', description: 'Calendar view of your deals', icon: 'CalendarDays', enabled: true, order: 5 },
-  { id: 'news-feed', label: 'News Feed', description: 'Latest industry news', icon: 'Newspaper', enabled: true, order: 6 },
-  { id: 'recent-activity', label: 'Recent Activity', description: 'Your recent deal activity', icon: 'Activity', enabled: true, order: 7 },
+  { id: 'create-deal', label: 'Create New Deal', description: 'Quickly create a new deal', icon: 'Briefcase', enabled: true, order: 2 },
+  { id: 'notifications', label: 'Notifications', description: 'Recent notifications carousel', icon: 'Bell', enabled: true, order: 3 },
+  { id: 'deals-calendar', label: 'Deals Calendar', description: 'Calendar view of your deals', icon: 'CalendarDays', enabled: true, order: 4 },
+  { id: 'news-feed', label: 'News Feed', description: 'Latest industry news', icon: 'Newspaper', enabled: true, order: 5 },
+  { id: 'recent-activity', label: 'Recent Activity', description: 'Your recent deal activity', icon: 'Activity', enabled: true, order: 6 },
 ];
 
 const STORAGE_KEY = 'dashboard-widgets-config';
@@ -96,7 +94,7 @@ export function DashboardWidgetsProvider({ children }: { children: ReactNode }) 
   };
 
   const getQuickActionWidgets = (): DashboardWidgetConfig[] => {
-    const quickActionIds: DashboardWidgetId[] = ['calendar', 'email', 'quick-prompts', 'create-deal'];
+    const quickActionIds: DashboardWidgetId[] = ['calendar', 'email', 'create-deal'];
     return widgets
       .filter(w => quickActionIds.includes(w.id) && w.enabled)
       .sort((a, b) => a.order - b.order);

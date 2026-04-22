@@ -1,11 +1,10 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useSearchParams } from 'react-router-dom';
-import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Briefcase, LayoutTemplate, Newspaper, Zap } from 'lucide-react';
+import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Briefcase, LayoutTemplate, Newspaper } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
 import { InboxDialog } from '@/components/dashboard/InboxDialog';
-import { QuickPromptsDialog } from '@/components/dashboard/QuickPromptsDialog';
 import { WidgetCarouselChrome } from '@/components/dashboard/widget-carousel/WidgetCarouselChrome';
 import { useWidgetCarouselStore } from '@/stores/widgetCarouselStore';
 import { useProfile } from '@/hooks/useProfile';
@@ -107,7 +106,6 @@ export default function Dashboard() {
       { id: 'calendar', label: 'Calendar' },
       { id: 'email', label: 'Email' },
       { id: 'new-deal', label: 'New Deal' },
-      { id: 'quick-prompts', label: 'Quick Prompts' },
     ];
     if (isJTurner) entries.push({ id: 'daily-briefing', label: 'Daily Briefing' });
     if (canSeeNiki) {
@@ -318,17 +316,6 @@ export default function Dashboard() {
                 <span className="text-sm font-medium text-foreground">New Deal</span>
               </div>
             </Card>
-            <Card
-              className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
-              onClick={(e) => openCarouselWidget('quick-prompts', e.currentTarget as HTMLElement)}
-            >
-              <div className="flex flex-col items-center text-center space-y-3">
-                <div className="relative h-12 w-12 rounded-xl border border-success/30 bg-success/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
-                  <Zap className="relative z-10 h-7 w-7 text-success" />
-                </div>
-                <span className="text-sm font-medium text-foreground">Quick Prompts</span>
-              </div>
-            </Card>
             {isJTurner && (
               <Card
                 className="p-4 cursor-pointer transition-all duration-150 hover:bg-muted/10 hover:scale-[1.02] hover:border-border/40 active:scale-[0.98]"
@@ -512,9 +499,6 @@ export default function Dashboard() {
       )}
       {isWidgetActive('new-deal') && (
         <CreateDealDialog open onOpenChange={handleCarouselDialogOpenChange} />
-      )}
-      {isWidgetActive('quick-prompts') && (
-        <QuickPromptsDialog open onOpenChange={handleCarouselDialogOpenChange} />
       )}
       {isJTurner && isWidgetActive('daily-briefing') && (
         <DailyBriefingModal open onOpenChange={handleCarouselDialogOpenChange} />
