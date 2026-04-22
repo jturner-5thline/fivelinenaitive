@@ -417,7 +417,7 @@ export default function Dashboard() {
           <>
           <div className={`grid gap-3 md:gap-4 ${gridColsClass}`}>
             <Card
-              className={TILE_INTERACTIVE_CLASSES}
+              className={cn(TILE_INTERACTIVE_CLASSES, isJTurner && 'order-1')}
               onClick={(e) => openCarouselWidget('calendar', e.currentTarget as HTMLElement)}
               role="button"
               tabIndex={0}
@@ -435,6 +435,7 @@ export default function Dashboard() {
               </div>
             </Card>
             <EmailTileWithIntelligence
+              className={isJTurner ? 'order-2' : undefined}
               onOpen={(el) => openCarouselWidget('email', el)}
               onKeyDown={(e) =>
                 handleTileKeyDown(e, () =>
@@ -443,7 +444,7 @@ export default function Dashboard() {
               }
             />
             <Card
-              className={TILE_INTERACTIVE_CLASSES}
+              className={cn(TILE_INTERACTIVE_CLASSES, isJTurner && 'order-4')}
               onClick={(e) => openCarouselWidget('new-deal', e.currentTarget as HTMLElement)}
               role="button"
               tabIndex={0}
