@@ -9,10 +9,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { EMAIL_WORKFLOW_DEFINITIONS, type EmailWorkflowDefinition } from './emailWorkflowConfig';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
 
-/** Guard: only 5th Line company triggers email workflows */
+/**
+ * Guard for legacy code-defined workflows that are 5th-Line-specific.
+ * DB-stored workflows in `email_workflows` are tenant-scoped via `company_id`
+ * and therefore should NOT be gated by this check.
+ */
 function isFifthLine(companyId: string): boolean {
   return companyId === FIFTH_LINE_COMPANY_ID;
 }
+
+/** Per-deal+stage+user dedup window for re-prompting (minutes). */
+const STAGE_PROMPT_DEDUP_MINUTES = 30;
 
 interface TriggerContext {
   dealId: string;
@@ -26,6 +33,8 @@ interface TriggerContext {
   lenderCount?: number;
   lenderName?: string;
   outstandingItemsCount?: number;
+  pipelineId?: string | null;
+  pipelineName?: string | null;
 }
 
 /**
@@ -38,18 +47,20 @@ export async function checkStageChangeWorkflows(
   newStage: string,
   oldStage?: string
 ): Promise<void> {
-  if (!isFifthLine(ctx.companyId)) return;
-
-  // 1. Legacy code-defined workflows
-  const matched = EMAIL_WORKFLOW_DEFINITIONS.filter(
-    w => w.triggerType === 'stage_enter' && w.triggerStage === newStage
-  );
-
-  for (const workflow of matched) {
-    await createPromptFromWorkflow(workflow, ctx, `Deal moved to stage "${newStage}"${oldStage ? ` from "${oldStage}"` : ''}`);
+  // 1. Legacy code-defined workflows (5th Line only — kept for backwards compat)
+  if (isFifthLine(ctx.companyId)) {
+    const matched = EMAIL_WORKFLOW_DEFINITIONS.filter(
+      w => w.triggerType === 'stage_enter' && w.triggerStage === newStage
+    );
+    for (const workflow of matched) {
+      await createPromptFromWorkflow(
+        workflow, ctx,
+        `Deal moved to stage "${newStage}"${oldStage ? ` from "${oldStage}"` : ''}`
+      );
+    }
   }
 
-  // 2. DB-stored email_workflows (stage_enter trigger type)
+  // 2. DB-stored email_workflows (tenant-scoped, runs for ALL companies)
   await checkDbStageWorkflows(ctx, newStage, oldStage);
 }
 
