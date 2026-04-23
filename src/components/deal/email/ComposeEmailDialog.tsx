@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,7 @@ import {
   ChevronUp,
   X,
   Trash2,
+  Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -36,6 +37,63 @@ interface ComposeEmailDialogProps {
   replyTo?: { subject: string; to_email: string; to_name: string; threadId: string } | null;
 }
 
+const COMPOSE_DRAFT_PREFIX = 'compose_draft_';
+const COMPOSE_AUTOSAVE_DEBOUNCE_MS = 800;
+
+interface ComposeDraft {
+  to: string[];
+  cc: string[];
+  bcc: string[];
+  subject: string;
+  body: string;
+  attachments: string[];
+  showCcBcc: boolean;
+  savedAt: number;
+}
+
+function getDraftKey(replyThreadId?: string): string {
+  return `${COMPOSE_DRAFT_PREFIX}${replyThreadId ?? 'new'}`;
+}
+
+function loadDraft(key: string): ComposeDraft | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as ComposeDraft;
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(key: string, draft: ComposeDraft): boolean {
+  try {
+    localStorage.setItem(key, JSON.stringify(draft));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function clearDraft(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+}
+
+function isDraftMeaningful(d: Pick<ComposeDraft, 'subject' | 'body' | 'attachments' | 'to' | 'cc' | 'bcc'>): boolean {
+  return !!(
+    d.subject.trim() ||
+    d.body.trim() ||
+    d.attachments.length > 0 ||
+    d.cc.length > 0 ||
+    d.bcc.length > 0 ||
+    // For new (non-reply) drafts, recipients also count
+    d.to.length > 0
+  );
+}
+
 export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: ComposeEmailDialogProps) {
   const [toRecipients, setToRecipients] = useState<string[]>(replyTo?.to_email ? [replyTo.to_email] : []);
   const [ccRecipients, setCcRecipients] = useState<string[]>([]);
@@ -45,9 +103,114 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   const [showCcBcc, setShowCcBcc] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
+  const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const subjectInputRef = useRef<HTMLInputElement>(null);
   const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
   const { search } = useEmailContacts();
+
+  const draftKey = useMemo(() => getDraftKey(replyTo?.threadId), [replyTo?.threadId]);
+  const hasRestoredRef = useRef(false);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipNextAutosaveRef = useRef(false);
+
+  // Restore any saved draft when the dialog opens
+  useEffect(() => {
+    if (!open) {
+      hasRestoredRef.current = false;
+      return;
+    }
+    if (hasRestoredRef.current) return;
+    hasRestoredRef.current = true;
+
+    const saved = loadDraft(draftKey);
+    if (saved && isDraftMeaningful(saved)) {
+      skipNextAutosaveRef.current = true;
+      setToRecipients(saved.to ?? (replyTo?.to_email ? [replyTo.to_email] : []));
+      setCcRecipients(saved.cc ?? []);
+      setBccRecipients(saved.bcc ?? []);
+      setSubject(saved.subject ?? (replyTo ? `Re: ${replyTo.subject}` : ''));
+      setBody(saved.body ?? '');
+      setAttachments(saved.attachments ?? []);
+      setShowCcBcc(saved.showCcBcc ?? (saved.cc?.length > 0 || saved.bcc?.length > 0));
+      setAutosaveStatus('saved');
+      if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
+      savedFlashTimerRef.current = setTimeout(() => setAutosaveStatus('idle'), 2500);
+    }
+  }, [open, draftKey, replyTo]);
+
+  // Debounced autosave whenever form content changes (only while open)
+  useEffect(() => {
+    if (!open) return;
+    if (skipNextAutosaveRef.current) {
+      skipNextAutosaveRef.current = false;
+      return;
+    }
+
+    const draft: ComposeDraft = {
+      to: toRecipients,
+      cc: ccRecipients,
+      bcc: bccRecipients,
+      subject,
+      body,
+      attachments,
+      showCcBcc,
+      savedAt: Date.now(),
+    };
+
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+
+    if (!isDraftMeaningful(draft)) {
+      // Nothing worth saving — remove any stale draft
+      clearDraft(draftKey);
+      setAutosaveStatus('idle');
+      return;
+    }
+
+    setAutosaveStatus('saving');
+    autosaveTimerRef.current = setTimeout(() => {
+      const ok = saveDraft(draftKey, draft);
+      if (ok) {
+        setAutosaveStatus('saved');
+        if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
+        savedFlashTimerRef.current = setTimeout(() => setAutosaveStatus('idle'), 2000);
+      } else {
+        setAutosaveStatus('idle');
+      }
+    }, COMPOSE_AUTOSAVE_DEBOUNCE_MS);
+
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    };
+  }, [open, draftKey, toRecipients, ccRecipients, bccRecipients, subject, body, attachments, showCcBcc]);
+
+  // Flush save on tab close / refresh
+  useEffect(() => {
+    if (!open) return;
+    const handler = () => {
+      const draft: ComposeDraft = {
+        to: toRecipients,
+        cc: ccRecipients,
+        bcc: bccRecipients,
+        subject,
+        body,
+        attachments,
+        showCcBcc,
+        savedAt: Date.now(),
+      };
+      if (isDraftMeaningful(draft)) saveDraft(draftKey, draft);
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [open, draftKey, toRecipients, ccRecipients, bccRecipients, subject, body, attachments, showCcBcc]);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+      if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
+    };
+  }, []);
 
   const resetForm = () => {
     setToRecipients(replyTo?.to_email ? [replyTo.to_email] : []);
@@ -57,6 +220,8 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     setBody('');
     setShowCcBcc(false);
     setAttachments([]);
+    setAutosaveStatus('idle');
+    skipNextAutosaveRef.current = true;
   };
 
   const executeSend = async () => {
