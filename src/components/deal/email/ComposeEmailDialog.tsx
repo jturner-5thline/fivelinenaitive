@@ -440,7 +440,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           break;
         }
         const result = validateFile(file, [...working, ...accepted]);
-        if (!result.ok) {
+        if (result.ok === false) {
           errors.push(`${file.name}: ${result.reason}`);
           continue;
         }
