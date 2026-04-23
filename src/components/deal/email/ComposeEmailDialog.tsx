@@ -453,6 +453,22 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
 
           <div className="flex-1 min-w-0" />
 
+          {autosaveStatus !== 'idle' && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1 px-1">
+              {autosaveStatus === 'saving' ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Saving draft…
+                </>
+              ) : (
+                <>
+                  <Check className="h-3 w-3 text-success" />
+                  Draft saved
+                </>
+              )}
+            </span>
+          )}
+
           <Button
             variant="ghost"
             size="icon"
