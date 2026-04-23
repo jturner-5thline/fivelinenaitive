@@ -25,6 +25,7 @@ import {
   AlertCircle,
   Upload,
   FileText,
+  Save,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -673,6 +674,49 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     toast.info('Draft discarded');
   };
 
+  /** Explicitly flush the current form state to the draft store, bypassing the autosave debounce. */
+  const handleSaveDraftNow = () => {
+    // Cancel any pending debounced save
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+
+    const draft: ComposeDraft = {
+      to: toRecipients,
+      cc: ccRecipients,
+      bcc: bccRecipients,
+      subject,
+      body,
+      attachments: attachments
+        .filter(a => a.status === 'ready')
+        .map(a => ({ id: a.id, name: a.name, size: a.size, type: a.type })),
+      showCcBcc,
+      savedAt: Date.now(),
+    };
+
+    if (!isDraftMeaningful(draft)) {
+      toast.info('Nothing to save', {
+        description: 'Add a recipient, subject, message, or attachment first.',
+      });
+      return;
+    }
+
+    setAutosaveStatus('saving');
+    const ok = saveDraft(draftKey, draft);
+    if (ok) {
+      setAutosaveStatus('saved');
+      if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
+      savedFlashTimerRef.current = setTimeout(() => setAutosaveStatus('idle'), 2500);
+      toast.success('Draft saved');
+    } else {
+      setAutosaveStatus('idle');
+      toast.error('Could not save draft', {
+        description: 'Your browser storage may be full. Try removing attachments and retry.',
+      });
+    }
+  };
+
   return (
     <Dialog
       open={open}
@@ -902,6 +946,18 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           </Button>
 
           <div className="flex-1 min-w-0" />
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={handleSaveDraftNow}
+            disabled={autosaveStatus === 'saving'}
+            aria-label="Save draft now"
+          >
+            <Save className="h-3.5 w-3.5" />
+            Save draft
+          </Button>
 
           {autosaveStatus !== 'idle' && (
             <span className="text-xs text-muted-foreground flex items-center gap-1 px-1">
