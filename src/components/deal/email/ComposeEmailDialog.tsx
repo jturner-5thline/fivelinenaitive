@@ -1265,13 +1265,31 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
                       att.status === 'error' && 'border-destructive/40 bg-destructive/5',
                     )}
                   >
-                    {att.status === 'error' ? (
-                      <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
-                    ) : att.status === 'uploading' ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
-                    ) : (
-                      <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    )}
+                    <div
+                      className={cn(
+                        'relative h-9 w-9 shrink-0 overflow-hidden rounded border bg-background flex items-center justify-center',
+                        att.status === 'error' && 'border-destructive/40',
+                      )}
+                      aria-hidden
+                    >
+                      {att.previewUrl ? (
+                        <img
+                          src={att.previewUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : att.status === 'error' ? (
+                        <AlertCircle className="h-4 w-4 text-destructive" />
+                      ) : (
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      {att.status === 'uploading' && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-background/60">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="truncate font-medium">{att.name}</span>
