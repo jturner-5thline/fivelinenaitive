@@ -766,10 +766,12 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           style={{ padding: 'clamp(0.625rem, 1.25vw, 1rem) clamp(1rem, 2.5vw, 1.75rem)' }}
         >
           <Button
+            ref={sendButtonRef}
             onClick={handleSend}
             disabled={isSending}
             size="sm"
             className="gap-1.5"
+            aria-keyshortcuts="Meta+Enter Control+Enter"
           >
             {isSending ? (
               <>
