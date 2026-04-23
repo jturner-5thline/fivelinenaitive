@@ -45,6 +45,14 @@ interface ComposeEmailDialogProps {
 const COMPOSE_DRAFT_PREFIX = 'compose_draft_';
 const COMPOSE_AUTOSAVE_DEBOUNCE_MS = 800;
 
+/** How many autosaved versions of a draft to keep in history. */
+const DRAFT_HISTORY_MAX_ENTRIES = 8;
+/**
+ * Minimum gap between successive history entries. Prevents flooding history
+ * with near-identical snapshots when the user is typing quickly.
+ */
+const DRAFT_HISTORY_MIN_GAP_MS = 8000;
+
 /** How long the user has to undo a send before it's actually delivered. */
 const UNDO_SEND_WINDOW_MS = 5000;
 
