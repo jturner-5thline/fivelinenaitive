@@ -281,6 +281,26 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── In-flight lock (prevents duplicate HubSpot deals from concurrent invokes) ──
+    // Atomically transition status null/skipped/failed → 'syncing'. If another
+    // worker has already claimed this deal we exit early.
+    {
+      const { data: claimed, error: claimErr } = await supabase
+        .from('deals')
+        .update({ hubspot_sync_status: 'syncing', hubspot_sync_error: null })
+        .eq('id', deal_id)
+        .or('hubspot_sync_status.is.null,hubspot_sync_status.in.(skipped,failed)')
+        .select('id')
+        .maybeSingle();
+      if (!claimed && !force) {
+        if (claimErr) console.warn('[hubspot-create-deal] claim error:', claimErr.message);
+        return new Response(JSON.stringify({
+          skipped: true,
+          reason: 'already_in_flight_or_synced',
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+    }
+
     // ── Token check ───────────────────────────────────────────────────
     const accessToken = Deno.env.get('HUBSPOT_ACCESS_TOKEN');
     if (!accessToken) {
