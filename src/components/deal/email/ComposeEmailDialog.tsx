@@ -205,46 +205,48 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           </div>
         </div>
 
-        <Separator />
+          <Separator className="my-1" />
 
-        {/* Body */}
-        <div className="px-5 py-3">
-          <Textarea
-            value={body}
-            onChange={e => setBody(e.target.value)}
-            placeholder="Write your message..."
-            className="min-h-[200px] border-0 resize-none focus-visible:ring-0 p-0 text-sm bg-transparent"
-          />
+          {/* Body — grows to fill remaining space inside the scrollable region */}
+          <div className="flex-1 min-h-[200px] flex flex-col">
+            <Textarea
+              value={body}
+              onChange={e => setBody(e.target.value)}
+              placeholder="Write your message..."
+              className="flex-1 min-h-[200px] border-0 resize-none focus-visible:ring-0 p-0 text-sm bg-transparent"
+            />
+          </div>
+
+          {/* Attachments */}
+          {attachments.length > 0 && (
+            <div className="pt-3">
+              <div className="flex flex-wrap gap-2">
+                {attachments.map(name => (
+                  <Badge
+                    key={name}
+                    variant="secondary"
+                    className="text-xs gap-1.5 pr-1 py-1"
+                  >
+                    <Paperclip className="h-3 w-3" />
+                    {name}
+                    <button
+                      onClick={() => setAttachments(prev => prev.filter(a => a !== name))}
+                      className="ml-0.5 rounded-full hover:bg-muted p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Attachments */}
-        {attachments.length > 0 && (
-          <div className="px-5 pb-2">
-            <div className="flex flex-wrap gap-2">
-              {attachments.map(name => (
-                <Badge
-                  key={name}
-                  variant="secondary"
-                  className="text-xs gap-1.5 pr-1 py-1"
-                >
-                  <Paperclip className="h-3 w-3" />
-                  {name}
-                  <button
-                    onClick={() => setAttachments(prev => prev.filter(a => a !== name))}
-                    className="ml-0.5 rounded-full hover:bg-muted p-0.5"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <Separator />
-
-        {/* Footer actions */}
-        <div className="flex items-center gap-2 px-5 py-3">
+        {/* Footer */}
+        <div
+          className="shrink-0 border-t flex flex-wrap items-center gap-2"
+          style={{ padding: 'clamp(0.625rem, 1.25vw, 1rem) clamp(1rem, 2.5vw, 1.75rem)' }}
+        >
           <Button
             onClick={handleSend}
             disabled={isSending}
@@ -274,7 +276,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
             Attach
           </Button>
 
-          <div className="flex-1" />
+          <div className="flex-1 min-w-0" />
 
           <Button
             variant="ghost"
