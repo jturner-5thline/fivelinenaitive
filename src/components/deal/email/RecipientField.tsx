@@ -316,6 +316,7 @@ export function RecipientField({
             placeholder={recipients.length === 0 ? placeholder : ''}
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? `${label.toLowerCase()}-recipient-error` : undefined}
+            tabIndex={tabIndex}
             className={cn(
               'flex-1 min-w-[120px] h-7 text-sm bg-transparent border-0 outline-none placeholder:text-muted-foreground/50',
               inputClassName
