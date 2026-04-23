@@ -90,7 +90,7 @@ export default function CrmCompanies() {
   return (
     <>
       <Helmet>
-        <title>Companies | nAItive</title>
+        <title>Companies | naitive</title>
         <meta name="description" content="Manage B2B accounts, customers, and prospects." />
       </Helmet>
 

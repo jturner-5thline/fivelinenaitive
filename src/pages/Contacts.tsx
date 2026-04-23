@@ -110,7 +110,7 @@ export default function Contacts() {
   return (
     <>
       <Helmet>
-        <title>Contacts | nAItive</title>
+        <title>Contacts | naitive</title>
         <meta name="description" content="Manage your sales contacts, leads, and prospects." />
       </Helmet>
 

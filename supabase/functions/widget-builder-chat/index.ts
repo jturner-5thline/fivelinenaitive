@@ -34,7 +34,7 @@ const AVAILABLE_FIELDS = [
 const SOURCE_ABBR: Record<string, string> = { quickbooks: 'QB', hubspot: 'HS', naitive: 'NT' };
 const FIELD_REFERENCE = AVAILABLE_FIELDS.map(f => `- ${f.id}: "${f.name}" [${SOURCE_ABBR[f.source]}] (${f.group}, ${f.dataType}, ${f.isMeasure ? 'measure' : 'dimension'})`).join('\n');
 
-const SYSTEM_PROMPT = `You are nAItive's Widget Builder AI. You help users build data visualization widgets by understanding what they want to see and configuring the widget accordingly.
+const SYSTEM_PROMPT = `You are naitive's Widget Builder AI. You help users build data visualization widgets by understanding what they want to see and configuring the widget accordingly.
 
 ## Available Fields
 ${FIELD_REFERENCE}

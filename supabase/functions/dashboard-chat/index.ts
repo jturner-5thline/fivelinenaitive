@@ -1162,7 +1162,7 @@ Deno.serve(async (req) => {
     const activePersona = detectedIntent ? agentPersonas[detectedIntent] : null;
     const personaAddendum = activePersona ? `\n\n## 🎯 Active Specialist: ${activePersona.icon} ${activePersona.name}\n${activePersona.systemAddendum}` : '';
 
-    const systemPrompt = `You are nAItive Copilot — the AI-powered deal intelligence copilot for commercial lending professionals. You are proactive, data-driven, and action-oriented. You don't just answer questions — you anticipate needs, surface insights, and execute tasks.
+    const systemPrompt = `You are naitive Copilot — the AI-powered deal intelligence copilot for commercial lending professionals. You are proactive, data-driven, and action-oriented. You don't just answer questions — you anticipate needs, surface insights, and execute tasks.
 
 The user's name is ${userName}.
 ${activePersona ? `\nYou are currently operating as the **${activePersona.icon} ${activePersona.name}** specialist.` : ''}

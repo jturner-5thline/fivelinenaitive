@@ -11,7 +11,7 @@ export default function FieldLayoutEditorPage() {
   return (
     <>
       <Helmet>
-        <title>Field Layout Editor | nAItive</title>
+        <title>Field Layout Editor | naitive</title>
       </Helmet>
       <DealsHeader />
       <div className="bg-background min-h-screen">

@@ -181,7 +181,7 @@ export function HubSpotMappingDetailModal({ configId, open, onClose }: HubSpotMa
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader className="shrink-0">
-          <DialogTitle>HubSpot Deals ↔ nAItive Deals</DialogTitle>
+          <DialogTitle>HubSpot Deals ↔ naitive Deals</DialogTitle>
           <DialogDescription>
             Configure field mappings, sync direction, and record behavior for deal synchronization.
           </DialogDescription>
@@ -200,12 +200,12 @@ export function HubSpotMappingDetailModal({ configId, open, onClose }: HubSpotMa
                   <div className="flex items-center gap-2">
                     <RadioGroupItem value="hubspot_to_native" id="dir-h2n" />
                     <Label htmlFor="dir-h2n" className="text-sm">
-                      HubSpot → nAItive <span className="text-muted-foreground">(recommended)</span>
+                      HubSpot → naitive <span className="text-muted-foreground">(recommended)</span>
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <RadioGroupItem value="native_to_hubspot" id="dir-n2h" />
-                    <Label htmlFor="dir-n2h" className="text-sm">nAItive → HubSpot</Label>
+                    <Label htmlFor="dir-n2h" className="text-sm">naitive → HubSpot</Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <RadioGroupItem value="bidirectional" id="dir-bi" />
@@ -268,7 +268,7 @@ export function HubSpotMappingDetailModal({ configId, open, onClose }: HubSpotMa
                     <TableRow>
                       <TableHead className="text-xs">HubSpot Field</TableHead>
                       <TableHead className="text-xs w-[40px] text-center">→</TableHead>
-                      <TableHead className="text-xs">nAItive Field</TableHead>
+                      <TableHead className="text-xs">naitive Field</TableHead>
                       <TableHead className="text-xs w-[80px]">Status</TableHead>
                       <TableHead className="text-xs w-[40px]" />
                     </TableRow>

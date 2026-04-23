@@ -31,7 +31,7 @@ export function HubSpotSyncSettingsModal({ open, onClose }: HubSpotSyncSettingsM
         <DialogHeader className="shrink-0 p-6 pb-4">
           <DialogTitle>HubSpot Sync Settings</DialogTitle>
           <DialogDescription>
-            Configure what data syncs between HubSpot and nAItive.
+            Configure what data syncs between HubSpot and naitive.
           </DialogDescription>
         </DialogHeader>
 
@@ -61,7 +61,7 @@ export function HubSpotSyncSettingsModal({ open, onClose }: HubSpotSyncSettingsM
             <RadioGroup value={syncDirection} onValueChange={setSyncDirection}>
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="one-way" id="dir-oneway" />
-                <Label htmlFor="dir-oneway" className="text-sm">One-way: HubSpot → nAItive (recommended)</Label>
+                <Label htmlFor="dir-oneway" className="text-sm">One-way: HubSpot → naitive (recommended)</Label>
               </div>
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="two-way" id="dir-twoway" />
@@ -88,7 +88,7 @@ export function HubSpotSyncSettingsModal({ open, onClose }: HubSpotSyncSettingsM
           {/* Data Usage Note */}
           <div className="rounded-lg border border-border/50 p-3 bg-muted/30 mb-2 space-y-2">
             <p className="text-xs text-muted-foreground">
-              <strong>Data Usage:</strong> nAItive uses your HubSpot data to power deal analysis, scoring, and workflow automation. To add, edit, or manage CRM records, open HubSpot directly.
+              <strong>Data Usage:</strong> naitive uses your HubSpot data to power deal analysis, scoring, and workflow automation. To add, edit, or manage CRM records, open HubSpot directly.
             </p>
             <Link to="/field-layout-editor" className="text-xs text-primary flex items-center gap-1 hover:underline">
               <ExternalLink className="h-3 w-3" /> Configure Field Layout Editor

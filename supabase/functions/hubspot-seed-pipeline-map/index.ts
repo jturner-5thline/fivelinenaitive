@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     const hsData = await hsRes.json();
     const hsPipelines: any[] = hsData.results || [];
 
-    // 2. Fetch nAItive pipelines for this company
+    // 2. Fetch naitive pipelines for this company
     const { data: naitivePipelines, error: npErr } = await supabase
       .from('deal_pipelines')
       .select('id, name, stages')

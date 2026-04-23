@@ -12,7 +12,7 @@ export default function CrmCompanyDetail() {
 
   return (
     <>
-      <Helmet><title>{company?.name || 'Company'} | nAItive</title></Helmet>
+      <Helmet><title>{company?.name || 'Company'} | naitive</title></Helmet>
       <div className="bg-background min-h-screen">
         <div className="container mx-auto py-6 px-4 space-y-6">
           <Button variant="ghost" size="sm" onClick={() => navigate('/crm-companies')} className="gap-1.5">

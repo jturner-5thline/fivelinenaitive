@@ -7,8 +7,8 @@ export default function PrivacyPolicy() {
   return (
     <>
       <Helmet>
-        <title>Privacy Policy | nAItive</title>
-        <meta name="description" content="Privacy Policy for nAItive - Learn how we collect, use, and protect your personal information." />
+        <title>Privacy Policy | naitive</title>
+        <meta name="description" content="Privacy Policy for naitive - Learn how we collect, use, and protect your personal information." />
       </Helmet>
 
       <div className="min-h-screen bg-background">
@@ -27,7 +27,7 @@ export default function PrivacyPolicy() {
             <section>
               <h2 className="text-2xl font-semibold mb-4">1. Introduction</h2>
               <p className="text-muted-foreground leading-relaxed">
-                nAItive ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our deal analysis platform and related services (the "Service").
+                naitive ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our deal analysis platform and related services (the "Service").
               </p>
               <p className="text-muted-foreground leading-relaxed mt-4">
                 By accessing or using the Service, you agree to this Privacy Policy. If you do not agree with the terms of this Privacy Policy, please do not access the Service.
@@ -139,7 +139,7 @@ export default function PrivacyPolicy() {
                 If you have any questions about this Privacy Policy or our data practices, please contact us at:
               </p>
               <div className="mt-4 p-4 bg-muted rounded-lg">
-                <p className="font-medium">nAItive</p>
+                <p className="font-medium">naitive</p>
                 <p className="text-muted-foreground">Email: privacy@naitive.com</p>
                 <p className="text-muted-foreground">Support: support@naitive.com</p>
               </div>

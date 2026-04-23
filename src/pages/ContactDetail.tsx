@@ -13,7 +13,7 @@ export default function ContactDetail() {
   return (
     <>
       <Helmet>
-        <title>{contact?.full_name || 'Contact'} | nAItive</title>
+        <title>{contact?.full_name || 'Contact'} | naitive</title>
       </Helmet>
 
       <div className="bg-background min-h-screen">

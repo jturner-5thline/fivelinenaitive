@@ -212,7 +212,7 @@ ${milestones?.filter(m => !m.completed).slice(0, 5).map(m =>
 ).join('\n') || 'No pending milestones'}
 `;
 
-    const systemPrompt = `You are an intelligent assistant for nAItive, a commercial lending deal management platform. Help users find information, understand how to use the platform, and navigate their data.
+    const systemPrompt = `You are an intelligent assistant for naitive, a commercial lending deal management platform. Help users find information, understand how to use the platform, and navigate their data.
 
 You have access to:
 1. Platform knowledge (features, navigation, FAQs, policies)

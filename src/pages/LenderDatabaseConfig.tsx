@@ -436,7 +436,7 @@ export default function LenderDatabaseConfig() {
   return (
     <>
       <Helmet>
-        <title>Lender Database Configuration - nAItive</title>
+        <title>Lender Database Configuration - naitive</title>
         <meta name="description" content="Configure lender database dropdown options" />
       </Helmet>
 

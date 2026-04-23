@@ -250,7 +250,7 @@ export function QuickBooksSyncSettingsModal({ open, onClose }: QuickBooksSyncSet
             {/* Data Usage Note */}
             <div className="rounded-lg border border-border/50 p-3 bg-muted/30">
               <p className="text-xs text-muted-foreground">
-                <strong>Data Usage:</strong> nAItive uses your QuickBooks data to display financial context on deal and company profiles, and to power configurable metrics dashboards. To create or edit transactions, open QuickBooks directly.
+                <strong>Data Usage:</strong> naitive uses your QuickBooks data to display financial context on deal and company profiles, and to power configurable metrics dashboards. To create or edit transactions, open QuickBooks directly.
               </p>
             </div>
           </div>

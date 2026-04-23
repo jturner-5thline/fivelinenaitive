@@ -434,7 +434,7 @@ export function HubSpotDealSync() {
           <DialogHeader>
             <DialogTitle>Stage Mapping</DialogTitle>
             <DialogDescription>
-              Map HubSpot deal stages to nAItive deal stages for imported deals
+              Map HubSpot deal stages to naitive deal stages for imported deals
             </DialogDescription>
           </DialogHeader>
           

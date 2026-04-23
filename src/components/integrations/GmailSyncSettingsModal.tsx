@@ -23,10 +23,10 @@ export function GmailSyncSettingsModal({ open, onClose, email, onDisconnect }: G
           </div>
 
           <div>
-            <p className="text-sm font-medium mb-2">What nAItive does with your Gmail:</p>
+            <p className="text-sm font-medium mb-2">What naitive does with your Gmail:</p>
             <ul className="text-sm text-muted-foreground space-y-1.5 list-disc pl-5">
               <li>Reads email metadata (sender, recipient, subject, date) to build deal communication timelines</li>
-              <li>Email body content is NOT stored or displayed in nAItive</li>
+              <li>Email body content is NOT stored or displayed in naitive</li>
               <li>No emails are sent on your behalf from this page</li>
             </ul>
           </div>

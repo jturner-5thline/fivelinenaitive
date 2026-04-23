@@ -34,7 +34,7 @@ export const TestimonialsSection = () => {
             Trusted by Leading Investors
           </h2>
           <p className="text-primary-foreground/70 text-lg">
-            See why top private equity firms choose nAItive for their deal analysis.
+            See why top private equity firms choose naitive for their deal analysis.
           </p>
         </div>
 

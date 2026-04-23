@@ -127,7 +127,7 @@ export function VdrExportButton({ dealId, dealName, documents, isDataroomView }:
                   <AlertDialogTitle>Security Notice</AlertDialogTitle>
                 </div>
                 <AlertDialogDescription className="pt-2">
-                  You are exporting data outside of a secure environment. Downloaded files will no longer be protected by nAItive's access controls. Are you sure you want to proceed?
+                  You are exporting data outside of a secure environment. Downloaded files will no longer be protected by naitive's access controls. Are you sure you want to proceed?
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

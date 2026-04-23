@@ -237,7 +237,7 @@ export function IntegrationCard({
           <AlertDialogHeader>
             <AlertDialogTitle>Disconnect {name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the connection to {name}. Your synced data will remain in nAItive but will no longer update.
+              This will remove the connection to {name}. Your synced data will remain in naitive but will no longer update.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -56,7 +56,7 @@ const BANNER_DISMISSED_KEY = "naitive_integrations_banner_dismissed";
 
 const COMING_SOON_INTEGRATIONS = [
   { key: "docusign", name: "DocuSign", icon: PenTool, description: "Send and manage e-signature envelopes directly from deals" },
-  { key: "webhook", name: "Webhook", icon: Webhook, description: "Send nAItive event data to external services via HTTP webhooks" },
+  { key: "webhook", name: "Webhook", icon: Webhook, description: "Send naitive event data to external services via HTTP webhooks" },
   { key: "linkedin", name: "LinkedIn", icon: Linkedin, description: "Enrich deal and contact profiles with LinkedIn data" },
   { key: "email-smtp", name: "Email SMTP", icon: Mail, description: "Send transactional emails via your own custom SMTP server" },
   { key: "document-storage", name: "Document Storage", icon: FileText, description: "Connect Dropbox or OneDrive to store and access deal documents" },
@@ -562,7 +562,7 @@ export default function Integrations() {
   return (
     <AppLayout mainClassName="bg-background">
       <Helmet>
-        <title>Integrations | nAItive</title>
+        <title>Integrations | naitive</title>
       </Helmet>
 
       <div className="p-6 space-y-6">

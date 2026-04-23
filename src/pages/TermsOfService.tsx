@@ -7,8 +7,8 @@ export default function TermsOfService() {
   return (
     <>
       <Helmet>
-        <title>Terms of Service | nAItive</title>
-        <meta name="description" content="Terms of Service for nAItive - Read our terms and conditions for using our deal analysis platform." />
+        <title>Terms of Service | naitive</title>
+        <meta name="description" content="Terms of Service for naitive - Read our terms and conditions for using our deal analysis platform." />
       </Helmet>
 
       <div className="min-h-screen bg-background">
@@ -27,17 +27,17 @@ export default function TermsOfService() {
             <section>
               <h2 className="text-2xl font-semibold mb-4">1. Acceptance of Terms</h2>
               <p className="text-muted-foreground leading-relaxed">
-                Welcome to nAItive. By accessing or using our deal analysis platform and related services (the "Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, you may not access or use the Service.
+                Welcome to naitive. By accessing or using our deal analysis platform and related services (the "Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, you may not access or use the Service.
               </p>
               <p className="text-muted-foreground leading-relaxed mt-4">
-                These Terms constitute a legally binding agreement between you and nAItive ("Company," "we," "us," or "our"). We may modify these Terms at any time, and such modifications will be effective immediately upon posting. Your continued use of the Service constitutes acceptance of the modified Terms.
+                These Terms constitute a legally binding agreement between you and naitive ("Company," "we," "us," or "our"). We may modify these Terms at any time, and such modifications will be effective immediately upon posting. Your continued use of the Service constitutes acceptance of the modified Terms.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold mb-4">2. Description of Service</h2>
               <p className="text-muted-foreground leading-relaxed">
-                nAItive provides a modern deal analysis platform designed for growth-stage and lower-middle-market investors. Our Service includes deal tracking, lender management, analytics, collaboration tools, and related features. We reserve the right to modify, suspend, or discontinue any aspect of the Service at any time.
+                naitive provides a modern deal analysis platform designed for growth-stage and lower-middle-market investors. Our Service includes deal tracking, lender management, analytics, collaboration tools, and related features. We reserve the right to modify, suspend, or discontinue any aspect of the Service at any time.
               </p>
             </section>
 
@@ -88,7 +88,7 @@ export default function TermsOfService() {
                 <li>Collect or harvest user data without consent</li>
                 <li>Impersonate any person or entity</li>
                 <li>Share your account credentials with third parties</li>
-                <li>Use the Service to compete with nAItive</li>
+                <li>Use the Service to compete with naitive</li>
               </ul>
             </section>
 
@@ -109,7 +109,7 @@ export default function TermsOfService() {
             <section>
               <h2 className="text-2xl font-semibold mb-4">7. Intellectual Property</h2>
               <p className="text-muted-foreground leading-relaxed">
-                The Service and its original content, features, and functionality are owned by nAItive and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws. You may not copy, modify, distribute, sell, or lease any part of the Service without our express written permission.
+                The Service and its original content, features, and functionality are owned by naitive and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws. You may not copy, modify, distribute, sell, or lease any part of the Service without our express written permission.
               </p>
             </section>
 
@@ -143,7 +143,7 @@ export default function TermsOfService() {
             <section>
               <h2 className="text-2xl font-semibold mb-4">11. Indemnification</h2>
               <p className="text-muted-foreground leading-relaxed">
-                You agree to indemnify, defend, and hold harmless nAItive and its officers, directors, employees, and agents from any claims, damages, losses, liabilities, and expenses (including attorneys' fees) arising out of or related to your use of the Service, your User Content, or your violation of these Terms.
+                You agree to indemnify, defend, and hold harmless naitive and its officers, directors, employees, and agents from any claims, damages, losses, liabilities, and expenses (including attorneys' fees) arising out of or related to your use of the Service, your User Content, or your violation of these Terms.
               </p>
             </section>
 
@@ -174,7 +174,7 @@ export default function TermsOfService() {
             <section>
               <h2 className="text-2xl font-semibold mb-4">15. General Provisions</h2>
               <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
-                <li><strong>Entire Agreement:</strong> These Terms constitute the entire agreement between you and nAItive regarding the Service.</li>
+                <li><strong>Entire Agreement:</strong> These Terms constitute the entire agreement between you and naitive regarding the Service.</li>
                 <li><strong>Severability:</strong> If any provision of these Terms is found unenforceable, the remaining provisions will remain in effect.</li>
                 <li><strong>Waiver:</strong> Our failure to enforce any right or provision shall not constitute a waiver of such right or provision.</li>
                 <li><strong>Assignment:</strong> You may not assign these Terms without our prior written consent. We may assign our rights without restriction.</li>
@@ -187,7 +187,7 @@ export default function TermsOfService() {
                 If you have any questions about these Terms of Service, please contact us at:
               </p>
               <div className="mt-4 p-4 bg-muted rounded-lg">
-                <p className="font-medium">nAItive</p>
+                <p className="font-medium">naitive</p>
                 <p className="text-muted-foreground">Email: legal@naitive.com</p>
                 <p className="text-muted-foreground">Support: support@naitive.com</p>
               </div>

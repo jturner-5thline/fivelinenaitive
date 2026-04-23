@@ -102,7 +102,7 @@ serve(async (req) => {
       : "No indexed documents found for this deal. The dataroom may not have been ingested yet.";
 
     // Step 4: Stream response from AI
-    const systemPrompt = `You are nAItive, an AI analyst assistant for private credit deal teams. Answer the user's question using ONLY the provided document chunks as context. 
+    const systemPrompt = `You are naitive, an AI analyst assistant for private credit deal teams. Answer the user's question using ONLY the provided document chunks as context. 
 
 RULES:
 - Always cite your sources using [Source: filename] format
