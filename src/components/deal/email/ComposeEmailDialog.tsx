@@ -523,6 +523,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
       const ok = saveDraft(draftKey, draft);
       if (ok) {
         setAutosaveStatus('saved');
+        setLastSavedAt(draft.savedAt);
         // Record this snapshot in version history (deduped + rate-limited internally)
         setHistory(pushHistoryEntry(historyKey, draft));
         if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
