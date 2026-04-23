@@ -873,6 +873,82 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
         onAddAttachment={() => { clearPreSendAlert(); openFilePicker(); }}
         onAddSubject={() => { clearPreSendAlert(); subjectInputRef.current?.focus(); }}
       />
+
+      {/* Restore-saved-draft prompt — shown on open when a meaningful draft exists */}
+      <AlertDialog
+        open={!!pendingDraft}
+        onOpenChange={(o) => {
+          // Treat overlay/Escape close as "Start fresh" — user can always reopen compose to retry
+          if (!o) handleDiscardSavedDraft();
+        }}
+      >
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <History className="h-4 w-4 text-primary" />
+              Restore saved draft?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  We found an unsaved draft from{' '}
+                  <span className="font-medium text-foreground">
+                    {pendingDraft
+                      ? new Date(pendingDraft.savedAt).toLocaleString(undefined, {
+                          dateStyle: 'medium',
+                          timeStyle: 'short',
+                        })
+                      : ''}
+                  </span>
+                  . Would you like to continue where you left off?
+                </p>
+
+                {pendingDraft && (
+                  <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-1.5">
+                    {pendingDraft.to.length > 0 && (
+                      <div className="flex gap-2">
+                        <span className="text-muted-foreground shrink-0 w-12">To</span>
+                        <span className="truncate text-foreground">{pendingDraft.to.join(', ')}</span>
+                      </div>
+                    )}
+                    {pendingDraft.subject && (
+                      <div className="flex gap-2">
+                        <span className="text-muted-foreground shrink-0 w-12">Subject</span>
+                        <span className="truncate font-medium text-foreground">{pendingDraft.subject}</span>
+                      </div>
+                    )}
+                    {pendingDraft.body && (
+                      <div className="flex gap-2">
+                        <span className="text-muted-foreground shrink-0 w-12">Body</span>
+                        <span className="line-clamp-2 text-foreground/90">{pendingDraft.body.slice(0, 200)}</span>
+                      </div>
+                    )}
+                    {pendingDraft.attachments.length > 0 && (
+                      <div className="flex gap-2">
+                        <span className="text-muted-foreground shrink-0 w-12">Files</span>
+                        <span className="text-foreground/90">
+                          {pendingDraft.attachments.length} attachment
+                          {pendingDraft.attachments.length > 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDiscardSavedDraft} className="gap-1.5">
+              <Sparkles className="h-3.5 w-3.5" />
+              Start fresh
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleRestoreDraft} className="gap-1.5">
+              <History className="h-3.5 w-3.5" />
+              Restore draft
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
