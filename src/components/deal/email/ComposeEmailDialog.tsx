@@ -639,6 +639,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
               placeholder="recipient@example.com"
               className="flex-1"
               labelClassName="w-10"
+              autoFocus={!shouldFocusBodyOnOpen}
             />
             <Button
               variant="ghost"
