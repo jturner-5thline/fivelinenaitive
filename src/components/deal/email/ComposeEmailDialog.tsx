@@ -335,10 +335,15 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   const cancelledRef = useRef(false);
 
   const draftKey = useMemo(() => getDraftKey(replyTo?.threadId), [replyTo?.threadId]);
+  const historyKey = useMemo(() => getHistoryKey(replyTo?.threadId), [replyTo?.threadId]);
   const hasRestoredRef = useRef(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipNextAutosaveRef = useRef(false);
+
+  // Draft version history (newest first). Loaded lazily when the dialog opens.
+  const [history, setHistory] = useState<DraftHistoryEntry[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   // Restore any saved draft when the dialog opens
   useEffect(() => {
