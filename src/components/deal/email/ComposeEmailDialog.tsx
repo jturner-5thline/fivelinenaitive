@@ -553,6 +553,12 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
         try { xhr.abort(); } catch { /* ignore */ }
       });
       uploadXhrsRef.current.clear();
+      // Revoke any preview object URLs we created so they don't leak.
+      attachmentsRef.current.forEach(a => {
+        if (a.previewUrl) {
+          try { URL.revokeObjectURL(a.previewUrl); } catch { /* ignore */ }
+        }
+      });
     };
   }, []);
 
