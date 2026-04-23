@@ -434,6 +434,12 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
    */
   const uploadXhrsRef = useRef<Map<string, XMLHttpRequest>>(new Map());
   /**
+   * Tracks pending exponential-backoff retry timers keyed by attachment id.
+   * Cleared if the user removes the attachment, manually retries, discards
+   * the draft, or the dialog unmounts.
+   */
+  const uploadRetryTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  /**
    * Mirrors the latest `attachments` state so the unmount-only cleanup effect
    * (deps: []) can revoke any outstanding preview object URLs without needing
    * to re-subscribe on every state change.
