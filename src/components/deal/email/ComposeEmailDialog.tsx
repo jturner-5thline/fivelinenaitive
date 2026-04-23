@@ -623,6 +623,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     setShowCcBcc(false);
     setAttachments([]);
     setAutosaveStatus('idle');
+    setLastSavedAt(null);
     skipNextAutosaveRef.current = true;
   };
 
