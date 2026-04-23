@@ -640,6 +640,9 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
         try { xhr.abort(); } catch { /* ignore */ }
       });
       uploadXhrsRef.current.clear();
+      // Cancel any pending retry timers
+      uploadRetryTimersRef.current.forEach(t => clearTimeout(t));
+      uploadRetryTimersRef.current.clear();
       // Revoke any preview object URLs we created so they don't leak.
       attachmentsRef.current.forEach(a => {
         if (a.previewUrl) {
