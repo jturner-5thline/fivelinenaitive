@@ -119,9 +119,23 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
-      <DialogContent className="sm:max-w-[640px] p-0 gap-0 overflow-hidden">
-        <DialogHeader className="px-5 pt-5 pb-3">
-          <DialogTitle className="text-base">
+      <DialogContent
+        className={cn(
+          "p-0 gap-0 overflow-hidden flex flex-col sm:rounded-xl",
+          // Mobile: ~96vw x ~93dvh
+          "w-[96vw] h-[93dvh] max-w-[97vw] max-h-[94dvh]",
+          // Tablet (>= 640px): ~94vw x 90dvh
+          "sm:w-[94vw] sm:h-[90dvh] sm:max-w-[94vw] sm:max-h-[92dvh]",
+          // Desktop (>= 1024px): ~92vw x 88dvh, capped at 1400 x 980
+          "lg:w-[min(92vw,1400px)] lg:h-[min(88dvh,980px)] lg:max-w-[1400px] lg:max-h-[980px]",
+        )}
+      >
+        {/* Header */}
+        <DialogHeader
+          className="shrink-0 border-b"
+          style={{ padding: 'clamp(0.75rem, 1.5vw, 1.25rem) clamp(1rem, 2.5vw, 1.75rem)' }}
+        >
+          <DialogTitle className="text-base sm:text-lg">
             {replyTo ? 'Reply' : 'New Message'}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
@@ -129,9 +143,12 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           </DialogDescription>
         </DialogHeader>
 
-        <Separator />
-
-        <div className="px-5 py-3 space-y-3">
+        {/* Scrollable body */}
+        <div
+          className="flex-1 min-h-0 overflow-y-auto flex flex-col"
+          style={{ padding: 'clamp(0.75rem, 1.5vw, 1.25rem) clamp(1rem, 2.5vw, 1.75rem)' }}
+        >
+          <div className="space-y-3">
           {/* To field */}
           <div className="flex items-center gap-2">
             <RecipientField
@@ -189,46 +206,48 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           </div>
         </div>
 
-        <Separator />
+          <Separator className="my-1" />
 
-        {/* Body */}
-        <div className="px-5 py-3">
-          <Textarea
-            value={body}
-            onChange={e => setBody(e.target.value)}
-            placeholder="Write your message..."
-            className="min-h-[200px] border-0 resize-none focus-visible:ring-0 p-0 text-sm bg-transparent"
-          />
+          {/* Body — grows to fill remaining space inside the scrollable region */}
+          <div className="flex-1 min-h-[200px] flex flex-col">
+            <Textarea
+              value={body}
+              onChange={e => setBody(e.target.value)}
+              placeholder="Write your message..."
+              className="flex-1 min-h-[200px] border-0 resize-none focus-visible:ring-0 p-0 text-sm bg-transparent"
+            />
+          </div>
+
+          {/* Attachments */}
+          {attachments.length > 0 && (
+            <div className="pt-3">
+              <div className="flex flex-wrap gap-2">
+                {attachments.map(name => (
+                  <Badge
+                    key={name}
+                    variant="secondary"
+                    className="text-xs gap-1.5 pr-1 py-1"
+                  >
+                    <Paperclip className="h-3 w-3" />
+                    {name}
+                    <button
+                      onClick={() => setAttachments(prev => prev.filter(a => a !== name))}
+                      className="ml-0.5 rounded-full hover:bg-muted p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Attachments */}
-        {attachments.length > 0 && (
-          <div className="px-5 pb-2">
-            <div className="flex flex-wrap gap-2">
-              {attachments.map(name => (
-                <Badge
-                  key={name}
-                  variant="secondary"
-                  className="text-xs gap-1.5 pr-1 py-1"
-                >
-                  <Paperclip className="h-3 w-3" />
-                  {name}
-                  <button
-                    onClick={() => setAttachments(prev => prev.filter(a => a !== name))}
-                    className="ml-0.5 rounded-full hover:bg-muted p-0.5"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <Separator />
-
-        {/* Footer actions */}
-        <div className="flex items-center gap-2 px-5 py-3">
+        {/* Footer */}
+        <div
+          className="shrink-0 border-t flex flex-wrap items-center gap-2"
+          style={{ padding: 'clamp(0.625rem, 1.25vw, 1rem) clamp(1rem, 2.5vw, 1.75rem)' }}
+        >
           <Button
             onClick={handleSend}
             disabled={isSending}
@@ -258,7 +277,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
             Attach
           </Button>
 
-          <div className="flex-1" />
+          <div className="flex-1 min-w-0" />
 
           <Button
             variant="ghost"
