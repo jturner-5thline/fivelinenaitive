@@ -189,6 +189,112 @@ function clearDraft(key: string): void {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/*  Draft version history                                                     */
+/* -------------------------------------------------------------------------- */
+
+interface DraftHistoryEntry {
+  /** Stable id so React lists / restore actions can target a specific entry. */
+  id: string;
+  draft: ComposeDraft;
+}
+
+function getHistoryKey(replyThreadId?: string): string {
+  return `${COMPOSE_DRAFT_PREFIX}history_${replyThreadId ?? 'new'}`;
+}
+
+function loadHistory(key: string): DraftHistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed as DraftHistoryEntry[];
+  } catch {
+    return [];
+  }
+}
+
+function persistHistory(key: string, entries: DraftHistoryEntry[]): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(entries));
+  } catch {
+    /* storage full — silently degrade */
+  }
+}
+
+function clearHistory(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Compare just the user-visible content (ignore savedAt) to dedupe versions. */
+function draftContentSignature(d: ComposeDraft): string {
+  return JSON.stringify({
+    to: d.to,
+    cc: d.cc,
+    bcc: d.bcc,
+    subject: d.subject,
+    body: d.body,
+    attachments: d.attachments.map(a => `${a.name}:${a.size}`),
+    showCcBcc: d.showCcBcc,
+  });
+}
+
+/**
+ * Push a new snapshot onto the history stack (newest first), enforcing:
+ *  - dedupe vs the most recent entry (no duplicate content)
+ *  - rate limit (DRAFT_HISTORY_MIN_GAP_MS) so rapid edits collapse into one entry
+ *  - cap at DRAFT_HISTORY_MAX_ENTRIES
+ */
+function pushHistoryEntry(key: string, draft: ComposeDraft): DraftHistoryEntry[] {
+  const existing = loadHistory(key);
+  const newest = existing[0];
+  const sig = draftContentSignature(draft);
+
+  if (newest) {
+    const newestSig = draftContentSignature(newest.draft);
+    if (newestSig === sig) {
+      // Same content — just bump the timestamp on the newest entry
+      const updated: DraftHistoryEntry[] = [
+        { ...newest, draft: { ...newest.draft, savedAt: draft.savedAt } },
+        ...existing.slice(1),
+      ];
+      persistHistory(key, updated);
+      return updated;
+    }
+    if (draft.savedAt - newest.draft.savedAt < DRAFT_HISTORY_MIN_GAP_MS) {
+      // Replace newest with this fresher snapshot to avoid spamming history
+      const replaced: DraftHistoryEntry[] = [
+        { id: newest.id, draft },
+        ...existing.slice(1),
+      ];
+      persistHistory(key, replaced);
+      return replaced;
+    }
+  }
+
+  const id =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const next = [{ id, draft }, ...existing].slice(0, DRAFT_HISTORY_MAX_ENTRIES);
+  persistHistory(key, next);
+  return next;
+}
+
+function formatRelativeTime(ts: number): string {
+  const diffMs = Date.now() - ts;
+  if (diffMs < 5_000) return 'just now';
+  if (diffMs < 60_000) return `${Math.round(diffMs / 1000)}s ago`;
+  if (diffMs < 3_600_000) return `${Math.round(diffMs / 60_000)}m ago`;
+  if (diffMs < 86_400_000) return `${Math.round(diffMs / 3_600_000)}h ago`;
+  return new Date(ts).toLocaleString();
+}
+
 function isDraftMeaningful(d: Pick<ComposeDraft, 'subject' | 'body' | 'attachments' | 'to' | 'cc' | 'bcc'>): boolean {
   return !!(
     d.subject.trim() ||
