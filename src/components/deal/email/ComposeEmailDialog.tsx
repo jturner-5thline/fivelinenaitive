@@ -395,6 +395,10 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   // Debounced autosave whenever form content changes (only while open)
   useEffect(() => {
     if (!open) return;
+    // Suppress autosave while a send is in flight (undo window + delivery).
+    // The persisted draft must remain a snapshot of exactly what was sent —
+    // any subsequent edits should not overwrite that until delivery resolves.
+    if (sendInProgressRef.current) return;
     if (skipNextAutosaveRef.current) {
       skipNextAutosaveRef.current = false;
       return;
@@ -446,6 +450,8 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   useEffect(() => {
     if (!open) return;
     const handler = () => {
+      // Don't overwrite the in-flight send snapshot during the undo window
+      if (sendInProgressRef.current) return;
       const draft: ComposeDraft = {
         to: toRecipients,
         cc: ccRecipients,
