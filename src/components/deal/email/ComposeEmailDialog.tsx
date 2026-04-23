@@ -562,6 +562,11 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     };
   }, []);
 
+  // Keep attachmentsRef in sync for the unmount cleanup
+  useEffect(() => {
+    attachmentsRef.current = attachments;
+  }, [attachments]);
+
   const resetForm = () => {
     setToRecipients(replyTo?.to_email ? [replyTo.to_email] : []);
     setCcRecipients([]);
