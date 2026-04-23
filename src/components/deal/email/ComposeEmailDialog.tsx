@@ -379,16 +379,133 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
 
   const handleSend = () => {
     if (toRecipients.length === 0) { toast.error('Please add a recipient'); return; }
-    const passed = runChecks({ subject, body, attachments });
+    if (attachments.some(a => a.status === 'uploading')) {
+      toast.error('Please wait for attachments to finish uploading');
+      return;
+    }
+    const passed = runChecks({
+      subject,
+      body,
+      attachments: attachments.filter(a => a.status === 'ready').map(a => a.name),
+    });
     if (passed) executeSend();
   };
 
-  const handleAddAttachment = () => {
-    const fakeNames = ['proposal.pdf', 'financials.xlsx', 'term_sheet.docx', 'deck.pptx', 'summary.pdf'];
-    const randomName = fakeNames[Math.floor(Math.random() * fakeNames.length)];
-    if (!attachments.includes(randomName)) {
-      setAttachments(prev => [...prev, randomName]);
-      toast.info(`Attached: ${randomName}`);
+  /** Simulate an upload with progress (replace with real XHR/fetch upload for production). */
+  const startUpload = (id: string, file: File) => {
+    // Roughly simulate upload time based on file size: ~2MB/s, min 600ms, max 6s
+    const totalMs = Math.min(6000, Math.max(600, (file.size / (2 * 1024 * 1024)) * 1000));
+    const tickMs = 100;
+    const increment = (tickMs / totalMs) * 100;
+
+    const interval = setInterval(() => {
+      setAttachments(prev =>
+        prev.map(a => {
+          if (a.id !== id || a.status !== 'uploading') return a;
+          const next = Math.min(100, a.progress + increment);
+          if (next >= 100) {
+            const t = uploadTimersRef.current.get(id);
+            if (t) clearInterval(t);
+            uploadTimersRef.current.delete(id);
+            return { ...a, progress: 100, status: 'ready' };
+          }
+          return { ...a, progress: next };
+        }),
+      );
+    }, tickMs);
+    uploadTimersRef.current.set(id, interval);
+  };
+
+  const removeAttachment = (id: string) => {
+    const timer = uploadTimersRef.current.get(id);
+    if (timer) {
+      clearInterval(timer);
+      uploadTimersRef.current.delete(id);
+    }
+    setAttachments(prev => prev.filter(a => a.id !== id));
+  };
+
+  const addFiles = (files: FileList | File[]) => {
+    const incoming = Array.from(files);
+    if (incoming.length === 0) return;
+
+    setAttachments(prev => {
+      let working = [...prev];
+      const accepted: AttachmentItem[] = [];
+      const errors: string[] = [];
+
+      for (const file of incoming) {
+        if (working.length + accepted.length >= MAX_ATTACHMENT_COUNT) {
+          errors.push(`Maximum ${MAX_ATTACHMENT_COUNT} attachments reached`);
+          break;
+        }
+        const result = validateFile(file, [...working, ...accepted]);
+        if (!result.ok) {
+          errors.push(`${file.name}: ${result.reason}`);
+          continue;
+        }
+        const id =
+          typeof crypto !== 'undefined' && 'randomUUID' in crypto
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        accepted.push({
+          id,
+          name: file.name,
+          size: file.size,
+          type: file.type || `application/${getExtension(file.name) || 'octet-stream'}`,
+          file,
+          status: 'uploading',
+          progress: 0,
+        });
+      }
+
+      if (errors.length > 0) {
+        toast.error(errors.length === 1 ? errors[0] : `${errors.length} files rejected`, {
+          description: errors.length > 1 ? errors.slice(0, 3).join(' • ') : undefined,
+        });
+      }
+      if (accepted.length > 0) {
+        toast.success(`Attached ${accepted.length} file${accepted.length > 1 ? 's' : ''}`);
+        // Kick off uploads after state commits
+        setTimeout(() => {
+          accepted.forEach(a => a.file && startUpload(a.id, a.file));
+        }, 0);
+      }
+      working = [...working, ...accepted];
+      return working;
+    });
+  };
+
+  const openFilePicker = () => fileInputRef.current?.click();
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) addFiles(e.target.files);
+    e.target.value = ''; // allow re-selecting the same file
+  };
+
+  // Drag-and-drop handlers (use depth counter for reliable enter/leave)
+  const handleDragEnter = (e: React.DragEvent) => {
+    if (!e.dataTransfer?.types?.includes('Files')) return;
+    e.preventDefault();
+    dragDepthRef.current += 1;
+    setIsDragging(true);
+  };
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!e.dataTransfer?.types?.includes('Files')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  };
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) setIsDragging(false);
+  };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragDepthRef.current = 0;
+    setIsDragging(false);
+    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+      addFiles(e.dataTransfer.files);
     }
   };
 
