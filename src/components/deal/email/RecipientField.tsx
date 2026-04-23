@@ -25,6 +25,64 @@ export function isValidEmail(value: string): boolean {
   return EMAIL_REGEX.test(v);
 }
 
+/**
+ * Split a pasted recipient string into individual entries while respecting
+ * quoted display names. Splits on commas, semicolons, and newlines that
+ * appear OUTSIDE of double quotes and OUTSIDE of `<...>` brackets, so
+ * inputs like:
+ *   "Doe, Jane" <jane@x.com>, bob@y.com; "Smith, John" <john@z.com>
+ * tokenize correctly.
+ */
+function splitRecipientList(raw: string): string[] {
+  const tokens: string[] = [];
+  let buf = '';
+  let inQuotes = false;
+  let inAngle = false;
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+    if (ch === '"' && !inAngle) {
+      inQuotes = !inQuotes;
+      buf += ch;
+      continue;
+    }
+    if (ch === '<' && !inQuotes) { inAngle = true; buf += ch; continue; }
+    if (ch === '>' && !inQuotes) { inAngle = false; buf += ch; continue; }
+    const isSeparator = !inQuotes && !inAngle && (ch === ',' || ch === ';' || ch === '\n' || ch === '\r');
+    if (isSeparator) {
+      const t = buf.trim();
+      if (t) tokens.push(t);
+      buf = '';
+    } else {
+      buf += ch;
+    }
+  }
+  const tail = buf.trim();
+  if (tail) tokens.push(tail);
+  return tokens;
+}
+
+/**
+ * Extract the bare email address from a single recipient token, supporting:
+ *   - `email@example.com`
+ *   - `Jane Doe <jane@example.com>`
+ *   - `"Doe, Jane" <jane@example.com>`
+ *   - `Jane Doe email@example.com` (whitespace-separated, last word wins)
+ * Returns the original trimmed token unchanged if no email shape is found,
+ * so the caller can surface it as the exact invalid string.
+ */
+export function extractEmailFromToken(token: string): { email: string; raw: string } {
+  const raw = token.trim();
+  // Prefer angle-bracketed form first
+  const angle = raw.match(/<\s*([^<>\s]+)\s*>/);
+  if (angle && angle[1]) return { email: angle[1].trim(), raw };
+  // Otherwise pick the last whitespace-delimited piece that contains '@'
+  const parts = raw.split(/\s+/).filter(Boolean);
+  for (let i = parts.length - 1; i >= 0; i--) {
+    if (parts[i].includes('@')) return { email: parts[i].replace(/^[<("']+|[>)"']+$/g, ''), raw };
+  }
+  return { email: raw, raw };
+}
+
 interface RecipientFieldProps {
   label: string;
   recipients: string[];
