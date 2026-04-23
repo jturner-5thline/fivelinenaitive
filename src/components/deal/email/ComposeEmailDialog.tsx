@@ -238,10 +238,18 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   const savedFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipNextAutosaveRef = useRef(false);
 
-  // Restore any saved draft when the dialog opens
+  // Pending draft awaiting user confirmation (Restore vs Start fresh)
+  const [pendingDraft, setPendingDraft] = useState<ComposeDraft | null>(null);
+
+  /**
+   * On open: detect any saved draft. If meaningful, hold it in `pendingDraft`
+   * and show the restore prompt. Otherwise just mark the open as handled.
+   * We do NOT auto-restore — the user explicitly chooses.
+   */
   useEffect(() => {
     if (!open) {
       hasRestoredRef.current = false;
+      setPendingDraft(null);
       return;
     }
     if (hasRestoredRef.current) return;
@@ -249,30 +257,47 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
 
     const saved = loadDraft(draftKey);
     if (saved && isDraftMeaningful(saved)) {
-      skipNextAutosaveRef.current = true;
-      setToRecipients(saved.to ?? (replyTo?.to_email ? [replyTo.to_email] : []));
-      setCcRecipients(saved.cc ?? []);
-      setBccRecipients(saved.bcc ?? []);
-      setSubject(saved.subject ?? (replyTo ? `Re: ${replyTo.subject}` : ''));
-      setBody(saved.body ?? '');
-      // Restored attachments only retain metadata — File blob is gone after reload.
-      // Mark as ready so they appear in the list but they won't actually be re-uploaded.
-      setAttachments(
-        (saved.attachments ?? []).map(a => ({
-          id: a.id,
-          name: a.name,
-          size: a.size,
-          type: a.type,
-          status: 'ready' as const,
-          progress: 100,
-        })),
-      );
-      setShowCcBcc(saved.showCcBcc ?? (saved.cc?.length > 0 || saved.bcc?.length > 0));
-      setAutosaveStatus('saved');
-      if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
-      savedFlashTimerRef.current = setTimeout(() => setAutosaveStatus('idle'), 2500);
+      setPendingDraft(saved);
     }
-  }, [open, draftKey, replyTo]);
+  }, [open, draftKey]);
+
+  /** Apply a saved draft to the form state. */
+  const applyDraft = (saved: ComposeDraft) => {
+    skipNextAutosaveRef.current = true;
+    setToRecipients(saved.to ?? (replyTo?.to_email ? [replyTo.to_email] : []));
+    setCcRecipients(saved.cc ?? []);
+    setBccRecipients(saved.bcc ?? []);
+    setSubject(saved.subject ?? (replyTo ? `Re: ${replyTo.subject}` : ''));
+    setBody(saved.body ?? '');
+    // Restored attachments only retain metadata — File blob is gone after reload.
+    setAttachments(
+      (saved.attachments ?? []).map(a => ({
+        id: a.id,
+        name: a.name,
+        size: a.size,
+        type: a.type,
+        status: 'ready' as const,
+        progress: 100,
+      })),
+    );
+    setShowCcBcc(saved.showCcBcc ?? ((saved.cc?.length ?? 0) > 0 || (saved.bcc?.length ?? 0) > 0));
+    setAutosaveStatus('saved');
+    if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
+    savedFlashTimerRef.current = setTimeout(() => setAutosaveStatus('idle'), 2500);
+  };
+
+  const handleRestoreDraft = () => {
+    if (pendingDraft) applyDraft(pendingDraft);
+    setPendingDraft(null);
+  };
+
+  const handleDiscardSavedDraft = () => {
+    clearDraft(draftKey);
+    setPendingDraft(null);
+    // Reset autosave guard: the next typing should re-establish a fresh draft.
+    skipNextAutosaveRef.current = true;
+    setAutosaveStatus('idle');
+  };
 
   // Debounced autosave whenever form content changes (only while open)
   useEffect(() => {
