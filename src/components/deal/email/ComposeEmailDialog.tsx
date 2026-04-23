@@ -333,6 +333,14 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const undoToastIdRef = useRef<string | number | null>(null);
   const cancelledRef = useRef(false);
+  /**
+   * True from the moment the user clicks Send (undo window opens) until the
+   * send completes, fails, or is undone. While true, autosave is suppressed
+   * so the persisted draft continues to match exactly what was sent.
+   * Tracked in a ref (not state) so the autosave effect doesn't re-fire on
+   * value changes — autosave checks the ref directly.
+   */
+  const sendInProgressRef = useRef(false);
 
   const draftKey = useMemo(() => getDraftKey(replyTo?.threadId), [replyTo?.threadId]);
   const historyKey = useMemo(() => getHistoryKey(replyTo?.threadId), [replyTo?.threadId]);
