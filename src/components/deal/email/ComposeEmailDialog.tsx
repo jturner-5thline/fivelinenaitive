@@ -738,7 +738,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
             variant="ghost"
             size="sm"
             className="gap-1.5 text-muted-foreground"
-            onClick={handleAddAttachment}
+            onClick={openFilePicker}
           >
             <Paperclip className="h-3.5 w-3.5" />
             Attach
@@ -777,7 +777,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
         alert={preSendAlert}
         onClose={clearPreSendAlert}
         onSendAnyway={executeSend}
-        onAddAttachment={() => { clearPreSendAlert(); handleAddAttachment(); }}
+        onAddAttachment={() => { clearPreSendAlert(); openFilePicker(); }}
         onAddSubject={() => { clearPreSendAlert(); subjectInputRef.current?.focus(); }}
       />
     </Dialog>
