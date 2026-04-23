@@ -713,38 +713,106 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     if (passed) executeSend();
   };
 
-  /** Simulate an upload with progress (replace with real XHR/fetch upload for production). */
-  const startUpload = (id: string, file: File) => {
-    // Roughly simulate upload time based on file size: ~2MB/s, min 600ms, max 6s
-    const totalMs = Math.min(6000, Math.max(600, (file.size / (2 * 1024 * 1024)) * 1000));
-    const tickMs = 100;
-    const increment = (tickMs / totalMs) * 100;
-
-    const interval = setInterval(() => {
+  /**
+   * Real upload: ask the edge function for a signed upload URL, then PUT the
+   * file body via XMLHttpRequest so we can listen to `upload.onprogress` for
+   * accurate progress bars. Cancellable via `xhr.abort()`.
+   */
+  const startUpload = async (id: string, file: File) => {
+    // Helper to mark this specific attachment as failed
+    const markError = (message: string) => {
+      uploadXhrsRef.current.delete(id);
       setAttachments(prev =>
-        prev.map(a => {
-          if (a.id !== id || a.status !== 'uploading') return a;
-          const next = Math.min(100, a.progress + increment);
-          if (next >= 100) {
-            const t = uploadTimersRef.current.get(id);
-            if (t) clearInterval(t);
-            uploadTimersRef.current.delete(id);
-            return { ...a, progress: 100, status: 'ready' };
-          }
-          return { ...a, progress: next };
-        }),
+        prev.map(a => (a.id === id ? { ...a, status: 'error', error: message, progress: 0 } : a)),
       );
-    }, tickMs);
-    uploadTimersRef.current.set(id, interval);
+    };
+
+    try {
+      // 1) Request a signed upload URL from our edge function
+      const scope = replyTo?.threadId ?? 'new';
+      const { data, error } = await supabase.functions.invoke<{
+        path: string;
+        uploadUrl: string;
+        token: string;
+        bucket: string;
+        error?: string;
+      }>('upload-email-attachment', {
+        body: { filename: file.name, size: file.size, scope },
+      });
+
+      if (error || !data || !data.uploadUrl) {
+        markError(error?.message || data?.error || 'Could not start upload');
+        return;
+      }
+
+      // 2) PUT the file body to the signed URL with XHR for real progress events
+      const xhr = new XMLHttpRequest();
+      uploadXhrsRef.current.set(id, xhr);
+
+      xhr.open('PUT', data.uploadUrl, true);
+      // Required headers for Supabase Storage signed uploads
+      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+      xhr.setRequestHeader('x-upsert', 'true');
+
+      xhr.upload.onprogress = (evt) => {
+        if (!evt.lengthComputable) return;
+        const pct = Math.min(99, Math.round((evt.loaded / evt.total) * 100));
+        setAttachments(prev =>
+          prev.map(a => (a.id === id && a.status === 'uploading' ? { ...a, progress: pct } : a)),
+        );
+      };
+
+      xhr.onload = () => {
+        uploadXhrsRef.current.delete(id);
+        if (xhr.status >= 200 && xhr.status < 300) {
+          setAttachments(prev =>
+            prev.map(a =>
+              a.id === id
+                ? {
+                    ...a,
+                    status: 'ready',
+                    progress: 100,
+                    storagePath: data.path,
+                    storageBucket: data.bucket,
+                  }
+                : a,
+            ),
+          );
+        } else {
+          markError(`Upload failed (HTTP ${xhr.status})`);
+        }
+      };
+
+      xhr.onerror = () => markError('Network error during upload');
+      xhr.ontimeout = () => markError('Upload timed out');
+      // xhr.onabort intentionally not set — abort path removes the row entirely
+
+      xhr.send(file);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unexpected upload error';
+      markError(msg);
+    }
   };
 
   const removeAttachment = (id: string) => {
-    const timer = uploadTimersRef.current.get(id);
-    if (timer) {
-      clearInterval(timer);
-      uploadTimersRef.current.delete(id);
+    // Abort an in-flight upload if present
+    const xhr = uploadXhrsRef.current.get(id);
+    if (xhr) {
+      try { xhr.abort(); } catch { /* ignore */ }
+      uploadXhrsRef.current.delete(id);
     }
-    setAttachments(prev => prev.filter(a => a.id !== id));
+    // Best-effort cleanup of an already-uploaded object so we don't leave
+    // orphaned files in storage when the user removes an attachment they had
+    // finished uploading. Failures are non-fatal.
+    setAttachments(prev => {
+      const target = prev.find(a => a.id === id);
+      if (target?.storagePath && target.storageBucket) {
+        void supabase.storage.from(target.storageBucket).remove([target.storagePath]).catch(() => {
+          /* ignore — storage cleanup is best-effort */
+        });
+      }
+      return prev.filter(a => a.id !== id);
+    });
   };
 
   const addFiles = (files: FileList | File[]) => {
