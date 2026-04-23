@@ -1277,6 +1277,16 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
                   {' · '}
                   {formatBytes(attachments.reduce((s, a) => s + a.size, 0))}
                 </span>
+                <span
+                  className={cn(
+                    'text-[11px] tabular-nums',
+                    attachmentQuota.isFull ? 'text-destructive' : 'text-muted-foreground',
+                  )}
+                >
+                  {attachmentQuota.isFull
+                    ? 'Limit reached'
+                    : `${attachmentQuota.remainingCount} slot${attachmentQuota.remainingCount === 1 ? '' : 's'} · ${formatBytes(attachmentQuota.remainingBytes)} left`}
+                </span>
               </div>
               <ul className="space-y-1.5">
                 {attachments.map(att => (
