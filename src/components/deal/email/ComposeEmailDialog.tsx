@@ -1380,15 +1380,36 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
             )}
           </Button>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1.5 text-muted-foreground"
-            onClick={openFilePicker}
-          >
-            <Paperclip className="h-3.5 w-3.5" />
-            Attach
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-muted-foreground"
+              onClick={openFilePicker}
+              disabled={attachmentQuota.isFull}
+              title={
+                attachmentQuota.isFull
+                  ? `Attachment limit reached (${MAX_ATTACHMENT_COUNT} files · ${formatBytes(MAX_TOTAL_SIZE_BYTES)})`
+                  : `${attachmentQuota.remainingCount} slot${attachmentQuota.remainingCount === 1 ? '' : 's'} · ${formatBytes(attachmentQuota.remainingBytes)} remaining`
+              }
+            >
+              <Paperclip className="h-3.5 w-3.5" />
+              Attach
+            </Button>
+            {attachments.length > 0 && (
+              <span
+                className={cn(
+                  'text-[11px] tabular-nums',
+                  attachmentQuota.isFull ? 'text-destructive' : 'text-muted-foreground',
+                )}
+                aria-live="polite"
+              >
+                {attachmentQuota.isFull
+                  ? 'full'
+                  : `${attachmentQuota.remainingCount}/${MAX_ATTACHMENT_COUNT} · ${formatBytes(attachmentQuota.remainingBytes)} left`}
+              </span>
+            )}
+          </div>
 
           <div className="flex-1 min-w-0" />
 
