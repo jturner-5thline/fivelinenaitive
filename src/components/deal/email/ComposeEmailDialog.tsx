@@ -542,6 +542,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
       }}
     >
       <DialogContent
+        ref={dialogContentRef}
         className={cn(
           "p-0 gap-0 overflow-hidden flex flex-col sm:rounded-xl",
           // Mobile: ~96vw x ~93dvh
@@ -551,6 +552,37 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           // Desktop (>= 1024px): ~92vw x 88dvh, capped at 1400 x 980
           "lg:w-[min(92vw,1400px)] lg:h-[min(88dvh,980px)] lg:max-w-[1400px] lg:max-h-[980px]",
         )}
+        // Override Radix's default initial-focus (would land on the X close button).
+        // We pick the most useful field ourselves below.
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          // Defer one frame so the field refs are mounted
+          requestAnimationFrame(() => {
+            if (shouldFocusBodyOnOpen) {
+              bodyTextareaRef.current?.focus();
+            }
+            // Otherwise the To field handles its own autoFocus via prop
+          });
+        }}
+        // Keyboard shortcuts within the modal.
+        // Note: Radix FocusScope already handles Tab/Shift-Tab cycling, so we
+        // only add discoverable shortcuts here without re-implementing trapping.
+        onKeyDown={(e) => {
+          // Cmd/Ctrl+Enter → Send
+          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            sendButtonRef.current?.click();
+            return;
+          }
+          // Cmd/Ctrl+Shift+C → toggle Cc/Bcc
+          if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'c' || e.key === 'C')) {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowCcBcc(v => !v);
+            return;
+          }
+        }}
       >
         {/* Header */}
         <DialogHeader
