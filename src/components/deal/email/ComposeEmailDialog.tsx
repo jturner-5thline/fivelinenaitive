@@ -207,6 +207,19 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
   const { search } = useEmailContacts();
 
+  // Focus & keyboard navigation refs
+  const dialogContentRef = useRef<HTMLDivElement>(null);
+  const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const sendButtonRef = useRef<HTMLButtonElement>(null);
+
+  /**
+   * Decide which field should hold initial focus when the modal opens.
+   * - New empty message → To field
+   * - Reply (To prefilled) → body textarea so the user can start typing
+   * - Otherwise → first empty meaningful field
+   */
+  const shouldFocusBodyOnOpen = !!(replyTo?.to_email || toRecipients.length > 0);
+
   const draftKey = useMemo(() => getDraftKey(replyTo?.threadId), [replyTo?.threadId]);
   const hasRestoredRef = useRef(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -529,6 +542,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
       }}
     >
       <DialogContent
+        ref={dialogContentRef}
         className={cn(
           "p-0 gap-0 overflow-hidden flex flex-col sm:rounded-xl",
           // Mobile: ~96vw x ~93dvh
@@ -538,6 +552,37 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           // Desktop (>= 1024px): ~92vw x 88dvh, capped at 1400 x 980
           "lg:w-[min(92vw,1400px)] lg:h-[min(88dvh,980px)] lg:max-w-[1400px] lg:max-h-[980px]",
         )}
+        // Override Radix's default initial-focus (would land on the X close button).
+        // We pick the most useful field ourselves below.
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          // Defer one frame so the field refs are mounted
+          requestAnimationFrame(() => {
+            if (shouldFocusBodyOnOpen) {
+              bodyTextareaRef.current?.focus();
+            }
+            // Otherwise the To field handles its own autoFocus via prop
+          });
+        }}
+        // Keyboard shortcuts within the modal.
+        // Note: Radix FocusScope already handles Tab/Shift-Tab cycling, so we
+        // only add discoverable shortcuts here without re-implementing trapping.
+        onKeyDown={(e) => {
+          // Cmd/Ctrl+Enter → Send
+          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            sendButtonRef.current?.click();
+            return;
+          }
+          // Cmd/Ctrl+Shift+C → toggle Cc/Bcc
+          if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'c' || e.key === 'C')) {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowCcBcc(v => !v);
+            return;
+          }
+        }}
       >
         {/* Header */}
         <DialogHeader
@@ -594,6 +639,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
               placeholder="recipient@example.com"
               className="flex-1"
               labelClassName="w-10"
+              autoFocus={!shouldFocusBodyOnOpen}
             />
             <Button
               variant="ghost"
@@ -646,6 +692,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           {/* Body — grows to fill remaining space inside the scrollable region */}
           <div className="flex-1 min-h-[200px] flex flex-col">
             <Textarea
+              ref={bodyTextareaRef}
               value={body}
               onChange={e => setBody(e.target.value)}
               placeholder="Write your message..."
@@ -719,10 +766,12 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           style={{ padding: 'clamp(0.625rem, 1.25vw, 1rem) clamp(1rem, 2.5vw, 1.75rem)' }}
         >
           <Button
+            ref={sendButtonRef}
             onClick={handleSend}
             disabled={isSending}
             size="sm"
             className="gap-1.5"
+            aria-keyshortcuts="Meta+Enter Control+Enter"
           >
             {isSending ? (
               <>
