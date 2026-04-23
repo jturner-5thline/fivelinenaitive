@@ -1531,13 +1531,34 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
                         <Progress value={att.progress} className="mt-1 h-1" />
                       )}
                       {att.status === 'error' && att.error && (
-                        <p className="mt-0.5 text-[11px] text-destructive">{att.error}</p>
+                        <p
+                          className={cn(
+                            'mt-0.5 text-[11px]',
+                            att.nextRetryAt ? 'text-muted-foreground' : 'text-destructive',
+                          )}
+                        >
+                          {att.nextRetryAt && (
+                            <Loader2 className="inline h-2.5 w-2.5 mr-1 animate-spin" />
+                          )}
+                          {att.error}
+                        </p>
                       )}
                     </div>
                     {att.status === 'uploading' && (
                       <span className="text-[10px] tabular-nums text-muted-foreground shrink-0">
                         {Math.round(att.progress)}%
                       </span>
+                    )}
+                    {att.status === 'error' && !att.nextRetryAt && att.file && (
+                      <button
+                        type="button"
+                        onClick={() => retryAttachment(att.id)}
+                        className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-primary hover:bg-primary/10 shrink-0"
+                        aria-label={`Retry uploading ${att.name}`}
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        Retry
+                      </button>
                     )}
                     <button
                       type="button"
