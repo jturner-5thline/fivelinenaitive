@@ -302,6 +302,8 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   // Debounced autosave whenever form content changes (only while open)
   useEffect(() => {
     if (!open) return;
+    // Don't overwrite the saved draft while the user is deciding what to do with it
+    if (pendingDraft) return;
     if (skipNextAutosaveRef.current) {
       skipNextAutosaveRef.current = false;
       return;
