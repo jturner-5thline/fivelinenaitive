@@ -626,25 +626,60 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
 
           {/* Attachments */}
           {attachments.length > 0 && (
-            <div className="pt-3">
-              <div className="flex flex-wrap gap-2">
-                {attachments.map(name => (
-                  <Badge
-                    key={name}
-                    variant="secondary"
-                    className="text-xs gap-1.5 pr-1 py-1"
-                  >
-                    <Paperclip className="h-3 w-3" />
-                    {name}
-                    <button
-                      onClick={() => setAttachments(prev => prev.filter(a => a !== name))}
-                      className="ml-0.5 rounded-full hover:bg-muted p-0.5"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
+            <div className="pt-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  {attachments.length} attachment{attachments.length > 1 ? 's' : ''}
+                  {' · '}
+                  {formatBytes(attachments.reduce((s, a) => s + a.size, 0))}
+                </span>
               </div>
+              <ul className="space-y-1.5">
+                {attachments.map(att => (
+                  <li
+                    key={att.id}
+                    className={cn(
+                      'flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5 text-xs',
+                      att.status === 'error' && 'border-destructive/40 bg-destructive/5',
+                    )}
+                  >
+                    {att.status === 'error' ? (
+                      <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                    ) : att.status === 'uploading' ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
+                    ) : (
+                      <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate font-medium">{att.name}</span>
+                        <span className="text-muted-foreground shrink-0">
+                          {formatBytes(att.size)}
+                        </span>
+                      </div>
+                      {att.status === 'uploading' && (
+                        <Progress value={att.progress} className="mt-1 h-1" />
+                      )}
+                      {att.status === 'error' && att.error && (
+                        <p className="mt-0.5 text-[11px] text-destructive">{att.error}</p>
+                      )}
+                    </div>
+                    {att.status === 'uploading' && (
+                      <span className="text-[10px] tabular-nums text-muted-foreground shrink-0">
+                        {Math.round(att.progress)}%
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(att.id)}
+                      className="rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      aria-label={`Remove ${att.name}`}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>
