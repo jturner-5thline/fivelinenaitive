@@ -420,6 +420,8 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
       const ok = saveDraft(draftKey, draft);
       if (ok) {
         setAutosaveStatus('saved');
+        // Record this snapshot in version history (deduped + rate-limited internally)
+        setHistory(pushHistoryEntry(historyKey, draft));
         if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
         savedFlashTimerRef.current = setTimeout(() => setAutosaveStatus('idle'), 2000);
       } else {
@@ -430,7 +432,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     return () => {
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     };
-  }, [open, draftKey, toRecipients, ccRecipients, bccRecipients, subject, body, attachments, showCcBcc]);
+  }, [open, draftKey, historyKey, toRecipients, ccRecipients, bccRecipients, subject, body, attachments, showCcBcc]);
 
   // Flush save on tab close / refresh
   useEffect(() => {
