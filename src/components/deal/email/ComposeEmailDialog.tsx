@@ -38,6 +38,7 @@ import { usePreSendChecks } from './usePreSendChecks';
 import { PreSendAlertDialog } from './PreSendAlertDialog';
 import { RecipientField, emailStringToArray } from './RecipientField';
 import { useEmailContacts } from '@/hooks/useEmailContacts';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ComposeEmailDialogProps {
   open: boolean;
@@ -99,6 +100,10 @@ interface AttachmentItem {
   /** 0–100 */
   progress: number;
   error?: string;
+  /** Storage object path returned by the upload-email-attachment edge function. */
+  storagePath?: string;
+  /** Bucket the object lives in (currently always 'email-attachments'). */
+  storageBucket?: string;
 }
 
 function getExtension(name: string): string {
