@@ -893,14 +893,86 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
    * Real upload: ask the edge function for a signed upload URL, then PUT the
    * file body via XMLHttpRequest so we can listen to `upload.onprogress` for
    * accurate progress bars. Cancellable via `xhr.abort()`.
+   *
+   * On failure (network error, timeout, 5xx, signed-URL request error) the
+   * upload is automatically retried up to MAX_UPLOAD_ATTEMPTS times with
+   * exponential backoff (1s → 2s → 4s + jitter). Once that ceiling is hit,
+   * the row goes into a hard 'error' state with a clear message and a
+   * manual Retry button.
    */
-  const startUpload = async (id: string, file: File) => {
-    // Helper to mark this specific attachment as failed
-    const markError = (message: string) => {
+  const startUpload = async (id: string, file: File, attempt: number = 1) => {
+    // Mark this attachment as actively uploading for THIS attempt.
+    setAttachments(prev =>
+      prev.map(a =>
+        a.id === id
+          ? { ...a, status: 'uploading', progress: 0, error: undefined, nextRetryAt: undefined, attempts: attempt }
+          : a,
+      ),
+    );
+
+    /**
+     * Handle a failure for this attempt. If we have retries left, schedule
+     * the next attempt with exponential backoff + jitter and surface a
+     * "Retrying…" message. Otherwise mark the row as a final error.
+     */
+    const handleFailure = (message: string) => {
       uploadXhrsRef.current.delete(id);
+
+      if (attempt < MAX_UPLOAD_ATTEMPTS) {
+        const delay =
+          UPLOAD_RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1) +
+          Math.floor(Math.random() * UPLOAD_RETRY_JITTER_MS);
+        const nextRetryAt = Date.now() + delay;
+
+        setAttachments(prev =>
+          prev.map(a =>
+            a.id === id
+              ? {
+                  ...a,
+                  status: 'error',
+                  // Soft, transient message — full failure message is shown only after exhaustion
+                  error: `${message} · retrying (${attempt}/${MAX_UPLOAD_ATTEMPTS - 1})`,
+                  progress: 0,
+                  attempts: attempt,
+                  nextRetryAt,
+                }
+              : a,
+          ),
+        );
+
+        // Cancel any previous timer for this id (defensive)
+        const existing = uploadRetryTimersRef.current.get(id);
+        if (existing) clearTimeout(existing);
+
+        const timer = setTimeout(() => {
+          uploadRetryTimersRef.current.delete(id);
+          // Re-check the file is still pending — user may have removed it
+          const stillPresent = attachmentsRef.current.find(a => a.id === id);
+          if (!stillPresent) return;
+          void startUpload(id, file, attempt + 1);
+        }, delay);
+        uploadRetryTimersRef.current.set(id, timer);
+        return;
+      }
+
+      // Out of retries — show the final, explicit error
       setAttachments(prev =>
-        prev.map(a => (a.id === id ? { ...a, status: 'error', error: message, progress: 0 } : a)),
+        prev.map(a =>
+          a.id === id
+            ? {
+                ...a,
+                status: 'error',
+                error: `Upload failed after ${MAX_UPLOAD_ATTEMPTS} attempts: ${message}. Click Retry to try again.`,
+                progress: 0,
+                attempts: attempt,
+                nextRetryAt: undefined,
+              }
+            : a,
+        ),
       );
+      toast.error(`Couldn't upload "${file.name}"`, {
+        description: `${message}. We tried ${MAX_UPLOAD_ATTEMPTS} times.`,
+      });
     };
 
     try {
@@ -917,7 +989,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
       });
 
       if (error || !data || !data.uploadUrl) {
-        markError(error?.message || data?.error || 'Could not start upload');
+        handleFailure(error?.message || data?.error || 'Could not start upload');
         return;
       }
 
@@ -950,23 +1022,25 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
                     progress: 100,
                     storagePath: data.path,
                     storageBucket: data.bucket,
+                    error: undefined,
+                    nextRetryAt: undefined,
                   }
                 : a,
             ),
           );
         } else {
-          markError(`Upload failed (HTTP ${xhr.status})`);
+          handleFailure(`Upload failed (HTTP ${xhr.status})`);
         }
       };
 
-      xhr.onerror = () => markError('Network error during upload');
-      xhr.ontimeout = () => markError('Upload timed out');
+      xhr.onerror = () => handleFailure('Network error during upload');
+      xhr.ontimeout = () => handleFailure('Upload timed out');
       // xhr.onabort intentionally not set — abort path removes the row entirely
 
       xhr.send(file);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unexpected upload error';
-      markError(msg);
+      handleFailure(msg);
     }
   };
 
