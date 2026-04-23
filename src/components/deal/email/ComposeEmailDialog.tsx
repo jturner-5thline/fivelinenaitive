@@ -394,6 +394,9 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
    */
   const attachmentsRef = useRef<AttachmentItem[]>([]);
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  /** Timestamp (ms) of the most recent successful persist. Drives the
+   *  exact "last saved" indicator next to the Save draft button. */
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const subjectInputRef = useRef<HTMLInputElement>(null);
   const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
   const { search } = useEmailContacts();
