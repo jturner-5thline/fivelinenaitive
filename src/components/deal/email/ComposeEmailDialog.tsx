@@ -692,6 +692,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           {/* Body — grows to fill remaining space inside the scrollable region */}
           <div className="flex-1 min-h-[200px] flex flex-col">
             <Textarea
+              ref={bodyTextareaRef}
               value={body}
               onChange={e => setBody(e.target.value)}
               placeholder="Write your message..."
