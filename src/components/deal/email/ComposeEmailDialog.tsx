@@ -1598,12 +1598,23 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
             </PopoverContent>
           </Popover>
 
-          {autosaveStatus !== 'idle' && (
-            <span className="text-xs text-muted-foreground flex items-center gap-1 px-1">
+          {(autosaveStatus !== 'idle' || lastSavedAt !== null) && (
+            <span
+              className="text-xs text-muted-foreground flex items-center gap-1 px-1"
+              title={lastSavedAt !== null ? `Last saved at ${formatExactTime(lastSavedAt)}` : undefined}
+            >
               {autosaveStatus === 'saving' ? (
                 <>
                   <Loader2 className="h-3 w-3 animate-spin" />
                   Saving draft…
+                </>
+              ) : lastSavedAt !== null ? (
+                <>
+                  <Check className="h-3 w-3 text-success" />
+                  <span>
+                    Saved {formatRelativeAgo(lastSavedAt, nowTick)}
+                    <span className="text-muted-foreground/70"> · {formatExactTime(lastSavedAt)}</span>
+                  </span>
                 </>
               ) : (
                 <>
