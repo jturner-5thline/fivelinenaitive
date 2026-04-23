@@ -119,6 +119,51 @@ function getExtension(name: string): string {
   return dot >= 0 ? name.slice(dot + 1).toLowerCase() : '';
 }
 
+const IMAGE_PREVIEW_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg']);
+const PDF_PREVIEW_MAX_BYTES = 10 * 1024 * 1024; // skip very large PDFs to keep things snappy
+
+/**
+ * Render the first page of a PDF to a small JPEG and return an object URL.
+ * Uses pdfjs-dist with a CDN-hosted worker so we don't need to bundle one.
+ * Returns null on any failure (encrypted PDFs, network issues, etc.).
+ */
+async function generatePdfThumbnail(file: File): Promise<string | null> {
+  try {
+    const pdfjs = await import('pdfjs-dist');
+    // Point worker at the matching version on a CDN to avoid bundling it.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (pdfjs as any).GlobalWorkerOptions.workerSrc =
+      `https://cdn.jsdelivr.net/npm/pdfjs-dist@${(pdfjs as any).version}/build/pdf.worker.min.mjs`;
+
+    const buf = await file.arrayBuffer();
+    const doc = await pdfjs.getDocument({ data: buf, disableAutoFetch: true, disableStream: true }).promise;
+    const page = await doc.getPage(1);
+
+    const targetWidth = 96; // matches the thumbnail box in the UI
+    const viewport = page.getViewport({ scale: 1 });
+    const scale = targetWidth / viewport.width;
+    const scaled = page.getViewport({ scale });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(scaled.width);
+    canvas.height = Math.ceil(scaled.height);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      doc.destroy();
+      return null;
+    }
+    await page.render({ canvasContext: ctx, viewport: scaled }).promise;
+
+    const blob: Blob | null = await new Promise(resolve =>
+      canvas.toBlob(b => resolve(b), 'image/jpeg', 0.7),
+    );
+    doc.destroy();
+    return blob ? URL.createObjectURL(blob) : null;
+  } catch {
+    return null;
+  }
+}
+
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
