@@ -257,6 +257,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     });
 
     setIsSending(false);
+    clearDraft(draftKey);
     resetForm();
     onOpenChange(false);
   };
@@ -277,13 +278,21 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   };
 
   const handleDiscard = () => {
+    clearDraft(draftKey);
     resetForm();
     onOpenChange(false);
     toast.info('Draft discarded');
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        // Closing via X / overlay: preserve the draft (don't clear), just close.
+        // Sending and Discard handle their own clearing.
+        onOpenChange(v);
+      }}
+    >
       <DialogContent
         className={cn(
           "p-0 gap-0 overflow-hidden flex flex-col sm:rounded-xl",
