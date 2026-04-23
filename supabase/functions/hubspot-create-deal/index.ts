@@ -365,11 +365,37 @@ Deno.serve(async (req) => {
     // ── Create deal in HubSpot ────────────────────────────────────────
     const numericAmount = Number(String(deal.value ?? 0).replace(/[^0-9.-]/g, '')) || 0;
 
+    // ── Duplicate-prevention lookup ────────────────────────────────────
+    // Before creating, search HubSpot for an existing deal already tagged
+    // with this naitive deal id. Recovers from prior failures where the
+    // HubSpot deal was created but its id wasn't persisted locally.
+    const existingHubSpotId = await findExistingHubSpotDealByNaitiveId(accessToken, deal.id);
+    if (existingHubSpotId) {
+      console.log(`[hubspot-create-deal] Recovered existing HubSpot deal ${existingHubSpotId} for naitive ${deal.id} (dedupe)`);
+      await supabase.from('deals').update({
+        hubspot_deal_id: existingHubSpotId,
+        hubspot_sync_status: 'success',
+        hubspot_sync_error: null,
+        hubspot_last_synced_at: new Date().toISOString(),
+      }).eq('id', deal_id);
+      await logSync(supabase, {
+        company_id: deal.company_id,
+        deal_id: deal.id,
+        hubspot_deal_id: existingHubSpotId,
+        action: 'create_deal_dedupe',
+        status: 'success',
+        response_payload: { recovered: true, source: 'naitive_deal_id_lookup' },
+      });
+      // Fall through to PATCH the existing record so we keep stage/amount/owner in sync.
+    }
+
     // Resolve owner + manager
     const ownerResolution = await resolveHubSpotOwner(supabase, deal.deal_owner, accessToken);
     let ownerId = ownerResolution.ownerId;
+    let ownerFallbackWarning: string | null = null;
     if (ownerResolution.unresolved) {
       ownerId = FALLBACK_OWNER_ID;
+      ownerFallbackWarning = `Deal Owner "${ownerResolution.rawValue}" could not be resolved to a HubSpot user. Used fallback owner.`;
       await logSync(supabase, {
         company_id: deal.company_id,
         deal_id: deal.id,
@@ -385,14 +411,20 @@ Deno.serve(async (req) => {
       amount: String(numericAmount),
       pipeline: resolved.hubspotPipelineId,
       dealstage: resolved.hubspotStageId,
+      naitive_deal_id: deal.id,
     };
     if (ownerId) properties.hubspot_owner_id = ownerId;
     if (deal.manager) properties.deal_manager = String(deal.manager);
 
     const hubspotPayload = { properties };
 
-    const hsResponse = await fetch('https://api.hubapi.com/crm/v3/objects/deals', {
-      method: 'POST',
+    // If we recovered an existing HubSpot deal, PATCH it; otherwise POST a new one.
+    const hsUrl = existingHubSpotId
+      ? `https://api.hubapi.com/crm/v3/objects/deals/${existingHubSpotId}`
+      : 'https://api.hubapi.com/crm/v3/objects/deals';
+    const hsMethod = existingHubSpotId ? 'PATCH' : 'POST';
+    const hsResponse = await fetch(hsUrl, {
+      method: hsMethod,
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
