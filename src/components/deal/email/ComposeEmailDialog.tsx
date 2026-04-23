@@ -210,6 +210,11 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
   const { search } = useEmailContacts();
 
+  // Undo-send window state
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const undoToastIdRef = useRef<string | number | null>(null);
+  const cancelledRef = useRef(false);
+
   const draftKey = useMemo(() => getDraftKey(replyTo?.threadId), [replyTo?.threadId]);
   const hasRestoredRef = useRef(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
