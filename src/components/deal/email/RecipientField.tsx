@@ -95,6 +95,8 @@ interface RecipientFieldProps {
   onBlur?: () => void;
   /** Optional callback for parent to react to validation state changes. */
   onValidityChange?: (isValid: boolean) => void;
+  /** Explicit tab order index for keyboard navigation. */
+  tabIndex?: number;
 }
 
 export function RecipientField({
@@ -108,6 +110,7 @@ export function RecipientField({
   labelClassName,
   onBlur,
   onValidityChange,
+  tabIndex,
 }: RecipientFieldProps) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<EmailContact[]>([]);
