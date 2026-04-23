@@ -578,6 +578,8 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     try {
       await onSend(payload);
       clearDraft(snapshotDraftKey);
+      // Send committed — autosave can resume safely (form is reset / closed).
+      sendInProgressRef.current = false;
       toast.success('Email sent', {
         description: payload.to_email
           ? `Delivered to ${payload.to_email.split(',')[0]}${
@@ -610,6 +612,8 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           },
         },
       });
+      // Send failed — release the autosave guard so further edits can persist.
+      sendInProgressRef.current = false;
     } finally {
       setIsSending(false);
     }
