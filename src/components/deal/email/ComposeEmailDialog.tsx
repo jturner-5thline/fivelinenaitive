@@ -354,6 +354,9 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     if (hasRestoredRef.current) return;
     hasRestoredRef.current = true;
 
+    // Load existing version history for this thread
+    setHistory(loadHistory(historyKey));
+
     const saved = loadDraft(draftKey);
     if (saved && isDraftMeaningful(saved)) {
       skipNextAutosaveRef.current = true;
@@ -379,7 +382,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
       if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
       savedFlashTimerRef.current = setTimeout(() => setAutosaveStatus('idle'), 2500);
     }
-  }, [open, draftKey, replyTo]);
+  }, [open, draftKey, historyKey, replyTo]);
 
   // Debounced autosave whenever form content changes (only while open)
   useEffect(() => {
