@@ -333,6 +333,14 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const undoToastIdRef = useRef<string | number | null>(null);
   const cancelledRef = useRef(false);
+  /**
+   * True from the moment the user clicks Send (undo window opens) until the
+   * send completes, fails, or is undone. While true, autosave is suppressed
+   * so the persisted draft continues to match exactly what was sent.
+   * Tracked in a ref (not state) so the autosave effect doesn't re-fire on
+   * value changes — autosave checks the ref directly.
+   */
+  const sendInProgressRef = useRef(false);
 
   const draftKey = useMemo(() => getDraftKey(replyTo?.threadId), [replyTo?.threadId]);
   const historyKey = useMemo(() => getHistoryKey(replyTo?.threadId), [replyTo?.threadId]);
@@ -387,6 +395,10 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   // Debounced autosave whenever form content changes (only while open)
   useEffect(() => {
     if (!open) return;
+    // Suppress autosave while a send is in flight (undo window + delivery).
+    // The persisted draft must remain a snapshot of exactly what was sent —
+    // any subsequent edits should not overwrite that until delivery resolves.
+    if (sendInProgressRef.current) return;
     if (skipNextAutosaveRef.current) {
       skipNextAutosaveRef.current = false;
       return;
@@ -438,6 +450,8 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   useEffect(() => {
     if (!open) return;
     const handler = () => {
+      // Don't overwrite the in-flight send snapshot during the undo window
+      if (sendInProgressRef.current) return;
       const draft: ComposeDraft = {
         to: toRecipients,
         cc: ccRecipients,
@@ -564,6 +578,8 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     try {
       await onSend(payload);
       clearDraft(snapshotDraftKey);
+      // Send committed — autosave can resume safely (form is reset / closed).
+      sendInProgressRef.current = false;
       toast.success('Email sent', {
         description: payload.to_email
           ? `Delivered to ${payload.to_email.split(',')[0]}${
@@ -596,6 +612,8 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           },
         },
       });
+      // Send failed — release the autosave guard so further edits can persist.
+      sendInProgressRef.current = false;
     } finally {
       setIsSending(false);
     }
@@ -614,6 +632,10 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     const recipientLabel = payload.to_email.split(',')[0].trim();
 
     cancelledRef.current = false;
+    // Lock autosave: from this moment until the send commits / fails / is undone,
+    // the persisted draft is the snapshot we just took above (saved to localStorage
+    // by the send flow on commit failure / undo). No interim edits should overwrite it.
+    sendInProgressRef.current = true;
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
 
     // Close the modal and clear the local form immediately for an instant UX,
@@ -628,6 +650,8 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
         label: 'Undo',
         onClick: () => {
           cancelledRef.current = true;
+          // Send was cancelled — release the autosave guard so editing resumes normally.
+          sendInProgressRef.current = false;
           if (undoTimerRef.current) {
             clearTimeout(undoTimerRef.current);
             undoTimerRef.current = null;
