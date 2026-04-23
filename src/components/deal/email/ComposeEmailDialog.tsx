@@ -120,15 +120,15 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
       <DialogContent
-        className="p-0 gap-0 overflow-hidden flex flex-col max-w-none sm:rounded-xl"
-        style={{
-          // Mobile (< ~640px): ~96vw x ~93dvh. Tablet (~640-1024px): ~94vw x 90dvh.
-          // Desktop (>= ~1024px): ~92vw x 88dvh, capped at 1400 x 980 with margin around modal.
-          width: 'min(92vw, 1400px)',
-          height: 'min(88dvh, 980px)',
-          maxWidth: '96vw',
-          maxHeight: '94dvh',
-        }}
+        className={cn(
+          "p-0 gap-0 overflow-hidden flex flex-col sm:rounded-xl",
+          // Mobile: ~96vw x ~93dvh
+          "w-[96vw] h-[93dvh] max-w-[97vw] max-h-[94dvh]",
+          // Tablet (>= 640px): ~94vw x 90dvh
+          "sm:w-[94vw] sm:h-[90dvh] sm:max-w-[94vw] sm:max-h-[92dvh]",
+          // Desktop (>= 1024px): ~92vw x 88dvh, capped at 1400 x 980
+          "lg:w-[min(92vw,1400px)] lg:h-[min(88dvh,980px)] lg:max-w-[1400px] lg:max-h-[980px]",
+        )}
       >
         {/* Header */}
         <DialogHeader
