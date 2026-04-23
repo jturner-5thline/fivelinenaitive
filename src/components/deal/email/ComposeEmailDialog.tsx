@@ -891,6 +891,11 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           typeof crypto !== 'undefined' && 'randomUUID' in crypto
             ? crypto.randomUUID()
             : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const ext = getExtension(file.name);
+        // For images, an object URL is an instant, free thumbnail. For PDFs we
+        // generate the preview asynchronously after the row is committed.
+        const isImage = IMAGE_PREVIEW_EXTENSIONS.has(ext);
+        const previewUrl = isImage ? URL.createObjectURL(file) : undefined;
         accepted.push({
           id,
           name: file.name,
@@ -899,6 +904,8 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           file,
           status: 'uploading',
           progress: 0,
+          previewUrl,
+          previewKind: isImage ? 'image' : undefined,
         });
       }
 
@@ -913,6 +920,22 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
         setTimeout(() => {
           accepted.forEach(a => a.file && startUpload(a.id, a.file));
         }, 0);
+        // Generate PDF thumbnails in the background (small files only).
+        accepted.forEach(a => {
+          if (!a.file) return;
+          if (getExtension(a.name) !== 'pdf') return;
+          if (a.file.size > PDF_PREVIEW_MAX_BYTES) return;
+          void generatePdfThumbnail(a.file).then(url => {
+            if (!url) return;
+            setAttachments(prev =>
+              prev.map(item =>
+                item.id === a.id
+                  ? { ...item, previewUrl: url, previewKind: 'pdf' }
+                  : item,
+              ),
+            );
+          });
+        });
       }
       working = [...working, ...accepted];
       return working;
