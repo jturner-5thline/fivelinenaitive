@@ -1224,12 +1224,14 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
               placeholder="recipient@example.com"
               className="flex-1"
               labelClassName="w-10"
+              tabIndex={1}
             />
             <Button
               variant="ghost"
               size="sm"
               className="text-xs text-muted-foreground h-7 px-2 shrink-0"
               onClick={() => setShowCcBcc(!showCcBcc)}
+              tabIndex={2}
             >
               Cc/Bcc
               {showCcBcc ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
@@ -1246,6 +1248,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
                 search={search}
                 placeholder="cc@example.com"
                 labelClassName="w-10"
+                tabIndex={3}
               />
               <RecipientField
                 label="Bcc"
@@ -1254,6 +1257,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
                 search={search}
                 placeholder="bcc@example.com"
                 labelClassName="w-10"
+                tabIndex={4}
               />
             </>
           )}
@@ -1267,6 +1271,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
               onChange={e => setSubject(e.target.value)}
               placeholder="Subject"
               className="h-8 text-sm border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent font-medium"
+              tabIndex={5}
             />
           </div>
         </div>
@@ -1280,6 +1285,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
               onChange={e => setBody(e.target.value)}
               placeholder="Write your message..."
               className="flex-1 min-h-[200px] border-0 resize-none focus-visible:ring-0 p-0 text-sm bg-transparent"
+              tabIndex={6}
             />
           </div>
 
