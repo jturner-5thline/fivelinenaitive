@@ -881,6 +881,9 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           /* ignore — storage cleanup is best-effort */
         });
       }
+      if (target?.previewUrl) {
+        try { URL.revokeObjectURL(target.previewUrl); } catch { /* ignore */ }
+      }
       return prev.filter(a => a.id !== id);
     });
   };
