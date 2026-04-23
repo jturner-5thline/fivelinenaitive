@@ -1074,10 +1074,13 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     const ok = saveDraft(draftKey, draft);
     if (ok) {
       setAutosaveStatus('saved');
+      setLastSavedAt(draft.savedAt);
       setHistory(pushHistoryEntry(historyKey, draft));
       if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
       savedFlashTimerRef.current = setTimeout(() => setAutosaveStatus('idle'), 2500);
-      toast.success('Draft saved');
+      toast.success('Draft saved', {
+        description: `Saved at ${formatExactTime(draft.savedAt)}`,
+      });
     } else {
       setAutosaveStatus('idle');
       toast.error('Could not save draft', {
