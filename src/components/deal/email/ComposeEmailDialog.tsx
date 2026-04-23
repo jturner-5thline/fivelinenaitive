@@ -112,6 +112,17 @@ interface AttachmentItem {
   previewUrl?: string;
   /** Kind of preview we generated, for fallback rendering decisions. */
   previewKind?: 'image' | 'pdf';
+  /**
+   * Number of upload attempts made so far (1 = initial try, >1 = retried).
+   * Used to drive exponential backoff and to stop retrying once
+   * MAX_UPLOAD_ATTEMPTS is reached.
+   */
+  attempts?: number;
+  /**
+   * Timestamp (ms) at which the next automatic retry will fire. While set,
+   * the row shows a "Retrying in Xs…" message instead of a hard error.
+   */
+  nextRetryAt?: number;
 }
 
 function getExtension(name: string): string {
