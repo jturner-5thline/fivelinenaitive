@@ -565,6 +565,23 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   // Flush save on tab close / refresh
   useEffect(() => {
     if (!open) return;
+    // (clock tick is set up below)
+  }, [open]);
+
+  /**
+   * Tick a "now" reference once per second while the dialog is open and a
+   * saved timestamp exists. This keeps the relative "Xs ago" label fresh
+   * without re-rendering the whole tree on every timer fire elsewhere.
+   */
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    if (!open || lastSavedAt === null) return;
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [open, lastSavedAt]);
+
+  useEffect(() => {
+    if (!open) return;
     const handler = () => {
       // Don't overwrite the in-flight send snapshot during the undo window
       if (sendInProgressRef.current) return;
