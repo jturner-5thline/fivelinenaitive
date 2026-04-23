@@ -44,6 +44,9 @@ interface ComposeEmailDialogProps {
 const COMPOSE_DRAFT_PREFIX = 'compose_draft_';
 const COMPOSE_AUTOSAVE_DEBOUNCE_MS = 800;
 
+/** How long the user has to undo a send before it's actually delivered. */
+const UNDO_SEND_WINDOW_MS = 5000;
+
 // Upload limits
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25MB per file
 const MAX_TOTAL_SIZE_BYTES = 50 * 1024 * 1024; // 50MB combined
