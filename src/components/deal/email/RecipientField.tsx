@@ -37,6 +37,8 @@ interface RecipientFieldProps {
   onBlur?: () => void;
   /** Optional callback for parent to react to validation state changes. */
   onValidityChange?: (isValid: boolean) => void;
+  /** When true, focuses the input on mount. */
+  autoFocus?: boolean;
 }
 
 export function RecipientField({
@@ -50,6 +52,7 @@ export function RecipientField({
   labelClassName,
   onBlur,
   onValidityChange,
+  autoFocus,
 }: RecipientFieldProps) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<EmailContact[]>([]);
@@ -58,6 +61,15 @@ export function RecipientField({
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Focus input on mount when requested
+  useEffect(() => {
+    if (autoFocus) {
+      // Defer one frame to play nicely with Radix focus scope
+      const id = requestAnimationFrame(() => inputRef.current?.focus());
+      return () => cancelAnimationFrame(id);
+    }
+  }, [autoFocus]);
 
   useEffect(() => {
     if (query.length >= 1) {
