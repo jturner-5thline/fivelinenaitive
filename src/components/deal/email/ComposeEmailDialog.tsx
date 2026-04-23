@@ -230,7 +230,18 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
       setBccRecipients(saved.bcc ?? []);
       setSubject(saved.subject ?? (replyTo ? `Re: ${replyTo.subject}` : ''));
       setBody(saved.body ?? '');
-      setAttachments(saved.attachments ?? []);
+      // Restored attachments only retain metadata — File blob is gone after reload.
+      // Mark as ready so they appear in the list but they won't actually be re-uploaded.
+      setAttachments(
+        (saved.attachments ?? []).map(a => ({
+          id: a.id,
+          name: a.name,
+          size: a.size,
+          type: a.type,
+          status: 'ready' as const,
+          progress: 100,
+        })),
+      );
       setShowCcBcc(saved.showCcBcc ?? (saved.cc?.length > 0 || saved.bcc?.length > 0));
       setAutosaveStatus('saved');
       if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
