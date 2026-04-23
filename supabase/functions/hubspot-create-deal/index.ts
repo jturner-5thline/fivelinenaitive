@@ -88,6 +88,94 @@ async function resolveHubSpotOwner(
 const FALLBACK_OWNER_ID = Deno.env.get('HUBSPOT_FALLBACK_OWNER_ID') || '42024321'; // jturner@5thline.co
 
 /**
+ * Ensure the `naitive_deal_id` custom property exists on the HubSpot deal
+ * object. Best-effort and cached for the lifetime of the function instance.
+ * If it already exists HubSpot returns 409, which we swallow.
+ */
+let naitiveDealIdPropEnsured = false;
+async function ensureNaitiveDealIdProperty(accessToken: string): Promise<void> {
+  if (naitiveDealIdPropEnsured) return;
+  try {
+    const res = await fetch('https://api.hubapi.com/crm/v3/properties/deals', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'naitive_deal_id',
+        label: 'naitive Deal ID',
+        type: 'string',
+        fieldType: 'text',
+        groupName: 'dealinformation',
+        description: 'Source-of-truth UUID for the corresponding deal in naitive. Used for dedupe.',
+        hasUniqueValue: false,
+      }),
+    });
+    // 201 created or 409 already-exists are both fine
+    if (res.ok || res.status === 409) {
+      naitiveDealIdPropEnsured = true;
+    } else {
+      const body = await res.text();
+      console.warn(`[hubspot-create-deal] could not ensure naitive_deal_id property (${res.status}): ${body.slice(0, 200)}`);
+      // Mark as ensured anyway to avoid hammering HubSpot — the dedupe lookup
+      // will simply return null until it's created manually.
+      naitiveDealIdPropEnsured = true;
+    }
+  } catch (err) {
+    console.warn('[hubspot-create-deal] ensure property failed:', (err as Error).message);
+  }
+}
+
+/**
+ * Look up an existing HubSpot deal by the custom `naitive_deal_id` property.
+ * Used as a duplicate-prevention safety net: if a previous sync attempt created
+ * the deal in HubSpot but failed to persist `hubspot_deal_id` locally (network
+ * blip, crash, race), this lets us recover the link instead of creating a 2nd
+ * HubSpot deal.
+ *
+ * Returns the HubSpot deal id if found, otherwise null. Failures are non-fatal
+ * (we just proceed to create) but logged.
+ */
+async function findExistingHubSpotDealByNaitiveId(
+  accessToken: string,
+  naitiveDealId: string,
+): Promise<string | null> {
+  try {
+    const res = await fetch('https://api.hubapi.com/crm/v3/objects/deals/search', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        filterGroups: [{
+          filters: [{
+            propertyName: 'naitive_deal_id',
+            operator: 'EQ',
+            value: naitiveDealId,
+          }],
+        }],
+        properties: ['dealname', 'naitive_deal_id'],
+        limit: 1,
+      }),
+    });
+    if (!res.ok) {
+      // Most common cause: the `naitive_deal_id` custom property doesn't exist
+      // on the portal yet. Treat as "no match" — the create will still go
+      // through and the property will be set on it for future lookups.
+      return null;
+    }
+    const body = await res.json();
+    const hit = (body.results ?? [])[0];
+    return hit?.id ? String(hit.id) : null;
+  } catch (err) {
+    console.warn('[hubspot-create-deal] dedupe lookup failed:', (err as Error).message);
+    return null;
+  }
+}
+
+/**
  * Resolve HubSpot pipeline + stage:
  * 1. Try the hubspot_pipeline_stage_map DB table (preferred — explicit per-company config).
  * 2. Fall back to fetching HubSpot pipelines and matching stage labels case-insensitively.
@@ -233,6 +321,26 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── In-flight lock (prevents duplicate HubSpot deals from concurrent invokes) ──
+    // Atomically transition status null/skipped/failed → 'syncing'. If another
+    // worker has already claimed this deal we exit early.
+    {
+      const { data: claimed, error: claimErr } = await supabase
+        .from('deals')
+        .update({ hubspot_sync_status: 'syncing', hubspot_sync_error: null })
+        .eq('id', deal_id)
+        .or('hubspot_sync_status.is.null,hubspot_sync_status.in.(skipped,failed)')
+        .select('id')
+        .maybeSingle();
+      if (!claimed && !force) {
+        if (claimErr) console.warn('[hubspot-create-deal] claim error:', claimErr.message);
+        return new Response(JSON.stringify({
+          skipped: true,
+          reason: 'already_in_flight_or_synced',
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+    }
+
     // ── Token check ───────────────────────────────────────────────────
     const accessToken = Deno.env.get('HUBSPOT_ACCESS_TOKEN');
     if (!accessToken) {
@@ -297,11 +405,38 @@ Deno.serve(async (req) => {
     // ── Create deal in HubSpot ────────────────────────────────────────
     const numericAmount = Number(String(deal.value ?? 0).replace(/[^0-9.-]/g, '')) || 0;
 
+    // ── Duplicate-prevention lookup ────────────────────────────────────
+    // Before creating, search HubSpot for an existing deal already tagged
+    // with this naitive deal id. Recovers from prior failures where the
+    // HubSpot deal was created but its id wasn't persisted locally.
+    await ensureNaitiveDealIdProperty(accessToken);
+    const existingHubSpotId = await findExistingHubSpotDealByNaitiveId(accessToken, deal.id);
+    if (existingHubSpotId) {
+      console.log(`[hubspot-create-deal] Recovered existing HubSpot deal ${existingHubSpotId} for naitive ${deal.id} (dedupe)`);
+      await supabase.from('deals').update({
+        hubspot_deal_id: existingHubSpotId,
+        hubspot_sync_status: 'success',
+        hubspot_sync_error: null,
+        hubspot_last_synced_at: new Date().toISOString(),
+      }).eq('id', deal_id);
+      await logSync(supabase, {
+        company_id: deal.company_id,
+        deal_id: deal.id,
+        hubspot_deal_id: existingHubSpotId,
+        action: 'create_deal_dedupe',
+        status: 'success',
+        response_payload: { recovered: true, source: 'naitive_deal_id_lookup' },
+      });
+      // Fall through to PATCH the existing record so we keep stage/amount/owner in sync.
+    }
+
     // Resolve owner + manager
     const ownerResolution = await resolveHubSpotOwner(supabase, deal.deal_owner, accessToken);
     let ownerId = ownerResolution.ownerId;
+    let ownerFallbackWarning: string | null = null;
     if (ownerResolution.unresolved) {
       ownerId = FALLBACK_OWNER_ID;
+      ownerFallbackWarning = `Deal Owner "${ownerResolution.rawValue}" could not be resolved to a HubSpot user. Used fallback owner.`;
       await logSync(supabase, {
         company_id: deal.company_id,
         deal_id: deal.id,
@@ -317,14 +452,20 @@ Deno.serve(async (req) => {
       amount: String(numericAmount),
       pipeline: resolved.hubspotPipelineId,
       dealstage: resolved.hubspotStageId,
+      naitive_deal_id: deal.id,
     };
     if (ownerId) properties.hubspot_owner_id = ownerId;
     if (deal.manager) properties.deal_manager = String(deal.manager);
 
     const hubspotPayload = { properties };
 
-    const hsResponse = await fetch('https://api.hubapi.com/crm/v3/objects/deals', {
-      method: 'POST',
+    // If we recovered an existing HubSpot deal, PATCH it; otherwise POST a new one.
+    const hsUrl = existingHubSpotId
+      ? `https://api.hubapi.com/crm/v3/objects/deals/${existingHubSpotId}`
+      : 'https://api.hubapi.com/crm/v3/objects/deals';
+    const hsMethod = existingHubSpotId ? 'PATCH' : 'POST';
+    const hsResponse = await fetch(hsUrl, {
+      method: hsMethod,
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
@@ -358,12 +499,12 @@ Deno.serve(async (req) => {
     }
 
     const hsResult = JSON.parse(hsBody);
-    const hubspotDealId = hsResult.id;
+    const hubspotDealId = hsResult.id || existingHubSpotId;
 
     await supabase.from('deals').update({
       hubspot_deal_id: hubspotDealId,
       hubspot_sync_status: 'success',
-      hubspot_sync_error: null,
+      hubspot_sync_error: ownerFallbackWarning,
       hubspot_last_synced_at: new Date().toISOString(),
     }).eq('id', deal_id);
 
