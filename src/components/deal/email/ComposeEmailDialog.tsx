@@ -324,6 +324,9 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     return () => {
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
       if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
+      // Cancel any in-flight (simulated) uploads
+      uploadTimersRef.current.forEach(t => clearInterval(t));
+      uploadTimersRef.current.clear();
     };
   }, []);
 
