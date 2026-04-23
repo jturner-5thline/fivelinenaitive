@@ -947,6 +947,18 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
 
           <div className="flex-1 min-w-0" />
 
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={handleSaveDraftNow}
+            disabled={autosaveStatus === 'saving'}
+            aria-label="Save draft now"
+          >
+            <Save className="h-3.5 w-3.5" />
+            Save draft
+          </Button>
+
           {autosaveStatus !== 'idle' && (
             <span className="text-xs text-muted-foreground flex items-center gap-1 px-1">
               {autosaveStatus === 'saving' ? (
