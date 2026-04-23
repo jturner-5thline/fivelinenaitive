@@ -119,9 +119,22 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
-      <DialogContent className="sm:max-w-[640px] p-0 gap-0 overflow-hidden">
-        <DialogHeader className="px-5 pt-5 pb-3">
-          <DialogTitle className="text-base">
+      <DialogContent
+        className="p-0 gap-0 overflow-hidden flex flex-col max-w-none sm:rounded-xl"
+        style={{
+          // Mobile: 96-97vw x 92-94dvh. Tablet: ~94vw x 90dvh. Desktop: ~92vw x 88dvh, capped at 1400 x 980.
+          width: 'min(1400px, clamp(min(96vw, 360px), 92vw, 1400px))',
+          height: 'min(980px, clamp(92dvh, 88dvh, 88dvh))',
+          maxWidth: 'min(1400px, 96vw)',
+          maxHeight: 'min(980px, 94dvh)',
+        }}
+      >
+        {/* Header */}
+        <DialogHeader
+          className="shrink-0 border-b"
+          style={{ padding: 'clamp(0.75rem, 1.5vw, 1.25rem) clamp(1rem, 2.5vw, 1.75rem)' }}
+        >
+          <DialogTitle className="text-base sm:text-lg">
             {replyTo ? 'Reply' : 'New Message'}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
@@ -129,9 +142,12 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           </DialogDescription>
         </DialogHeader>
 
-        <Separator />
-
-        <div className="px-5 py-3 space-y-3">
+        {/* Scrollable body */}
+        <div
+          className="flex-1 min-h-0 overflow-y-auto flex flex-col"
+          style={{ padding: 'clamp(0.75rem, 1.5vw, 1.25rem) clamp(1rem, 2.5vw, 1.75rem)' }}
+        >
+          <div className="space-y-3">
           {/* To field */}
           <div className="flex items-center gap-2">
             <RecipientField
