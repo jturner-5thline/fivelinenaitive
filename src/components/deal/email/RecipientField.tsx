@@ -222,16 +222,32 @@ export function RecipientField({
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setHighlightedIndex(prev => Math.max(prev - 1, -1));
-    } else if (e.key === 'Enter' || e.key === 'Tab') {
+    } else if (e.key === 'Enter') {
+      // Always prevent Enter from bubbling to form/dialog submission while
+      // composing a recipient — Enter in this field should ONLY confirm the
+      // active suggestion (or commit the typed text), never trigger Send.
+      e.preventDefault();
+      e.stopPropagation();
+      // Prefer the explicitly highlighted suggestion; otherwise fall back to
+      // the first visible suggestion if the dropdown is open. This makes
+      // Enter "just work" after the user starts typing without forcing them
+      // to press ArrowDown first.
+      if (highlightedIndex >= 0 && highlightedIndex < suggestions.length) {
+        addRecipient(suggestions[highlightedIndex].email);
+      } else if (showSuggestions && suggestions.length > 0) {
+        addRecipient(suggestions[0].email);
+      } else if (query.trim()) {
+        addRecipient(query);
+      }
+    } else if (e.key === 'Tab') {
       if (highlightedIndex >= 0 && highlightedIndex < suggestions.length) {
         e.preventDefault();
         addRecipient(suggestions[highlightedIndex].email);
       } else if (query.trim()) {
         e.preventDefault();
         addRecipient(query);
-      } else if (e.key === 'Tab') {
-        return; // Allow normal tab
       }
+      // Otherwise allow normal tab navigation
     } else if (e.key === 'Backspace' && query === '' && recipients.length > 0) {
       removeRecipient(recipients[recipients.length - 1]);
     } else if (e.key === ',' || e.key === ';') {
