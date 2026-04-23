@@ -170,6 +170,30 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** Format a timestamp as a precise wall-clock time, e.g. "3:42:07 PM". */
+function formatExactTime(ts: number): string {
+  try {
+    return new Date(ts).toLocaleTimeString(undefined, {
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  } catch {
+    return new Date(ts).toISOString();
+  }
+}
+
+/** Short relative description of how long ago `ts` was, e.g. "just now", "12s ago", "3m ago". */
+function formatRelativeAgo(ts: number, now: number): string {
+  const diff = Math.max(0, Math.floor((now - ts) / 1000));
+  if (diff < 5) return 'just now';
+  if (diff < 60) return `${diff}s ago`;
+  const mins = Math.floor(diff / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  return `${hrs}h ago`;
+}
+
 function validateFile(
   file: File,
   existing: AttachmentItem[],
@@ -394,6 +418,9 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
    */
   const attachmentsRef = useRef<AttachmentItem[]>([]);
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  /** Timestamp (ms) of the most recent successful persist. Drives the
+   *  exact "last saved" indicator next to the Save draft button. */
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const subjectInputRef = useRef<HTMLInputElement>(null);
   const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
   const { search } = useEmailContacts();
@@ -474,6 +501,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
       );
       setShowCcBcc(saved.showCcBcc ?? (saved.cc?.length > 0 || saved.bcc?.length > 0));
       setAutosaveStatus('saved');
+      setLastSavedAt(saved.savedAt ?? Date.now());
       if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
       savedFlashTimerRef.current = setTimeout(() => setAutosaveStatus('idle'), 2500);
     }
@@ -519,6 +547,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
       const ok = saveDraft(draftKey, draft);
       if (ok) {
         setAutosaveStatus('saved');
+        setLastSavedAt(draft.savedAt);
         // Record this snapshot in version history (deduped + rate-limited internally)
         setHistory(pushHistoryEntry(historyKey, draft));
         if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
@@ -532,6 +561,18 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     };
   }, [open, draftKey, historyKey, toRecipients, ccRecipients, bccRecipients, subject, body, attachments, showCcBcc]);
+
+  /**
+   * Tick a "now" reference once per second while the dialog is open and a
+   * saved timestamp exists. This keeps the relative "Xs ago" label fresh
+   * without re-rendering the whole tree on every timer fire elsewhere.
+   */
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    if (!open || lastSavedAt === null) return;
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [open, lastSavedAt]);
 
   // Flush save on tab close / refresh
   useEffect(() => {
@@ -594,6 +635,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     setShowCcBcc(false);
     setAttachments([]);
     setAutosaveStatus('idle');
+    setLastSavedAt(null);
     skipNextAutosaveRef.current = true;
   };
 
@@ -1069,10 +1111,13 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     const ok = saveDraft(draftKey, draft);
     if (ok) {
       setAutosaveStatus('saved');
+      setLastSavedAt(draft.savedAt);
       setHistory(pushHistoryEntry(historyKey, draft));
       if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
       savedFlashTimerRef.current = setTimeout(() => setAutosaveStatus('idle'), 2500);
-      toast.success('Draft saved');
+      toast.success('Draft saved', {
+        description: `Saved at ${formatExactTime(draft.savedAt)}`,
+      });
     } else {
       setAutosaveStatus('idle');
       toast.error('Could not save draft', {
@@ -1553,12 +1598,23 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
             </PopoverContent>
           </Popover>
 
-          {autosaveStatus !== 'idle' && (
-            <span className="text-xs text-muted-foreground flex items-center gap-1 px-1">
+          {(autosaveStatus !== 'idle' || lastSavedAt !== null) && (
+            <span
+              className="text-xs text-muted-foreground flex items-center gap-1 px-1"
+              title={lastSavedAt !== null ? `Last saved at ${formatExactTime(lastSavedAt)}` : undefined}
+            >
               {autosaveStatus === 'saving' ? (
                 <>
                   <Loader2 className="h-3 w-3 animate-spin" />
                   Saving draft…
+                </>
+              ) : lastSavedAt !== null ? (
+                <>
+                  <Check className="h-3 w-3 text-success" />
+                  <span>
+                    Saved {formatRelativeAgo(lastSavedAt, nowTick)}
+                    <span className="text-muted-foreground/70"> · {formatExactTime(lastSavedAt)}</span>
+                  </span>
                 </>
               ) : (
                 <>
