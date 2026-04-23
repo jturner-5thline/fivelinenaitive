@@ -197,7 +197,11 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   const [body, setBody] = useState('');
   const [showCcBcc, setShowCcBcc] = useState(true);
   const [isSending, setIsSending] = useState(false);
-  const [attachments, setAttachments] = useState<string[]>([]);
+  const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragDepthRef = useRef(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadTimersRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const subjectInputRef = useRef<HTMLInputElement>(null);
   const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
