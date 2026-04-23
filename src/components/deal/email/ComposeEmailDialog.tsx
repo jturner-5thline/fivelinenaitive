@@ -170,6 +170,30 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** Format a timestamp as a precise wall-clock time, e.g. "3:42:07 PM". */
+function formatExactTime(ts: number): string {
+  try {
+    return new Date(ts).toLocaleTimeString(undefined, {
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  } catch {
+    return new Date(ts).toISOString();
+  }
+}
+
+/** Short relative description of how long ago `ts` was, e.g. "just now", "12s ago", "3m ago". */
+function formatRelativeAgo(ts: number, now: number): string {
+  const diff = Math.max(0, Math.floor((now - ts) / 1000));
+  if (diff < 5) return 'just now';
+  if (diff < 60) return `${diff}s ago`;
+  const mins = Math.floor(diff / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  return `${hrs}h ago`;
+}
+
 function validateFile(
   file: File,
   existing: AttachmentItem[],
