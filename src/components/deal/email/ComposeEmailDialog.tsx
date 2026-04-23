@@ -66,6 +66,17 @@ const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25MB per file
 const MAX_TOTAL_SIZE_BYTES = 50 * 1024 * 1024; // 50MB combined
 const MAX_ATTACHMENT_COUNT = 10;
 
+/**
+ * Total number of upload attempts (initial + retries) per attachment.
+ * After this many failures we surface a final error and stop auto-retrying;
+ * the user can still click "Retry" manually.
+ */
+const MAX_UPLOAD_ATTEMPTS = 4;
+/** Base delay (ms) used in exponential backoff: 1s → 2s → 4s (+ jitter). */
+const UPLOAD_RETRY_BASE_DELAY_MS = 1000;
+/** Random jitter (ms) added to each backoff to avoid thundering-herd retries. */
+const UPLOAD_RETRY_JITTER_MS = 400;
+
 // Allowed file types (extension allowlist + matching MIME hints).
 // We validate by extension because MIME type can be empty / inconsistent across OSes.
 const ALLOWED_EXTENSIONS = [
@@ -112,6 +123,17 @@ interface AttachmentItem {
   previewUrl?: string;
   /** Kind of preview we generated, for fallback rendering decisions. */
   previewKind?: 'image' | 'pdf';
+  /**
+   * Number of upload attempts made so far (1 = initial try, >1 = retried).
+   * Used to drive exponential backoff and to stop retrying once
+   * MAX_UPLOAD_ATTEMPTS is reached.
+   */
+  attempts?: number;
+  /**
+   * Timestamp (ms) at which the next automatic retry will fire. While set,
+   * the row shows a "Retrying in Xs…" message instead of a hard error.
+   */
+  nextRetryAt?: number;
 }
 
 function getExtension(name: string): string {
@@ -412,6 +434,12 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
    */
   const uploadXhrsRef = useRef<Map<string, XMLHttpRequest>>(new Map());
   /**
+   * Tracks pending exponential-backoff retry timers keyed by attachment id.
+   * Cleared if the user removes the attachment, manually retries, discards
+   * the draft, or the dialog unmounts.
+   */
+  const uploadRetryTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  /**
    * Mirrors the latest `attachments` state so the unmount-only cleanup effect
    * (deps: []) can revoke any outstanding preview object URLs without needing
    * to re-subscribe on every state change.
@@ -612,6 +640,9 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
         try { xhr.abort(); } catch { /* ignore */ }
       });
       uploadXhrsRef.current.clear();
+      // Cancel any pending retry timers
+      uploadRetryTimersRef.current.forEach(t => clearTimeout(t));
+      uploadRetryTimersRef.current.clear();
       // Revoke any preview object URLs we created so they don't leak.
       attachmentsRef.current.forEach(a => {
         if (a.previewUrl) {
@@ -862,14 +893,86 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
    * Real upload: ask the edge function for a signed upload URL, then PUT the
    * file body via XMLHttpRequest so we can listen to `upload.onprogress` for
    * accurate progress bars. Cancellable via `xhr.abort()`.
+   *
+   * On failure (network error, timeout, 5xx, signed-URL request error) the
+   * upload is automatically retried up to MAX_UPLOAD_ATTEMPTS times with
+   * exponential backoff (1s → 2s → 4s + jitter). Once that ceiling is hit,
+   * the row goes into a hard 'error' state with a clear message and a
+   * manual Retry button.
    */
-  const startUpload = async (id: string, file: File) => {
-    // Helper to mark this specific attachment as failed
-    const markError = (message: string) => {
+  const startUpload = async (id: string, file: File, attempt: number = 1) => {
+    // Mark this attachment as actively uploading for THIS attempt.
+    setAttachments(prev =>
+      prev.map(a =>
+        a.id === id
+          ? { ...a, status: 'uploading', progress: 0, error: undefined, nextRetryAt: undefined, attempts: attempt }
+          : a,
+      ),
+    );
+
+    /**
+     * Handle a failure for this attempt. If we have retries left, schedule
+     * the next attempt with exponential backoff + jitter and surface a
+     * "Retrying…" message. Otherwise mark the row as a final error.
+     */
+    const handleFailure = (message: string) => {
       uploadXhrsRef.current.delete(id);
+
+      if (attempt < MAX_UPLOAD_ATTEMPTS) {
+        const delay =
+          UPLOAD_RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1) +
+          Math.floor(Math.random() * UPLOAD_RETRY_JITTER_MS);
+        const nextRetryAt = Date.now() + delay;
+
+        setAttachments(prev =>
+          prev.map(a =>
+            a.id === id
+              ? {
+                  ...a,
+                  status: 'error',
+                  // Soft, transient message — full failure message is shown only after exhaustion
+                  error: `${message} · retrying (${attempt}/${MAX_UPLOAD_ATTEMPTS - 1})`,
+                  progress: 0,
+                  attempts: attempt,
+                  nextRetryAt,
+                }
+              : a,
+          ),
+        );
+
+        // Cancel any previous timer for this id (defensive)
+        const existing = uploadRetryTimersRef.current.get(id);
+        if (existing) clearTimeout(existing);
+
+        const timer = setTimeout(() => {
+          uploadRetryTimersRef.current.delete(id);
+          // Re-check the file is still pending — user may have removed it
+          const stillPresent = attachmentsRef.current.find(a => a.id === id);
+          if (!stillPresent) return;
+          void startUpload(id, file, attempt + 1);
+        }, delay);
+        uploadRetryTimersRef.current.set(id, timer);
+        return;
+      }
+
+      // Out of retries — show the final, explicit error
       setAttachments(prev =>
-        prev.map(a => (a.id === id ? { ...a, status: 'error', error: message, progress: 0 } : a)),
+        prev.map(a =>
+          a.id === id
+            ? {
+                ...a,
+                status: 'error',
+                error: `Upload failed after ${MAX_UPLOAD_ATTEMPTS} attempts: ${message}. Click Retry to try again.`,
+                progress: 0,
+                attempts: attempt,
+                nextRetryAt: undefined,
+              }
+            : a,
+        ),
       );
+      toast.error(`Couldn't upload "${file.name}"`, {
+        description: `${message}. We tried ${MAX_UPLOAD_ATTEMPTS} times.`,
+      });
     };
 
     try {
@@ -886,7 +989,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
       });
 
       if (error || !data || !data.uploadUrl) {
-        markError(error?.message || data?.error || 'Could not start upload');
+        handleFailure(error?.message || data?.error || 'Could not start upload');
         return;
       }
 
@@ -919,23 +1022,25 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
                     progress: 100,
                     storagePath: data.path,
                     storageBucket: data.bucket,
+                    error: undefined,
+                    nextRetryAt: undefined,
                   }
                 : a,
             ),
           );
         } else {
-          markError(`Upload failed (HTTP ${xhr.status})`);
+          handleFailure(`Upload failed (HTTP ${xhr.status})`);
         }
       };
 
-      xhr.onerror = () => markError('Network error during upload');
-      xhr.ontimeout = () => markError('Upload timed out');
+      xhr.onerror = () => handleFailure('Network error during upload');
+      xhr.ontimeout = () => handleFailure('Upload timed out');
       // xhr.onabort intentionally not set — abort path removes the row entirely
 
       xhr.send(file);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unexpected upload error';
-      markError(msg);
+      handleFailure(msg);
     }
   };
 
@@ -945,6 +1050,12 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     if (xhr) {
       try { xhr.abort(); } catch { /* ignore */ }
       uploadXhrsRef.current.delete(id);
+    }
+    // Cancel any pending retry timer for this attachment
+    const retryTimer = uploadRetryTimersRef.current.get(id);
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      uploadRetryTimersRef.current.delete(id);
     }
     // Best-effort cleanup of an already-uploaded object so we don't leave
     // orphaned files in storage when the user removes an attachment they had
@@ -961,6 +1072,27 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
       }
       return prev.filter(a => a.id !== id);
     });
+  };
+
+  /**
+   * Manually retry a failed attachment upload — used both by the inline
+   * "Retry" button (shown after auto-retries are exhausted) and any other
+   * surface that wants to re-kick a failed upload. Resets the attempt
+   * counter so the user gets a fresh budget of automatic retries.
+   */
+  const retryAttachment = (id: string) => {
+    const target = attachmentsRef.current.find(a => a.id === id);
+    if (!target?.file) {
+      toast.error('Cannot retry — original file is no longer available');
+      return;
+    }
+    // Cancel any scheduled retry timer; we're kicking off immediately.
+    const existing = uploadRetryTimersRef.current.get(id);
+    if (existing) {
+      clearTimeout(existing);
+      uploadRetryTimersRef.current.delete(id);
+    }
+    void startUpload(id, target.file, 1);
   };
 
   const addFiles = (files: FileList | File[]) => {
@@ -1399,13 +1531,34 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
                         <Progress value={att.progress} className="mt-1 h-1" />
                       )}
                       {att.status === 'error' && att.error && (
-                        <p className="mt-0.5 text-[11px] text-destructive">{att.error}</p>
+                        <p
+                          className={cn(
+                            'mt-0.5 text-[11px]',
+                            att.nextRetryAt ? 'text-muted-foreground' : 'text-destructive',
+                          )}
+                        >
+                          {att.nextRetryAt && (
+                            <Loader2 className="inline h-2.5 w-2.5 mr-1 animate-spin" />
+                          )}
+                          {att.error}
+                        </p>
                       )}
                     </div>
                     {att.status === 'uploading' && (
                       <span className="text-[10px] tabular-nums text-muted-foreground shrink-0">
                         {Math.round(att.progress)}%
                       </span>
+                    )}
+                    {att.status === 'error' && !att.nextRetryAt && att.file && (
+                      <button
+                        type="button"
+                        onClick={() => retryAttachment(att.id)}
+                        className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-primary hover:bg-primary/10 shrink-0"
+                        aria-label={`Retry uploading ${att.name}`}
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        Retry
+                      </button>
                     )}
                     <button
                       type="button"
