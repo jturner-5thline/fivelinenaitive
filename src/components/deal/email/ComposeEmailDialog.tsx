@@ -1051,6 +1051,12 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
       try { xhr.abort(); } catch { /* ignore */ }
       uploadXhrsRef.current.delete(id);
     }
+    // Cancel any pending retry timer for this attachment
+    const retryTimer = uploadRetryTimersRef.current.get(id);
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      uploadRetryTimersRef.current.delete(id);
+    }
     // Best-effort cleanup of an already-uploaded object so we don't leave
     // orphaned files in storage when the user removes an attachment they had
     // finished uploading. Failures are non-fatal.
@@ -1066,6 +1072,27 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
       }
       return prev.filter(a => a.id !== id);
     });
+  };
+
+  /**
+   * Manually retry a failed attachment upload — used both by the inline
+   * "Retry" button (shown after auto-retries are exhausted) and any other
+   * surface that wants to re-kick a failed upload. Resets the attempt
+   * counter so the user gets a fresh budget of automatic retries.
+   */
+  const retryAttachment = (id: string) => {
+    const target = attachmentsRef.current.find(a => a.id === id);
+    if (!target?.file) {
+      toast.error('Cannot retry — original file is no longer available');
+      return;
+    }
+    // Cancel any scheduled retry timer; we're kicking off immediately.
+    const existing = uploadRetryTimersRef.current.get(id);
+    if (existing) {
+      clearTimeout(existing);
+      uploadRetryTimersRef.current.delete(id);
+    }
+    void startUpload(id, target.file, 1);
   };
 
   const addFiles = (files: FileList | File[]) => {
