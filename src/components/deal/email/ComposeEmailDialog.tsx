@@ -562,12 +562,6 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     };
   }, [open, draftKey, historyKey, toRecipients, ccRecipients, bccRecipients, subject, body, attachments, showCcBcc]);
 
-  // Flush save on tab close / refresh
-  useEffect(() => {
-    if (!open) return;
-    // (clock tick is set up below)
-  }, [open]);
-
   /**
    * Tick a "now" reference once per second while the dialog is open and a
    * saved timestamp exists. This keeps the relative "Xs ago" label fresh
@@ -580,6 +574,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     return () => clearInterval(id);
   }, [open, lastSavedAt]);
 
+  // Flush save on tab close / refresh
   useEffect(() => {
     if (!open) return;
     const handler = () => {
