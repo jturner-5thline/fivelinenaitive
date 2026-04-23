@@ -104,11 +104,64 @@ interface AttachmentItem {
   storagePath?: string;
   /** Bucket the object lives in (currently always 'email-attachments'). */
   storageBucket?: string;
+  /**
+   * Object URL for a lightweight thumbnail preview. Set for image files
+   * (direct object URL of the file) and PDFs (rendered first page).
+   * Must be revoked when the attachment is removed or the dialog closes.
+   */
+  previewUrl?: string;
+  /** Kind of preview we generated, for fallback rendering decisions. */
+  previewKind?: 'image' | 'pdf';
 }
 
 function getExtension(name: string): string {
   const dot = name.lastIndexOf('.');
   return dot >= 0 ? name.slice(dot + 1).toLowerCase() : '';
+}
+
+const IMAGE_PREVIEW_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg']);
+const PDF_PREVIEW_MAX_BYTES = 10 * 1024 * 1024; // skip very large PDFs to keep things snappy
+
+/**
+ * Render the first page of a PDF to a small JPEG and return an object URL.
+ * Uses pdfjs-dist with a CDN-hosted worker so we don't need to bundle one.
+ * Returns null on any failure (encrypted PDFs, network issues, etc.).
+ */
+async function generatePdfThumbnail(file: File): Promise<string | null> {
+  try {
+    const pdfjs = await import('pdfjs-dist');
+    // Point worker at the matching version on a CDN to avoid bundling it.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (pdfjs as any).GlobalWorkerOptions.workerSrc =
+      `https://cdn.jsdelivr.net/npm/pdfjs-dist@${(pdfjs as any).version}/build/pdf.worker.min.mjs`;
+
+    const buf = await file.arrayBuffer();
+    const doc = await pdfjs.getDocument({ data: buf, disableAutoFetch: true, disableStream: true }).promise;
+    const page = await doc.getPage(1);
+
+    const targetWidth = 96; // matches the thumbnail box in the UI
+    const viewport = page.getViewport({ scale: 1 });
+    const scale = targetWidth / viewport.width;
+    const scaled = page.getViewport({ scale });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(scaled.width);
+    canvas.height = Math.ceil(scaled.height);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      doc.destroy();
+      return null;
+    }
+    await page.render({ canvasContext: ctx, viewport: scaled }).promise;
+
+    const blob: Blob | null = await new Promise(resolve =>
+      canvas.toBlob(b => resolve(b), 'image/jpeg', 0.7),
+    );
+    doc.destroy();
+    return blob ? URL.createObjectURL(blob) : null;
+  } catch {
+    return null;
+  }
 }
 
 function formatBytes(bytes: number): string {
@@ -334,6 +387,12 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
    * unmounts mid-upload.
    */
   const uploadXhrsRef = useRef<Map<string, XMLHttpRequest>>(new Map());
+  /**
+   * Mirrors the latest `attachments` state so the unmount-only cleanup effect
+   * (deps: []) can revoke any outstanding preview object URLs without needing
+   * to re-subscribe on every state change.
+   */
+  const attachmentsRef = useRef<AttachmentItem[]>([]);
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const subjectInputRef = useRef<HTMLInputElement>(null);
   const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
@@ -494,8 +553,19 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
         try { xhr.abort(); } catch { /* ignore */ }
       });
       uploadXhrsRef.current.clear();
+      // Revoke any preview object URLs we created so they don't leak.
+      attachmentsRef.current.forEach(a => {
+        if (a.previewUrl) {
+          try { URL.revokeObjectURL(a.previewUrl); } catch { /* ignore */ }
+        }
+      });
     };
   }, []);
+
+  // Keep attachmentsRef in sync for the unmount cleanup
+  useEffect(() => {
+    attachmentsRef.current = attachments;
+  }, [attachments]);
 
   const resetForm = () => {
     setToRecipients(replyTo?.to_email ? [replyTo.to_email] : []);
@@ -811,6 +881,9 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           /* ignore — storage cleanup is best-effort */
         });
       }
+      if (target?.previewUrl) {
+        try { URL.revokeObjectURL(target.previewUrl); } catch { /* ignore */ }
+      }
       return prev.filter(a => a.id !== id);
     });
   };
@@ -838,6 +911,11 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           typeof crypto !== 'undefined' && 'randomUUID' in crypto
             ? crypto.randomUUID()
             : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const ext = getExtension(file.name);
+        // For images, an object URL is an instant, free thumbnail. For PDFs we
+        // generate the preview asynchronously after the row is committed.
+        const isImage = IMAGE_PREVIEW_EXTENSIONS.has(ext);
+        const previewUrl = isImage ? URL.createObjectURL(file) : undefined;
         accepted.push({
           id,
           name: file.name,
@@ -846,6 +924,8 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           file,
           status: 'uploading',
           progress: 0,
+          previewUrl,
+          previewKind: isImage ? 'image' : undefined,
         });
       }
 
@@ -860,6 +940,22 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
         setTimeout(() => {
           accepted.forEach(a => a.file && startUpload(a.id, a.file));
         }, 0);
+        // Generate PDF thumbnails in the background (small files only).
+        accepted.forEach(a => {
+          if (!a.file) return;
+          if (getExtension(a.name) !== 'pdf') return;
+          if (a.file.size > PDF_PREVIEW_MAX_BYTES) return;
+          void generatePdfThumbnail(a.file).then(url => {
+            if (!url) return;
+            setAttachments(prev =>
+              prev.map(item =>
+                item.id === a.id
+                  ? { ...item, previewUrl: url, previewKind: 'pdf' }
+                  : item,
+              ),
+            );
+          });
+        });
       }
       working = [...working, ...accepted];
       return working;
@@ -1169,13 +1265,31 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
                       att.status === 'error' && 'border-destructive/40 bg-destructive/5',
                     )}
                   >
-                    {att.status === 'error' ? (
-                      <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
-                    ) : att.status === 'uploading' ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
-                    ) : (
-                      <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    )}
+                    <div
+                      className={cn(
+                        'relative h-9 w-9 shrink-0 overflow-hidden rounded border bg-background flex items-center justify-center',
+                        att.status === 'error' && 'border-destructive/40',
+                      )}
+                      aria-hidden
+                    >
+                      {att.previewUrl ? (
+                        <img
+                          src={att.previewUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : att.status === 'error' ? (
+                        <AlertCircle className="h-4 w-4 text-destructive" />
+                      ) : (
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      {att.status === 'uploading' && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-background/60">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="truncate font-medium">{att.name}</span>
