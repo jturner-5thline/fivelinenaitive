@@ -477,6 +477,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
       );
       setShowCcBcc(saved.showCcBcc ?? (saved.cc?.length > 0 || saved.bcc?.length > 0));
       setAutosaveStatus('saved');
+      setLastSavedAt(saved.savedAt ?? Date.now());
       if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
       savedFlashTimerRef.current = setTimeout(() => setAutosaveStatus('idle'), 2500);
     }
