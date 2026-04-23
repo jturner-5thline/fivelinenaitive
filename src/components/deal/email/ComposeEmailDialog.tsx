@@ -674,6 +674,49 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     toast.info('Draft discarded');
   };
 
+  /** Explicitly flush the current form state to the draft store, bypassing the autosave debounce. */
+  const handleSaveDraftNow = () => {
+    // Cancel any pending debounced save
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+
+    const draft: ComposeDraft = {
+      to: toRecipients,
+      cc: ccRecipients,
+      bcc: bccRecipients,
+      subject,
+      body,
+      attachments: attachments
+        .filter(a => a.status === 'ready')
+        .map(a => ({ id: a.id, name: a.name, size: a.size, type: a.type })),
+      showCcBcc,
+      savedAt: Date.now(),
+    };
+
+    if (!isDraftMeaningful(draft)) {
+      toast.info('Nothing to save', {
+        description: 'Add a recipient, subject, message, or attachment first.',
+      });
+      return;
+    }
+
+    setAutosaveStatus('saving');
+    const ok = saveDraft(draftKey, draft);
+    if (ok) {
+      setAutosaveStatus('saved');
+      if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
+      savedFlashTimerRef.current = setTimeout(() => setAutosaveStatus('idle'), 2500);
+      toast.success('Draft saved');
+    } else {
+      setAutosaveStatus('idle');
+      toast.error('Could not save draft', {
+        description: 'Your browser storage may be full. Try removing attachments and retry.',
+      });
+    }
+  };
+
   return (
     <Dialog
       open={open}
