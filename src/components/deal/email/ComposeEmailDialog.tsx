@@ -352,6 +352,8 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   // Flush save on tab close / refresh
   useEffect(() => {
     if (!open) return;
+    // While the restore prompt is up, the form is empty — flushing would wipe the saved draft
+    if (pendingDraft) return;
     const handler = () => {
       const draft: ComposeDraft = {
         to: toRecipients,
