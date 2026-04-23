@@ -332,6 +332,10 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     return () => {
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
       if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
+      // NOTE: Do NOT clear the undo-send timer here — the dialog unmounts
+      // immediately after the user clicks Send (we close it for instant UX),
+      // and the pending send must continue running in the background until
+      // either the undo window elapses or the user clicks Undo on the toast.
       // Cancel any in-flight (simulated) uploads
       uploadTimersRef.current.forEach(t => clearInterval(t));
       uploadTimersRef.current.clear();
