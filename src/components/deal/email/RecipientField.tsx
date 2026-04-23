@@ -25,6 +25,64 @@ export function isValidEmail(value: string): boolean {
   return EMAIL_REGEX.test(v);
 }
 
+/**
+ * Split a pasted recipient string into individual entries while respecting
+ * quoted display names. Splits on commas, semicolons, and newlines that
+ * appear OUTSIDE of double quotes and OUTSIDE of `<...>` brackets, so
+ * inputs like:
+ *   "Doe, Jane" <jane@x.com>, bob@y.com; "Smith, John" <john@z.com>
+ * tokenize correctly.
+ */
+function splitRecipientList(raw: string): string[] {
+  const tokens: string[] = [];
+  let buf = '';
+  let inQuotes = false;
+  let inAngle = false;
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+    if (ch === '"' && !inAngle) {
+      inQuotes = !inQuotes;
+      buf += ch;
+      continue;
+    }
+    if (ch === '<' && !inQuotes) { inAngle = true; buf += ch; continue; }
+    if (ch === '>' && !inQuotes) { inAngle = false; buf += ch; continue; }
+    const isSeparator = !inQuotes && !inAngle && (ch === ',' || ch === ';' || ch === '\n' || ch === '\r');
+    if (isSeparator) {
+      const t = buf.trim();
+      if (t) tokens.push(t);
+      buf = '';
+    } else {
+      buf += ch;
+    }
+  }
+  const tail = buf.trim();
+  if (tail) tokens.push(tail);
+  return tokens;
+}
+
+/**
+ * Extract the bare email address from a single recipient token, supporting:
+ *   - `email@example.com`
+ *   - `Jane Doe <jane@example.com>`
+ *   - `"Doe, Jane" <jane@example.com>`
+ *   - `Jane Doe email@example.com` (whitespace-separated, last word wins)
+ * Returns the original trimmed token unchanged if no email shape is found,
+ * so the caller can surface it as the exact invalid string.
+ */
+export function extractEmailFromToken(token: string): { email: string; raw: string } {
+  const raw = token.trim();
+  // Prefer angle-bracketed form first
+  const angle = raw.match(/<\s*([^<>\s]+)\s*>/);
+  if (angle && angle[1]) return { email: angle[1].trim(), raw };
+  // Otherwise pick the last whitespace-delimited piece that contains '@'
+  const parts = raw.split(/\s+/).filter(Boolean);
+  for (let i = parts.length - 1; i >= 0; i--) {
+    if (parts[i].includes('@')) return { email: parts[i].replace(/^[<("']+|[>)"']+$/g, ''), raw };
+  }
+  return { email: raw, raw };
+}
+
 interface RecipientFieldProps {
   label: string;
   recipients: string[];
@@ -76,15 +134,21 @@ export function RecipientField({
     onValidityChange?.(error === null);
   }, [error, onValidityChange]);
 
-  const addRecipient = useCallback((email: string): boolean => {
-    const cleaned = email.toLowerCase().trim().replace(/[,;]+$/, '');
+  const addRecipient = useCallback((input: string): boolean => {
+    const trimmed = input.trim().replace(/[,;]+$/, '');
+    if (!trimmed) return false;
+    // Accept "Jane Doe <jane@x.com>" and similar formats by extracting the
+    // bare address. The original token is preserved for error messaging
+    // so the user sees exactly what they pasted/typed if it's invalid.
+    const { email: extracted, raw } = extractEmailFromToken(trimmed);
+    const cleaned = extracted.toLowerCase();
     if (!cleaned) return false;
     if (recipients.includes(cleaned)) {
       setError(`"${cleaned}" is already added`);
       return false;
     }
     if (!isValidEmail(cleaned)) {
-      setError(`"${cleaned}" is not a valid email address`);
+      setError(`"${raw}" is not a valid email address`);
       return false;
     }
     onChange([...recipients, cleaned]);
@@ -102,22 +166,30 @@ export function RecipientField({
     setError(prev => (prev && prev.includes(`"${email}"`) ? null : prev));
   }, [recipients, onChange]);
 
-  /** Try to commit several emails at once (paste / comma-separated). */
-  const addMultiple = useCallback((raw: string): boolean => {
-    const tokens = raw
-      .split(/[,;\s]+/)
-      .map(t => t.trim())
-      .filter(Boolean);
+  /**
+   * Commit several recipients at once (paste / comma-separated). Honors
+   * quoted display names and angle-bracketed addresses, so each of these
+   * yields a single valid recipient:
+   *   "Doe, Jane" <jane@x.com>
+   *   Bob Smith <bob@y.com>
+   *   carol@z.com
+   * Invalid entries are reported with their EXACT original text so the
+   * user can see what failed (e.g. "Bob <not-an-email>").
+   */
+  const addMultiple = useCallback((rawInput: string): boolean => {
+    const tokens = splitRecipientList(rawInput);
     if (tokens.length === 0) return false;
 
     const next = [...recipients];
     const invalid: string[] = [];
     let added = 0;
     for (const token of tokens) {
-      const cleaned = token.toLowerCase();
+      const { email, raw } = extractEmailFromToken(token);
+      const cleaned = email.toLowerCase();
+      if (!cleaned) continue;
       if (next.includes(cleaned)) continue;
       if (!isValidEmail(cleaned)) {
-        invalid.push(cleaned);
+        invalid.push(raw);
         continue;
       }
       next.push(cleaned);
@@ -130,7 +202,7 @@ export function RecipientField({
       setError(
         invalid.length === 1
           ? `"${invalid[0]}" is not a valid email address`
-          : `${invalid.length} addresses were invalid and skipped`,
+          : `${invalid.length} invalid: ${invalid.slice(0, 3).map(s => `"${s}"`).join(', ')}${invalid.length > 3 ? '…' : ''}`,
       );
     } else {
       setError(null);
