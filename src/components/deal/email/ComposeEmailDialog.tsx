@@ -347,7 +347,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     return () => {
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     };
-  }, [open, draftKey, toRecipients, ccRecipients, bccRecipients, subject, body, attachments, showCcBcc]);
+  }, [open, draftKey, toRecipients, ccRecipients, bccRecipients, subject, body, attachments, showCcBcc, pendingDraft]);
 
   // Flush save on tab close / refresh
   useEffect(() => {
@@ -371,7 +371,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [open, draftKey, toRecipients, ccRecipients, bccRecipients, subject, body, attachments, showCcBcc]);
+  }, [open, draftKey, toRecipients, ccRecipients, bccRecipients, subject, body, attachments, showCcBcc, pendingDraft]);
 
   // Cleanup timers on unmount
   useEffect(() => {
