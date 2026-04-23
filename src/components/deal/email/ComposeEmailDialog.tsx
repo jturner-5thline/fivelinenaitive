@@ -14,6 +14,16 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Send,
   Paperclip,
   Loader2,
@@ -25,6 +35,8 @@ import {
   AlertCircle,
   Upload,
   FileText,
+  History,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -226,10 +238,18 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   const savedFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipNextAutosaveRef = useRef(false);
 
-  // Restore any saved draft when the dialog opens
+  // Pending draft awaiting user confirmation (Restore vs Start fresh)
+  const [pendingDraft, setPendingDraft] = useState<ComposeDraft | null>(null);
+
+  /**
+   * On open: detect any saved draft. If meaningful, hold it in `pendingDraft`
+   * and show the restore prompt. Otherwise just mark the open as handled.
+   * We do NOT auto-restore — the user explicitly chooses.
+   */
   useEffect(() => {
     if (!open) {
       hasRestoredRef.current = false;
+      setPendingDraft(null);
       return;
     }
     if (hasRestoredRef.current) return;
@@ -237,34 +257,53 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
 
     const saved = loadDraft(draftKey);
     if (saved && isDraftMeaningful(saved)) {
-      skipNextAutosaveRef.current = true;
-      setToRecipients(saved.to ?? (replyTo?.to_email ? [replyTo.to_email] : []));
-      setCcRecipients(saved.cc ?? []);
-      setBccRecipients(saved.bcc ?? []);
-      setSubject(saved.subject ?? (replyTo ? `Re: ${replyTo.subject}` : ''));
-      setBody(saved.body ?? '');
-      // Restored attachments only retain metadata — File blob is gone after reload.
-      // Mark as ready so they appear in the list but they won't actually be re-uploaded.
-      setAttachments(
-        (saved.attachments ?? []).map(a => ({
-          id: a.id,
-          name: a.name,
-          size: a.size,
-          type: a.type,
-          status: 'ready' as const,
-          progress: 100,
-        })),
-      );
-      setShowCcBcc(saved.showCcBcc ?? (saved.cc?.length > 0 || saved.bcc?.length > 0));
-      setAutosaveStatus('saved');
-      if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
-      savedFlashTimerRef.current = setTimeout(() => setAutosaveStatus('idle'), 2500);
+      setPendingDraft(saved);
     }
-  }, [open, draftKey, replyTo]);
+  }, [open, draftKey]);
+
+  /** Apply a saved draft to the form state. */
+  const applyDraft = (saved: ComposeDraft) => {
+    skipNextAutosaveRef.current = true;
+    setToRecipients(saved.to ?? (replyTo?.to_email ? [replyTo.to_email] : []));
+    setCcRecipients(saved.cc ?? []);
+    setBccRecipients(saved.bcc ?? []);
+    setSubject(saved.subject ?? (replyTo ? `Re: ${replyTo.subject}` : ''));
+    setBody(saved.body ?? '');
+    // Restored attachments only retain metadata — File blob is gone after reload.
+    setAttachments(
+      (saved.attachments ?? []).map(a => ({
+        id: a.id,
+        name: a.name,
+        size: a.size,
+        type: a.type,
+        status: 'ready' as const,
+        progress: 100,
+      })),
+    );
+    setShowCcBcc(saved.showCcBcc ?? ((saved.cc?.length ?? 0) > 0 || (saved.bcc?.length ?? 0) > 0));
+    setAutosaveStatus('saved');
+    if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
+    savedFlashTimerRef.current = setTimeout(() => setAutosaveStatus('idle'), 2500);
+  };
+
+  const handleRestoreDraft = () => {
+    if (pendingDraft) applyDraft(pendingDraft);
+    setPendingDraft(null);
+  };
+
+  const handleDiscardSavedDraft = () => {
+    clearDraft(draftKey);
+    setPendingDraft(null);
+    // Reset autosave guard: the next typing should re-establish a fresh draft.
+    skipNextAutosaveRef.current = true;
+    setAutosaveStatus('idle');
+  };
 
   // Debounced autosave whenever form content changes (only while open)
   useEffect(() => {
     if (!open) return;
+    // Don't overwrite the saved draft while the user is deciding what to do with it
+    if (pendingDraft) return;
     if (skipNextAutosaveRef.current) {
       skipNextAutosaveRef.current = false;
       return;
@@ -308,11 +347,13 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     return () => {
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     };
-  }, [open, draftKey, toRecipients, ccRecipients, bccRecipients, subject, body, attachments, showCcBcc]);
+  }, [open, draftKey, toRecipients, ccRecipients, bccRecipients, subject, body, attachments, showCcBcc, pendingDraft]);
 
   // Flush save on tab close / refresh
   useEffect(() => {
     if (!open) return;
+    // While the restore prompt is up, the form is empty — flushing would wipe the saved draft
+    if (pendingDraft) return;
     const handler = () => {
       const draft: ComposeDraft = {
         to: toRecipients,
@@ -330,7 +371,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [open, draftKey, toRecipients, ccRecipients, bccRecipients, subject, body, attachments, showCcBcc]);
+  }, [open, draftKey, toRecipients, ccRecipients, bccRecipients, subject, body, attachments, showCcBcc, pendingDraft]);
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -832,6 +873,82 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
         onAddAttachment={() => { clearPreSendAlert(); openFilePicker(); }}
         onAddSubject={() => { clearPreSendAlert(); subjectInputRef.current?.focus(); }}
       />
+
+      {/* Restore-saved-draft prompt — shown on open when a meaningful draft exists */}
+      <AlertDialog
+        open={!!pendingDraft}
+        onOpenChange={(o) => {
+          // Treat overlay/Escape close as "Start fresh" — user can always reopen compose to retry
+          if (!o) handleDiscardSavedDraft();
+        }}
+      >
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <History className="h-4 w-4 text-primary" />
+              Restore saved draft?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  We found an unsaved draft from{' '}
+                  <span className="font-medium text-foreground">
+                    {pendingDraft
+                      ? new Date(pendingDraft.savedAt).toLocaleString(undefined, {
+                          dateStyle: 'medium',
+                          timeStyle: 'short',
+                        })
+                      : ''}
+                  </span>
+                  . Would you like to continue where you left off?
+                </p>
+
+                {pendingDraft && (
+                  <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-1.5">
+                    {pendingDraft.to.length > 0 && (
+                      <div className="flex gap-2">
+                        <span className="text-muted-foreground shrink-0 w-12">To</span>
+                        <span className="truncate text-foreground">{pendingDraft.to.join(', ')}</span>
+                      </div>
+                    )}
+                    {pendingDraft.subject && (
+                      <div className="flex gap-2">
+                        <span className="text-muted-foreground shrink-0 w-12">Subject</span>
+                        <span className="truncate font-medium text-foreground">{pendingDraft.subject}</span>
+                      </div>
+                    )}
+                    {pendingDraft.body && (
+                      <div className="flex gap-2">
+                        <span className="text-muted-foreground shrink-0 w-12">Body</span>
+                        <span className="line-clamp-2 text-foreground/90">{pendingDraft.body.slice(0, 200)}</span>
+                      </div>
+                    )}
+                    {pendingDraft.attachments.length > 0 && (
+                      <div className="flex gap-2">
+                        <span className="text-muted-foreground shrink-0 w-12">Files</span>
+                        <span className="text-foreground/90">
+                          {pendingDraft.attachments.length} attachment
+                          {pendingDraft.attachments.length > 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDiscardSavedDraft} className="gap-1.5">
+              <Sparkles className="h-3.5 w-3.5" />
+              Start fresh
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleRestoreDraft} className="gap-1.5">
+              <History className="h-3.5 w-3.5" />
+              Restore draft
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
