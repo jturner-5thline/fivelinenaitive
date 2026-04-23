@@ -413,6 +413,24 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
 
   const draftKey = useMemo(() => getDraftKey(replyTo?.threadId), [replyTo?.threadId]);
   const historyKey = useMemo(() => getHistoryKey(replyTo?.threadId), [replyTo?.threadId]);
+  /**
+   * Live attachment-quota stats. Shown in the drag overlay, the Attach button
+   * tooltip area, and the attachments list header so the user always knows
+   * how much room is left before hitting the count or size cap.
+   */
+  const attachmentQuota = useMemo(() => {
+    const usedCount = attachments.length;
+    const usedBytes = attachments.reduce((s, a) => s + a.size, 0);
+    const remainingCount = Math.max(0, MAX_ATTACHMENT_COUNT - usedCount);
+    const remainingBytes = Math.max(0, MAX_TOTAL_SIZE_BYTES - usedBytes);
+    return {
+      usedCount,
+      usedBytes,
+      remainingCount,
+      remainingBytes,
+      isFull: remainingCount === 0 || remainingBytes === 0,
+    };
+  }, [attachments]);
   const hasRestoredRef = useRef(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1170,9 +1188,13 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
               aria-hidden="true"
             >
               <Upload className="h-8 w-8 text-primary" />
-              <p className="text-sm font-medium text-primary">Drop files to attach</p>
+              <p className="text-sm font-medium text-primary">
+                {attachmentQuota.isFull ? 'Attachment limit reached' : 'Drop files to attach'}
+              </p>
               <p className="text-xs text-muted-foreground">
-                Up to {MAX_ATTACHMENT_COUNT} files · {formatBytes(MAX_FILE_SIZE_BYTES)} each
+                {attachmentQuota.isFull
+                  ? `${MAX_ATTACHMENT_COUNT} files · ${formatBytes(MAX_TOTAL_SIZE_BYTES)} max`
+                  : `${attachmentQuota.remainingCount} of ${MAX_ATTACHMENT_COUNT} slots · ${formatBytes(attachmentQuota.remainingBytes)} remaining`}
               </p>
             </div>
           )}
@@ -1254,6 +1276,16 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
                   {attachments.length} attachment{attachments.length > 1 ? 's' : ''}
                   {' · '}
                   {formatBytes(attachments.reduce((s, a) => s + a.size, 0))}
+                </span>
+                <span
+                  className={cn(
+                    'text-[11px] tabular-nums',
+                    attachmentQuota.isFull ? 'text-destructive' : 'text-muted-foreground',
+                  )}
+                >
+                  {attachmentQuota.isFull
+                    ? 'Limit reached'
+                    : `${attachmentQuota.remainingCount} slot${attachmentQuota.remainingCount === 1 ? '' : 's'} · ${formatBytes(attachmentQuota.remainingBytes)} left`}
                 </span>
               </div>
               <ul className="space-y-1.5">
@@ -1348,15 +1380,36 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
             )}
           </Button>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1.5 text-muted-foreground"
-            onClick={openFilePicker}
-          >
-            <Paperclip className="h-3.5 w-3.5" />
-            Attach
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-muted-foreground"
+              onClick={openFilePicker}
+              disabled={attachmentQuota.isFull}
+              title={
+                attachmentQuota.isFull
+                  ? `Attachment limit reached (${MAX_ATTACHMENT_COUNT} files · ${formatBytes(MAX_TOTAL_SIZE_BYTES)})`
+                  : `${attachmentQuota.remainingCount} slot${attachmentQuota.remainingCount === 1 ? '' : 's'} · ${formatBytes(attachmentQuota.remainingBytes)} remaining`
+              }
+            >
+              <Paperclip className="h-3.5 w-3.5" />
+              Attach
+            </Button>
+            {attachments.length > 0 && (
+              <span
+                className={cn(
+                  'text-[11px] tabular-nums',
+                  attachmentQuota.isFull ? 'text-destructive' : 'text-muted-foreground',
+                )}
+                aria-live="polite"
+              >
+                {attachmentQuota.isFull
+                  ? 'full'
+                  : `${attachmentQuota.remainingCount}/${MAX_ATTACHMENT_COUNT} · ${formatBytes(attachmentQuota.remainingBytes)} left`}
+              </span>
+            )}
+          </div>
 
           <div className="flex-1 min-w-0" />
 
