@@ -108,7 +108,7 @@ export default function PrivacyPolicy() {
                 <li><strong>Withdrawal:</strong> Withdraw consent where processing is based on consent.</li>
               </ul>
               <p className="text-muted-foreground leading-relaxed mt-4">
-                To exercise these rights, please contact us at privacy@naitive.com.
+                To exercise these rights, please contact us at support@naitive.co.
               </p>
             </section>
 
@@ -140,8 +140,7 @@ export default function PrivacyPolicy() {
               </p>
               <div className="mt-4 p-4 bg-muted rounded-lg">
                 <p className="font-medium">naitive</p>
-                <p className="text-muted-foreground">Email: privacy@naitive.com</p>
-                <p className="text-muted-foreground">Support: support@naitive.com</p>
+                <p className="text-muted-foreground">Email: support@naitive.co</p>
               </div>
             </section>
           </div>

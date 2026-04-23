@@ -188,8 +188,7 @@ export default function TermsOfService() {
               </p>
               <div className="mt-4 p-4 bg-muted rounded-lg">
                 <p className="font-medium">naitive</p>
-                <p className="text-muted-foreground">Email: legal@naitive.com</p>
-                <p className="text-muted-foreground">Support: support@naitive.com</p>
+                <p className="text-muted-foreground">Email: support@naitive.co</p>
               </div>
             </section>
           </div>
