@@ -458,12 +458,12 @@ Deno.serve(async (req) => {
     }
 
     const hsResult = JSON.parse(hsBody);
-    const hubspotDealId = hsResult.id;
+    const hubspotDealId = hsResult.id || existingHubSpotId;
 
     await supabase.from('deals').update({
       hubspot_deal_id: hubspotDealId,
       hubspot_sync_status: 'success',
-      hubspot_sync_error: null,
+      hubspot_sync_error: ownerFallbackWarning,
       hubspot_last_synced_at: new Date().toISOString(),
     }).eq('id', deal_id);
 
