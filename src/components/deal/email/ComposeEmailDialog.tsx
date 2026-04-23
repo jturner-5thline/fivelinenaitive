@@ -328,7 +328,12 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   const [isDragging, setIsDragging] = useState(false);
   const dragDepthRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const uploadTimersRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
+  /**
+   * Tracks in-flight XHR uploads keyed by attachment id, so we can abort them
+   * when the user removes the attachment, discards the draft, or the dialog
+   * unmounts mid-upload.
+   */
+  const uploadXhrsRef = useRef<Map<string, XMLHttpRequest>>(new Map());
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const subjectInputRef = useRef<HTMLInputElement>(null);
   const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
