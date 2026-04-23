@@ -122,11 +122,12 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
       <DialogContent
         className="p-0 gap-0 overflow-hidden flex flex-col max-w-none sm:rounded-xl"
         style={{
-          // Mobile: 96-97vw x 92-94dvh. Tablet: ~94vw x 90dvh. Desktop: ~92vw x 88dvh, capped at 1400 x 980.
-          width: 'min(1400px, clamp(min(96vw, 360px), 92vw, 1400px))',
-          height: 'min(980px, clamp(92dvh, 88dvh, 88dvh))',
-          maxWidth: 'min(1400px, 96vw)',
-          maxHeight: 'min(980px, 94dvh)',
+          // Mobile (< ~640px): ~96vw x ~93dvh. Tablet (~640-1024px): ~94vw x 90dvh.
+          // Desktop (>= ~1024px): ~92vw x 88dvh, capped at 1400 x 980 with margin around modal.
+          width: 'min(92vw, 1400px)',
+          height: 'min(88dvh, 980px)',
+          maxWidth: '96vw',
+          maxHeight: '94dvh',
         }}
       >
         {/* Header */}
