@@ -789,6 +789,21 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
 
   const handleSend = () => {
     if (toRecipients.length === 0) { toast.error('Please add a recipient'); return; }
+    // Block sending if any recipient field contains an invalid address. The
+    // RecipientField already renders these as red badges with inline errors;
+    // this guard ensures we don't bypass that visual warning at send time.
+    const invalidTo = toRecipients.filter(r => !isValidEmail(r));
+    const invalidCc = ccRecipients.filter(r => !isValidEmail(r));
+    const invalidBcc = bccRecipients.filter(r => !isValidEmail(r));
+    if (invalidTo.length || invalidCc.length || invalidBcc.length) {
+      const fields = [
+        invalidTo.length && 'To',
+        invalidCc.length && 'Cc',
+        invalidBcc.length && 'Bcc',
+      ].filter(Boolean).join(', ');
+      toast.error(`Fix invalid email${invalidTo.length + invalidCc.length + invalidBcc.length > 1 ? 's' : ''} in ${fields}`);
+      return;
+    }
     if (attachments.some(a => a.status === 'uploading')) {
       toast.error('Please wait for attachments to finish uploading');
       return;
