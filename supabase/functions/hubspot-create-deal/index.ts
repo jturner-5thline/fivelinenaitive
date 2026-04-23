@@ -409,6 +409,7 @@ Deno.serve(async (req) => {
     // Before creating, search HubSpot for an existing deal already tagged
     // with this naitive deal id. Recovers from prior failures where the
     // HubSpot deal was created but its id wasn't persisted locally.
+    await ensureNaitiveDealIdProperty(accessToken);
     const existingHubSpotId = await findExistingHubSpotDealByNaitiveId(accessToken, deal.id);
     if (existingHubSpotId) {
       console.log(`[hubspot-create-deal] Recovered existing HubSpot deal ${existingHubSpotId} for naitive ${deal.id} (dedupe)`);
