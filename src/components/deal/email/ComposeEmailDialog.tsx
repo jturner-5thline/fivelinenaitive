@@ -413,6 +413,24 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
 
   const draftKey = useMemo(() => getDraftKey(replyTo?.threadId), [replyTo?.threadId]);
   const historyKey = useMemo(() => getHistoryKey(replyTo?.threadId), [replyTo?.threadId]);
+  /**
+   * Live attachment-quota stats. Shown in the drag overlay, the Attach button
+   * tooltip area, and the attachments list header so the user always knows
+   * how much room is left before hitting the count or size cap.
+   */
+  const attachmentQuota = useMemo(() => {
+    const usedCount = attachments.length;
+    const usedBytes = attachments.reduce((s, a) => s + a.size, 0);
+    const remainingCount = Math.max(0, MAX_ATTACHMENT_COUNT - usedCount);
+    const remainingBytes = Math.max(0, MAX_TOTAL_SIZE_BYTES - usedBytes);
+    return {
+      usedCount,
+      usedBytes,
+      remainingCount,
+      remainingBytes,
+      isFull: remainingCount === 0 || remainingBytes === 0,
+    };
+  }, [attachments]);
   const hasRestoredRef = useRef(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
