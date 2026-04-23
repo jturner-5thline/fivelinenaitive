@@ -44,13 +44,104 @@ interface ComposeEmailDialogProps {
 const COMPOSE_DRAFT_PREFIX = 'compose_draft_';
 const COMPOSE_AUTOSAVE_DEBOUNCE_MS = 800;
 
+// Upload limits
+const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25MB per file
+const MAX_TOTAL_SIZE_BYTES = 50 * 1024 * 1024; // 50MB combined
+const MAX_ATTACHMENT_COUNT = 10;
+
+// Allowed file types (extension allowlist + matching MIME hints).
+// We validate by extension because MIME type can be empty / inconsistent across OSes.
+const ALLOWED_EXTENSIONS = [
+  // Documents
+  'pdf', 'doc', 'docx', 'txt', 'rtf', 'md',
+  // Spreadsheets
+  'xls', 'xlsx', 'csv',
+  // Presentations
+  'ppt', 'pptx',
+  // Images
+  'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'heic',
+  // Archives
+  'zip',
+  // Email / other
+  'eml', 'msg',
+] as const;
+
+const BLOCKED_EXTENSIONS = new Set([
+  'exe', 'bat', 'cmd', 'sh', 'msi', 'dll', 'app', 'scr', 'js', 'jar', 'vbs', 'ps1',
+]);
+
+type AttachmentStatus = 'uploading' | 'ready' | 'error';
+
+interface AttachmentItem {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  /** File handle (omitted when restored from draft) */
+  file?: File;
+  status: AttachmentStatus;
+  /** 0–100 */
+  progress: number;
+  error?: string;
+}
+
+function getExtension(name: string): string {
+  const dot = name.lastIndexOf('.');
+  return dot >= 0 ? name.slice(dot + 1).toLowerCase() : '';
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function validateFile(
+  file: File,
+  existing: AttachmentItem[],
+): { ok: true } | { ok: false; reason: string } {
+  const ext = getExtension(file.name);
+
+  if (BLOCKED_EXTENSIONS.has(ext)) {
+    return { ok: false, reason: `File type ".${ext}" is not allowed for security reasons` };
+  }
+  if (ext && !ALLOWED_EXTENSIONS.includes(ext as typeof ALLOWED_EXTENSIONS[number])) {
+    return { ok: false, reason: `File type ".${ext}" is not supported` };
+  }
+  if (file.size === 0) {
+    return { ok: false, reason: 'File is empty' };
+  }
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    return {
+      ok: false,
+      reason: `File exceeds ${formatBytes(MAX_FILE_SIZE_BYTES)} limit (is ${formatBytes(file.size)})`,
+    };
+  }
+
+  const totalAfter = existing.reduce((sum, a) => sum + a.size, 0) + file.size;
+  if (totalAfter > MAX_TOTAL_SIZE_BYTES) {
+    return {
+      ok: false,
+      reason: `Total attachment size would exceed ${formatBytes(MAX_TOTAL_SIZE_BYTES)}`,
+    };
+  }
+
+  // Duplicate by name + size
+  if (existing.some(a => a.name === file.name && a.size === file.size)) {
+    return { ok: false, reason: 'This file is already attached' };
+  }
+
+  return { ok: true };
+}
+
 interface ComposeDraft {
   to: string[];
   cc: string[];
   bcc: string[];
   subject: string;
   body: string;
-  attachments: string[];
+  /** Persisted as lightweight metadata; File blobs are not serializable. */
+  attachments: Array<{ id: string; name: string; size: number; type: string }>;
   showCcBcc: boolean;
   savedAt: number;
 }
