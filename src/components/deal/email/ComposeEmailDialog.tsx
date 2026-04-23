@@ -549,11 +549,37 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           </DialogDescription>
         </DialogHeader>
 
-        {/* Scrollable body */}
+        {/* Hidden file input for the Attach button */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          accept={ALLOWED_EXTENSIONS.map(e => `.${e}`).join(',')}
+          onChange={handleFileInputChange}
+        />
+
+        {/* Scrollable body — also serves as the drop zone */}
         <div
-          className="flex-1 min-h-0 overflow-y-auto flex flex-col"
+          className="relative flex-1 min-h-0 overflow-y-auto flex flex-col"
           style={{ padding: 'clamp(0.75rem, 1.5vw, 1.25rem) clamp(1rem, 2.5vw, 1.75rem)' }}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
         >
+          {isDragging && (
+            <div
+              className="pointer-events-none absolute inset-2 z-10 flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-primary bg-primary/5 backdrop-blur-sm"
+              aria-hidden="true"
+            >
+              <Upload className="h-8 w-8 text-primary" />
+              <p className="text-sm font-medium text-primary">Drop files to attach</p>
+              <p className="text-xs text-muted-foreground">
+                Up to {MAX_ATTACHMENT_COUNT} files · {formatBytes(MAX_FILE_SIZE_BYTES)} each
+              </p>
+            </div>
+          )}
           <div className="space-y-3">
           {/* To field */}
           <div className="flex items-center gap-2">
