@@ -13,6 +13,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Send,
   Paperclip,
@@ -26,6 +28,8 @@ import {
   Upload,
   FileText,
   Save,
+  History,
+  RotateCcw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -44,6 +48,14 @@ interface ComposeEmailDialogProps {
 
 const COMPOSE_DRAFT_PREFIX = 'compose_draft_';
 const COMPOSE_AUTOSAVE_DEBOUNCE_MS = 800;
+
+/** How many autosaved versions of a draft to keep in history. */
+const DRAFT_HISTORY_MAX_ENTRIES = 8;
+/**
+ * Minimum gap between successive history entries. Prevents flooding history
+ * with near-identical snapshots when the user is typing quickly.
+ */
+const DRAFT_HISTORY_MIN_GAP_MS = 8000;
 
 /** How long the user has to undo a send before it's actually delivered. */
 const UNDO_SEND_WINDOW_MS = 5000;
@@ -181,6 +193,112 @@ function clearDraft(key: string): void {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/*  Draft version history                                                     */
+/* -------------------------------------------------------------------------- */
+
+interface DraftHistoryEntry {
+  /** Stable id so React lists / restore actions can target a specific entry. */
+  id: string;
+  draft: ComposeDraft;
+}
+
+function getHistoryKey(replyThreadId?: string): string {
+  return `${COMPOSE_DRAFT_PREFIX}history_${replyThreadId ?? 'new'}`;
+}
+
+function loadHistory(key: string): DraftHistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed as DraftHistoryEntry[];
+  } catch {
+    return [];
+  }
+}
+
+function persistHistory(key: string, entries: DraftHistoryEntry[]): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(entries));
+  } catch {
+    /* storage full — silently degrade */
+  }
+}
+
+function clearHistory(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Compare just the user-visible content (ignore savedAt) to dedupe versions. */
+function draftContentSignature(d: ComposeDraft): string {
+  return JSON.stringify({
+    to: d.to,
+    cc: d.cc,
+    bcc: d.bcc,
+    subject: d.subject,
+    body: d.body,
+    attachments: d.attachments.map(a => `${a.name}:${a.size}`),
+    showCcBcc: d.showCcBcc,
+  });
+}
+
+/**
+ * Push a new snapshot onto the history stack (newest first), enforcing:
+ *  - dedupe vs the most recent entry (no duplicate content)
+ *  - rate limit (DRAFT_HISTORY_MIN_GAP_MS) so rapid edits collapse into one entry
+ *  - cap at DRAFT_HISTORY_MAX_ENTRIES
+ */
+function pushHistoryEntry(key: string, draft: ComposeDraft): DraftHistoryEntry[] {
+  const existing = loadHistory(key);
+  const newest = existing[0];
+  const sig = draftContentSignature(draft);
+
+  if (newest) {
+    const newestSig = draftContentSignature(newest.draft);
+    if (newestSig === sig) {
+      // Same content — just bump the timestamp on the newest entry
+      const updated: DraftHistoryEntry[] = [
+        { ...newest, draft: { ...newest.draft, savedAt: draft.savedAt } },
+        ...existing.slice(1),
+      ];
+      persistHistory(key, updated);
+      return updated;
+    }
+    if (draft.savedAt - newest.draft.savedAt < DRAFT_HISTORY_MIN_GAP_MS) {
+      // Replace newest with this fresher snapshot to avoid spamming history
+      const replaced: DraftHistoryEntry[] = [
+        { id: newest.id, draft },
+        ...existing.slice(1),
+      ];
+      persistHistory(key, replaced);
+      return replaced;
+    }
+  }
+
+  const id =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const next = [{ id, draft }, ...existing].slice(0, DRAFT_HISTORY_MAX_ENTRIES);
+  persistHistory(key, next);
+  return next;
+}
+
+function formatRelativeTime(ts: number): string {
+  const diffMs = Date.now() - ts;
+  if (diffMs < 5_000) return 'just now';
+  if (diffMs < 60_000) return `${Math.round(diffMs / 1000)}s ago`;
+  if (diffMs < 3_600_000) return `${Math.round(diffMs / 60_000)}m ago`;
+  if (diffMs < 86_400_000) return `${Math.round(diffMs / 3_600_000)}h ago`;
+  return new Date(ts).toLocaleString();
+}
+
 function isDraftMeaningful(d: Pick<ComposeDraft, 'subject' | 'body' | 'attachments' | 'to' | 'cc' | 'bcc'>): boolean {
   return !!(
     d.subject.trim() ||
@@ -217,10 +335,15 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   const cancelledRef = useRef(false);
 
   const draftKey = useMemo(() => getDraftKey(replyTo?.threadId), [replyTo?.threadId]);
+  const historyKey = useMemo(() => getHistoryKey(replyTo?.threadId), [replyTo?.threadId]);
   const hasRestoredRef = useRef(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipNextAutosaveRef = useRef(false);
+
+  // Draft version history (newest first). Loaded lazily when the dialog opens.
+  const [history, setHistory] = useState<DraftHistoryEntry[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   // Restore any saved draft when the dialog opens
   useEffect(() => {
@@ -230,6 +353,9 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     }
     if (hasRestoredRef.current) return;
     hasRestoredRef.current = true;
+
+    // Load existing version history for this thread
+    setHistory(loadHistory(historyKey));
 
     const saved = loadDraft(draftKey);
     if (saved && isDraftMeaningful(saved)) {
@@ -256,7 +382,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
       if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
       savedFlashTimerRef.current = setTimeout(() => setAutosaveStatus('idle'), 2500);
     }
-  }, [open, draftKey, replyTo]);
+  }, [open, draftKey, historyKey, replyTo]);
 
   // Debounced autosave whenever form content changes (only while open)
   useEffect(() => {
@@ -294,6 +420,8 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
       const ok = saveDraft(draftKey, draft);
       if (ok) {
         setAutosaveStatus('saved');
+        // Record this snapshot in version history (deduped + rate-limited internally)
+        setHistory(pushHistoryEntry(historyKey, draft));
         if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
         savedFlashTimerRef.current = setTimeout(() => setAutosaveStatus('idle'), 2000);
       } else {
@@ -304,7 +432,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     return () => {
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     };
-  }, [open, draftKey, toRecipients, ccRecipients, bccRecipients, subject, body, attachments, showCcBcc]);
+  }, [open, draftKey, historyKey, toRecipients, ccRecipients, bccRecipients, subject, body, attachments, showCcBcc]);
 
   // Flush save on tab close / refresh
   useEffect(() => {
@@ -669,6 +797,8 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
 
   const handleDiscard = () => {
     clearDraft(draftKey);
+    clearHistory(historyKey);
+    setHistory([]);
     resetForm();
     onOpenChange(false);
     toast.info('Draft discarded');
@@ -706,6 +836,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     const ok = saveDraft(draftKey, draft);
     if (ok) {
       setAutosaveStatus('saved');
+      setHistory(pushHistoryEntry(historyKey, draft));
       if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
       savedFlashTimerRef.current = setTimeout(() => setAutosaveStatus('idle'), 2500);
       toast.success('Draft saved');
@@ -715,6 +846,70 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
         description: 'Your browser storage may be full. Try removing attachments and retry.',
       });
     }
+  };
+
+  /** Apply a historical draft snapshot to the current form. */
+  const handleRestoreVersion = (entry: DraftHistoryEntry) => {
+    const d = entry.draft;
+    // Snapshot the CURRENT state into history first so the user can undo the restore
+    const currentDraft: ComposeDraft = {
+      to: toRecipients,
+      cc: ccRecipients,
+      bcc: bccRecipients,
+      subject,
+      body,
+      attachments: attachments
+        .filter(a => a.status === 'ready')
+        .map(a => ({ id: a.id, name: a.name, size: a.size, type: a.type })),
+      showCcBcc,
+      savedAt: Date.now(),
+    };
+    if (isDraftMeaningful(currentDraft)) {
+      setHistory(pushHistoryEntry(historyKey, currentDraft));
+    }
+
+    // Suppress the next debounced autosave so restoring doesn't immediately overwrite history again
+    skipNextAutosaveRef.current = true;
+    setToRecipients(d.to ?? []);
+    setCcRecipients(d.cc ?? []);
+    setBccRecipients(d.bcc ?? []);
+    setSubject(d.subject ?? '');
+    setBody(d.body ?? '');
+    setAttachments(
+      (d.attachments ?? []).map(a => ({
+        id: a.id,
+        name: a.name,
+        size: a.size,
+        type: a.type,
+        status: 'ready' as const,
+        progress: 100,
+      })),
+    );
+    setShowCcBcc(d.showCcBcc ?? (d.cc?.length > 0 || d.bcc?.length > 0));
+
+    // Persist as the active draft
+    saveDraft(draftKey, { ...d, savedAt: Date.now() });
+    setAutosaveStatus('saved');
+    if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
+    savedFlashTimerRef.current = setTimeout(() => setAutosaveStatus('idle'), 2500);
+
+    setHistoryOpen(false);
+    toast.success('Draft version restored', {
+      description: `Restored snapshot from ${formatRelativeTime(d.savedAt)}.`,
+    });
+  };
+
+  const handleClearHistory = () => {
+    clearHistory(historyKey);
+    setHistory([]);
+    toast.info('Version history cleared');
+  };
+
+  /** Plain-text preview of a draft body, collapsed to a single line. */
+  const previewLine = (text: string, max = 80): string => {
+    const collapsed = text.replace(/\s+/g, ' ').trim();
+    if (collapsed.length <= max) return collapsed;
+    return collapsed.slice(0, max - 1) + '…';
   };
 
   return (
@@ -958,6 +1153,113 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
             <Save className="h-3.5 w-3.5" />
             Save draft
           </Button>
+
+          <Popover open={historyOpen} onOpenChange={setHistoryOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                disabled={history.length === 0}
+                aria-label="View draft version history"
+                title={history.length === 0 ? 'No saved versions yet' : 'Draft version history'}
+              >
+                <History className="h-3.5 w-3.5" />
+                History
+                {history.length > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="ml-1 h-4 px-1.5 text-[10px] font-normal tabular-nums"
+                  >
+                    {history.length}
+                  </Badge>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              side="top"
+              className="w-[360px] p-0"
+            >
+              <div className="flex items-center justify-between border-b px-3 py-2">
+                <div>
+                  <p className="text-sm font-medium">Draft history</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Last {DRAFT_HISTORY_MAX_ENTRIES} autosaved versions
+                  </p>
+                </div>
+                {history.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-[11px] text-muted-foreground hover:text-destructive"
+                    onClick={handleClearHistory}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+              {history.length === 0 ? (
+                <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+                  No saved versions yet. Edits are captured automatically as you type.
+                </div>
+              ) : (
+                <ScrollArea className="max-h-[320px]">
+                  <ul className="divide-y">
+                    {history.map((entry, idx) => {
+                      const d = entry.draft;
+                      const subjLine = d.subject.trim() || '(No subject)';
+                      const bodyLine = previewLine(d.body) || '(Empty message)';
+                      const recipientCount =
+                        (d.to?.length ?? 0) + (d.cc?.length ?? 0) + (d.bcc?.length ?? 0);
+                      return (
+                        <li
+                          key={entry.id}
+                          className="px-3 py-2.5 text-xs hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium tabular-nums text-muted-foreground">
+                                  {formatRelativeTime(d.savedAt)}
+                                </span>
+                                {idx === 0 && (
+                                  <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+                                    Latest
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="mt-1 truncate font-medium text-foreground">
+                                {subjLine}
+                              </p>
+                              <p className="truncate text-muted-foreground">
+                                {bodyLine}
+                              </p>
+                              <p className="mt-0.5 text-[10px] text-muted-foreground">
+                                {recipientCount} recipient{recipientCount === 1 ? '' : 's'}
+                                {d.attachments.length > 0 && (
+                                  <> · {d.attachments.length} attachment{d.attachments.length === 1 ? '' : 's'}</>
+                                )}
+                              </p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="shrink-0 h-7 gap-1 px-2 text-[11px]"
+                              onClick={() => handleRestoreVersion(entry)}
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                              Restore
+                            </Button>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </ScrollArea>
+              )}
+            </PopoverContent>
+          </Popover>
 
           {autosaveStatus !== 'idle' && (
             <span className="text-xs text-muted-foreground flex items-center gap-1 px-1">
