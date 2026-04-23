@@ -163,6 +163,11 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
       toast.error('Please select a deal stage');
       return;
     }
+
+    if (selectedDealTypes.length === 0) {
+      toast.error('Please select at least one Deal Type');
+      return;
+    }
     
     if (!contactName.trim() || !contactInfo.trim()) {
       toast.error('Please fill in contact name and contact info');
@@ -324,10 +329,13 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
               {/* Row 2: Deal Type + Deal Stage */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-1.5">
-                  <Label>Deal Type</Label>
+                  <Label>Deal Type <span className="text-destructive">*</span></Label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-between font-normal h-9">
+                      <Button
+                        variant="outline"
+                        className={`w-full justify-between font-normal h-9 ${selectedDealTypes.length === 0 ? 'border-destructive/40' : ''}`}
+                      >
                         {selectedDealTypes.length > 0 ? (
                           <span className="flex flex-wrap gap-1 overflow-hidden">
                             {selectedDealTypes.map(typeId => {
