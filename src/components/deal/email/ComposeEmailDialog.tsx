@@ -36,7 +36,7 @@ import { cn } from '@/lib/utils';
 import { MockEmail } from './mockEmailData';
 import { usePreSendChecks } from './usePreSendChecks';
 import { PreSendAlertDialog } from './PreSendAlertDialog';
-import { RecipientField, emailStringToArray } from './RecipientField';
+import { RecipientField, emailStringToArray, isValidEmail } from './RecipientField';
 import { useEmailContacts } from '@/hooks/useEmailContacts';
 import { supabase } from '@/integrations/supabase/client';
 
