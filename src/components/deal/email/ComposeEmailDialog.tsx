@@ -207,6 +207,19 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
   const { search } = useEmailContacts();
 
+  // Focus & keyboard navigation refs
+  const dialogContentRef = useRef<HTMLDivElement>(null);
+  const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const sendButtonRef = useRef<HTMLButtonElement>(null);
+
+  /**
+   * Decide which field should hold initial focus when the modal opens.
+   * - New empty message → To field
+   * - Reply (To prefilled) → body textarea so the user can start typing
+   * - Otherwise → first empty meaningful field
+   */
+  const shouldFocusBodyOnOpen = !!(replyTo?.to_email || toRecipients.length > 0);
+
   const draftKey = useMemo(() => getDraftKey(replyTo?.threadId), [replyTo?.threadId]);
   const hasRestoredRef = useRef(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
