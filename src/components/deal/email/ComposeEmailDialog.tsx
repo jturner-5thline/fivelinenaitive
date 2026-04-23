@@ -387,6 +387,12 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
    * unmounts mid-upload.
    */
   const uploadXhrsRef = useRef<Map<string, XMLHttpRequest>>(new Map());
+  /**
+   * Mirrors the latest `attachments` state so the unmount-only cleanup effect
+   * (deps: []) can revoke any outstanding preview object URLs without needing
+   * to re-subscribe on every state change.
+   */
+  const attachmentsRef = useRef<AttachmentItem[]>([]);
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const subjectInputRef = useRef<HTMLInputElement>(null);
   const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
