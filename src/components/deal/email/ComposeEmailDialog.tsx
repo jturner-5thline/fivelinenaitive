@@ -632,6 +632,10 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     const recipientLabel = payload.to_email.split(',')[0].trim();
 
     cancelledRef.current = false;
+    // Lock autosave: from this moment until the send commits / fails / is undone,
+    // the persisted draft is the snapshot we just took above (saved to localStorage
+    // by the send flow on commit failure / undo). No interim edits should overwrite it.
+    sendInProgressRef.current = true;
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
 
     // Close the modal and clear the local form immediately for an instant UX,
@@ -646,6 +650,8 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
         label: 'Undo',
         onClick: () => {
           cancelledRef.current = true;
+          // Send was cancelled — release the autosave guard so editing resumes normally.
+          sendInProgressRef.current = false;
           if (undoTimerRef.current) {
             clearTimeout(undoTimerRef.current);
             undoTimerRef.current = null;
