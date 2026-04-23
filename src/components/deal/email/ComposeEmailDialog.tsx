@@ -66,6 +66,17 @@ const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25MB per file
 const MAX_TOTAL_SIZE_BYTES = 50 * 1024 * 1024; // 50MB combined
 const MAX_ATTACHMENT_COUNT = 10;
 
+/**
+ * Total number of upload attempts (initial + retries) per attachment.
+ * After this many failures we surface a final error and stop auto-retrying;
+ * the user can still click "Retry" manually.
+ */
+const MAX_UPLOAD_ATTEMPTS = 4;
+/** Base delay (ms) used in exponential backoff: 1s → 2s → 4s (+ jitter). */
+const UPLOAD_RETRY_BASE_DELAY_MS = 1000;
+/** Random jitter (ms) added to each backoff to avoid thundering-herd retries. */
+const UPLOAD_RETRY_JITTER_MS = 400;
+
 // Allowed file types (extension allowlist + matching MIME hints).
 // We validate by extension because MIME type can be empty / inconsistent across OSes.
 const ALLOWED_EXTENSIONS = [
