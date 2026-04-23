@@ -1188,9 +1188,13 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
               aria-hidden="true"
             >
               <Upload className="h-8 w-8 text-primary" />
-              <p className="text-sm font-medium text-primary">Drop files to attach</p>
+              <p className="text-sm font-medium text-primary">
+                {attachmentQuota.isFull ? 'Attachment limit reached' : 'Drop files to attach'}
+              </p>
               <p className="text-xs text-muted-foreground">
-                Up to {MAX_ATTACHMENT_COUNT} files · {formatBytes(MAX_FILE_SIZE_BYTES)} each
+                {attachmentQuota.isFull
+                  ? `${MAX_ATTACHMENT_COUNT} files · ${formatBytes(MAX_TOTAL_SIZE_BYTES)} max`
+                  : `${attachmentQuota.remainingCount} of ${MAX_ATTACHMENT_COUNT} slots · ${formatBytes(attachmentQuota.remainingBytes)} remaining`}
               </p>
             </div>
           )}
