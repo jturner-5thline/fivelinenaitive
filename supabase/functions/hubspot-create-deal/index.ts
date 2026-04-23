@@ -88,6 +88,46 @@ async function resolveHubSpotOwner(
 const FALLBACK_OWNER_ID = Deno.env.get('HUBSPOT_FALLBACK_OWNER_ID') || '42024321'; // jturner@5thline.co
 
 /**
+ * Ensure the `naitive_deal_id` custom property exists on the HubSpot deal
+ * object. Best-effort and cached for the lifetime of the function instance.
+ * If it already exists HubSpot returns 409, which we swallow.
+ */
+let naitiveDealIdPropEnsured = false;
+async function ensureNaitiveDealIdProperty(accessToken: string): Promise<void> {
+  if (naitiveDealIdPropEnsured) return;
+  try {
+    const res = await fetch('https://api.hubapi.com/crm/v3/properties/deals', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'naitive_deal_id',
+        label: 'naitive Deal ID',
+        type: 'string',
+        fieldType: 'text',
+        groupName: 'dealinformation',
+        description: 'Source-of-truth UUID for the corresponding deal in naitive. Used for dedupe.',
+        hasUniqueValue: false,
+      }),
+    });
+    // 201 created or 409 already-exists are both fine
+    if (res.ok || res.status === 409) {
+      naitiveDealIdPropEnsured = true;
+    } else {
+      const body = await res.text();
+      console.warn(`[hubspot-create-deal] could not ensure naitive_deal_id property (${res.status}): ${body.slice(0, 200)}`);
+      // Mark as ensured anyway to avoid hammering HubSpot — the dedupe lookup
+      // will simply return null until it's created manually.
+      naitiveDealIdPropEnsured = true;
+    }
+  } catch (err) {
+    console.warn('[hubspot-create-deal] ensure property failed:', (err as Error).message);
+  }
+}
+
+/**
  * Look up an existing HubSpot deal by the custom `naitive_deal_id` property.
  * Used as a duplicate-prevention safety net: if a previous sync attempt created
  * the deal in HubSpot but failed to persist `hubspot_deal_id` locally (network
