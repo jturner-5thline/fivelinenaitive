@@ -88,6 +88,54 @@ async function resolveHubSpotOwner(
 const FALLBACK_OWNER_ID = Deno.env.get('HUBSPOT_FALLBACK_OWNER_ID') || '42024321'; // jturner@5thline.co
 
 /**
+ * Look up an existing HubSpot deal by the custom `naitive_deal_id` property.
+ * Used as a duplicate-prevention safety net: if a previous sync attempt created
+ * the deal in HubSpot but failed to persist `hubspot_deal_id` locally (network
+ * blip, crash, race), this lets us recover the link instead of creating a 2nd
+ * HubSpot deal.
+ *
+ * Returns the HubSpot deal id if found, otherwise null. Failures are non-fatal
+ * (we just proceed to create) but logged.
+ */
+async function findExistingHubSpotDealByNaitiveId(
+  accessToken: string,
+  naitiveDealId: string,
+): Promise<string | null> {
+  try {
+    const res = await fetch('https://api.hubapi.com/crm/v3/objects/deals/search', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        filterGroups: [{
+          filters: [{
+            propertyName: 'naitive_deal_id',
+            operator: 'EQ',
+            value: naitiveDealId,
+          }],
+        }],
+        properties: ['dealname', 'naitive_deal_id'],
+        limit: 1,
+      }),
+    });
+    if (!res.ok) {
+      // Most common cause: the `naitive_deal_id` custom property doesn't exist
+      // on the portal yet. Treat as "no match" — the create will still go
+      // through and the property will be set on it for future lookups.
+      return null;
+    }
+    const body = await res.json();
+    const hit = (body.results ?? [])[0];
+    return hit?.id ? String(hit.id) : null;
+  } catch (err) {
+    console.warn('[hubspot-create-deal] dedupe lookup failed:', (err as Error).message);
+    return null;
+  }
+}
+
+/**
  * Resolve HubSpot pipeline + stage:
  * 1. Try the hubspot_pipeline_stage_map DB table (preferred — explicit per-company config).
  * 2. Fall back to fetching HubSpot pipelines and matching stage labels case-insensitively.
