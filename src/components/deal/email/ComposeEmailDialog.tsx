@@ -1154,6 +1154,113 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
             Save draft
           </Button>
 
+          <Popover open={historyOpen} onOpenChange={setHistoryOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                disabled={history.length === 0}
+                aria-label="View draft version history"
+                title={history.length === 0 ? 'No saved versions yet' : 'Draft version history'}
+              >
+                <History className="h-3.5 w-3.5" />
+                History
+                {history.length > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="ml-1 h-4 px-1.5 text-[10px] font-normal tabular-nums"
+                  >
+                    {history.length}
+                  </Badge>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              side="top"
+              className="w-[360px] p-0"
+            >
+              <div className="flex items-center justify-between border-b px-3 py-2">
+                <div>
+                  <p className="text-sm font-medium">Draft history</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Last {DRAFT_HISTORY_MAX_ENTRIES} autosaved versions
+                  </p>
+                </div>
+                {history.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-[11px] text-muted-foreground hover:text-destructive"
+                    onClick={handleClearHistory}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+              {history.length === 0 ? (
+                <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+                  No saved versions yet. Edits are captured automatically as you type.
+                </div>
+              ) : (
+                <ScrollArea className="max-h-[320px]">
+                  <ul className="divide-y">
+                    {history.map((entry, idx) => {
+                      const d = entry.draft;
+                      const subjLine = d.subject.trim() || '(No subject)';
+                      const bodyLine = previewLine(d.body) || '(Empty message)';
+                      const recipientCount =
+                        (d.to?.length ?? 0) + (d.cc?.length ?? 0) + (d.bcc?.length ?? 0);
+                      return (
+                        <li
+                          key={entry.id}
+                          className="px-3 py-2.5 text-xs hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium tabular-nums text-muted-foreground">
+                                  {formatRelativeTime(d.savedAt)}
+                                </span>
+                                {idx === 0 && (
+                                  <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+                                    Latest
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="mt-1 truncate font-medium text-foreground">
+                                {subjLine}
+                              </p>
+                              <p className="truncate text-muted-foreground">
+                                {bodyLine}
+                              </p>
+                              <p className="mt-0.5 text-[10px] text-muted-foreground">
+                                {recipientCount} recipient{recipientCount === 1 ? '' : 's'}
+                                {d.attachments.length > 0 && (
+                                  <> · {d.attachments.length} attachment{d.attachments.length === 1 ? '' : 's'}</>
+                                )}
+                              </p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="shrink-0 h-7 gap-1 px-2 text-[11px]"
+                              onClick={() => handleRestoreVersion(entry)}
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                              Restore
+                            </Button>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </ScrollArea>
+              )}
+            </PopoverContent>
+          </Popover>
+
           {autosaveStatus !== 'idle' && (
             <span className="text-xs text-muted-foreground flex items-center gap-1 px-1">
               {autosaveStatus === 'saving' ? (
