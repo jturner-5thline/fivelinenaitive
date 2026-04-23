@@ -44,6 +44,9 @@ interface ComposeEmailDialogProps {
 const COMPOSE_DRAFT_PREFIX = 'compose_draft_';
 const COMPOSE_AUTOSAVE_DEBOUNCE_MS = 800;
 
+/** How long the user has to undo a send before it's actually delivered. */
+const UNDO_SEND_WINDOW_MS = 5000;
+
 // Upload limits
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25MB per file
 const MAX_TOTAL_SIZE_BYTES = 50 * 1024 * 1024; // 50MB combined
@@ -207,6 +210,11 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
   const { search } = useEmailContacts();
 
+  // Undo-send window state
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const undoToastIdRef = useRef<string | number | null>(null);
+  const cancelledRef = useRef(false);
+
   const draftKey = useMemo(() => getDraftKey(replyTo?.threadId), [replyTo?.threadId]);
   const hasRestoredRef = useRef(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -324,6 +332,10 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     return () => {
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
       if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
+      // NOTE: Do NOT clear the undo-send timer here — the dialog unmounts
+      // immediately after the user clicks Send (we close it for instant UX),
+      // and the pending send must continue running in the background until
+      // either the undo window elapses or the user clicks Undo on the toast.
       // Cancel any in-flight (simulated) uploads
       uploadTimersRef.current.forEach(t => clearInterval(t));
       uploadTimersRef.current.clear();
@@ -342,19 +354,16 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     skipNextAutosaveRef.current = true;
   };
 
-  const executeSend = async () => {
-    clearPreSendAlert();
-    if (toRecipients.length === 0) {
-      toast.error('Please add a recipient');
-      return;
-    }
-
-    setIsSending(true);
-
-    const toEmail = toRecipients[0];
-    const recipientName = toEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-
-    await onSend({
+  /**
+   * Build the email payload from current form state. Snapshotted so an
+   * undo-pending send isn't affected by later edits or unmount.
+   */
+  const buildEmailPayload = (): Omit<MockEmail, 'id' | 'threadId'> => {
+    const toEmail = toRecipients[0] ?? '';
+    const recipientName = toEmail
+      ? toEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+      : '';
+    return {
       subject,
       from_name: 'You',
       from_email: 'jturner@5thline.co',
@@ -372,12 +381,157 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
       is_follow_up: false,
       needs_response: false,
       category: 'deal',
-    });
+    };
+  };
 
-    setIsSending(false);
-    clearDraft(draftKey);
+  /** Parse various error shapes into a user-friendly title + description. */
+  const formatSendError = (err: unknown): { title: string; description: string; code?: string } => {
+    if (!err) return { title: 'Failed to send', description: 'An unknown error occurred. Please try again.' };
+    if (typeof err === 'string') return { title: 'Failed to send', description: err };
+    if (err instanceof Error) {
+      const msg = err.message || '';
+      const lower = msg.toLowerCase();
+      if (lower.includes('network') || lower.includes('fetch') || lower.includes('offline')) {
+        return {
+          title: 'Network error',
+          description: 'Could not reach the mail server. Check your connection and try again.',
+          code: 'NETWORK',
+        };
+      }
+      if (lower.includes('timeout')) {
+        return { title: 'Request timed out', description: 'The mail server took too long to respond. Try again in a moment.', code: 'TIMEOUT' };
+      }
+      if (lower.includes('rate') || lower.includes('429')) {
+        return { title: 'Sending too quickly', description: 'You\'ve hit the send rate limit. Wait a moment and retry.', code: 'RATE_LIMIT' };
+      }
+      if (lower.includes('auth') || lower.includes('401') || lower.includes('403')) {
+        return { title: 'Authentication failed', description: 'Your mail account session has expired. Please reconnect.', code: 'AUTH' };
+      }
+      if (lower.includes('attachment') || lower.includes('size') || lower.includes('413')) {
+        return { title: 'Attachment rejected', description: msg || 'One of your attachments was rejected by the mail server.', code: 'ATTACHMENT' };
+      }
+      if (lower.includes('recipient') || lower.includes('address')) {
+        return { title: 'Invalid recipient', description: msg, code: 'RECIPIENT' };
+      }
+      return { title: 'Failed to send', description: msg };
+    }
+    if (typeof err === 'object') {
+      const anyErr = err as { message?: string; error?: string; code?: string };
+      return {
+        title: 'Failed to send',
+        description: anyErr.message || anyErr.error || 'Something went wrong while sending the email.',
+        code: anyErr.code,
+      };
+    }
+    return { title: 'Failed to send', description: 'An unexpected error occurred.' };
+  };
+
+  /** Actually deliver the email (called after the undo window elapses). */
+  const performDelivery = async (
+    payload: Omit<MockEmail, 'id' | 'threadId'>,
+    snapshotDraftKey: string,
+  ) => {
+    setIsSending(true);
+    try {
+      await onSend(payload);
+      clearDraft(snapshotDraftKey);
+      toast.success('Email sent', {
+        description: payload.to_email
+          ? `Delivered to ${payload.to_email.split(',')[0]}${
+              payload.to_email.includes(',') ? ` and ${payload.to_email.split(',').length - 1} other${payload.to_email.split(',').length > 2 ? 's' : ''}` : ''
+            }`
+          : undefined,
+      });
+    } catch (err) {
+      const { title, description, code } = formatSendError(err);
+      // Persist draft so the user doesn't lose content when delivery fails
+      saveDraft(snapshotDraftKey, {
+        to: payload.to_email.split(',').map(s => s.trim()).filter(Boolean),
+        cc: ccRecipients,
+        bcc: bccRecipients,
+        subject: payload.subject,
+        body: payload.body_preview,
+        attachments: attachments.filter(a => a.status === 'ready').map(a => ({ id: a.id, name: a.name, size: a.size, type: a.type })),
+        showCcBcc,
+        savedAt: Date.now(),
+      });
+      toast.error(title, {
+        description: code ? `${description} (${code})` : description,
+        duration: 10000,
+        action: {
+          label: 'Retry',
+          onClick: () => {
+            // Reopen the dialog and retry — content is already restored from draft
+            onOpenChange(true);
+            setTimeout(() => void performDelivery(payload, snapshotDraftKey), 50);
+          },
+        },
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const executeSend = () => {
+    clearPreSendAlert();
+    if (toRecipients.length === 0) {
+      toast.error('Please add a recipient');
+      return;
+    }
+
+    // Snapshot everything we need so later edits / closes don't change behavior
+    const payload = buildEmailPayload();
+    const snapshotDraftKey = draftKey;
+    const recipientLabel = payload.to_email.split(',')[0].trim();
+
+    cancelledRef.current = false;
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+
+    // Close the modal and clear the local form immediately for an instant UX,
+    // but keep the draft in storage until the send actually commits.
     resetForm();
     onOpenChange(false);
+
+    const toastId = toast(`Sending to ${recipientLabel}…`, {
+      description: `Will be delivered in ${Math.round(UNDO_SEND_WINDOW_MS / 1000)} seconds`,
+      duration: UNDO_SEND_WINDOW_MS,
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          cancelledRef.current = true;
+          if (undoTimerRef.current) {
+            clearTimeout(undoTimerRef.current);
+            undoTimerRef.current = null;
+          }
+          // Restore content into the draft store so reopening compose brings it back
+          saveDraft(snapshotDraftKey, {
+            to: payload.to_email.split(',').map(s => s.trim()).filter(Boolean),
+            cc: ccRecipients,
+            bcc: bccRecipients,
+            subject: payload.subject,
+            body: payload.body_preview,
+            attachments: attachments.filter(a => a.status === 'ready').map(a => ({ id: a.id, name: a.name, size: a.size, type: a.type })),
+            showCcBcc: ccRecipients.length > 0 || bccRecipients.length > 0,
+            savedAt: Date.now(),
+          });
+          toast.success('Send cancelled', {
+            description: 'Your draft has been restored.',
+            action: {
+              label: 'Reopen',
+              onClick: () => onOpenChange(true),
+            },
+          });
+        },
+      },
+    });
+    undoToastIdRef.current = toastId;
+
+    undoTimerRef.current = setTimeout(() => {
+      undoTimerRef.current = null;
+      if (cancelledRef.current) return;
+      if (undoToastIdRef.current != null) toast.dismiss(undoToastIdRef.current);
+      void performDelivery(payload, snapshotDraftKey);
+    }, UNDO_SEND_WINDOW_MS);
   };
 
   const handleSend = () => {
