@@ -104,6 +104,14 @@ interface AttachmentItem {
   storagePath?: string;
   /** Bucket the object lives in (currently always 'email-attachments'). */
   storageBucket?: string;
+  /**
+   * Object URL for a lightweight thumbnail preview. Set for image files
+   * (direct object URL of the file) and PDFs (rendered first page).
+   * Must be revoked when the attachment is removed or the dialog closes.
+   */
+  previewUrl?: string;
+  /** Kind of preview we generated, for fallback rendering decisions. */
+  previewKind?: 'image' | 'pdf';
 }
 
 function getExtension(name: string): string {
