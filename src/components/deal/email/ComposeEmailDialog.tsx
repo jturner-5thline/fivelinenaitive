@@ -797,6 +797,8 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
 
   const handleDiscard = () => {
     clearDraft(draftKey);
+    clearHistory(historyKey);
+    setHistory([]);
     resetForm();
     onOpenChange(false);
     toast.info('Draft discarded');
@@ -834,6 +836,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     const ok = saveDraft(draftKey, draft);
     if (ok) {
       setAutosaveStatus('saved');
+      setHistory(pushHistoryEntry(historyKey, draft));
       if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
       savedFlashTimerRef.current = setTimeout(() => setAutosaveStatus('idle'), 2500);
       toast.success('Draft saved');
@@ -843,6 +846,70 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
         description: 'Your browser storage may be full. Try removing attachments and retry.',
       });
     }
+  };
+
+  /** Apply a historical draft snapshot to the current form. */
+  const handleRestoreVersion = (entry: DraftHistoryEntry) => {
+    const d = entry.draft;
+    // Snapshot the CURRENT state into history first so the user can undo the restore
+    const currentDraft: ComposeDraft = {
+      to: toRecipients,
+      cc: ccRecipients,
+      bcc: bccRecipients,
+      subject,
+      body,
+      attachments: attachments
+        .filter(a => a.status === 'ready')
+        .map(a => ({ id: a.id, name: a.name, size: a.size, type: a.type })),
+      showCcBcc,
+      savedAt: Date.now(),
+    };
+    if (isDraftMeaningful(currentDraft)) {
+      setHistory(pushHistoryEntry(historyKey, currentDraft));
+    }
+
+    // Suppress the next debounced autosave so restoring doesn't immediately overwrite history again
+    skipNextAutosaveRef.current = true;
+    setToRecipients(d.to ?? []);
+    setCcRecipients(d.cc ?? []);
+    setBccRecipients(d.bcc ?? []);
+    setSubject(d.subject ?? '');
+    setBody(d.body ?? '');
+    setAttachments(
+      (d.attachments ?? []).map(a => ({
+        id: a.id,
+        name: a.name,
+        size: a.size,
+        type: a.type,
+        status: 'ready' as const,
+        progress: 100,
+      })),
+    );
+    setShowCcBcc(d.showCcBcc ?? (d.cc?.length > 0 || d.bcc?.length > 0));
+
+    // Persist as the active draft
+    saveDraft(draftKey, { ...d, savedAt: Date.now() });
+    setAutosaveStatus('saved');
+    if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
+    savedFlashTimerRef.current = setTimeout(() => setAutosaveStatus('idle'), 2500);
+
+    setHistoryOpen(false);
+    toast.success('Draft version restored', {
+      description: `Restored snapshot from ${formatRelativeTime(d.savedAt)}.`,
+    });
+  };
+
+  const handleClearHistory = () => {
+    clearHistory(historyKey);
+    setHistory([]);
+    toast.info('Version history cleared');
+  };
+
+  /** Plain-text preview of a draft body, collapsed to a single line. */
+  const previewLine = (text: string, max = 80): string => {
+    const collapsed = text.replace(/\s+/g, ' ').trim();
+    if (collapsed.length <= max) return collapsed;
+    return collapsed.slice(0, max - 1) + '…';
   };
 
   return (
