@@ -17,7 +17,7 @@ export default function VirtualDataRoom() {
   return (
     <>
       <Helmet>
-        <title>Data Room | nAItive</title>
+        <title>Data Room | naitive</title>
       </Helmet>
       <VdrShell dealId={dealId} />
     </>

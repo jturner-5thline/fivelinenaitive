@@ -232,7 +232,7 @@ export const AGENT_NODE_REGISTRY: AgentNodePaletteItem[] = [
           { value: 'profiles', label: '👤 Contacts' },
           { value: 'deal_space_notes', label: '📝 Deal Notes' },
         ],
-        hint: 'Select a nAItive data table',
+        hint: 'Select a naitive data table',
       },
       natural_query: { type: 'textarea', label: 'What do you want to find?', placeholder: 'Find all deals with no activity in the last 7 days', hint: 'Describe your query in plain English — the agent will translate it' },
       fields: { type: 'string', label: 'Fields (optional)', placeholder: 'company, value, stage' },

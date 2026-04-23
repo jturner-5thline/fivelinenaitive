@@ -36,7 +36,7 @@ export function VdrSidebar({
         <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
           <span className="text-xs font-bold text-primary-foreground">n</span>
         </div>
-        <span className="font-semibold text-sm tracking-tight">nAItive</span>
+        <span className="font-semibold text-sm tracking-tight">naitive</span>
         <Badge variant="outline" className="ml-auto text-[9px] px-1 py-0 leading-tight border-primary/30 text-primary">VDR</Badge>
       </div>
 

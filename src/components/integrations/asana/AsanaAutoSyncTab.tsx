@@ -113,7 +113,7 @@ export function AsanaAutoSyncTab({ syncConfig, onUpdate }: AsanaAutoSyncTabProps
       if (registeredCount > 0) {
         setWebhookStatus('active');
         toast.success(`Webhook registered for ${registeredCount} project(s)`, {
-          description: "Asana will now sync task completions back to nAItive.",
+          description: "Asana will now sync task completions back to naitive.",
         });
       } else {
         toast.error("Failed to register webhooks", {
@@ -161,10 +161,10 @@ export function AsanaAutoSyncTab({ syncConfig, onUpdate }: AsanaAutoSyncTabProps
           <div>
             <h4 className="text-sm font-medium flex items-center gap-2">
               <Webhook className="h-4 w-4" />
-              Reverse Sync (Asana → nAItive)
+              Reverse Sync (Asana → naitive)
             </h4>
             <p className="text-xs text-muted-foreground mt-1">
-              Automatically sync task completions from Asana back to nAItive via webhook.
+              Automatically sync task completions from Asana back to naitive via webhook.
             </p>
           </div>
           {loadingWebhook ? (
@@ -210,11 +210,11 @@ export function AsanaAutoSyncTab({ syncConfig, onUpdate }: AsanaAutoSyncTabProps
         >
           <div className="flex items-center gap-2">
             <RadioGroupItem value="asana_to_platform" id="dir-a2p" />
-            <Label htmlFor="dir-a2p" className="text-sm">Asana → nAItive only</Label>
+            <Label htmlFor="dir-a2p" className="text-sm">Asana → naitive only</Label>
           </div>
           <div className="flex items-center gap-2">
             <RadioGroupItem value="platform_to_asana" id="dir-p2a" />
-            <Label htmlFor="dir-p2a" className="text-sm">nAItive → Asana only</Label>
+            <Label htmlFor="dir-p2a" className="text-sm">naitive → Asana only</Label>
           </div>
           <div className="flex items-center gap-2">
             <RadioGroupItem value="both" id="dir-both" />
@@ -262,16 +262,16 @@ export function AsanaAutoSyncTab({ syncConfig, onUpdate }: AsanaAutoSyncTabProps
 
       <Separator />
 
-      {/* Outbound Sync: nAItive → Asana */}
+      {/* Outbound Sync: naitive → Asana */}
       <div className="space-y-3">
-        <h4 className="text-sm font-medium">Outbound Sync (nAItive → Asana)</h4>
-        <p className="text-xs text-muted-foreground">Push task changes from nAItive to Asana automatically.</p>
+        <h4 className="text-sm font-medium">Outbound Sync (naitive → Asana)</h4>
+        <p className="text-xs text-muted-foreground">Push task changes from naitive to Asana automatically.</p>
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
               <Label className="text-sm">Sync tasks to Asana on creation</Label>
-              <p className="text-xs text-muted-foreground">When a task is created in nAItive, push it to the mapped Asana project.</p>
+              <p className="text-xs text-muted-foreground">When a task is created in naitive, push it to the mapped Asana project.</p>
             </div>
             <Switch
               checked={local.sync_on_task_create}
@@ -291,7 +291,7 @@ export function AsanaAutoSyncTab({ syncConfig, onUpdate }: AsanaAutoSyncTabProps
           <div className="flex items-center justify-between">
             <div>
               <Label className="text-sm">Sync task completions</Label>
-              <p className="text-xs text-muted-foreground">Mark Asana tasks complete/incomplete when status changes in nAItive.</p>
+              <p className="text-xs text-muted-foreground">Mark Asana tasks complete/incomplete when status changes in naitive.</p>
             </div>
             <Switch
               checked={local.sync_on_task_complete}

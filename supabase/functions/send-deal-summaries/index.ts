@@ -75,7 +75,7 @@ function buildSummaryEmail(
   data: { deals: any[]; actionItems: any[]; lenderActivity: any[]; milestoneActivity: any[] }
 ): { subject: string; html: string; text: string } {
   const periodLabel = type === 'daily' ? 'Daily' : 'Weekly';
-  const subject = `nAItive ${periodLabel} Deal Summary`;
+  const subject = `naitive ${periodLabel} Deal Summary`;
   const appUrl = 'https://naitive.co';
 
   // Build sections
@@ -126,7 +126,7 @@ function buildSummaryEmail(
     <tr><td align="center" style="padding:40px 20px;">
       <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background:#ffffff;border-radius:8px;">
         <tr><td style="padding:40px;">
-          <h1 style="color:#1a1a1a;font-size:24px;font-weight:600;margin:0 0 4px;">nAItive ${periodLabel} Deal Summary</h1>
+          <h1 style="color:#1a1a1a;font-size:24px;font-weight:600;margin:0 0 4px;">naitive ${periodLabel} Deal Summary</h1>
           <p style="color:#888;font-size:13px;margin:0 0 4px;">Hi ${userName},</p>
           <p style="color:#aaa;font-size:11px;margin:0 0 24px;">All times shown in Eastern Time (ET)</p>
 
@@ -193,7 +193,7 @@ function buildSummaryEmail(
 </body>
 </html>`;
 
-  const text = `nAItive ${periodLabel} Deal Summary\n\nHi ${userName},\nAll times in ET.\n\nDeals Added: ${data.deals.length}\nAction Items: ${data.actionItems.length}\nLender Activity: ${data.lenderActivity.length}\nMilestones: ${data.milestoneActivity.length}\n\nView Dashboard: ${appUrl}/deals\n\n---\nManage preferences: ${appUrl}/settings`;
+  const text = `naitive ${periodLabel} Deal Summary\n\nHi ${userName},\nAll times in ET.\n\nDeals Added: ${data.deals.length}\nAction Items: ${data.actionItems.length}\nLender Activity: ${data.lenderActivity.length}\nMilestones: ${data.milestoneActivity.length}\n\nView Dashboard: ${appUrl}/deals\n\n---\nManage preferences: ${appUrl}/settings`;
 
   return { subject, html, text };
 }

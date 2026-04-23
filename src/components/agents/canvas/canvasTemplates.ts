@@ -49,7 +49,7 @@ function makeEdge(id: string, source: string, sourceHandle: string, target: stri
   };
 }
 
-// nAItive-specific patterns
+// naitive-specific patterns
 const NAITIVE_TEMPLATES: CanvasTemplate[] = [
   {
     id: 'daily-health-check',

@@ -84,7 +84,7 @@ const STAGE_WORKFLOWS: Record<
       tasks: [
         {
           title: "Follow up on new deal - request materials",
-          descriptionFn: (deal: any) => `Deal: ${deal.name || 'Unknown'} (${deal.company_name || ''})\nContact: ${deal.contact_email || 'N/A'}\nAction: Follow up to collect materials for nAItive.`,
+          descriptionFn: (deal: any) => `Deal: ${deal.name || 'Unknown'} (${deal.company_name || ''})\nContact: ${deal.contact_email || 'N/A'}\nAction: Follow up to collect materials for naitive.`,
           assigneeRole: "manager" as const,
           dueOffsetDays: 3,
           isRecurring: true,

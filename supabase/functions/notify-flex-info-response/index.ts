@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
 
     const responderName = profile?.display_name || profile?.first_name || profile?.email || "Team Member";
 
-    // Get the nAItive/Flex deal ID from sync history
+    // Get the naitive/Flex deal ID from sync history
     const { data: syncHistory, error: syncError } = await supabaseAdmin
       .from("flex_sync_history")
       .select("flex_deal_id")
@@ -142,10 +142,10 @@ Deno.serve(async (req) => {
     let flexNotified = false;
     let flexResponse = null;
 
-    // Send notification to nAItive Flex webhook
+    // Send notification to naitive Flex webhook
     if (flexInfoRequestApiKey && flexDealId) {
       try {
-        console.log("Sending info response notification to nAItive Flex...", {
+        console.log("Sending info response notification to naitive Flex...", {
           flexDealId,
           status: payload.status,
         });
@@ -166,13 +166,13 @@ Deno.serve(async (req) => {
         if (response.ok) {
           flexResponse = await response.json();
           flexNotified = true;
-          console.log("nAItive Flex notified successfully:", flexResponse);
+          console.log("naitive Flex notified successfully:", flexResponse);
         } else {
           const errorText = await response.text();
-          console.error("nAItive Flex webhook error:", response.status, errorText);
+          console.error("naitive Flex webhook error:", response.status, errorText);
         }
       } catch (flexError) {
-        console.error("Error calling nAItive Flex webhook:", flexError);
+        console.error("Error calling naitive Flex webhook:", flexError);
       }
     } else {
       if (!flexInfoRequestApiKey) {

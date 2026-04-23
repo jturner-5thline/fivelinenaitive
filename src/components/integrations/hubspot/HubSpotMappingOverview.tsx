@@ -61,8 +61,8 @@ function MappingRow({ config, onConfigure, onToggle, isToggling }: MappingRowPro
   const latestRun = runs[0];
 
   const directionLabel = {
-    native_to_hubspot: "nAItive → HubSpot",
-    hubspot_to_native: "HubSpot → nAItive",
+    native_to_hubspot: "naitive → HubSpot",
+    hubspot_to_native: "HubSpot → naitive",
     bidirectional: "Two-way",
   }[config.direction];
 
@@ -76,11 +76,11 @@ function MappingRow({ config, onConfigure, onToggle, isToggling }: MappingRowPro
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-sm">HubSpot Deals ↔ nAItive Deals</h3>
+                <h3 className="font-semibold text-sm">HubSpot Deals ↔ naitive Deals</h3>
                 <StatusBadge status={config.status} />
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Sync deal records between HubSpot CRM and nAItive. Direction: {directionLabel}
+                Sync deal records between HubSpot CRM and naitive. Direction: {directionLabel}
               </p>
               <div className="flex items-center gap-4 mt-2 flex-wrap">
                 {config.last_sync_at && (
@@ -161,7 +161,7 @@ export function HubSpotMappingOverview() {
         <div>
           <h3 className="text-base font-semibold">Object Mappings</h3>
           <p className="text-xs text-muted-foreground">
-            Configure how HubSpot objects map to nAItive entities
+            Configure how HubSpot objects map to naitive entities
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -188,7 +188,7 @@ export function HubSpotMappingOverview() {
             <ArrowRightLeft className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium">No mappings configured</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Set up a mapping between HubSpot Deals and nAItive Deals to start syncing.
+              Set up a mapping between HubSpot Deals and naitive Deals to start syncing.
             </p>
             <Button onClick={handleCreateConfig} disabled={upsertConfig.isPending}>
               {upsertConfig.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

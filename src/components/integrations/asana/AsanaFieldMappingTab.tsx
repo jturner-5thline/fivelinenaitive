@@ -116,7 +116,7 @@ export function AsanaFieldMappingTab({ syncConfigId }: AsanaFieldMappingTabProps
         <div>
           <h4 className="text-sm font-medium">Field Mapping</h4>
           <p className="text-xs text-muted-foreground">
-            Map Asana task fields to nAItive entity fields.
+            Map Asana task fields to naitive entity fields.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={addMapping}>

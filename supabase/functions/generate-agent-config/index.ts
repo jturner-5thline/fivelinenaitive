@@ -72,7 +72,7 @@ serve(async (req) => {
         }
       }];
       tool_choice = { type: "function", function: { name: "generate_agent_config" } };
-      prompt = `You are an expert prompt engineer for a commercial lending/deal management platform called nAItive.
+      prompt = `You are an expert prompt engineer for a commercial lending/deal management platform called naitive.
 
 The user wants to create an AI agent with:
 - Objective: "${objective}"

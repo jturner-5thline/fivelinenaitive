@@ -146,7 +146,7 @@ registerWorkflow('deal_active_followup_task', {
       return;
     }
 
-    const description = `Deal: ${deal.name || 'Unknown'} (${deal.company_name || ''})\nContact: ${deal.contact_email || 'N/A'}\nAction: Follow up to collect materials for nAItive.`;
+    const description = `Deal: ${deal.name || 'Unknown'} (${deal.company_name || ''})\nContact: ${deal.contact_email || 'N/A'}\nAction: Follow up to collect materials for naitive.`;
 
     await createWorkflowTask({
       dealId: deal.id,

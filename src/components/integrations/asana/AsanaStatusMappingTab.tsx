@@ -91,7 +91,7 @@ export function AsanaStatusMappingTab({ syncConfigId, integrationId }: AsanaStat
         <div>
           <h4 className="text-sm font-medium">Status Mapping</h4>
           <p className="text-xs text-muted-foreground">
-            Map Asana sections/statuses to nAItive deal stages, milestone statuses, or task statuses.
+            Map Asana sections/statuses to naitive deal stages, milestone statuses, or task statuses.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={addMapping}>

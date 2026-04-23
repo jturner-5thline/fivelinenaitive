@@ -367,7 +367,7 @@ const Auth = () => {
   return (
     <>
       <Helmet>
-        <title>{getTitle()} | nAItive</title>
+        <title>{getTitle()} | naitive</title>
       </Helmet>
       
       <div className="min-h-screen bg-[radial-gradient(circle_at_bottom_right,_hsl(280,60%,45%,0.2)_0%,_hsl(270,80%,4%)_40%,_hsl(270,100%,2%)_100%)] relative overflow-hidden">

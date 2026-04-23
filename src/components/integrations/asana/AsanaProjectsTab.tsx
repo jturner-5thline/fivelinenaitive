@@ -170,7 +170,7 @@ export function AsanaProjectsTab({ syncConfigId, integrationId }: AsanaProjectsT
         <div>
           <h4 className="text-sm font-medium">Project Filtering</h4>
           <p className="text-xs text-muted-foreground">
-            Select which Asana projects to sync and how they map to nAItive.
+            Select which Asana projects to sync and how they map to naitive.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchProjects} disabled={fetchingProjects}>

@@ -227,7 +227,7 @@ export default function FinServ() {
   return (
     <>
       <Helmet>
-        <title>FinServ | nAItive</title>
+        <title>FinServ | naitive</title>
       </Helmet>
       <div className="bg-background">
         <div className="container mx-auto py-8 px-4">

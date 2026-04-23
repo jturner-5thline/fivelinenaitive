@@ -1403,7 +1403,7 @@ serve(async (req) => {
     const activeTab = context?.activeTab || null;
     const banners = context?.banners || [];
 
-    const systemPrompt = `You are the nAItive AI Copilot — an intelligent digital worker embedded in a deal management platform for private credit and debt capital markets professionals. You autonomously run workflows for both single deals and multi-deal / portfolio reporting, not just a chat assistant.
+    const systemPrompt = `You are the naitive AI Copilot — an intelligent digital worker embedded in a deal management platform for private credit and debt capital markets professionals. You autonomously run workflows for both single deals and multi-deal / portfolio reporting, not just a chat assistant.
 
 CURRENT CONTEXT:
 - Page: ${page}

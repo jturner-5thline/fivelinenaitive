@@ -29,7 +29,7 @@ export function CalendarSyncSettingsModal({ open, onClose, email, onDisconnect }
           </div>
 
           <div>
-            <p className="text-sm font-medium mb-2">What nAItive does with your Calendar:</p>
+            <p className="text-sm font-medium mb-2">What naitive does with your Calendar:</p>
             <ul className="text-sm text-muted-foreground space-y-1.5 list-disc pl-5">
               <li>Reads meeting events and associates them with active deals based on attendees and title matching</li>
               <li>Events are used for deal timeline enrichment only — no events are created or modified</li>

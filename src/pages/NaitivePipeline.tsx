@@ -242,7 +242,7 @@ export default function NaitivePipeline() {
   return (
     <>
       <Helmet>
-        <title>naitive Pipeline | nAItive</title>
+        <title>naitive Pipeline | naitive</title>
       </Helmet>
       <div className="bg-background">
         <div className="container mx-auto py-8 px-4">
