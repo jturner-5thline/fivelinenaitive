@@ -263,7 +263,10 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
       bcc: bccRecipients,
       subject,
       body,
-      attachments,
+      // Persist only metadata for ready attachments. Skip in-flight / errored ones.
+      attachments: attachments
+        .filter(a => a.status === 'ready')
+        .map(a => ({ id: a.id, name: a.name, size: a.size, type: a.type })),
       showCcBcc,
       savedAt: Date.now(),
     };
@@ -304,7 +307,9 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
         bcc: bccRecipients,
         subject,
         body,
-        attachments,
+        attachments: attachments
+          .filter(a => a.status === 'ready')
+          .map(a => ({ id: a.id, name: a.name, size: a.size, type: a.type })),
         showCcBcc,
         savedAt: Date.now(),
       };
