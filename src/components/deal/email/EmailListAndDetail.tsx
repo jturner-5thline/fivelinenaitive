@@ -1542,7 +1542,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           {showAiDraft && (
             <AiDraftReviewPanel
               thread={thread}
-              dealId={dealId}
+              dealId={effectiveDealId}
               onClose={() => { setShowAiDraft(false); setAiDraftMode(undefined); }}
               initialMode={aiDraftMode}
               onApprove={(subject, body) => {
