@@ -408,9 +408,11 @@ export default function Dashboard() {
             // who is allowed to see it (jturner included). For jturner the
             // tiles are also reordered via Tailwind `order-*` classes.
             const nikiInTopRow = canSeeNiki;
-            const tileCount = 4 + (isJTurner ? 1 : 0) + (nikiInTopRow ? 1 : 0) + (is5thLine ? 1 : 0);
+            // +1 for the always-on "Deals" tile that opens the AI insights carousel.
+            const tileCount = 4 + 1 + (isJTurner ? 1 : 0) + (nikiInTopRow ? 1 : 0) + (is5thLine ? 1 : 0);
             const gridColsClass =
-              tileCount >= 7 ? 'grid-cols-4 sm:grid-cols-7'
+              tileCount >= 8 ? 'grid-cols-4 sm:grid-cols-8'
+              : tileCount === 7 ? 'grid-cols-4 sm:grid-cols-7'
               : tileCount === 6 ? 'grid-cols-3 sm:grid-cols-6'
               : tileCount === 5 ? 'grid-cols-3 sm:grid-cols-5'
               : tileCount === 4 ? 'grid-cols-2 sm:grid-cols-4'
