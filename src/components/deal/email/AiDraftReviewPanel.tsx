@@ -97,7 +97,7 @@ const SOURCE_LABELS: Record<string, string> = {
   email_thread_only: 'Email Only',
 };
 
-export function AiDraftReviewPanel({ thread, dealId, onClose, onApprove, initialDraftType = 'reply' }: Props) {
+export function AiDraftReviewPanel({ thread, dealId, onClose, onApprove, initialDraftType = 'reply', initialMode }: Props) {
   const [loading, setLoading] = useState(false);
   const [draftOptions, setDraftOptions] = useState<DraftOptions | null>(null);
   const [selectedOption, setSelectedOption] = useState<1 | 2 | null>(null);
@@ -105,7 +105,10 @@ export function AiDraftReviewPanel({ thread, dealId, onClose, onApprove, initial
   const [editedSubject, setEditedSubject] = useState('');
   const [editedBody, setEditedBody] = useState('');
   const [draftType, setDraftType] = useState<DraftType>(initialDraftType);
-  const [customInstructions, setCustomInstructions] = useState('');
+  const [customInstructions, setCustomInstructions] = useState(
+    initialMode ? DRAFT_MODE_INSTRUCTIONS[initialMode] : ''
+  );
+  const [activeMode, setActiveMode] = useState<DraftMode | null>(initialMode ?? null);
   const [showInstructions, setShowInstructions] = useState(false);
   const [showContextDetails, setShowContextDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
