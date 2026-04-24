@@ -817,6 +817,10 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const [showAiDraft, setShowAiDraft] = useState(false);
   const [aiDraftMode, setAiDraftMode] = useState<DraftMode | undefined>(undefined);
   const [linkedDealName, setLinkedDealName] = useState<string | undefined>(thread.dealName);
+  // Per-thread linked deal id chosen from the LinkToDealPopover. Falls through
+  // to the deal-page's own dealId when this Email pane is rendered inside a
+  // deal context. Drives AI drafting + downstream context retrieval.
+  const [linkedDealId, setLinkedDealId] = useState<string | undefined>(undefined);
   const [showSendToDataRoom, setShowSendToDataRoom] = useState(false);
 
   // Lift workflow analysis here so the in-thread Attachments module can show the
@@ -832,7 +836,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     threadData: workflowThreadData,
     autoRun: true,
   });
-  const effectiveDealId = dealId || detailWorkflowAnalysis?.likely_deal?.id;
+  const effectiveDealId = dealId || linkedDealId || detailWorkflowAnalysis?.likely_deal?.id;
   const effectiveDealName =
     linkedDealName || thread.dealName || detailWorkflowAnalysis?.likely_deal?.name;
 
