@@ -288,9 +288,20 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
           
           {/* Row 3: Preview text + deal pill */}
           <div className="flex items-center gap-1.5 mt-0.5">
-            {thread.dealName && (
+            {dealMatch ? (
+              <DealMatchBadge match={dealMatch} variant="compact" />
+            ) : thread.dealName ? (
               <Badge variant="outline" className="text-[9px] h-[16px] px-1 gap-0.5 bg-[hsl(var(--outlook-blue)/0.12)] text-[hsl(var(--outlook-blue))] border-[hsl(var(--outlook-blue)/0.25)] shrink-0">
                 {thread.dealName}
+              </Badge>
+            ) : null}
+            {responded && (
+              <Badge
+                variant="outline"
+                className="text-[9px] h-[16px] px-1 gap-0.5 bg-emerald-500/10 text-emerald-500 border-emerald-500/30 shrink-0"
+                title="You replied to this thread"
+              >
+                Responded
               </Badge>
             )}
             <EmailCategoryChips email={latest} />
