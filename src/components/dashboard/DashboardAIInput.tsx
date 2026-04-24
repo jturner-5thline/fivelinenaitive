@@ -543,6 +543,15 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
             )}
 
             {/* Input bar — always visible */}
+            {!isChatActive && !showHistory && recentPrompts.length > 0 && (
+              <RecentPromptsStrip
+                prompts={recentPrompts}
+                onSelect={(prompt) => { setInputValue(prompt); handleSend(prompt); }}
+                onClear={clearPrompts}
+                isLoading={isLoading}
+                className="mb-2"
+              />
+            )}
             <ChatInputBar
               onSend={(text) => handleSend(text)}
               isLoading={isLoading}
