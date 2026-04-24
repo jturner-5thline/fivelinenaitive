@@ -132,6 +132,77 @@ ${notes.map((n: any) => `- ${(n.content || n.note || "").substring(0, 200)} (${n
 `;
     }
 
+    // ─── Load company Email Style Guide (admin-managed) ─────────
+    // Resolves the user's company, then fetches the configured signature,
+    // greeting/closing, tone rules, deal-stage rules, and custom instructions.
+    // The result is rendered into a strict prompt block that the draft-
+    // generating actions prepend to their systemPrompt so every AI-drafted
+    // reply matches the firm's voice.
+    let styleGuideBlock = "";
+    let companySignature = "";
+    try {
+      const { data: membership } = await supabase
+        .from("company_members")
+        .select("company_id")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
+      const companyId = membership?.company_id as string | undefined;
+      if (companyId) {
+        const { data: styleGuide } = await supabase
+          .from("company_email_style_guide")
+          .select("signature, greeting, closing, tone_guidelines, stage_rules, custom_instructions")
+          .eq("company_id", companyId)
+          .maybeSingle();
+        if (styleGuide) {
+          companySignature = (styleGuide.signature || "").trim();
+          // Filter stage rules to those matching the deal's current stage when
+          // possible; otherwise include all so the model still has guidance.
+          let stageRulesArr: Array<{ stage?: string; rule?: string }> = [];
+          if (Array.isArray(styleGuide.stage_rules)) {
+            stageRulesArr = (styleGuide.stage_rules as any[]).filter(
+              (r) => r && typeof r === "object",
+            );
+          }
+
+          const lines: string[] = [];
+          if (styleGuide.greeting?.trim()) {
+            lines.push(`- Greeting: open with "${styleGuide.greeting.trim()}" (substitute the recipient's first name where bracketed).`);
+          }
+          if (styleGuide.closing?.trim()) {
+            lines.push(`- Closing: end with "${styleGuide.closing.trim()}" before the signature.`);
+          }
+          if (styleGuide.tone_guidelines?.trim()) {
+            lines.push(`- Tone: ${styleGuide.tone_guidelines.trim()}`);
+          }
+          if (stageRulesArr.length > 0) {
+            const ruleLines = stageRulesArr
+              .map((r) => {
+                const stage = (r.stage || "").trim();
+                const rule = (r.rule || "").trim();
+                if (!stage && !rule) return "";
+                if (!stage) return `  • ${rule}`;
+                return `  • [${stage}] ${rule}`;
+              })
+              .filter(Boolean)
+              .join("\n");
+            if (ruleLines) {
+              lines.push(`- Deal-stage rules (apply when the deal is in the matching stage):\n${ruleLines}`);
+            }
+          }
+          if (styleGuide.custom_instructions?.trim()) {
+            lines.push(`- Additional instructions: ${styleGuide.custom_instructions.trim()}`);
+          }
+
+          if (lines.length > 0) {
+            styleGuideBlock = `\nCOMPANY EMAIL STYLE GUIDE (must be followed; overrides defaults on conflict):\n${lines.join("\n")}\n`;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[smart-email-ai] Failed to load company email style guide:", e);
+    }
+
     let systemPrompt = "";
     let userPrompt = "";
 
