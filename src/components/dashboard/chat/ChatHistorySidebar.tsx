@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react';
-import { MessageSquare, Plus, Trash2, Search, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { MessageSquare, Plus, Trash2, Search, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { ChatConversation } from '@/hooks/useChatPersistence';
 import { format, isSameDay, isValid, parse, startOfDay, subDays } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   conversations: ChatConversation[];
@@ -43,6 +44,46 @@ function parseDateQuery(raw: string): Date | null {
 
 export function ChatHistorySidebar({ conversations, activeId, onSelect, onNew, onDelete }: Props) {
   const [query, setQuery] = useState('');
+  // Conversation IDs whose messages contain the current keyword query.
+  // `null` means "no message search active" (empty query or pure date query).
+  const [messageMatchIds, setMessageMatchIds] = useState<Set<string> | null>(null);
+  const [searchingMessages, setSearchingMessages] = useState(false);
+
+  // Debounced server-side search across chat_messages.content.
+  // Skip very short queries and pure date queries to avoid noisy results.
+  useEffect(() => {
+    const raw = query.trim();
+    if (!raw || raw.length < 2 || parseDateQuery(raw)) {
+      setMessageMatchIds(null);
+      setSearchingMessages(false);
+      return;
+    }
+
+    let cancelled = false;
+    setSearchingMessages(true);
+    const timer = window.setTimeout(async () => {
+      // Escape PostgREST `ilike` wildcards so user-typed % and _ are literal.
+      const escaped = raw.replace(/[\\%_]/g, (c) => `\\${c}`);
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('conversation_id')
+        .ilike('content', `%${escaped}%`)
+        .limit(500);
+      if (cancelled) return;
+      if (error) {
+        setMessageMatchIds(new Set());
+      } else {
+        setMessageMatchIds(new Set((data ?? []).map((r: any) => r.conversation_id)));
+      }
+      setSearchingMessages(false);
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      setSearchingMessages(false);
+    };
+  }, [query]);
 
   const filtered = useMemo(() => {
     const q = query.trim();
@@ -56,9 +97,10 @@ export function ChatHistorySidebar({ conversations, activeId, onSelect, onNew, o
       const formattedMatch =
         format(updated, 'MMM d').toLowerCase().includes(lower) ||
         format(updated, 'yyyy-MM-dd').includes(lower);
-      return titleMatch || dateMatch || formattedMatch;
+      const messageMatch = messageMatchIds?.has(c.id) ?? false;
+      return titleMatch || dateMatch || formattedMatch || messageMatch;
     });
-  }, [conversations, query]);
+  }, [conversations, query, messageMatchIds]);
 
   return (
     <div className="flex flex-col h-full border-r">
@@ -75,7 +117,7 @@ export function ChatHistorySidebar({ conversations, activeId, onSelect, onNew, o
             aria-label="Search chat history"
             className="h-7 pl-7 pr-7 text-xs"
           />
-          {query && (
+          {query && !searchingMessages && (
             <button
               type="button"
               onClick={() => setQuery('')}
@@ -85,6 +127,9 @@ export function ChatHistorySidebar({ conversations, activeId, onSelect, onNew, o
               <X className="h-3 w-3" />
             </button>
           )}
+          {searchingMessages && (
+            <Loader2 className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground animate-spin" />
+          )}
         </div>
       </div>
       <ScrollArea className="flex-1">
@@ -92,7 +137,7 @@ export function ChatHistorySidebar({ conversations, activeId, onSelect, onNew, o
           {conversations.length === 0 && (
             <p className="text-xs text-muted-foreground p-2 text-center">No conversations yet</p>
           )}
-          {conversations.length > 0 && filtered.length === 0 && (
+          {conversations.length > 0 && filtered.length === 0 && !searchingMessages && (
             <p className="text-xs text-muted-foreground p-2 text-center">No matches</p>
           )}
           {filtered.map(c => (
