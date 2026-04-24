@@ -16,6 +16,7 @@ import { ChatHistorySidebar } from './chat/ChatHistorySidebar';
 import { ChatInputBar } from './chat/ChatInputBar';
 import { ProactiveAlerts } from './chat/ProactiveAlerts';
 import { RecentPromptsStrip } from './chat/RecentPromptsStrip';
+import { QuickActionChips } from './chat/QuickActionChips';
 import { isBriefingPrompt, BRIEFING_MARKER } from './chat/MorningBriefing';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claude-dashboard-chat`;
