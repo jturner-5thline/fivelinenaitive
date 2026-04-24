@@ -2392,6 +2392,56 @@ export type Database = {
         }
         Relationships: []
       }
+      company_email_style_guide: {
+        Row: {
+          closing: string
+          company_id: string
+          created_at: string
+          custom_instructions: string
+          greeting: string
+          id: string
+          signature: string
+          stage_rules: Json
+          tone_guidelines: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          closing?: string
+          company_id: string
+          created_at?: string
+          custom_instructions?: string
+          greeting?: string
+          id?: string
+          signature?: string
+          stage_rules?: Json
+          tone_guidelines?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          closing?: string
+          company_id?: string
+          created_at?: string
+          custom_instructions?: string
+          greeting?: string
+          id?: string
+          signature?: string
+          stage_rules?: Json
+          tone_guidelines?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_email_style_guide_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_feature_overrides: {
         Row: {
           company_id: string
