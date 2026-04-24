@@ -507,6 +507,23 @@ export default function Dashboard() {
                 </div>
               </Card>
             )}
+            {/* Deals tile — opens the AI-powered Deals insights carousel.
+                Placed immediately to the right of Niki's Daily Briefing. */}
+            <Card
+              className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-7')}
+              onClick={() => setDealsDialogOpen(true)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => handleTileKeyDown(e, () => setDealsDialogOpen(true))}
+              aria-label="Open Deals insights"
+            >
+              <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
+                <div className="relative h-12 w-12 rounded-xl border border-emerald-500/30 bg-emerald-500/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                  <Handshake className="relative z-10 h-7 w-7 text-emerald-400" />
+                </div>
+                <span className="text-sm font-medium text-foreground">Deals</span>
+              </div>
+            </Card>
             {is5thLine && (
               <Card
                 className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-3')}
