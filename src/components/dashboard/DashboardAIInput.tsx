@@ -14,7 +14,6 @@ import { ChatMessageList } from './chat/ChatMessageList';
 import { ChatHistorySidebar } from './chat/ChatHistorySidebar';
 import { ChatInputBar } from './chat/ChatInputBar';
 import { ProactiveAlerts } from './chat/ProactiveAlerts';
-import { QuickActionCards } from './chat/QuickActionCards';
 import { isBriefingPrompt, BRIEFING_MARKER } from './chat/MorningBriefing';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claude-dashboard-chat`;
@@ -444,19 +443,6 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
   }, []);
 
   const handleClear = useCallback(() => { startNewChat(); setInputValue(''); }, [startNewChat]);
-
-  /** Handle action from QuickActionCards */
-  const handleQuickAction = useCallback((prompt: string, requiresInput: boolean) => {
-    if (requiresInput) {
-      populateInput(prompt);
-    } else {
-      setInputValue(prompt);
-      handleSend(prompt);
-    }
-  }, [populateInput, handleSend]);
-
-
-
 
   const handleRetry = useCallback(() => {
     if (!requestError?.prompt || isLoading) return;
