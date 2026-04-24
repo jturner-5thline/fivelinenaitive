@@ -1,8 +1,14 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { History, Maximize2, Minimize2, RotateCcw, Download, AlertCircle } from 'lucide-react';
+import { History, Maximize2, Minimize2, RotateCcw, Download, AlertCircle, FileText, FileDown } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
