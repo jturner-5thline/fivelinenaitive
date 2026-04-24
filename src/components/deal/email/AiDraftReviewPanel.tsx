@@ -34,12 +34,43 @@ export interface DraftOptions {
 
 type DraftType = 'reply' | 'first_touch' | 'follow_up' | 'reminder' | 'resend';
 
+/**
+ * One-click draft modes surfaced in the dashboard inbox detail toolbar.
+ * Each maps to a baked-in instruction block appended to customInstructions
+ * before generation, so the underlying smart-email-ai endpoint stays generic.
+ */
+export type DraftMode = 'answer_question' | 'invite_call' | 'request_info';
+
+const DRAFT_MODE_INSTRUCTIONS: Record<DraftMode, string> = {
+  answer_question:
+    "MODE: ANSWER THE SENDER'S QUESTION using verified naitive deal data. " +
+    "Identify the sender's specific question or request and respond directly. " +
+    "Cite only deal facts present in the supplied context (deal name, stage, deal size, lender status, outstanding items, recent activity, analyst notes). " +
+    "If a needed fact is not present, say so briefly and indicate when you'll follow up — do not invent figures, dates, or statuses.",
+  invite_call:
+    "MODE: INVITE THE SENDER TO A CALL. " +
+    "Acknowledge their last message in one sentence, propose a brief call to discuss, and offer two specific timing windows (e.g. 'tomorrow afternoon ET' and 'Thursday morning ET') without committing to specific calendar slots. " +
+    "Keep it under ~80 words. End with a soft CTA asking which window works.",
+  request_info:
+    "MODE: REQUEST MORE INFORMATION FROM THE SENDER. " +
+    "Open with a one-line acknowledgement, then list 2–4 specific items you need from them, derived where possible from the deal's outstanding items. " +
+    "Frame the request as needed to move the deal forward. Be concise and professional; do not over-explain.",
+};
+
+const DRAFT_MODE_LABELS: Record<DraftMode, string> = {
+  answer_question: 'Answer with deal data',
+  invite_call: 'Invite to call',
+  request_info: 'Request more info',
+};
+
 interface Props {
   thread: EmailThread;
   dealId?: string;
   onClose: () => void;
   onApprove: (subject: string, body: string) => void;
   initialDraftType?: DraftType;
+  /** Preselects a one-click mode and auto-runs generation on mount. */
+  initialMode?: DraftMode;
 }
 
 const DRAFT_TYPE_LABELS: Record<DraftType, string> = {
