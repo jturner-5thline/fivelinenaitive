@@ -447,6 +447,8 @@ export function AICopilotPanel() {
   const { nudges, dismissNudge } = useProactiveNudges();
   const isMobile = useIsMobile();
   const isOnline = useOnlineStatus();
+  const location = useLocation();
+  const isDealDetail = isDealDetailPath(location.pathname);
 
   // Focus trap
   useEffect(() => {
