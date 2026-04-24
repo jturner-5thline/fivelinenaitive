@@ -1437,13 +1437,59 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               }
               currentDealName={linkedDealName}
               isLinked={!!linkedDealName}
-              onLinkDeal={(id, name) => {
+              onLinkDeal={async (id, name) => {
+                // Optimistic UI — AI drafting + context immediately use the
+                // newly linked deal even before the DB write resolves.
+                setLinkedDealId(id);
                 setLinkedDealName(name);
                 onToggleLink(thread.latestEmail);
+
+                // Persist a deal_emails row per real Gmail message in the
+                // thread (skip mocks). Idempotent via the (deal_id, gmail_message_id)
+                // unique constraint — we use upsert to swallow duplicates.
+                try {
+                  const { data: auth } = await supabase.auth.getUser();
+                  const userId = auth?.user?.id;
+                  if (!userId) return;
+                  const rows = thread.emails
+                    .map(e => e.id)
+                    .filter(mid => mid && !mid.startsWith('mock-'))
+                    .map(mid => ({
+                      deal_id: id,
+                      gmail_message_id: mid,
+                      user_id: userId,
+                    }));
+                  if (rows.length > 0) {
+                    await supabase
+                      .from('deal_emails')
+                      .upsert(rows, { onConflict: 'deal_id,gmail_message_id', ignoreDuplicates: true });
+                  }
+                } catch (err) {
+                  console.error('[link-to-deal] persist failed', err);
+                }
               }}
-              onUnlink={() => {
+              onUnlink={async () => {
+                const prevId = linkedDealId;
+                setLinkedDealId(undefined);
                 setLinkedDealName(undefined);
                 onToggleLink(thread.latestEmail);
+
+                if (prevId) {
+                  try {
+                    const messageIds = thread.emails
+                      .map(e => e.id)
+                      .filter(mid => mid && !mid.startsWith('mock-'));
+                    if (messageIds.length > 0) {
+                      await supabase
+                        .from('deal_emails')
+                        .delete()
+                        .eq('deal_id', prevId)
+                        .in('gmail_message_id', messageIds);
+                    }
+                  } catch (err) {
+                    console.error('[link-to-deal] unlink failed', err);
+                  }
+                }
               }}
             />
 
