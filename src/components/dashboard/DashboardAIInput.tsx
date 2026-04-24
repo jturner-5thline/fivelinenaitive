@@ -395,7 +395,7 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
       window.clearTimeout(timeoutId);
       setIsLoading(false);
     }
-  }, [inputValue, isLoading, messages, activeConversationId, createConversation, saveMessage, setMessages]);
+  }, [inputValue, isLoading, messages, activeConversationId, createConversation, saveMessage, setMessages, recordPrompt]);
 
   const handleCreateTask = useCallback(async (title: string, priority: string) => {
     if (!user) return;
