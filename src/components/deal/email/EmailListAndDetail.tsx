@@ -74,6 +74,7 @@ import { cn } from '@/lib/utils';
 import { EmailCategoryChips } from './EmailCategoryChips';
 import { useDealMatchForEmail } from '@/hooks/useDealMatchForEmail';
 import { DealMatchBadge } from '@/components/dashboard/inbox/DealMatchBadge';
+import type { DraftMode } from './AiDraftReviewPanel';
 
 // ─── Sentiment badge ─────────────────────────────────────────
 function SentimentBadge({ sentiment }: { sentiment?: MockEmail['ai_sentiment'] }) {
