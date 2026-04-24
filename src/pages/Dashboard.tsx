@@ -394,8 +394,6 @@ export default function Dashboard() {
             <p className="text-sm text-muted-foreground/50 mt-1">Ask me anything about your deals, pipeline, lenders, or market research</p>
           </div>
 
-          <DashboardAIInput />
-
           <HintTooltip
             hint="Use these quick actions to open your calendar, email, quick prompts, or create a new deal — all without leaving the dashboard."
             visible={isHintVisible('dashboard-quick-actions')}
@@ -549,6 +547,8 @@ export default function Dashboard() {
             );
           })()}
           </HintTooltip>
+
+          <DashboardAIInput />
 
           {/* Dashboard Tabs */}
           <Tabs value={dashboardTab} onValueChange={handleDashboardTabChange}>
