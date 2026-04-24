@@ -148,6 +148,79 @@ function getPageContext(): { page: string; entityType: string | null; entityId: 
   return { page: parts[0] || 'dashboard', entityType: null, entityId: null, activeTab, banners };
 }
 
+const DEAL_SUGGESTIONS: Array<{ prompt: string; description: string }> = [
+  { prompt: 'What are we waiting on?', description: 'Outstanding items on this deal' },
+  { prompt: 'Who are our most active lenders?', description: 'Most-sent and most-active lenders for this deal' },
+  { prompt: 'Stale deals analysis', description: 'Is this deal at risk of going stale' },
+];
+
+function isDealDetailPath(pathname: string): boolean {
+  // Matches /deal/:id and /deals/:id (both routes exist in the app).
+  const parts = pathname.split('/').filter(Boolean);
+  if (parts.length < 2) return false;
+  if (parts[0] !== 'deal' && parts[0] !== 'deals') return false;
+  // For /deals, the index page has no second segment; only treat as detail when there is one.
+  return Boolean(parts[1]);
+}
+
+function DealSuggestionChips({
+  onSelect,
+  disabled,
+}: {
+  onSelect: (prompt: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 6,
+        justifyContent: 'center',
+        marginTop: 12,
+        width: '100%',
+      }}
+      aria-label="Suggested prompts for this deal"
+    >
+      {DEAL_SUGGESTIONS.map((s) => (
+        <button
+          key={s.prompt}
+          type="button"
+          onClick={() => onSelect(s.prompt)}
+          disabled={disabled}
+          title={s.description}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            maxWidth: '100%',
+            padding: '6px 10px',
+            borderRadius: 999,
+            border: '1px solid var(--glass-border)',
+            background: 'rgba(255,255,255,0.04)',
+            color: 'var(--foreground)',
+            fontSize: 12,
+            lineHeight: 1.2,
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            opacity: disabled ? 0.5 : 1,
+            transition: 'background 150ms ease, border-color 150ms ease, transform 150ms ease',
+          }}
+          onMouseEnter={(e) => {
+            if (disabled) return;
+            e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+            e.currentTarget.style.borderColor = 'hsl(var(--primary) / 0.5)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+            e.currentTarget.style.borderColor = 'var(--glass-border)';
+          }}
+        >
+          {s.prompt}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /** Renders assistant content with entity links, JSON formatting, and stage display names */
 function CopilotAssistantContent({ content }: { content: string }) {
   const navigate = useNavigate();
