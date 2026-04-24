@@ -49,6 +49,22 @@ const handleTileKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, action: () =>
 };
 
 /**
+ * Skeleton placeholder that mirrors the dimensions and layout of a real
+ * dashboard widget tile (Calendar, Email, etc.) so the row reserves space
+ * and doesn't shift when the gated tile set finishes loading.
+ */
+function WidgetTileSkeleton() {
+  return (
+    <Card className="p-4 h-full" aria-hidden="true">
+      <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
+        <Skeleton className="h-12 w-12 rounded-xl" />
+        <Skeleton className="h-3.5 w-20" />
+      </div>
+    </Card>
+  );
+}
+
+/**
  * Email tile + hover-anchored Email Intelligence panel.
  *
  * The Email Intelligence panel is hidden by default and only appears when
