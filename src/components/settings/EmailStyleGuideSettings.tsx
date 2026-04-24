@@ -116,14 +116,14 @@ export function EmailStyleGuideSettings({ isAdmin }: { isAdmin: boolean }) {
         greeting: guide.greeting,
         closing: guide.closing,
         tone_guidelines: guide.tone_guidelines,
-        stage_rules: cleanedRules,
+        stage_rules: cleanedRules as unknown as any,
         custom_instructions: guide.custom_instructions,
         updated_by: user?.id ?? null,
       };
 
       const { error } = await supabase
         .from('company_email_style_guide')
-        .upsert(payload, { onConflict: 'company_id' });
+        .upsert([payload], { onConflict: 'company_id' });
       if (error) throw error;
 
       const next = { ...guide, stage_rules: cleanedRules };
