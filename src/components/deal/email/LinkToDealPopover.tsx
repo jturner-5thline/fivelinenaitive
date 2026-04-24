@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -13,8 +13,9 @@ interface LinkToDealPopoverProps {
   trigger: React.ReactNode;
   currentDealName?: string;
   isLinked: boolean;
-  onLinkDeal: (dealId: string, dealName: string) => void;
-  onUnlink: () => void;
+  /** Returning a Promise lets the caller await persistence before the popover closes. */
+  onLinkDeal: (dealId: string, dealName: string) => void | Promise<void>;
+  onUnlink: () => void | Promise<void>;
 }
 
 interface Deal {
@@ -29,44 +30,90 @@ export function LinkToDealPopover({ trigger, currentDealName, isLinked, onLinkDe
   const [search, setSearch] = useState('');
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(false);
+  const [linking, setLinking] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const searchSeq = useRef(0);
+  const listRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (open && deals.length === 0) {
+    if (open) {
+      setActiveIndex(0);
       loadDeals();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const loadDeals = async () => {
+  // Debounced server-side search so we surface matches across the full active
+  // pipeline (not just the first 100 alphabetical deals) within ~150ms.
+  useEffect(() => {
+    if (!open) return;
+    const handle = setTimeout(() => {
+      loadDeals(search.trim());
+    }, search.trim() ? 150 : 0);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, open]);
+
+  const loadDeals = async (query: string = '') => {
+    const seq = ++searchSeq.current;
     setLoading(true);
-    const { data } = await supabase
+    let req = supabase
       .from('deals')
       .select('id, company, stage, status')
-      .eq('status', 'active')
-      .order('company')
-      .limit(100);
-    if (data) {
-      setDeals(data.map(d => ({ ...d, company: d.company || 'Unnamed Deal' })));
+      .eq('status', 'active');
+    if (query) {
+      req = req.ilike('company', `%${query}%`);
     }
+    const { data } = await req.order('company').limit(50);
+    // Drop stale responses if a newer search has been issued.
+    if (seq !== searchSeq.current) return;
+    setDeals((data || []).map(d => ({ ...d, company: d.company || 'Unnamed Deal' })));
+    setActiveIndex(0);
     setLoading(false);
   };
 
-  const filteredDeals = useMemo(() => {
-    if (!search.trim()) return deals;
-    const q = search.toLowerCase();
-    return deals.filter(d => d.company.toLowerCase().includes(q));
-  }, [deals, search]);
+  const filteredDeals = deals;
 
-  const handleSelect = (deal: Deal) => {
-    onLinkDeal(deal.id, deal.company);
-    toast.success(`Linked to ${deal.company}`);
+  const handleSelect = async (deal: Deal) => {
+    if (linking) return;
+    setLinking(true);
+    // Close immediately for snappy feel; persistence is awaited separately.
     setOpen(false);
     setSearch('');
+    try {
+      await Promise.resolve(onLinkDeal(deal.id, deal.company));
+      toast.success(`Linked to ${deal.company}`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to link deal');
+    } finally {
+      setLinking(false);
+    }
   };
 
-  const handleUnlink = () => {
-    onUnlink();
-    toast.success('Unlinked from deal');
+  const handleUnlink = async () => {
     setOpen(false);
+    try {
+      await Promise.resolve(onUnlink());
+      toast.success('Unlinked from deal');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to unlink');
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex(i => Math.min(i + 1, Math.max(filteredDeals.length - 1, 0)));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex(i => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const target = filteredDeals[activeIndex];
+      if (target) void handleSelect(target);
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+    }
   };
 
   return (
@@ -79,6 +126,7 @@ export function LinkToDealPopover({ trigger, currentDealName, isLinked, onLinkDe
             <Input
               value={search}
               onChange={e => setSearch(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="Search deals..."
               className="h-8 text-xs pl-7"
               autoFocus
@@ -99,7 +147,7 @@ export function LinkToDealPopover({ trigger, currentDealName, isLinked, onLinkDe
           </div>
         )}
 
-        <ScrollArea className="max-h-[240px]">
+        <ScrollArea className="max-h-[240px]" ref={listRef as any}>
           {loading ? (
             <div className="flex items-center justify-center py-6">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -110,15 +158,21 @@ export function LinkToDealPopover({ trigger, currentDealName, isLinked, onLinkDe
             </div>
           ) : (
             <div className="p-1">
-              {filteredDeals.map(deal => {
+              {filteredDeals.map((deal, idx) => {
                 const isCurrentlyLinked = isLinked && currentDealName === deal.company;
+                const isActive = idx === activeIndex;
                 return (
                   <button
                     key={deal.id}
                     onClick={() => !isCurrentlyLinked && handleSelect(deal)}
+                    onMouseEnter={() => setActiveIndex(idx)}
                     className={cn(
                       'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors',
-                      isCurrentlyLinked ? 'bg-primary/10 cursor-default' : 'hover:bg-muted/50'
+                      isCurrentlyLinked
+                        ? 'bg-primary/10 cursor-default'
+                        : isActive
+                          ? 'bg-primary/10 ring-1 ring-primary/20'
+                          : 'hover:bg-muted/50'
                     )}
                   >
                     <Briefcase className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -132,6 +186,9 @@ export function LinkToDealPopover({ trigger, currentDealName, isLinked, onLinkDe
                   </button>
                 );
               })}
+              <div className="px-2 pt-1.5 pb-1 text-[9px] text-muted-foreground/60 border-t mt-1">
+                ↑↓ navigate · Enter to link · Esc to close
+              </div>
             </div>
           )}
         </ScrollArea>

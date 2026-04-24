@@ -817,6 +817,10 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const [showAiDraft, setShowAiDraft] = useState(false);
   const [aiDraftMode, setAiDraftMode] = useState<DraftMode | undefined>(undefined);
   const [linkedDealName, setLinkedDealName] = useState<string | undefined>(thread.dealName);
+  // Per-thread linked deal id chosen from the LinkToDealPopover. Falls through
+  // to the deal-page's own dealId when this Email pane is rendered inside a
+  // deal context. Drives AI drafting + downstream context retrieval.
+  const [linkedDealId, setLinkedDealId] = useState<string | undefined>(undefined);
   const [showSendToDataRoom, setShowSendToDataRoom] = useState(false);
 
   // Lift workflow analysis here so the in-thread Attachments module can show the
@@ -832,7 +836,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     threadData: workflowThreadData,
     autoRun: true,
   });
-  const effectiveDealId = dealId || detailWorkflowAnalysis?.likely_deal?.id;
+  const effectiveDealId = dealId || linkedDealId || detailWorkflowAnalysis?.likely_deal?.id;
   const effectiveDealName =
     linkedDealName || thread.dealName || detailWorkflowAnalysis?.likely_deal?.name;
 
@@ -1433,13 +1437,59 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               }
               currentDealName={linkedDealName}
               isLinked={!!linkedDealName}
-              onLinkDeal={(id, name) => {
+              onLinkDeal={async (id, name) => {
+                // Optimistic UI — AI drafting + context immediately use the
+                // newly linked deal even before the DB write resolves.
+                setLinkedDealId(id);
                 setLinkedDealName(name);
                 onToggleLink(thread.latestEmail);
+
+                // Persist a deal_emails row per real Gmail message in the
+                // thread (skip mocks). Idempotent via the (deal_id, gmail_message_id)
+                // unique constraint — we use upsert to swallow duplicates.
+                try {
+                  const { data: auth } = await supabase.auth.getUser();
+                  const userId = auth?.user?.id;
+                  if (!userId) return;
+                  const rows = thread.emails
+                    .map(e => e.id)
+                    .filter(mid => mid && !mid.startsWith('mock-'))
+                    .map(mid => ({
+                      deal_id: id,
+                      gmail_message_id: mid,
+                      user_id: userId,
+                    }));
+                  if (rows.length > 0) {
+                    await supabase
+                      .from('deal_emails')
+                      .upsert(rows, { onConflict: 'deal_id,gmail_message_id', ignoreDuplicates: true });
+                  }
+                } catch (err) {
+                  console.error('[link-to-deal] persist failed', err);
+                }
               }}
-              onUnlink={() => {
+              onUnlink={async () => {
+                const prevId = linkedDealId;
+                setLinkedDealId(undefined);
                 setLinkedDealName(undefined);
                 onToggleLink(thread.latestEmail);
+
+                if (prevId) {
+                  try {
+                    const messageIds = thread.emails
+                      .map(e => e.id)
+                      .filter(mid => mid && !mid.startsWith('mock-'));
+                    if (messageIds.length > 0) {
+                      await supabase
+                        .from('deal_emails')
+                        .delete()
+                        .eq('deal_id', prevId)
+                        .in('gmail_message_id', messageIds);
+                    }
+                  } catch (err) {
+                    console.error('[link-to-deal] unlink failed', err);
+                  }
+                }
               }}
             />
 
@@ -1492,7 +1542,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           {showAiDraft && (
             <AiDraftReviewPanel
               thread={thread}
-              dealId={dealId}
+              dealId={effectiveDealId}
               onClose={() => { setShowAiDraft(false); setAiDraftMode(undefined); }}
               initialMode={aiDraftMode}
               onApprove={(subject, body) => {
