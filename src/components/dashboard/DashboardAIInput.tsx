@@ -554,9 +554,23 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
               </Button>
               {messages.length > 0 && (
                 <>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleExport} title="Export">
-                    <Download className="h-3.5 w-3.5" />
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" title="Export transcript">
+                        <Download className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuItem onClick={handleExport} className="text-xs">
+                        <FileText className="mr-2 h-3.5 w-3.5" />
+                        Download as text
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleExportPdf} className="text-xs">
+                        <FileDown className="mr-2 h-3.5 w-3.5" />
+                        Download as PDF
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleClear} title="New chat">
                     <RotateCcw className="h-3.5 w-3.5" />
                   </Button>
