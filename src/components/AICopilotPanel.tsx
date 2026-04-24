@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { X, ArrowUp, Plus, Clock, Copy, Check, ThumbsUp, ThumbsDown, HelpCircle, RefreshCw, WifiOff } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useCopilotStore } from '@/stores/copilotStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -146,6 +146,79 @@ function getPageContext(): { page: string; entityType: string | null; entityId: 
   if (parts[0] === 'lenders' || parts[0] === 'master-lenders') return { page: 'lenders', entityType: null, entityId: null, activeTab, banners };
   if (parts[0] === 'pipeline') return { page: 'pipeline', entityType: null, entityId: null, activeTab, banners };
   return { page: parts[0] || 'dashboard', entityType: null, entityId: null, activeTab, banners };
+}
+
+const DEAL_SUGGESTIONS: Array<{ prompt: string; description: string }> = [
+  { prompt: 'What are we waiting on?', description: 'Outstanding items on this deal' },
+  { prompt: 'Who are our most active lenders?', description: 'Most-sent and most-active lenders for this deal' },
+  { prompt: 'Stale deals analysis', description: 'Is this deal at risk of going stale' },
+];
+
+function isDealDetailPath(pathname: string): boolean {
+  // Matches /deal/:id and /deals/:id (both routes exist in the app).
+  const parts = pathname.split('/').filter(Boolean);
+  if (parts.length < 2) return false;
+  if (parts[0] !== 'deal' && parts[0] !== 'deals') return false;
+  // For /deals, the index page has no second segment; only treat as detail when there is one.
+  return Boolean(parts[1]);
+}
+
+function DealSuggestionChips({
+  onSelect,
+  disabled,
+}: {
+  onSelect: (prompt: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 6,
+        justifyContent: 'center',
+        marginTop: 12,
+        width: '100%',
+      }}
+      aria-label="Suggested prompts for this deal"
+    >
+      {DEAL_SUGGESTIONS.map((s) => (
+        <button
+          key={s.prompt}
+          type="button"
+          onClick={() => onSelect(s.prompt)}
+          disabled={disabled}
+          title={s.description}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            maxWidth: '100%',
+            padding: '6px 10px',
+            borderRadius: 999,
+            border: '1px solid var(--glass-border)',
+            background: 'rgba(255,255,255,0.04)',
+            color: 'var(--foreground)',
+            fontSize: 12,
+            lineHeight: 1.2,
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            opacity: disabled ? 0.5 : 1,
+            transition: 'background 150ms ease, border-color 150ms ease, transform 150ms ease',
+          }}
+          onMouseEnter={(e) => {
+            if (disabled) return;
+            e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+            e.currentTarget.style.borderColor = 'hsl(var(--primary) / 0.5)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+            e.currentTarget.style.borderColor = 'var(--glass-border)';
+          }}
+        >
+          {s.prompt}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 /** Renders assistant content with entity links, JSON formatting, and stage display names */
@@ -374,6 +447,8 @@ export function AICopilotPanel() {
   const { nudges, dismissNudge } = useProactiveNudges();
   const isMobile = useIsMobile();
   const isOnline = useOnlineStatus();
+  const location = useLocation();
+  const isDealDetail = isDealDetailPath(location.pathname);
 
   // Focus trap
   useEffect(() => {
@@ -852,8 +927,27 @@ export function AICopilotPanel() {
       {/* Messages */}
       <div role="log" aria-label="Chat messages" style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         {messages.length === 0 ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'hsl(var(--muted-foreground))', fontSize: 13, textAlign: 'center', padding: '0 24px' }}>
-            Ask me anything about your deals, tasks, or pipeline.
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'hsl(var(--muted-foreground))',
+              fontSize: 13,
+              textAlign: 'center',
+              padding: '0 24px',
+              gap: 4,
+            }}
+          >
+            <span>Ask me anything about your deals, tasks, or pipeline.</span>
+            {isDealDetail && (
+              <DealSuggestionChips
+                onSelect={(prompt) => handleSend(prompt)}
+                disabled={isProcessing}
+              />
+            )}
           </div>
         ) : (
           <>
