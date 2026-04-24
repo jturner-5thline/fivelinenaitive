@@ -815,6 +815,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   // on smaller widths it collapses into a toggleable drawer driven by this state.
   const [showAiAssist, setShowAiAssist] = useState(true);
   const [showAiDraft, setShowAiDraft] = useState(false);
+  const [aiDraftMode, setAiDraftMode] = useState<DraftMode | undefined>(undefined);
   const [linkedDealName, setLinkedDealName] = useState<string | undefined>(thread.dealName);
   const [showSendToDataRoom, setShowSendToDataRoom] = useState(false);
 
