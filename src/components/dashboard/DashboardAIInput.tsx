@@ -513,9 +513,6 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
             {!showHistory && !isChatActive && (
               <div className="mb-4 space-y-4">
                 <ProactiveAlerts onAction={(prompt) => { setInputValue(prompt); handleSend(prompt); }} />
-                <div className="w-full">
-                  <QuickActionCards onAction={handleQuickAction} />
-                </div>
               </div>
             )}
 
