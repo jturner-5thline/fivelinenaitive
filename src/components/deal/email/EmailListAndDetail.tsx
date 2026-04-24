@@ -1493,9 +1493,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             <AiDraftReviewPanel
               thread={thread}
               dealId={dealId}
-              onClose={() => setShowAiDraft(false)}
+              onClose={() => { setShowAiDraft(false); setAiDraftMode(undefined); }}
+              initialMode={aiDraftMode}
               onApprove={(subject, body) => {
                 setShowAiDraft(false);
+                setAiDraftMode(undefined);
                 handleReply();
                 setTimeout(() => {
                   const target = getReplyTarget();
