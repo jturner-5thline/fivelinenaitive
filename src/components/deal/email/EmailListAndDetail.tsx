@@ -72,6 +72,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { EmailCategoryChips } from './EmailCategoryChips';
+import { useDealMatchForEmail } from '@/hooks/useDealMatchForEmail';
+import { DealMatchBadge } from '@/components/dashboard/inbox/DealMatchBadge';
+import type { DraftMode } from './AiDraftReviewPanel';
 
 // ─── Sentiment badge ─────────────────────────────────────────
 function SentimentBadge({ sentiment }: { sentiment?: MockEmail['ai_sentiment'] }) {
@@ -189,6 +192,20 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
   const isUnread = thread.hasUnread;
   const showCheckbox = hovered || isChecked;
 
+  // Runtime deal-match against in-memory deals. Returns null when no
+  // candidate clears the medium-confidence threshold so unmatched emails
+  // render with no badge (per spec).
+  const dealMatch = useDealMatchForEmail({
+    subject: thread.subject,
+    fromEmail: latest.from_email,
+    fromName: latest.from_name,
+  });
+
+  // True when the most recent message in the thread is one we sent.
+  // Used to surface a "Responded" pill in the inbox row.
+  const responded =
+    thread.emails.length > 0 && thread.emails[0]?.from_name === 'You';
+
   const rowContent = (
     <div
       className={cn(
@@ -272,9 +289,20 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
           
           {/* Row 3: Preview text + deal pill */}
           <div className="flex items-center gap-1.5 mt-0.5">
-            {thread.dealName && (
+            {dealMatch ? (
+              <DealMatchBadge match={dealMatch} variant="compact" />
+            ) : thread.dealName ? (
               <Badge variant="outline" className="text-[9px] h-[16px] px-1 gap-0.5 bg-[hsl(var(--outlook-blue)/0.12)] text-[hsl(var(--outlook-blue))] border-[hsl(var(--outlook-blue)/0.25)] shrink-0">
                 {thread.dealName}
+              </Badge>
+            ) : null}
+            {responded && (
+              <Badge
+                variant="outline"
+                className="text-[9px] h-[16px] px-1 gap-0.5 bg-emerald-500/10 text-emerald-500 border-emerald-500/30 shrink-0"
+                title="You replied to this thread"
+              >
+                Responded
               </Badge>
             )}
             <EmailCategoryChips email={latest} />
@@ -787,6 +815,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   // on smaller widths it collapses into a toggleable drawer driven by this state.
   const [showAiAssist, setShowAiAssist] = useState(true);
   const [showAiDraft, setShowAiDraft] = useState(false);
+  const [aiDraftMode, setAiDraftMode] = useState<DraftMode | undefined>(undefined);
   const [linkedDealName, setLinkedDealName] = useState<string | undefined>(thread.dealName);
   const [showSendToDataRoom, setShowSendToDataRoom] = useState(false);
 
@@ -1433,6 +1462,30 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             )}
           </div>
 
+          {/* AI Draft mode shortcuts — three one-click prompts that open the
+              AiDraftReviewPanel with the matching baked-in instructions. */}
+          {!showAiDraft && (
+            <div className="px-4 pt-2 flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground mr-1 inline-flex items-center gap-1">
+                <Sparkles className="h-3 w-3 text-primary" />
+                Draft AI Reply
+              </span>
+              {([
+                { mode: 'answer_question' as DraftMode, label: 'Answer with deal data' },
+                { mode: 'invite_call' as DraftMode, label: 'Invite to call' },
+                { mode: 'request_info' as DraftMode, label: 'Request more info' },
+              ]).map(opt => (
+                <button
+                  key={opt.mode}
+                  onClick={() => { setAiDraftMode(opt.mode); setShowAiDraft(true); }}
+                  className="px-2 py-1 rounded-md text-[11px] font-medium border border-primary/25 bg-primary/[0.04] text-primary hover:bg-primary/[0.1] transition-colors"
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* AI Assist sidebar is rendered as a flex sibling at the bottom of this component (see end of return). */}
 
           {/* AI Draft review panel */}
@@ -1440,9 +1493,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             <AiDraftReviewPanel
               thread={thread}
               dealId={dealId}
-              onClose={() => setShowAiDraft(false)}
+              onClose={() => { setShowAiDraft(false); setAiDraftMode(undefined); }}
+              initialMode={aiDraftMode}
               onApprove={(subject, body) => {
                 setShowAiDraft(false);
+                setAiDraftMode(undefined);
                 handleReply();
                 setTimeout(() => {
                   const target = getReplyTarget();
