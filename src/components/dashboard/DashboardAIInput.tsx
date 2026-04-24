@@ -553,6 +553,13 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
                 className="mb-2"
               />
             )}
+            {!isChatActive && !showHistory && (
+              <QuickActionChips
+                onSelect={(prompt) => { setInputValue(prompt); handleSend(prompt); }}
+                isLoading={isLoading}
+                className="mb-2"
+              />
+            )}
             <ChatInputBar
               onSend={(text) => handleSend(text)}
               isLoading={isLoading}
