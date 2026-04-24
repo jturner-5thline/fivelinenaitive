@@ -927,8 +927,27 @@ export function AICopilotPanel() {
       {/* Messages */}
       <div role="log" aria-label="Chat messages" style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         {messages.length === 0 ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'hsl(var(--muted-foreground))', fontSize: 13, textAlign: 'center', padding: '0 24px' }}>
-            Ask me anything about your deals, tasks, or pipeline.
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'hsl(var(--muted-foreground))',
+              fontSize: 13,
+              textAlign: 'center',
+              padding: '0 24px',
+              gap: 4,
+            }}
+          >
+            <span>Ask me anything about your deals, tasks, or pipeline.</span>
+            {isDealDetail && (
+              <DealSuggestionChips
+                onSelect={(prompt) => handleSend(prompt)}
+                disabled={isProcessing}
+              />
+            )}
           </div>
         ) : (
           <>
