@@ -449,6 +449,72 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
     toast.success('Chat exported');
   }, [messages]);
 
+  const handleExportPdf = useCallback(async () => {
+    if (messages.length === 0) return;
+    try {
+      const { default: jsPDF } = await import('jspdf');
+      const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 48;
+      const maxWidth = pageWidth - margin * 2;
+      let y = margin;
+
+      const ensureSpace = (lineHeight: number) => {
+        if (y + lineHeight > pageHeight - margin) {
+          doc.addPage();
+          y = margin;
+        }
+      };
+
+      // Title
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      ensureSpace(22);
+      doc.text('naitive Assistant — Chat Transcript', margin, y);
+      y += 22;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(120);
+      ensureSpace(14);
+      doc.text(`Exported ${new Date().toLocaleString()}`, margin, y);
+      y += 18;
+      doc.setTextColor(0);
+
+      messages.forEach((m, idx) => {
+        const header = `${m.role === 'user' ? 'You' : 'Assistant'}${m.created_at ? ` · ${new Date(m.created_at).toLocaleString()}` : ''}`;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        ensureSpace(16);
+        doc.text(header, margin, y);
+        y += 14;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        const lines = doc.splitTextToSize(m.content || '', maxWidth) as string[];
+        for (const line of lines) {
+          ensureSpace(14);
+          doc.text(line, margin, y);
+          y += 14;
+        }
+
+        if (idx < messages.length - 1) {
+          y += 8;
+          ensureSpace(2);
+          doc.setDrawColor(220);
+          doc.line(margin, y, pageWidth - margin, y);
+          y += 12;
+        }
+      });
+
+      doc.save(`naitive-chat-${new Date().toISOString().slice(0, 10)}.pdf`);
+      toast.success('Chat exported as PDF');
+    } catch (err) {
+      console.error('[DashboardAI] PDF export failed:', err);
+      toast.error('Failed to export PDF');
+    }
+  }, [messages]);
+
   const handleShare = useCallback((content: string) => {
     if (navigator.share) {
       navigator.share({ title: 'naitive Assistant', text: content }).catch(() => {});
