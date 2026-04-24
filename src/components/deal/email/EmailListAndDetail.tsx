@@ -1462,6 +1462,30 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             )}
           </div>
 
+          {/* AI Draft mode shortcuts — three one-click prompts that open the
+              AiDraftReviewPanel with the matching baked-in instructions. */}
+          {!showAiDraft && (
+            <div className="px-4 pt-2 flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground mr-1 inline-flex items-center gap-1">
+                <Sparkles className="h-3 w-3 text-primary" />
+                Draft AI Reply
+              </span>
+              {([
+                { mode: 'answer_question' as DraftMode, label: 'Answer with deal data' },
+                { mode: 'invite_call' as DraftMode, label: 'Invite to call' },
+                { mode: 'request_info' as DraftMode, label: 'Request more info' },
+              ]).map(opt => (
+                <button
+                  key={opt.mode}
+                  onClick={() => { setAiDraftMode(opt.mode); setShowAiDraft(true); }}
+                  className="px-2 py-1 rounded-md text-[11px] font-medium border border-primary/25 bg-primary/[0.04] text-primary hover:bg-primary/[0.1] transition-colors"
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* AI Assist sidebar is rendered as a flex sibling at the bottom of this component (see end of return). */}
 
           {/* AI Draft review panel */}
