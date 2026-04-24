@@ -191,6 +191,20 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
   const isUnread = thread.hasUnread;
   const showCheckbox = hovered || isChecked;
 
+  // Runtime deal-match against in-memory deals. Returns null when no
+  // candidate clears the medium-confidence threshold so unmatched emails
+  // render with no badge (per spec).
+  const dealMatch = useDealMatchForEmail({
+    subject: thread.subject,
+    fromEmail: latest.from_email,
+    fromName: latest.from_name,
+  });
+
+  // True when the most recent message in the thread is one we sent.
+  // Used to surface a "Responded" pill in the inbox row.
+  const responded =
+    thread.emails.length > 0 && thread.emails[0]?.from_name === 'You';
+
   const rowContent = (
     <div
       className={cn(
