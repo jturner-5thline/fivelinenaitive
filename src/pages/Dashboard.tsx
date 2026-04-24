@@ -1,10 +1,11 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useSearchParams } from 'react-router-dom';
-import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Briefcase, LayoutTemplate, Newspaper } from 'lucide-react';
+import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Briefcase, LayoutTemplate, Newspaper, Handshake } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
 import { InboxDialog } from '@/components/dashboard/InboxDialog';
+import { DealsCarouselDialog } from '@/components/dashboard/DealsCarouselDialog';
 import { WidgetCarouselChrome } from '@/components/dashboard/widget-carousel/WidgetCarouselChrome';
 import { useWidgetCarouselStore } from '@/stores/widgetCarouselStore';
 import { useProfile } from '@/hooks/useProfile';
@@ -203,6 +204,7 @@ export default function Dashboard() {
   // Track recently removed widgets for undo (#13)
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pendingRemoval, setPendingRemoval] = useState<{ widgetId: string; widget: WidgetConfig; gridItem: GridItem } | null>(null);
+  const [dealsDialogOpen, setDealsDialogOpen] = useState(false);
 
   // Sync tab from URL query params
   useEffect(() => {
@@ -406,9 +408,11 @@ export default function Dashboard() {
             // who is allowed to see it (jturner included). For jturner the
             // tiles are also reordered via Tailwind `order-*` classes.
             const nikiInTopRow = canSeeNiki;
-            const tileCount = 4 + (isJTurner ? 1 : 0) + (nikiInTopRow ? 1 : 0) + (is5thLine ? 1 : 0);
+            // +1 for the always-on "Deals" tile that opens the AI insights carousel.
+            const tileCount = 4 + 1 + (isJTurner ? 1 : 0) + (nikiInTopRow ? 1 : 0) + (is5thLine ? 1 : 0);
             const gridColsClass =
-              tileCount >= 7 ? 'grid-cols-4 sm:grid-cols-7'
+              tileCount >= 8 ? 'grid-cols-4 sm:grid-cols-8'
+              : tileCount === 7 ? 'grid-cols-4 sm:grid-cols-7'
               : tileCount === 6 ? 'grid-cols-3 sm:grid-cols-6'
               : tileCount === 5 ? 'grid-cols-3 sm:grid-cols-5'
               : tileCount === 4 ? 'grid-cols-2 sm:grid-cols-4'
@@ -503,6 +507,23 @@ export default function Dashboard() {
                 </div>
               </Card>
             )}
+            {/* Deals tile — opens the AI-powered Deals insights carousel.
+                Placed immediately to the right of Niki's Daily Briefing. */}
+            <Card
+              className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-7')}
+              onClick={() => setDealsDialogOpen(true)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => handleTileKeyDown(e, () => setDealsDialogOpen(true))}
+              aria-label="Open Deals insights"
+            >
+              <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
+                <div className="relative h-12 w-12 rounded-xl border border-emerald-500/30 bg-emerald-500/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                  <Handshake className="relative z-10 h-7 w-7 text-emerald-400" />
+                </div>
+                <span className="text-sm font-medium text-foreground">Deals</span>
+              </div>
+            </Card>
             {is5thLine && (
               <Card
                 className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-3')}
@@ -702,6 +723,7 @@ export default function Dashboard() {
         />
       )}
       <WidgetCarouselChrome />
+      <DealsCarouselDialog open={dealsDialogOpen} onOpenChange={setDealsDialogOpen} />
     </>
   );
 }
