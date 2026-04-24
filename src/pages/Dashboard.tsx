@@ -49,6 +49,22 @@ const handleTileKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, action: () =>
 };
 
 /**
+ * Skeleton placeholder that mirrors the dimensions and layout of a real
+ * dashboard widget tile (Calendar, Email, etc.) so the row reserves space
+ * and doesn't shift when the gated tile set finishes loading.
+ */
+function WidgetTileSkeleton() {
+  return (
+    <Card className="p-4 h-full" aria-hidden="true">
+      <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
+        <Skeleton className="h-12 w-12 rounded-xl" />
+        <Skeleton className="h-3.5 w-20" />
+      </div>
+    </Card>
+  );
+}
+
+/**
  * Email tile + hover-anchored Email Intelligence panel.
  *
  * The Email Intelligence panel is hidden by default and only appears when
@@ -366,13 +382,57 @@ export default function Dashboard() {
   }, [updatePreset]);
 
   if (isLoading) {
+    // Loading state mirrors the real layout so the dashboard feels fast:
+    // hero greeting + a skeleton widgets row in place + a placeholder for
+    // the Ask anything bar. No layout shift when real data arrives.
+    const skeletonTileCount =
+      4 /* base */ +
+      1 /* always-on Deals tile */ +
+      (isJTurner ? 1 : 0) +
+      (canSeeNiki ? 1 : 0) +
+      (is5thLine ? 1 : 0);
+    const skeletonGridColsClass =
+      skeletonTileCount >= 8 ? 'grid-cols-4 sm:grid-cols-8'
+      : skeletonTileCount === 7 ? 'grid-cols-4 sm:grid-cols-7'
+      : skeletonTileCount === 6 ? 'grid-cols-3 sm:grid-cols-6'
+      : skeletonTileCount === 5 ? 'grid-cols-3 sm:grid-cols-5'
+      : skeletonTileCount === 4 ? 'grid-cols-2 sm:grid-cols-4'
+      : 'grid-cols-3';
     return (
-      <div className="px-4 py-8 space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-10 w-full" />
-        <div className="grid grid-cols-2 gap-4">
-          <Skeleton className="h-40" />
-          <Skeleton className="h-40" />
+      <div className="bg-transparent flex flex-col items-center px-3 sm:px-4 py-6 sm:py-8">
+        <div className="w-full max-w-6xl space-y-4 sm:space-y-6">
+          <div className="text-center space-y-2 pt-2">
+            <p className="text-base sm:text-lg text-muted-foreground">
+              {getTimeBasedGreeting()},{' '}
+              <span className="whitespace-nowrap">{firstName}</span>
+            </p>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-foreground">
+              What can I do for you?
+            </h1>
+            <p className="text-sm text-muted-foreground/50 mt-1">
+              Ask me anything about your deals, pipeline, lenders, or market research
+            </p>
+          </div>
+
+          <div
+            className={`grid items-stretch gap-3 md:gap-4 ${skeletonGridColsClass}`}
+            aria-busy="true"
+            aria-label="Loading dashboard widgets"
+          >
+            {Array.from({ length: skeletonTileCount }).map((_, i) => (
+              <WidgetTileSkeleton key={i} />
+            ))}
+          </div>
+
+          <Skeleton className="h-14 w-full rounded-2xl" />
+
+          <div className="space-y-3">
+            <Skeleton className="h-9 w-64" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Skeleton className="h-40 rounded-xl" />
+              <Skeleton className="h-40 rounded-xl" />
+            </div>
+          </div>
         </div>
       </div>
     );
