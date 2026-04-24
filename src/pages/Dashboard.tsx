@@ -723,6 +723,7 @@ export default function Dashboard() {
         />
       )}
       <WidgetCarouselChrome />
+      <DealsCarouselDialog open={dealsDialogOpen} onOpenChange={setDealsDialogOpen} />
     </>
   );
 }
