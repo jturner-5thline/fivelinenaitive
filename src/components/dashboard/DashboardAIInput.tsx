@@ -10,10 +10,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
 import { useChatPersistence, ChatMessage } from '@/hooks/useChatPersistence';
+import { useRecentPrompts } from '@/hooks/useRecentPrompts';
 import { ChatMessageList } from './chat/ChatMessageList';
 import { ChatHistorySidebar } from './chat/ChatHistorySidebar';
 import { ChatInputBar } from './chat/ChatInputBar';
 import { ProactiveAlerts } from './chat/ProactiveAlerts';
+import { RecentPromptsStrip } from './chat/RecentPromptsStrip';
 import { isBriefingPrompt, BRIEFING_MARKER } from './chat/MorningBriefing';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claude-dashboard-chat`;
@@ -82,6 +84,7 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
     loadingHistory, loadConversation, createConversation,
     saveMessage, deleteConversation, startNewChat,
   } = useChatPersistence();
+  const { prompts: recentPrompts, recordPrompt, clearPrompts } = useRecentPrompts();
 
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -140,6 +143,12 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
     const shouldReuseLastUserMessage = isRetry && lastMessage?.role === 'user' && lastMessage.content === trimmed;
 
     setRequestError(null);
+
+    // Track this prompt for the Recent strip — but skip pure retries so the
+    // list reflects distinct user intents, not error recoveries.
+    if (!isRetry) {
+      recordPrompt(trimmed);
+    }
 
     const userMsg: ChatMessage = { role: 'user', content: trimmed, created_at: new Date().toISOString() };
     const updatedMessages = shouldReuseLastUserMessage ? messages : [...messages, userMsg];
@@ -386,7 +395,7 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
       window.clearTimeout(timeoutId);
       setIsLoading(false);
     }
-  }, [inputValue, isLoading, messages, activeConversationId, createConversation, saveMessage, setMessages]);
+  }, [inputValue, isLoading, messages, activeConversationId, createConversation, saveMessage, setMessages, recordPrompt]);
 
   const handleCreateTask = useCallback(async (title: string, priority: string) => {
     if (!user) return;
@@ -534,6 +543,15 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
             )}
 
             {/* Input bar — always visible */}
+            {!isChatActive && !showHistory && recentPrompts.length > 0 && (
+              <RecentPromptsStrip
+                prompts={recentPrompts}
+                onSelect={(prompt) => { setInputValue(prompt); handleSend(prompt); }}
+                onClear={clearPrompts}
+                isLoading={isLoading}
+                className="mb-2"
+              />
+            )}
             <ChatInputBar
               onSend={(text) => handleSend(text)}
               isLoading={isLoading}
