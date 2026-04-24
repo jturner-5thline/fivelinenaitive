@@ -16,12 +16,35 @@ export interface ChatConversation {
   updated_at: string;
 }
 
+const ACTIVE_CONVERSATION_STORAGE_KEY = 'dashboardChat:activeConversationId';
+
+function getStoredActiveConversationId(userId: string | undefined): string | null {
+  if (!userId || typeof window === 'undefined') return null;
+  try {
+    return window.localStorage.getItem(`${ACTIVE_CONVERSATION_STORAGE_KEY}:${userId}`);
+  } catch {
+    return null;
+  }
+}
+
+function setStoredActiveConversationId(userId: string | undefined, id: string | null) {
+  if (!userId || typeof window === 'undefined') return;
+  try {
+    const key = `${ACTIVE_CONVERSATION_STORAGE_KEY}:${userId}`;
+    if (id) window.localStorage.setItem(key, id);
+    else window.localStorage.removeItem(key);
+  } catch {
+    // ignore storage errors (private mode, quota)
+  }
+}
+
 export function useChatPersistence() {
   const { user } = useAuth();
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [autoResumed, setAutoResumed] = useState(false);
 
   // Load conversation list
   const loadConversations = useCallback(async () => {
@@ -48,9 +71,31 @@ export function useChatPersistence() {
     if (data) {
       setMessages(data.map(m => ({ ...m, role: m.role as 'user' | 'assistant' })));
       setActiveConversationId(conversationId);
+      setStoredActiveConversationId(user?.id, conversationId);
     }
     setLoadingHistory(false);
-  }, []);
+  }, [user?.id]);
+
+  // Auto-resume the most recent conversation on mount / after refresh
+  // so the user's Ask anything chat persists across page reloads and navigation.
+  // Preference order:
+  //   1. The conversation the user last had open (localStorage hint).
+  //   2. Otherwise, their most recently updated conversation.
+  // We only run this once per session and skip if a conversation is already active.
+  useEffect(() => {
+    if (!user || autoResumed) return;
+    if (activeConversationId) return;
+    if (conversations.length === 0) return;
+
+    const storedId = getStoredActiveConversationId(user.id);
+    const candidateId =
+      (storedId && conversations.find(c => c.id === storedId)?.id) ||
+      conversations[0]?.id;
+
+    if (!candidateId) return;
+    setAutoResumed(true);
+    loadConversation(candidateId);
+  }, [user, conversations, activeConversationId, autoResumed, loadConversation]);
 
   // Create new conversation
   const createConversation = useCallback(async (firstMessage: string): Promise<string | null> => {
@@ -63,6 +108,8 @@ export function useChatPersistence() {
       .single();
     if (error || !data) return null;
     setActiveConversationId(data.id);
+    setStoredActiveConversationId(user.id, data.id);
+    setAutoResumed(true);
     loadConversations();
     return data.id;
   }, [user, loadConversations]);
@@ -80,15 +127,19 @@ export function useChatPersistence() {
     if (activeConversationId === conversationId) {
       setActiveConversationId(null);
       setMessages([]);
+      setStoredActiveConversationId(user?.id, null);
     }
     loadConversations();
-  }, [activeConversationId, loadConversations]);
+  }, [activeConversationId, loadConversations, user?.id]);
 
   // Start new chat
   const startNewChat = useCallback(() => {
     setActiveConversationId(null);
     setMessages([]);
-  }, []);
+    setStoredActiveConversationId(user?.id, null);
+    // User explicitly asked for a fresh chat; don't auto-resume after this.
+    setAutoResumed(true);
+  }, [user?.id]);
 
   return {
     conversations,
