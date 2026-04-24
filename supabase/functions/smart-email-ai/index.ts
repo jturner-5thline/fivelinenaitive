@@ -272,6 +272,7 @@ ${notes.map((n: any) => `- ${(n.content || n.note || "").substring(0, 200)} (${n
 - Both must sound like the same sender and follow the TONE & STYLE rules below.`;
 
         systemPrompt = `You are drafting emails on behalf of the user — a debt advisory and capital markets professional. Your voice is warm, human, and conversational while still polished and appropriate for lenders, borrowers, investors, and other professional counterparties. Think "smart colleague firing off a quick deal email," not "corporate memo."
+${styleGuideBlock}
 
 TONE & STYLE (apply to ALL draft options by default):
 - Slightly informal, friendly, and natural — never stiff or legalistic.
@@ -329,6 +330,8 @@ Generate ${wantSingle ? 1 : 2} draft ${effectiveDraftType} option${wantSingle ? 
 
       case "draft_reply": {
         systemPrompt = `You are an expert debt advisory professional at a capital advisory firm. Draft a professional reply email based on the deal context and conversation. Be concise, professional, and action-oriented. Output ONLY the email body text (no subject, no "From:", etc.).`;
+        if (styleGuideBlock) systemPrompt += `\n${styleGuideBlock}`;
+        if (companySignature) systemPrompt += `\nAlways end the email body with this exact signature on its own lines:\n${companySignature}`;
         userPrompt = `${dealContext}
 
 EMAIL THREAD:
@@ -345,6 +348,8 @@ Draft a professional reply to the most recent email in this thread. Consider the
 
       case "auto_draft": {
         systemPrompt = `You are an expert debt advisory professional at a capital advisory firm. You proactively draft reply emails when a response is needed. Your drafts should be concise, professional, and address any questions or requests in the latest email. Consider the full deal context for accuracy. Output ONLY the email body text (no subject, no "From:", etc.). Keep replies under 150 words unless the complexity requires more.`;
+        if (styleGuideBlock) systemPrompt += `\n${styleGuideBlock}`;
+        if (companySignature) systemPrompt += `\nAlways end the email body with this exact signature on its own lines:\n${companySignature}`;
         userPrompt = `${dealContext}
 
 EMAIL THREAD: "${threadData?.subject}"
