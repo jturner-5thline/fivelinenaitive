@@ -165,6 +165,16 @@ export function AiDraftReviewPanel({ thread, dealId, onClose, onApprove, initial
     }
   }, [thread, dealId, draftType, customInstructions]);
 
+  // Auto-run generation when opened with a preselected one-click mode so the
+  // user lands directly on the editable draft.
+  const autoRanRef = useRef(false);
+  useEffect(() => {
+    if (initialMode && !autoRanRef.current && !draftOptions && !loading) {
+      autoRanRef.current = true;
+      void generateDrafts();
+    }
+  }, [initialMode, draftOptions, loading, generateDrafts]);
+
   const handleSelectOption = (opt: 1 | 2) => {
     if (!draftOptions) return;
     setSelectedOption(opt);
