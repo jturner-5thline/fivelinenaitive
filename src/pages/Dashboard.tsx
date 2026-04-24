@@ -204,6 +204,7 @@ export default function Dashboard() {
   // Track recently removed widgets for undo (#13)
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pendingRemoval, setPendingRemoval] = useState<{ widgetId: string; widget: WidgetConfig; gridItem: GridItem } | null>(null);
+  const [dealsDialogOpen, setDealsDialogOpen] = useState(false);
 
   // Sync tab from URL query params
   useEffect(() => {
