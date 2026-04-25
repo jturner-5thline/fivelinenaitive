@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { queryClient } from '@/lib/queryClient';
 
 export interface TaskDraft {
   title: string;
@@ -137,15 +136,6 @@ export async function createTaskFromDraft(
   if (error) {
     console.error('[createTaskFromDraft]', error);
     throw error;
-  }
-  // Invalidate the My Tasks widget query so the new task appears immediately
-  try {
-    queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
-    queryClient.invalidateQueries({ queryKey: ['contact-tasks'] });
-    queryClient.invalidateQueries({ queryKey: ['crm-company-tasks'] });
-    queryClient.invalidateQueries({ queryKey: ['deal-tasks'] });
-  } catch {
-    // queryClient may not be initialized in non-app contexts
   }
   return data as { id: string; assigned_to: string };
 }
