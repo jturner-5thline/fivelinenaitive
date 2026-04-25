@@ -18,9 +18,11 @@ interface Props {
   className?: string;
   onCreated?: (taskId: string) => void;
   placeholder?: string;
+  syncSource?: string;
+  sourceThreadId?: string | null;
 }
 
-export function NaitiveTaskComposer({ context = {}, autoFocus, className, onCreated, placeholder }: Props) {
+export function NaitiveTaskComposer({ context = {}, autoFocus, className, onCreated, placeholder, syncSource, sourceThreadId }: Props) {
   const { user } = useAuth();
   const { company } = useCompany();
   const queryClient = useQueryClient();
@@ -45,7 +47,10 @@ export function NaitiveTaskComposer({ context = {}, autoFocus, className, onCrea
     try {
       let result: { id: string; assigned_to: string };
       try {
-        result = (await createTaskFromDraft(d, user.id, company?.id || null)) as any;
+        result = (await createTaskFromDraft(d, user.id, company?.id || null, {
+          syncSource,
+          sourceThreadId: sourceThreadId ?? context.thread_id ?? null,
+        })) as any;
       } catch (err: any) {
         const msg = err?.message || 'Failed to create task';
         toast.error('Could not create task', { description: msg });
