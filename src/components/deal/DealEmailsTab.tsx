@@ -234,6 +234,10 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const [selectedThread, setSelectedThread] = useState<EmailThread | null>(null);
   const [readingPaneExpanded, setReadingPaneExpanded] = useState(false);
 
+  // Ref to the inbox column's scroll container so the pagination IO can use
+  // it as `root` instead of the document viewport (see PaginationFooter).
+  const inboxScrollRef = useRef<HTMLDivElement | null>(null);
+
   // ─── Resizable middle column ───────────────────────────────
   // Inbox column widths reduced ~30% for a more compact layout.
   const DEFAULT_INBOX_WIDTH = 168;
