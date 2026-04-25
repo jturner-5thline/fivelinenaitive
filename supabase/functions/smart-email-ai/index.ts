@@ -1181,7 +1181,20 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
 
     // For generate_draft_options, inject context sources
     if (action === "generate_draft_options" && typeof parsed === "object" && !parsed.raw) {
-      parsed.cited_context_sources = dealContextSources.length > 0 ? dealContextSources : ["email_thread_only"];
+      // Surface the actually-injected fact keys (model-reported) so the UI's
+      // "Context used: N sources" pill counts real enrichment — not just which
+      // tables we fetched. Fall back to the structural sources list.
+      const modelInjected: string[] = Array.isArray(parsed.deal_context_used)
+        ? parsed.deal_context_used.filter((s: any) => typeof s === "string" && s.length > 0)
+        : [];
+      // Union: structural sources we loaded + injected fact keys the model used.
+      const merged = Array.from(new Set([
+        ...(dealContextSources.length > 0 ? dealContextSources : []),
+        ...modelInjected,
+      ]));
+      parsed.cited_context_sources = merged.length > 0 ? merged : ["email_thread_only"];
+      // Also expose the explicit injected-fields array for any UI that wants it.
+      parsed.deal_context_used = modelInjected;
     }
 
     // For analyze_thread_workflow, post-process to ensure deal_id resolution.
