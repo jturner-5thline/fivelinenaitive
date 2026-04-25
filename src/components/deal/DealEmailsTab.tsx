@@ -511,14 +511,18 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     return threads.find(t => t.threadId === selectedThread.threadId) || null;
   }, [emails, selectedThread]);
 
-  const handleToggleLink = (email: MockEmail) => {
+  // Stabilize so memoized ThreadListRow / ThreadListItem instances don't get
+  // a fresh handler reference on every parent render (which would defeat
+  // React.memo and re-render every row in the inbox on each keystroke or
+  // hover anywhere in the widget).
+  const handleToggleLink = useCallback((email: MockEmail) => {
     setEmails(prev => prev.map(e => e.id === email.id ? { ...e, is_linked_to_deal: !e.is_linked_to_deal } : e));
     toast.success(email.is_linked_to_deal ? 'Email unlinked from deal' : 'Email linked to deal');
-  };
+  }, []);
 
-  const handleToggleStar = (email: MockEmail) => {
+  const handleToggleStar = useCallback((email: MockEmail) => {
     setEmails(prev => prev.map(e => e.id === email.id ? { ...e, is_starred: !e.is_starred } : e));
-  };
+  }, []);
 
   const handleRefresh = async () => {
     if (onRefresh) {
