@@ -26,6 +26,7 @@ import { SuggestedDealUpdatesSection } from './SuggestedDealUpdatesSection';
 import { DataRoomUploadSuggestionCard } from './DataRoomUploadSuggestionCard';
 import { ThreadSummaryCard } from './ThreadSummaryCard';
 import { DealContextCard } from './DealContextCard';
+import { EmailQuickTaskSection } from './EmailQuickTaskSection';
 import type { DealContextSummary } from '@/hooks/useDealContextSummary';
 import { toast } from 'sonner';
 import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
