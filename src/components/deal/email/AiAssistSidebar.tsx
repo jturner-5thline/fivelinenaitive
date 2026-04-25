@@ -457,7 +457,12 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
 
   return (
     <aside
-      className="flex h-full w-full min-w-0 flex-col overflow-hidden bg-card/40 backdrop-blur-sm min-[1100px]:w-[300px] min-[1100px]:min-w-[300px] min-[1100px]:max-w-[420px] min-[1280px]:w-[340px] min-[1536px]:w-[380px]"
+      // backdrop-blur removed: it forced the entire sidebar to re-rasterize on
+      // every scroll/repaint of underlying content, causing the dominant scroll
+      // jank in this pop-up. The opaque-ish bg-card surface reads identically
+      // over the dialog backdrop.
+      className="flex h-full w-full min-w-0 flex-col overflow-hidden bg-card/40 min-[1100px]:w-[300px] min-[1100px]:min-w-[300px] min-[1100px]:max-w-[420px] min-[1280px]:w-[340px] min-[1536px]:w-[380px]"
+      style={{ contain: 'layout paint style' }}
       aria-label="AI Assist"
     >
       {/* Header */}
