@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 // HMAC-based token verification for email action links
 async function createHmacToken(data: string, secret: string): Promise<string> {
