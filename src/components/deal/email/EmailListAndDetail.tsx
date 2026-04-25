@@ -1,4 +1,4 @@
-import { Component, type ErrorInfo, type ReactNode, useState, useEffect, useCallback, useRef } from 'react';
+import { Component, type ErrorInfo, type ReactNode, useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { SmartEmailPanel } from './SmartEmailPanel';
 import { ThreadLabelsBar } from './ThreadLabelsBar';
@@ -184,7 +184,7 @@ interface ThreadListItemProps {
   autoLabels?: EmailLabel[];
 }
 
-function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels }: ThreadListItemProps) {
+function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels }: ThreadListItemProps) {
   const [hovered, setHovered] = useState(false);
   const latest = thread.latestEmail;
   const displayName = latest.folder === 'sent' ? `To: ${latest.to_name || latest.to_email}` : latest.from_name;
@@ -360,6 +360,38 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
   );
 }
 
+// Wrap in memo: the only props that meaningfully change per row across a parent
+// re-render are `isSelected` and `isChecked` (and the thread reference itself).
+// We compare those primitives plus thread.threadId/hasUnread/isStarred and the
+// length of autoLabels — handlers are assumed referentially stable (the parent
+// uses useCallback / inline handlers that we now stabilize).
+const ThreadListItem = memo(ThreadListItemImpl, (prev, next) => {
+  return (
+    prev.thread === next.thread &&
+    prev.isSelected === next.isSelected &&
+    prev.isChecked === next.isChecked &&
+    prev.onSelect === next.onSelect &&
+    prev.onCheckChange === next.onCheckChange &&
+    prev.onToggleLink === next.onToggleLink &&
+    prev.onToggleStar === next.onToggleStar &&
+    prev.onMarkRead === next.onMarkRead &&
+    prev.onMarkUnread === next.onMarkUnread &&
+    prev.onArchive === next.onArchive &&
+    prev.onDelete === next.onDelete &&
+    autoLabelsEqual(prev.autoLabels, next.autoLabels)
+  );
+});
+
+function autoLabelsEqual(a?: EmailLabel[], b?: EmailLabel[]) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].id !== b[i].id) return false;
+  }
+  return true;
+}
+
 // ─── Email List Skeleton ─────────────────────────────────────
 function EmailListSkeleton() {
   return (
@@ -437,11 +469,25 @@ interface EmailListProps {
 
 export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink, onToggleStar, isLoading, selectedIds, onSelectionChange, onMarkRead, onMarkUnread, onArchive, onDelete }: EmailListProps) {
   const { evaluate: evaluateAutoLabels } = useAutoEmailLabelEvaluator();
+  // Group emails into threads only when the email array identity changes.
+  // Without this memo, this O(n) loop ran on every parent re-render (selection
+ // change, hover, AI Assist updates) and produced a fresh array each time,
+  // breaking row memoization downstream.
+  const threads = useMemo(() => groupEmailsByThread(emails), [emails]);
+
+  // Stabilize per-row check handler so memoized rows don't see a new function
+  // every render.
+  const handleCheckChange = useCallback((threadId: string, checked: boolean) => {
+    if (!onSelectionChange || !selectedIds) return;
+    const next = new Set(selectedIds);
+    if (checked) next.add(threadId);
+    else next.delete(threadId);
+    onSelectionChange(next);
+  }, [onSelectionChange, selectedIds]);
+
   if (isLoading) {
     return <EmailListSkeleton />;
   }
-
-  const threads = groupEmailsByThread(emails);
 
   if (threads.length === 0) {
     return (
@@ -452,38 +498,100 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
     );
   }
 
-  const handleCheckChange = (threadId: string, checked: boolean) => {
-    if (!onSelectionChange || !selectedIds) return;
-    const next = new Set(selectedIds);
-    if (checked) next.add(threadId);
-    else next.delete(threadId);
-    onSelectionChange(next);
-  };
-
-   return (
-    <ScrollArea className="h-full w-full">
-      <div className="space-y-0">
-        {threads.map((thread) => (
-          <ThreadListItem
-            key={thread.threadId}
-            thread={thread}
-            isSelected={selectedThread?.threadId === thread.threadId}
-            onSelect={() => onSelectThread(thread)}
-            onToggleLink={onToggleLink}
-            onToggleStar={onToggleStar}
-            isChecked={selectedIds?.has(thread.threadId)}
-            onCheckChange={(checked) => handleCheckChange(thread.threadId, checked)}
-            onMarkRead={onMarkRead}
-            onMarkUnread={onMarkUnread}
-            onArchive={onArchive}
-            onDelete={onDelete}
-            autoLabels={evaluateAutoLabels(thread.latestEmail)}
-          />
-        ))}
-      </div>
-    </ScrollArea>
+  // The parent column already provides the scroll container (overflow-auto);
+  // an additional Radix <ScrollArea> here would create a nested scroller that
+  // intercepts wheel events and prevents scroll chaining/IO sentinels from
+  // working correctly. Render rows as a plain list — the parent owns scroll.
+  return (
+    <div
+      className="space-y-0"
+      style={{
+        // Promote the list to its own paint/layout boundary so row hover/select
+        // doesn't repaint the surrounding shell.
+        contain: 'layout paint style',
+      }}
+    >
+      {threads.map((thread) => (
+        <ThreadListRow
+          key={thread.threadId}
+          thread={thread}
+          isSelected={selectedThread?.threadId === thread.threadId}
+          isChecked={selectedIds?.has(thread.threadId)}
+          onSelectThread={onSelectThread}
+          onCheckChangeOuter={handleCheckChange}
+          onToggleLink={onToggleLink}
+          onToggleStar={onToggleStar}
+          onMarkRead={onMarkRead}
+          onMarkUnread={onMarkUnread}
+          onArchive={onArchive}
+          onDelete={onDelete}
+          evaluateAutoLabels={evaluateAutoLabels}
+        />
+      ))}
+    </div>
   );
 }
+
+// Stable adapter: turns the parent's `(thread) => onSelect(thread)` and
+// `(checked) => handleCheckChange(threadId, checked)` patterns (which would
+// allocate a new arrow per render and bust memoization) into stable callbacks
+// keyed by thread.threadId.
+interface ThreadListRowProps {
+  thread: EmailThread;
+  isSelected: boolean;
+  isChecked?: boolean;
+  onSelectThread: (thread: EmailThread) => void;
+  onCheckChangeOuter: (threadId: string, checked: boolean) => void;
+  onToggleLink: (email: MockEmail) => void;
+  onToggleStar: (email: MockEmail) => void;
+  onMarkRead?: (email: MockEmail) => void;
+  onMarkUnread?: (email: MockEmail) => void;
+  onArchive?: (email: MockEmail) => void;
+  onDelete?: (email: MockEmail) => void;
+  evaluateAutoLabels: (email: MockEmail) => EmailLabel[];
+}
+
+const ThreadListRow = memo(function ThreadListRow({
+  thread,
+  isSelected,
+  isChecked,
+  onSelectThread,
+  onCheckChangeOuter,
+  onToggleLink,
+  onToggleStar,
+  onMarkRead,
+  onMarkUnread,
+  onArchive,
+  onDelete,
+  evaluateAutoLabels,
+}: ThreadListRowProps) {
+  const onSelect = useCallback(() => onSelectThread(thread), [onSelectThread, thread]);
+  const onCheckChange = useCallback(
+    (checked: boolean) => onCheckChangeOuter(thread.threadId, checked),
+    [onCheckChangeOuter, thread.threadId],
+  );
+  // Re-evaluate only when the email identity changes
+  const autoLabels = useMemo(
+    () => evaluateAutoLabels(thread.latestEmail),
+    [evaluateAutoLabels, thread.latestEmail],
+  );
+  return (
+    <ThreadListItem
+      thread={thread}
+      isSelected={isSelected}
+      onSelect={onSelect}
+      onToggleLink={onToggleLink}
+      onToggleStar={onToggleStar}
+      isChecked={isChecked}
+      onCheckChange={onCheckChange}
+      onMarkRead={onMarkRead}
+      onMarkUnread={onMarkUnread}
+      onArchive={onArchive}
+      onDelete={onDelete}
+      autoLabels={autoLabels}
+    />
+  );
+});
 
 // ─── Quoted content detection ────────────────────────────────
 const QUOTED_PATTERNS = [
@@ -1308,8 +1416,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
         }}
       >
         <div className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-[hsl(var(--email-reading-bg))]">
-          {/* Outlook-style command bar */}
-          <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-[hsl(var(--email-border))] bg-card/60 backdrop-blur-sm shrink-0">
+          {/* Outlook-style command bar — backdrop-blur removed because the bar
+              sits directly above a tall scrolling message body and any
+              backdrop-filter on a static surface above moving content forces
+              an expensive re-rasterize per scroll frame. */}
+          <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-[hsl(var(--email-border))] bg-card/60 shrink-0">
             <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-7 w-7">
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -1637,8 +1748,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             </div>
           )}
 
-          {/* Thread content - scrollable */}
-          <ScrollArea className="flex-1 min-h-0 min-w-0 overflow-hidden">
+          {/* Thread content - scrollable. overscroll-contain prevents wheel
+              chaining into the dialog (which causes parent layout); contain
+              isolates layout/paint to this column so AI Assist updates don't
+              repaint the body. */}
+          <ScrollArea
+            className="flex-1 min-h-0 min-w-0 overflow-hidden"
+            style={{ overscrollBehavior: 'contain', contain: 'layout paint style' }}
+          >
             <div className="min-w-0 max-w-full overflow-hidden overflow-x-hidden py-2 space-y-0 pb-24">
               <div className="px-5 mb-3">
                 <AiSummaryStrip email={thread.latestEmail} />

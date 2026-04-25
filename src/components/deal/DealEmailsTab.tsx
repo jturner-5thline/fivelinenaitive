@@ -146,28 +146,37 @@ function PaginationFooter({
   isLoadingMore,
   isAutoPaginating,
   totalLoaded,
+  scrollRoot,
 }: {
   onLoadMore?: () => void | Promise<void>;
   hasMore: boolean;
   isLoadingMore: boolean;
   isAutoPaginating: boolean;
   totalLoaded: number;
+  scrollRoot?: Element | null;
 }) {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  // Auto-trigger onLoadMore when the sentinel scrolls into view (infinite scroll).
+  // Auto-trigger onLoadMore when the sentinel scrolls into view (infinite
+  // scroll). The IO must observe the actual scroll container as `root` —
+  // using `null` (viewport) caused the sentinel to be considered "visible"
+  // whenever it sat within 200px of the *viewport*, which fired in a tight
+  // loop after each page appended (see session replay: repeated Load more).
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el || !hasMore || isLoadingMore || isAutoPaginating || !onLoadMore) return;
-    const io = new IntersectionObserver((entries) => {
-      const first = entries[0];
-      if (first?.isIntersecting) {
-        onLoadMore();
-      }
-    }, { root: null, rootMargin: '200px', threshold: 0 });
+    const io = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (first?.isIntersecting) {
+          onLoadMore();
+        }
+      },
+      { root: scrollRoot ?? null, rootMargin: '200px', threshold: 0 },
+    );
     io.observe(el);
     return () => io.disconnect();
-  }, [hasMore, isLoadingMore, isAutoPaginating, onLoadMore]);
+  }, [hasMore, isLoadingMore, isAutoPaginating, onLoadMore, scrollRoot]);
 
   if (isAutoPaginating || isLoadingMore) {
     return (
@@ -224,6 +233,10 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
   const [selectedThread, setSelectedThread] = useState<EmailThread | null>(null);
   const [readingPaneExpanded, setReadingPaneExpanded] = useState(false);
+
+  // Ref to the inbox column's scroll container so the pagination IO can use
+  // it as `root` instead of the document viewport (see PaginationFooter).
+  const inboxScrollRef = useRef<HTMLDivElement | null>(null);
 
   // ─── Resizable middle column ───────────────────────────────
   // Inbox column widths reduced ~30% for a more compact layout.
@@ -498,14 +511,18 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     return threads.find(t => t.threadId === selectedThread.threadId) || null;
   }, [emails, selectedThread]);
 
-  const handleToggleLink = (email: MockEmail) => {
+  // Stabilize so memoized ThreadListRow / ThreadListItem instances don't get
+  // a fresh handler reference on every parent render (which would defeat
+  // React.memo and re-render every row in the inbox on each keystroke or
+  // hover anywhere in the widget).
+  const handleToggleLink = useCallback((email: MockEmail) => {
     setEmails(prev => prev.map(e => e.id === email.id ? { ...e, is_linked_to_deal: !e.is_linked_to_deal } : e));
     toast.success(email.is_linked_to_deal ? 'Email unlinked from deal' : 'Email linked to deal');
-  };
+  }, []);
 
-  const handleToggleStar = (email: MockEmail) => {
+  const handleToggleStar = useCallback((email: MockEmail) => {
     setEmails(prev => prev.map(e => e.id === email.id ? { ...e, is_starred: !e.is_starred } : e));
-  };
+  }, []);
 
   const handleRefresh = async () => {
     if (onRefresh) {
@@ -1281,8 +1298,19 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
               </div>
             )}
 
-            {/* Email list */}
-            <div className="flex-1 min-h-0 min-w-0 overflow-auto">
+            {/* Email list — single scroll container for the inbox column.
+                EmailList no longer wraps its rows in a Radix ScrollArea, so
+                this is the sole scroller; that lets the IO pagination
+                sentinel observe the right element and lets the browser
+                composite this column independently. */}
+            <div
+              ref={inboxScrollRef}
+              className="flex-1 min-h-0 min-w-0 overflow-auto"
+              style={{
+                overscrollBehavior: 'contain',
+                contain: 'layout paint style',
+              }}
+            >
               <EmailList
                 emails={filteredEmails}
                 selectedThread={currentThread}
@@ -1304,6 +1332,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                   isLoadingMore={!!isLoadingMore}
                   isAutoPaginating={!!isAutoPaginating}
                   totalLoaded={filteredEmails.length}
+                  scrollRoot={inboxScrollRef.current}
                 />
               )}
             </div>
