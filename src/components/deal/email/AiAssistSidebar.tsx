@@ -9,6 +9,8 @@ import {
   RefreshCw,
   AlertTriangle,
   ArrowRight,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { cn } from '@/lib/utils';
@@ -590,52 +592,85 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
           {/* Draft area — always rendered as a shell so the panel never blocks. */}
           {!error && (
             <>
-
-              {/* Variant selector */}
-              <div className="min-w-0 max-w-full">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70 mb-2">
-                  Draft options
-                </p>
-                <div className="flex gap-1 mb-3 p-0.5 rounded-md bg-muted/30 border border-white/[0.04] min-w-0 w-full">
-                  {TONE_ORDER.map((tone) => {
-                    const isSel = selected === tone;
-                    const isLoading = loadingTones[tone];
-                    return (
-                      <button
-                        key={tone}
-                        onClick={() => handleSelectTone(tone)}
-                        className={cn(
-                          'flex-1 min-w-0 px-2 py-1.5 rounded text-[11px] font-medium transition-all whitespace-nowrap',
-                          isSel
-                            ? 'bg-background text-foreground shadow-sm'
-                            : 'text-muted-foreground hover:text-foreground/80'
-                        )}
-                      >
-                        {TONE_LABELS[tone]}
-                        {result?.recommended_tone === tone && (
-                          <span className="ml-1 text-primary">★</span>
-                        )}
-                        {isLoading && (
-                          <Loader2 className="inline h-3 w-3 ml-1 animate-spin opacity-70" />
-                        )}
-                      </button>
-                    );
-                  })}
+              {/* Draft Options — mirrors the SUGGESTED UPDATE card pattern:
+                  same primary-tinted bordered surface, same uppercase header
+                  with Sparkles icon + counter + chevron arrow paginator. */}
+              <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-2.5 space-y-2 overflow-hidden max-w-full min-w-0 w-full">
+                {/* Header row — icon + label + counter + arrows (matches SUGGESTED UPDATE) */}
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Sparkles className="h-3 w-3 text-primary shrink-0" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-primary/90 min-w-0 truncate">
+                    Draft Options
+                  </span>
+                  {isSelectedLoading && (
+                    <Loader2 className="h-2.5 w-2.5 animate-spin text-primary/60" />
+                  )}
+                  <div className="ml-auto flex items-center gap-0.5">
+                    <span className="text-[9px] tabular-nums text-muted-foreground/70">
+                      {TONE_ORDER.indexOf(selected) + 1} / {TONE_ORDER.length}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const i = TONE_ORDER.indexOf(selected);
+                        const prev = TONE_ORDER[(i - 1 + TONE_ORDER.length) % TONE_ORDER.length];
+                        handleSelectTone(prev);
+                      }}
+                      className="h-4 w-4 rounded hover:bg-primary/10 flex items-center justify-center text-primary/80 disabled:opacity-40"
+                      aria-label="Previous draft style"
+                    >
+                      <ChevronLeft className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const i = TONE_ORDER.indexOf(selected);
+                        const next = TONE_ORDER[(i + 1) % TONE_ORDER.length];
+                        handleSelectTone(next);
+                      }}
+                      className="h-4 w-4 rounded hover:bg-primary/10 flex items-center justify-center text-primary/80 disabled:opacity-40"
+                      aria-label="Next draft style"
+                    >
+                      <ChevronRight className="h-3 w-3" />
+                    </button>
+                  </div>
                 </div>
 
-                {/* Selected draft preview */}
+                {/* Active style title — same place SUGGESTED UPDATE puts its title */}
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <p
+                    className="text-[13px] text-foreground font-semibold leading-snug max-w-full"
+                    style={{ overflowWrap: 'anywhere', wordBreak: 'normal', whiteSpace: 'normal' }}
+                  >
+                    {TONE_LABELS[selected]}
+                  </p>
+                  {result?.recommended_tone === selected && (
+                    <span
+                      className="text-primary text-[12px] leading-none"
+                      title="Recommended"
+                      aria-label="Recommended"
+                    >
+                      ★
+                    </span>
+                  )}
+                </div>
+
+                {/* Subject + Body — inside the same card */}
                 {selectedOption ? (
-                  <div className="rounded-md border border-white/[0.06] bg-background/40 overflow-hidden min-w-0 max-w-full w-full">
-                    <div className="px-3 py-2 border-b border-white/[0.04]">
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60">
+                  <div className="space-y-2 min-w-0 max-w-full w-full">
+                    <div className="min-w-0">
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
                         Subject
                       </div>
-                      <div className="mt-0.5 max-w-full break-words text-[12px] font-medium leading-snug text-foreground/90" style={{ whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'normal' }}>
+                      <div
+                        className="mt-0.5 max-w-full break-words text-[12px] font-medium leading-snug text-foreground/90"
+                        style={{ whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'normal' }}
+                      >
                         {selectedOption.subject}
                       </div>
                     </div>
-                    <div className="px-3 py-2.5">
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1">
+                    <div className="min-w-0">
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground/70 mb-1">
                         Body
                       </div>
                       <div
@@ -646,7 +681,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                       </div>
                     </div>
                     {selectedOption.rationale && (
-                      <div className="px-3 py-2 border-t border-white/[0.04] bg-muted/20">
+                      <div className="pt-1.5 border-t border-primary/10">
                         <p className="text-[10px] text-muted-foreground italic leading-relaxed">
                           {selectedOption.rationale}
                         </p>
@@ -654,12 +689,12 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                     )}
                   </div>
                 ) : (
-                  <div className="rounded-md border border-white/[0.06] bg-background/40 overflow-hidden">
-                    <div className="px-3 py-2 border-b border-white/[0.04] space-y-1.5">
+                  <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <Skeleton className="h-2 w-12" />
                       <Skeleton className="h-3.5 w-2/3" />
                     </div>
-                    <div className="px-3 py-2.5 space-y-1.5">
+                    <div className="space-y-1.5">
                       <Skeleton className="h-2 w-10 mb-1" />
                       <Skeleton className="h-3 w-full" />
                       <Skeleton className="h-3 w-11/12" />
