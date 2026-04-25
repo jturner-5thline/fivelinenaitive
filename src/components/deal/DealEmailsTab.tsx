@@ -146,28 +146,37 @@ function PaginationFooter({
   isLoadingMore,
   isAutoPaginating,
   totalLoaded,
+  scrollRoot,
 }: {
   onLoadMore?: () => void | Promise<void>;
   hasMore: boolean;
   isLoadingMore: boolean;
   isAutoPaginating: boolean;
   totalLoaded: number;
+  scrollRoot?: Element | null;
 }) {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  // Auto-trigger onLoadMore when the sentinel scrolls into view (infinite scroll).
+  // Auto-trigger onLoadMore when the sentinel scrolls into view (infinite
+  // scroll). The IO must observe the actual scroll container as `root` —
+  // using `null` (viewport) caused the sentinel to be considered "visible"
+  // whenever it sat within 200px of the *viewport*, which fired in a tight
+  // loop after each page appended (see session replay: repeated Load more).
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el || !hasMore || isLoadingMore || isAutoPaginating || !onLoadMore) return;
-    const io = new IntersectionObserver((entries) => {
-      const first = entries[0];
-      if (first?.isIntersecting) {
-        onLoadMore();
-      }
-    }, { root: null, rootMargin: '200px', threshold: 0 });
+    const io = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (first?.isIntersecting) {
+          onLoadMore();
+        }
+      },
+      { root: scrollRoot ?? null, rootMargin: '200px', threshold: 0 },
+    );
     io.observe(el);
     return () => io.disconnect();
-  }, [hasMore, isLoadingMore, isAutoPaginating, onLoadMore]);
+  }, [hasMore, isLoadingMore, isAutoPaginating, onLoadMore, scrollRoot]);
 
   if (isAutoPaginating || isLoadingMore) {
     return (
