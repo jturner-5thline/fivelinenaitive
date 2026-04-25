@@ -128,10 +128,11 @@ export async function createTaskFromDraft(
   insertRow.task_type = draft.type === 'meeting' ? 'meeting' : draft.type === 'call' ? 'call' : 'task';
   insertRow.sync_source = options?.syncSource || 'naitive_nl_input';
   insertRow.is_recurring = draft.is_recurring;
-  // Optional: persist source thread id if column exists; ignored otherwise
+  // No source_thread_id column on tasks — append the reference to description
   const threadId = options?.sourceThreadId ?? draft.source_thread_id;
   if (threadId) {
-    insertRow.source_thread_id = threadId;
+    const ref = `\n\n[email thread: ${threadId}]`;
+    insertRow.description = (insertRow.description ? String(insertRow.description) : '') + ref;
   }
 
   const { data, error } = await supabase
