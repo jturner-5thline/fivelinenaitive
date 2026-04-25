@@ -477,8 +477,10 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       </div>
 
       {/* Content */}
-      <ScrollArea className="flex-1 min-h-0 min-w-0 overflow-hidden">
-        <div className="min-w-0 max-w-full p-4 space-y-4">
+      <ScrollArea
+        className="flex-1 min-h-0 min-w-0 w-full overflow-hidden [&>[data-radix-scroll-area-viewport]>div]:!block [&>[data-radix-scroll-area-viewport]>div]:!min-w-0 [&>[data-radix-scroll-area-viewport]>div]:!w-full [&>[data-radix-scroll-area-viewport]>div]:!max-w-full"
+      >
+        <div className="min-w-0 max-w-full w-full p-4 space-y-4">
           {/* Deal Context — auto-expanded when a deal is linked. Drives the
               draft tone via dealContextHint forwarded to the edge function. */}
           <DealContextCard
@@ -571,11 +573,11 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             <>
 
               {/* Variant selector */}
-              <div>
+              <div className="min-w-0 max-w-full">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70 mb-2">
                   Draft options
                 </p>
-                <div className="flex gap-1 mb-3 p-0.5 rounded-md bg-muted/30 border border-white/[0.04]">
+                <div className="flex gap-1 mb-3 p-0.5 rounded-md bg-muted/30 border border-white/[0.04] min-w-0 w-full">
                   {TONE_ORDER.map((tone) => {
                     const isSel = selected === tone;
                     const isLoading = loadingTones[tone];
@@ -584,7 +586,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                         key={tone}
                         onClick={() => handleSelectTone(tone)}
                         className={cn(
-                          'flex-1 px-2 py-1.5 rounded text-[11px] font-medium transition-all',
+                          'flex-1 min-w-0 px-2 py-1.5 rounded text-[11px] font-medium transition-all whitespace-nowrap',
                           isSel
                             ? 'bg-background text-foreground shadow-sm'
                             : 'text-muted-foreground hover:text-foreground/80'
@@ -604,7 +606,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
 
                 {/* Selected draft preview */}
                 {selectedOption ? (
-                  <div className="rounded-md border border-white/[0.06] bg-background/40 overflow-hidden">
+                  <div className="rounded-md border border-white/[0.06] bg-background/40 overflow-hidden min-w-0 max-w-full w-full">
                     <div className="px-3 py-2 border-b border-white/[0.04]">
                       <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60">
                         Subject
