@@ -434,6 +434,18 @@ SPECIFICITY RULES (this is what makes the draft sound like the sender knows the 
 - If a relevant data point is genuinely missing, say "I'll confirm and revert" — do NOT invent it. But first check OUTSTANDING ITEMS, LENDERS, NOTES, and ACTIVITY before claiming you don't have it.
 - Never just describe a category ("the diligence checklist", "the lender list", "next steps"). Always name the actual items, lenders, or actions when the structured context provides them.
 
+CONFIRMING-DETAILS RULE (use when the deal context is thin or specific facts you'd normally cite are missing):
+- If you cannot find a concrete fact you would otherwise reference (e.g., the recipient asks about a number, date, lender stage, outstanding item, or counterparty detail and the structured context does NOT contain it), include exactly ONE short "Confirming details" line near the end of the body — before the closing — written naturally, e.g.:
+  • "Confirming details on the latest [topic] and will revert shortly."
+  • "Just confirming a couple of items internally before I send the full picture."
+- Use this line INSTEAD OF inventing or vaguely paraphrasing a fact. It signals to the recipient that the answer is being verified rather than fabricated.
+- Trigger conditions (any of):
+  • OUTSTANDING ITEMS, LENDERS ON DEAL, NOTES, RECENT ACTIVITY, or DEAL STATE SNAPSHOT is empty / not provided.
+  • The recipient asks for a specific figure, date, term, or status that is not present in the structured context.
+  • The detected intent requires data the deal record does not yet contain.
+- Keep it to ONE line, lowercase casual register, no bullet points, no apology. Do NOT add it when you already have enough specifics to answer fully — over-using it makes drafts feel evasive.
+- Also reflect this in the JSON: when you include the line, set "requires_more_context": true and list the missing fields in "missing_context_items".
+
 ${generationRule}
 - Do NOT include email signatures — the app handles that.
 - Return ONLY valid JSON matching the required schema. No markdown fences, no commentary.
