@@ -485,6 +485,9 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       {/* Content */}
       <ScrollArea
         className="flex-1 min-h-0 min-w-0 w-full overflow-hidden [&>[data-radix-scroll-area-viewport]>div]:!block [&>[data-radix-scroll-area-viewport]>div]:!min-w-0 [&>[data-radix-scroll-area-viewport]>div]:!w-full [&>[data-radix-scroll-area-viewport]>div]:!max-w-full"
+        // overscroll-contain stops scroll chaining into the dialog/dashboard
+        // (which would trigger parent layout); contain isolates layout/paint.
+        style={{ overscrollBehavior: 'contain', contain: 'layout paint style' }}
       >
         <div className="min-w-0 max-w-full w-full p-4 space-y-4">
           {/* Deal Context — auto-expanded when a deal is linked. Drives the
