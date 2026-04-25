@@ -425,6 +425,50 @@ ${h.most_overdue_item && (h.most_overdue_item.days_overdue ?? 0) >= 3
         const fullBody = threadEmails.map((e: any) => e.body_preview || "").join(" ").toLowerCase();
         const hasSchedulingIntent = /\b(schedule|availability|calendar|meeting|call|slot|free|available|reschedule|time works|when can)\b/i.test(fullBody);
 
+        // ─── Build the hard injection block ───────────────────────
+        // This is the part that prevents generic "I'll send the diligence list"
+        // phrasing. The model is told EXACTLY which strings must appear in the
+        // body, with per-style minimums. Missing facts are explicitly listed
+        // as "OMIT" so the model never invents them.
+        const fmtList = (arr: string[]) =>
+          arr.length === 0 ? "(none — OMIT this clause)" : arr.map((s) => `"${s}"`).join(", ");
+        const lenderClause = injectionFacts.lender_name
+          ? `MUST name the active lender by exact name: "${injectionFacts.lender_name}"${injectionFacts.lender_stage ? ` (currently in stage: ${injectionFacts.lender_stage})` : ""}.`
+          : `(no active lender on this deal — OMIT any lender name; do NOT invent one)`;
+        const stageClause = injectionFacts.deal_stage
+          ? `MUST reference the deal's current stage in natural language: "${injectionFacts.deal_stage}" (e.g., "now that we're in ${injectionFacts.deal_stage}", "post-${injectionFacts.deal_stage}").`
+          : `(stage unknown — OMIT stage references)`;
+        const itemsClause = injectionFacts.open_items.length > 0
+          ? `MUST list 1–3 of these ACTUAL outstanding-item names verbatim (or lightly paraphrased, but names preserved): ${fmtList(injectionFacts.open_items)}. NEVER replace these with generic phrases like "the diligence checklist" or "the additional due diligence list".`
+          : `(no open outstanding items — OMIT any references to specific diligence items; if the recipient asked about diligence, say a tracker will follow but do NOT fabricate item names)`;
+        const recentClause = injectionFacts.recent_activity
+          ? `MUST weave in this concrete recent-activity detail (paraphrase naturally, do not quote): "${injectionFacts.recent_activity}".`
+          : injectionFacts.analyst_note
+          ? `MUST weave in this analyst-note detail (paraphrase naturally, do not quote): "${injectionFacts.analyst_note}".`
+          : `(no recent activity or analyst note — OMIT)`;
+        const termsClause = injectionFacts.key_terms.length > 0
+          ? `When the thread touches diligence, closing, structure, or timing, reference 1 of these key terms: ${fmtList(injectionFacts.key_terms)}.`
+          : `(no key terms available — OMIT)`;
+
+        const injectionBlock = `\nHARD INJECTION REQUIREMENTS (apply to EVERY draft option you return — Concise AND Balanced):
+1. LENDER: ${lenderClause}
+2. STAGE: ${stageClause}
+3. OUTSTANDING ITEMS: ${itemsClause}
+4. RECENT ACTIVITY / NOTES: ${recentClause}
+5. KEY TERMS: ${termsClause}
+
+PER-STYLE MINIMUMS (these are non-negotiable and MUST be re-applied on every regenerate):
+- "Concise" (2–3 short sentences, ≤80 words): MUST include at minimum requirements #1 (lender, if available), #2 (stage, if available), and #3 (at least 1 specific outstanding item, if available). If a field is unavailable, drop that requirement gracefully — never substitute a generic phrase.
+- "Balanced" (4–6 sentences, ≤150 words): MUST include all of #1–#5 that are available. List 1–3 specific outstanding items inline by name. Reference the lender by name. Acknowledge the current stage. Weave in the recent-activity detail. Reference 1 key term where relevant.
+
+ANTI-GENERIC GUARDRAIL:
+- The phrases "the additional due diligence list", "the diligence checklist", "the outstanding items", "the lender list", "next steps" used as standalone references are BANNED whenever the corresponding INJECTION REQUIREMENT has data. Always name the actual items / lenders / stage.
+- If a required field is genuinely empty (marked OMIT above), gracefully drop the clause — do NOT hallucinate.
+
+TRACKING:
+- In your JSON response, populate "deal_context_used" with the keys you actually injected, drawn from this set: ["lender_name", "lender_stage", "outstanding_items", "deal_stage", "recent_activity", "analyst_note", "key_terms"]. Only include a key if you actually used it in the body text.
+`;
+
         const optionsBlock = wantSingle
           ? `  "option_1_subject": "string — email subject line",
   "option_1_body": "string — full email body text",
@@ -505,11 +549,15 @@ REQUIRED JSON SCHEMA:
   "missing_context_items": ["string array of what's missing, if any"],
   "used_deal_context": boolean,
   "used_calendar_context": boolean,
+  "deal_context_used": ["string array of injected deal-fact keys actually used in the body, e.g. lender_name, outstanding_items, deal_stage, recent_activity, key_terms"],
 ${optionsBlock}
   "recommended_option_reason": "string",
   "suggested_follow_up_actions": ["string array"],
   "cited_context_sources": ["string array of data sources used"]
 }`;
+        // Append the hard injection block AFTER the schema so the model sees
+        // the requirements as the final, most-recent instruction.
+        systemPrompt += injectionBlock;
 
         const threadForPrompt = threadEmails.map((e: any) =>
           `From: ${e.from_name} <${e.from_email}>
