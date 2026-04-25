@@ -197,6 +197,11 @@ ${sortedLenders.map((l: any) => {
         });
         const open = enriched.filter((i: any) => !i.parsedStatus.approved);
         const completed = enriched.filter((i: any) => i.parsedStatus.approved);
+        // Top-3 actual descriptions to inject into the draft body verbatim.
+        injectionFacts.open_items = open
+          .slice(0, 3)
+          .map((i: any) => String(i.description || "").trim())
+          .filter(Boolean);
 
         dealContext += `\nOUTSTANDING ITEMS (${open.length} open / ${completed.length} completed):
 ${open.length === 0
@@ -230,6 +235,11 @@ ${milestones.map((m: any) => `- ${m.title}: ${m.completed ? "✅ Done" : "⬜ Pe
 
       if (activities.length > 0) {
         dealContextSources.push("recent_activity");
+        const a0 = activities[0];
+        if (a0?.description) {
+          const dateStr = a0.created_at ? ` on ${String(a0.created_at).substring(0, 10)}` : "";
+          injectionFacts.recent_activity = `${String(a0.description).substring(0, 180)}${dateStr}`;
+        }
         dealContext += `\nRECENT ACTIVITY (last 10):
 ${activities.map((a: any) => `- [${a.activity_type}] ${a.description} (${a.created_at?.substring(0, 10)})`).join("\n")}
 `;
@@ -237,6 +247,9 @@ ${activities.map((a: any) => `- [${a.activity_type}] ${a.description} (${a.creat
 
       if (notes.length > 0) {
         dealContextSources.push("deal_notes");
+        const n0 = notes[0];
+        const noteText = (n0?.content || n0?.note || "").toString().replace(/\s+/g, " ").trim();
+        if (noteText) injectionFacts.analyst_note = noteText.substring(0, 200);
         dealContext += `\nANALYST/MANAGER NOTES (most recent first):
 ${notes.map((n: any) => `- "${(n.content || n.note || "").replace(/\s+/g, " ").substring(0, 400)}" (${n.created_at?.substring(0, 10)})`).join("\n")}
 `;
