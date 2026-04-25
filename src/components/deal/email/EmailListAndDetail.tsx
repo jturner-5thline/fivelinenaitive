@@ -4,7 +4,7 @@ import { SmartEmailPanel } from './SmartEmailPanel';
 import { ThreadLabelsBar } from './ThreadLabelsBar';
 import { AiAssistInlinePanel } from './AiAssistInlinePanel';
 import { AiAssistSidebar } from './AiAssistSidebar';
-import { AiDraftReviewPanel } from './AiDraftReviewPanel';
+import { YourReplyComposer } from './YourReplyComposer';
 import { LinkToDealPopover } from './LinkToDealPopover';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -1538,30 +1538,39 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
           {/* AI Assist sidebar is rendered as a flex sibling at the bottom of this component (see end of return). */}
 
-          {/* AI Draft review panel */}
+          {/* Unified "Your Reply" composer (replaces the legacy AI draft review panel).
+              On Send it routes through the same handleSendFromComposer pipeline used
+              by the inline composer, so deal activity logging, draft cleanup, and
+              thread state all stay consistent. */}
           {showAiDraft && (
-            <AiDraftReviewPanel
+            <YourReplyComposer
               thread={thread}
               dealId={effectiveDealId}
-              onClose={() => { setShowAiDraft(false); setAiDraftMode(undefined); }}
               initialMode={aiDraftMode}
-              onApprove={(subject, body) => {
+              onClose={() => { setShowAiDraft(false); setAiDraftMode(undefined); }}
+              onSend={(subject, body, _meta) => {
+                const target = getReplyTarget();
+                handleSendFromComposer({
+                  subject: subject.startsWith('Re:') ? subject : `Re: ${subject}`,
+                  from_name: 'You',
+                  from_email: 'jturner@5thline.co',
+                  to_name: target.to_name,
+                  to_email: target.to_email,
+                  snippet: body.substring(0, 120),
+                  body_preview: body,
+                  received_at: new Date().toISOString(),
+                  is_read: true,
+                  is_starred: false,
+                  folder: 'sent',
+                  labels: ['Sent'],
+                  has_attachments: false,
+                  is_linked_to_deal: !!effectiveDealId,
+                  is_follow_up: false,
+                  needs_response: false,
+                  category: 'deal',
+                });
                 setShowAiDraft(false);
                 setAiDraftMode(undefined);
-                handleReply();
-                setTimeout(() => {
-                  const target = getReplyTarget();
-                  setInlineDraft({
-                    to: target.to_email,
-                    toName: target.to_name,
-                    body,
-                    subject: subject.startsWith('Re:') ? subject : `Re: ${subject}`,
-                    cc: '',
-                    bcc: '',
-                    attachments: [],
-                    threadId: thread.threadId,
-                  });
-                }, 100);
               }}
             />
           )}
