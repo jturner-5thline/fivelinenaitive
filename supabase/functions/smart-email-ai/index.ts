@@ -47,13 +47,15 @@ serve(async (req) => {
     let dealContext = "";
     let dealContextSources: string[] = [];
     if (dealId) {
-      const [dealRes, writeupRes, lendersRes, milestonesRes, activityRes, notesRes] = await Promise.all([
+      const [dealRes, writeupRes, lendersRes, milestonesRes, activityRes, notesRes, outstandingRes, statusNotesRes] = await Promise.all([
         supabase.from("deals").select("*").eq("id", dealId).single(),
         supabase.from("deal_writeups").select("*").eq("deal_id", dealId).single(),
         supabase.from("deal_lenders").select("*").eq("deal_id", dealId),
         supabase.from("deal_milestones").select("*").eq("deal_id", dealId).order("position"),
         supabase.from("activity_logs").select("*").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(10),
         supabase.from("deal_notes").select("*").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(5),
+        supabase.from("outstanding_items").select("description, status, due_date, eta, priority, lender_id, created_at").eq("deal_id", dealId).order("position"),
+        supabase.from("deal_status_notes").select("note, created_at, user_id").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(3),
       ]);
 
       const deal = dealRes.data;
@@ -62,6 +64,8 @@ serve(async (req) => {
       const milestones = milestonesRes.data || [];
       const activities = activityRes.data || [];
       const notes = notesRes.data || [];
+      const outstandingItems = outstandingRes.data || [];
+      const statusNotes = statusNotesRes.data || [];
 
       if (deal) {
         dealContextSources.push("deal_metadata");
@@ -73,6 +77,13 @@ serve(async (req) => {
 - Status: ${deal.status || "N/A"}
 - Contact: ${deal.contact || "N/A"}
 - Contact Email: ${deal.contact_email || "N/A"}
+- Manager: ${deal.manager || "N/A"}
+- Analyst: ${deal.analyst || "N/A"}
+- Engagement Type: ${deal.engagement_type || "N/A"}
+- Exclusivity: ${deal.exclusivity || "N/A"}
+- Closing Date: ${deal.closing_date || deal.dashboard_closing_date || "N/A"}
+- Total Fee: ${deal.total_fee ? "$" + Number(deal.total_fee).toLocaleString() : "N/A"}${deal.success_fee_percent ? ` (success fee ${deal.success_fee_percent}%)` : ""}
+- Narrative: ${(deal.narrative || "N/A").toString().substring(0, 400)}
 `;
       }
 
@@ -90,8 +101,91 @@ serve(async (req) => {
 
       if (lenders.length > 0) {
         dealContextSources.push("deal_lenders");
-        dealContext += `\nLENDERS (${lenders.length}):
-${lenders.map((l: any) => `- ${l.name}: stage=${l.stage}, substage=${l.substage || "none"}${l.quote_amount ? ", quote=$" + (l.quote_amount / 1000000).toFixed(1) + "M" : ""}${l.quote_rate ? ", rate=" + l.quote_rate + "%" : ""}`).join("\n")}
+        // Sort: active first, then most recently updated. Truncate notes so the
+        // model sees the analyst's latest commentary verbatim.
+        const sortedLenders = [...lenders].sort((a: any, b: any) => {
+          const aActive = (a.tracking_status || "").toLowerCase() === "active" ? 0 : 1;
+          const bActive = (b.tracking_status || "").toLowerCase() === "active" ? 0 : 1;
+          if (aActive !== bActive) return aActive - bActive;
+          return new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime();
+        });
+        dealContext += `\nLENDERS ON DEAL (${lenders.length} total):
+${sortedLenders.map((l: any) => {
+          const parts = [
+            `tracking=${l.tracking_status || "unknown"}`,
+            `stage=${l.stage || "—"}`,
+          ];
+          if (l.substage) parts.push(`substage=${l.substage}`);
+          if (l.quote_amount) parts.push(`quote=$${(l.quote_amount / 1_000_000).toFixed(1)}M`);
+          if (l.quote_rate) parts.push(`rate=${l.quote_rate}%`);
+          if (l.quote_term) parts.push(`term=${l.quote_term}`);
+          if (l.score !== null && l.score !== undefined) parts.push(`score=${l.score}`);
+          if (l.pass_reason) parts.push(`pass_reason="${String(l.pass_reason).substring(0, 120)}"`);
+          let line = `- ${l.name} [${parts.join(", ")}]`;
+          if (l.notes) {
+            line += `\n    notes: "${String(l.notes).replace(/\s+/g, " ").substring(0, 280)}"`;
+          }
+          return line;
+        }).join("\n")}
+`;
+      }
+
+      // Outstanding items — these are the concrete checklist items the model
+      // should reference by name when the thread is about diligence/info
+      // requests, instead of saying "due diligence list" generically.
+      if (outstandingItems.length > 0) {
+        dealContextSources.push("outstanding_items");
+        const lenderById = new Map<string, string>(
+          lenders.map((l: any) => [l.id, l.name]),
+        );
+        const parseStatus = (s: string | null): { received: boolean; approved: boolean } => {
+          if (!s) return { received: false, approved: false };
+          try {
+            const p = JSON.parse(s);
+            return { received: !!p.received, approved: !!p.approved };
+          } catch {
+            return {
+              received: s === "received" || s === "approved" || s === "delivered",
+              approved: s === "approved" || s === "delivered",
+            };
+          }
+        };
+        const today = Date.now();
+        const enriched = outstandingItems.map((i: any) => {
+          const st = parseStatus(i.status);
+          const dueIso = i.due_date || i.eta;
+          let overdueDays: number | null = null;
+          if (!st.approved && dueIso) {
+            const t = new Date(dueIso).getTime();
+            if (!Number.isNaN(t) && t < today) {
+              overdueDays = Math.floor((today - t) / 86_400_000);
+            }
+          }
+          return { ...i, parsedStatus: st, overdueDays, dueIso };
+        });
+        const open = enriched.filter((i: any) => !i.parsedStatus.approved);
+        const completed = enriched.filter((i: any) => i.parsedStatus.approved);
+
+        dealContext += `\nOUTSTANDING ITEMS (${open.length} open / ${completed.length} completed):
+${open.length === 0
+  ? "- (none open)"
+  : open
+      .slice(0, 25)
+      .map((i: any) => {
+        const tags: string[] = [];
+        if (i.priority && i.priority !== "normal") tags.push(i.priority);
+        if (i.parsedStatus.received) tags.push("received, pending approval");
+        if (i.overdueDays !== null) tags.push(`${i.overdueDays}d overdue`);
+        else if (i.dueIso) tags.push(`due ${String(i.dueIso).substring(0, 10)}`);
+        if (i.lender_id && lenderById.has(i.lender_id)) {
+          tags.push(`for ${lenderById.get(i.lender_id)}`);
+        }
+        return `- ${i.description}${tags.length ? ` (${tags.join("; ")})` : ""}`;
+      })
+      .join("\n")}
+${completed.length > 0
+  ? `\nRecently completed: ${completed.slice(0, 5).map((i: any) => `"${i.description}"`).join(", ")}`
+  : ""}
 `;
       }
 
@@ -111,8 +205,16 @@ ${activities.map((a: any) => `- [${a.activity_type}] ${a.description} (${a.creat
 
       if (notes.length > 0) {
         dealContextSources.push("deal_notes");
-        dealContext += `\nRECENT NOTES:
-${notes.map((n: any) => `- ${(n.content || n.note || "").substring(0, 200)} (${n.created_at?.substring(0, 10)})`).join("\n")}
+        dealContext += `\nANALYST/MANAGER NOTES (most recent first):
+${notes.map((n: any) => `- "${(n.content || n.note || "").replace(/\s+/g, " ").substring(0, 400)}" (${n.created_at?.substring(0, 10)})`).join("\n")}
+`;
+      }
+
+      // Status notes — short status updates (separate table from deal_notes)
+      if (statusNotes.length > 0) {
+        dealContextSources.push("status_notes");
+        dealContext += `\nRECENT STATUS NOTES:
+${statusNotes.map((n: any) => `- "${(n.note || "").replace(/\s+/g, " ").substring(0, 300)}" (${n.created_at?.substring(0, 10)})`).join("\n")}
 `;
       }
     }
