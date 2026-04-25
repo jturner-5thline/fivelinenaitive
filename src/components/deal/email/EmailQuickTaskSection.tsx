@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Briefcase, User, X, ListTodo, Loader2, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
-import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -105,7 +105,7 @@ export function EmailQuickTaskSection({
   const [focused, setFocused] = useState(false);
   const [creating, setCreating] = useState(false);
   const [previewSeen, setPreviewSeen] = useState(false);
-  const taRef = useRef<HTMLTextAreaElement>(null);
+  const taRef = useRef<HTMLInputElement>(null);
 
   const stableCtx = useMemo(
     () => composerContext,
@@ -221,7 +221,8 @@ export function EmailQuickTaskSection({
     <div className={cn('min-w-0 max-w-full w-full space-y-2', className)}>
       <div className="relative">
         <ListTodo className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground/70 pointer-events-none" />
-        <Textarea
+        <Input
+          type="text"
           ref={taRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -231,14 +232,14 @@ export function EmailQuickTaskSection({
             if (!text && !draft) setFocused(false);
           }}
           onKeyDown={handleKeyDown}
-          rows={1}
-          placeholder="Quick task… e.g., 'Follow up with Ted on the Canela NDA by Tuesday'"
+          placeholder="Quick task…"
           disabled={creating}
           className={cn(
-            'pl-9 pr-9 min-h-[36px] max-h-[120px] resize-none text-[12px] rounded-md',
+            'pl-9 pr-9 h-9 text-[12px] rounded-md truncate',
             'bg-background/40 border-white/[0.06] placeholder:text-muted-foreground/70',
             'focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/30',
           )}
+          style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
         />
         {showExpansion && canCreate && (
           <button
@@ -248,7 +249,7 @@ export function EmailQuickTaskSection({
               if (!previewSeen) setPreviewSeen(true);
               else void doCreate(draft);
             }}
-            className="absolute right-2 top-1.5 h-7 w-7 inline-flex items-center justify-center rounded-md bg-primary/15 hover:bg-primary/25 text-primary transition-colors"
+            className="absolute right-1.5 top-1 h-7 w-7 inline-flex items-center justify-center rounded-md bg-primary/15 hover:bg-primary/25 text-primary transition-colors"
             title={previewSeen ? 'Create task' : 'Preview & create (Enter)'}
           >
             {creating || loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
