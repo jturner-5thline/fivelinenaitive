@@ -345,6 +345,14 @@ serve(async (req: Request): Promise<Response> => {
         const msgData = await msgResponse.json();
 
         if (!msgResponse.ok) {
+          // 404 = message no longer exists in mailbox (deleted, moved, or stale ID).
+          // Return a soft null so the client can skip it rather than treating it as a runtime error.
+          if (msgResponse.status === 404) {
+            return new Response(JSON.stringify({ message: null, not_found: true }), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
           return new Response(JSON.stringify({ error: msgData.message || "Failed to get message" }), {
             status: msgResponse.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
