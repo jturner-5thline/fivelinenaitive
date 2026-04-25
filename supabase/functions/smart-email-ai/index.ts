@@ -364,13 +364,31 @@ This email requires a response. Draft a professional, context-aware reply addres
       }
 
       case "summarize_thread": {
-        systemPrompt = `You are a deal analyst. Summarize email threads concisely focusing on: key decisions, action items, next steps, and deal-relevant information. Return a JSON object with: { "summary": "...", "action_items": ["..."], "key_decisions": ["..."], "next_steps": ["..."] }`;
+        systemPrompt = `You are a deal analyst. Summarize an email thread for a busy debt advisory professional.
+
+Return ONLY a JSON object with this exact shape:
+{
+  "summary": "2-3 sentence plain-language summary of the full thread — what was discussed, what was agreed, and what is still pending. No bullets, no markdown.",
+  "key_decisions": ["short, specific decisions explicitly made or agreed to in the thread"],
+  "open_items": ["specific things mentioned in the thread that have NOT been resolved yet — questions awaiting answers, requested documents not provided, action items without confirmation"]
+}
+
+Rules:
+- "summary" must be 2-3 sentences, written in plain English.
+- "key_decisions" should ONLY include decisions explicitly made (e.g., "Agreed to share the term sheet by Friday"). If none, return [].
+- "open_items" should ONLY include things still unresolved at the end of the thread. If everything is resolved, return [].
+- Be concise; each list item should be one short sentence.
+- Do not invent facts not present in the thread.`;
         userPrompt = `${dealContext}
 
 EMAIL THREAD: "${threadData?.subject}"
-${threadData?.emails?.map((e: any) => `[${e.from_name}] ${e.body_preview}`).join("\n\n")}
+${threadData?.emails?.map((e: any) => `From: ${e.from_name} <${e.from_email}>
+Date: ${e.received_at}
+---
+${e.body_preview}
+---`).join("\n\n")}
 
-Provide a structured summary.`;
+Return the JSON object now.`;
         break;
       }
 
