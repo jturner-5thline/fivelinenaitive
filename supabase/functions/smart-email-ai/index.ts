@@ -46,6 +46,25 @@ serve(async (req) => {
     // ─── Assemble deal context ──────────────────────────────────
     let dealContext = "";
     let dealContextSources: string[] = [];
+    // Structured injection facts — extracted up-front so the prompt can
+    // tell the model exactly which strings MUST appear in the draft body.
+    const injectionFacts: {
+      lender_name: string | null;
+      lender_stage: string | null;
+      open_items: string[]; // actual item descriptions (top 3)
+      deal_stage: string | null;
+      recent_activity: string | null;
+      analyst_note: string | null;
+      key_terms: string[]; // formatted "amount: $5M", "rate: 8%", etc.
+    } = {
+      lender_name: null,
+      lender_stage: null,
+      open_items: [],
+      deal_stage: null,
+      recent_activity: null,
+      analyst_note: null,
+      key_terms: [],
+    };
     if (dealId) {
       const [dealRes, writeupRes, lendersRes, milestonesRes, activityRes, notesRes, outstandingRes, statusNotesRes] = await Promise.all([
         supabase.from("deals").select("*").eq("id", dealId).single(),
