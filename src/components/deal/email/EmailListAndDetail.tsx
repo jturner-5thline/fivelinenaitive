@@ -1748,8 +1748,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             </div>
           )}
 
-          {/* Thread content - scrollable */}
-          <ScrollArea className="flex-1 min-h-0 min-w-0 overflow-hidden">
+          {/* Thread content - scrollable. overscroll-contain prevents wheel
+              chaining into the dialog (which causes parent layout); contain
+              isolates layout/paint to this column so AI Assist updates don't
+              repaint the body. */}
+          <ScrollArea
+            className="flex-1 min-h-0 min-w-0 overflow-hidden"
+            style={{ overscrollBehavior: 'contain', contain: 'layout paint style' }}
+          >
             <div className="min-w-0 max-w-full overflow-hidden overflow-x-hidden py-2 space-y-0 pb-24">
               <div className="px-5 mb-3">
                 <AiSummaryStrip email={thread.latestEmail} />
