@@ -4,7 +4,7 @@ import { SmartEmailPanel } from './SmartEmailPanel';
 import { ThreadLabelsBar } from './ThreadLabelsBar';
 import { AiAssistInlinePanel } from './AiAssistInlinePanel';
 import { AiAssistSidebar } from './AiAssistSidebar';
-import { AiDraftReviewPanel } from './AiDraftReviewPanel';
+import { YourReplyComposer } from './YourReplyComposer';
 import { LinkToDealPopover } from './LinkToDealPopover';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
