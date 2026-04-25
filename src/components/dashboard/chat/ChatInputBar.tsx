@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { NaitiveTaskComposer } from './NaitiveTaskComposer';
 
 interface TeamMember {
   user_id: string;
@@ -45,6 +46,7 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
   const [mentionFilter, setMentionFilter] = useState('');
   const [selectedCmdIdx, setSelectedCmdIdx] = useState(0);
   const [attachments, setAttachments] = useState<AttachedFile[]>([]);
+  const [mode, setMode] = useState<'ask' | 'task' | 'email'>('ask');
 
   useEffect(() => {
     const timer = setTimeout(() => textareaRef.current?.focus(), 100);
@@ -127,6 +129,39 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
 
   return (
     <div className="relative">
+      {/* Mode switcher — Ask | Task | Email */}
+      <div className="mb-1.5 inline-flex items-center gap-0.5 rounded-full border border-[hsl(263,40%,30%,0.3)] bg-[linear-gradient(135deg,hsl(260,20%,10%,0.4)_0%,hsl(263,18%,8%,0.5)_100%)] backdrop-blur-sm p-0.5 text-[11px]">
+        {(['ask', 'task', 'email'] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => {
+              if (m === 'email') {
+                // lightweight: switch to ask + prefill /email
+                setMode('ask');
+                setInputValue('/email ');
+                setTimeout(() => textareaRef.current?.focus(), 30);
+                return;
+              }
+              setMode(m);
+            }}
+            className={cn(
+              'px-2.5 py-1 rounded-full font-medium transition-colors',
+              mode === m
+                ? 'bg-primary/25 text-primary'
+                : 'text-muted-foreground hover:text-foreground/80'
+            )}
+          >
+            {m === 'ask' ? 'Ask' : m === 'task' ? 'Task' : 'Email'}
+          </button>
+        ))}
+      </div>
+
+      {/* Task mode renders the dedicated composer */}
+      {mode === 'task' ? (
+        <NaitiveTaskComposer autoFocus />
+      ) : (
+        <>
       {/* @mention popup */}
       {showMentions && filteredMembers.length > 0 && (
         <div className="absolute bottom-full left-0 right-0 mb-1 border border-[hsl(263,40%,30%,0.4)] bg-[linear-gradient(135deg,hsl(260,20%,10%,0.9)_0%,hsl(263,18%,8%,0.95)_100%)] backdrop-blur-xl rounded-lg shadow-lg p-1 z-10">
@@ -252,6 +287,8 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
           </Tooltip>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }
