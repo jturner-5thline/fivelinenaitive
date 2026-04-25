@@ -25,6 +25,8 @@ import { useEmailToDataRoom, type DataRoomDestinationSuggestion } from '@/hooks/
 import { SuggestedDealUpdatesSection } from './SuggestedDealUpdatesSection';
 import { DataRoomUploadSuggestionCard } from './DataRoomUploadSuggestionCard';
 import { ThreadSummaryCard } from './ThreadSummaryCard';
+import { DealContextCard } from './DealContextCard';
+import type { DealContextSummary } from '@/hooks/useDealContextSummary';
 import { toast } from 'sonner';
 import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
 
@@ -89,6 +91,10 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   const [drDismissed, setDrDismissed] = useState(false);
   const [drDialogOpen, setDrDialogOpen] = useState(false);
   const [drSuggestion, setDrSuggestion] = useState<DataRoomDestinationSuggestion | null>(null);
+  // Snapshot of the slim deal-context summary surfaced in the sidebar header
+  // card. Forwarded to the edge function so the draft tone reflects whether
+  // the deal is At Risk, Off Track, On Hold, etc.
+  const [dealContextSummary, setDealContextSummary] = useState<DealContextSummary | null>(null);
 
   // Lender pass detection — shares state with the inline banner via the same row.
   const passThreadData = {
@@ -281,6 +287,37 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   }), [thread]);
 
   /**
+   * Build a compact, prompt-friendly hint about the deal's current operating
+   * state so the AI tunes urgency. Only sent when we actually have summary
+   * data for the linked deal — otherwise the edge function falls back to its
+   * full deal context build.
+   */
+  const buildDealContextHint = useCallback(() => {
+    if (!dealContextSummary) return undefined;
+    return {
+      status: dealContextSummary.status,
+      stage: dealContextSummary.stage,
+      days_in_stage: dealContextSummary.daysInStage,
+      active_lenders: dealContextSummary.lenderCounts.active,
+      total_lenders: dealContextSummary.lenderCounts.total,
+      open_outstanding_items: dealContextSummary.outstanding.openCount,
+      most_overdue_item: dealContextSummary.outstanding.mostOverdue
+        ? {
+            description: dealContextSummary.outstanding.mostOverdue.description,
+            days_overdue: dealContextSummary.outstanding.mostOverdue.daysOverdue,
+          }
+        : null,
+      last_status_note: dealContextSummary.lastStatusNote
+        ? {
+            note: dealContextSummary.lastStatusNote.note,
+            author: dealContextSummary.lastStatusNote.author,
+            at: dealContextSummary.lastStatusNote.createdAt,
+          }
+        : null,
+    };
+  }, [dealContextSummary]);
+
+  /**
    * Generate a single tone (Concise or Balanced). Fast model by default;
    * heavier model when `regenerate` is true. 8s hard timeout.
    */
@@ -310,6 +347,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             draftType: 'reply',
             singleTone: tone,
             fastModel: !opts?.regenerate,
+            dealContextHint: buildDealContextHint(),
           },
         });
         const timeoutPromise = new Promise<never>((_, reject) => {
@@ -367,7 +405,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
     })();
     inflight.current[tone] = work;
     return work;
-  }, [dealId, buildThreadData, writeCache]);
+  }, [dealId, buildThreadData, buildDealContextHint, writeCache]);
 
   /** Regenerate the currently selected tone with the heavier model. */
   const regenerateSelected = useCallback(() => {
@@ -441,6 +479,14 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       {/* Content */}
       <ScrollArea className="flex-1 min-h-0 min-w-0 overflow-hidden">
         <div className="min-w-0 max-w-full p-4 space-y-4">
+          {/* Deal Context — auto-expanded when a deal is linked. Drives the
+              draft tone via dealContextHint forwarded to the edge function. */}
+          <DealContextCard
+            dealId={dealId}
+            dealName={dealName}
+            onSummaryChange={setDealContextSummary}
+          />
+
           {/* Thread Summary — auto-generated for multi-message threads, collapsed by default */}
           <ThreadSummaryCard thread={thread} dealId={dealId} />
 
