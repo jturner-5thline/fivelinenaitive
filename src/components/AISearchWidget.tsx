@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAISearch, AISearchResult } from '@/hooks/useAISearch';
 import { useFeatureAccess } from '@/hooks/useFeatureFlags';
+import { useAnyDialogOpen } from '@/hooks/useAnyDialogOpen';
 import { cn } from '@/lib/utils';
 import { MorphingBlob } from './MorphingBlob';
 
@@ -25,6 +26,7 @@ export function AISearchWidget() {
   const [inputValue, setInputValue] = useState('');
   const { search, result, isSearching, clear, getNavigationPath } = useAISearch();
   const { hasAccess: canAccessChatWidget, isLoading: isLoadingAccess } = useFeatureAccess('chat_widget');
+  const anyDialogOpen = useAnyDialogOpen();
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   // Focus input when opened
@@ -77,6 +79,13 @@ export function AISearchWidget() {
     return null;
   }
 
+  // Hide whenever a dashboard widget pop-up / dialog is open so the floating
+  // launcher doesn't overlap. If the user already opened the search panel,
+  // keep it visible.
+  if (anyDialogOpen && !isOpen) {
+    return null;
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
@@ -126,7 +135,7 @@ export function AISearchWidget() {
   };
 
   return createPortal(
-    <div className="fixed bottom-4 right-4 z-[9999]">
+    <div className="fixed bottom-4 right-4 z-[9999] animate-in fade-in duration-150">
       {/* Morphing Blob Button */}
       <MorphingBlob 
         isActive={isOpen} 

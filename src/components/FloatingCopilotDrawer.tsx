@@ -12,6 +12,7 @@ import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
 import { PinnedInsightsPanel } from '@/components/dashboard/chat/PinnedInsightsPanel';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useCopilotStore } from '@/stores/copilotStore';
+import { useAnyDialogOpen } from '@/hooks/useAnyDialogOpen';
 
 export function FloatingCopilotDrawer() {
   const { user } = useAuth();
@@ -20,6 +21,7 @@ export function FloatingCopilotDrawer() {
   const { hasPageAccess, isLoading } = usePageAccessFlags();
   const copilotEnabled = hasPageAccess('copilot_widget');
   const copilotPanelOpen = useCopilotStore((s) => s.isOpen);
+  const anyDialogOpen = useAnyDialogOpen();
 
   // Hide on landing, auth, login, and public pages
   const hiddenPaths = ['/', '/home', '/homepage', '/login', '/auth', '/onboarding', '/create-account', '/waitlist', '/join'];
@@ -29,10 +31,14 @@ export function FloatingCopilotDrawer() {
   // Hide entirely when the AICopilotPanel is open to avoid duplicate AI surfaces
   if (copilotPanelOpen) return null;
 
+  // Hide trigger when any dashboard widget pop-up / dialog is open so it
+  // doesn't overlap. The Sheet itself stays mounted so it can re-open.
+  const hideTrigger = anyDialogOpen && !open;
+
   const content = (
     <>
       {/* Floating trigger button */}
-      {!open && (
+      {!open && !hideTrigger && (
          <button
           onClick={() => setOpen(true)}
           className={cn(
@@ -41,6 +47,7 @@ export function FloatingCopilotDrawer() {
             'bg-primary text-primary-foreground shadow-lg',
             'hover:scale-105 active:scale-95 transition-all duration-200',
             'flex items-center justify-center',
+            'animate-in fade-in duration-150',
             'shadow-[0_4px_20px_hsl(var(--primary)/0.4)]'
           )}
           title="Open naitive AI"
