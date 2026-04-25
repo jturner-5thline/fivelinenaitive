@@ -42,12 +42,61 @@ function parseDateQuery(raw: string): Date | null {
   return null;
 }
 
+/**
+ * Escape a string for use inside a RegExp.
+ */
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Render `text` with all case-insensitive occurrences of `query` wrapped in
+ * a highlighted <mark>. Returns the original string when query is empty.
+ */
+function highlight(text: string | undefined | null, query: string) {
+  if (!text) return text ?? '';
+  const q = query.trim();
+  if (!q) return text;
+  const re = new RegExp(`(${escapeRegExp(q)})`, 'ig');
+  const parts = text.split(re);
+  return parts.map((part, i) =>
+    re.test(part) && part.toLowerCase() === q.toLowerCase() ? (
+      <mark
+        key={i}
+        className="bg-primary/20 text-foreground rounded-[2px] px-0.5 py-0"
+      >
+        {part}
+      </mark>
+    ) : (
+      <span key={i}>{part}</span>
+    ),
+  );
+}
+
+/**
+ * Build a short snippet around the first match in `text`. Pads with ellipses
+ * on either side. Returns null if no match.
+ */
+function buildSnippet(text: string, query: string, radius = 40): string | null {
+  if (!text || !query) return null;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx < 0) return null;
+  const start = Math.max(0, idx - radius);
+  const end = Math.min(text.length, idx + query.length + radius);
+  let snippet = text.slice(start, end).replace(/\s+/g, ' ').trim();
+  if (start > 0) snippet = `…${snippet}`;
+  if (end < text.length) snippet = `${snippet}…`;
+  return snippet;
+}
+
 export function ChatHistorySidebar({ conversations, activeId, onSelect, onNew, onDelete }: Props) {
   const [query, setQuery] = useState('');
   // Conversation IDs whose messages contain the current keyword query.
   // `null` means "no message search active" (empty query or pure date query).
   const [messageMatchIds, setMessageMatchIds] = useState<Set<string> | null>(null);
   const [searchingMessages, setSearchingMessages] = useState(false);
+  // First matching message snippet per conversation, keyed by conversation_id.
+  const [messageSnippets, setMessageSnippets] = useState<Record<string, string>>({});
 
   // Debounced server-side search across chat_messages.content.
   // Skip very short queries and pure date queries to avoid noisy results.
@@ -56,6 +105,7 @@ export function ChatHistorySidebar({ conversations, activeId, onSelect, onNew, o
     if (!raw || raw.length < 2 || parseDateQuery(raw)) {
       setMessageMatchIds(null);
       setSearchingMessages(false);
+      setMessageSnippets({});
       return;
     }
 
@@ -66,14 +116,27 @@ export function ChatHistorySidebar({ conversations, activeId, onSelect, onNew, o
       const escaped = raw.replace(/[\\%_]/g, (c) => `\\${c}`);
       const { data, error } = await supabase
         .from('chat_messages')
-        .select('conversation_id')
+        .select('conversation_id, content, created_at')
         .ilike('content', `%${escaped}%`)
+        .order('created_at', { ascending: false })
         .limit(500);
       if (cancelled) return;
       if (error) {
         setMessageMatchIds(new Set());
+        setMessageSnippets({});
       } else {
-        setMessageMatchIds(new Set((data ?? []).map((r: any) => r.conversation_id)));
+        const ids = new Set<string>();
+        const snippets: Record<string, string> = {};
+        for (const row of (data ?? []) as Array<{ conversation_id: string; content: string }>) {
+          ids.add(row.conversation_id);
+          // Keep the first (most recent) matching snippet per conversation.
+          if (!snippets[row.conversation_id]) {
+            const s = buildSnippet(row.content || '', raw);
+            if (s) snippets[row.conversation_id] = s;
+          }
+        }
+        setMessageMatchIds(ids);
+        setMessageSnippets(snippets);
       }
       setSearchingMessages(false);
     }, 250);
@@ -144,20 +207,29 @@ export function ChatHistorySidebar({ conversations, activeId, onSelect, onNew, o
             <div
               key={c.id}
               className={cn(
-                'flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-pointer text-xs group hover:bg-accent',
+                'flex items-start gap-1.5 px-2 py-1.5 rounded-md cursor-pointer text-xs group hover:bg-accent',
                 activeId === c.id && 'bg-accent'
               )}
               onClick={() => onSelect(c.id)}
             >
-              <MessageSquare className="h-3 w-3 shrink-0 text-muted-foreground" />
+              <MessageSquare className="h-3 w-3 shrink-0 text-muted-foreground mt-0.5" />
               <div className="flex-1 min-w-0">
-                <p className="truncate font-medium">{c.title}</p>
-                <p className="text-[10px] text-muted-foreground">{format(new Date(c.updated_at), 'MMM d')}</p>
+                <p className="truncate font-medium">
+                  {highlight(c.title || 'Untitled', query)}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {highlight(format(new Date(c.updated_at), 'MMM d'), query)}
+                </p>
+                {messageSnippets[c.id] && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2 leading-snug">
+                    {highlight(messageSnippets[c.id], query)}
+                  </p>
+                )}
               </div>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-5 w-5 opacity-0 group-hover:opacity-100 shrink-0"
+                className="h-5 w-5 opacity-0 group-hover:opacity-100 shrink-0 mt-0.5"
                 onClick={(e) => { e.stopPropagation(); onDelete(c.id); }}
               >
                 <Trash2 className="h-3 w-3" />
