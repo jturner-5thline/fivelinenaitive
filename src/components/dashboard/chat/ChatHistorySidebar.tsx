@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MessageSquare, Plus, Trash2, Search, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -98,6 +98,50 @@ export function ChatHistorySidebar({ conversations, activeId, onSelect, onNew, o
   // First matching message snippet per conversation, keyed by conversation_id.
   const [messageSnippets, setMessageSnippets] = useState<Record<string, string>>({});
 
+  /**
+   * LRU cache of message-content searches keyed by the normalized query.
+   * Lets us reuse results instantly when the user re-types, backspaces,
+   * clears + re-enters, or otherwise lands on a query we've already run
+   * during this session — no round-trip needed.
+   *
+   * Capped at MAX_ENTRIES; eldest entries are evicted on overflow.
+   * Entries also have a soft TTL so stale data doesn't linger forever.
+   */
+  type CachedSearch = {
+    ids: Set<string>;
+    snippets: Record<string, string>;
+    cachedAt: number;
+  };
+  const MAX_CACHE_ENTRIES = 50;
+  const CACHE_TTL_MS = 5 * 60 * 1000; // 5 min
+  const cacheRef = useRef<Map<string, CachedSearch>>(new Map());
+
+  const normalizeQuery = (raw: string) => raw.trim().toLowerCase();
+
+  const readCache = (key: string): CachedSearch | null => {
+    const cache = cacheRef.current;
+    const hit = cache.get(key);
+    if (!hit) return null;
+    if (Date.now() - hit.cachedAt > CACHE_TTL_MS) {
+      cache.delete(key);
+      return null;
+    }
+    // Refresh LRU position
+    cache.delete(key);
+    cache.set(key, hit);
+    return hit;
+  };
+
+  const writeCache = (key: string, value: Omit<CachedSearch, 'cachedAt'>) => {
+    const cache = cacheRef.current;
+    cache.set(key, { ...value, cachedAt: Date.now() });
+    while (cache.size > MAX_CACHE_ENTRIES) {
+      const oldest = cache.keys().next().value;
+      if (oldest === undefined) break;
+      cache.delete(oldest);
+    }
+  };
+
   // Debounced server-side search across chat_messages.content.
   // Skip very short queries and pure date queries to avoid noisy results.
   useEffect(() => {
@@ -106,6 +150,16 @@ export function ChatHistorySidebar({ conversations, activeId, onSelect, onNew, o
       setMessageMatchIds(null);
       setSearchingMessages(false);
       setMessageSnippets({});
+      return;
+    }
+
+    // Cache hit — apply synchronously, no debounce, no network.
+    const cacheKey = normalizeQuery(raw);
+    const cached = readCache(cacheKey);
+    if (cached) {
+      setMessageMatchIds(cached.ids);
+      setMessageSnippets(cached.snippets);
+      setSearchingMessages(false);
       return;
     }
 
@@ -122,8 +176,12 @@ export function ChatHistorySidebar({ conversations, activeId, onSelect, onNew, o
         .limit(500);
       if (cancelled) return;
       if (error) {
-        setMessageMatchIds(new Set());
+        const empty = new Set<string>();
+        setMessageMatchIds(empty);
         setMessageSnippets({});
+        // Cache the empty result too so we don't re-hit the network for
+        // the same failing query within the TTL.
+        writeCache(cacheKey, { ids: empty, snippets: {} });
       } else {
         const ids = new Set<string>();
         const snippets: Record<string, string> = {};
@@ -137,6 +195,7 @@ export function ChatHistorySidebar({ conversations, activeId, onSelect, onNew, o
         }
         setMessageMatchIds(ids);
         setMessageSnippets(snippets);
+        writeCache(cacheKey, { ids, snippets });
       }
       setSearchingMessages(false);
     }, 250);
@@ -146,6 +205,9 @@ export function ChatHistorySidebar({ conversations, activeId, onSelect, onNew, o
       window.clearTimeout(timer);
       setSearchingMessages(false);
     };
+    // We deliberately depend only on `query` — cache helpers are refs and
+    // don't trigger re-renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
   const filtered = useMemo(() => {
