@@ -181,6 +181,13 @@ Rules:
 - "end of day" / "EOD" → today, due_time "17:00".
 - "tomorrow morning" → tomorrow, due_time "09:00".
 - "weekly", "every Friday", "Fridays at 9" → is_recurring true with RRULE.
+- Distinguish lenders (capital sources / banks / funds — match against LENDERS list) from contacts (people — first/last names). When a name appears in the LENDERS list, set lender_hint, NOT contact_hint. Contact names are typically a person's first or full name not present in LENDERS.
+- The DEAL is usually the borrower / portfolio company (matches DEALS). Lenders fund deals, contacts work at deals.
+
+Examples:
+- "follow up with Prospeq on Upflex DD" → deal_hint="Upflex", lender_hint="Prospeq" (Prospeq is a fund, Upflex is the deal).
+- "call Ted Cavan about Canela NDA tomorrow" → contact_hint="Ted Cavan", deal_hint="Canela".
+- "send Steven the dd checklist" → contact_hint="Steven".
 
 Known candidate lists (for context only, you may still leave hints null):
 DEALS: ${JSON.stringify(dealNames)}
