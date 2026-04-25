@@ -46,6 +46,25 @@ serve(async (req) => {
     // ─── Assemble deal context ──────────────────────────────────
     let dealContext = "";
     let dealContextSources: string[] = [];
+    // Structured injection facts — extracted up-front so the prompt can
+    // tell the model exactly which strings MUST appear in the draft body.
+    const injectionFacts: {
+      lender_name: string | null;
+      lender_stage: string | null;
+      open_items: string[]; // actual item descriptions (top 3)
+      deal_stage: string | null;
+      recent_activity: string | null;
+      analyst_note: string | null;
+      key_terms: string[]; // formatted "amount: $5M", "rate: 8%", etc.
+    } = {
+      lender_name: null,
+      lender_stage: null,
+      open_items: [],
+      deal_stage: null,
+      recent_activity: null,
+      analyst_note: null,
+      key_terms: [],
+    };
     if (dealId) {
       const [dealRes, writeupRes, lendersRes, milestonesRes, activityRes, notesRes, outstandingRes, statusNotesRes] = await Promise.all([
         supabase.from("deals").select("*").eq("id", dealId).single(),
@@ -69,6 +88,12 @@ serve(async (req) => {
 
       if (deal) {
         dealContextSources.push("deal_metadata");
+        injectionFacts.deal_stage = deal.stage || null;
+        // Build a short list of relevant key terms (only those with values).
+        if (deal.value) injectionFacts.key_terms.push(`amount $${(Number(deal.value) / 1_000_000).toFixed(1)}M`);
+        if (deal.deal_type) injectionFacts.key_terms.push(`structure ${deal.deal_type}`);
+        const closing = deal.closing_date || deal.dashboard_closing_date;
+        if (closing) injectionFacts.key_terms.push(`close target ${String(closing).substring(0, 10)}`);
         dealContext += `\nDEAL CONTEXT:
 - Company: ${deal.company || "N/A"}
 - Stage: ${deal.stage || "N/A"}
@@ -109,6 +134,13 @@ serve(async (req) => {
           if (aActive !== bActive) return aActive - bActive;
           return new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime();
         });
+        // Pick the primary in-context lender (first active, fall back to most recent).
+        const primaryLender = sortedLenders[0];
+        if (primaryLender) {
+          injectionFacts.lender_name = primaryLender.name || null;
+          const stagePart = [primaryLender.stage, primaryLender.substage].filter(Boolean).join(" / ");
+          injectionFacts.lender_stage = stagePart || null;
+        }
         dealContext += `\nLENDERS ON DEAL (${lenders.length} total):
 ${sortedLenders.map((l: any) => {
           const parts = [
@@ -165,6 +197,11 @@ ${sortedLenders.map((l: any) => {
         });
         const open = enriched.filter((i: any) => !i.parsedStatus.approved);
         const completed = enriched.filter((i: any) => i.parsedStatus.approved);
+        // Top-3 actual descriptions to inject into the draft body verbatim.
+        injectionFacts.open_items = open
+          .slice(0, 3)
+          .map((i: any) => String(i.description || "").trim())
+          .filter(Boolean);
 
         dealContext += `\nOUTSTANDING ITEMS (${open.length} open / ${completed.length} completed):
 ${open.length === 0
@@ -198,6 +235,11 @@ ${milestones.map((m: any) => `- ${m.title}: ${m.completed ? "✅ Done" : "⬜ Pe
 
       if (activities.length > 0) {
         dealContextSources.push("recent_activity");
+        const a0 = activities[0];
+        if (a0?.description) {
+          const dateStr = a0.created_at ? ` on ${String(a0.created_at).substring(0, 10)}` : "";
+          injectionFacts.recent_activity = `${String(a0.description).substring(0, 180)}${dateStr}`;
+        }
         dealContext += `\nRECENT ACTIVITY (last 10):
 ${activities.map((a: any) => `- [${a.activity_type}] ${a.description} (${a.created_at?.substring(0, 10)})`).join("\n")}
 `;
@@ -205,6 +247,9 @@ ${activities.map((a: any) => `- [${a.activity_type}] ${a.description} (${a.creat
 
       if (notes.length > 0) {
         dealContextSources.push("deal_notes");
+        const n0 = notes[0];
+        const noteText = (n0?.content || n0?.note || "").toString().replace(/\s+/g, " ").trim();
+        if (noteText) injectionFacts.analyst_note = noteText.substring(0, 200);
         dealContext += `\nANALYST/MANAGER NOTES (most recent first):
 ${notes.map((n: any) => `- "${(n.content || n.note || "").replace(/\s+/g, " ").substring(0, 400)}" (${n.created_at?.substring(0, 10)})`).join("\n")}
 `;
@@ -380,6 +425,50 @@ ${h.most_overdue_item && (h.most_overdue_item.days_overdue ?? 0) >= 3
         const fullBody = threadEmails.map((e: any) => e.body_preview || "").join(" ").toLowerCase();
         const hasSchedulingIntent = /\b(schedule|availability|calendar|meeting|call|slot|free|available|reschedule|time works|when can)\b/i.test(fullBody);
 
+        // ─── Build the hard injection block ───────────────────────
+        // This is the part that prevents generic "I'll send the diligence list"
+        // phrasing. The model is told EXACTLY which strings must appear in the
+        // body, with per-style minimums. Missing facts are explicitly listed
+        // as "OMIT" so the model never invents them.
+        const fmtList = (arr: string[]) =>
+          arr.length === 0 ? "(none — OMIT this clause)" : arr.map((s) => `"${s}"`).join(", ");
+        const lenderClause = injectionFacts.lender_name
+          ? `MUST name the active lender by exact name: "${injectionFacts.lender_name}"${injectionFacts.lender_stage ? ` (currently in stage: ${injectionFacts.lender_stage})` : ""}.`
+          : `(no active lender on this deal — OMIT any lender name; do NOT invent one)`;
+        const stageClause = injectionFacts.deal_stage
+          ? `MUST reference the deal's current stage in natural language: "${injectionFacts.deal_stage}" (e.g., "now that we're in ${injectionFacts.deal_stage}", "post-${injectionFacts.deal_stage}").`
+          : `(stage unknown — OMIT stage references)`;
+        const itemsClause = injectionFacts.open_items.length > 0
+          ? `MUST list 1–3 of these ACTUAL outstanding-item names verbatim (or lightly paraphrased, but names preserved): ${fmtList(injectionFacts.open_items)}. NEVER replace these with generic phrases like "the diligence checklist" or "the additional due diligence list".`
+          : `(no open outstanding items — OMIT any references to specific diligence items; if the recipient asked about diligence, say a tracker will follow but do NOT fabricate item names)`;
+        const recentClause = injectionFacts.recent_activity
+          ? `MUST weave in this concrete recent-activity detail (paraphrase naturally, do not quote): "${injectionFacts.recent_activity}".`
+          : injectionFacts.analyst_note
+          ? `MUST weave in this analyst-note detail (paraphrase naturally, do not quote): "${injectionFacts.analyst_note}".`
+          : `(no recent activity or analyst note — OMIT)`;
+        const termsClause = injectionFacts.key_terms.length > 0
+          ? `When the thread touches diligence, closing, structure, or timing, reference 1 of these key terms: ${fmtList(injectionFacts.key_terms)}.`
+          : `(no key terms available — OMIT)`;
+
+        const injectionBlock = `\nHARD INJECTION REQUIREMENTS (apply to EVERY draft option you return — Concise AND Balanced):
+1. LENDER: ${lenderClause}
+2. STAGE: ${stageClause}
+3. OUTSTANDING ITEMS: ${itemsClause}
+4. RECENT ACTIVITY / NOTES: ${recentClause}
+5. KEY TERMS: ${termsClause}
+
+PER-STYLE MINIMUMS (these are non-negotiable and MUST be re-applied on every regenerate):
+- "Concise" (2–3 short sentences, ≤80 words): MUST include at minimum requirements #1 (lender, if available), #2 (stage, if available), and #3 (at least 1 specific outstanding item, if available). If a field is unavailable, drop that requirement gracefully — never substitute a generic phrase.
+- "Balanced" (4–6 sentences, ≤150 words): MUST include all of #1–#5 that are available. List 1–3 specific outstanding items inline by name. Reference the lender by name. Acknowledge the current stage. Weave in the recent-activity detail. Reference 1 key term where relevant.
+
+ANTI-GENERIC GUARDRAIL:
+- The phrases "the additional due diligence list", "the diligence checklist", "the outstanding items", "the lender list", "next steps" used as standalone references are BANNED whenever the corresponding INJECTION REQUIREMENT has data. Always name the actual items / lenders / stage.
+- If a required field is genuinely empty (marked OMIT above), gracefully drop the clause — do NOT hallucinate.
+
+TRACKING:
+- In your JSON response, populate "deal_context_used" with the keys you actually injected, drawn from this set: ["lender_name", "lender_stage", "outstanding_items", "deal_stage", "recent_activity", "analyst_note", "key_terms"]. Only include a key if you actually used it in the body text.
+`;
+
         const optionsBlock = wantSingle
           ? `  "option_1_subject": "string — email subject line",
   "option_1_body": "string — full email body text",
@@ -460,11 +549,15 @@ REQUIRED JSON SCHEMA:
   "missing_context_items": ["string array of what's missing, if any"],
   "used_deal_context": boolean,
   "used_calendar_context": boolean,
+  "deal_context_used": ["string array of injected deal-fact keys actually used in the body, e.g. lender_name, outstanding_items, deal_stage, recent_activity, key_terms"],
 ${optionsBlock}
   "recommended_option_reason": "string",
   "suggested_follow_up_actions": ["string array"],
   "cited_context_sources": ["string array of data sources used"]
 }`;
+        // Append the hard injection block AFTER the schema so the model sees
+        // the requirements as the final, most-recent instruction.
+        systemPrompt += injectionBlock;
 
         const threadForPrompt = threadEmails.map((e: any) =>
           `From: ${e.from_name} <${e.from_email}>
@@ -1088,7 +1181,20 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
 
     // For generate_draft_options, inject context sources
     if (action === "generate_draft_options" && typeof parsed === "object" && !parsed.raw) {
-      parsed.cited_context_sources = dealContextSources.length > 0 ? dealContextSources : ["email_thread_only"];
+      // Surface the actually-injected fact keys (model-reported) so the UI's
+      // "Context used: N sources" pill counts real enrichment — not just which
+      // tables we fetched. Fall back to the structural sources list.
+      const modelInjected: string[] = Array.isArray(parsed.deal_context_used)
+        ? parsed.deal_context_used.filter((s: any) => typeof s === "string" && s.length > 0)
+        : [];
+      // Union: structural sources we loaded + injected fact keys the model used.
+      const merged = Array.from(new Set([
+        ...(dealContextSources.length > 0 ? dealContextSources : []),
+        ...modelInjected,
+      ]));
+      parsed.cited_context_sources = merged.length > 0 ? merged : ["email_thread_only"];
+      // Also expose the explicit injected-fields array for any UI that wants it.
+      parsed.deal_context_used = modelInjected;
     }
 
     // For analyze_thread_workflow, post-process to ensure deal_id resolution.
