@@ -24,6 +24,7 @@ import { useFullEmailMessage } from './useFullEmailMessage';
 import { useEmailToDataRoom, type DataRoomDestinationSuggestion } from '@/hooks/useEmailToDataRoom';
 import { SuggestedDealUpdatesSection } from './SuggestedDealUpdatesSection';
 import { DataRoomUploadSuggestionCard } from './DataRoomUploadSuggestionCard';
+import { ThreadSummaryCard } from './ThreadSummaryCard';
 import { toast } from 'sonner';
 import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
 
@@ -440,6 +441,9 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       {/* Content */}
       <ScrollArea className="flex-1 min-h-0 min-w-0 overflow-hidden">
         <div className="min-w-0 max-w-full p-4 space-y-4">
+          {/* Thread Summary — auto-generated for multi-message threads, collapsed by default */}
+          <ThreadSummaryCard thread={thread} dealId={dealId} />
+
           {/* Error (non-blocking — shell still renders below) */}
           {error && (
             <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-center space-y-2">
