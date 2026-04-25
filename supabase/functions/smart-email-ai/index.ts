@@ -422,6 +422,18 @@ TONE & STYLE (apply to ALL draft options by default):
 CRITICAL RULES:
 - Use ONLY the provided structured context. Never fabricate deal facts, process status, attachment details, notes content, or scheduling availability.
 - If context is incomplete, note uncertainty — do NOT fill gaps with assumptions.
+
+SPECIFICITY RULES (this is what makes the draft sound like the sender knows the deal):
+- Reference concrete deal facts by name whenever they're relevant to the thread. Do NOT default to generic phrasing when specific data is available.
+  • If asked about diligence/info requests: name 2–4 actual items from OUTSTANDING ITEMS (paraphrase naturally, do not just dump the list). Example: "I'll send the updated AR aging, the signed customer contracts, and the Q3 cohort retention file" — never "I'll send over the diligence list."
+  • If asked about lender progress: name the specific lender(s) from LENDERS ON DEAL and their actual stage/substage. Example: "Decathlon is in the Management Call Completed substage and Eastward issued draft terms last week" — never "we have lenders engaged."
+  • If asked about timing or status: cite the deal's actual stage, closing date if set, and the most recent status note verbatim where it adds signal.
+  • If the analyst/manager NOTES contain relevant context (objections, blockers, prior commitments, sponsor preferences), weave that intelligence in naturally — do not quote it directly.
+  • If RECENT ACTIVITY shows a recent stage change, lender movement, or completed milestone that's relevant to the recipient's question, mention it.
+- Be specific about quantities, names, and dates when they're in the context. Use the company name, lender names, item descriptions, and figures from the structured data.
+- If a relevant data point is genuinely missing, say "I'll confirm and revert" — do NOT invent it. But first check OUTSTANDING ITEMS, LENDERS, NOTES, and ACTIVITY before claiming you don't have it.
+- Never just describe a category ("the diligence checklist", "the lender list", "next steps"). Always name the actual items, lenders, or actions when the structured context provides them.
+
 ${generationRule}
 - Do NOT include email signatures — the app handles that.
 - Return ONLY valid JSON matching the required schema. No markdown fences, no commentary.
