@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useCopilotStore } from '@/stores/copilotStore';
 import naitiveAiIcon from '@/assets/naitive-ai-icon.png';
@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 export function CopilotToggleButton() {
   const togglePanel = useCopilotStore((s) => s.togglePanel);
   const isOpen = useCopilotStore((s) => s.isOpen);
+  const [hasOpenModal, setHasOpenModal] = useState(false);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -19,7 +20,28 @@ export function CopilotToggleButton() {
     return () => window.removeEventListener('keydown', handler);
   }, [togglePanel]);
 
+  // Hide orb whenever any modal/dialog/sheet pop-up is open so it doesn't
+  // overlap dashboard widget pop-ups (Email, Calendar, Deal Rundown, etc.).
+  useEffect(() => {
+    const check = () => {
+      const hasDialog = document.querySelector(
+        '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]'
+      );
+      setHasOpenModal(!!hasDialog);
+    };
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['data-state', 'role'],
+    });
+    return () => observer.disconnect();
+  }, []);
+
   if (isOpen) return null;
+  if (hasOpenModal) return null;
 
   return createPortal(
     <button
@@ -31,6 +53,7 @@ export function CopilotToggleButton() {
         "shadow-lg cursor-pointer",
         "hover:scale-105 active:scale-95 transition-all duration-200",
         "border-0 overflow-visible relative group",
+        "animate-in fade-in duration-150",
         "shadow-[0_4px_20px_hsl(270_65%_55%/0.4)]"
       )}
       style={{
