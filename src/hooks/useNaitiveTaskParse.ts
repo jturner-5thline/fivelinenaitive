@@ -90,7 +90,8 @@ export function useNaitiveTaskParse(text: string, context: ParseContext = {}, de
 export async function createTaskFromDraft(
   draft: TaskDraft,
   userId: string,
-  companyId: string | null
+  companyId: string | null,
+  options?: { syncSource?: string; sourceThreadId?: string | null }
 ): Promise<{ id: string; assigned_to: string } | { id: string; assigned_to: string; _error?: never } | null> {
   // Map priority: tasks table uses 'low'|'medium'|'high'|'urgent'; we normalize 'normal' → 'medium'
   const priorityMap: Record<string, string> = { low: 'low', normal: 'medium', high: 'high', urgent: 'urgent' };
@@ -109,7 +110,7 @@ export async function createTaskFromDraft(
     lender_id: draft.lender_id,
     contact_id: draft.contact_id,
     task_type: draft.type === 'meeting' ? 'meeting' : draft.type === 'call' ? 'call' : 'task',
-    sync_source: 'naitive_nl_input',
+    sync_source: options?.syncSource || 'naitive_nl_input',
     is_recurring: draft.is_recurring,
     recurrence_rule: draft.recurrence_rule,
   };
@@ -125,8 +126,14 @@ export async function createTaskFromDraft(
   insertRow.status = 'not_started';
   insertRow.priority = priority;
   insertRow.task_type = draft.type === 'meeting' ? 'meeting' : draft.type === 'call' ? 'call' : 'task';
-  insertRow.sync_source = 'naitive_nl_input';
+  insertRow.sync_source = options?.syncSource || 'naitive_nl_input';
   insertRow.is_recurring = draft.is_recurring;
+  // No source_thread_id column on tasks — append the reference to description
+  const threadId = options?.sourceThreadId ?? draft.source_thread_id;
+  if (threadId) {
+    const ref = `\n\n[email thread: ${threadId}]`;
+    insertRow.description = (insertRow.description ? String(insertRow.description) : '') + ref;
+  }
 
   const { data, error } = await supabase
     .from('tasks')
