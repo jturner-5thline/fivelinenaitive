@@ -1294,8 +1294,19 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
               </div>
             )}
 
-            {/* Email list */}
-            <div className="flex-1 min-h-0 min-w-0 overflow-auto">
+            {/* Email list — single scroll container for the inbox column.
+                EmailList no longer wraps its rows in a Radix ScrollArea, so
+                this is the sole scroller; that lets the IO pagination
+                sentinel observe the right element and lets the browser
+                composite this column independently. */}
+            <div
+              ref={inboxScrollRef}
+              className="flex-1 min-h-0 min-w-0 overflow-auto"
+              style={{
+                overscrollBehavior: 'contain',
+                contain: 'layout paint style',
+              }}
+            >
               <EmailList
                 emails={filteredEmails}
                 selectedThread={currentThread}
@@ -1317,6 +1328,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                   isLoadingMore={!!isLoadingMore}
                   isAutoPaginating={!!isAutoPaginating}
                   totalLoaded={filteredEmails.length}
+                  scrollRoot={inboxScrollRef.current}
                 />
               )}
             </div>
