@@ -493,6 +493,16 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
           {/* Thread Summary — auto-generated for multi-message threads, collapsed by default */}
           <ThreadSummaryCard thread={thread} dealId={dealId} />
 
+          {/* Quick Task — inline NL task input. Renders as a plain text box at
+              rest; expands inline (chips + preview) on focus or first keystroke. */}
+          <EmailQuickTaskSection
+            thread={thread}
+            dealId={dealId}
+            dealName={dealName}
+            fallbackDealId={workflowAnalysis?.likely_deal?.id || null}
+            fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
+          />
+
           {/* Error (non-blocking — shell still renders below) */}
           {error && (
             <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-center space-y-2">
@@ -662,14 +672,6 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             </>
           )}
 
-          {/* Quick Task — natural-language task creation tied to this thread. */}
-          <EmailQuickTaskSection
-            thread={thread}
-            dealId={dealId}
-            dealName={dealName}
-            fallbackDealId={workflowAnalysis?.likely_deal?.id || null}
-            fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
-          />
         </div>
       </ScrollArea>
 
