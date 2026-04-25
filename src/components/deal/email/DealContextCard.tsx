@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Clock, AlertTriangle, CheckCircle2, PauseCircle, Briefcase, Users, ListChecks, MessageSquare } from 'lucide-react';
+import { ChevronDown, ChevronRight, Clock, AlertTriangle, CheckCircle2, PauseCircle, Briefcase, Users, ListChecks, MessageSquare, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useDealContextSummary, type DealContextSummary } from '@/hooks/useDealContextSummary';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { STATUS_CONFIG } from '@/types/deal';
@@ -20,6 +21,20 @@ const STATUS_META: Record<string, { label: string; icon: React.ComponentType<{ c
   'off-track': { label: 'Off Track', icon: AlertTriangle, tone: 'text-red-500' },
   'on-hold': { label: 'On Hold', icon: PauseCircle, tone: 'text-blue-400' },
   'archived': { label: 'Archived', icon: PauseCircle, tone: 'text-orange-400' },
+};
+
+/** Plain-language explanations of how each Deal Context field is computed. */
+const FIELD_TOOLTIPS: Record<string, string> = {
+  Stage:
+    'Current pipeline stage for this deal. Days are counted from the most recent stage-change event in the deal activity log (or deal creation if none). "Today" means the stage changed within the last 24 hours.',
+  Status:
+    'Manual status set by the deal manager: On Track, At Risk, Off Track, On Hold, or Archived. Reflects the latest entry in the deal status notes and influences AI draft tone.',
+  Lenders:
+    'Active = lenders still being worked (any tracking substage other than Passed, Declined, Dropped, or Closed). Total = every lender ever added to this deal, regardless of outcome.',
+  Outstanding:
+    'Open outstanding items = items on the deal\'s checklist that are not marked Completed or Waived. The "Xd overdue" callout is the open item with the oldest due date relative to today.',
+  'Last note':
+    'The most recent entry in the deal\'s status notes feed (from the deal manager or analyst). Used for context — does not change the status itself.',
 };
 
 /**
@@ -57,6 +72,7 @@ export function DealContextCard({ dealId, dealName, onSummaryChange }: Props) {
   const statusTone = STATUS_CONFIG[statusKey as keyof typeof STATUS_CONFIG];
 
   return (
+    <TooltipProvider delayDuration={150}>
     <div className="rounded-md border border-white/[0.06] bg-background/40 overflow-hidden">
       <button
         type="button"
@@ -176,6 +192,7 @@ export function DealContextCard({ dealId, dealName, onSummaryChange }: Props) {
         </div>
       )}
     </div>
+    </TooltipProvider>
   );
 }
 
@@ -188,12 +205,32 @@ function Row({
   label: string;
   children: React.ReactNode;
 }) {
+  const help = FIELD_TOOLTIPS[label];
   return (
     <div className="flex items-start gap-2 text-[11px] leading-snug">
       <Icon className="h-3 w-3 mt-0.5 text-muted-foreground/70 shrink-0" />
       <div className="flex-1 min-w-0">
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-0.5">
-          {label}
+        <div className="flex items-center gap-1 mb-0.5">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60">
+            {label}
+          </span>
+          {help && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`How ${label} is computed`}
+                  className="text-muted-foreground/40 hover:text-muted-foreground transition-colors focus:outline-none focus-visible:text-foreground"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Info className="h-2.5 w-2.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="max-w-[260px] text-[11px] leading-snug">
+                {help}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
         <div className="text-foreground/90">{children}</div>
       </div>
