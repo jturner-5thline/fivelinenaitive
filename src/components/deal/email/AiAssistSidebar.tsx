@@ -665,20 +665,20 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
 
       {/* Footer actions */}
       {selectedOption && (
-        <div className="border-t border-white/[0.06] p-3 flex items-center gap-2 shrink-0 bg-card/60">
+        <div className="border-t border-white/[0.06] px-3 py-3 flex items-center gap-2 shrink-0 bg-card/60 min-w-0 w-full">
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 text-[11px] gap-1 px-2"
+            className="h-8 text-[11px] gap-1 px-2 shrink-0"
             onClick={regenerateSelected}
             disabled={isSelectedLoading}
           >
             <RefreshCw className={cn('h-3 w-3', isSelectedLoading && 'animate-spin')} /> Regenerate
           </Button>
-          <div className="flex-1" />
+          <div className="flex-1 min-w-0" />
           <Button
             size="sm"
-            className="h-8 text-[11px] gap-1.5 bg-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/90"
+            className="h-8 text-[11px] gap-1.5 shrink-0 bg-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/90"
             onClick={handleInsert}
           >
             <Check className="h-3 w-3" /> Insert into reply
