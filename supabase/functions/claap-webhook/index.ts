@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -83,7 +83,7 @@ interface ClassifiedParticipant {
 // ─── Confidence-scored Smart Matching ────────────────────
 // Priority: Deal (high confidence) → Lender → Company → Contact
 async function runSmartMatching(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any,
   title: string | null,
   participants: ClassifiedParticipant[],
   configCompanyId: string | null,

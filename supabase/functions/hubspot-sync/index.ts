@@ -509,7 +509,7 @@ async function testConnection(): Promise<any> {
 // ===== SYNC DEALS TO DATABASE =====
 
 async function syncDealsToDatabase(userId: string, companyId: string | null, configId: string): Promise<any> {
-  const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+  const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.49.4");
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
   const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   const supabase = createClient(supabaseUrl, supabaseKey);

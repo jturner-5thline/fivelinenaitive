@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
@@ -44,7 +44,7 @@ function isHardSuppressedDeal(deal: { status?: string | null; stage?: string | n
 // Best-effort audit row when a would-be alert is suppressed, so admins can
 // verify the rule is firing.
 async function logSuppressedAudit(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   args: { trigger_key: string; deal_id: string; reason: string; deal_company?: string | null },
 ) {
   try {
