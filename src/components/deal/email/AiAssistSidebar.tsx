@@ -661,6 +661,15 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               </div>
             </>
           )}
+
+          {/* Quick Task — natural-language task creation tied to this thread. */}
+          <EmailQuickTaskSection
+            thread={thread}
+            dealId={dealId}
+            dealName={dealName}
+            fallbackDealId={workflowAnalysis?.likely_deal?.id || null}
+            fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
+          />
         </div>
       </ScrollArea>
 
