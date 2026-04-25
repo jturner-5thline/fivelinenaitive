@@ -88,6 +88,12 @@ serve(async (req) => {
 
       if (deal) {
         dealContextSources.push("deal_metadata");
+        injectionFacts.deal_stage = deal.stage || null;
+        // Build a short list of relevant key terms (only those with values).
+        if (deal.value) injectionFacts.key_terms.push(`amount $${(Number(deal.value) / 1_000_000).toFixed(1)}M`);
+        if (deal.deal_type) injectionFacts.key_terms.push(`structure ${deal.deal_type}`);
+        const closing = deal.closing_date || deal.dashboard_closing_date;
+        if (closing) injectionFacts.key_terms.push(`close target ${String(closing).substring(0, 10)}`);
         dealContext += `\nDEAL CONTEXT:
 - Company: ${deal.company || "N/A"}
 - Stage: ${deal.stage || "N/A"}
@@ -128,6 +134,13 @@ serve(async (req) => {
           if (aActive !== bActive) return aActive - bActive;
           return new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime();
         });
+        // Pick the primary in-context lender (first active, fall back to most recent).
+        const primaryLender = sortedLenders[0];
+        if (primaryLender) {
+          injectionFacts.lender_name = primaryLender.name || null;
+          const stagePart = [primaryLender.stage, primaryLender.substage].filter(Boolean).join(" / ");
+          injectionFacts.lender_stage = stagePart || null;
+        }
         dealContext += `\nLENDERS ON DEAL (${lenders.length} total):
 ${sortedLenders.map((l: any) => {
           const parts = [
