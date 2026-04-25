@@ -159,7 +159,10 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
 
       {/* Task mode renders the dedicated composer */}
       {mode === 'task' ? (
-        <NaitiveTaskComposer autoFocus />
+        <NaitiveTaskComposer
+          autoFocus
+          onCreated={() => setMode('ask')}
+        />
       ) : (
         <>
       {/* @mention popup */}

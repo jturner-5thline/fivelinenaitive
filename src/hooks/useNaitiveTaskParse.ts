@@ -91,7 +91,7 @@ export async function createTaskFromDraft(
   draft: TaskDraft,
   userId: string,
   companyId: string | null
-): Promise<{ id: string } | null> {
+): Promise<{ id: string; assigned_to: string } | { id: string; assigned_to: string; _error?: never } | null> {
   // Map priority: tasks table uses 'low'|'medium'|'high'|'urgent'; we normalize 'normal' → 'medium'
   const priorityMap: Record<string, string> = { low: 'low', normal: 'medium', high: 'high', urgent: 'urgent' };
   const priority = draft.priority ? priorityMap[draft.priority] || 'medium' : 'medium';
@@ -102,7 +102,6 @@ export async function createTaskFromDraft(
     due_date: draft.due_date,
     priority,
     status: 'not_started',
-    user_id: userId,
     assigned_to: draft.owner_id || userId,
     assigned_by: userId,
     company_id: companyId,
@@ -115,10 +114,28 @@ export async function createTaskFromDraft(
     recurrence_rule: draft.recurrence_rule,
   };
 
-  const { data, error } = await supabase.from('tasks').insert(insertRow).select('id').single();
+  // Strip null/undefined keys so DB defaults apply
+  Object.keys(insertRow).forEach((k) => {
+    if (insertRow[k] === undefined || insertRow[k] === null) delete insertRow[k];
+  });
+  // Always re-set required fields even if "null-stripped"
+  insertRow.title = draft.title;
+  insertRow.assigned_to = draft.owner_id || userId;
+  insertRow.assigned_by = userId;
+  insertRow.status = 'not_started';
+  insertRow.priority = priority;
+  insertRow.task_type = draft.type === 'meeting' ? 'meeting' : draft.type === 'call' ? 'call' : 'task';
+  insertRow.sync_source = 'naitive_nl_input';
+  insertRow.is_recurring = draft.is_recurring;
+
+  const { data, error } = await supabase
+    .from('tasks')
+    .insert(insertRow)
+    .select('id, assigned_to')
+    .single();
   if (error) {
     console.error('[createTaskFromDraft]', error);
-    return null;
+    throw error;
   }
-  return data as { id: string };
+  return data as { id: string; assigned_to: string };
 }

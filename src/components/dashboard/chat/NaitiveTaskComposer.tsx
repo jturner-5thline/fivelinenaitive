@@ -10,6 +10,7 @@ import { useNaitiveTaskParse, createTaskFromDraft, type ParseContext, type TaskD
 import { TaskModeChips } from './TaskModeChips';
 import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface Props {
   context?: ParseContext;
@@ -22,6 +23,7 @@ interface Props {
 export function NaitiveTaskComposer({ context = {}, autoFocus, className, onCreated, placeholder }: Props) {
   const { user } = useAuth();
   const { company } = useCompany();
+  const queryClient = useQueryClient();
   const [text, setText] = useState('');
   const [creating, setCreating] = useState(false);
   const [previewSeen, setPreviewSeen] = useState(false);
@@ -41,8 +43,21 @@ export function NaitiveTaskComposer({ context = {}, autoFocus, className, onCrea
     if (!user) return;
     setCreating(true);
     try {
-      const result = await createTaskFromDraft(d, user.id, company?.id || null);
-      if (!result) { toast.error('Failed to create task'); return; }
+      let result: { id: string; assigned_to: string };
+      try {
+        result = (await createTaskFromDraft(d, user.id, company?.id || null)) as any;
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to create task';
+        toast.error('Could not create task', { description: msg });
+        // Do NOT clear input on failure
+        return;
+      }
+
+      // Invalidate task queries so My Tasks widget refreshes immediately
+      queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['contact-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['crm-company-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['deal-tasks'] });
 
       // Fire Asana sync (fire-and-forget)
       try {
@@ -63,9 +78,8 @@ export function NaitiveTaskComposer({ context = {}, autoFocus, className, onCrea
       const dueLabel = d.due_date
         ? new Date(d.due_date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' })
         : null;
-      toast.success(`Task created: "${d.title}"`, {
-        description: dueLabel ? `due ${dueLabel}` : undefined,
-        action: { label: 'View', onClick: () => { window.location.href = `/tasks?id=${result.id}`; } },
+      toast.success(`Task created: "${d.title}"${dueLabel ? ` — due ${dueLabel}` : ''}`, {
+        action: { label: 'View task →', onClick: () => { window.location.href = `/tasks?task=${result.id}`; } },
       });
       setText('');
       setDraft(null);
@@ -74,7 +88,7 @@ export function NaitiveTaskComposer({ context = {}, autoFocus, className, onCrea
     } finally {
       setCreating(false);
     }
-  }, [user, company?.id, setDraft, onCreated]);
+  }, [user, company?.id, setDraft, onCreated, queryClient]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
