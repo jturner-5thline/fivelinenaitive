@@ -433,7 +433,7 @@ ${h.most_overdue_item && (h.most_overdue_item.days_overdue ?? 0) >= 3
         const fmtList = (arr: string[]) =>
           arr.length === 0 ? "(none — OMIT this clause)" : arr.map((s) => `"${s}"`).join(", ");
         const lenderClause = injectionFacts.lender_name
-          ? `MUST name the active lender by exact name: "${injectionFacts.lender_name}"${injectionFacts.lender_stage ? ` (currently in stage: ${injectionFacts.lender_stage})` : ""}.`
+          ? `MUST name the active lender by exact name "${injectionFacts.lender_name}" INLINE in the email BODY prose at least once (NOT only in the subject line). Use a natural construction that ties the lender to the stage or recent activity, e.g. "${injectionFacts.lender_name} is now in ${injectionFacts.lender_stage || "due diligence"} on this", "now that ${injectionFacts.lender_name} has signed the term sheet", "happy to coordinate with ${injectionFacts.lender_name} on the diligence items", or "${injectionFacts.lender_name}'s outstanding items are…". Pick whichever fits the thread context. Do NOT force it awkwardly, but it MUST appear in the body text.${injectionFacts.lender_stage ? ` (Lender stage: ${injectionFacts.lender_stage}.)` : ""}`
           : `(no active lender on this deal — OMIT any lender name; do NOT invent one)`;
         const stageClause = injectionFacts.deal_stage
           ? `MUST reference the deal's current stage in natural language: "${injectionFacts.deal_stage}" (e.g., "now that we're in ${injectionFacts.deal_stage}", "post-${injectionFacts.deal_stage}").`
@@ -458,8 +458,8 @@ ${h.most_overdue_item && (h.most_overdue_item.days_overdue ?? 0) >= 3
 5. KEY TERMS: ${termsClause}
 
 PER-STYLE MINIMUMS (these are non-negotiable and MUST be re-applied on every regenerate):
-- "Concise" (2–3 short sentences, ≤80 words): MUST include at minimum requirements #1 (lender, if available), #2 (stage, if available), and #3 (at least 1 specific outstanding item, if available). If a field is unavailable, drop that requirement gracefully — never substitute a generic phrase.
-- "Balanced" (4–6 sentences, ≤150 words): MUST include all of #1–#5 that are available. List 1–3 specific outstanding items inline by name. Reference the lender by name. Acknowledge the current stage. Weave in the recent-activity detail. Reference 1 key term where relevant.
+- "Concise" (2–3 short sentences, ≤80 words): MUST include at minimum requirements #1 (lender, if available — name the lender EXACTLY ONCE inline in the body prose), #2 (stage, if available), and #3 (at least 1 specific outstanding item, if available). If a field is unavailable, drop that requirement gracefully — never substitute a generic phrase.
+- "Balanced" (4–6 sentences, ≤150 words): MUST include all of #1–#5 that are available. Name the lender EXACTLY ONCE inline in the body prose, ideally in the same clause that references the stage or the recent activity (e.g. "now that ${injectionFacts.lender_name || "the lender"} has [recent activity]…" or "${injectionFacts.lender_name || "the lender"} is now in ${injectionFacts.deal_stage || injectionFacts.lender_stage || "this stage"}…"). List 1–3 specific outstanding items inline by name. Acknowledge the current stage. Weave in the recent-activity detail. Reference 1 key term where relevant.
 
 ANTI-GENERIC GUARDRAIL:
 - The phrases "the additional due diligence list", "the diligence checklist", "the outstanding items", "the lender list", "next steps" used as standalone references are BANNED whenever the corresponding INJECTION REQUIREMENT has data. Always name the actual items / lenders / stage.
