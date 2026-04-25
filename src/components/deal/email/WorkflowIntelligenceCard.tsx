@@ -294,9 +294,9 @@ export function WorkflowIntelligenceCard({
   };
 
   return (
-    <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-2.5 space-y-2 overflow-hidden max-w-full">
+    <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-2.5 space-y-2 overflow-hidden max-w-full min-w-0 w-full">
       {/* Header — title swaps with the active panel; arrow controls slide between the two. */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 min-w-0">
         {activePanel === 'intelligence' && (
           <button
             type="button"
@@ -308,7 +308,7 @@ export function WorkflowIntelligenceCard({
           </button>
         )}
         <Sparkles className="h-3 w-3 text-primary shrink-0" />
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-primary/90">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-primary/90 min-w-0 truncate">
           {activePanel === 'suggested' ? 'Suggested Update' : 'Workflow Intelligence'}
         </span>
         {loading && <Loader2 className="h-2.5 w-2.5 animate-spin text-primary/60" />}
@@ -339,24 +339,29 @@ export function WorkflowIntelligenceCard({
       </div>
 
       {/* Sliding viewport — two panels share width; transform controls which is visible. */}
-      <div className="relative overflow-hidden max-w-full">
+      <div className="relative overflow-hidden max-w-full min-w-0 w-full">
         <div
-          className="flex w-[200%] transition-transform duration-300 ease-out"
+          className="flex w-[200%] min-w-0 transition-transform duration-300 ease-out"
           style={{ transform: activePanel === 'suggested' ? 'translateX(0%)' : 'translateX(-50%)' }}
         >
           {/* PANEL 1 — Suggested Update (primary) */}
-          <div className="w-1/2 shrink-0 pr-2 space-y-2">
+          <div className="w-1/2 shrink-0 min-w-0 pr-2 space-y-2">
             {hasUpdate ? (
               <div className="space-y-2">
-                <p className="text-[13px] text-foreground font-semibold leading-snug">{rec.title}</p>
+                <p
+                  className="text-[13px] text-foreground font-semibold leading-snug max-w-full"
+                  style={{ overflowWrap: 'anywhere', wordBreak: 'normal', whiteSpace: 'normal' }}
+                >
+                  {rec.title}
+                </p>
 
                 {isLenderStatus && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0">
                       Status
                     </label>
                     <Select value={confirmedStatus} onValueChange={handleStatusChange}>
-                      <SelectTrigger className="h-7 text-[11px] flex-1">
+                      <SelectTrigger className="h-7 text-[11px] flex-1 min-w-0">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -483,34 +488,36 @@ export function WorkflowIntelligenceCard({
                 />
 
                 {willAutoLinkThread && (
-                  <div className="flex items-center gap-1 text-[10px] text-primary/80 line-clamp-1">
+                  <div className="flex items-start gap-1 text-[10px] text-primary/80 min-w-0">
                     <Link2 className="h-2.5 w-2.5 shrink-0" />
-                    <span className="truncate">
+                    <span className="min-w-0 break-words" style={{ overflowWrap: 'anywhere' }}>
                       Will auto-link this thread to {analysis.likely_deal.name}.
                     </span>
                   </div>
                 )}
 
                 {willAutoLink && (
-                  <div className="flex items-center gap-1 text-[10px] text-primary/80 line-clamp-1">
+                  <div className="flex items-start gap-1 text-[10px] text-primary/80 min-w-0">
                     <Link2 className="h-2.5 w-2.5 shrink-0" />
-                    <span className="truncate">
+                    <span className="min-w-0 break-words" style={{ overflowWrap: 'anywhere' }}>
                       Will auto-add {rec.lender_name || 'this lender'} to the deal.
                     </span>
                   </div>
                 )}
 
                 {isLenderStatus && !lenderResolvable && (
-                  <div className="flex items-center gap-1 text-[10px] text-amber-300/90">
+                  <div className="flex items-start gap-1 text-[10px] text-amber-300/90 min-w-0">
                     <AlertCircle className="h-2.5 w-2.5 shrink-0" />
-                    <span className="truncate">Lender uncertain — add manually, then retry.</span>
+                    <span className="min-w-0 break-words" style={{ overflowWrap: 'anywhere' }}>
+                      Lender uncertain — add manually, then retry.
+                    </span>
                   </div>
                 )}
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 min-w-0">
                   <Button
                     size="sm"
-                    className="h-7 px-2 text-[11px] gap-1 flex-1"
+                    className="h-7 px-2 text-[11px] gap-1 flex-1 min-w-0"
                     disabled={!canConfirm}
                     onClick={handleConfirm}
                   >
@@ -545,42 +552,54 @@ export function WorkflowIntelligenceCard({
             )}
 
             {analysis.secondary_action.kind !== 'none' && analysis.secondary_action.title && (
-              <p className="text-[10px] text-muted-foreground/80 pt-1 border-t border-primary/10 line-clamp-1">
+              <p
+                className="text-[10px] text-muted-foreground/80 pt-1 border-t border-primary/10 max-w-full"
+                style={{ overflowWrap: 'anywhere', whiteSpace: 'normal' }}
+              >
                 Also consider: <span className="text-foreground/70">{analysis.secondary_action.title}</span>
               </p>
             )}
           </div>
 
           {/* PANEL 2 — Workflow Intelligence (entities + detected signal) */}
-          <div className="w-1/2 shrink-0 pl-2 space-y-3">
+          <div className="w-1/2 shrink-0 min-w-0 pl-2 space-y-3">
             <div className="space-y-1.5 text-[11px]">
-        <div className="flex items-start gap-1.5">
+        <div className="flex items-start gap-1.5 min-w-0">
           <Briefcase className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
           <span className="text-muted-foreground shrink-0">Deal:</span>
-          <span className="text-foreground/90 font-medium truncate">
+          <span
+            className="text-foreground/90 font-medium min-w-0 flex-1"
+            style={{ overflowWrap: 'anywhere', whiteSpace: 'normal' }}
+          >
             {analysis.likely_deal.name || <em className="text-muted-foreground">unknown</em>}
           </span>
           {analysis.likely_deal.confidence && analysis.likely_deal.name && (
-            <Badge variant="outline" className={cn('ml-auto text-[9px] h-3.5 px-1 border', CONFIDENCE_TONE[analysis.likely_deal.confidence])}>
+            <Badge variant="outline" className={cn('ml-auto shrink-0 text-[9px] h-3.5 px-1 border', CONFIDENCE_TONE[analysis.likely_deal.confidence])}>
               {analysis.likely_deal.confidence}
             </Badge>
           )}
         </div>
-        <div className="flex items-start gap-1.5">
+        <div className="flex items-start gap-1.5 min-w-0">
           <User className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
           <span className="text-muted-foreground shrink-0">Contact:</span>
-          <span className="text-foreground/90 truncate">
+          <span
+            className="text-foreground/90 min-w-0 flex-1"
+            style={{ overflowWrap: 'anywhere', whiteSpace: 'normal' }}
+          >
             {analysis.likely_contact.name || <em className="text-muted-foreground">unknown</em>}
           </span>
         </div>
-        <div className="flex items-start gap-1.5">
+        <div className="flex items-start gap-1.5 min-w-0">
           <Building2 className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
           <span className="text-muted-foreground shrink-0">Lender:</span>
-          <span className="text-foreground/90 truncate">
+          <span
+            className="text-foreground/90 min-w-0 flex-1"
+            style={{ overflowWrap: 'anywhere', whiteSpace: 'normal' }}
+          >
             {analysis.likely_lender_firm.name || <em className="text-muted-foreground">unknown</em>}
           </span>
           {analysis.likely_lender_firm.confidence && analysis.likely_lender_firm.name && (
-            <Badge variant="outline" className={cn('ml-auto text-[9px] h-3.5 px-1 border', CONFIDENCE_TONE[analysis.likely_lender_firm.confidence])}>
+            <Badge variant="outline" className={cn('ml-auto shrink-0 text-[9px] h-3.5 px-1 border', CONFIDENCE_TONE[analysis.likely_lender_firm.confidence])}>
               {analysis.likely_lender_firm.confidence}
             </Badge>
           )}
@@ -588,24 +607,30 @@ export function WorkflowIntelligenceCard({
       </div>
 
             {analysis.signal.type !== 'no_signal' && (
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-1.5">
+              <div className="space-y-1.5 min-w-0">
+                <div className="flex items-center gap-1.5 min-w-0">
                   <Zap className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground truncate min-w-0">
                     Detected signal
                   </span>
-                  <Badge variant="outline" className={cn('ml-auto text-[9px] h-4 px-1.5 border', SIGNAL_TONE[analysis.signal.type] || CONFIDENCE_TONE.low)}>
+                  <Badge variant="outline" className={cn('ml-auto shrink-0 text-[9px] h-4 px-1.5 border', SIGNAL_TONE[analysis.signal.type] || CONFIDENCE_TONE.low)}>
                     {analysis.signal.label || analysis.signal.type}
                   </Badge>
                 </div>
                 {analysis.signal.supporting_quote && (
-                  <blockquote className="text-[11px] text-muted-foreground italic border-l-2 border-primary/30 pl-2 leading-relaxed">
+                  <blockquote
+                    className="text-[11px] text-muted-foreground italic border-l-2 border-primary/30 pl-2 leading-relaxed max-w-full"
+                    style={{ overflowWrap: 'anywhere', whiteSpace: 'normal' }}
+                  >
                     <Quote className="h-2.5 w-2.5 inline mr-1 text-primary/40" />
                     {analysis.signal.supporting_quote}
                   </blockquote>
                 )}
                 {analysis.signal.nuance && (
-                  <p className="text-[10px] text-amber-300/90 leading-relaxed">
+                  <p
+                    className="text-[10px] text-amber-300/90 leading-relaxed max-w-full"
+                    style={{ overflowWrap: 'anywhere', whiteSpace: 'normal' }}
+                  >
                     <AlertCircle className="h-2.5 w-2.5 inline mr-1" />
                     {analysis.signal.nuance}
                   </p>
