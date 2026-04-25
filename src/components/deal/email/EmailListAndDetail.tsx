@@ -1,4 +1,4 @@
-import { Component, type ErrorInfo, type ReactNode, useState, useEffect, useCallback, useRef } from 'react';
+import { Component, type ErrorInfo, type ReactNode, useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { SmartEmailPanel } from './SmartEmailPanel';
 import { ThreadLabelsBar } from './ThreadLabelsBar';
@@ -184,7 +184,7 @@ interface ThreadListItemProps {
   autoLabels?: EmailLabel[];
 }
 
-function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels }: ThreadListItemProps) {
+function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels }: ThreadListItemProps) {
   const [hovered, setHovered] = useState(false);
   const latest = thread.latestEmail;
   const displayName = latest.folder === 'sent' ? `To: ${latest.to_name || latest.to_email}` : latest.from_name;
@@ -358,6 +358,38 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
       {rowContent}
     </EmailContextMenu>
   );
+}
+
+// Wrap in memo: the only props that meaningfully change per row across a parent
+// re-render are `isSelected` and `isChecked` (and the thread reference itself).
+// We compare those primitives plus thread.threadId/hasUnread/isStarred and the
+// length of autoLabels — handlers are assumed referentially stable (the parent
+// uses useCallback / inline handlers that we now stabilize).
+const ThreadListItem = memo(ThreadListItemImpl, (prev, next) => {
+  return (
+    prev.thread === next.thread &&
+    prev.isSelected === next.isSelected &&
+    prev.isChecked === next.isChecked &&
+    prev.onSelect === next.onSelect &&
+    prev.onCheckChange === next.onCheckChange &&
+    prev.onToggleLink === next.onToggleLink &&
+    prev.onToggleStar === next.onToggleStar &&
+    prev.onMarkRead === next.onMarkRead &&
+    prev.onMarkUnread === next.onMarkUnread &&
+    prev.onArchive === next.onArchive &&
+    prev.onDelete === next.onDelete &&
+    autoLabelsEqual(prev.autoLabels, next.autoLabels)
+  );
+});
+
+function autoLabelsEqual(a?: EmailLabel[], b?: EmailLabel[]) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].id !== b[i].id) return false;
+  }
+  return true;
 }
 
 // ─── Email List Skeleton ─────────────────────────────────────
