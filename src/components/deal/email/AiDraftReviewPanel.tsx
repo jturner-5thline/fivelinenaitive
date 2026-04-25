@@ -95,6 +95,16 @@ const SOURCE_LABELS: Record<string, string> = {
   recent_activity: 'Activity',
   deal_notes: 'Notes',
   email_thread_only: 'Email Only',
+  // Injected fact keys (set by smart-email-ai when the model actually used them in the body)
+  lender_name: 'Lender Name',
+  lender_stage: 'Lender Stage',
+  outstanding_items: 'Outstanding Items',
+  deal_stage: 'Deal Stage',
+  analyst_note: 'Analyst Note',
+  key_terms: 'Key Terms',
+  outstanding_items_data: 'Outstanding Items',
+  status_notes: 'Status Notes',
+  deal_state_snapshot: 'Live State',
 };
 
 export function AiDraftReviewPanel({ thread, dealId, onClose, onApprove, initialDraftType = 'reply', initialMode }: Props) {
