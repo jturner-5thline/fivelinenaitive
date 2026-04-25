@@ -31,7 +31,7 @@ serve(async (req) => {
     }
 
     const requestBody = await req.json();
-    const { action, dealId, emailData, threadData, draftType, customInstructions, optionCount, singleTone, fastModel } = requestBody;
+    const { action, dealId, emailData, threadData, draftType, customInstructions, optionCount, singleTone, fastModel, dealContextHint } = requestBody;
     const attachments = Array.isArray(requestBody?.attachments) ? requestBody.attachments : [];
 
     // Validate input lengths
@@ -115,6 +115,39 @@ ${activities.map((a: any) => `- [${a.activity_type}] ${a.description} (${a.creat
 ${notes.map((n: any) => `- ${(n.content || n.note || "").substring(0, 200)} (${n.created_at?.substring(0, 10)})`).join("\n")}
 `;
       }
+    }
+
+    // ─── Live deal-state hint from the AI panel ────────────────
+    // The sidebar already loads a slim "Deal Context" summary (status, days
+    // in stage, lender counts, overdue items, last status note). Forwarding
+    // it here lets the draft tone explicitly acknowledge urgency for At
+    // Risk / Off Track deals without re-querying.
+    if (dealContextHint && typeof dealContextHint === "object") {
+      dealContextSources.push("deal_state_snapshot");
+      const h = dealContextHint;
+      const overdue = h.most_overdue_item
+        ? `${h.most_overdue_item.days_overdue}d overdue ("${h.most_overdue_item.description}")`
+        : "none";
+      const lastNote = h.last_status_note
+        ? `"${(h.last_status_note.note || "").substring(0, 200)}" — ${h.last_status_note.author || "unknown"}`
+        : "none";
+      dealContext += `\nDEAL STATE SNAPSHOT (live from AI panel):
+- Status: ${h.status || "unknown"}
+- Stage: ${h.stage || "unknown"} (${h.days_in_stage ?? "?"} days in stage)
+- Lenders: ${h.active_lenders ?? 0} active of ${h.total_lenders ?? 0} total
+- Open outstanding items: ${h.open_outstanding_items ?? 0} (most overdue: ${overdue})
+- Last status note: ${lastNote}
+
+TONE GUIDANCE FROM DEAL STATE:
+${h.status === "at-risk" || h.status === "off-track"
+  ? "- The deal is currently flagged as " + h.status.toUpperCase() + ". Acknowledge urgency (without alarm), be direct about next steps, and proactively name the blocker if relevant."
+  : h.status === "on-hold"
+  ? "- The deal is ON HOLD. Keep the reply measured and avoid implying active progress; reference the pause if the recipient asks about timing."
+  : "- The deal is on track. Match a routine, professional cadence — no manufactured urgency."}
+${h.most_overdue_item && (h.most_overdue_item.days_overdue ?? 0) >= 3
+  ? "- There is a meaningfully overdue outstanding item; if it's relevant to this thread, gently surface it."
+  : ""}
+`;
     }
 
     // ─── Get user profile for signature context ─────────────────
