@@ -44,7 +44,7 @@ function isHardSuppressedDeal(deal: { status?: string | null; stage?: string | n
 // Best-effort audit row when a would-be alert is suppressed, so admins can
 // verify the rule is firing.
 async function logSuppressedAudit(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   args: { trigger_key: string; deal_id: string; reason: string; deal_company?: string | null },
 ) {
   try {
