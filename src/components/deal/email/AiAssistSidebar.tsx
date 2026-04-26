@@ -687,7 +687,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                         className="mt-0.5 max-w-full break-words text-[12px] font-medium leading-snug text-foreground/90"
                         style={{ whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'normal' }}
                       >
-                        {selectedOption.subject}
+                        {selectedOption.subject ?? ''}
                       </div>
                     </div>
                     <div className="min-w-0">
@@ -698,7 +698,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                         className="max-w-full break-words text-[12px] leading-relaxed text-foreground/85"
                         style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'normal' }}
                       >
-                        {selectedOption.body}
+                        {selectedOption.body ?? ''}
                       </div>
                     </div>
                     {selectedOption.rationale && (
