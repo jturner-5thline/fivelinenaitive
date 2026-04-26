@@ -242,8 +242,16 @@
     @apply border-border;
   }
 
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    background-color: hsl(var(--background));
+  }
+
   body {
     @apply bg-background text-foreground font-sans;
+    min-height: 100vh;
   }
 
   table, th, td, input, textarea, select, button {
@@ -251,7 +259,7 @@
   }
 
   .dark body {
-    background: transparent !important;
+    background-color: hsl(var(--background)) !important;
   }
 
   /* Smooth transitions — but exclude performance-heavy properties */
