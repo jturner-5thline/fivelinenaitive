@@ -451,11 +451,32 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
 
   const handleInsert = () => {
     if (!selectedOption) return;
-    const subject = selectedOption.subject.startsWith('Re:')
-      ? selectedOption.subject
-      : `Re: ${thread.subject}`;
-    onInsertDraft(subject, selectedOption.body);
+    // Subject defensively derived — sidebar drafts are body-only, so the
+    // subject field may legitimately be absent/blank. Always fall back to
+    // the thread subject so we never crash on `.startsWith` of undefined.
+    const rawSubject = (selectedOption.subject ?? '').trim();
+    const subject = rawSubject.startsWith('Re:')
+      ? rawSubject
+      : `Re: ${thread.subject ?? ''}`;
+    onInsertDraft(subject, selectedOption.body ?? '');
   };
+
+  // Expose a tiny debug snapshot so the top-level ErrorBoundary can include
+  // AiAssist state in its fallback when something downstream crashes.
+  useEffect(() => {
+    const w = window as unknown as { __aiAssistDebug?: Record<string, unknown> };
+    w.__aiAssistDebug = {
+      threadId: thread.threadId,
+      selected,
+      tones: TONE_ORDER,
+      optionsAvailable: result ? Object.keys(result.options ?? {}) : [],
+      loading: loadingTones,
+      hasError: !!error,
+    };
+    return () => {
+      try { delete w.__aiAssistDebug; } catch { /* noop */ }
+    };
+  }, [thread.threadId, selected, result, loadingTones, error]);
 
   return (
     <aside
@@ -666,7 +687,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                         className="mt-0.5 max-w-full break-words text-[12px] font-medium leading-snug text-foreground/90"
                         style={{ whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'normal' }}
                       >
-                        {selectedOption.subject}
+                        {selectedOption.subject ?? ''}
                       </div>
                     </div>
                     <div className="min-w-0">
@@ -677,7 +698,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                         className="max-w-full break-words text-[12px] leading-relaxed text-foreground/85"
                         style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'normal' }}
                       >
-                        {selectedOption.body}
+                        {selectedOption.body ?? ''}
                       </div>
                     </div>
                     {selectedOption.rationale && (
