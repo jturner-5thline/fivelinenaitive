@@ -1117,7 +1117,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         .select("id, title, recording_url, ai_summary")
         .in("id", meetingIds);
 
-      const meetingMap = new Map((meetings || []).map((m: any) => [m.id, m]));
+      const meetingMap = new Map<string, any>((meetings || []).map((m: any) => [m.id, m]));
 
       let results = transcripts.map((t: any) => {
         const meeting = meetingMap.get(t.claap_meeting_id);

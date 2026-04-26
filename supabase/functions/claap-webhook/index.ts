@@ -193,11 +193,11 @@ async function runSmartMatching(
       if (contactMatches && contactMatches.length > 0) {
         const { data: contactDeals } = await supabaseAdmin
           .from("contact_deals").select("deal_id, contact_id")
-          .in("contact_id", contactMatches.map(c => c.id));
+          .in("contact_id", contactMatches.map((c: any) => c.id));
 
         if (contactDeals) {
           // Boost candidates that match contact-linked deals
-          const contactDealIds = new Set(contactDeals.map(cd => cd.deal_id));
+          const contactDealIds = new Set<string>(contactDeals.map((cd: any) => cd.deal_id));
           for (const cand of candidates) {
             if (contactDealIds.has(cand.id)) {
               cand.score = Math.min(cand.score + 15, 100);
@@ -206,8 +206,8 @@ async function runSmartMatching(
           }
           // If no title-based candidates but contacts point to exactly one active deal
           if (candidates.length === 0 && contactDealIds.size === 1) {
-            const dealId = [...contactDealIds][0];
-            const deal = deals.find(d => d.id === dealId);
+            const dealId = [...contactDealIds][0] as string;
+            const deal = (deals as any[]).find((d: any) => d.id === dealId);
             if (deal) {
               candidates.push({
                 id: dealId,
@@ -282,7 +282,7 @@ async function runSmartMatching(
             result.confidence = 75;
             const { data: dealLenders } = await supabaseAdmin
               .from("deal_lenders").select("deal_id").eq("name", lender.name).limit(10);
-            if (dealLenders) result.dealIds = dealLenders.map(dl => dl.deal_id);
+            if (dealLenders) result.dealIds = dealLenders.map((dl: any) => dl.deal_id);
             return result;
           }
           if (diceCoefficient(lenderName, normalizeName(title || "")) > 0.45) {
@@ -350,7 +350,7 @@ async function runSmartMatching(
       result.confidence = 70;
       const { data: deals } = await supabaseAdmin
         .from("deals").select("id").eq("status", "active").ilike("company", `%${company.name}%`).limit(5);
-      if (deals) result.dealIds = deals.map(d => d.id);
+      if (deals) result.dealIds = deals.map((d: any) => d.id);
       return result;
     }
   }
@@ -403,7 +403,7 @@ async function runSmartMatching(
       result.confidence = 60;
       const { data: contactDeals } = await supabaseAdmin
         .from("contact_deals").select("deal_id").eq("contact_id", contact.id);
-      if (contactDeals) result.dealIds = contactDeals.map(cd => cd.deal_id);
+      if (contactDeals) result.dealIds = contactDeals.map((cd: any) => cd.deal_id);
       return result;
     }
   }
