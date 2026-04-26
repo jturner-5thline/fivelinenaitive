@@ -365,17 +365,14 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
         const r = data?.result;
         if (!r || r.raw) throw new Error('Invalid response from AI');
 
-        const subject = r.option_1_subject;
         const body = r.option_1_body;
-        if (!subject || !body) throw new Error('No draft returned');
+        if (!body) throw new Error('No draft returned');
 
         const newOpt: DraftOption = {
           index: 1,
           toneKey: tone,
           toneLabel: TONE_LABELS[tone],
-          subject,
           body,
-          rationale: r.option_1_rationale || '',
         };
 
         setResult((prev) => {
