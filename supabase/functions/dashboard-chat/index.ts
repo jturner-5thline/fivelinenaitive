@@ -538,7 +538,7 @@ async function executeTool(supabase: any, userId: string, companyId: string, nam
       }
 
       // Group matched lenders by name
-      const lenderNames = [...new Set(matched.map((l: any) => l.name))];
+      const lenderNames = [...new Set(matched.map((l: any) => l.name))] as string[];
       const results = lenderNames.map((lName: string) => {
         const lenderDeals = matched.filter((l: any) => l.name === lName);
         return {
@@ -1151,7 +1151,7 @@ Deno.serve(async (req) => {
     companyId = membership?.company_id ?? null;
     const companyName = (membership as any)?.companies?.name || 'Unknown';
 
-    const ctx = await fetchUserContext(supabase, user.id, companyId);
+    const ctx = await fetchUserContext(supabase, user.id, companyId as string);
     const userContext = buildContextString(ctx, companyName, membership?.role || 'member');
 
     // Get user profile for personalization
