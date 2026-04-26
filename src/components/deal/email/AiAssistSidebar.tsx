@@ -446,14 +446,9 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
 
   const handleInsert = () => {
     if (!selectedOption) return;
-    // Subject defensively derived — sidebar drafts are body-only, so the
-    // subject field may legitimately be absent/blank. Always fall back to
-    // the thread subject so we never crash on `.startsWith` of undefined.
-    const rawSubject = (selectedOption.subject ?? '').trim();
-    const subject = rawSubject.startsWith('Re:')
-      ? rawSubject
-      : `Re: ${thread.subject ?? ''}`;
-    onInsertDraft(subject, selectedOption.body ?? '');
+    // Drafts are body-only — the reply lives in the existing thread, so the
+    // composer keeps its current subject. We just inject the body text.
+    onInsertDraft(selectedOption.body ?? '');
   };
 
   // Expose a tiny debug snapshot so the top-level ErrorBoundary can include
