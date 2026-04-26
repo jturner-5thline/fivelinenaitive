@@ -53,11 +53,9 @@ import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
 
 interface DraftOption {
   index: number;
-  subject: string;
   body: string;
   toneLabel: string;          // "Concise" | "Balanced"
   toneKey: ToneKey;           // canonical key
-  rationale: string;
 }
 
 type ToneKey = 'concise' | 'balanced';
@@ -81,7 +79,7 @@ interface Props {
   dealId?: string;
   dealName?: string;
   onClose: () => void;
-  onInsertDraft: (subject: string, body: string) => void;
+  onInsertDraft: (body: string) => void;
 }
 
 export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDraft }: Props) {
