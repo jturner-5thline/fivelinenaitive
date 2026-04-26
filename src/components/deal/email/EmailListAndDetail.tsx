@@ -1883,9 +1883,13 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 dealId={dealId}
                 dealName={linkedDealName || thread.dealName}
                 onClose={() => setShowAiAssist(false)}
-                onInsertDraft={(subject, body) => {
+                onInsertDraft={(body) => {
                   const target = getReplyTarget();
-                  const finalSubject = subject?.startsWith('Re:') ? subject : `Re: ${thread.subject}`;
+                  // Reply lives in the existing thread — keep the current
+                  // composer subject (or derive from the thread). Drafts are
+                  // body-only by design.
+                  const finalSubject = inlineDraft?.subject
+                    || (thread.subject?.startsWith('Re:') ? thread.subject : `Re: ${thread.subject}`);
                   if (!replyTo) {
                     setReplyTo(target);
                   }

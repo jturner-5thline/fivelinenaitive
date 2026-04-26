@@ -53,11 +53,9 @@ import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
 
 interface DraftOption {
   index: number;
-  subject: string;
   body: string;
   toneLabel: string;          // "Concise" | "Balanced"
   toneKey: ToneKey;           // canonical key
-  rationale: string;
 }
 
 type ToneKey = 'concise' | 'balanced';
@@ -81,7 +79,7 @@ interface Props {
   dealId?: string;
   dealName?: string;
   onClose: () => void;
-  onInsertDraft: (subject: string, body: string) => void;
+  onInsertDraft: (body: string) => void;
 }
 
 export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDraft }: Props) {
@@ -253,7 +251,8 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       thread.latestEmail?.id ||
       ((thread.latestEmail as any)?.gmail_message_id as string | undefined) ||
       '';
-    return `naitive.aiAssist.draft.${thread.threadId}::${latestId}`;
+    // Bumped to v2: drafts are now body-only (no subject / rationale fields).
+    return `naitive.aiAssist.draft.v2.${thread.threadId}::${latestId}`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [thread.threadId, thread.latestEmail?.id]);
 
@@ -367,17 +366,14 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
         const r = data?.result;
         if (!r || r.raw) throw new Error('Invalid response from AI');
 
-        const subject = r.option_1_subject;
         const body = r.option_1_body;
-        if (!subject || !body) throw new Error('No draft returned');
+        if (!body) throw new Error('No draft returned');
 
         const newOpt: DraftOption = {
           index: 1,
           toneKey: tone,
           toneLabel: TONE_LABELS[tone],
-          subject,
           body,
-          rationale: r.option_1_rationale || '',
         };
 
         setResult((prev) => {
@@ -451,14 +447,9 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
 
   const handleInsert = () => {
     if (!selectedOption) return;
-    // Subject defensively derived — sidebar drafts are body-only, so the
-    // subject field may legitimately be absent/blank. Always fall back to
-    // the thread subject so we never crash on `.startsWith` of undefined.
-    const rawSubject = (selectedOption.subject ?? '').trim();
-    const subject = rawSubject.startsWith('Re:')
-      ? rawSubject
-      : `Re: ${thread.subject ?? ''}`;
-    onInsertDraft(subject, selectedOption.body ?? '');
+    // Drafts are body-only — the reply lives in the existing thread, so the
+    // composer keeps its current subject. We just inject the body text.
+    onInsertDraft(selectedOption.body ?? '');
   };
 
   // Expose a tiny debug snapshot so the top-level ErrorBoundary can include
@@ -680,20 +671,6 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                 {selectedOption ? (
                   <div className="space-y-2 min-w-0 max-w-full w-full">
                     <div className="min-w-0">
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                        Subject
-                      </div>
-                      <div
-                        className="mt-0.5 max-w-full break-words text-[12px] font-medium leading-snug text-foreground/90"
-                        style={{ whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'normal' }}
-                      >
-                        {selectedOption.subject ?? ''}
-                      </div>
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground/70 mb-1">
-                        Body
-                      </div>
                       <div
                         className="max-w-full break-words text-[12px] leading-relaxed text-foreground/85"
                         style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'normal' }}
@@ -701,22 +678,10 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                         {selectedOption.body ?? ''}
                       </div>
                     </div>
-                    {selectedOption.rationale && (
-                      <div className="pt-1.5 border-t border-primary/10">
-                        <p className="text-[10px] text-muted-foreground italic leading-relaxed">
-                          {selectedOption.rationale}
-                        </p>
-                      </div>
-                    )}
                   </div>
                 ) : (
                   <div className="space-y-2">
                     <div className="space-y-1.5">
-                      <Skeleton className="h-2 w-12" />
-                      <Skeleton className="h-3.5 w-2/3" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Skeleton className="h-2 w-10 mb-1" />
                       <Skeleton className="h-3 w-full" />
                       <Skeleton className="h-3 w-11/12" />
                       <Skeleton className="h-3 w-10/12" />

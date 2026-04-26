@@ -470,19 +470,13 @@ TRACKING:
 `;
 
         const optionsBlock = wantSingle
-          ? `  "option_1_subject": "string — email subject line",
-  "option_1_body": "string — full email body text",
+          ? `  "option_1_body": "string — ONLY the email body text the user will send. No subject. No greeting like 'Subject:'. No labels. No meta-commentary about the draft (do NOT say things like 'this draft acknowledges…', 'polished and professional', 'warm tone'). Just the email body, ready to paste into the reply composer.",
   "option_1_tone_label": "${tone === "concise" ? "Concise" : "Balanced"}",
-  "option_1_rationale": "string — why this version works",
   "recommended_option": 1,`
-          : `  "option_1_subject": "string — email subject line",
-  "option_1_body": "string — full email body text",
+          : `  "option_1_body": "string — ONLY the email body text the user will send. No subject. No labels. No meta-commentary about the draft. Just the email body.",
   "option_1_tone_label": "Concise",
-  "option_1_rationale": "string — why this version works",
-  "option_2_subject": "string — same or similar subject",
-  "option_2_body": "string — full email body text",
+  "option_2_body": "string — ONLY the email body text the user will send. No subject. No labels. No meta-commentary about the draft. Just the email body.",
   "option_2_tone_label": "Balanced",
-  "option_2_rationale": "string — why this version works",
   "recommended_option": 2,`;
 
         const generationRule = wantSingle
