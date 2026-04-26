@@ -67,7 +67,7 @@ serve(async (req) => {
 // ─── Generate a report on-demand or for a scheduled run ───────────────────────
 async function handleGenerateReport(
   body: { report_type: string; company_id?: string; config?: ReportConfig; delivery?: { method: string; slack_channel_id?: string } },
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   lovableKey: string,
   slackKey: string | undefined
 ) {
@@ -114,7 +114,7 @@ async function handleGenerateReport(
 
 // ─── Gather report data from database ─────────────────────────────────────────
 async function gatherReportData(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   reportType: string,
   companyId: string | undefined,
   config: ReportConfig
@@ -138,7 +138,7 @@ async function gatherReportData(
 }
 
 async function gatherPipelineSummary(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   companyId: string | undefined,
   filters: ReportConfig["filters"]
 ) {
@@ -176,7 +176,7 @@ async function gatherPipelineSummary(
 }
 
 async function gatherLenderPerformance(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   companyId: string | undefined,
   _filters: ReportConfig["filters"]
 ) {
@@ -203,7 +203,7 @@ async function gatherLenderPerformance(
 }
 
 async function gatherStaleDeals(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   companyId: string | undefined,
   filters: ReportConfig["filters"]
 ) {
@@ -238,7 +238,7 @@ async function gatherStaleDeals(
 }
 
 async function gatherWeeklyActivity(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   companyId: string | undefined,
   _filters: ReportConfig["filters"]
 ) {
@@ -286,7 +286,7 @@ async function gatherWeeklyActivity(
 }
 
 async function gatherDealVelocity(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   companyId: string | undefined,
   _filters: ReportConfig["filters"]
 ) {
@@ -490,7 +490,7 @@ async function sendSlackReport(
 // ─── Run a specific scheduled report ──────────────────────────────────────────
 async function handleRunScheduled(
   body: { scheduled_report_id: string },
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   supabaseUrl: string,
   lovableKey: string,
   slackKey: string | undefined
@@ -581,7 +581,7 @@ async function handleRunScheduled(
 
 // ─── Process all due scheduled reports (cron entry point) ─────────────────────
 async function handleProcessAllScheduled(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   supabaseUrl: string,
   serviceKey: string
 ) {
