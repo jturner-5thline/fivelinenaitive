@@ -670,20 +670,6 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                 {selectedOption ? (
                   <div className="space-y-2 min-w-0 max-w-full w-full">
                     <div className="min-w-0">
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                        Subject
-                      </div>
-                      <div
-                        className="mt-0.5 max-w-full break-words text-[12px] font-medium leading-snug text-foreground/90"
-                        style={{ whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'normal' }}
-                      >
-                        {selectedOption.subject ?? ''}
-                      </div>
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground/70 mb-1">
-                        Body
-                      </div>
                       <div
                         className="max-w-full break-words text-[12px] leading-relaxed text-foreground/85"
                         style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'normal' }}
@@ -691,22 +677,10 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                         {selectedOption.body ?? ''}
                       </div>
                     </div>
-                    {selectedOption.rationale && (
-                      <div className="pt-1.5 border-t border-primary/10">
-                        <p className="text-[10px] text-muted-foreground italic leading-relaxed">
-                          {selectedOption.rationale}
-                        </p>
-                      </div>
-                    )}
                   </div>
                 ) : (
                   <div className="space-y-2">
                     <div className="space-y-1.5">
-                      <Skeleton className="h-2 w-12" />
-                      <Skeleton className="h-3.5 w-2/3" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Skeleton className="h-2 w-10 mb-1" />
                       <Skeleton className="h-3 w-full" />
                       <Skeleton className="h-3 w-11/12" />
                       <Skeleton className="h-3 w-10/12" />
