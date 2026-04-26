@@ -368,8 +368,8 @@ serve(async (req) => {
   const successCount = results.filter(r => r.success).length;
   const failedCount = results.filter(r => !r.success).length;
 
-  // Only email when there's something to report (avoid spamming on idle ticks)
-  if (results.length > 0) {
+  // Only email admins when there are FAILURES to report (avoid noisy success emails on every tick)
+  if (failedCount > 0) {
     await sendWorkflowSummaryEmail(supabase, results, successCount, failedCount);
   }
 
