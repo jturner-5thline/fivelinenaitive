@@ -1288,7 +1288,7 @@ ${personaAddendum}`;
         for (const tc of lastChoice.message.tool_calls) {
           let args;
           try { args = JSON.parse(tc.function.arguments); } catch { args = {}; }
-          const result = await executeTool(supabase, user.id, companyId, tc.function.name, args, ctx);
+          const result = await executeTool(supabase, user.id, companyId as string, tc.function.name, args, ctx);
           toolResults.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) });
         }
 
