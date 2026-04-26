@@ -251,7 +251,8 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       thread.latestEmail?.id ||
       ((thread.latestEmail as any)?.gmail_message_id as string | undefined) ||
       '';
-    return `naitive.aiAssist.draft.${thread.threadId}::${latestId}`;
+    // Bumped to v2: drafts are now body-only (no subject / rationale fields).
+    return `naitive.aiAssist.draft.v2.${thread.threadId}::${latestId}`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [thread.threadId, thread.latestEmail?.id]);
 
