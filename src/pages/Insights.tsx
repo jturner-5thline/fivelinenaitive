@@ -40,6 +40,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   Dialog, 
   DialogContent, 
@@ -2128,10 +2129,19 @@ export default function Metrics() {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <FolderOpen className="h-4 w-4 mr-2" />
-                    Presets
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        aria-label="Presets"
+                        className="h-9 w-9 p-0"
+                      >
+                        <FolderOpen className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Presets</TooltipContent>
+                  </Tooltip>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setSavePresetOpen(true)}>
@@ -2156,14 +2166,23 @@ export default function Metrics() {
               </DropdownMenu>
 
               {canEditMetrics && (
-                <Button
-                  variant={isEditMode ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setIsEditMode(!isEditMode)}
-                >
-                  <Pencil className="h-4 w-4 mr-2" />
-                  {isEditMode ? "Done Editing" : "Edit Layout"}
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={isEditMode ? "default" : "outline"}
+                      size="sm"
+                      aria-label={isEditMode ? "Done Editing" : "Edit Layout"}
+                      aria-pressed={isEditMode}
+                      className="h-9 w-9 p-0"
+                      onClick={() => setIsEditMode(!isEditMode)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isEditMode ? "Done Editing" : "Edit Layout"}
+                  </TooltipContent>
+                </Tooltip>
               )}
 
               {isEditMode && canEditMetrics && (
