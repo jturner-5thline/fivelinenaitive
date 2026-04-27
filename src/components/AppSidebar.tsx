@@ -15,6 +15,7 @@ import { usePageAccessFlags } from "@/hooks/useFeatureFlags";
 import { BetaBadge } from "@/components/ui/beta-badge";
 import { useCompany } from "@/hooks/useCompany";
 import { useNaitivePipelineAccess } from "@/hooks/useNaitivePipelineAccess";
+import { useCanAccessInsights } from "@/hooks/useCanAccessInsights";
 import { DashboardFlyoutMenu } from "@/components/sidebar/DashboardFlyoutMenu";
 
 
@@ -71,6 +72,7 @@ export function AppSidebar() {
   const { features: companyFeatures } = useCompanyFeatures();
   const { data: routingTasks = [] } = useClaapRoutingTasks();
   const { hasAccess: hasNaitivePipelineAccess } = useNaitivePipelineAccess();
+  const canAccessInsights = useCanAccessInsights();
   const meetingTaskCount = routingTasks.length;
   const { data: pendingJoinCount = 0 } = usePendingJoinRequestCount();
   const currentPath = location.pathname;
@@ -80,6 +82,8 @@ export function AppSidebar() {
   
   // Filter menu items based on feature access — while loading, only show items with no feature gate
   const visibleMenuItems = menuItems.filter(item => {
+    // Insights restricted to a specific allowlist
+    if (item.url === "/insights" && !canAccessInsights) return false;
     // Check page-level feature flag access
     if (item.featureKey !== null && (isAccessLoading || !hasPageAccess(item.featureKey))) return false;
     // Check company-level feature flag
