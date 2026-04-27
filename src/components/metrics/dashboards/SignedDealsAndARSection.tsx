@@ -248,7 +248,7 @@ function DealsDrilldownModal({
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileCheck className="h-4 w-4" />
@@ -269,11 +269,13 @@ function DealsDrilldownModal({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/30">
-                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Deal / Company</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Company</th>
                   <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Amount</th>
-                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Current Stage</th>
-                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Entered</th>
-                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Owner</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Move date</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">From stage</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">To stage</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Pipeline</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Deal ID</th>
                 </tr>
               </thead>
               <tbody>
@@ -282,12 +284,19 @@ function DealsDrilldownModal({
                     <td className="px-3 py-2 text-xs font-medium">{deal.company}</td>
                     <td className="px-3 py-2 text-xs text-right font-mono">{formatCurrencyFull(deal.value)}</td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {deal.current_stage?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || '—'}
+                      {new Date(deal.entered_at).toLocaleDateString('en-US', {
+                        month: 'short', day: 'numeric', year: 'numeric',
+                      })}
                     </td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {new Date(deal.entered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    <td className="px-3 py-2 text-xs text-muted-foreground">{prettyStage(deal.from_stage)}</td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">{prettyStage(deal.to_stage ?? deal.current_stage)}</td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">{prettyPipeline(deal.pipeline_id)}</td>
+                    <td
+                      className="px-3 py-2 text-[11px] text-muted-foreground font-mono truncate max-w-[120px]"
+                      title={deal.deal_id}
+                    >
+                      {deal.deal_id.slice(0, 8)}…
                     </td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">{deal.manager || '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -295,7 +304,7 @@ function DealsDrilldownModal({
                 <tr className="bg-muted/20">
                   <td className="px-3 py-2 text-xs font-medium">Total</td>
                   <td className="px-3 py-2 text-xs text-right font-mono font-bold">{formatCurrencyFull(total)}</td>
-                  <td colSpan={3} />
+                  <td colSpan={5} />
                 </tr>
               </tfoot>
             </table>
