@@ -99,12 +99,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
 
+    const authLoadTimeoutId = window.setTimeout(() => {
+      console.warn('[AuthProvider] getSession timeout after 5s; falling back to signed-out state');
+      setSession((currentSession) => currentSession ?? null);
+      setUser((currentUser) => currentUser ?? null);
+      setIsLoading(false);
+    }, 5000);
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('[AuthProvider] onAuthStateChange', {
+          event,
+          hasSession: !!session,
+          userId: session?.user?.id ?? null,
+          email: session?.user?.email ?? null,
+        });
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
+        window.clearTimeout(authLoadTimeoutId);
 
         // For OAuth logins (Google, etc.), always treat as "remember me"
         // since there's no checkbox shown during OAuth flow
@@ -185,53 +199,86 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      // Check if this is a session-only login that should be cleared
-      // (browser was closed and reopened without Remember Me)
-      // Only apply this logic if the user explicitly chose NOT to remember (session-only flag was set)
-      const wasExplicitlySessionOnly = sessionStorage.getItem('naitive_session_only') === 'true' || 
-        (!localStorage.getItem('naitive_remember_me') && !sessionStorage.getItem('naitive_session_active'));
-      const hasSessionMarker = sessionStorage.getItem('naitive_session_active') === 'true';
-      
-      // Only sign out if:
-      // 1. User has a session
-      // 2. User explicitly unchecked "Remember Me" (has session-only flag in previous session)
-      // 3. This is a new browser session (no active session marker)
-      // 4. User logged in via email (not OAuth - OAuth always remembers)
-      const isOAuthUser = session?.user?.app_metadata?.provider && session.user.app_metadata.provider !== 'email';
-      
-      if (session && wasExplicitlySessionOnly && !hasSessionMarker && !isOAuthUser) {
-        // User had a session but didn't check "Remember Me" and this is a new browser session
-        // Sign them out
-        supabase.auth.signOut().then(() => {
+    supabase.auth.getSession()
+      .then(({ data: { session }, error }) => {
+        console.log('[AuthProvider] getSession result', {
+          hasSession: !!session,
+          userId: session?.user?.id ?? null,
+          email: session?.user?.email ?? null,
+          error: error?.message ?? null,
+        });
+
+        if (error) {
+          console.error('[AuthProvider] getSession error:', error);
+          window.clearTimeout(authLoadTimeoutId);
           setSession(null);
           setUser(null);
           setIsLoading(false);
-        });
-        return;
-      }
-      
-      // Mark this browser session as active
-      if (session) {
-        sessionStorage.setItem('naitive_session_active', 'true');
-        // If it's an OAuth user, ensure remember me is set
-        if (isOAuthUser) {
-          localStorage.setItem('naitive_remember_me', 'true');
+          return;
         }
-      }
-      
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
-      
-      // Also check for pending invitations on initial load
-      if (session?.user?.email && !processedUsersRef.current.has(session.user.id)) {
-        processedUsersRef.current.add(session.user.id);
-        processPendingInvitations(session.user.id, session.user.email);
-      }
-    });
+
+        // Check if this is a session-only login that should be cleared
+        // (browser was closed and reopened without Remember Me)
+        // Only apply this logic if the user explicitly chose NOT to remember (session-only flag was set)
+        const wasExplicitlySessionOnly = sessionStorage.getItem('naitive_session_only') === 'true' || 
+          (!localStorage.getItem('naitive_remember_me') && !sessionStorage.getItem('naitive_session_active'));
+        const hasSessionMarker = sessionStorage.getItem('naitive_session_active') === 'true';
+        
+        // Only sign out if:
+        // 1. User has a session
+        // 2. User explicitly unchecked "Remember Me" (has session-only flag in previous session)
+        // 3. This is a new browser session (no active session marker)
+        // 4. User logged in via email (not OAuth - OAuth always remembers)
+        const isOAuthUser = session?.user?.app_metadata?.provider && session.user.app_metadata.provider !== 'email';
+        
+        if (session && wasExplicitlySessionOnly && !hasSessionMarker && !isOAuthUser) {
+          // User had a session but didn't check "Remember Me" and this is a new browser session
+          // Sign them out
+          supabase.auth.signOut().then(() => {
+            window.clearTimeout(authLoadTimeoutId);
+            setSession(null);
+            setUser(null);
+            setIsLoading(false);
+          }).catch((signOutError) => {
+            console.error('[AuthProvider] signOut after session-only restore failed:', signOutError);
+            window.clearTimeout(authLoadTimeoutId);
+            setSession(null);
+            setUser(null);
+            setIsLoading(false);
+          });
+          return;
+        }
+        
+        // Mark this browser session as active
+        if (session) {
+          sessionStorage.setItem('naitive_session_active', 'true');
+          // If it's an OAuth user, ensure remember me is set
+          if (isOAuthUser) {
+            localStorage.setItem('naitive_remember_me', 'true');
+          }
+        }
+        
+        window.clearTimeout(authLoadTimeoutId);
+        setSession(session);
+        setUser(session?.user ?? null);
+        setIsLoading(false);
+        
+        // Also check for pending invitations on initial load
+        if (session?.user?.email && !processedUsersRef.current.has(session.user.id)) {
+          processedUsersRef.current.add(session.user.id);
+          processPendingInvitations(session.user.id, session.user.email);
+        }
+      })
+      .catch((error) => {
+        console.error('[AuthProvider] getSession threw:', error);
+        window.clearTimeout(authLoadTimeoutId);
+        setSession(null);
+        setUser(null);
+        setIsLoading(false);
+      });
 
     return () => {
+      window.clearTimeout(authLoadTimeoutId);
       subscription.unsubscribe();
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
