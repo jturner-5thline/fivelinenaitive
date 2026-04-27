@@ -42,6 +42,7 @@ import {
   Dialog,
   DialogContent,
 } from '@/components/ui/dialog';
+import { StickyDashboardHeader } from '@/components/layout/StickyDashboardHeader';
 
 function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleMilestone }: {
   deal: Deal; onStatusChange: (id: string, s: DealStatus) => void; isDragging?: boolean;
