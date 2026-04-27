@@ -17,7 +17,6 @@ export interface WidgetDefinition {
 // Lazy-load widget components
 const MyDealsWidget = React.lazy(lazyRetry(() => import('./MyDealsWidget').then(m => ({ default: m.MyDealsWidget }))));
 const MyTasksWidget = React.lazy(lazyRetry(() => import('./MyTasksWidget').then(m => ({ default: m.MyTasksWidget }))));
-const KeyAlertsWidget = React.lazy(lazyRetry(() => import('./KeyAlertsWidget').then(m => ({ default: m.KeyAlertsWidget }))));
 const MyDayWidget = React.lazy(lazyRetry(() => import('./MyDayWidget').then(m => ({ default: m.MyDayWidget }))));
 const EmailIntelligenceWidget = React.lazy(lazyRetry(() => import('./EmailIntelligenceWidget').then(m => ({ default: m.EmailIntelligenceWidget }))));
 const NotificationCarousel = React.lazy(lazyRetry(() => import('./NotificationCarousel').then(m => ({ default: m.NotificationCarousel }))));
@@ -52,16 +51,6 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
     defaultSize: { w: 6, h: 6 },
     minSize: { w: 3, h: 3 },
     component: MyTasksWidget,
-  },
-  'key-alerts': {
-    type: 'key-alerts',
-    label: 'Key Alerts',
-    description: 'Stale lenders, at-risk deals, and overdue milestones for your deals',
-    icon: Bell,
-    category: 'core',
-    defaultSize: { w: 4, h: 4 },
-    minSize: { w: 3, h: 2 },
-    component: KeyAlertsWidget,
   },
   'my-day': {
     type: 'my-day',
