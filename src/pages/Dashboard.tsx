@@ -22,6 +22,29 @@ import { AddWidgetDialog } from '@/components/dashboard/AddWidgetDialog';
 import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
 import { EmailIntelligenceWidget } from '@/components/dashboard/EmailIntelligenceWidget';
 import { cn } from '@/lib/utils';
+import { QuickActionTile, type QuickActionTileTheme } from '@/components/dashboard/QuickActionTile';
+
+/**
+ * Per-tile color themes for the glassy quick-action row, matching the
+ * reference design (widget_icon_grid_glassy.html). Each theme is a
+ * gradient + icon stroke color pair.
+ */
+const QA_TILE_THEMES: Record<
+  'calendar' | 'email' | 'dealRundown' | 'newDeal' | 'dailyBriefing' | 'nikisBriefing' | 'deals' | 'newsFeed',
+  QuickActionTileTheme
+> = {
+  calendar:       { gradient: 'linear-gradient(145deg, #2a3a8c, #1a2466)', iconColor: '#7b9ff5' },
+  email:          { gradient: 'linear-gradient(145deg, #6b2fa0, #4a1d7a)', iconColor: '#c084f5' },
+  dealRundown:    { gradient: 'linear-gradient(145deg, #1e3a6e, #142a55)', iconColor: '#6b9cf5' },
+  newDeal:        { gradient: 'linear-gradient(145deg, #1e3a6e, #142a55)', iconColor: '#6b9cf5' },
+  dailyBriefing:  { gradient: 'linear-gradient(145deg, #8a5c10, #6b4208)', iconColor: '#f5a623' },
+  nikisBriefing:  { gradient: 'linear-gradient(145deg, #0d5c52, #0a4540)', iconColor: '#2dd4b8' },
+  deals:          { gradient: 'linear-gradient(145deg, #0d5c52, #0a4540)', iconColor: '#2dd4b8' },
+  newsFeed:       { gradient: 'linear-gradient(145deg, #1e3a6e, #142a55)', iconColor: '#6b9cf5' },
+};
+
+/** Common stroke / size for all quick-action lucide icons. */
+const QA_ICON_PROPS = { size: 36, strokeWidth: 1.6 } as const;
 
 /**
  * Shared interaction styles for the dashboard widget tiles
