@@ -523,9 +523,17 @@ export function AICopilotPanel() {
   }, [showHistory]);
 
   useEffect(() => {
-    if (!isOpen || !user || messages.length > 0) return;
+    // Auto-load most recent conversation as soon as user is available,
+    // so the assistant restores history on page refresh instead of starting a new chat.
+    if (!user || messages.length > 0) return;
     (async () => {
-      const { data } = await supabase.from('copilot_conversations').select('id, messages').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(1).single();
+      const { data } = await supabase
+        .from('copilot_conversations')
+        .select('id, messages')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
       if (data?.messages && Array.isArray(data.messages) && data.messages.length > 0) {
         setConversationId(data.id);
         setMessages(
@@ -536,7 +544,7 @@ export function AICopilotPanel() {
         );
       }
     })();
-  }, [isOpen, user]);
+  }, [user]);
 
   const saveConversation = useCallback(
     async (msgs: typeof messages) => {
