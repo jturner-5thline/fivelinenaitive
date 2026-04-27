@@ -85,10 +85,25 @@ export function WeeklyRundownCarousel({ page1 }: WeeklyRundownCarouselProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, [goTo]);
 
-  const arrowBtnStyle: React.CSSProperties = {
-    width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(80,150,220,0.25)',
-    background: 'rgba(40,90,150,0.35)', cursor: 'pointer', display: 'flex',
-    alignItems: 'center', justifyContent: 'center', transition: 'background .2s',
+  // Floating side-edge nav buttons — vertically centered overlay controls,
+  // mirroring the Daily Rundown widget's content-navigation feel.
+  const sideArrowBtnStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    border: '1px solid rgba(80,150,220,0.25)',
+    background: 'rgba(20,40,65,0.55)',
+    backdropFilter: 'blur(6px)',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'background .2s, opacity .2s',
+    zIndex: 30,
+    opacity: 0.75,
   };
 
   return (
@@ -98,59 +113,37 @@ export function WeeklyRundownCarousel({ page1 }: WeeklyRundownCarouselProps) {
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      {/* Sub-page navigation header */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16,
-        padding: '12px 16px', position: 'sticky', top: 0, zIndex: 20,
-        background: 'rgba(15,25,35,0.92)', backdropFilter: 'blur(8px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, marginBottom: 8,
-      }}>
-        <button
-          onClick={() => goTo(-1)}
-          aria-label="Previous page"
-          style={arrowBtnStyle}
-          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(40,110,180,0.55)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(40,90,150,0.35)')}
-        >
-          <ChevronLeft size={16} color="rgba(140,190,230,0.7)" />
-        </button>
-
-        <div style={{ textAlign: 'center', minWidth: 220 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#e8f4ff', letterSpacing: '-.2px' }}>
-            {PAGES[activeIndex].title}
-          </div>
-          <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 4 }}>
-            {PAGES.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setActiveIndex(i)}
-                aria-label={`Go to page ${i + 1}`}
-                style={{
-                  width: 7, height: 7, borderRadius: '50%', border: 'none', cursor: 'pointer', transition: 'background .2s',
-                  background: i === activeIndex ? 'rgba(80,160,230,0.7)' : 'rgba(80,140,200,0.25)',
-                }}
-              />
-            ))}
-          </div>
-        </div>
-
-        <button
-          onClick={() => goTo(1)}
-          aria-label="Next page"
-          style={arrowBtnStyle}
-          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(40,110,180,0.55)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(40,90,150,0.35)')}
-        >
-          <ChevronRight size={16} color="rgba(140,190,230,0.7)" />
-        </button>
-
-        <span style={{
-          fontSize: 10, color: 'rgba(140,175,200,0.55)', fontWeight: 600,
-          letterSpacing: '.5px', position: 'absolute', right: 16,
-        }}>
-          {activeIndex + 1} / {PAGES.length}
-        </span>
-      </div>
+      {/* Floating side-edge nav controls (overlay, vertically centered) */}
+      <button
+        onClick={() => goTo(-1)}
+        aria-label="Previous page"
+        style={{ ...sideArrowBtnStyle, left: 12 }}
+        onMouseEnter={e => {
+          e.currentTarget.style.background = 'rgba(40,110,180,0.7)';
+          e.currentTarget.style.opacity = '1';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.background = 'rgba(20,40,65,0.55)';
+          e.currentTarget.style.opacity = '0.75';
+        }}
+      >
+        <ChevronLeft size={18} color="rgba(200,225,245,0.9)" />
+      </button>
+      <button
+        onClick={() => goTo(1)}
+        aria-label="Next page"
+        style={{ ...sideArrowBtnStyle, right: 12 }}
+        onMouseEnter={e => {
+          e.currentTarget.style.background = 'rgba(40,110,180,0.7)';
+          e.currentTarget.style.opacity = '1';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.background = 'rgba(20,40,65,0.55)';
+          e.currentTarget.style.opacity = '0.75';
+        }}
+      >
+        <ChevronRight size={18} color="rgba(200,225,245,0.9)" />
+      </button>
 
       {/* Active page content. Page 1 is always mounted (display:none when inactive)
           so its widget grid / period selector state is preserved across page changes. */}
