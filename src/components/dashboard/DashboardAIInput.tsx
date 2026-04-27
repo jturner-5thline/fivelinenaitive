@@ -102,9 +102,41 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
   const autoBriefedRef = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatSectionRef = useRef<HTMLDivElement>(null);
+  const didResetOnMountRef = useRef(false);
 
   // Determine if chat is active (has messages)
   const isChatActive = messages.length > 0;
+
+  // Always land on a fresh assistant when the dashboard is mounted or
+  // refreshed. Without this, the auto-resume effect inside
+  // useChatPersistence rehydrates the most recent conversation (e.g. the
+  // last "deal rundown" response) and the empty hero state never shows.
+  // We run this exactly once per mount, before auto-resume can fire,
+  // and clear the localStorage hint so subsequent refreshes also stay
+  // clean. In-session navigation away from the dashboard is unaffected
+  // because the hook's state is local to this component instance.
+  useEffect(() => {
+    if (didResetOnMountRef.current) return;
+    didResetOnMountRef.current = true;
+    try {
+      // Clear the persisted "last open conversation" hint so the
+      // auto-resume effect has nothing to rehydrate.
+      Object.keys(window.localStorage)
+        .filter((k) => k.startsWith('dashboardChat:activeConversationId'))
+        .forEach((k) => window.localStorage.removeItem(k));
+    } catch {
+      // ignore storage errors (private mode, quota)
+    }
+    // Reset the assistant: clears messages, active conversation id, and
+    // marks auto-resume as already handled so the hook will not re-load.
+    startNewChat();
+    setInputValue('');
+    setRequestError(null);
+    setExpanded(false);
+    setShowHistory(false);
+    // Mount-only: intentionally no deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Load team members for @mentions
   useEffect(() => {
