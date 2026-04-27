@@ -2121,10 +2121,6 @@ export default function Metrics() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                <Badge variant="outline" className="text-sm">
-                  <Calendar className="h-3 w-3 mr-1" />
-                  {format(new Date(), "MMM, yyyy")}
-                </Badge>
               </div>
               <div className="flex items-center gap-3 mt-1">
                 <p className="text-muted-foreground">
@@ -2134,18 +2130,26 @@ export default function Metrics() {
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <Select value={reportingMonth} onValueChange={setReportingMonth}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Select month" />
-                </SelectTrigger>
-                <SelectContent>
-                  {monthLabels.map((month) => (
-                    <SelectItem key={month} value={month}>
-                      {month}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {selectedDashboard === 'management-snapshot' && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <Select
+                    value={dashboardSelectedQuarter.value}
+                    onValueChange={setDashboardQuarterValue}
+                  >
+                    <SelectTrigger className="w-[140px] h-9 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dashboardQuarterOptions.map(q => (
+                        <SelectItem key={q.value} value={q.value} className="text-xs">
+                          {q.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
