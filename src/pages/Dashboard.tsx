@@ -483,7 +483,7 @@ export default function Dashboard() {
             existing lucide icons; only the surrounding tile design changed.
           */}
           <div
-            className="flex flex-wrap gap-2.5 p-4 rounded-[14px]"
+            className="flex flex-wrap sm:flex-nowrap w-full gap-2.5 p-4 rounded-[14px]"
             style={{ background: '#16181f' }}
           >
             <QuickActionTile
