@@ -5,7 +5,7 @@ import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Briefcase, La
 import { useAuth } from '@/contexts/AuthContext';
 import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
 import { InboxDialog } from '@/components/dashboard/InboxDialog';
-import { DealsCarouselDialog } from '@/components/dashboard/DealsCarouselDialog';
+import { DealsCarouselDialog, DealsCarouselView } from '@/components/dashboard/DealsCarouselDialog';
 import { WidgetCarouselChrome } from '@/components/dashboard/widget-carousel/WidgetCarouselChrome';
 import { useWidgetCarouselStore } from '@/stores/widgetCarouselStore';
 import { useProfile } from '@/hooks/useProfile';
@@ -222,6 +222,7 @@ export default function Dashboard() {
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pendingRemoval, setPendingRemoval] = useState<{ widgetId: string; widget: WidgetConfig; gridItem: GridItem } | null>(null);
   const [dealsDialogOpen, setDealsDialogOpen] = useState(false);
+  const [dealsInitialView, setDealsInitialView] = useState<DealsCarouselView | undefined>(undefined);
 
   // Sync tab from URL query params
   useEffect(() => {
@@ -255,6 +256,19 @@ export default function Dashboard() {
   useEffect(() => {
     const widgetParam = searchParams.get('widget');
     if (!widgetParam) return;
+    // Special-case: the Deals dialog isn't part of the carousel store —
+    // it's a standalone modal opened from the Deals quick-action tile. We
+    // route ?widget=deals (optionally with ?view=<sub-view>) here so users
+    // can deep-link to e.g. the new Key Alerts page.
+    if (widgetParam === 'deals') {
+      const view = searchParams.get('view') as DealsCarouselView | null;
+      setDealsInitialView(view ?? undefined);
+      setDealsDialogOpen(true);
+      searchParams.delete('widget');
+      searchParams.delete('view');
+      setSearchParams(searchParams, { replace: true });
+      return;
+    }
     if (widgetOrderEntries.length === 0) return; // wait until order is ready
     const isAllowed = widgetOrderEntries.some((w) => w.id === widgetParam);
     if (isAllowed) {
@@ -782,7 +796,14 @@ export default function Dashboard() {
         />
       )}
       <WidgetCarouselChrome />
-      <DealsCarouselDialog open={dealsDialogOpen} onOpenChange={setDealsDialogOpen} />
+      <DealsCarouselDialog
+        open={dealsDialogOpen}
+        onOpenChange={(next) => {
+          setDealsDialogOpen(next);
+          if (!next) setDealsInitialView(undefined);
+        }}
+        initialView={dealsInitialView}
+      />
     </>
   );
 }
