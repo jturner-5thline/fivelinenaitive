@@ -27,6 +27,7 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { useUploadedItems } from '@/hooks/useUploadedItems';
 import { useChecklistCategories } from '@/hooks/useChecklistCategories';
 import { useDealOutstandingItemsByKey } from '@/hooks/useDealOutstandingItemsByKey';
+import { useDealCustomFolders } from '@/hooks/useDealCustomFolders';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
@@ -67,6 +68,10 @@ function formatSize(bytes: number) {
 }
 
 const DRAG_MIME = 'application/x-vdr-doc-ids';
+// When a whole category header is dragged from Internal, we serialize the
+// category name + the IDs of every file currently visible in it so a drop
+// can bulk-share + (optionally) re-categorise into a Data Room folder.
+const DRAG_CATEGORY_MIME = 'application/x-vdr-category';
 
 export function VdrThreeColumnWorkspace({
   dealId, documents, documentsLoading, onPreview, vdrDocs,
@@ -89,6 +94,8 @@ export function VdrThreeColumnWorkspace({
 
   // Drag state
   const [dropTarget, setDropTarget] = useState<'internal' | 'dataroom' | null>(null);
+  // Drop target for an individual Data Room folder header (custom or default)
+  const [dropFolderTarget, setDropFolderTarget] = useState<string | null>(null);
 
   // Bulk upload flow
   const [bulkUploadStep, setBulkUploadStep] = useState<'none' | 'upload' | 'mapping'>('none');
@@ -100,12 +107,22 @@ export function VdrThreeColumnWorkspace({
   const [deleteConfirm, setDeleteConfirm] = useState<string[] | null>(null);
   const [newFolderDialog, setNewFolderDialog] = useState<{ parentPath: string } | null>(null);
   const [newFolderName, setNewFolderName] = useState('');
+  // Custom-per-deal Data Room folder dialog
+  const [showCustomFolderDialog, setShowCustomFolderDialog] = useState(false);
+  const [customFolderName, setCustomFolderName] = useState('');
+  const [customFolderToDelete, setCustomFolderToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const internalFileInput = useRef<HTMLInputElement>(null);
   const dataroomFileInput = useRef<HTMLInputElement>(null);
 
   // Load default categories (Settings-driven via data_room_checklist_categories)
   const { categories, loading: categoriesLoading } = useChecklistCategories();
+  // Per-deal custom Data Room folders (visible only in this deal's Data Room column)
+  const {
+    folders: customFolders,
+    createFolder: createCustomFolder,
+    deleteFolder: deleteCustomFolder,
+  } = useDealCustomFolders(dealId);
 
   // Checklist
   const uploadedItems = useUploadedItems(dealId, bulkBatchId);
@@ -209,7 +226,14 @@ export function VdrThreeColumnWorkspace({
   // ── Category grouping ────────────────────────────────────
   // Build the ordered list of category names from settings (source of truth)
   const categoryNames = useMemo(() => categories.map(c => c.name), [categories]);
-  const categoryNameSet = useMemo(() => new Set(categoryNames), [categoryNames]);
+  const customFolderNames = useMemo(() => customFolders.map(f => f.name), [customFolders]);
+  // Categories shown in BOTH columns. Custom folders are per-deal so they are
+  // appended to the default company taxonomy.
+  const categoryNameSet = useMemo(
+    () => new Set([...categoryNames, ...customFolderNames]),
+    [categoryNames, customFolderNames],
+  );
+  const customFolderNameSet = useMemo(() => new Set(customFolderNames), [customFolderNames]);
   const UNCATEGORIZED = '__uncategorized__';
 
   /** Derive the category bucket for a document from its folder_path. */
@@ -314,6 +338,26 @@ export function VdrThreeColumnWorkspace({
     );
   }, [vdrDocs]);
 
+  // Share file(s) to the Data Room AND drop them into a specific folder in one go.
+  // Used by drag-onto-folder-header and the bulk "Move to Data Room → <folder>" menu.
+  const shareToDataroomFolder = useCallback(
+    async (ids: string[], folderName: string | null) => {
+      if (!ids.length) return;
+      const newPath = folderName ? `/${folderName}/` : '/';
+      await Promise.all([
+        vdrDocs.bulkShareToDataroom(ids, true),
+        ...ids.map((id: string) => vdrDocs.moveDocument(id, newPath)),
+      ]);
+      setInternalSelected(new Set());
+      toast.success(
+        folderName
+          ? `Shared ${ids.length} file${ids.length === 1 ? '' : 's'} to ${folderName}`
+          : `Shared ${ids.length} file${ids.length === 1 ? '' : 's'} to Data Room`,
+      );
+    },
+    [vdrDocs],
+  );
+
   // Drag & drop
   const handleDragStart = (e: React.DragEvent, doc: VdrDocument, source: 'internal' | 'dataroom') => {
     const selected = source === 'internal' ? internalSelected : dataroomSelected;
@@ -322,9 +366,22 @@ export function VdrThreeColumnWorkspace({
     e.dataTransfer.effectAllowed = 'move';
   };
 
+  // Drag a whole Internal category header → bulk share all files in that group.
+  const handleCategoryDragStart = (e: React.DragEvent, categoryName: string, ids: string[]) => {
+    if (!ids.length) {
+      e.preventDefault();
+      return;
+    }
+    // Encoded in BOTH mimes so the same drop handler works on column or folder headers.
+    e.dataTransfer.setData(DRAG_MIME, JSON.stringify({ ids, source: 'internal' }));
+    e.dataTransfer.setData(DRAG_CATEGORY_MIME, JSON.stringify({ categoryName, ids }));
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
   const handleColumnDrop = async (e: React.DragEvent, dest: 'internal' | 'dataroom') => {
     e.preventDefault();
     setDropTarget(null);
+    setDropFolderTarget(null);
     // External file drop = upload
     if (e.dataTransfer.files.length > 0) {
       const files = Array.from(e.dataTransfer.files);
@@ -339,6 +396,17 @@ export function VdrThreeColumnWorkspace({
       }
       return;
     }
+    // Category drag → share all files of that category, preserving the same folder name
+    const catRaw = e.dataTransfer.getData(DRAG_CATEGORY_MIME);
+    if (catRaw && dest === 'dataroom') {
+      try {
+        const { categoryName, ids } = JSON.parse(catRaw) as { categoryName: string; ids: string[] };
+        if (ids?.length) {
+          await shareToDataroomFolder(ids, categoryName === UNCATEGORIZED ? null : categoryName);
+        }
+        return;
+      } catch { /* fall through */ }
+    }
     const raw = e.dataTransfer.getData(DRAG_MIME);
     if (!raw) return;
     try {
@@ -349,11 +417,75 @@ export function VdrThreeColumnWorkspace({
     } catch { /* ignore */ }
   };
 
+  // Drop onto a specific Data Room folder header → share + move into that folder.
+  const handleFolderDrop = async (e: React.DragEvent, folderName: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDropTarget(null);
+    setDropFolderTarget(null);
+    const catRaw = e.dataTransfer.getData(DRAG_CATEGORY_MIME);
+    if (catRaw) {
+      try {
+        const { ids } = JSON.parse(catRaw) as { ids: string[] };
+        if (ids?.length) {
+          await shareToDataroomFolder(ids, folderName === UNCATEGORIZED ? null : folderName);
+          return;
+        }
+      } catch { /* fall through */ }
+    }
+    const raw = e.dataTransfer.getData(DRAG_MIME);
+    if (!raw) return;
+    try {
+      const { ids } = JSON.parse(raw) as { ids: string[]; source: 'internal' | 'dataroom' };
+      if (ids?.length) {
+        await shareToDataroomFolder(ids, folderName === UNCATEGORIZED ? null : folderName);
+      }
+    } catch { /* ignore */ }
+  };
+
   const allowDrop = (e: React.DragEvent, dest: 'internal' | 'dataroom') => {
-    if (e.dataTransfer.types.includes(DRAG_MIME) || e.dataTransfer.types.includes('Files')) {
+    if (
+      e.dataTransfer.types.includes(DRAG_MIME) ||
+      e.dataTransfer.types.includes(DRAG_CATEGORY_MIME) ||
+      e.dataTransfer.types.includes('Files')
+    ) {
       e.preventDefault();
       setDropTarget(dest);
     }
+  };
+
+  const allowFolderDrop = (e: React.DragEvent, folderName: string) => {
+    if (
+      e.dataTransfer.types.includes(DRAG_MIME) ||
+      e.dataTransfer.types.includes(DRAG_CATEGORY_MIME)
+    ) {
+      e.preventDefault();
+      e.stopPropagation();
+      setDropFolderTarget(folderName);
+    }
+  };
+
+  const handleCreateCustomFolder = async () => {
+    const folder = await createCustomFolder(customFolderName);
+    if (folder) {
+      toast.success(`Created folder “${folder.name}”`);
+      setCustomFolderName('');
+      setShowCustomFolderDialog(false);
+    }
+  };
+
+  const handleDeleteCustomFolder = async () => {
+    if (!customFolderToDelete) return;
+    // Reassign any docs in this folder to root before delete (so files aren't orphaned)
+    const docsInFolder = documents.filter(
+      d => !d.is_folder && (d.folder_path || '').replace(/^\/+|\/+$/g, '').split('/')[0] === customFolderToDelete.name,
+    );
+    for (const d of docsInFolder) {
+      await vdrDocs.moveDocument(d.id, '/');
+    }
+    const ok = await deleteCustomFolder(customFolderToDelete.id);
+    if (ok) toast.success(`Removed folder “${customFolderToDelete.name}”`);
+    setCustomFolderToDelete(null);
   };
 
   const handleInternalUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
