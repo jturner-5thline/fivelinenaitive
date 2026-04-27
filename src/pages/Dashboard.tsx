@@ -16,6 +16,7 @@ import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { PresetManager } from '@/components/dashboard/PresetManager';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { AddWidgetDialog } from '@/components/dashboard/AddWidgetDialog';
