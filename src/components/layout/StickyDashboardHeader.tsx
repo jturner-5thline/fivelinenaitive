@@ -8,24 +8,41 @@ import { cn } from "@/lib/utils";
  * to the top of the scrollable `<main>` container in `AppLayout` so it stays
  * visible while the user scrolls through charts and widgets below.
  *
- * Visual treatment matches the Insights page header: translucent backdrop
- * blur + thin bottom hairline so scrolling content never bleeds through.
+ * Visual treatment: translucent backdrop blur + thin bottom hairline so
+ * scrolling content never bleeds through.
  *
- * Usage:
- *   <div className="container mx-auto py-6 px-4 space-y-6">
- *     <StickyDashboardHeader>
- *       <PageTitleAndControls />
- *     </StickyDashboardHeader>
- *     {pageBody}
- *   </div>
+ * **Important:** This component MUST be rendered as a direct (or near-direct)
+ * child of the page's content container — typically `<DashboardPage>` — so
+ * its sticky positioning resolves against the scrollable `<main>` ancestor
+ * in `AppLayout`. Do not place it inside an element with `overflow: hidden`
+ * or `transform`, which would create a new containing block and break sticky.
  *
- * The `-mx-4 px-4` defaults extend the blurred bar edge-to-edge inside a
- * `container px-4` parent. Pass `paddingClassName` to override for layouts
- * with different horizontal padding (e.g. `-mx-6 px-6` inside `p-6`).
+ * The `padding` preset must match the surrounding `<DashboardPage>` padding
+ * so the blurred bar bleeds edge-to-edge. When in doubt, prefer the default
+ * (used by `<DashboardPage>` automatically via cloning).
  */
+export type StickyDashboardHeaderPadding = "sm" | "md" | "lg";
+
+const PADDING_CLASSES: Record<StickyDashboardHeaderPadding, string> = {
+  // Matches DashboardPage padding="sm"  (px-4 / py-6)
+  sm: "-mx-4 px-4",
+  // Matches DashboardPage padding="md"  (px-6 / py-6) — Finance, etc.
+  md: "-mx-6 px-6",
+  // Matches DashboardPage padding="lg"  (px-8) — extra-roomy layouts
+  lg: "-mx-8 px-8",
+};
+
 export interface StickyDashboardHeaderProps
   extends React.HTMLAttributes<HTMLDivElement> {
-  /** Tailwind classes that mirror the parent's horizontal padding. */
+  /**
+   * Horizontal padding preset. MUST match the parent `DashboardPage`'s
+   * padding so the blurred bar extends edge-to-edge. Defaults to `"sm"`.
+   */
+  padding?: StickyDashboardHeaderPadding;
+  /**
+   * Escape hatch: explicit Tailwind padding classes (e.g. `"-mx-5 px-5"`).
+   * Overrides `padding` when provided. Avoid unless absolutely necessary.
+   */
   paddingClassName?: string;
   /** Optional top offset (e.g. when nested under another fixed bar). */
   topClassName?: string;
@@ -33,19 +50,22 @@ export interface StickyDashboardHeaderProps
 
 export function StickyDashboardHeader({
   className,
-  paddingClassName = "-mx-4 px-4",
+  padding = "sm",
+  paddingClassName,
   topClassName = "top-0",
   children,
   ...rest
 }: StickyDashboardHeaderProps) {
+  const resolvedPadding = paddingClassName ?? PADDING_CLASSES[padding];
   return (
     <div
       {...rest}
+      data-sticky-dashboard-header=""
       className={cn(
         "sticky z-40 py-3 border-b border-white/5",
         "bg-background/70 backdrop-blur-md supports-[backdrop-filter]:bg-background/60",
         topClassName,
-        paddingClassName,
+        resolvedPadding,
         className,
       )}
     >
