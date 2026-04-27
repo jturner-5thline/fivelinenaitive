@@ -2127,10 +2127,10 @@ export default function Metrics() {
                 />
               )}
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <UITooltip>
-                    <TooltipTrigger asChild>
+              <UITooltip>
+                <DropdownMenu>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
                       <Button
                         variant="outline"
                         size="sm"
@@ -2139,10 +2139,9 @@ export default function Metrics() {
                       >
                         <FolderOpen className="h-4 w-4" />
                       </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Presets</TooltipContent>
-                  </UITooltip>
-                </DropdownMenuTrigger>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>Presets</TooltipContent>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setSavePresetOpen(true)}>
                     <Save className="h-4 w-4 mr-2" />
@@ -2163,7 +2162,8 @@ export default function Metrics() {
                     </>
                   )}
                 </DropdownMenuContent>
-              </DropdownMenu>
+                </DropdownMenu>
+              </UITooltip>
 
               {canEditMetrics && (
                 <UITooltip>
