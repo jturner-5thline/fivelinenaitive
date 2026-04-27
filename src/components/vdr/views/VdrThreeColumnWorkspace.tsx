@@ -13,6 +13,10 @@ import {
   ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger,
   ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent, ContextMenuSeparator,
 } from '@/components/ui/context-menu';
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { cn } from '@/lib/utils';
@@ -1011,6 +1015,52 @@ export function VdrThreeColumnWorkspace({
                 >
                   <ArrowRight className="h-3 w-3" /> Move to Data Room
                 </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="sm" variant="outline"
+                      className="h-6 w-6 p-0 border-primary/40 text-primary hover:bg-primary/10"
+                      title="Move to a specific Data Room folder"
+                    >
+                      <ChevronDown className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 max-h-72 overflow-auto">
+                    <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      Move to Data Room folder
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem
+                      className="text-xs"
+                      onClick={() => shareToDataroomFolder(Array.from(internalSelected), null)}
+                    >
+                      <FolderOpen className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                      Data Room (root)
+                    </DropdownMenuItem>
+                    {categoryNames.length > 0 && <DropdownMenuSeparator />}
+                    {categoryNames.map(name => (
+                      <DropdownMenuItem
+                        key={`std-${name}`}
+                        className="text-xs"
+                        onClick={() => shareToDataroomFolder(Array.from(internalSelected), name)}
+                      >
+                        <FolderClosed className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                        {name}
+                      </DropdownMenuItem>
+                    ))}
+                    {customFolderNames.length > 0 && <DropdownMenuSeparator />}
+                    {customFolderNames.map(name => (
+                      <DropdownMenuItem
+                        key={`cust-${name}`}
+                        className="text-xs"
+                        onClick={() => shareToDataroomFolder(Array.from(internalSelected), name)}
+                      >
+                        <FolderClosed className="h-3.5 w-3.5 mr-2 text-primary/70" />
+                        {name}
+                        <span className="ml-auto text-[9px] text-muted-foreground">custom</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button
                   size="sm" variant="ghost"
                   className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
