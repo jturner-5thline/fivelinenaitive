@@ -15,6 +15,7 @@ import { join, resolve } from 'node:path';
 
 const repoRoot = resolve(__dirname, '../../../..');
 const pagesDir = join(repoRoot, 'src/pages');
+const layoutDir = join(repoRoot, 'src/components/layout');
 
 const DASHBOARD_PAGES = [
   'Insights.tsx',
@@ -53,4 +54,12 @@ describe('Dashboard sticky-header architecture', () => {
       expect(adHoc, `${file} should delegate sticky positioning to the shared header`).toBeNull();
     },
   );
+
+  it('StickyDashboardHeader resolves its top offset from --app-top-bar-height', () => {
+    const src = read(join(layoutDir, 'StickyDashboardHeader.tsx'));
+    expect(
+      /var\(\s*--app-top-bar-height\s*,\s*0px\s*\)/.test(src),
+      'StickyDashboardHeader must default `top` to var(--app-top-bar-height, 0px)',
+    ).toBe(true);
+  });
 });
