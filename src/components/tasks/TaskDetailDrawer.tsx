@@ -462,30 +462,37 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
           <Separator style={{ backgroundColor: '#2a2f3e' }} />
 
           {/* Attachments */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium flex items-center gap-1.5" style={{ color: '#8b92a5' }}>
-                <Paperclip className="h-3 w-3" /> Attachments ({attachments.length})
-              </span>
-              <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" style={{ color: '#8b92a5' }} onClick={() => fileInputRef.current?.click()}>
-                <Plus className="h-3 w-3" /> Upload
+          <div className="flex items-center gap-2">
+            <Paperclip className="h-3.5 w-3.5 shrink-0" style={{ color: '#8b92a5' }} />
+            <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
+            <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+              {attachments.map(a => (
+                <div
+                  key={a.id}
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-md group text-xs max-w-full"
+                  style={{ backgroundColor: '#1a1f2e' }}
+                >
+                  <FileText className="h-3 w-3 shrink-0" style={{ color: '#8b92a5' }} />
+                  <span className="truncate max-w-[140px]" style={{ color: 'white' }}>{a.file_name}</span>
+                  <span className="text-[10px] shrink-0" style={{ color: '#8b92a5' }}>{formatFileSize(a.file_size)}</span>
+                  <button onClick={() => handleDownload(a.file_path, a.file_name)} className="opacity-0 group-hover:opacity-100 shrink-0">
+                    <Download className="h-3 w-3" style={{ color: '#3b7eff' }} />
+                  </button>
+                  <button onClick={() => deleteAttachment.mutate(a)} className="opacity-0 group-hover:opacity-100 shrink-0">
+                    <X className="h-3 w-3" style={{ color: '#ff4d4d' }} />
+                  </button>
+                </div>
+              ))}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-xs gap-1 px-2"
+                style={{ color: '#8b92a5' }}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Plus className="h-3 w-3" /> {attachments.length === 0 ? 'Upload' : 'Add'}
               </Button>
-              <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
             </div>
-            {attachments.map(a => (
-              <div key={a.id} className="flex items-center gap-2 py-1 group text-xs">
-                <FileText className="h-3.5 w-3.5 shrink-0" style={{ color: '#8b92a5' }} />
-                <span className="truncate flex-1" style={{ color: 'white' }}>{a.file_name}</span>
-                <span className="text-[10px]" style={{ color: '#8b92a5' }}>{formatFileSize(a.file_size)}</span>
-                <button onClick={() => handleDownload(a.file_path, a.file_name)} className="opacity-0 group-hover:opacity-100">
-                  <Download className="h-3 w-3" style={{ color: '#3b7eff' }} />
-                </button>
-                <button onClick={() => deleteAttachment.mutate(a)} className="opacity-0 group-hover:opacity-100">
-                  <X className="h-3 w-3" style={{ color: '#ff4d4d' }} />
-                </button>
-              </div>
-            ))}
-            {attachments.length === 0 && <p className="text-[11px]" style={{ color: '#8b92a5' }}>No files attached</p>}
           </div>
 
           <Separator style={{ backgroundColor: '#2a2f3e' }} />
