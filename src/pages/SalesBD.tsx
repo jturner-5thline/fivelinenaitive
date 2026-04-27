@@ -13,6 +13,7 @@ import { usePartners } from "@/hooks/usePartnersPipeline";
 import { ChannelsBoard } from "@/components/channels/ChannelsBoard";
 import { ChannelsDashboard } from "@/components/channels/ChannelsDashboard";
 import { ReferralSourcesView } from "@/components/channels/ReferralSourcesView";
+import { StickyDashboardHeader } from "@/components/layout/StickyDashboardHeader";
 
 const PartnersPipeline = lazy(() => import("./PartnersPipeline"));
 
@@ -34,15 +35,15 @@ export default function SalesBD() {
       </Helmet>
       <div className="bg-background">
         <div className="container mx-auto py-8 px-4">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold tracking-tight">Sales & BD</h1>
-            <p className="text-muted-foreground mt-1">
-              Manage your sales pipeline and business development activities
-            </p>
-          </div>
-
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
+            <StickyDashboardHeader>
+              <div className="mb-3">
+                <h1 className="text-3xl font-bold tracking-tight">Sales & BD</h1>
+                <p className="text-muted-foreground mt-1">
+                  Manage your sales pipeline and business development activities
+                </p>
+              </div>
+              <TabsList>
               <TabsTrigger value="overview" className="gap-1.5">
                 <Users className="h-3.5 w-3.5" /> Overview
               </TabsTrigger>
@@ -53,8 +54,9 @@ export default function SalesBD() {
                 <Handshake className="h-3.5 w-3.5" /> Partners Pipeline
               </TabsTrigger>
             </TabsList>
+            </StickyDashboardHeader>
 
-            <TabsContent value="overview">
+            <TabsContent value="overview" className="mt-4">
               <div className="space-y-8">
                 <PartnersByStageCards onNavigateToStage={navigateToStage} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
@@ -65,7 +67,7 @@ export default function SalesBD() {
               </div>
             </TabsContent>
 
-            <TabsContent value="channels">
+            <TabsContent value="channels" className="mt-4">
               <div className="space-y-6">
                 {/* Sub-navigation */}
                 <div className="flex items-center gap-1 bg-[hsl(260,20%,14%,0.5)] backdrop-blur-xl border border-[hsl(260,30%,45%,0.1)] ring-1 ring-inset ring-white/[0.03] rounded-lg p-0.5 w-fit shadow-[0_2px_8px_hsl(0,0%,0%,0.2)]">
@@ -120,7 +122,7 @@ export default function SalesBD() {
               </div>
             </TabsContent>
 
-            <TabsContent value="partners-pipeline">
+            <TabsContent value="partners-pipeline" className="mt-4">
               <Suspense fallback={<Skeleton className="h-96 w-full" />}>
                 <PartnersPipeline />
               </Suspense>

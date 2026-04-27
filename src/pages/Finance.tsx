@@ -4,6 +4,7 @@ import { useCompany } from "@/hooks/useCompany";
 import { Card, CardContent } from "@/components/ui/card";
 import { Building2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StickyDashboardHeader } from "@/components/layout/StickyDashboardHeader";
 
 export default function Finance() {
   const { company, isLoading: companyLoading } = useCompany();
@@ -40,12 +41,12 @@ export default function Finance() {
   return (
     <AppLayout>
       <div className="p-6">
-        <div className="mb-4">
+        <StickyDashboardHeader paddingClassName="-mx-6 px-6" className="mb-4">
           <h1 className="text-2xl font-bold">Finance</h1>
           <p className="text-sm text-muted-foreground">
             AI-native FP&A workspace — data consolidation, dashboards, and intelligence for {company.name}
           </p>
-        </div>
+        </StickyDashboardHeader>
         <FPAWorkspace />
       </div>
     </AppLayout>

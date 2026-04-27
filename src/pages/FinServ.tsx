@@ -40,6 +40,7 @@ import {
 } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { StickyDashboardHeader } from '@/components/layout/StickyDashboardHeader';
 
 function DraggableCard({ deal, onStatusChange, isDragging }: {
   deal: Deal; onStatusChange: (id: string, s: DealStatus) => void; isDragging?: boolean;
@@ -231,45 +232,45 @@ export default function FinServ() {
       </Helmet>
       <div className="bg-background">
         <div className="container mx-auto py-8 px-4">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">FinServ</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                {deals.length} {deals.length === 1 ? 'deal' : 'deals'} in pipeline
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-                <SelectTrigger className="h-9 w-[180px]">
-                  <SelectValue placeholder="All owners" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Owners</SelectItem>
-                  {FINSERV_OWNERS.map(o => (
-                    <SelectItem key={o} value={o}>{o}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FinServCreateDealDialog
-                pipelineId={pipelineId}
-                onCreated={refetch}
-                trigger={
-                  <Button size="sm" className="gap-1.5">
-                    <Plus className="h-4 w-4" />
-                    Add Deal
-                  </Button>
-                }
-              />
-            </div>
-          </div>
-
-          {/* Tabs */}
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="mb-6">
-            <TabsList>
-              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-              <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-            </TabsList>
+            {/* Sticky header: title + filters + tab strip */}
+            <StickyDashboardHeader>
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h1 className="text-2xl font-bold tracking-tight">FinServ</h1>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {deals.length} {deals.length === 1 ? 'deal' : 'deals'} in pipeline
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+                    <SelectTrigger className="h-9 w-[180px]">
+                      <SelectValue placeholder="All owners" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Owners</SelectItem>
+                      {FINSERV_OWNERS.map(o => (
+                        <SelectItem key={o} value={o}>{o}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FinServCreateDealDialog
+                    pipelineId={pipelineId}
+                    onCreated={refetch}
+                    trigger={
+                      <Button size="sm" className="gap-1.5">
+                        <Plus className="h-4 w-4" />
+                        Add Deal
+                      </Button>
+                    }
+                  />
+                </div>
+              </div>
+              <TabsList>
+                <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+                <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+              </TabsList>
+            </StickyDashboardHeader>
 
             <TabsContent value="dashboard">
               {isLoading ? (
