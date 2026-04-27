@@ -58,6 +58,14 @@ export interface DashboardPageProps {
   container?: boolean;
   /** Vertical spacing between header and body. Defaults to `"space-y-6"`. */
   bodySpacing?: string;
+  /**
+   * Optional wrapper that envelops both the sticky header and the body. Used
+   * for tab-driven pages where `<Tabs>` must contain `<TabsList>` (in the
+   * header) and `<TabsContent>` (in the body). The wrapper is the SAME
+   * descendant of `<main>` as the sticky header, so sticky resolution still
+   * works.
+   */
+  wrapper?: (children: React.ReactNode) => React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -68,8 +76,17 @@ export function DashboardPage({
   padding = "sm",
   container = true,
   bodySpacing = "space-y-6",
+  wrapper,
   children,
 }: DashboardPageProps) {
+  const inner = (
+    <>
+      <StickyDashboardHeader padding={padding} className={headerClassName}>
+        {header}
+      </StickyDashboardHeader>
+      {children}
+    </>
+  );
   return (
     <div
       className={cn(
@@ -79,10 +96,7 @@ export function DashboardPage({
         className,
       )}
     >
-      <StickyDashboardHeader padding={padding} className={headerClassName}>
-        {header}
-      </StickyDashboardHeader>
-      {children}
+      {wrapper ? wrapper(inner) : inner}
     </div>
   );
 }
