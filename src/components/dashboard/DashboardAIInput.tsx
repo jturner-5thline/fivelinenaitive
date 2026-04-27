@@ -567,11 +567,18 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
   return (
     <div className="relative" ref={chatSectionRef}>
       <Card className={cn(
-        'shadow-lg overflow-hidden transition-all duration-300',
-        isDrawerMode ? 'border-0 shadow-none h-full flex flex-col' : '',
-        !isDrawerMode && expanded ? 'fixed inset-4 z-50 flex flex-col' : !isDrawerMode ? 'p-4' : '',
-        // #8: Make sticky when chat is active
-        !isDrawerMode && !expanded && isChatActive ? 'sticky top-4 z-30' : ''
+        'overflow-hidden transition-all duration-300',
+        isDrawerMode ? 'border-0 shadow-none h-full flex flex-col bg-transparent' : '',
+        // Expanded modal keeps its full Card chrome (border, shadow, padding).
+        !isDrawerMode && expanded ? 'fixed inset-4 z-50 flex flex-col shadow-lg' : '',
+        // Default collapsed state: render the input flush on the page —
+        // no outer border, background, shadow, or padding around the textarea.
+        !isDrawerMode && !expanded && !isChatActive
+          ? 'border-0 bg-transparent shadow-none p-0 rounded-none'
+          : '',
+        // Active-chat state still needs the Card chrome so the toolbar +
+        // message list read as a contained surface; keep sticky pin.
+        !isDrawerMode && !expanded && isChatActive ? 'sticky top-4 z-30 shadow-lg p-4' : ''
       )}>
         {/* Toolbar — always visible when there are messages or expanded */}
         {(messages.length > 0 || expanded) && (
