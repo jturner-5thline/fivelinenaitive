@@ -479,6 +479,30 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
     void generateTone(selected, { regenerate: true });
   }, [generateTone, selected]);
 
+  /**
+   * Apply a one-shot intent steer to the selected variant. Triggers a fresh
+   * generation with the heavier model + the chip's instruction text appended
+   * as USER INSTRUCTIONS in the prompt. The chip shows a spinner until the
+   * regeneration resolves.
+   */
+  const applyIntent = useCallback(
+    async (option: DraftIntentOption) => {
+      // Block re-entry while another intent or regen is mid-flight on the
+      // selected tone — keeps state predictable.
+      if (loadingTones[selected]) return;
+      setActiveIntentKey(option.key);
+      try {
+        await generateTone(selected, {
+          regenerate: true,
+          customInstructions: option.instruction,
+        });
+      } finally {
+        setActiveIntentKey(null);
+      }
+    },
+    [generateTone, selected, loadingTones],
+  );
+
   // ── Bootstrap: hydrate cache, then generate Balanced if missing ───────
   useEffect(() => {
     panelOpenedAt.current = Date.now();
