@@ -1469,7 +1469,8 @@ export default function Analytics() {
                       </>
                     )}
                   </DropdownMenuContent>
-                </DropdownMenu>
+                  </DropdownMenu>
+                </UITooltip>
                 <Button variant="outline" size="sm" onClick={handleResetWidgets} className="gap-1">
                   <RotateCcw className="h-4 w-4" />
                   Reset
