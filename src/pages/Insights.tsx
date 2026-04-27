@@ -31,6 +31,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStr
 import { DraggableGridLayout } from "@/components/metrics/DraggableGridLayout";
 import { PeriodPicker } from "@/components/metrics/PeriodPicker";
 import { DashboardPage } from "@/components/layout/DashboardPage";
+import { StickyDashboardHeader } from "@/components/layout/StickyDashboardHeader";
 import { EditableDashboardWrapper } from "@/components/metrics/EditableDashboardWrapper";
 import { GridWidgetCard } from "@/components/metrics/GridWidgetCard";
 import { useGridLayout, generateDefaultLayout } from "@/hooks/useGridLayout";
