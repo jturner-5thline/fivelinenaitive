@@ -416,7 +416,6 @@ export function EmailAttachmentList({
             <span className="text-[11px] font-medium tabular-nums leading-none">
               {visible.length}
             </span>
-            {(loading || false) && <Loader2 className="h-3 w-3 animate-spin text-[hsl(var(--email-text-muted))]" />}
           </div>
           <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
           {visible.map((att, i) => {
