@@ -53,6 +53,44 @@ export function getCurrentQuarter(): QuarterOption {
   return buildQuarterOptions(1)[0];
 }
 
+/**
+ * Build a QuarterOption-shaped period from an arbitrary date range.
+ * Months array spans every calendar month touched by [start, end] so that
+ * downstream charts (which group by stage-entry month via `quarter.months`)
+ * keep working unchanged.
+ */
+export function buildCustomPeriod(startDate: Date, endDate: Date): QuarterOption {
+  // Normalize to first/last of month bounds for clean monthly buckets
+  const start = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+  const end = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0);
+
+  const months: QuarterOption['months'] = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const y = cursor.getFullYear();
+    const m = cursor.getMonth();
+    const mEnd = new Date(y, m + 1, 0);
+    months.push({
+      key: `${y}-${String(m + 1).padStart(2, '0')}`,
+      label: cursor.toLocaleDateString('en-US', { month: 'short' }),
+      start: `${y}-${String(m + 1).padStart(2, '0')}-01`,
+      end: `${y}-${String(m + 1).padStart(2, '0')}-${mEnd.getDate()}`,
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  const fmt = (d: Date) =>
+    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  return {
+    label: `${fmt(startDate)} – ${fmt(endDate)}`,
+    value: `custom-${months[0]?.start ?? ''}_${months[months.length - 1]?.end ?? ''}`,
+    startDate: months[0]?.start ?? '',
+    endDate: months[months.length - 1]?.end ?? '',
+    months,
+  };
+}
+
 export interface MonthlyRevenue {
   month: string; // "Jan", "Feb", etc.
   monthKey: string; // "2026-04"
