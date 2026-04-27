@@ -236,7 +236,7 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
       {view === 'task' ? (
         <NaitiveTaskComposer
           autoFocus
-          placeholder={pendingText || undefined}
+          initialText={pendingText || undefined}
           onCreated={() => {
             setView('input');
             setPendingText('');
