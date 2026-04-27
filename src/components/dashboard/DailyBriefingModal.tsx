@@ -1352,19 +1352,14 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
                     {window.label} • {format(new Date(), 'EEEE, MMMM d, yyyy')}
                   </p>
                 </div>
-                <TabsList className="glass-surface-1 glass-border-softer backdrop-blur-xl shrink-0 flex-wrap h-auto">
+                <TabsList className="shrink-0 flex-wrap h-auto">
                   {TABS.map(tab => {
                     const Icon = tab.icon;
                     return (
                       <TabsTrigger
                         key={tab.value}
                         value={tab.value}
-                        className={cn(
-                          "gap-1.5 text-xs border-0 transition-all",
-                          activeTab === tab.value
-                            ? "bg-primary/15 text-foreground shadow-[0_0_12px_hsl(var(--primary)/0.1)]"
-                            : "text-muted-foreground"
-                        )}
+                        className="gap-1.5 text-xs px-3 py-1.5"
                       >
                         <Icon className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">{tab.label}</span>
