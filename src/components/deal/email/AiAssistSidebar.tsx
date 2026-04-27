@@ -59,10 +59,13 @@ interface DraftOption {
 }
 
 type ToneKey = 'concise' | 'balanced';
-const TONE_ORDER: ToneKey[] = ['concise', 'balanced'];
+// Variant order is intentionally Recommended → Shorter so the strongest AI
+// response is always the default landing state in the unified Draft reply
+// module. Backend tone keys (concise/balanced) are unchanged.
+const TONE_ORDER: ToneKey[] = ['balanced', 'concise'];
 const TONE_LABELS: Record<ToneKey, string> = {
-  concise: 'Concise',
-  balanced: 'Balanced',
+  balanced: 'Recommended',
+  concise: 'Shorter',
 };
 
 interface DraftResult {
