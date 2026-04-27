@@ -35,6 +35,10 @@ export function QuickActionChips({ onSelect, isLoading, className }: QuickAction
         <button
           key={prompt}
           type="button"
+          // Prevent the textarea from losing focus before the click handler
+          // fires — otherwise the chip row would unmount on blur and swallow
+          // the click.
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => onSelect(prompt)}
           disabled={isLoading}
           title={prompt}

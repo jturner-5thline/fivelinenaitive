@@ -97,6 +97,7 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
   const [isLoading, setIsLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const [teamMembers, setTeamMembers] = useState<{ user_id: string; display_name: string; email: string }[]>([]);
   const [requestError, setRequestError] = useState<AssistantErrorState | null>(null);
   const autoBriefedRef = useRef(false);
@@ -671,13 +672,6 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
                 className="mb-2"
               />
             )}
-            {!isChatActive && !showHistory && (
-              <QuickActionChips
-                onSelect={(prompt) => { setInputValue(prompt); handleSend(prompt); }}
-                isLoading={isLoading}
-                className="mb-2"
-              />
-            )}
             <ChatInputBar
               onSend={(text) => handleSend(text)}
               isLoading={isLoading}
@@ -685,7 +679,27 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
               setInputValue={setInputValue}
               teamMembers={teamMembers}
               inputRef={inputRef}
+              onFocus={() => setIsInputFocused(true)}
+              onBlur={() => setIsInputFocused(false)}
             />
+            {/* Quick-action chips appear below the input on focus or while
+                composing, then collapse out when the input is empty + blurred. */}
+            {!isChatActive && !showHistory && (
+              <div
+                className={cn(
+                  'overflow-hidden transition-all duration-200 ease-out',
+                  (isInputFocused || inputValue.length > 0)
+                    ? 'mt-2 max-h-24 opacity-100 translate-y-0'
+                    : 'mt-0 max-h-0 opacity-0 -translate-y-1 pointer-events-none',
+                )}
+                aria-hidden={!(isInputFocused || inputValue.length > 0)}
+              >
+                <QuickActionChips
+                  onSelect={(prompt) => { setInputValue(prompt); handleSend(prompt); }}
+                  isLoading={isLoading}
+                />
+              </div>
+            )}
           </div>
         </div>
       </Card>

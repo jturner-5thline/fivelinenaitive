@@ -27,6 +27,8 @@ interface Props {
   setInputValue: (v: string) => void;
   teamMembers?: TeamMember[];
   inputRef?: React.RefObject<HTMLTextAreaElement>;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 const slashCommands = [
@@ -42,7 +44,7 @@ const slashCommands = [
   { cmd: '/catchup', desc: 'What happened while I was away?', icon: '🔄' },
 ];
 
-export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, teamMembers = [], inputRef: externalRef }: Props) {
+export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, teamMembers = [], inputRef: externalRef, onFocus, onBlur }: Props) {
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const textareaRef = externalRef || internalRef;
   const [isListening, setIsListening] = useState(false);
@@ -333,6 +335,8 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
             value={inputValue}
             onChange={e => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
+            onFocus={onFocus}
+            onBlur={onBlur}
             rows={1}
             className={cn(
               "pl-10 pr-3 min-h-[40px] max-h-[120px] resize-none border-0 text-sm placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent",
