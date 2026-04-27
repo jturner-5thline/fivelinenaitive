@@ -2236,6 +2236,20 @@ export default function Metrics() {
                 quarterOptions={dashboardQuarterOptions}
               >
                 {widgets.map((widget) => {
+                  // Hidden from the Weekly Rundown dashboard per product spec.
+                  // These six widgets render in other dashboards / templates if
+                  // the user wants them — they just no longer appear here.
+                  const HIDDEN_WEEKLY_RUNDOWN_SOURCES = new Set([
+                    'closed-won',
+                    'pipeline-by-stage',
+                    'active-pipeline',
+                    'total-fees',
+                    'avg-deal-size',
+                    'deal-activity-12m',
+                  ]);
+                  if (HIDDEN_WEEKLY_RUNDOWN_SOURCES.has(widget.dataSource as string)) {
+                    return null;
+                  }
                   const isStat = getWidgetDisplayType(widget) === 'stat';
                   return (
                     <div key={widget.id}>
