@@ -479,14 +479,11 @@ export default function Dashboard() {
               side="bottom"
             >
             {/*
-              Glassy quick-action tile row — dark #16181f rounded container with
-              color-tinted icon tiles. Tiles wrap consistently and keep the
-              existing lucide icons; only the surrounding tile design changed.
+              Quick-action tile row — tiles sit flush on the page background
+              without a surrounding panel. Width still matches the AI input below
+              via the shared max-w parent.
             */}
-            <div
-              className="flex flex-wrap sm:flex-nowrap w-full gap-2.5 p-4 rounded-[14px]"
-              style={{ background: '#16181f' }}
-            >
+            <div className="flex flex-wrap sm:flex-nowrap w-full gap-2.5">
               <QuickActionTile
                 label="Calendar"
                 theme={QA_TILE_THEMES.calendar}
