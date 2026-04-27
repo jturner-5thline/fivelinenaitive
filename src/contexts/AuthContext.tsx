@@ -99,12 +99,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
 
+    const authLoadTimeoutId = window.setTimeout(() => {
+      console.warn('[AuthProvider] getSession timeout after 5s; falling back to signed-out state');
+      setSession((currentSession) => currentSession ?? null);
+      setUser((currentUser) => currentUser ?? null);
+      setIsLoading(false);
+    }, 5000);
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('[AuthProvider] onAuthStateChange', {
+          event,
+          hasSession: !!session,
+          userId: session?.user?.id ?? null,
+          email: session?.user?.email ?? null,
+        });
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
+        window.clearTimeout(authLoadTimeoutId);
 
         // For OAuth logins (Google, etc.), always treat as "remember me"
         // since there's no checkbox shown during OAuth flow
@@ -196,6 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (error) {
           console.error('[AuthProvider] getSession error:', error);
+          window.clearTimeout(authLoadTimeoutId);
           setSession(null);
           setUser(null);
           setIsLoading(false);
@@ -220,11 +235,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // User had a session but didn't check "Remember Me" and this is a new browser session
           // Sign them out
           supabase.auth.signOut().then(() => {
+            window.clearTimeout(authLoadTimeoutId);
             setSession(null);
             setUser(null);
             setIsLoading(false);
           }).catch((signOutError) => {
             console.error('[AuthProvider] signOut after session-only restore failed:', signOutError);
+            window.clearTimeout(authLoadTimeoutId);
             setSession(null);
             setUser(null);
             setIsLoading(false);
@@ -241,6 +258,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
         
+        window.clearTimeout(authLoadTimeoutId);
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
@@ -253,12 +271,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch((error) => {
         console.error('[AuthProvider] getSession threw:', error);
+        window.clearTimeout(authLoadTimeoutId);
         setSession(null);
         setUser(null);
         setIsLoading(false);
       });
 
     return () => {
+      window.clearTimeout(authLoadTimeoutId);
       subscription.unsubscribe();
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
