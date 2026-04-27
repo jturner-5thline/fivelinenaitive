@@ -66,6 +66,68 @@ const TONE_LABELS: Record<ToneKey, string> = {
   concise: 'Shorter',
 };
 
+/**
+ * Quick-steer chips rendered inside the Draft reply card. Each chip applies a
+ * one-shot intent instruction to the next regeneration via the edge function's
+ * `customInstructions` field. Order is meaning-grouped: intent (what to say)
+ * first, then length, then tone.
+ */
+interface DraftIntentOption {
+  key: string;
+  label: string;
+  instruction: string;
+}
+const DRAFT_INTENT_OPTIONS: DraftIntentOption[] = [
+  {
+    key: 'ask_more_info',
+    label: 'Ask for more information',
+    instruction:
+      'Rewrite the draft as a polite request for additional information. Ask for the specific clarifications or documents that would be most useful given the thread context. Keep it brief and warm.',
+  },
+  {
+    key: 'confirm_details',
+    label: 'Confirm details',
+    instruction:
+      'Rewrite the draft to acknowledge and confirm the key details discussed in the latest message (dates, figures, names, next steps). Avoid introducing new asks.',
+  },
+  {
+    key: 'request_meeting',
+    label: 'Request a meeting',
+    instruction:
+      'Rewrite the draft to propose a short call or meeting. Suggest a couple of time windows in the recipient\'s likely timezone and offer to share a calendar link. Do NOT invent specific availability if calendar context is not provided — instead, ask the recipient to propose times.',
+  },
+  {
+    key: 'decline_politely',
+    label: 'Decline politely',
+    instruction:
+      'Rewrite the draft as a polite, professional decline or pass. Be warm but clear; thank the recipient, give a short, non-committal reason, and leave the door open for the future where appropriate.',
+  },
+  {
+    key: 'shorter',
+    label: 'Make it shorter',
+    instruction:
+      'Rewrite the draft to be noticeably shorter — under 60 words, 2-3 sentences max. Keep all critical specifics but cut every unnecessary word.',
+  },
+  {
+    key: 'longer',
+    label: 'Make it longer',
+    instruction:
+      'Rewrite the draft to be more thorough — add the most useful concrete context, specifics, and next steps. Aim for 6-8 sentences without becoming verbose or repetitive.',
+  },
+  {
+    key: 'more_formal',
+    label: 'More formal',
+    instruction:
+      'Rewrite the draft in a more formal, polished register suitable for senior counterparties. Replace casual phrases with measured professional language while keeping it warm.',
+  },
+  {
+    key: 'more_casual',
+    label: 'More casual',
+    instruction:
+      'Rewrite the draft in a more casual, conversational register — like a quick note to a trusted colleague. Stay professional but loosen the tone.',
+  },
+];
+
 interface DraftResult {
   detected_intent?: string;
   confidence?: 'high' | 'medium' | 'low';
