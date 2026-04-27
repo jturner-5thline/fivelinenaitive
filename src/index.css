@@ -762,3 +762,28 @@
     }
   }
 }
+
+/* Quick-action tile: glassy color-tinted icon container with highlight overlay. */
+.qa-tile-icon {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  transition: filter 200ms ease, transform 200ms ease;
+}
+.qa-tile-icon::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.18) 0%,
+    rgba(255, 255, 255, 0.04) 60%,
+    rgba(0, 0, 0, 0.1) 100%
+  );
+  pointer-events: none;
+}
+.qa-tile:hover .qa-tile-icon,
+.qa-tile:focus-visible .qa-tile-icon {
+  filter: brightness(1.12);
+  transform: scale(1.03);
+}
