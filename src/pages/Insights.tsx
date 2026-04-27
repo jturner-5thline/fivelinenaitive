@@ -30,7 +30,6 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, 
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
 import { DraggableGridLayout } from "@/components/metrics/DraggableGridLayout";
 import { PeriodPicker } from "@/components/metrics/PeriodPicker";
-import { DashboardPage } from "@/components/layout/DashboardPage";
 import { StickyDashboardHeader } from "@/components/layout/StickyDashboardHeader";
 import { EditableDashboardWrapper } from "@/components/metrics/EditableDashboardWrapper";
 import { GridWidgetCard } from "@/components/metrics/GridWidgetCard";
