@@ -252,19 +252,20 @@ export function EmailAttachmentList({
   // ── Default: when no Data Room flow is available, render the simple list ──
   if (!canSendToDataRoom) {
     return (
-      <div className="mt-5">
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[hsl(var(--email-text-secondary))] uppercase tracking-wide">
-            <Paperclip className="h-3 w-3" />
-            <span>Attachments · {visible.length}</span>
-          </div>
-          {HeaderDataRoomButton}
+      <div className="mt-3 flex items-center gap-2">
+        <div
+          className="flex items-center gap-1 shrink-0 text-[hsl(var(--email-text-muted))]"
+          aria-label={`${visible.length} ${visible.length === 1 ? 'attachment' : 'attachments'}`}
+        >
+          <Paperclip className="h-3.5 w-3.5" />
+          <span className="text-[11px] font-medium tabular-nums leading-none">
+            {visible.length}
+          </span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
           {visible.map((att, i) => {
             const filename = att.filename || 'Untitled attachment';
             const Icon = iconForType(att.content_type, filename);
-            const label = fileLabel(filename, att.content_type);
             const sizeLabel = formatBytes(att.size);
             const isDownloading = downloadingId === att.id;
             return (
@@ -273,30 +274,34 @@ export function EmailAttachmentList({
                 type="button"
                 onClick={() => handleDownload(att)}
                 disabled={isDownloading || !att.id}
+                title={filename}
                 className={cn(
-                  'group flex items-center gap-3 p-2.5 rounded-md text-left min-w-0',
-                  'border border-[hsl(var(--email-border))]',
-                  'bg-[hsl(var(--email-toolbar-bg))] hover:bg-[hsl(var(--email-reading-bg))]',
-                  'hover:border-[hsl(var(--outlook-blue)/0.5)] transition-colors',
+                  'group inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-left min-w-0 max-w-full',
+                  'border border-[hsl(var(--email-border))] bg-[hsl(var(--email-toolbar-bg))]/60',
+                  'hover:bg-[hsl(var(--email-reading-bg))] hover:border-[hsl(var(--outlook-blue)/0.4)] transition-colors',
                   'disabled:opacity-60 disabled:cursor-not-allowed',
                 )}
               >
-                <div className="flex items-center justify-center h-9 w-9 rounded bg-[hsl(var(--email-list-bg))] border border-[hsl(var(--email-border))] shrink-0">
-                  <Icon className="h-4 w-4 text-[hsl(var(--email-text-secondary))]" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-medium text-[hsl(var(--email-text-primary))] truncate">{filename}</div>
-                  <div className="text-[11px] text-[hsl(var(--email-text-muted))] flex items-center gap-1.5">
-                    <span>{label}</span>
-                    {sizeLabel && <><span>·</span><span>{sizeLabel}</span></>}
-                  </div>
-                </div>
-                <div className="shrink-0 text-[hsl(var(--email-text-muted))] group-hover:text-[hsl(var(--outlook-blue))]">
-                  {isDownloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                </div>
+                <Icon className="h-3 w-3 shrink-0 text-[hsl(var(--email-text-muted))]" />
+                <span className="text-[11.5px] font-medium text-[hsl(var(--email-text-primary))] truncate max-w-[160px]">
+                  {filename}
+                </span>
+                {sizeLabel && (
+                  <span className="text-[10px] text-[hsl(var(--email-text-muted))] shrink-0">
+                    {sizeLabel}
+                  </span>
+                )}
+                <span className="shrink-0 text-[hsl(var(--email-text-muted))] group-hover:text-[hsl(var(--outlook-blue))]">
+                  {isDownloading ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Download className="h-3 w-3" />
+                  )}
+                </span>
               </button>
             );
           })}
+          {HeaderDataRoomButton}
         </div>
       </div>
     );
