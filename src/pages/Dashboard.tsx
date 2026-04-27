@@ -195,9 +195,7 @@ export default function Dashboard() {
   } = useDashboardPresets();
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const [dashboardTab, setDashboardTab] = useState<string>(() => {
-    return searchParams.get('tab') || 'overview';
-  });
+  const [newsFeedDialogOpen, setNewsFeedDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   // Carousel-driven open state for the top quick-action widgets
   const carouselIsOpen = useWidgetCarouselStore((s) => s.isOpen);
@@ -223,11 +221,16 @@ export default function Dashboard() {
   const [dealsDialogOpen, setDealsDialogOpen] = useState(false);
   const [dealsInitialView, setDealsInitialView] = useState<DealsCarouselView | undefined>(undefined);
 
-  // Sync tab from URL query params
+  // Backwards-compat deep link: previously the News Feed lived under
+  // ?tab=news-feed. It is now a popup, so we open the dialog and strip the
+  // legacy param so back/refresh doesn't reopen it unexpectedly.
   useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab === 'news-feed') setDashboardTab('news-feed');
-  }, [searchParams]);
+    if (searchParams.get('tab') === 'news-feed') {
+      setNewsFeedDialogOpen(true);
+      searchParams.delete('tab');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Auto-open Daily Briefing from email link (?briefing=true)
   useEffect(() => {
