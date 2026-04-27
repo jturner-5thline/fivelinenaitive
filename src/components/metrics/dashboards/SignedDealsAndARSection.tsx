@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -291,11 +292,15 @@ function DealsDrilldownModal({
                     <td className="px-3 py-2 text-xs text-muted-foreground">{prettyStage(deal.from_stage)}</td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">{prettyStage(deal.to_stage ?? deal.current_stage)}</td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">{prettyPipeline(deal.pipeline_id)}</td>
-                    <td
-                      className="px-3 py-2 text-[11px] text-muted-foreground font-mono truncate max-w-[120px]"
-                      title={deal.deal_id}
-                    >
-                      {deal.deal_id.slice(0, 8)}…
+                    <td className="px-3 py-2 text-[11px] font-mono truncate max-w-[120px]">
+                      <Link
+                        to={`/deal/${deal.deal_id}`}
+                        className="text-primary hover:underline focus:underline focus:outline-none rounded-sm"
+                        title={`Open deal ${deal.deal_id}`}
+                        onClick={onClose}
+                      >
+                        {deal.deal_id.slice(0, 8)}…
+                      </Link>
                     </td>
                   </tr>
                 ))}
