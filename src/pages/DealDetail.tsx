@@ -2498,13 +2498,27 @@ export default function DealDetail() {
         <main className="container mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8 overflow-x-hidden">
           {/* Back button, alerts, and undo - side by side */}
           <div className="flex items-center gap-3 mb-1 flex-wrap">
-            <Button variant="ghost" size="sm" className="gap-2 shrink-0" asChild>
-              <Link to={isFinServDeal ? "/finserv" : isNaitiveDeal ? "/naitive-pipeline" : "/deals"}>
+            {dealOrigin ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2 shrink-0"
+                onClick={handleSmartBack}
+                title={dealOrigin.label}
+              >
                 <ArrowLeft className="h-4 w-4" />
-                <span className="hidden sm:inline">Back to Pipeline</span>
+                <span className="hidden sm:inline">{dealOrigin.label}</span>
                 <span className="sm:hidden">Back</span>
-              </Link>
-            </Button>
+              </Button>
+            ) : (
+              <Button variant="ghost" size="sm" className="gap-2 shrink-0" asChild>
+                <Link to={isFinServDeal ? "/finserv" : isNaitiveDeal ? "/naitive-pipeline" : "/deals"}>
+                  <ArrowLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline">Back to Pipeline</span>
+                  <span className="sm:hidden">Back</span>
+                </Link>
+              </Button>
+            )}
 
             {/* Proactive Alert Bar - inline */}
             <ProactiveAlertBar 
