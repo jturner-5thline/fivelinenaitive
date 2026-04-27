@@ -2223,7 +2223,7 @@ export default function Metrics() {
                 gridLayout={snapshotGridLayout}
                 onGridLayoutChange={saveSnapshotGridLayout}
                 selectedQuarter={dashboardSelectedQuarter}
-                onQuarterChange={setDashboardQuarterValue}
+                onQuarterChange={() => { /* selector lives in page header */ }}
                 quarterOptions={dashboardQuarterOptions}
               >
                 {widgets.map((widget) => {
