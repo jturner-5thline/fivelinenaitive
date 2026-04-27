@@ -25,6 +25,7 @@ import { DashboardLayoutProvider } from "@/contexts/DashboardLayoutContext";
 import { DealsProvider } from "@/contexts/DealsContext";
 import { UndoSendProvider } from "@/contexts/UndoSendContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { InsightsAccessGuard } from "@/components/InsightsAccessGuard";
 import { WorkflowEmailModalListener } from "@/components/email/WorkflowEmailModalListener";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { FloatingCopilotDrawer } from "@/components/FloatingCopilotDrawer";
@@ -187,7 +188,7 @@ const App = () => (
                             <ProtectedRoute><AppLayout><WidgetEditorPage /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/insights" element={
-                            <ProtectedRoute><AppLayout><ErrorBoundary><Insights /></ErrorBoundary></AppLayout></ProtectedRoute>
+                            <ProtectedRoute><InsightsAccessGuard><AppLayout><ErrorBoundary><Insights /></ErrorBoundary></AppLayout></InsightsAccessGuard></ProtectedRoute>
                           } />
                           <Route path="/sales-bd" element={
                             <ProtectedRoute><AppLayout><SalesBD /></AppLayout></ProtectedRoute>
