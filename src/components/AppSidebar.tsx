@@ -15,6 +15,7 @@ import { usePageAccessFlags } from "@/hooks/useFeatureFlags";
 import { BetaBadge } from "@/components/ui/beta-badge";
 import { useCompany } from "@/hooks/useCompany";
 import { useNaitivePipelineAccess } from "@/hooks/useNaitivePipelineAccess";
+import { DashboardFlyoutMenu } from "@/components/sidebar/DashboardFlyoutMenu";
 
 
 import {
@@ -117,7 +118,11 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {visibleMenuItems.map((item) => (
+              {visibleMenuItems.map((item) => {
+                if (item.url === "/dashboard") {
+                  return <DashboardFlyoutMenu key={item.title} />;
+                }
+                return (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
                     asChild 
@@ -147,7 +152,8 @@ export function AppSidebar() {
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              ))}
+                );
+              })}
               
               {isAdmin && (
                 <SidebarMenuItem>

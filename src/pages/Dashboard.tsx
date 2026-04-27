@@ -171,6 +171,7 @@ import {
   NIKI_ASSIGNEE_NAME,
   NIKI_EMAIL,
 } from '@/constants/nikiBriefing';
+import { useDashboardCarouselWidgets } from '@/hooks/useDashboardCarouselWidgets';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -243,28 +244,26 @@ export default function Dashboard() {
   // Register the carousel widget order. Order is recomputed when the
   // gating flags (isJTurner, canSeeNiki) change so optional widgets
   // appear/disappear consistently.
-  const widgetOrderEntries = useMemo(() => {
-    const entries: { id: string; label: string }[] = [
-      { id: 'calendar', label: 'Calendar' },
-      { id: 'email', label: 'Email' },
-      { id: 'new-deal', label: 'New Deal' },
-    ];
-    if (isJTurner) entries.push({ id: 'daily-briefing', label: 'Daily Briefing' });
-    if (canSeeNiki) {
-      entries.push({
-        id: 'niki-briefing',
-        label: isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing",
-      });
-    }
-    if (is5thLine) {
-      entries.push({ id: 'deal-rundown', label: 'Deal Rundown' });
-    }
-    return entries;
-  }, [isJTurner, canSeeNiki, isNikiViewingHerself, is5thLine]);
+  const widgetOrderEntries = useDashboardCarouselWidgets();
 
   useEffect(() => {
     setCarouselOrder(widgetOrderEntries);
   }, [widgetOrderEntries, setCarouselOrder]);
+
+  // Deep-link: open a carousel widget from ?widget=<id>. Ignored if the user
+  // doesn't have access to that widget.
+  useEffect(() => {
+    const widgetParam = searchParams.get('widget');
+    if (!widgetParam) return;
+    if (widgetOrderEntries.length === 0) return; // wait until order is ready
+    const isAllowed = widgetOrderEntries.some((w) => w.id === widgetParam);
+    if (isAllowed) {
+      openCarouselWidget(widgetParam, null);
+    }
+    // Always strip the param so reloads/back-button don't re-open it.
+    searchParams.delete('widget');
+    setSearchParams(searchParams, { replace: true });
+  }, [searchParams, setSearchParams, openCarouselWidget, widgetOrderEntries]);
 
   const handleDashboardTabChange = (tab: string) => {
     setDashboardTab(tab);
