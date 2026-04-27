@@ -483,7 +483,7 @@ export default function Dashboard() {
               without a surrounding panel. Width still matches the AI input below
               via the shared max-w parent.
             */}
-            <div className="flex w-full items-start justify-between gap-0 px-0">
+            <div className="flex w-full items-start gap-2 px-0">
               <QuickActionTile
                 label="Calendar"
                 theme={QA_TILE_THEMES.calendar}
