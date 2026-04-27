@@ -25,6 +25,19 @@ const formatCurrencyFull = (value: number) =>
 
 const PIE_COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))'];
 
+// Pretty-print stage / pipeline identifiers used in stage_change activity logs.
+const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
+const FINSERV_PIPELINE_ID = 'eb9db15a-62cc-4b99-adcf-24e57a2a46ce';
+
+const prettyStage = (slug?: string | null) =>
+  slug ? slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '—';
+
+const prettyPipeline = (id?: string | null) => {
+  if (id === ACTIVE_PIPELINE_ID) return 'Active Pipeline';
+  if (id === FINSERV_PIPELINE_ID) return 'FinServ Pipeline';
+  return id ?? '—';
+};
+
 // ── Bar chart card ──
 function SignedBarChart({
   title,
