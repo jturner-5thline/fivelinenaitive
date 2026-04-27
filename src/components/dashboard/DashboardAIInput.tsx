@@ -633,7 +633,7 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
           <div className={cn('flex-1 flex flex-col min-w-0', expanded ? 'p-4' : '')}>
             {/* #32: Hide shortcut cards when chat is active */}
             {!showHistory && !isChatActive && (
-              <div className="mb-4 space-y-4">
+              <div className="space-y-4">
                 <ProactiveAlerts onAction={(prompt) => { setInputValue(prompt); handleSend(prompt); }} />
               </div>
             )}
