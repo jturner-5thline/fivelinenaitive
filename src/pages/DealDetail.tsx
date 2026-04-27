@@ -490,6 +490,31 @@ export default function DealDetail() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // ── Smart back-navigation: resolve origin from location.state, falling
+  //    back to sessionStorage so a hard refresh on /deal/:id keeps the
+  //    "Back to {drilldown}" button intact.
+  const dealOrigin: DealOrigin | null = useMemo(() => {
+    const fromState = (location.state as DealOriginLocationState | null)?.dealOrigin;
+    if (fromState) return fromState;
+    if (id) return loadPersistedDealOrigin(id);
+    return null;
+  }, [location.state, id]);
+
+  // Persist origin so refreshes don't lose it.
+  useEffect(() => {
+    if (!id || !dealOrigin) return;
+    persistDealOrigin(id, dealOrigin);
+  }, [id, dealOrigin]);
+
+  const handleSmartBack = useCallback(() => {
+    if (!dealOrigin) return;
+    if (id) clearPersistedDealOrigin(id);
+    if (dealOrigin.reopen) pushPendingReopen(dealOrigin.reopen);
+    navigate(dealOrigin.returnTo, {
+      state: { reopenDrilldown: dealOrigin.reopen } satisfies DealOriginReturnState,
+    });
+  }, [dealOrigin, id, navigate]);
   const { state: sidebarState, isHovering } = useSidebar();
   const isEffectivelyExpanded = sidebarState === 'expanded' || isHovering;
   const highlightStale = searchParams.get('highlight') === 'stale';
