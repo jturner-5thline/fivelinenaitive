@@ -12880,6 +12880,30 @@ export type Database = {
           },
         ]
       }
+      page_access_allowlist: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          page_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          page_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          page_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       page_views: {
         Row: {
           company_id: string | null
@@ -19648,6 +19672,10 @@ export type Database = {
         Returns: boolean
       }
       is_demo_user: { Args: { _user_id: string }; Returns: boolean }
+      is_email_allowed_for_page: {
+        Args: { _email: string; _page_key: string }
+        Returns: boolean
+      }
       is_same_company_as_user: {
         Args: { _current_user_id: string; _deal_owner_id: string }
         Returns: boolean
