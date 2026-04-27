@@ -801,6 +801,7 @@ export default function Dashboard() {
         }}
         initialView={dealsInitialView}
       />
+      <NewsFeedDialog open={newsFeedDialogOpen} onOpenChange={setNewsFeedDialogOpen} />
     </>
   );
 }
