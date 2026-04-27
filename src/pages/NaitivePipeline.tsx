@@ -246,8 +246,8 @@ export default function NaitivePipeline() {
       </Helmet>
       <div className="bg-background">
         <div className="container mx-auto py-8 px-4">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
+          {/* Header (sticky) */}
+          <StickyDashboardHeader className="mb-6 flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold tracking-tight">naitive Pipeline</h1>
               <p className="text-sm text-muted-foreground mt-1">
@@ -286,7 +286,7 @@ export default function NaitivePipeline() {
                 }}
               />
             </div>
-          </div>
+          </StickyDashboardHeader>
 
           {/* View container with arrows */}
           <div className="relative">
