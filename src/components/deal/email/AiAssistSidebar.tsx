@@ -66,6 +66,68 @@ const TONE_LABELS: Record<ToneKey, string> = {
   concise: 'Shorter',
 };
 
+/**
+ * Quick-steer chips rendered inside the Draft reply card. Each chip applies a
+ * one-shot intent instruction to the next regeneration via the edge function's
+ * `customInstructions` field. Order is meaning-grouped: intent (what to say)
+ * first, then length, then tone.
+ */
+interface DraftIntentOption {
+  key: string;
+  label: string;
+  instruction: string;
+}
+const DRAFT_INTENT_OPTIONS: DraftIntentOption[] = [
+  {
+    key: 'ask_more_info',
+    label: 'Ask for more information',
+    instruction:
+      'Rewrite the draft as a polite request for additional information. Ask for the specific clarifications or documents that would be most useful given the thread context. Keep it brief and warm.',
+  },
+  {
+    key: 'confirm_details',
+    label: 'Confirm details',
+    instruction:
+      'Rewrite the draft to acknowledge and confirm the key details discussed in the latest message (dates, figures, names, next steps). Avoid introducing new asks.',
+  },
+  {
+    key: 'request_meeting',
+    label: 'Request a meeting',
+    instruction:
+      'Rewrite the draft to propose a short call or meeting. Suggest a couple of time windows in the recipient\'s likely timezone and offer to share a calendar link. Do NOT invent specific availability if calendar context is not provided — instead, ask the recipient to propose times.',
+  },
+  {
+    key: 'decline_politely',
+    label: 'Decline politely',
+    instruction:
+      'Rewrite the draft as a polite, professional decline or pass. Be warm but clear; thank the recipient, give a short, non-committal reason, and leave the door open for the future where appropriate.',
+  },
+  {
+    key: 'shorter',
+    label: 'Make it shorter',
+    instruction:
+      'Rewrite the draft to be noticeably shorter — under 60 words, 2-3 sentences max. Keep all critical specifics but cut every unnecessary word.',
+  },
+  {
+    key: 'longer',
+    label: 'Make it longer',
+    instruction:
+      'Rewrite the draft to be more thorough — add the most useful concrete context, specifics, and next steps. Aim for 6-8 sentences without becoming verbose or repetitive.',
+  },
+  {
+    key: 'more_formal',
+    label: 'More formal',
+    instruction:
+      'Rewrite the draft in a more formal, polished register suitable for senior counterparties. Replace casual phrases with measured professional language while keeping it warm.',
+  },
+  {
+    key: 'more_casual',
+    label: 'More casual',
+    instruction:
+      'Rewrite the draft in a more casual, conversational register — like a quick note to a trusted colleague. Stay professional but loosen the tone.',
+  },
+];
+
 interface DraftResult {
   detected_intent?: string;
   confidence?: 'high' | 'medium' | 'low';
@@ -93,6 +155,10 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   const [drDismissed, setDrDismissed] = useState(false);
   const [drDialogOpen, setDrDialogOpen] = useState(false);
   const [drSuggestion, setDrSuggestion] = useState<DataRoomDestinationSuggestion | null>(null);
+  // Tracks the intent chip that's currently driving an in-flight refine, so
+  // we can show a loading indicator on the active chip without blocking the
+  // rest of the panel.
+  const [activeIntentKey, setActiveIntentKey] = useState<string | null>(null);
   // Snapshot of the slim deal-context summary surfaced in the sidebar header
   // card. Forwarded to the edge function so the draft tone reflects whether
   // the deal is At Risk, Off Track, On Hold, etc.
@@ -326,7 +392,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
    */
   const generateTone = useCallback(async (
     tone: ToneKey,
-    opts?: { regenerate?: boolean }
+    opts?: { regenerate?: boolean; customInstructions?: string }
   ): Promise<void> => {
     if (inflight.current[tone]) return inflight.current[tone]!;
 
@@ -351,6 +417,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             singleTone: tone,
             fastModel: !opts?.regenerate,
             dealContextHint: buildDealContextHint(),
+            customInstructions: opts?.customInstructions,
           },
         });
         const timeoutPromise = new Promise<never>((_, reject) => {
@@ -411,6 +478,30 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   const regenerateSelected = useCallback(() => {
     void generateTone(selected, { regenerate: true });
   }, [generateTone, selected]);
+
+  /**
+   * Apply a one-shot intent steer to the selected variant. Triggers a fresh
+   * generation with the heavier model + the chip's instruction text appended
+   * as USER INSTRUCTIONS in the prompt. The chip shows a spinner until the
+   * regeneration resolves.
+   */
+  const applyIntent = useCallback(
+    async (option: DraftIntentOption) => {
+      // Block re-entry while another intent or regen is mid-flight on the
+      // selected tone — keeps state predictable.
+      if (loadingTones[selected]) return;
+      setActiveIntentKey(option.key);
+      try {
+        await generateTone(selected, {
+          regenerate: true,
+          customInstructions: option.instruction,
+        });
+      } finally {
+        setActiveIntentKey(null);
+      }
+    },
+    [generateTone, selected, loadingTones],
+  );
 
   // ── Bootstrap: hydrate cache, then generate Balanced if missing ───────
   useEffect(() => {
@@ -655,6 +746,47 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                           ★
                         </span>
                       )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Quick-steer intent chips — one-shot refinements that
+                  regenerate the currently selected variant with an added
+                  USER INSTRUCTIONS line. Wired to the same edge function as
+                  Regenerate so behavior, model, and context handling are
+                  identical. Glassy translucent treatment matches the rest of
+                  the platform's chip system. */}
+              <div
+                className="flex flex-wrap gap-1.5"
+                role="group"
+                aria-label="Refine draft"
+              >
+                {DRAFT_INTENT_OPTIONS.map((option) => {
+                  const isActive = activeIntentKey === option.key;
+                  const disabled = isSelectedLoading && !isActive;
+                  return (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => applyIntent(option)}
+                      disabled={disabled}
+                      title={option.label}
+                      className={cn(
+                        'inline-flex items-center gap-1 h-6 px-2.5 rounded-full',
+                        'text-[11px] font-medium leading-none',
+                        'border border-white/10 bg-white/5 backdrop-blur-sm',
+                        'text-foreground/80 transition-colors',
+                        'shadow-[inset_0_1px_0_0_hsl(0_0%_100%/0.06)]',
+                        'hover:bg-white/[0.09] hover:text-foreground hover:border-white/15',
+                        'disabled:opacity-40 disabled:cursor-not-allowed',
+                        isActive && 'bg-primary/15 border-primary/30 text-primary',
+                      )}
+                    >
+                      {isActive && (
+                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                      )}
+                      <span>{option.label}</span>
                     </button>
                   );
                 })}
