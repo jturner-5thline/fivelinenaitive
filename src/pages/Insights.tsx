@@ -40,7 +40,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip as UITooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   Dialog, 
   DialogContent, 
@@ -2129,7 +2129,7 @@ export default function Metrics() {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Tooltip>
+                  <UITooltip>
                     <TooltipTrigger asChild>
                       <Button
                         variant="outline"
@@ -2141,7 +2141,7 @@ export default function Metrics() {
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>Presets</TooltipContent>
-                  </Tooltip>
+                  </UITooltip>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setSavePresetOpen(true)}>
@@ -2166,7 +2166,7 @@ export default function Metrics() {
               </DropdownMenu>
 
               {canEditMetrics && (
-                <Tooltip>
+                <UITooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant={isEditMode ? "default" : "outline"}
@@ -2182,7 +2182,7 @@ export default function Metrics() {
                   <TooltipContent>
                     {isEditMode ? "Done Editing" : "Edit Layout"}
                   </TooltipContent>
-                </Tooltip>
+                </UITooltip>
               )}
 
               {isEditMode && canEditMetrics && (
