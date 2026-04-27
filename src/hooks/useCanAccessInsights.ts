@@ -1,15 +1,37 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
-const INSIGHTS_ALLOWED_EMAILS = new Set([
-  'jturner@5thline.co',
-  'jmoffitt@5thline.co',
-  'swilliams@5thline.co',
-  'mclark@5thline.co',
-]);
+const PAGE_KEY = 'insights';
 
+/**
+ * Returns true if the current user's email is in the `page_access_allowlist`
+ * table for the Insights page. Admins can update the allowlist without a
+ * code change.
+ */
 export function useCanAccessInsights(): boolean {
   const { user } = useAuth();
-  const email = user?.email?.toLowerCase();
-  if (!email) return false;
-  return INSIGHTS_ALLOWED_EMAILS.has(email);
+  const email = user?.email?.toLowerCase() ?? null;
+
+  const { data } = useQuery({
+    queryKey: ['page-access-allowlist', PAGE_KEY, email],
+    queryFn: async () => {
+      if (!email) return false;
+      const { data, error } = await supabase
+        .from('page_access_allowlist')
+        .select('email')
+        .eq('page_key', PAGE_KEY);
+      if (error) {
+        console.error('Failed to load insights allowlist:', error);
+        return false;
+      }
+      return (data ?? []).some(
+        (row) => (row.email ?? '').toLowerCase() === email,
+      );
+    },
+    enabled: !!email,
+    staleTime: 5 * 60_000,
+  });
+
+  return !!data;
 }
