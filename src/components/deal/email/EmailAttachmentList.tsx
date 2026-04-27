@@ -225,9 +225,11 @@ export function EmailAttachmentList({
         </div>
         {/* Compact file list rendered below for reference */}
         <div className="border-t border-emerald-500/15 bg-background/40 px-4 py-2.5">
-          <div className="flex items-center gap-1.5 text-[10.5px] font-semibold text-[hsl(var(--email-text-muted))] uppercase tracking-wide mb-1.5">
+          <div className="flex items-center gap-1 text-[hsl(var(--email-text-muted))] mb-1.5">
             <Paperclip className="h-3 w-3" />
-            <span>{visible.length} {visible.length === 1 ? 'Attachment' : 'Attachments'}</span>
+            <span className="text-[11px] font-medium tabular-nums leading-none">
+              {visible.length}
+            </span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
             {visible.map((att, i) => {
