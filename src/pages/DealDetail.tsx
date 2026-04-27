@@ -13,6 +13,15 @@ import { LenderHistoryDrawer } from '@/components/deal/LenderHistoryDrawer';
 import { useLenderHistoryWarnings } from '@/hooks/useLenderHistoryWarning';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
+import {
+  loadPersistedDealOrigin,
+  persistDealOrigin,
+  clearPersistedDealOrigin,
+  pushPendingReopen,
+  type DealOrigin,
+  type DealOriginLocationState,
+  type DealOriginReturnState,
+} from '@/lib/dealOriginContext';
 import { INDUSTRY_OPTIONS } from '@/constants/industries';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, pointerWithin, rectIntersection } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, rectSortingStrategy } from '@dnd-kit/sortable';
