@@ -1847,13 +1847,7 @@ export default function Metrics() {
       <div className="bg-transparent">
         <div className="container mx-auto py-6 px-4 space-y-6">
           {/* Header (sticky to top of scrollable <main>) */}
-          <div
-            className={cn(
-              "sticky top-0 z-40 -mx-4 px-4 py-3 border-b border-white/5",
-              "bg-background/70 backdrop-blur-md supports-[backdrop-filter]:bg-background/60",
-              "flex flex-col md:flex-row md:items-center md:justify-between gap-4",
-            )}
-          >
+          <StickyDashboardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
                 {/* Dashboard Selector Dropdown */}
