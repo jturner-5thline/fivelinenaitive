@@ -40,12 +40,13 @@ export const QuickActionTile = forwardRef<HTMLButtonElement, QuickActionTileProp
         className={cn(
           'qa-tile group flex flex-col items-center gap-2 cursor-pointer',
           'min-w-[72px] max-w-[90px] flex-1 outline-none',
-          'focus-visible:outline-none',
+          'focus-visible:outline-none rounded-2xl',
+          'focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#16181f]',
           className,
         )}
       >
         <div
-          className="qa-tile-icon w-[72px] h-[72px] rounded-2xl flex items-center justify-center"
+          className="qa-tile-icon w-[72px] h-[72px] rounded-2xl flex items-center justify-center transition-shadow"
           style={{ background: theme.gradient, color: theme.iconColor }}
         >
           {/* Icon inherits stroke/text color from its wrapper. */}
