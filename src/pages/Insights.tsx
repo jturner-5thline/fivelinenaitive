@@ -29,6 +29,7 @@ import { RepPerformanceModelGrid } from "@/components/metrics/rep-model/RepPerfo
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
 import { DraggableGridLayout } from "@/components/metrics/DraggableGridLayout";
+import { PeriodPicker } from "@/components/metrics/PeriodPicker";
 import { EditableDashboardWrapper } from "@/components/metrics/EditableDashboardWrapper";
 import { GridWidgetCard } from "@/components/metrics/GridWidgetCard";
 import { useGridLayout, generateDefaultLayout } from "@/hooks/useGridLayout";
