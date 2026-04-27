@@ -479,14 +479,14 @@ export default function Dashboard() {
               className="opacity-0"
               style={{ animation: 'fadeInUp 0.4s ease-out 0.2s forwards' }}
             >
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 w-full">
                 {showMilestones ? (
                   <MilestoneManagerFilter
                     selected={filters.manager}
                     onChange={(manager) => updateFilters({ manager })}
                   />
                 ) : (
-                  <div className="flex-1 min-w-[200px]">
+                  <div className="min-w-0">
                     <DealFilters
                       filters={filters}
                       onFilterChange={updateFilters}
@@ -495,6 +495,8 @@ export default function Dashboard() {
                 )}
 
                 {/* Stale / Flag / Notification toggles */}
+                {/* spacer pushes the right-side cluster to the end of the row */}
+                <div className="ml-auto" aria-hidden />
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
