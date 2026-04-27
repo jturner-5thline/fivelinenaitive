@@ -623,17 +623,10 @@ export default function Dashboard() {
 
           <DashboardAIInput />
 
-          {/* Dashboard Tabs */}
-          <Tabs value={dashboardTab} onValueChange={handleDashboardTabChange}>
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="news-feed" className="gap-1.5">
-                <Newspaper className="h-3.5 w-3.5" />
-                News Feed
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="overview">
+          {/* Dashboard overview — the previous Overview/News Feed tab control
+              was removed. News Feed now lives in a popup launched from the
+              quick-action tile row above. */}
+          <div>
               {/* Header row: Edit button */}
               <div className="flex items-center justify-between">
                 <div />
@@ -730,12 +723,7 @@ export default function Dashboard() {
                   </div>
                 </div>
               )}
-            </TabsContent>
-
-            <TabsContent value="news-feed">
-              <NewsFeedPanel />
-            </TabsContent>
-          </Tabs>
+          </div>
         </div>
       </div>
 
