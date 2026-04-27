@@ -414,9 +414,6 @@ export default function Dashboard() {
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-foreground">
               What can I do for you?
             </h1>
-            <p className="text-sm text-muted-foreground/50 mt-1">
-              Ask me anything about your deals, pipeline, lenders, or market research
-            </p>
           </div>
 
           <div
@@ -456,7 +453,6 @@ export default function Dashboard() {
           <div className="text-center space-y-2 pt-2">
             <p className="text-base sm:text-lg text-muted-foreground">{getTimeBasedGreeting()}, <span className="whitespace-nowrap">{firstName}</span></p>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-foreground">What can I do for you?</h1>
-            <p className="text-sm text-muted-foreground/50 mt-1">Ask me anything about your deals, pipeline, lenders, or market research</p>
           </div>
 
           <HintTooltip
