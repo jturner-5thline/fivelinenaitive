@@ -20,13 +20,19 @@ interface Props {
   placeholder?: string;
   syncSource?: string;
   sourceThreadId?: string | null;
+  /**
+   * Optional initial text — used by the dashboard composer when intent
+   * inference routes a typed prompt into the task flow so the user doesn't
+   * have to retype.
+   */
+  initialText?: string;
 }
 
-export function NaitiveTaskComposer({ context = {}, autoFocus, className, onCreated, placeholder, syncSource, sourceThreadId }: Props) {
+export function NaitiveTaskComposer({ context = {}, autoFocus, className, onCreated, placeholder, syncSource, sourceThreadId, initialText }: Props) {
   const { user } = useAuth();
   const { company } = useCompany();
   const queryClient = useQueryClient();
-  const [text, setText] = useState('');
+  const [text, setText] = useState(initialText ?? '');
   const [creating, setCreating] = useState(false);
   const [previewSeen, setPreviewSeen] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
