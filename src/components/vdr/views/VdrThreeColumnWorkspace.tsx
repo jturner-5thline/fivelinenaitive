@@ -1252,6 +1252,46 @@ export function VdrThreeColumnWorkspace({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* New custom Data Room folder */}
+      <Dialog open={showCustomFolderDialog} onOpenChange={open => { if (!open) { setShowCustomFolderDialog(false); setCustomFolderName(''); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>New Data Room folder</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            This folder will be visible in the Data Room for everyone on this deal.
+          </p>
+          <Input
+            placeholder="e.g. Insurance Docs"
+            value={customFolderName}
+            onChange={e => setCustomFolderName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && customFolderName.trim()) handleCreateCustomFolder(); }}
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setShowCustomFolderDialog(false); setCustomFolderName(''); }}>Cancel</Button>
+            <Button onClick={handleCreateCustomFolder} disabled={!customFolderName.trim()}>Create folder</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm remove of custom folder */}
+      <Dialog open={!!customFolderToDelete} onOpenChange={open => { if (!open) setCustomFolderToDelete(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Remove folder “{customFolderToDelete?.name}”?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Files inside this folder will move back to the top level of the Data Room.
+            The underlying files are not deleted.
+          </p>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCustomFolderToDelete(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteCustomFolder}>Remove folder</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </ResizablePanelGroup>
   );
 }
