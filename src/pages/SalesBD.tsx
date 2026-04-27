@@ -122,7 +122,7 @@ export default function SalesBD() {
               </div>
             </TabsContent>
 
-            <TabsContent value="partners-pipeline">
+            <TabsContent value="partners-pipeline" className="mt-4">
               <Suspense fallback={<Skeleton className="h-96 w-full" />}>
                 <PartnersPipeline />
               </Suspense>
