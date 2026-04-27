@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RefreshCw, AlertCircle, Loader2, Bell } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { KeyAlertsPanel } from './key-alerts/KeyAlertsPanel';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claude-dashboard-chat`;
 const REQUEST_TIMEOUT_MS = 70_000;
@@ -13,17 +14,69 @@ const REQUEST_TIMEOUT_MS = 70_000;
 interface DealsCarouselDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Internal view to open the dialog at. Use 'key-alerts' to deep-link from
+   * /dashboard?widget=deals&view=key-alerts.
+   */
+  initialView?: DealsCarouselView;
 }
 
-interface DealPage {
-  prompt: string;
+/**
+ * Stable view ids used by the carousel page tabs. Used both for deep-linking
+ * (via ?view=) and for the page indicator labels.
+ */
+export type DealsCarouselView =
+  | 'waiting-on'
+  | 'active-lenders'
+  | 'stale-deals'
+  | 'key-alerts';
+
+type AiDealPage = {
+  id: DealsCarouselView;
+  kind: 'ai';
+  title: string;
   subtitle: string;
-}
+  /** Prompt sent to the dashboard chat function. */
+  prompt: string;
+};
+
+type NativeDealPage = {
+  id: DealsCarouselView;
+  kind: 'native';
+  title: string;
+  subtitle: string;
+};
+
+type DealPage = AiDealPage | NativeDealPage;
 
 const PAGES: DealPage[] = [
-  { prompt: 'What are we waiting on', subtitle: 'Outstanding items by deal' },
-  { prompt: 'Who are our most active lenders', subtitle: 'Most-sent and most-active lenders' },
-  { prompt: 'Stale deals analysis', subtitle: 'Deals at risk of going stale' },
+  {
+    id: 'waiting-on',
+    kind: 'ai',
+    title: 'What are we waiting on',
+    subtitle: 'Outstanding items by deal',
+    prompt: 'What are we waiting on',
+  },
+  {
+    id: 'active-lenders',
+    kind: 'ai',
+    title: 'Who are our most active lenders',
+    subtitle: 'Most-sent and most-active lenders',
+    prompt: 'Who are our most active lenders',
+  },
+  {
+    id: 'stale-deals',
+    kind: 'ai',
+    title: 'Stale deals analysis',
+    subtitle: 'Deals at risk of going stale',
+    prompt: 'Stale deals analysis',
+  },
+  {
+    id: 'key-alerts',
+    kind: 'native',
+    title: 'Key Alerts',
+    subtitle: 'Stale lenders, at-risk deals, overdue milestones',
+  },
 ];
 
 type PageStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -57,7 +110,11 @@ function extractAssistantPayloadText(payload: unknown): string {
   ].find(Boolean) || '';
 }
 
-export function DealsCarouselDialog({ open, onOpenChange }: DealsCarouselDialogProps) {
+export function DealsCarouselDialog({
+  open,
+  onOpenChange,
+  initialView,
+}: DealsCarouselDialogProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [pageStates, setPageStates] = useState<PageState[]>(
     () => PAGES.map(() => ({ status: 'idle', content: '' })),
@@ -81,6 +138,9 @@ export function DealsCarouselDialog({ open, onOpenChange }: DealsCarouselDialogP
   }, []);
 
   const runPrompt = useCallback(async (idx: number, force = false) => {
+    const page = PAGES[idx];
+    // Native pages don't fetch from the AI endpoint.
+    if (page.kind !== 'ai') return;
     setPageStates((prev) => {
       const current = prev[idx];
       if (!force && (current.status === 'ready' || current.status === 'loading')) return prev;
@@ -89,7 +149,7 @@ export function DealsCarouselDialog({ open, onOpenChange }: DealsCarouselDialogP
       return copy;
     });
 
-    const prompt = PAGES[idx].prompt;
+    const prompt = page.prompt;
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -192,18 +252,26 @@ export function DealsCarouselDialog({ open, onOpenChange }: DealsCarouselDialogP
   // Auto-run prompt on first activation of each page
   useEffect(() => {
     if (!open) return;
+    if (PAGES[activeIndex].kind !== 'ai') return;
     const state = pageStates[activeIndex];
     if (state.status === 'idle') {
       runPrompt(activeIndex);
     }
   }, [open, activeIndex, pageStates, runPrompt]);
 
-  // Reset cache when dialog closes
+  // When the dialog opens, jump to the requested initial view (e.g. deep
+  // linked Key Alerts). When it closes, reset to the first page so the next
+  // open without an initialView starts at the default.
   useEffect(() => {
     if (!open) {
       setActiveIndex(0);
+      return;
     }
-  }, [open]);
+    if (initialView) {
+      const idx = PAGES.findIndex((p) => p.id === initialView);
+      if (idx >= 0) setActiveIndex(idx);
+    }
+  }, [open, initialView]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -278,7 +346,7 @@ export function DealsCarouselDialog({ open, onOpenChange }: DealsCarouselDialogP
               const state = pageStates[idx];
               return (
                 <div
-                  key={page.prompt}
+                  key={page.id}
                   role="tabpanel"
                   id={`deals-page-${idx}`}
                   aria-labelledby={`deals-tab-${idx}`}
@@ -288,60 +356,70 @@ export function DealsCarouselDialog({ open, onOpenChange }: DealsCarouselDialogP
                   <div className="px-5 sm:px-6 pt-5 pb-4 border-b border-border/60 flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h2 className="text-base sm:text-lg font-semibold text-foreground truncate">
-                        {page.prompt}
+                        {page.title}
                       </h2>
                       <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground">
                         {page.subtitle}
                       </p>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0"
-                      onClick={() => runPrompt(idx, true)}
-                      disabled={state.status === 'loading'}
-                      aria-label={`Refresh ${page.prompt}`}
-                    >
-                      <RefreshCw className={cn('h-4 w-4', state.status === 'loading' && 'animate-spin')} />
-                    </Button>
+                    {page.kind === 'ai' && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        onClick={() => runPrompt(idx, true)}
+                        disabled={state.status === 'loading'}
+                        aria-label={`Refresh ${page.title}`}
+                      >
+                        <RefreshCw className={cn('h-4 w-4', state.status === 'loading' && 'animate-spin')} />
+                      </Button>
+                    )}
                   </div>
 
-                  <div className="px-5 sm:px-6 py-5 min-h-[260px] max-h-[60vh] overflow-y-auto">
-                    {state.status === 'loading' && !state.content && (
-                      <div className="space-y-3" aria-live="polite" aria-busy="true">
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-5/6" />
-                        <Skeleton className="h-4 w-2/3" />
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2">
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          Generating insight…
-                        </div>
+                  {page.kind === 'native' && page.id === 'key-alerts' ? (
+                    <div className="min-h-[260px] max-h-[60vh] flex">
+                      <div className="flex-1 min-h-0">
+                        <KeyAlertsPanel onAlertOpen={() => onOpenChange(false)} />
                       </div>
-                    )}
-
-                    {state.status === 'error' && (
-                      <div className="flex flex-col items-start gap-3 text-sm">
-                        <div className="flex items-start gap-2 text-destructive">
-                          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                          <div>
-                            <div className="font-medium">Couldn't load this insight</div>
-                            <div className="text-muted-foreground text-xs mt-0.5">{state.error}</div>
+                    </div>
+                  ) : (
+                    <div className="px-5 sm:px-6 py-5 min-h-[260px] max-h-[60vh] overflow-y-auto">
+                      {state.status === 'loading' && !state.content && (
+                        <div className="space-y-3" aria-live="polite" aria-busy="true">
+                          <Skeleton className="h-4 w-3/4" />
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-4 w-5/6" />
+                          <Skeleton className="h-4 w-2/3" />
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            Generating insight…
                           </div>
                         </div>
-                        <Button size="sm" variant="outline" onClick={() => runPrompt(idx, true)}>
-                          <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                          Retry
-                        </Button>
-                      </div>
-                    )}
+                      )}
 
-                    {(state.status === 'ready' || (state.status === 'loading' && state.content)) && (
-                      <div className="text-sm leading-relaxed text-foreground whitespace-pre-wrap break-words">
-                        {state.content}
-                      </div>
-                    )}
-                  </div>
+                      {state.status === 'error' && (
+                        <div className="flex flex-col items-start gap-3 text-sm">
+                          <div className="flex items-start gap-2 text-destructive">
+                            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                            <div>
+                              <div className="font-medium">Couldn't load this insight</div>
+                              <div className="text-muted-foreground text-xs mt-0.5">{state.error}</div>
+                            </div>
+                          </div>
+                          <Button size="sm" variant="outline" onClick={() => runPrompt(idx, true)}>
+                            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                            Retry
+                          </Button>
+                        </div>
+                      )}
+
+                      {(state.status === 'ready' || (state.status === 'loading' && state.content)) && (
+                        <div className="text-sm leading-relaxed text-foreground whitespace-pre-wrap break-words">
+                          {state.content}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -386,26 +464,29 @@ export function DealsCarouselDialog({ open, onOpenChange }: DealsCarouselDialogP
         <div
           role="tablist"
           aria-label="Deals insight pages"
-          className="flex items-center justify-center gap-2 py-3 border-t border-border/60"
+          className="flex flex-wrap items-center justify-center gap-2 py-3 border-t border-border/60"
         >
           {PAGES.map((page, idx) => (
             <button
-              key={page.prompt}
+              key={page.id}
               type="button"
               role="tab"
               id={`deals-tab-${idx}`}
               aria-selected={idx === activeIndex}
               aria-controls={`deals-page-${idx}`}
-              aria-label={`Go to page ${idx + 1}: ${page.prompt}`}
+              aria-label={`Go to page ${idx + 1}: ${page.title}`}
               onClick={() => goTo(idx)}
               className={cn(
-                'h-2 rounded-full transition-all duration-200',
+                'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] transition-colors',
                 idx === activeIndex
-                  ? 'w-6 bg-foreground/80'
-                  : 'w-2 bg-foreground/25 hover:bg-foreground/40',
+                  ? 'bg-foreground/10 text-foreground'
+                  : 'text-muted-foreground hover:bg-foreground/5 hover:text-foreground',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
               )}
-            />
+            >
+              {page.id === 'key-alerts' && <Bell className="h-3 w-3" />}
+              <span className="font-medium">{page.title}</span>
+            </button>
           ))}
         </div>
       </DialogContent>
