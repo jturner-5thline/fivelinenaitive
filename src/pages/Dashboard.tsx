@@ -281,16 +281,6 @@ export default function Dashboard() {
     setSearchParams(searchParams, { replace: true });
   }, [searchParams, setSearchParams, openCarouselWidget, widgetOrderEntries]);
 
-  const handleDashboardTabChange = (tab: string) => {
-    setDashboardTab(tab);
-    if (tab === 'overview') {
-      searchParams.delete('tab');
-    } else {
-      searchParams.set('tab', tab);
-    }
-    setSearchParams(searchParams, { replace: true });
-  };
-
   const getTimeBasedGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
