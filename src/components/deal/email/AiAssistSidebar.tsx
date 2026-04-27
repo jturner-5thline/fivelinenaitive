@@ -392,7 +392,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
    */
   const generateTone = useCallback(async (
     tone: ToneKey,
-    opts?: { regenerate?: boolean }
+    opts?: { regenerate?: boolean; customInstructions?: string }
   ): Promise<void> => {
     if (inflight.current[tone]) return inflight.current[tone]!;
 
@@ -417,6 +417,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             singleTone: tone,
             fastModel: !opts?.regenerate,
             dealContextHint: buildDealContextHint(),
+            customInstructions: opts?.customInstructions,
           },
         });
         const timeoutPromise = new Promise<never>((_, reject) => {
