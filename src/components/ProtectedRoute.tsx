@@ -1,4 +1,5 @@
 // v3 - with pending company join request redirect
+import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
@@ -21,15 +22,33 @@ export function ProtectedRoute({
   const { profile, isLoading: profileLoading } = useProfile();
   const { data: isApproved, isLoading: approvalLoading } = useIsApproved();
   const { data: joinRequests, isLoading: joinRequestsLoading } = useMyJoinRequests();
+  const [authTimedOut, setAuthTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading) {
+      setAuthTimedOut(false);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      console.warn('[ProtectedRoute] auth loading timed out after 5s; redirecting to /login');
+      setAuthTimedOut(true);
+    }, 5000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [authLoading]);
 
   // Check if user is a 5thline.co user (auto-approved)
   const is5thLineUser = user?.email?.endsWith('@5thline.co') ?? false;
 
-  // While auth itself is resolving, show the spinner.
-  if (authLoading) {
+  // While auth itself is resolving, show a visible full-screen loading state.
+  if (authLoading && !authTimedOut) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen w-full bg-background text-foreground flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        </div>
       </div>
     );
   }
@@ -37,7 +56,7 @@ export function ProtectedRoute({
   // No authenticated user — redirect to login immediately.
   // (Do NOT wait on user-scoped queries; they stay in pending state when
   // disabled, which would block the redirect and produce a blank screen.)
-  if (!user) {
+  if (authTimedOut || !user) {
     return <Navigate to="/login" replace />;
   }
 
@@ -49,8 +68,11 @@ export function ProtectedRoute({
 
   if (userDataLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen w-full bg-background text-foreground flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        </div>
       </div>
     );
   }
