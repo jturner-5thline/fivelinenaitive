@@ -34,6 +34,7 @@ import { CopyProtection } from "@/components/CopyProtection";
 import { WelcomeScreenWrapper } from "@/components/WelcomeScreenWrapper";
 import { AppLayout } from "@/components/AppLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { Loader2 } from "lucide-react";
 import { lazyRetry } from "@/lib/lazyRetry";
 
@@ -160,7 +161,7 @@ const App = () => (
                             <ProtectedRoute skipOnboarding><Onboarding /></ProtectedRoute>
                           } />
                           <Route path="/dashboard" element={
-                            <ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><RouteErrorBoundary routeName="Dashboard"><Dashboard /></RouteErrorBoundary></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/news-feed" element={
                             <ProtectedRoute><AppLayout><NewsFeed /></AppLayout></ProtectedRoute>
