@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
-import { AlertCircle, Bell, Clock, X } from 'lucide-react';
+import { AlertCircle, Bell, CheckCheck, Clock, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useKeyAlerts, KeyAlert, KeyAlertType } from './useKeyAlerts';
+import { toast } from 'sonner';
 
 const PRIORITY_BORDER: Record<KeyAlert['priority'], string> = {
   high: 'border-l-2 border-destructive',
@@ -49,6 +50,19 @@ export function KeyAlertsPanel({ onAlertOpen }: KeyAlertsPanelProps) {
     navigate(`/deal/${alert.dealId}`);
   };
 
+  const handleDismissAll = () => {
+    if (alerts.length === 0) return;
+    const ids = alerts.map((a) => a.id);
+    setDismissed((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => next.add(id));
+      return next;
+    });
+    toast.success(
+      `Dismissed ${ids.length} ${ids.length === 1 ? 'alert' : 'alerts'}`,
+    );
+  };
+
   return (
     <div className="flex h-full flex-col">
       {/* Summary row — uses the dialog's own header above; this is a slim status strip. */}
@@ -64,6 +78,18 @@ export function KeyAlertsPanel({ onAlertOpen }: KeyAlertsPanelProps) {
             </Badge>
           )}
         </div>
+        {alerts.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 text-xs"
+            onClick={handleDismissAll}
+            aria-label={`Dismiss all ${alerts.length} alerts`}
+          >
+            <CheckCheck className="h-3.5 w-3.5" />
+            Dismiss all
+          </Button>
+        )}
       </div>
 
       <div className="flex-1 min-h-0 px-2 sm:px-3 py-2">
