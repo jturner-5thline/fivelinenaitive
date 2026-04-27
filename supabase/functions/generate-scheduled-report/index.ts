@@ -147,15 +147,16 @@ async function gatherPipelineSummary(
   if (filters?.statuses?.length) query = query.in("status", filters.statuses);
   if (filters?.stages?.length) query = query.in("stage", filters.stages);
 
-  const { data: deals, error } = await query.order("updated_at", { ascending: false }).limit(500);
+  const { data: dealsRaw, error } = await query.order("updated_at", { ascending: false }).limit(500);
   if (error) throw error;
+  const deals: any[] = (dealsRaw as any[]) || [];
 
   // Aggregate by stage
   const stageGroups: Record<string, { count: number; total_value: number; deals: string[] }> = {};
   let totalValue = 0;
   let activeCount = 0;
 
-  for (const deal of deals || []) {
+  for (const deal of deals) {
     const stage = deal.stage || "Unknown";
     if (!stageGroups[stage]) stageGroups[stage] = { count: 0, total_value: 0, deals: [] };
     stageGroups[stage].count++;
@@ -167,7 +168,7 @@ async function gatherPipelineSummary(
 
   return {
     type: "pipeline_summary",
-    total_deals: deals?.length || 0,
+    total_deals: deals.length,
     active_deals: activeCount,
     total_value: totalValue,
     by_stage: stageGroups,
@@ -190,7 +191,7 @@ async function gatherLenderPerformance(
 
   return {
     type: "lender_performance",
-    lenders: (stats || []).map((l: { lender_name: string; deal_count: number; active_count: number; funded_count: number; total_volume: number }) => ({
+    lenders: ((stats as any[]) || []).map((l: any) => ({
       name: l.lender_name,
       deal_count: l.deal_count,
       active_count: l.active_count,
@@ -220,14 +221,15 @@ async function gatherStaleDeals(
 
   if (companyId) query = query.eq("company_id", companyId);
 
-  const { data: deals, error } = await query.limit(50);
+  const { data: dealsRaw, error } = await query.limit(50);
   if (error) throw error;
+  const deals: any[] = (dealsRaw as any[]) || [];
 
   return {
     type: "stale_deals",
     stale_threshold_days: staleDays,
-    stale_count: deals?.length || 0,
-    deals: (deals || []).map((d: { company: string; stage: string; value: number; updated_at: string }) => ({
+    stale_count: deals.length,
+    deals: deals.map((d: any) => ({
       company: d.company,
       stage: d.stage,
       value: d.value,
@@ -253,12 +255,13 @@ async function gatherWeeklyActivity(
     .order("created_at", { ascending: false })
     .limit(100);
 
-  const { data: activities, error: actError } = await actQuery;
+  const { data: activitiesRaw, error: actError } = await actQuery;
   if (actError) throw actError;
+  const activities: any[] = (activitiesRaw as any[]) || [];
 
   // Group by activity type
   const byType: Record<string, number> = {};
-  for (const a of activities || []) {
+  for (const a of activities) {
     byType[a.activity_type] = (byType[a.activity_type] || 0) + 1;
   }
 
@@ -269,14 +272,15 @@ async function gatherWeeklyActivity(
     .gte("created_at", weekAgo.toISOString());
   if (companyId) dealsQuery = dealsQuery.eq("company_id", companyId);
 
-  const { data: newDeals } = await dealsQuery;
+  const { data: newDealsRaw } = await dealsQuery;
+  const newDeals: any[] = (newDealsRaw as any[]) || [];
 
   return {
     type: "weekly_activity",
     period: { from: weekAgo.toISOString(), to: new Date().toISOString() },
-    total_activities: activities?.length || 0,
+    total_activities: activities.length,
     by_type: byType,
-    new_deals: (newDeals || []).map((d: { company: string; stage: string; value: number }) => ({
+    new_deals: newDeals.map((d: any) => ({
       company: d.company,
       stage: d.stage,
       value: d.value,
@@ -298,11 +302,12 @@ async function gatherDealVelocity(
 
   if (companyId) query = query.eq("company_id", companyId);
 
-  const { data: deals, error } = await query;
+  const { data: dealsRaw, error } = await query;
   if (error) throw error;
+  const deals: any[] = (dealsRaw as any[]) || [];
 
   // Calculate average days in pipeline
-  const velocities = (deals || []).map((d: { company: string; stage: string; status: string; value: number; created_at: string; updated_at: string }) => {
+  const velocities = deals.map((d: any) => {
     const daysInPipeline = Math.floor(
       (new Date(d.updated_at).getTime() - new Date(d.created_at).getTime()) / (1000 * 60 * 60 * 24)
     );
@@ -526,9 +531,9 @@ async function handleRunScheduled(
     const deliveryConfig = report.delivery_config as { slack_channel_id?: string };
 
     // Generate report
-    const reportData = await gatherReportData(supabase, report.report_type, report.company_id, reportConfig);
-    const aiSummary = await generateAISummary(reportData, report.report_type, lovableKey);
-    const slackMessage = formatReportForSlack(reportData, report.report_type, aiSummary);
+    const reportData = await gatherReportData(supabase, report.report_type as string, report.company_id as string, reportConfig);
+    const aiSummary = await generateAISummary(reportData, report.report_type as string, lovableKey);
+    const slackMessage = formatReportForSlack(reportData, report.report_type as string, aiSummary);
 
     // Deliver
     let deliveryResult = null;
@@ -550,7 +555,7 @@ async function handleRunScheduled(
         completed_at: new Date().toISOString(),
         duration_ms: duration,
       })
-      .eq("id", run.id);
+      .eq("id", run.id as string);
 
     // Update scheduled report
     await supabase
@@ -558,7 +563,7 @@ async function handleRunScheduled(
       .update({
         last_run_at: new Date().toISOString(),
       })
-      .eq("id", report.id);
+      .eq("id", report.id as string);
 
     return new Response(
       JSON.stringify({ success: true, run_id: run.id, duration_ms: duration }),
@@ -573,7 +578,7 @@ async function handleRunScheduled(
         completed_at: new Date().toISOString(),
         duration_ms: Date.now() - startTime,
       })
-      .eq("id", run.id);
+      .eq("id", run.id as string);
 
     throw err;
   }
