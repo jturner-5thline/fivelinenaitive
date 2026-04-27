@@ -10,7 +10,8 @@ import {
 } from '../dealOriginContext';
 
 // Minimal sessionStorage shim for the default node test env.
-if (typeof (globalThis as any).sessionStorage === 'undefined') {
+function ensureSessionStorage() {
+  if (typeof (globalThis as any).sessionStorage !== 'undefined') return;
   const store = new Map<string, string>();
   (globalThis as any).sessionStorage = {
     getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
@@ -21,6 +22,7 @@ if (typeof (globalThis as any).sessionStorage === 'undefined') {
     get length() { return store.size; },
   };
 }
+ensureSessionStorage();
 
 const sampleOrigin: DealOrigin = {
   label: 'Back to Signed Deals (Apr 2026)',
@@ -34,7 +36,10 @@ const sampleOrigin: DealOrigin = {
 };
 
 describe('dealOriginContext', () => {
-  beforeEach(() => sessionStorage.clear());
+  beforeEach(() => {
+    ensureSessionStorage();
+    sessionStorage.clear();
+  });
 
   it('persists and reads the deal origin per deal id', () => {
     persistDealOrigin('abc', sampleOrigin);
