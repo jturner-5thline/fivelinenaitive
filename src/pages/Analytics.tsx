@@ -1416,10 +1416,10 @@ export default function Analytics() {
               </div>
               <div className="flex items-center gap-2">
                 {/* Presets Dropdown */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <UITooltip>
-                      <TooltipTrigger asChild>
+                <UITooltip>
+                  <DropdownMenu>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
                         <Button
                           variant="outline"
                           size="sm"
@@ -1428,10 +1428,9 @@ export default function Analytics() {
                         >
                           <FolderOpen className="h-4 w-4" />
                         </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Presets</TooltipContent>
-                    </UITooltip>
-                  </DropdownMenuTrigger>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>Presets</TooltipContent>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuItem onClick={() => setSavePresetDialogOpen(true)}>
                       <Save className="h-4 w-4 mr-2" />
