@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, ChevronDown } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronDown, Loader2 } from "lucide-react";
+import { useIsFetching } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -34,6 +35,24 @@ export function PeriodPicker({
 }: PeriodPickerProps) {
   const [open, setOpen] = useState(false);
   const isCustom = selected.value.startsWith("custom-");
+
+  // Shows a spinner in the trigger whenever ANY quarter-driven query is
+  // refetching, so the user gets immediate "we heard you" feedback the
+  // moment they switch periods — even if a particular chart's cache hits.
+  const fetchingCount = useIsFetching({
+    predicate: (q) => {
+      const key = q.queryKey;
+      if (!Array.isArray(key)) return false;
+      const prefix = String(key[0] ?? '');
+      return (
+        prefix.startsWith('qb-') ||
+        prefix.startsWith('stage-entry') ||
+        prefix.startsWith('pipeline-') ||
+        prefix.startsWith('entity-profit')
+      );
+    },
+  });
+  const isRefreshing = fetchingCount > 0;
 
   // Group quarters by year for a tidy Q1/Q2/Q3/Q4 grid
   const quartersByYear = useMemo(() => {
@@ -73,13 +92,24 @@ export function PeriodPicker({
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+      {isRefreshing ? (
+        <Loader2
+          className="h-4 w-4 text-primary animate-spin"
+          aria-label="Refreshing dashboards"
+        />
+      ) : (
+        <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+      )}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
             size="sm"
-            className="h-9 text-xs justify-between min-w-[160px]"
+            className={cn(
+              "h-9 text-xs justify-between min-w-[160px] transition-colors",
+              isRefreshing && "border-primary/40 text-primary",
+            )}
+            aria-busy={isRefreshing}
           >
             <span className="truncate">{selected.label}</span>
             <ChevronDown className="h-3.5 w-3.5 ml-2 opacity-60" />

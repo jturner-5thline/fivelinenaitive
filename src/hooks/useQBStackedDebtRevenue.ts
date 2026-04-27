@@ -43,7 +43,7 @@ export const STACKED_CATEGORIES = [
 export function useQBStackedDebtRevenue(quarter: QuarterOption | null): StackedDebtResult {
   const { user } = useAuth();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching } = useQuery({
     queryKey: ['qb-stacked-debt-revenue', user?.id, quarter?.value],
     queryFn: async () => {
       if (!quarter) return null;
@@ -112,6 +112,6 @@ export function useQBStackedDebtRevenue(quarter: QuarterOption | null): StackedD
   return {
     months: data?.months ?? [],
     total: data?.total ?? 0,
-    isLoading,
+    isLoading: isLoading || isFetching,
   };
 }

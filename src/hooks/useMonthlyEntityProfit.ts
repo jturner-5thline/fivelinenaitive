@@ -38,7 +38,7 @@ export function useMonthlyEntityProfit(entityName: string, quarterMonths: MonthD
   const endDate = buckets[buckets.length - 1]?.end ?? '';
 
   // Fetch revenue (invoices)
-  const { data: invoices, isLoading: loadingRev } = useQuery({
+  const { data: invoices, isLoading: loadingRev, isFetching: fetchingRev } = useQuery({
     queryKey: ['entity-profit-revenue', realmId, startDate, endDate],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -54,7 +54,7 @@ export function useMonthlyEntityProfit(entityName: string, quarterMonths: MonthD
   });
 
   // Fetch expenses
-  const { data: expenses, isLoading: loadingExp } = useQuery({
+  const { data: expenses, isLoading: loadingExp, isFetching: fetchingExp } = useQuery({
     queryKey: ['entity-profit-expenses', realmId, startDate, endDate],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -70,7 +70,7 @@ export function useMonthlyEntityProfit(entityName: string, quarterMonths: MonthD
   });
 
   // Fetch bills
-  const { data: bills, isLoading: loadingBills } = useQuery({
+  const { data: bills, isLoading: loadingBills, isFetching: fetchingBills } = useQuery({
     queryKey: ['entity-profit-bills', realmId, startDate, endDate],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -85,7 +85,11 @@ export function useMonthlyEntityProfit(entityName: string, quarterMonths: MonthD
     enabled: !!user && !!realmId,
   });
 
-  const isLoading = loadingRev || loadingExp || loadingBills;
+  // isLoading is true on initial load only; isFetching covers refetches
+  // triggered by quarter changes so the UI shows a skeleton on every switch.
+  const isLoading =
+    loadingRev || loadingExp || loadingBills ||
+    fetchingRev || fetchingExp || fetchingBills;
 
   return useMemo(() => {
     const result: ProfitMonthBucket[] = buckets.map(b => ({

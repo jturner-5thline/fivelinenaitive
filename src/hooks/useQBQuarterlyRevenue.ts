@@ -114,7 +114,7 @@ export function useQBQuarterlyRevenue(
 ): QuarterlyRevenueResult {
   const { user } = useAuth();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching } = useQuery({
     queryKey: ['qb-quarterly-revenue', user?.id, realmId, quarter?.value],
     queryFn: async () => {
       if (!quarter) return null;
@@ -158,7 +158,7 @@ export function useQBQuarterlyRevenue(
   return {
     months: data?.months ?? [],
     total: data?.total ?? 0,
-    isLoading,
+    isLoading: isLoading || isFetching,
   };
 }
 
@@ -172,7 +172,7 @@ export function useQBCombinedQuarterlyRevenue(
 ): QuarterlyRevenueResult {
   const { user } = useAuth();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching } = useQuery({
     queryKey: ['qb-combined-quarterly-revenue', user?.id, realmIds.join(','), quarter?.value],
     queryFn: async () => {
       if (!quarter || realmIds.length === 0) return null;
@@ -210,6 +210,6 @@ export function useQBCombinedQuarterlyRevenue(
   return {
     months: data?.months ?? [],
     total: data?.total ?? 0,
-    isLoading,
+    isLoading: isLoading || isFetching,
   };
 }
