@@ -369,8 +369,9 @@ export function EmailAttachmentsStrip({
               compact
                 ? 'gap-1.5 max-w-[180px] pl-1 pr-1.5 py-0.5 rounded-md text-left'
                 : 'gap-2 max-w-[260px] pl-1.5 pr-2 py-1 rounded-md text-left',
-              'border border-border/50 bg-background/40 hover:bg-background/70',
-              'hover:border-primary/40 transition-colors',
+              'border border-white/10 bg-white/[0.04] backdrop-blur-md',
+              'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] shadow-sm shadow-black/20',
+              'hover:bg-white/[0.07] hover:border-white/15 transition-colors',
               'disabled:opacity-60 disabled:cursor-not-allowed',
               item.isOlder && 'opacity-80',
             )}
@@ -581,7 +582,7 @@ export function EmailAttachmentsStrip({
             >
               <div className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 flex items-center gap-1">
                 <Paperclip className="h-3 w-3" />
-                <span>All attachments · {aggregated.length}</span>
+                <span>{aggregated.length} files</span>
               </div>
               <div className="flex flex-col gap-1.5">
                 {aggregated.map((item) => renderOverflowRow(item))}
@@ -597,47 +598,40 @@ export function EmailAttachmentsStrip({
   return (
     <div
       className={cn(
-        'rounded-lg border border-border/40 bg-white/[0.02]',
-        'px-3 py-2.5',
+        'rounded-md border border-border/40 bg-white/[0.02] px-2 py-1.5',
         className,
       )}
     >
-      <div className="flex items-center gap-1.5 mb-2 text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide">
-        <Paperclip className="h-3 w-3" />
-        <span>
-          Attachments
-          {aggregated.length > 0 && (
-            <span className="ml-1 text-muted-foreground/60 normal-case font-normal tracking-normal">
-              · {aggregated.length}
-            </span>
+      <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-1 shrink-0 text-muted-foreground/80">
+          <Paperclip className="h-3 w-3 shrink-0" />
+          <span className="text-[11px] font-medium tabular-nums leading-none">
+            {aggregated.length > 0 ? aggregated.length : hasPendingHydration ? '…' : '0'}
+          </span>
+          {(loading || loadingOverride) && (
+            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground/60" />
           )}
-          {aggregated.length === 0 && hasPendingHydration && (
-            <span className="ml-1 text-muted-foreground/60 normal-case font-normal tracking-normal">
-              · loading…
-            </span>
-          )}
-        </span>
-        {(loading || loadingOverride) && (
-          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground/60 ml-1" />
+        </div>
+
+        {aggregated.length === 0 ? (
+          hasPendingHydration ? (
+            <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+              <span className="h-7 w-[176px] rounded-md border border-border/40 bg-background/35 animate-pulse" />
+              <span className="h-7 w-[148px] rounded-md border border-border/40 bg-background/25 animate-pulse" />
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+              <div className="inline-flex min-w-0 items-center rounded-md border border-border/40 bg-white/[0.03] px-2 py-1.5 text-[11px] text-muted-foreground backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] shadow-sm shadow-black/20">
+                <span className="truncate">{inferredFallbackReason || 'File details unavailable.'}</span>
+              </div>
+            </div>
+          )
+        ) : (
+          <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+            {aggregated.map((item) => renderChip(item))}
+          </div>
         )}
       </div>
-
-      {aggregated.length === 0 ? (
-        hasPendingHydration ? (
-          <div className="flex flex-wrap gap-1.5">
-            <span className="h-8 w-[176px] rounded-md border border-border/40 bg-background/35 animate-pulse" />
-            <span className="h-8 w-[148px] rounded-md border border-border/40 bg-background/25 animate-pulse" />
-          </div>
-        ) : (
-          <div className="rounded-md border border-dashed border-border/60 bg-background/25 px-3 py-2 text-[11px] text-muted-foreground">
-            {inferredFallbackReason || 'Attachment referenced — file details unavailable.'}
-          </div>
-        )
-      ) : (
-        <div className="flex flex-wrap gap-1.5">
-          {aggregated.map((item) => renderChip(item))}
-        </div>
-      )}
     </div>
   );
 }

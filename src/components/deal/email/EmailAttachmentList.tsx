@@ -225,26 +225,28 @@ export function EmailAttachmentList({
         </div>
         {/* Compact file list rendered below for reference */}
         <div className="border-t border-emerald-500/15 bg-background/40 px-4 py-2.5">
-          <div className="flex items-center gap-1 text-[hsl(var(--email-text-muted))] mb-1.5">
-            <Paperclip className="h-3 w-3" />
-            <span className="text-[11px] font-medium tabular-nums leading-none">
-              {visible.length}
-            </span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+          <div className="flex items-center gap-2 rounded-md border border-border/40 bg-white/[0.02] px-2 py-1.5">
+            <div className="flex items-center gap-1 shrink-0 text-[hsl(var(--email-text-muted))]">
+              <Paperclip className="h-3 w-3" />
+              <span className="text-[11px] font-medium tabular-nums leading-none">
+                {visible.length}
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
             {visible.map((att, i) => {
               const filename = att.filename || 'Untitled attachment';
               const Icon = iconForType(att.content_type, filename);
               return (
                 <div
                   key={att.id || `${filename}-${i}`}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded text-[12px] text-[hsl(var(--email-text-secondary))]"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[12px] text-[hsl(var(--email-text-secondary))] backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] shadow-sm shadow-black/20"
                 >
                   <Icon className="h-3.5 w-3.5 text-[hsl(var(--email-text-muted))] shrink-0" />
                   <span className="truncate flex-1">{filename}</span>
                 </div>
               );
             })}
+            </div>
           </div>
         </div>
       </div>
@@ -254,17 +256,17 @@ export function EmailAttachmentList({
   // ── Default: when no Data Room flow is available, render the simple list ──
   if (!canSendToDataRoom) {
     return (
-      <div className="mt-3 flex items-center gap-2">
+      <div className="mt-3 flex items-center gap-2 rounded-md border border-border/40 bg-white/[0.02] px-2 py-1.5">
         <div
           className="flex items-center gap-1 shrink-0 text-[hsl(var(--email-text-muted))]"
-          aria-label={`${visible.length} ${visible.length === 1 ? 'attachment' : 'attachments'}`}
+          aria-label={`${visible.length} ${visible.length === 1 ? 'file' : 'files'}`}
         >
           <Paperclip className="h-3.5 w-3.5" />
           <span className="text-[11px] font-medium tabular-nums leading-none">
             {visible.length}
           </span>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+        <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
           {visible.map((att, i) => {
             const filename = att.filename || 'Untitled attachment';
             const Icon = iconForType(att.content_type, filename);
@@ -278,9 +280,10 @@ export function EmailAttachmentList({
                 disabled={isDownloading || !att.id}
                 title={filename}
                 className={cn(
-                  'group inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-left min-w-0 max-w-full',
-                  'border border-[hsl(var(--email-border))] bg-[hsl(var(--email-toolbar-bg))]/60',
-                  'hover:bg-[hsl(var(--email-reading-bg))] hover:border-[hsl(var(--outlook-blue)/0.4)] transition-colors',
+                  'group inline-flex items-center gap-1.5 px-2 py-1.5 rounded-md text-left min-w-0 max-w-full',
+                  'border border-white/10 bg-white/[0.04] backdrop-blur-md',
+                  'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] shadow-sm shadow-black/20',
+                  'hover:bg-white/[0.07] hover:border-white/15 transition-colors',
                   'disabled:opacity-60 disabled:cursor-not-allowed',
                 )}
               >
@@ -407,15 +410,17 @@ export function EmailAttachmentList({
 
       {/* Connected file list — visually part of the same module */}
       <div className="border-t border-[hsl(var(--outlook-blue)/0.2)] bg-background/30 px-4 py-3">
-        <div className="flex items-center gap-1.5 mb-2 text-[10.5px] font-semibold text-[hsl(var(--email-text-muted))] uppercase tracking-wide">
-          <Paperclip className="h-3 w-3" />
-          <span>Attachments in this email</span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+        <div className="flex items-center gap-2 rounded-md border border-border/40 bg-white/[0.02] px-2 py-1.5">
+          <div className="flex items-center gap-1 shrink-0 text-[hsl(var(--email-text-muted))]">
+            <Paperclip className="h-3 w-3" />
+            <span className="text-[11px] font-medium tabular-nums leading-none">
+              {visible.length}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
           {visible.map((att, i) => {
             const filename = att.filename || 'Untitled attachment';
             const Icon = iconForType(att.content_type, filename);
-            const label = fileLabel(filename, att.content_type);
             const sizeLabel = formatBytes(att.size);
             const isDownloading = downloadingId === att.id;
             const key = att.id || `${filename}-${i}`;
@@ -426,10 +431,11 @@ export function EmailAttachmentList({
               <div
                 key={key}
                 className={cn(
-                  'group flex items-center gap-2 px-2.5 py-2 rounded-md text-left min-w-0 border transition-colors',
+                  'group inline-flex items-center gap-2 px-2 py-1.5 rounded-md text-left min-w-0 max-w-full border backdrop-blur-md transition-colors',
+                  'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] shadow-sm shadow-black/20',
                   included
-                    ? 'border-[hsl(var(--outlook-blue)/0.25)] bg-background/60'
-                    : 'border-[hsl(var(--email-border))] bg-background/30 opacity-60',
+                    ? 'border-white/10 bg-white/[0.05] hover:bg-white/[0.08]'
+                    : 'border-border/40 bg-white/[0.025] opacity-70 hover:opacity-100 hover:bg-white/[0.05]',
                 )}
               >
                 {selectable ? (
@@ -446,20 +452,17 @@ export function EmailAttachmentList({
                   type="button"
                   onClick={() => handleDownload(att)}
                   disabled={isDownloading || !att.id}
-                  className="flex items-center gap-2 flex-1 min-w-0 disabled:cursor-not-allowed"
+                  className="flex items-center gap-1.5 flex-1 min-w-0 disabled:cursor-not-allowed"
                 >
-                  <div className="flex items-center justify-center h-7 w-7 rounded bg-[hsl(var(--email-list-bg))] border border-[hsl(var(--email-border))] shrink-0">
-                    <Icon className="h-3.5 w-3.5 text-[hsl(var(--email-text-secondary))]" />
-                  </div>
-                  <div className="flex-1 min-w-0 text-left">
-                    <div className="text-[12.5px] font-medium text-[hsl(var(--email-text-primary))] truncate leading-tight">
-                      {filename}
-                    </div>
-                    <div className="text-[10.5px] text-[hsl(var(--email-text-muted))] flex items-center gap-1 leading-tight mt-0.5">
-                      <span>{label}</span>
-                      {sizeLabel && <><span>·</span><span>{sizeLabel}</span></>}
-                    </div>
-                  </div>
+                  <Icon className="h-3 w-3 shrink-0 text-[hsl(var(--email-text-muted))]" />
+                  <span className="truncate text-[11.5px] font-medium text-[hsl(var(--email-text-primary))] leading-none">
+                    {filename}
+                  </span>
+                  {sizeLabel && (
+                    <span className="shrink-0 text-[10px] text-[hsl(var(--email-text-muted))] leading-none">
+                      {sizeLabel}
+                    </span>
+                  )}
                   <div className="shrink-0 text-[hsl(var(--email-text-muted))] opacity-0 group-hover:opacity-100 transition-opacity">
                     {isDownloading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
                   </div>
@@ -492,6 +495,7 @@ export function EmailAttachmentList({
               </div>
             );
           })}
+          </div>
         </div>
       </div>
 
