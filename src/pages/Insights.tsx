@@ -2118,24 +2118,11 @@ export default function Metrics() {
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               {selectedDashboard === 'management-snapshot' && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <Select
-                    value={dashboardSelectedQuarter.value}
-                    onValueChange={setDashboardQuarterValue}
-                  >
-                    <SelectTrigger className="w-[140px] h-9 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {dashboardQuarterOptions.map(q => (
-                        <SelectItem key={q.value} value={q.value} className="text-xs">
-                          {q.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <PeriodPicker
+                  quarterOptions={dashboardQuarterOptions}
+                  selected={dashboardSelectedQuarter}
+                  onChange={setDashboardSelectedQuarter}
+                />
               )}
 
               <DropdownMenu>
