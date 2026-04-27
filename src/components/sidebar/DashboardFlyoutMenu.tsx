@@ -31,6 +31,12 @@ export function DashboardFlyoutMenu() {
   const [open, setOpen] = useState(false);
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // When the flyout is opened via keyboard, we want to move focus into the
+  // menu and start arrow-key navigation. Hover-open should NOT steal focus.
+  const openedViaKeyboardRef = useRef(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const [focusedIndex, setFocusedIndex] = useState<number>(-1);
 
   const showExpanded = state === 'expanded' || (state === 'collapsed' && isHovering);
   const isDashboardRoute = location.pathname === '/dashboard';
@@ -46,6 +52,35 @@ export function DashboardFlyoutMenu() {
 
   useEffect(() => () => clearTimers(), []);
 
+  // Keep the item ref array sized to the current widget list.
+  useEffect(() => {
+    itemRefs.current = itemRefs.current.slice(0, widgets.length);
+  }, [widgets.length]);
+
+  // When the menu closes, reset focus tracking. When it opens via keyboard,
+  // focus the first (or active) item.
+  useEffect(() => {
+    if (!open) {
+      setFocusedIndex(-1);
+      return;
+    }
+    if (openedViaKeyboardRef.current) {
+      const activeIdx = widgets.findIndex((w) => w.id === activeWidgetId);
+      const startIdx = activeIdx >= 0 ? activeIdx : 0;
+      setFocusedIndex(startIdx);
+      // Focus on the next frame so the popover content is mounted.
+      requestAnimationFrame(() => {
+        itemRefs.current[startIdx]?.focus();
+      });
+    }
+  }, [open, widgets, activeWidgetId]);
+
+  // Move DOM focus whenever the focused index changes (roving tabindex).
+  useEffect(() => {
+    if (!open || focusedIndex < 0) return;
+    itemRefs.current[focusedIndex]?.focus();
+  }, [focusedIndex, open]);
+
   const scheduleOpen = () => {
     if (!hasWidgets || isMobile) return;
     clearTimers();
@@ -58,10 +93,19 @@ export function DashboardFlyoutMenu() {
     closeTimer.current = setTimeout(() => setOpen(false), CLOSE_DELAY);
   };
 
+  const closeAndReturnFocus = () => {
+    clearTimers();
+    openedViaKeyboardRef.current = false;
+    setOpen(false);
+    // Return focus to the trigger after the popover unmounts so tab order resumes from the sidebar.
+    requestAnimationFrame(() => triggerRef.current?.focus());
+  };
+
   const handleParentClick = (e: React.MouseEvent) => {
     // On mobile, tap toggles the submenu instead of navigating.
     if (isMobile && hasWidgets) {
       e.preventDefault();
+      openedViaKeyboardRef.current = false;
       setOpen((v) => !v);
       return;
     }
@@ -70,29 +114,73 @@ export function DashboardFlyoutMenu() {
 
   const handleParentKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
     if (!hasWidgets) return;
-    if (e.key === 'ArrowRight' || (e.key === 'ArrowDown' && open)) {
-      e.preventDefault();
-      setOpen(true);
+    // Open + move focus into the submenu.
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+      // Enter / Space on the parent: if menu is closed, open it AND let the
+      // default click-through navigate? No — we want predictable behavior:
+      // Enter/Space activates Dashboard navigation, Arrow keys open the menu.
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        clearTimers();
+        openedViaKeyboardRef.current = true;
+        setOpen(true);
+      }
     } else if (e.key === 'Escape' && open) {
       e.preventDefault();
-      setOpen(false);
+      closeAndReturnFocus();
     }
   };
 
   const handleSubItemClick = (id: string) => {
+    openedViaKeyboardRef.current = false;
     setOpen(false);
     navigate(`/dashboard?widget=${encodeURIComponent(id)}`);
   };
 
+  const handleSubItemKeyDown = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setFocusedIndex((index + 1) % widgets.length);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setFocusedIndex((index - 1 + widgets.length) % widgets.length);
+        break;
+      case 'Home':
+        e.preventDefault();
+        setFocusedIndex(0);
+        break;
+      case 'End':
+        e.preventDefault();
+        setFocusedIndex(widgets.length - 1);
+        break;
+      case 'ArrowLeft':
+      case 'Escape':
+        e.preventDefault();
+        closeAndReturnFocus();
+        break;
+      case 'Tab':
+        // Let Tab close the flyout so focus continues naturally to the next sidebar item.
+        openedViaKeyboardRef.current = false;
+        setOpen(false);
+        break;
+      default:
+        break;
+    }
+  };
+
   const triggerButton = (
     <SidebarMenuButton
+      ref={triggerRef}
       isActive={isDashboardRoute}
       tooltip="Dashboard"
       onClick={handleParentClick}
       onKeyDown={handleParentKeyDown}
       onMouseEnter={scheduleOpen}
       onMouseLeave={scheduleClose}
-      onFocus={scheduleOpen}
+      // Don't auto-open on focus — that traps keyboard users. They use
+      // ArrowRight / ArrowDown to open intentionally.
       aria-haspopup={hasWidgets ? 'menu' : undefined}
       aria-expanded={hasWidgets ? open : undefined}
       className={cn(
@@ -121,7 +209,13 @@ export function DashboardFlyoutMenu() {
   return (
     <SidebarMenuItem>
       {hasWidgets ? (
-        <Popover open={open} onOpenChange={setOpen}>
+        <Popover
+          open={open}
+          onOpenChange={(next) => {
+            if (!next) openedViaKeyboardRef.current = false;
+            setOpen(next);
+          }}
+        >
           <PopoverTrigger asChild>{triggerButton}</PopoverTrigger>
           <PopoverContent
             side="right"
@@ -130,23 +224,41 @@ export function DashboardFlyoutMenu() {
             className="w-56 p-1"
             onMouseEnter={() => clearTimers()}
             onMouseLeave={scheduleClose}
-            onEscapeKeyDown={() => setOpen(false)}
+            onEscapeKeyDown={(e) => {
+              e.preventDefault();
+              closeAndReturnFocus();
+            }}
+            onInteractOutside={() => {
+              openedViaKeyboardRef.current = false;
+            }}
             onOpenAutoFocus={(e) => {
-              // Don't pull focus on hover-open; only when user opens via keyboard/click.
-              if (!isMobile) e.preventDefault();
+              // We manage focus manually based on how the popover was opened.
+              // Always prevent Radix's default auto-focus to avoid focus jumps
+              // when the menu opens via hover.
+              e.preventDefault();
+            }}
+            onCloseAutoFocus={(e) => {
+              // We handle focus return ourselves in closeAndReturnFocus(); prevent
+              // Radix from also moving focus, which can fight with our logic.
+              e.preventDefault();
             }}
           >
             <div role="menu" aria-label="Dashboard widgets">
               <div className="px-2 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Quick widgets
               </div>
-              {widgets.map((w) => {
+              {widgets.map((w, index) => {
                 const isActive = activeWidgetId === w.id;
+                const isFocused = focusedIndex === index;
                 return (
                   <button
                     key={w.id}
+                    ref={(el) => (itemRefs.current[index] = el)}
                     role="menuitem"
+                    tabIndex={isFocused || (focusedIndex < 0 && index === 0) ? 0 : -1}
                     onClick={() => handleSubItemClick(w.id)}
+                    onKeyDown={(e) => handleSubItemKeyDown(e, index)}
+                    onMouseEnter={() => setFocusedIndex(index)}
                     className={cn(
                       'flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors',
                       'hover:bg-accent hover:text-accent-foreground',
