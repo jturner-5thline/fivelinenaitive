@@ -38,7 +38,7 @@ function useStageEntryMonthlySeries(
   const startDate = buckets[0]?.start ?? '';
   const endDate = buckets[buckets.length - 1]?.end ?? '';
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching } = useQuery({
     queryKey: ['stage-entry-monthly', targetStage, pipelineId, startDate, endDate],
     queryFn: async () => {
       const { data: rows, error } = await supabase
@@ -102,8 +102,11 @@ function useStageEntryMonthlySeries(
       }
     }
 
-    return { months: result, isLoading };
-  }, [data, isLoading, buckets, pipelineId]);
+    // Treat any in-flight refetch (e.g. when the quarter changes) as loading
+    // so the UI shows a skeleton instead of stale data.
+    const loading = isLoading || isFetching;
+    return { months: result, isLoading: loading };
+  }, [data, isLoading, isFetching, buckets, pipelineId]);
 }
 
 export function useDealsSignedMonthlySeries(quarterMonths: MonthDef[]) {
