@@ -1437,10 +1437,8 @@ export default function Metrics() {
 
   // ── Global dashboard quarter selector (Management Snapshot) ──
   const dashboardQuarterOptions = useMemo(() => buildQuarterOptions(8), []);
-  const [dashboardQuarterValue, setDashboardQuarterValue] = useState(() => getCurrentQuarter().value);
-  const dashboardSelectedQuarter = useMemo(
-    () => dashboardQuarterOptions.find(q => q.value === dashboardQuarterValue) ?? dashboardQuarterOptions[0],
-    [dashboardQuarterOptions, dashboardQuarterValue],
+  const [dashboardSelectedQuarter, setDashboardSelectedQuarter] = useState<QuarterOption>(
+    () => getCurrentQuarter(),
   );
   const allDashboardOptions = [
     ...DASHBOARD_OPTIONS,
