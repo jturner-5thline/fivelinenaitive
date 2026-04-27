@@ -36,7 +36,7 @@ export const FINSERV_STACKED_CATEGORIES = [
 export function useQBStackedFinServRevenue(quarter: QuarterOption | null): StackedFinServResult {
   const { user } = useAuth();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching } = useQuery({
     queryKey: ['qb-stacked-finserv-revenue', user?.id, quarter?.value],
     queryFn: async () => {
       if (!quarter) return null;
@@ -102,6 +102,6 @@ export function useQBStackedFinServRevenue(quarter: QuarterOption | null): Stack
   return {
     months: data?.months ?? [],
     total: data?.total ?? 0,
-    isLoading,
+    isLoading: isLoading || isFetching,
   };
 }
