@@ -598,7 +598,7 @@ export function EmailAttachmentsStrip({
   return (
     <div
       className={cn(
-        'rounded-md border border-border/40 bg-white/[0.02] px-2 py-1.5',
+        'px-2 py-1.5',
         className,
       )}
     >
