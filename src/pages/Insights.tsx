@@ -2179,7 +2179,7 @@ export default function Metrics() {
                 </>
               )}
             </div>
-          </div>
+          </StickyDashboardHeader>
 
           {/* Dashboard Content - always show pre-built dashboards */}
           <EditableDashboardWrapper isEditMode={isEditMode} onCardEdit={handlePrebuiltCardEdit}>
