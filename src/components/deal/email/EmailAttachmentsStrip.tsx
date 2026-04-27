@@ -621,7 +621,7 @@ export function EmailAttachmentsStrip({
             </div>
           ) : (
             <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
-              <div className="inline-flex min-w-0 items-center rounded-md border border-border/40 bg-white/[0.03] px-2 py-1.5 text-[11px] text-muted-foreground backdrop-blur-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] shadow-sm shadow-black/20">
+              <div className="inline-flex min-w-0 items-center px-2 py-1.5 text-[11px] text-muted-foreground">
                 <span className="truncate">{inferredFallbackReason || 'File details unavailable.'}</span>
               </div>
             </div>
