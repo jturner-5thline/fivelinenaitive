@@ -8,6 +8,16 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useKeyAlerts, KeyAlert, KeyAlertType } from './useKeyAlerts';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const PRIORITY_BORDER: Record<KeyAlert['priority'], string> = {
   high: 'border-l-2 border-destructive',
@@ -42,6 +52,7 @@ export function KeyAlertsPanel({ onAlertOpen }: KeyAlertsPanelProps) {
   const navigate = useNavigate();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const alerts = useKeyAlerts({ dismissed });
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const highCount = alerts.filter((a) => a.priority === 'high').length;
 
@@ -50,9 +61,10 @@ export function KeyAlertsPanel({ onAlertOpen }: KeyAlertsPanelProps) {
     navigate(`/deal/${alert.dealId}`);
   };
 
-  const handleDismissAll = () => {
+  const performDismissAll = () => {
     if (alerts.length === 0) return;
     const ids = alerts.map((a) => a.id);
+    const previous = new Set(dismissed);
     setDismissed((prev) => {
       const next = new Set(prev);
       ids.forEach((id) => next.add(id));
@@ -60,6 +72,16 @@ export function KeyAlertsPanel({ onAlertOpen }: KeyAlertsPanelProps) {
     });
     toast.success(
       `Dismissed ${ids.length} ${ids.length === 1 ? 'alert' : 'alerts'}`,
+      {
+        duration: 8000,
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            setDismissed(previous);
+            toast.success('Alerts restored');
+          },
+        },
+      },
     );
   };
 
@@ -83,7 +105,7 @@ export function KeyAlertsPanel({ onAlertOpen }: KeyAlertsPanelProps) {
             variant="ghost"
             size="sm"
             className="h-7 gap-1.5 text-xs"
-            onClick={handleDismissAll}
+            onClick={() => setConfirmOpen(true)}
             aria-label={`Dismiss all ${alerts.length} alerts`}
           >
             <CheckCheck className="h-3.5 w-3.5" />
@@ -156,6 +178,33 @@ export function KeyAlertsPanel({ onAlertOpen }: KeyAlertsPanelProps) {
           )}
         </ScrollArea>
       </div>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Dismiss all alerts?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will dismiss {alerts.length}{' '}
+              {alerts.length === 1 ? 'alert' : 'alerts'} currently visible
+              {highCount > 0 && (
+                <>
+                  {' '}— including{' '}
+                  <span className="font-medium text-destructive">
+                    {highCount} high priority
+                  </span>
+                </>
+              )}
+              . You can undo this immediately after.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={performDismissAll}>
+              Dismiss all
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
