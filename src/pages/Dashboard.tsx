@@ -471,118 +471,118 @@ export default function Dashboard() {
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-foreground">What can I do for you?</h1>
           </div>
 
-          <HintTooltip
-            hint="Use these quick actions to open your calendar, email, quick prompts, or create a new deal — all without leaving the dashboard."
-            visible={isHintVisible('dashboard-quick-actions')}
-            onDismiss={() => dismissHint('dashboard-quick-actions')}
-            side="bottom"
-          >
-          {/*
-            Glassy quick-action tile row — dark #16181f rounded container with
-            color-tinted icon tiles. Tiles wrap consistently and keep the
-            existing lucide icons; only the surrounding tile design changed.
-          */}
-          <div
-            className="flex flex-wrap sm:flex-nowrap w-full gap-2.5 p-4 rounded-[14px]"
-            style={{ background: '#16181f' }}
-          >
-            <QuickActionTile
-              label="Calendar"
-              theme={QA_TILE_THEMES.calendar}
-              icon={<CalendarIcon {...QA_ICON_PROPS} />}
-              className={isJTurner ? 'order-1' : undefined}
-              onClick={(e) => openCarouselWidget('calendar', e.currentTarget as HTMLElement)}
-              onKeyDown={(e) =>
-                handleTileKeyDown(e, () =>
-                  openCarouselWidget('calendar', e.currentTarget as HTMLElement),
-                )
-              }
-            />
-            <EmailTileWithIntelligence
-              className={isJTurner ? 'order-2' : undefined}
-              onOpen={(el) => openCarouselWidget('email', el)}
-              onKeyDown={(e) =>
-                handleTileKeyDown(e, () =>
-                  openCarouselWidget('email', e.currentTarget as HTMLElement),
-                )
-              }
-            />
-            <QuickActionTile
-              label="New Deal"
-              theme={QA_TILE_THEMES.newDeal}
-              icon={<Briefcase {...QA_ICON_PROPS} />}
-              className={isJTurner ? 'order-4' : undefined}
-              onClick={(e) => openCarouselWidget('new-deal', e.currentTarget as HTMLElement)}
-              onKeyDown={(e) =>
-                handleTileKeyDown(e, () =>
-                  openCarouselWidget('new-deal', e.currentTarget as HTMLElement),
-                )
-              }
-            />
-            {isJTurner && (
+          <div className="w-full max-w-6xl mx-auto flex flex-col gap-3">
+            <HintTooltip
+              hint="Use these quick actions to open your calendar, email, quick prompts, or create a new deal — all without leaving the dashboard."
+              visible={isHintVisible('dashboard-quick-actions')}
+              onDismiss={() => dismissHint('dashboard-quick-actions')}
+              side="bottom"
+            >
+            {/*
+              Glassy quick-action tile row — dark #16181f rounded container with
+              color-tinted icon tiles. Tiles wrap consistently and keep the
+              existing lucide icons; only the surrounding tile design changed.
+            */}
+            <div
+              className="flex flex-wrap sm:flex-nowrap w-full gap-2.5 p-4 rounded-[14px]"
+              style={{ background: '#16181f' }}
+            >
               <QuickActionTile
-                label="Daily Briefing"
-                theme={QA_TILE_THEMES.dailyBriefing}
-                icon={<Newspaper {...QA_ICON_PROPS} />}
-                className="order-5"
-                onClick={(e) => openCarouselWidget('daily-briefing', e.currentTarget as HTMLElement)}
+                label="Calendar"
+                theme={QA_TILE_THEMES.calendar}
+                icon={<CalendarIcon {...QA_ICON_PROPS} />}
+                className={isJTurner ? 'order-1' : undefined}
+                onClick={(e) => openCarouselWidget('calendar', e.currentTarget as HTMLElement)}
                 onKeyDown={(e) =>
                   handleTileKeyDown(e, () =>
-                    openCarouselWidget('daily-briefing', e.currentTarget as HTMLElement),
+                    openCarouselWidget('calendar', e.currentTarget as HTMLElement),
                   )
                 }
               />
-            )}
-            {canSeeNiki && (
-              <QuickActionTile
-                label={isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
-                theme={QA_TILE_THEMES.nikisBriefing}
-                icon={<Newspaper {...QA_ICON_PROPS} />}
-                className={isJTurner ? 'order-6' : undefined}
-                onClick={(e) => openCarouselWidget('niki-briefing', e.currentTarget as HTMLElement)}
+              <EmailTileWithIntelligence
+                className={isJTurner ? 'order-2' : undefined}
+                onOpen={(el) => openCarouselWidget('email', el)}
                 onKeyDown={(e) =>
                   handleTileKeyDown(e, () =>
-                    openCarouselWidget('niki-briefing', e.currentTarget as HTMLElement),
+                    openCarouselWidget('email', e.currentTarget as HTMLElement),
                   )
                 }
               />
-            )}
-            <QuickActionTile
-              label="Deals"
-              theme={QA_TILE_THEMES.deals}
-              icon={<Handshake {...QA_ICON_PROPS} />}
-              ariaLabel="Open Deals insights"
-              className={isJTurner ? 'order-7' : undefined}
-              onClick={() => setDealsDialogOpen(true)}
-              onKeyDown={(e) => handleTileKeyDown(e, () => setDealsDialogOpen(true))}
-            />
-            {is5thLine && (
               <QuickActionTile
-                label="Deal Rundown"
-                theme={QA_TILE_THEMES.dealRundown}
+                label="New Deal"
+                theme={QA_TILE_THEMES.newDeal}
                 icon={<Briefcase {...QA_ICON_PROPS} />}
-                className={isJTurner ? 'order-3' : undefined}
-                onClick={(e) => openCarouselWidget('deal-rundown', e.currentTarget as HTMLElement)}
+                className={isJTurner ? 'order-4' : undefined}
+                onClick={(e) => openCarouselWidget('new-deal', e.currentTarget as HTMLElement)}
                 onKeyDown={(e) =>
                   handleTileKeyDown(e, () =>
-                    openCarouselWidget('deal-rundown', e.currentTarget as HTMLElement),
+                    openCarouselWidget('new-deal', e.currentTarget as HTMLElement),
                   )
                 }
               />
-            )}
-            <QuickActionTile
-              label="News Feed"
-              theme={QA_TILE_THEMES.newsFeed}
-              icon={<Newspaper {...QA_ICON_PROPS} />}
-              ariaLabel="Open News Feed"
-              className={isJTurner ? 'order-8' : undefined}
-              onClick={() => setNewsFeedDialogOpen(true)}
-              onKeyDown={(e) => handleTileKeyDown(e, () => setNewsFeedDialogOpen(true))}
-            />
-          </div>
-          </HintTooltip>
+              {isJTurner && (
+                <QuickActionTile
+                  label="Daily Briefing"
+                  theme={QA_TILE_THEMES.dailyBriefing}
+                  icon={<Newspaper {...QA_ICON_PROPS} />}
+                  className="order-5"
+                  onClick={(e) => openCarouselWidget('daily-briefing', e.currentTarget as HTMLElement)}
+                  onKeyDown={(e) =>
+                    handleTileKeyDown(e, () =>
+                      openCarouselWidget('daily-briefing', e.currentTarget as HTMLElement),
+                    )
+                  }
+                />
+              )}
+              {canSeeNiki && (
+                <QuickActionTile
+                  label={isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
+                  theme={QA_TILE_THEMES.nikisBriefing}
+                  icon={<Newspaper {...QA_ICON_PROPS} />}
+                  className={isJTurner ? 'order-6' : undefined}
+                  onClick={(e) => openCarouselWidget('niki-briefing', e.currentTarget as HTMLElement)}
+                  onKeyDown={(e) =>
+                    handleTileKeyDown(e, () =>
+                      openCarouselWidget('niki-briefing', e.currentTarget as HTMLElement),
+                    )
+                  }
+                />
+              )}
+              <QuickActionTile
+                label="Deals"
+                theme={QA_TILE_THEMES.deals}
+                icon={<Handshake {...QA_ICON_PROPS} />}
+                ariaLabel="Open Deals insights"
+                className={isJTurner ? 'order-7' : undefined}
+                onClick={() => setDealsDialogOpen(true)}
+                onKeyDown={(e) => handleTileKeyDown(e, () => setDealsDialogOpen(true))}
+              />
+              {is5thLine && (
+                <QuickActionTile
+                  label="Deal Rundown"
+                  theme={QA_TILE_THEMES.dealRundown}
+                  icon={<Briefcase {...QA_ICON_PROPS} />}
+                  className={isJTurner ? 'order-3' : undefined}
+                  onClick={(e) => openCarouselWidget('deal-rundown', e.currentTarget as HTMLElement)}
+                  onKeyDown={(e) =>
+                    handleTileKeyDown(e, () =>
+                      openCarouselWidget('deal-rundown', e.currentTarget as HTMLElement),
+                    )
+                  }
+                />
+              )}
+              <QuickActionTile
+                label="News Feed"
+                theme={QA_TILE_THEMES.newsFeed}
+                icon={<Newspaper {...QA_ICON_PROPS} />}
+                ariaLabel="Open News Feed"
+                className={isJTurner ? 'order-8' : undefined}
+                onClick={() => setNewsFeedDialogOpen(true)}
+                onKeyDown={(e) => handleTileKeyDown(e, () => setNewsFeedDialogOpen(true))}
+              />
+            </div>
+            </HintTooltip>
 
-          <div className="mt-3">
             <DashboardAIInput />
           </div>
 
