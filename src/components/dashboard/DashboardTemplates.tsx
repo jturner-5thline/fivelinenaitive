@@ -87,14 +87,12 @@ const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
       { id: 'agent-suggestions', type: 'agent-suggestions', title: 'Agent Suggestions', config: {} },
       { id: 'email-intelligence', type: 'email-intelligence', title: 'Email Intelligence', config: {} },
       { id: 'my-deals', type: 'my-deals', title: 'My Deals', config: { maxItems: 10 } },
-      { id: 'key-alerts', type: 'key-alerts', title: 'Key Alerts', config: {} },
     ],
     grid: [
       { i: 'workflow-suggestions', x: 0, y: 0, w: 6, h: 4, minW: 3, minH: 3 },
       { i: 'agent-suggestions', x: 6, y: 0, w: 6, h: 4, minW: 3, minH: 3 },
       { i: 'email-intelligence', x: 0, y: 4, w: 4, h: 4, minW: 3, minH: 2 },
-      { i: 'my-deals', x: 4, y: 4, w: 4, h: 5, minW: 3, minH: 3 },
-      { i: 'key-alerts', x: 8, y: 4, w: 4, h: 4, minW: 3, minH: 2 },
+      { i: 'my-deals', x: 4, y: 4, w: 8, h: 5, minW: 3, minH: 3 },
     ],
   },
   {
