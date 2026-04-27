@@ -97,6 +97,7 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
   const [isLoading, setIsLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const [teamMembers, setTeamMembers] = useState<{ user_id: string; display_name: string; email: string }[]>([]);
   const [requestError, setRequestError] = useState<AssistantErrorState | null>(null);
   const autoBriefedRef = useRef(false);
