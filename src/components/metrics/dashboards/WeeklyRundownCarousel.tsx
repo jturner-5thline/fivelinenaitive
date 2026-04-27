@@ -88,7 +88,7 @@ export function WeeklyRundownCarousel({ page1 }: WeeklyRundownCarouselProps) {
   // Floating side-edge nav buttons — vertically centered overlay controls,
   // mirroring the Daily Rundown widget's content-navigation feel.
   const sideArrowBtnStyle: React.CSSProperties = {
-    position: 'absolute',
+    position: 'fixed',
     top: '50%',
     transform: 'translateY(-50%)',
     width: 40,
@@ -102,7 +102,7 @@ export function WeeklyRundownCarousel({ page1 }: WeeklyRundownCarouselProps) {
     alignItems: 'center',
     justifyContent: 'center',
     transition: 'background .2s, opacity .2s',
-    zIndex: 30,
+    zIndex: 50,
     opacity: 0.75,
   };
 
