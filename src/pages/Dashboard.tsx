@@ -632,32 +632,8 @@ export default function Dashboard() {
               was removed. News Feed now lives in a popup launched from the
               quick-action tile row above. */}
           <div>
-              {/* Header row: Edit button */}
-              <div className="flex items-center justify-between">
-                <div />
-                <div className="flex items-center gap-2">
-                  {isSaving && <span className="text-xs text-muted-foreground animate-pulse">Saving...</span>}
-                  <HintTooltip
-                    hint="Click 'Edit' to customize your dashboard — add, remove, or rearrange widgets to match your workflow."
-                    visible={isHintVisible('dashboard-edit')}
-                    onDismiss={() => dismissHint('dashboard-edit')}
-                    side="left"
-                  >
-                  <Button
-                    variant={isEditing ? "default" : "outline"}
-                    size="sm"
-                    className="gap-1.5 text-xs"
-                    onClick={() => setIsEditing(!isEditing)}
-                  >
-                    {isEditing ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
-                    {isEditing ? 'Done' : 'Edit'}
-                  </Button>
-                  </HintTooltip>
-                </div>
-              </div>
-
               {/* Preset tabs + Add Widget */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mt-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
                 <PresetManager
                   presets={presets}
                   activePreset={activePreset}
@@ -667,7 +643,24 @@ export default function Dashboard() {
                   onDelete={deletePreset}
                   onRename={handleRenamePreset}
                 />
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  {isSaving && <span className="text-xs text-muted-foreground animate-pulse">Saving...</span>}
+                  <HintTooltip
+                    hint="Click 'Edit' to customize your dashboard — add, remove, or rearrange widgets to match your workflow."
+                    visible={isHintVisible('dashboard-edit')}
+                    onDismiss={() => dismissHint('dashboard-edit')}
+                    side="left"
+                  >
+                    <Button
+                      variant={isEditing ? "default" : "outline"}
+                      size="sm"
+                      className="gap-1.5 text-xs"
+                      onClick={() => setIsEditing(!isEditing)}
+                    >
+                      {isEditing ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+                      {isEditing ? 'Done' : 'Edit'}
+                    </Button>
+                  </HintTooltip>
                   <DashboardTemplatesDialog
                     mode="replace"
                     onSelectTemplate={handleCreateFromTemplate}
