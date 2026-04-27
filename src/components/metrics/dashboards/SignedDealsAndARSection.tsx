@@ -336,7 +336,29 @@ function DealsDrilldownModal({
 export function SignedDealsAndARSection({ selectedQuarter }: { selectedQuarter: import('@/hooks/useQBQuarterlyRevenue').QuarterOption }) {
   const debtSigned = useDealsSignedMonthlySeries(selectedQuarter.months);
   const finservSigned = useFinServClientsSignedMonthlySeries(selectedQuarter.months);
-  const [drilldown, setDrilldown] = useState<{ title: string; deals: StageEntryDeal[] } | null>(null);
+  const [drilldown, setDrilldown] = useState<{
+    title: string;
+    deals: StageEntryDeal[];
+    origin: DealOrigin;
+  } | null>(null);
+
+  /** Build a back-navigation origin describing this exact drilldown. */
+  const buildOrigin = (
+    chart: 'deals-signed' | 'finserv-clients-signed',
+    bucket: MonthBucket,
+  ): DealOrigin => {
+    const chartLabel = chart === 'deals-signed' ? 'Signed Deals' : 'FinServ Clients Signed';
+    return {
+      label: `Back to ${chartLabel} (${bucket.label})`,
+      returnTo: '/insights',
+      reopen: {
+        source: 'insights.signed-deals-and-ar',
+        bucketKey: `${chart}|${bucket.key}`,
+        bucketLabel: bucket.label,
+        quarterId: selectedQuarter.id,
+      },
+    };
+  };
 
   return (
     <div className="space-y-5">
@@ -354,7 +376,13 @@ export function SignedDealsAndARSection({ selectedQuarter }: { selectedQuarter: 
           months={debtSigned.months}
           isLoading={debtSigned.isLoading}
           color="hsl(var(--chart-3))"
-          onBarClick={(bucket) => setDrilldown({ title: `Deals Signed — ${bucket.label}`, deals: bucket.deals })}
+          onBarClick={(bucket) =>
+            setDrilldown({
+              title: `Deals Signed — ${bucket.label}`,
+              deals: bucket.deals,
+              origin: buildOrigin('deals-signed', bucket),
+            })
+          }
         />
         <SignedBarChart
           title="FinServ Clients Signed"
@@ -362,7 +390,13 @@ export function SignedDealsAndARSection({ selectedQuarter }: { selectedQuarter: 
           months={finservSigned.months}
           isLoading={finservSigned.isLoading}
           color="hsl(var(--chart-4))"
-          onBarClick={(bucket) => setDrilldown({ title: `FinServ Clients Signed — ${bucket.label}`, deals: bucket.deals })}
+          onBarClick={(bucket) =>
+            setDrilldown({
+              title: `FinServ Clients Signed — ${bucket.label}`,
+              deals: bucket.deals,
+              origin: buildOrigin('finserv-clients-signed', bucket),
+            })
+          }
         />
         <OutstandingARPieChart />
       </div>
@@ -372,6 +406,7 @@ export function SignedDealsAndARSection({ selectedQuarter }: { selectedQuarter: 
         onClose={() => setDrilldown(null)}
         title={drilldown?.title ?? ''}
         deals={drilldown?.deals ?? []}
+        origin={drilldown?.origin ?? null}
       />
     </div>
   );
