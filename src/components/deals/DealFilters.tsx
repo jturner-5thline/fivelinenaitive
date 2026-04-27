@@ -155,55 +155,50 @@ export function DealFilters({
   const activeChips = getActiveFilterChips();
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        {/* Search */}
-        <CollapsibleSearch
-          value={filters.search}
-          onChange={(value) => onFilterChange({ search: value })}
+    <>
+      {/* Search / Filter / pinned dropdowns stay as direct siblings in the parent toolbar row */}
+      <CollapsibleSearch
+        value={filters.search}
+        onChange={(value) => onFilterChange({ search: value })}
+      />
+
+      <HintTooltip
+        hint="Use filters to quickly find deals by stage, status, manager, and more. Pin your favorites for quick access!"
+        visible={isHintVisible('filters')}
+        onDismiss={() => dismissHint('filters')}
+        side="bottom"
+        align="start"
+        showDelay={2500}
+      >
+        <FiltersPopover
+          filters={filters}
+          onFilterChange={onFilterChange}
+          activeFiltersCount={activeFiltersCount}
+          pinnedFilters={pinnedFilters}
+          onTogglePin={togglePin}
         />
+      </HintTooltip>
 
-        {/* Consolidated Filters Popover */}
-        <HintTooltip
-          hint="Use filters to quickly find deals by stage, status, manager, and more. Pin your favorites for quick access!"
-          visible={isHintVisible('filters')}
-          onDismiss={() => dismissHint('filters')}
-          side="bottom"
-          align="start"
-          showDelay={2500}
-        >
-          <FiltersPopover
-            filters={filters}
-            onFilterChange={onFilterChange}
-            activeFiltersCount={activeFiltersCount}
-            pinnedFilters={pinnedFilters}
-            onTogglePin={togglePin}
-          />
-        </HintTooltip>
+      {pinnedFilters.map((key) => (
+        <MultiSelectFilter
+          key={key}
+          label={FILTER_LABELS[key]}
+          options={filterConfigs[key]}
+          selected={filters[key] as string[]}
+          onChange={getFilterOnChange(key)}
+          className={key === 'stage' || key === 'status' ? 'h-9 w-[105px]' : 'h-9 w-[130px]'}
+        />
+      ))}
 
-        {/* Quick Filters (Pinned) */}
-        {pinnedFilters.map((key) => (
-          <MultiSelectFilter
-            key={key}
-            label={FILTER_LABELS[key]}
-            options={filterConfigs[key]}
-            selected={filters[key] as string[]}
-            onChange={getFilterOnChange(key)}
-            className={key === 'stage' || key === 'status' ? 'w-[105px]' : 'w-[130px]'}
-          />
-        ))}
+      {activeFiltersCount > 0 && (
+        <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 gap-1">
+          <X className="h-4 w-4" />
+          Clear ({activeFiltersCount})
+        </Button>
+      )}
 
-        {activeFiltersCount > 0 && (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 h-9">
-            <X className="h-4 w-4" />
-            Clear ({activeFiltersCount})
-          </Button>
-        )}
-      </div>
-
-      {/* Active Filter Chips */}
       {activeChips.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex basis-full flex-wrap gap-2 pt-1">
           {activeChips.map((chip) => (
             <Badge
               key={`${chip.type}-${chip.value}`}
@@ -213,7 +208,7 @@ export function DealFilters({
               {chip.label}
               <button
                 onClick={() => removeFilter(chip.type, chip.value)}
-                className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors"
+                className="ml-1 rounded-full p-0.5 transition-colors hover:bg-muted-foreground/20"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -221,6 +216,6 @@ export function DealFilters({
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }

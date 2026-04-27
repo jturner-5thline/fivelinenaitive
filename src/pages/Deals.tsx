@@ -479,24 +479,22 @@ export default function Dashboard() {
               className="opacity-0"
               style={{ animation: 'fadeInUp 0.4s ease-out 0.2s forwards' }}
             >
-              <div className="flex flex-wrap items-center gap-2 w-full">
-                {showMilestones ? (
-                  <MilestoneManagerFilter
-                    selected={filters.manager}
-                    onChange={(manager) => updateFilters({ manager })}
-                  />
-                ) : (
-                  <div className="min-w-0">
+              <div className="flex w-full flex-wrap items-center gap-1.5 lg:flex-nowrap lg:justify-between">
+                <div className="flex shrink-0 flex-wrap items-center gap-1.5 lg:flex-nowrap">
+                  {showMilestones ? (
+                    <MilestoneManagerFilter
+                      selected={filters.manager}
+                      onChange={(manager) => updateFilters({ manager })}
+                    />
+                  ) : (
                     <DealFilters
                       filters={filters}
                       onFilterChange={updateFilters}
                     />
-                  </div>
-                )}
+                  )}
+                </div>
 
-                {/* Stale / Flag / Notification toggles */}
-                {/* spacer pushes the right-side cluster to the end of the row */}
-                <div className="ml-auto" aria-hidden />
+                <div className="ml-auto flex shrink-0 flex-wrap items-center gap-1.5 lg:flex-nowrap">
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -511,7 +509,7 @@ export default function Dashboard() {
                         }}
                         variant="outline"
                         size="sm"
-                        className={`h-8 w-8 p-0 relative backdrop-blur-md border transition-all duration-200 ${filters.staleOnly ? 'bg-gradient-to-br from-amber-500/25 to-orange-600/20 border-amber-500/50 text-amber-400 shadow-[0_0_12px_hsl(38,90%,50%,0.2)] hover:from-amber-500/30 hover:to-orange-600/25' : 'bg-gradient-to-br from-amber-500/10 to-orange-600/5 border-amber-500/20 text-amber-400/60 hover:from-amber-500/15 hover:to-orange-600/10 hover:border-amber-500/35 hover:text-amber-400'}`}
+                        className={`h-9 w-9 p-0 relative backdrop-blur-md border transition-all duration-200 ${filters.staleOnly ? 'bg-gradient-to-br from-amber-500/25 to-orange-600/20 border-amber-500/50 text-amber-400 shadow-[0_0_12px_hsl(38,90%,50%,0.2)] hover:from-amber-500/30 hover:to-orange-600/25' : 'bg-gradient-to-br from-amber-500/10 to-orange-600/5 border-amber-500/20 text-amber-400/60 hover:from-amber-500/15 hover:to-orange-600/10 hover:border-amber-500/35 hover:text-amber-400'}`}
                       >
                         <AlertTriangle className="h-4 w-4" />
                         {staleDealCount > 0 && (
@@ -545,7 +543,7 @@ export default function Dashboard() {
                         }}
                         variant="outline"
                         size="sm"
-                        className={`h-8 w-8 p-0 backdrop-blur-md border transition-all duration-200 ${filters.flaggedOnly ? 'bg-gradient-to-br from-red-500/25 to-red-900/20 border-red-500/50 text-red-400 shadow-[0_0_12px_hsl(0,70%,45%,0.2)] hover:from-red-500/30 hover:to-red-900/25' : 'bg-gradient-to-br from-red-500/10 to-red-900/5 border-red-500/20 text-red-400/60 hover:from-red-500/15 hover:to-red-900/10 hover:border-red-500/35 hover:text-red-400'}`}
+                        className={`h-9 w-9 p-0 backdrop-blur-md border transition-all duration-200 ${filters.flaggedOnly ? 'bg-gradient-to-br from-red-500/25 to-red-900/20 border-red-500/50 text-red-400 shadow-[0_0_12px_hsl(0,70%,45%,0.2)] hover:from-red-500/30 hover:to-red-900/25' : 'bg-gradient-to-br from-red-500/10 to-red-900/5 border-red-500/20 text-red-400/60 hover:from-red-500/15 hover:to-red-900/10 hover:border-red-500/35 hover:text-red-400'}`}
                       >
                         <Flag className="h-4 w-4" />
                       </Toggle>
@@ -571,7 +569,7 @@ export default function Dashboard() {
                         }}
                         variant="outline"
                         size="sm"
-                        className={`h-8 w-8 p-0 backdrop-blur-md border transition-all duration-200 ${filters.hasNotificationsOnly ? 'bg-gradient-to-br from-cyan-500/25 to-teal-600/20 border-cyan-500/50 text-cyan-400 shadow-[0_0_12px_hsl(185,70%,50%,0.2)] hover:from-cyan-500/30 hover:to-teal-600/25' : 'bg-gradient-to-br from-cyan-500/10 to-teal-600/5 border-cyan-500/20 text-cyan-400/60 hover:from-cyan-500/15 hover:to-teal-600/10 hover:border-cyan-500/35 hover:text-cyan-400'}`}
+                        className={`h-9 w-9 p-0 backdrop-blur-md border transition-all duration-200 ${filters.hasNotificationsOnly ? 'bg-gradient-to-br from-cyan-500/25 to-teal-600/20 border-cyan-500/50 text-cyan-400 shadow-[0_0_12px_hsl(185,70%,50%,0.2)] hover:from-cyan-500/30 hover:to-teal-600/25' : 'bg-gradient-to-br from-cyan-500/10 to-teal-600/5 border-cyan-500/20 text-cyan-400/60 hover:from-cyan-500/15 hover:to-teal-600/10 hover:border-cyan-500/35 hover:text-cyan-400'}`}
                       >
                         <Bell className="h-4 w-4" />
                       </Toggle>
@@ -591,7 +589,7 @@ export default function Dashboard() {
                         onPressedChange={(pressed) => setShowDuplicates(pressed)}
                         variant="outline"
                         size="sm"
-                        className={`h-8 w-8 p-0 relative backdrop-blur-md border transition-all duration-200 ${showDuplicates ? 'bg-gradient-to-br from-violet-500/25 to-purple-600/20 border-violet-500/50 text-violet-400 shadow-[0_0_12px_hsl(270,70%,50%,0.2)] hover:from-violet-500/30 hover:to-purple-600/25' : 'bg-gradient-to-br from-violet-500/10 to-purple-600/5 border-violet-500/20 text-violet-400/60 hover:from-violet-500/15 hover:to-purple-600/10 hover:border-violet-500/35 hover:text-violet-400'}`}
+                        className={`h-9 w-9 p-0 relative backdrop-blur-md border transition-all duration-200 ${showDuplicates ? 'bg-gradient-to-br from-violet-500/25 to-purple-600/20 border-violet-500/50 text-violet-400 shadow-[0_0_12px_hsl(270,70%,50%,0.2)] hover:from-violet-500/30 hover:to-purple-600/25' : 'bg-gradient-to-br from-violet-500/10 to-purple-600/5 border-violet-500/20 text-violet-400/60 hover:from-violet-500/15 hover:to-purple-600/10 hover:border-violet-500/35 hover:text-violet-400'}`}
                       >
                         <CopyCheck className="h-4 w-4" />
                         {showDuplicates && duplicateClusters.length > 0 && (
@@ -613,9 +611,9 @@ export default function Dashboard() {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 h-8 shrink-0">
+                    <Button variant="outline" size="sm" className="h-9 shrink-0 gap-1.5 px-2.5">
                       <ArrowUpDown className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Sort</span>
+                      <span className="hidden xl:inline">Sort</span>
                       {sortField === 'flexEngagement' && (
                         <Flame className="h-3 w-3 text-orange-500" />
                       )}
@@ -650,7 +648,7 @@ export default function Dashboard() {
                 {viewMode === 'grid' && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
+                      <Button variant="outline" size="icon" className="h-9 w-9 shrink-0">
                         <Layers className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -682,7 +680,7 @@ export default function Dashboard() {
 
                 {/* View Mode Dropdown */}
                 <Select value={viewMode} onValueChange={(val: 'grid' | 'list' | 'pipeline' | 'timeline') => setViewMode(val)}>
-                  <SelectTrigger className="h-8 w-10 px-0 justify-center [&>svg:last-child]:hidden shrink-0">
+                  <SelectTrigger className="h-9 w-10 shrink-0 justify-center px-0 [&>svg:last-child]:hidden">
                     {viewMode === 'grid' && <LayoutGrid className="h-4 w-4" />}
                     {viewMode === 'list' && <List className="h-4 w-4" />}
                     {viewMode === 'pipeline' && <Kanban className="h-4 w-4" />}
@@ -719,7 +717,7 @@ export default function Dashboard() {
                 </Select>
                 <Button
                   size="sm"
-                  className="gap-2 h-9 shrink-0"
+                  className="h-9 shrink-0 gap-1.5 px-2.5"
                   onClick={() => setShowMilestones(!showMilestones)}
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -727,7 +725,7 @@ export default function Dashboard() {
                     <circle cx="12" cy="12" r="6" />
                     <circle cx="12" cy="12" r="2" />
                   </svg>
-                  <span className="hidden sm:inline">Milestones</span>
+                  <span className="hidden xl:inline">Milestones</span>
                 </Button>
                 <div className="relative self-center">
                   <DealSavedViewsMenu
@@ -755,6 +753,7 @@ export default function Dashboard() {
                       {allExpanded ? 'Collapse All' : 'Expand All'}
                     </button>
                   )}
+                </div>
                 </div>
               </div>
             </div>
