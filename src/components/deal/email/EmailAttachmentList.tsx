@@ -225,7 +225,7 @@ export function EmailAttachmentList({
         </div>
         {/* Compact file list rendered below for reference */}
         <div className="border-t border-emerald-500/15 bg-background/40 px-4 py-2.5">
-          <div className="flex items-center gap-2 rounded-md border border-border/40 bg-white/[0.02] px-2 py-1.5">
+          <div className="flex items-center gap-2 px-2 py-1.5">
             <div className="flex items-center gap-1 shrink-0 text-[hsl(var(--email-text-muted))]">
               <Paperclip className="h-3 w-3" />
               <span className="text-[11px] font-medium tabular-nums leading-none">
@@ -256,7 +256,7 @@ export function EmailAttachmentList({
   // ── Default: when no Data Room flow is available, render the simple list ──
   if (!canSendToDataRoom) {
     return (
-      <div className="mt-3 flex items-center gap-2 rounded-md border border-border/40 bg-white/[0.02] px-2 py-1.5">
+      <div className="mt-3 flex items-center gap-2 px-2 py-1.5">
         <div
           className="flex items-center gap-1 shrink-0 text-[hsl(var(--email-text-muted))]"
           aria-label={`${visible.length} ${visible.length === 1 ? 'file' : 'files'}`}
@@ -410,7 +410,7 @@ export function EmailAttachmentList({
 
       {/* Connected file list — visually part of the same module */}
       <div className="border-t border-[hsl(var(--outlook-blue)/0.2)] bg-background/30 px-4 py-3">
-        <div className="flex items-center gap-2 rounded-md border border-border/40 bg-white/[0.02] px-2 py-1.5">
+        <div className="flex items-center gap-2 px-2 py-1.5">
           <div className="flex items-center gap-1 shrink-0 text-[hsl(var(--email-text-muted))]">
             <Paperclip className="h-3 w-3" />
             <span className="text-[11px] font-medium tabular-nums leading-none">
