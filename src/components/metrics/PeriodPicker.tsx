@@ -92,13 +92,24 @@ export function PeriodPicker({
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+      {isRefreshing ? (
+        <Loader2
+          className="h-4 w-4 text-primary animate-spin"
+          aria-label="Refreshing dashboards"
+        />
+      ) : (
+        <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+      )}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
             size="sm"
-            className="h-9 text-xs justify-between min-w-[160px]"
+            className={cn(
+              "h-9 text-xs justify-between min-w-[160px] transition-colors",
+              isRefreshing && "border-primary/40 text-primary",
+            )}
+            aria-busy={isRefreshing}
           >
             <span className="truncate">{selected.label}</span>
             <ChevronDown className="h-3.5 w-3.5 ml-2 opacity-60" />
