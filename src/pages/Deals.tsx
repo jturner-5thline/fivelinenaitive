@@ -495,9 +495,9 @@ export default function Dashboard() {
                 )}
 
                 {/* Stale / Flag / Notification toggles */}
+                {/* spacer pushes the right-side cluster to the end of the row */}
+                <div className="ml-auto" aria-hidden />
                 <TooltipProvider>
-                  {/* spacer pushes the right-side cluster to the end of the row */}
-                  <div className="ml-auto" aria-hidden />
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Toggle
