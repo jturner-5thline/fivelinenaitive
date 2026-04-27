@@ -626,7 +626,9 @@ export default function Dashboard() {
           })()}
           </HintTooltip>
 
-          <DashboardAIInput />
+          <div className="-mt-2 sm:-mt-4">
+            <DashboardAIInput />
+          </div>
 
           {/* Dashboard overview — the previous Overview/News Feed tab control
               was removed. News Feed now lives in a popup launched from the
