@@ -111,11 +111,16 @@ export function DashboardGrid({ gridConfig, widgetsConfig, isEditing, onLayoutCh
       return widget ? { grid: g, widget } : null;
     })
     .filter(Boolean)
-    // The 'email-intelligence' widget is now rendered as a hover-anchored
-    // panel attached to the Email tile in the dashboard header, so we
-    // suppress any standalone instance of it that may exist in saved
-    // presets to avoid showing it twice in the dashboard body.
-    .filter((entry) => (entry as { grid: GridItem; widget: WidgetConfig }).widget.type !== 'email-intelligence') as { grid: GridItem; widget: WidgetConfig }[];
+    // Suppress widgets that have moved out of the standalone grid:
+    //   - 'email-intelligence' is now a hover panel on the Email tile.
+    //   - 'key-alerts' is now an internal page inside the Deals dialog.
+    // Saved presets/layouts may still reference these ids, so we filter
+    // them out to avoid showing the same content twice (or rendering nothing
+    // in a stranded grid cell).
+    .filter((entry) => {
+      const type = (entry as { grid: GridItem; widget: WidgetConfig }).widget.type;
+      return type !== 'email-intelligence' && type !== 'key-alerts';
+    }) as { grid: GridItem; widget: WidgetConfig }[];
 
   return (
     <div ref={gridRef} className={cn(
