@@ -240,17 +240,6 @@ const MANAGEMENT_SNAPSHOT_CARD_DEFAULTS: Record<EditableManagementSnapshotCardId
   },
 };
 
-// Generate rolling 12 months labels
-const generateMonthLabels = () => {
-  const labels = [];
-  for (let i = 11; i >= 0; i--) {
-    labels.push(format(subMonths(new Date(), i), "MMM-yy"));
-  }
-  return labels;
-};
-
-const monthLabels = generateMonthLabels();
-
 const COLORS = [
   "hsl(var(--primary))",
   "hsl(var(--chart-2))",
@@ -1372,7 +1361,6 @@ function renderStatContent(
 }
 
 export default function Metrics() {
-  const [reportingMonth, setReportingMonth] = useState(format(new Date(), "MMM-yy"));
   const { data: metrics, rawDeals, isLoading, isFetching, error, refetch } = useMetricsData();
   const { data: qbMetrics, rawInvoices, rawPayments, rawExpenses } = useQuickBooksMetrics();
   const { data: hsMetrics } = useHubSpotMetrics();
