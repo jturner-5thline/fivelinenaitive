@@ -751,6 +751,47 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                 })}
               </div>
 
+              {/* Quick-steer intent chips — one-shot refinements that
+                  regenerate the currently selected variant with an added
+                  USER INSTRUCTIONS line. Wired to the same edge function as
+                  Regenerate so behavior, model, and context handling are
+                  identical. Glassy translucent treatment matches the rest of
+                  the platform's chip system. */}
+              <div
+                className="flex flex-wrap gap-1.5"
+                role="group"
+                aria-label="Refine draft"
+              >
+                {DRAFT_INTENT_OPTIONS.map((option) => {
+                  const isActive = activeIntentKey === option.key;
+                  const disabled = isSelectedLoading && !isActive;
+                  return (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => applyIntent(option)}
+                      disabled={disabled}
+                      title={option.label}
+                      className={cn(
+                        'inline-flex items-center gap-1 h-6 px-2.5 rounded-full',
+                        'text-[11px] font-medium leading-none',
+                        'border border-white/10 bg-white/5 backdrop-blur-sm',
+                        'text-foreground/80 transition-colors',
+                        'shadow-[inset_0_1px_0_0_hsl(0_0%_100%/0.06)]',
+                        'hover:bg-white/[0.09] hover:text-foreground hover:border-white/15',
+                        'disabled:opacity-40 disabled:cursor-not-allowed',
+                        isActive && 'bg-primary/15 border-primary/30 text-primary',
+                      )}
+                    >
+                      {isActive && (
+                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                      )}
+                      <span>{option.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
               {/* Shared draft preview — dominant element. Layout never jumps;
                   only the body text content swaps when the user switches
                   variants. */}
