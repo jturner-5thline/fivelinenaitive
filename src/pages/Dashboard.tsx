@@ -22,29 +22,6 @@ import { AddWidgetDialog } from '@/components/dashboard/AddWidgetDialog';
 import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
 import { EmailIntelligenceWidget } from '@/components/dashboard/EmailIntelligenceWidget';
 import { cn } from '@/lib/utils';
-import { QuickActionTile, type QuickActionTileTheme } from '@/components/dashboard/QuickActionTile';
-
-/**
- * Per-tile color themes for the glassy quick-action row, matching the
- * reference design (widget_icon_grid_glassy.html). Each theme is a
- * gradient + icon stroke color pair.
- */
-const QA_TILE_THEMES: Record<
-  'calendar' | 'email' | 'dealRundown' | 'newDeal' | 'dailyBriefing' | 'nikisBriefing' | 'deals' | 'newsFeed',
-  QuickActionTileTheme
-> = {
-  calendar:       { gradient: 'linear-gradient(145deg, #2a3a8c, #1a2466)', iconColor: '#7b9ff5' },
-  email:          { gradient: 'linear-gradient(145deg, #6b2fa0, #4a1d7a)', iconColor: '#c084f5' },
-  dealRundown:    { gradient: 'linear-gradient(145deg, #1e3a6e, #142a55)', iconColor: '#6b9cf5' },
-  newDeal:        { gradient: 'linear-gradient(145deg, #1e3a6e, #142a55)', iconColor: '#6b9cf5' },
-  dailyBriefing:  { gradient: 'linear-gradient(145deg, #8a5c10, #6b4208)', iconColor: '#f5a623' },
-  nikisBriefing:  { gradient: 'linear-gradient(145deg, #0d5c52, #0a4540)', iconColor: '#2dd4b8' },
-  deals:          { gradient: 'linear-gradient(145deg, #0d5c52, #0a4540)', iconColor: '#2dd4b8' },
-  newsFeed:       { gradient: 'linear-gradient(145deg, #1e3a6e, #142a55)', iconColor: '#6b9cf5' },
-};
-
-/** Common stroke / size for all quick-action lucide icons. */
-const QA_ICON_PROPS = { size: 36, strokeWidth: 1.6 } as const;
 
 /**
  * Shared interaction styles for the dashboard widget tiles
@@ -64,7 +41,7 @@ const TILE_INTERACTIVE_CLASSES =
   'focus-visible:bg-foreground/[0.06] focus-visible:border-border/70 ' +
   'focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-0';
 
-const handleTileKeyDown = (e: React.KeyboardEvent<Element>, action: () => void) => {
+const handleTileKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, action: () => void) => {
   if (e.key === 'Enter' || e.key === ' ') {
     e.preventDefault();
     action();
@@ -104,7 +81,7 @@ function EmailTileWithIntelligence({
   className,
 }: {
   onOpen: (el: HTMLElement) => void;
-  onKeyDown: (e: React.KeyboardEvent<HTMLButtonElement>) => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => void;
   className?: string;
 }) {
   const [isHovering, setIsHovering] = useState(false);
@@ -139,13 +116,20 @@ function EmailTileWithIntelligence({
         if (!e.currentTarget.contains(e.relatedTarget as Node)) scheduleClose();
       }}
     >
-      <QuickActionTile
-        label="Email"
-        theme={QA_TILE_THEMES.email}
-        icon={<Mail {...QA_ICON_PROPS} />}
+      <Card
+        className={cn(TILE_INTERACTIVE_CLASSES, 'h-full overflow-hidden')}
         onClick={(e) => onOpen(e.currentTarget as HTMLElement)}
+        role="button"
+        tabIndex={0}
         onKeyDown={onKeyDown}
-      />
+      >
+        <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
+          <div className="relative h-12 w-12 rounded-xl border border-[hsl(280,85%,65%,0.55)] bg-[hsl(275,80%,40%,0.3)] backdrop-blur-xl flex items-center justify-center overflow-hidden">
+            <Mail className="relative z-10 h-7 w-7 text-foreground" />
+          </div>
+          <span className="text-sm font-medium text-foreground">Email</span>
+        </div>
+      </Card>
 
       {/*
         Hover-anchored Email Intelligence panel.
@@ -178,6 +162,7 @@ function EmailTileWithIntelligence({
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { DashboardTemplatesDialog } from '@/components/dashboard/DashboardTemplates';
 import { FullCalendarView } from '@/components/dashboard/FullCalendarView';
+import { NewsFeedPanel } from '@/components/dashboard/NewsFeedPanel';
 import { NewsFeedDialog } from '@/components/dashboard/NewsFeedDialog';
 import { toast } from 'sonner';
 import {
@@ -211,7 +196,9 @@ export default function Dashboard() {
   } = useDashboardPresets();
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const [newsFeedDialogOpen, setNewsFeedDialogOpen] = useState(false);
+  const [dashboardTab, setDashboardTab] = useState<string>(() => {
+    return searchParams.get('tab') || 'overview';
+  });
   const [isEditing, setIsEditing] = useState(false);
   // Carousel-driven open state for the top quick-action widgets
   const carouselIsOpen = useWidgetCarouselStore((s) => s.isOpen);
@@ -237,16 +224,11 @@ export default function Dashboard() {
   const [dealsDialogOpen, setDealsDialogOpen] = useState(false);
   const [dealsInitialView, setDealsInitialView] = useState<DealsCarouselView | undefined>(undefined);
 
-  // Backwards-compat deep link: previously the News Feed lived under
-  // ?tab=news-feed. It is now a popup, so we open the dialog and strip the
-  // legacy param so back/refresh doesn't reopen it unexpectedly.
+  // Sync tab from URL query params
   useEffect(() => {
-    if (searchParams.get('tab') === 'news-feed') {
-      setNewsFeedDialogOpen(true);
-      searchParams.delete('tab');
-      setSearchParams(searchParams, { replace: true });
-    }
-  }, [searchParams, setSearchParams]);
+    const tab = searchParams.get('tab');
+    if (tab === 'news-feed') setDashboardTab('news-feed');
+  }, [searchParams]);
 
   // Auto-open Daily Briefing from email link (?briefing=true)
   useEffect(() => {
@@ -296,6 +278,16 @@ export default function Dashboard() {
     searchParams.delete('widget');
     setSearchParams(searchParams, { replace: true });
   }, [searchParams, setSearchParams, openCarouselWidget, widgetOrderEntries]);
+
+  const handleDashboardTabChange = (tab: string) => {
+    setDashboardTab(tab);
+    if (tab === 'overview') {
+      searchParams.delete('tab');
+    } else {
+      searchParams.set('tab', tab);
+    }
+    setSearchParams(searchParams, { replace: true });
+  };
 
   const getTimeBasedGreeting = () => {
     const hour = new Date().getHours();
@@ -430,6 +422,9 @@ export default function Dashboard() {
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-foreground">
               What can I do for you?
             </h1>
+            <p className="text-sm text-muted-foreground/50 mt-1">
+              Ask me anything about your deals, pipeline, lenders, or market research
+            </p>
           </div>
 
           <div
@@ -469,126 +464,202 @@ export default function Dashboard() {
           <div className="text-center space-y-2 pt-2">
             <p className="text-base sm:text-lg text-muted-foreground">{getTimeBasedGreeting()}, <span className="whitespace-nowrap">{firstName}</span></p>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-foreground">What can I do for you?</h1>
+            <p className="text-sm text-muted-foreground/50 mt-1">Ask me anything about your deals, pipeline, lenders, or market research</p>
           </div>
 
-          <div className="w-full max-w-6xl mx-auto flex flex-col gap-3">
-            <HintTooltip
-              hint="Use these quick actions to open your calendar, email, quick prompts, or create a new deal — all without leaving the dashboard."
-              visible={isHintVisible('dashboard-quick-actions')}
-              onDismiss={() => dismissHint('dashboard-quick-actions')}
-              side="bottom"
+          <HintTooltip
+            hint="Use these quick actions to open your calendar, email, quick prompts, or create a new deal — all without leaving the dashboard."
+            visible={isHintVisible('dashboard-quick-actions')}
+            onDismiss={() => dismissHint('dashboard-quick-actions')}
+            side="bottom"
+          >
+          {(() => {
+            // Quick Prompts is now a tile too (4 base tiles).
+            // Niki's Daily Briefing renders in the top row for every user
+            // who is allowed to see it (jturner included). For jturner the
+            // tiles are also reordered via Tailwind `order-*` classes.
+            const nikiInTopRow = canSeeNiki;
+            // +1 for the always-on "Deals" tile that opens the AI insights carousel.
+            const tileCount = 4 + 1 + (isJTurner ? 1 : 0) + (nikiInTopRow ? 1 : 0) + (is5thLine ? 1 : 0);
+            const gridColsClass =
+              tileCount >= 8 ? 'grid-cols-4 sm:grid-cols-8'
+              : tileCount === 7 ? 'grid-cols-4 sm:grid-cols-7'
+              : tileCount === 6 ? 'grid-cols-3 sm:grid-cols-6'
+              : tileCount === 5 ? 'grid-cols-3 sm:grid-cols-5'
+              : tileCount === 4 ? 'grid-cols-2 sm:grid-cols-4'
+              : 'grid-cols-3';
+            return (
+          <>
+          <div className={`grid items-stretch gap-3 md:gap-4 ${gridColsClass}`}>
+            <Card
+              className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-1')}
+              onClick={(e) => openCarouselWidget('calendar', e.currentTarget as HTMLElement)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) =>
+                handleTileKeyDown(e, () =>
+                  openCarouselWidget('calendar', e.currentTarget as HTMLElement),
+                )
+              }
             >
-            {/*
-              Quick-action tile row — tiles sit flush on the page background
-              without a surrounding panel. Width still matches the AI input below
-              via the shared max-w parent.
-            */}
-            <div className="flex w-full items-start gap-2 px-0">
-              <QuickActionTile
-                label="Calendar"
-                theme={QA_TILE_THEMES.calendar}
-                icon={<CalendarIcon {...QA_ICON_PROPS} />}
-                className={isJTurner ? 'order-1' : undefined}
-                onClick={(e) => openCarouselWidget('calendar', e.currentTarget as HTMLElement)}
+              <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
+                <div className="relative h-12 w-12 rounded-xl border border-primary/30 bg-primary/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                  <CalendarIcon className="relative z-10 h-7 w-7 text-primary" />
+                </div>
+                <span className="text-sm font-medium text-foreground">Calendar</span>
+              </div>
+            </Card>
+            <EmailTileWithIntelligence
+              className={isJTurner ? 'order-2' : undefined}
+              onOpen={(el) => openCarouselWidget('email', el)}
+              onKeyDown={(e) =>
+                handleTileKeyDown(e, () =>
+                  openCarouselWidget('email', e.currentTarget as HTMLElement),
+                )
+              }
+            />
+            <Card
+              className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-4')}
+              onClick={(e) => openCarouselWidget('new-deal', e.currentTarget as HTMLElement)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) =>
+                handleTileKeyDown(e, () =>
+                  openCarouselWidget('new-deal', e.currentTarget as HTMLElement),
+                )
+              }
+            >
+              <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
+                <div className="relative h-12 w-12 rounded-xl border border-accent/30 bg-accent/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                  <Briefcase className="relative z-10 h-7 w-7 text-accent-foreground" />
+                </div>
+                <span className="text-sm font-medium text-foreground">New Deal</span>
+              </div>
+            </Card>
+            {isJTurner && (
+              <Card
+                className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', 'order-5')}
+                onClick={(e) => openCarouselWidget('daily-briefing', e.currentTarget as HTMLElement)}
+                role="button"
+                tabIndex={0}
                 onKeyDown={(e) =>
                   handleTileKeyDown(e, () =>
-                    openCarouselWidget('calendar', e.currentTarget as HTMLElement),
+                    openCarouselWidget('daily-briefing', e.currentTarget as HTMLElement),
                   )
                 }
-              />
-              <EmailTileWithIntelligence
-                className={isJTurner ? 'order-2' : undefined}
-                onOpen={(el) => openCarouselWidget('email', el)}
+              >
+                <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
+                  <div className="relative h-12 w-12 rounded-xl border border-warning/30 bg-warning/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                    <Newspaper className="relative z-10 h-7 w-7 text-warning" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">Daily Briefing</span>
+                </div>
+              </Card>
+            )}
+            {nikiInTopRow && (
+              <Card
+                className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-6')}
+                onClick={(e) => openCarouselWidget('niki-briefing', e.currentTarget as HTMLElement)}
+                role="button"
+                tabIndex={0}
                 onKeyDown={(e) =>
                   handleTileKeyDown(e, () =>
-                    openCarouselWidget('email', e.currentTarget as HTMLElement),
+                    openCarouselWidget('niki-briefing', e.currentTarget as HTMLElement),
                   )
                 }
-              />
-              <QuickActionTile
-                label="New Deal"
-                theme={QA_TILE_THEMES.newDeal}
-                icon={<Briefcase {...QA_ICON_PROPS} />}
-                className={isJTurner ? 'order-4' : undefined}
-                onClick={(e) => openCarouselWidget('new-deal', e.currentTarget as HTMLElement)}
+              >
+                <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
+                  <div className="relative h-12 w-12 rounded-xl border border-[hsl(190,90%,55%,0.4)] bg-[hsl(190,90%,45%,0.18)] backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                    <Newspaper className="relative z-10 h-7 w-7 text-[hsl(190,90%,70%)]" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">
+                    {isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
+                  </span>
+                </div>
+              </Card>
+            )}
+            {/* Deals tile — opens the AI-powered Deals insights carousel.
+                Placed immediately to the right of Niki's Daily Briefing. */}
+            <Card
+              className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-7')}
+              onClick={() => setDealsDialogOpen(true)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => handleTileKeyDown(e, () => setDealsDialogOpen(true))}
+              aria-label="Open Deals insights"
+            >
+              <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
+                <div className="relative h-12 w-12 rounded-xl border border-emerald-500/30 bg-emerald-500/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                  <Handshake className="relative z-10 h-7 w-7 text-emerald-400" />
+                </div>
+                <span className="text-sm font-medium text-foreground">Deals</span>
+              </div>
+            </Card>
+            {is5thLine && (
+              <Card
+                className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-3')}
+                onClick={(e) => openCarouselWidget('deal-rundown', e.currentTarget as HTMLElement)}
+                role="button"
+                tabIndex={0}
                 onKeyDown={(e) =>
                   handleTileKeyDown(e, () =>
-                    openCarouselWidget('new-deal', e.currentTarget as HTMLElement),
+                    openCarouselWidget('deal-rundown', e.currentTarget as HTMLElement),
                   )
                 }
-              />
-              {isJTurner && (
-                <QuickActionTile
-                  label="Daily Briefing"
-                  theme={QA_TILE_THEMES.dailyBriefing}
-                  icon={<Newspaper {...QA_ICON_PROPS} />}
-                  className="order-5"
-                  onClick={(e) => openCarouselWidget('daily-briefing', e.currentTarget as HTMLElement)}
-                  onKeyDown={(e) =>
-                    handleTileKeyDown(e, () =>
-                      openCarouselWidget('daily-briefing', e.currentTarget as HTMLElement),
-                    )
-                  }
-                />
-              )}
-              {canSeeNiki && (
-                <QuickActionTile
-                  label={isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
-                  theme={QA_TILE_THEMES.nikisBriefing}
-                  icon={<Newspaper {...QA_ICON_PROPS} />}
-                  className={isJTurner ? 'order-6' : undefined}
-                  onClick={(e) => openCarouselWidget('niki-briefing', e.currentTarget as HTMLElement)}
-                  onKeyDown={(e) =>
-                    handleTileKeyDown(e, () =>
-                      openCarouselWidget('niki-briefing', e.currentTarget as HTMLElement),
-                    )
-                  }
-                />
-              )}
-              <QuickActionTile
-                label="Deals"
-                theme={QA_TILE_THEMES.deals}
-                icon={<Handshake {...QA_ICON_PROPS} />}
-                ariaLabel="Open Deals insights"
-                className={isJTurner ? 'order-7' : undefined}
-                onClick={() => setDealsDialogOpen(true)}
-                onKeyDown={(e) => handleTileKeyDown(e, () => setDealsDialogOpen(true))}
-              />
-              {is5thLine && (
-                <QuickActionTile
-                  label="Deal Rundown"
-                  theme={QA_TILE_THEMES.dealRundown}
-                  icon={<Briefcase {...QA_ICON_PROPS} />}
-                  className={isJTurner ? 'order-3' : undefined}
-                  onClick={(e) => openCarouselWidget('deal-rundown', e.currentTarget as HTMLElement)}
-                  onKeyDown={(e) =>
-                    handleTileKeyDown(e, () =>
-                      openCarouselWidget('deal-rundown', e.currentTarget as HTMLElement),
-                    )
-                  }
-                />
-              )}
-              <QuickActionTile
-                label="News Feed"
-                theme={QA_TILE_THEMES.newsFeed}
-                icon={<Newspaper {...QA_ICON_PROPS} />}
-                ariaLabel="Open News Feed"
-                className={isJTurner ? 'order-8' : undefined}
-                onClick={() => setNewsFeedDialogOpen(true)}
-                onKeyDown={(e) => handleTileKeyDown(e, () => setNewsFeedDialogOpen(true))}
-              />
-            </div>
-            </HintTooltip>
-
-            <DashboardAIInput />
+              >
+                <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
+                  <div className="relative h-12 w-12 rounded-xl border border-primary/30 bg-primary/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                    <Briefcase className="relative z-10 h-7 w-7 text-primary" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">Deal Rundown</span>
+                </div>
+              </Card>
+            )}
           </div>
+          </>
+            );
+          })()}
+          </HintTooltip>
 
-          {/* Dashboard overview — the previous Overview/News Feed tab control
-              was removed. News Feed now lives in a popup launched from the
-              quick-action tile row above. */}
-          <div>
+          <DashboardAIInput />
+
+          {/* Dashboard Tabs */}
+          <Tabs value={dashboardTab} onValueChange={handleDashboardTabChange}>
+            <TabsList>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="news-feed" className="gap-1.5">
+                <Newspaper className="h-3.5 w-3.5" />
+                News Feed
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview">
+              {/* Header row: Edit button */}
+              <div className="flex items-center justify-between">
+                <div />
+                <div className="flex items-center gap-2">
+                  {isSaving && <span className="text-xs text-muted-foreground animate-pulse">Saving...</span>}
+                  <HintTooltip
+                    hint="Click 'Edit' to customize your dashboard — add, remove, or rearrange widgets to match your workflow."
+                    visible={isHintVisible('dashboard-edit')}
+                    onDismiss={() => dismissHint('dashboard-edit')}
+                    side="left"
+                  >
+                  <Button
+                    variant={isEditing ? "default" : "outline"}
+                    size="sm"
+                    className="gap-1.5 text-xs"
+                    onClick={() => setIsEditing(!isEditing)}
+                  >
+                    {isEditing ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+                    {isEditing ? 'Done' : 'Edit'}
+                  </Button>
+                  </HintTooltip>
+                </div>
+              </div>
+
               {/* Preset tabs + Add Widget */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mt-4">
                 <PresetManager
                   presets={presets}
                   activePreset={activePreset}
@@ -598,24 +669,7 @@ export default function Dashboard() {
                   onDelete={deletePreset}
                   onRename={handleRenamePreset}
                 />
-                <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  {isSaving && <span className="text-xs text-muted-foreground animate-pulse">Saving...</span>}
-                  <HintTooltip
-                    hint="Click 'Edit' to customize your dashboard — add, remove, or rearrange widgets to match your workflow."
-                    visible={isHintVisible('dashboard-edit')}
-                    onDismiss={() => dismissHint('dashboard-edit')}
-                    side="left"
-                  >
-                    <Button
-                      variant={isEditing ? "default" : "outline"}
-                      size="sm"
-                      className="gap-1.5 text-xs"
-                      onClick={() => setIsEditing(!isEditing)}
-                    >
-                      {isEditing ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
-                      {isEditing ? 'Done' : 'Edit'}
-                    </Button>
-                  </HintTooltip>
+                <div className="flex items-center gap-2 shrink-0">
                   <DashboardTemplatesDialog
                     mode="replace"
                     onSelectTemplate={handleCreateFromTemplate}
@@ -676,7 +730,12 @@ export default function Dashboard() {
                   </div>
                 </div>
               )}
-          </div>
+            </TabsContent>
+
+            <TabsContent value="news-feed">
+              <NewsFeedPanel />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 
@@ -745,7 +804,6 @@ export default function Dashboard() {
         }}
         initialView={dealsInitialView}
       />
-      <NewsFeedDialog open={newsFeedDialogOpen} onOpenChange={setNewsFeedDialogOpen} />
     </>
   );
 }

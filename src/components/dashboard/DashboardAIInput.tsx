@@ -565,20 +565,13 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
   }, [requestError, isLoading, handleSend]);
 
   return (
-    <div className="relative w-full" ref={chatSectionRef}>
+    <div className="relative" ref={chatSectionRef}>
       <Card className={cn(
-        'overflow-hidden transition-all duration-300',
-        isDrawerMode ? 'border-0 shadow-none h-full flex flex-col bg-transparent' : '',
-        // Expanded modal keeps its full Card chrome (border, shadow, padding).
-        !isDrawerMode && expanded ? 'fixed inset-4 z-50 flex flex-col shadow-lg' : '',
-        // Default collapsed state: render the input flush on the page —
-        // no outer border, background, shadow, or padding around the textarea.
-        !isDrawerMode && !expanded && !isChatActive
-          ? 'border-0 bg-transparent shadow-none p-0 rounded-none'
-          : '',
-        // Active-chat state still needs the Card chrome so the toolbar +
-        // message list read as a contained surface; keep sticky pin.
-        !isDrawerMode && !expanded && isChatActive ? 'sticky top-4 z-30 shadow-lg p-4' : ''
+        'shadow-lg overflow-hidden transition-all duration-300',
+        isDrawerMode ? 'border-0 shadow-none h-full flex flex-col' : '',
+        !isDrawerMode && expanded ? 'fixed inset-4 z-50 flex flex-col' : !isDrawerMode ? 'p-4' : '',
+        // #8: Make sticky when chat is active
+        !isDrawerMode && !expanded && isChatActive ? 'sticky top-4 z-30' : ''
       )}>
         {/* Toolbar — always visible when there are messages or expanded */}
         {(messages.length > 0 || expanded) && (
@@ -633,7 +626,7 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
           <div className={cn('flex-1 flex flex-col min-w-0', expanded ? 'p-4' : '')}>
             {/* #32: Hide shortcut cards when chat is active */}
             {!showHistory && !isChatActive && (
-              <div className="space-y-4">
+              <div className="mb-4 space-y-4">
                 <ProactiveAlerts onAction={(prompt) => { setInputValue(prompt); handleSend(prompt); }} />
               </div>
             )}
@@ -689,22 +682,6 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
               onFocus={() => setIsInputFocused(true)}
               onBlur={() => setIsInputFocused(false)}
             />
-            {/* Thinking indicator — shown directly below the input while a
-                response is being generated so the user has clear feedback
-                that the assistant is working. */}
-            {isLoading && (
-              <div
-                className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"
-                aria-live="polite"
-                role="status"
-              >
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60 opacity-75" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
-                </span>
-                <span className="animate-pulse">Assistant is thinking…</span>
-              </div>
-            )}
             {/* Quick-action chips appear below the input on focus or while
                 composing, then collapse out when the input is empty + blurred. */}
             {!isChatActive && !showHistory && (
