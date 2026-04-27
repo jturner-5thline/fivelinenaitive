@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, Mic, MicOff, X } from 'lucide-react';
+import { Send, Loader2, Mic, MicOff, X, ListTodo, Mail, Sparkles as AskIcon } from 'lucide-react';
 import { FileAttachmentButton, AttachedFile } from './FileAttachmentButton';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { NaitiveTaskComposer } from './NaitiveTaskComposer';
+import {
+  inferComposerIntent,
+  AMBIGUITY_THRESHOLD,
+  type ComposerIntent,
+} from './inferComposerIntent';
 
 interface TeamMember {
   user_id: string;
@@ -46,7 +51,16 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
   const [mentionFilter, setMentionFilter] = useState('');
   const [selectedCmdIdx, setSelectedCmdIdx] = useState(0);
   const [attachments, setAttachments] = useState<AttachedFile[]>([]);
-  const [mode, setMode] = useState<'ask' | 'task' | 'email'>('ask');
+  // Composer mode is now derived from the prompt at submit time, not selected
+  // by the user. We keep a small piece of state for two transient situations:
+  //   - 'task' renders the dedicated NaitiveTaskComposer for preview/confirm
+  //   - 'ambiguous' surfaces a small clarification chip row
+  type ComposerView = 'input' | 'task' | 'ambiguous';
+  const [view, setView] = useState<ComposerView>('input');
+  const [pendingText, setPendingText] = useState('');
+  // Tiny indicator shown briefly after submission ("Drafting email" / "Creating task").
+  const [lastIntent, setLastIntent] = useState<ComposerIntent | null>(null);
+  const lastIntentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => textareaRef.current?.focus(), 100);
@@ -93,6 +107,76 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
     setSelectedCmdIdx(0);
   }, [inputValue]);
 
+  // Clean up the post-submit pill timer on unmount.
+  useEffect(() => () => {
+    if (lastIntentTimerRef.current) clearTimeout(lastIntentTimerRef.current);
+  }, []);
+
+  /**
+   * Dispatch a prompt according to the resolved intent. `task` swaps the view
+   * to NaitiveTaskComposer (so the user can confirm the parsed draft), the
+   * other two intents reuse the same `onSend` pipeline the parent already
+   * wires up — preserving backend behavior for ask/email.
+   */
+  const dispatchIntent = useCallback(
+    (intent: ComposerIntent, text: string, attachmentsForSend?: AttachedFile[]) => {
+      // Best-effort analytics hook so accuracy can be monitored over time.
+      try {
+        window.dispatchEvent(
+          new CustomEvent('composer:intent', { detail: { intent, length: text.length } }),
+        );
+      } catch {
+        /* no-op */
+      }
+
+      if (intent === 'task') {
+        setPendingText(text);
+        setView('task');
+        setInputValue('');
+        setLastIntent('task');
+        return;
+      }
+
+      if (intent === 'email') {
+        // The chat backend already routes prompts that begin with `/email`
+        // through the email-drafting path, so we just normalize here.
+        const payload = text.toLowerCase().startsWith('/email') ? text : `/email ${text}`;
+        onSend(payload, attachmentsForSend);
+      } else {
+        onSend(text, attachmentsForSend);
+      }
+
+      setAttachments([]);
+      setLastIntent(intent);
+      // Auto-clear the indicator after 2.5s so the composer stays clean.
+      if (lastIntentTimerRef.current) clearTimeout(lastIntentTimerRef.current);
+      lastIntentTimerRef.current = setTimeout(() => setLastIntent(null), 2500);
+    },
+    [onSend, setInputValue],
+  );
+
+  /**
+   * Submit handler. Classifies the prompt locally (synchronous, no network),
+   * then either dispatches with high confidence or shows the clarification
+   * chips for the user to disambiguate.
+   */
+  const handleSubmit = useCallback(() => {
+    const text = inputValue.trim();
+    if (!text || isLoading) return;
+
+    const result = inferComposerIntent(text, {
+      pathname: typeof window !== 'undefined' ? window.location.pathname : undefined,
+    });
+
+    if (result.confidence < AMBIGUITY_THRESHOLD) {
+      setPendingText(text);
+      setView('ambiguous');
+      return;
+    }
+
+    dispatchIntent(result.intent, text, attachments.length > 0 ? attachments : undefined);
+  }, [inputValue, isLoading, attachments, dispatchIntent]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // Navigate slash commands
     if (showSlashHint && filteredCommands.length > 0) {
@@ -108,7 +192,7 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
 
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (inputValue.trim() && !isLoading) { onSend(inputValue.trim(), attachments.length > 0 ? attachments : undefined); setAttachments([]); }
+      handleSubmit();
     }
   };
 
@@ -129,42 +213,76 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
 
   return (
     <div className="relative">
-      {/* Mode switcher — Ask | Task | Email */}
-      <div className="mb-1.5 inline-flex items-center gap-0.5 rounded-full border border-[hsl(263,40%,30%,0.3)] bg-[linear-gradient(135deg,hsl(260,20%,10%,0.4)_0%,hsl(263,18%,8%,0.5)_100%)] backdrop-blur-sm p-0.5 text-[11px]">
-        {(['ask', 'task', 'email'] as const).map((m) => (
-          <button
-            key={m}
-            type="button"
-            onClick={() => {
-              if (m === 'email') {
-                // lightweight: switch to ask + prefill /email
-                setMode('ask');
-                setInputValue('/email ');
-                setTimeout(() => textareaRef.current?.focus(), 30);
-                return;
-              }
-              setMode(m);
-            }}
-            className={cn(
-              'px-2.5 py-1 rounded-full font-medium transition-colors',
-              mode === m
-                ? 'bg-primary/25 text-primary'
-                : 'text-muted-foreground hover:text-foreground/80'
-            )}
-          >
-            {m === 'ask' ? 'Ask' : m === 'task' ? 'Task' : 'Email'}
-          </button>
-        ))}
-      </div>
+      {/* Subtle indicator surfaced briefly after submission to confirm the
+          inferred mode (e.g. "Drafting email"). Replaces the old permanent
+          mode tabs — visible only for ~2.5s. */}
+      {lastIntent && view === 'input' && (
+        <div className="mb-1.5 inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+          {lastIntent === 'email' && <Mail className="h-3 w-3" />}
+          {lastIntent === 'task' && <ListTodo className="h-3 w-3" />}
+          {lastIntent === 'ask' && <AskIcon className="h-3 w-3" />}
+          <span>
+            {lastIntent === 'email'
+              ? 'Drafting email'
+              : lastIntent === 'task'
+                ? 'Creating task'
+                : 'Asking naitive'}
+          </span>
+        </div>
+      )}
 
-      {/* Task mode renders the dedicated composer */}
-      {mode === 'task' ? (
+      {/* Inferred-task: render the dedicated composer prefilled with the
+          original prompt so the user can preview/confirm the parsed draft. */}
+      {view === 'task' ? (
         <NaitiveTaskComposer
           autoFocus
-          onCreated={() => setMode('ask')}
+          initialText={pendingText || undefined}
+          onCreated={() => {
+            setView('input');
+            setPendingText('');
+          }}
         />
       ) : (
         <>
+      {/* Ambiguous-intent clarification chips — shown only when the local
+          classifier can't pick confidently. Selecting one dispatches the
+          original prompt through the matching pipeline. */}
+      {view === 'ambiguous' && (
+        <div className="mb-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <span>Do you want me to…</span>
+          {(
+            [
+              { intent: 'ask' as const, label: 'Answer this', icon: AskIcon },
+              { intent: 'task' as const, label: 'Create a task', icon: ListTodo },
+              { intent: 'email' as const, label: 'Draft an email', icon: Mail },
+            ]
+          ).map(({ intent, label, icon: Icon }) => (
+            <button
+              key={intent}
+              type="button"
+              onClick={() => {
+                const text = pendingText;
+                setView('input');
+                setPendingText('');
+                dispatchIntent(intent, text, attachments.length > 0 ? attachments : undefined);
+              }}
+              className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-medium text-primary hover:bg-primary/20 transition-colors"
+            >
+              <Icon className="h-3 w-3" />
+              {label}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => { setView('input'); setPendingText(''); }}
+            className="ml-auto text-muted-foreground/70 hover:text-foreground"
+            aria-label="Cancel clarification"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
+
       {/* @mention popup */}
       {showMentions && filteredMembers.length > 0 && (
         <div className="absolute bottom-full left-0 right-0 mb-1 border border-[hsl(263,40%,30%,0.4)] bg-[linear-gradient(135deg,hsl(260,20%,10%,0.9)_0%,hsl(263,18%,8%,0.95)_100%)] backdrop-blur-xl rounded-lg shadow-lg p-1 z-10">
@@ -207,7 +325,11 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
           <Sparkles className="absolute left-3 top-3 h-4 w-4 text-primary" />
           <Textarea
             ref={textareaRef as any}
-            placeholder={isListening ? 'Listening...' : 'Ask anything... (/ for commands, @ to mention)'}
+            placeholder={
+              isListening
+                ? 'Listening...'
+                : 'Ask, draft, or create a follow-up… (/ for commands, @ to mention)'
+            }
             value={inputValue}
             onChange={e => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -280,7 +402,7 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
                     ? "bg-primary/20 hover:bg-primary/30 text-primary cursor-pointer opacity-100"
                     : "bg-primary/10 text-primary/40 cursor-not-allowed opacity-30"
                 )}
-                onClick={() => { if (hasInput && !isLoading) { onSend(inputValue.trim(), attachments.length > 0 ? attachments : undefined); setAttachments([]); } }}
+                onClick={handleSubmit}
                 disabled={!hasInput || isLoading}
               >
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
