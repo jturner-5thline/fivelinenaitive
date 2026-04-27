@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -14,6 +14,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useDealsSignedMonthlySeries, useFinServClientsSignedMonthlySeries, type MonthBucket } from '@/hooks/useSignedDealsMonthly';
 import { useOutstandingARByEntity } from '@/hooks/useOutstandingARByEntity';
 import type { StageEntryDeal } from '@/hooks/usePipelineStageMetrics';
+import type {
+  DealOrigin,
+  DealOriginLocationState,
+} from '@/lib/dealOriginContext';
+import { consumePendingReopen } from '@/lib/dealOriginContext';
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
@@ -239,11 +244,14 @@ function DealsDrilldownModal({
   onClose,
   title,
   deals,
+  origin,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   deals: StageEntryDeal[];
+  /** Back-navigation context handed to each deal-id link. */
+  origin: DealOrigin | null;
 }) {
   const total = deals.reduce((s, d) => s + d.value, 0);
 
@@ -295,6 +303,11 @@ function DealsDrilldownModal({
                     <td className="px-3 py-2 text-[11px] font-mono truncate max-w-[120px]">
                       <Link
                         to={`/deal/${deal.deal_id}`}
+                        state={
+                          origin
+                            ? ({ dealOrigin: origin } satisfies DealOriginLocationState)
+                            : undefined
+                        }
                         className="text-primary hover:underline focus:underline focus:outline-none rounded-sm"
                         title={`Open deal ${deal.deal_id}`}
                         onClick={onClose}
@@ -324,7 +337,51 @@ function DealsDrilldownModal({
 export function SignedDealsAndARSection({ selectedQuarter }: { selectedQuarter: import('@/hooks/useQBQuarterlyRevenue').QuarterOption }) {
   const debtSigned = useDealsSignedMonthlySeries(selectedQuarter.months);
   const finservSigned = useFinServClientsSignedMonthlySeries(selectedQuarter.months);
-  const [drilldown, setDrilldown] = useState<{ title: string; deals: StageEntryDeal[] } | null>(null);
+  const [drilldown, setDrilldown] = useState<{
+    title: string;
+    deals: StageEntryDeal[];
+    origin: DealOrigin;
+  } | null>(null);
+
+  /** Build a back-navigation origin describing this exact drilldown. */
+  const buildOrigin = (
+    chart: 'deals-signed' | 'finserv-clients-signed',
+    bucket: MonthBucket,
+  ): DealOrigin => {
+    const chartLabel = chart === 'deals-signed' ? 'Signed Deals' : 'FinServ Clients Signed';
+    return {
+      label: `Back to ${chartLabel} (${bucket.label})`,
+      returnTo: '/insights',
+      reopen: {
+        source: 'insights.signed-deals-and-ar',
+        bucketKey: `${chart}|${bucket.key}`,
+        bucketLabel: bucket.label,
+        quarterId: selectedQuarter.value,
+      },
+    };
+  };
+
+  // Re-open the originating drilldown when returning from the Deal Details page.
+  useEffect(() => {
+    if (debtSigned.isLoading || finservSigned.isLoading) return;
+    const reopen = consumePendingReopen(
+      (r) =>
+        r.source === 'insights.signed-deals-and-ar' &&
+        r.quarterId === selectedQuarter.value,
+    );
+    if (!reopen) return;
+    const [chart, monthKey] = reopen.bucketKey.split('|');
+    const series = chart === 'deals-signed' ? debtSigned : finservSigned;
+    const bucket = series.months.find((m) => m.key === monthKey);
+    if (!bucket) return;
+    const chartLabel = chart === 'deals-signed' ? 'Deals Signed' : 'FinServ Clients Signed';
+    setDrilldown({
+      title: `${chartLabel} — ${bucket.label}`,
+      deals: bucket.deals,
+      origin: buildOrigin(chart as 'deals-signed' | 'finserv-clients-signed', bucket),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debtSigned.isLoading, finservSigned.isLoading, selectedQuarter.value]);
 
   return (
     <div className="space-y-5">
@@ -342,7 +399,13 @@ export function SignedDealsAndARSection({ selectedQuarter }: { selectedQuarter: 
           months={debtSigned.months}
           isLoading={debtSigned.isLoading}
           color="hsl(var(--chart-3))"
-          onBarClick={(bucket) => setDrilldown({ title: `Deals Signed — ${bucket.label}`, deals: bucket.deals })}
+          onBarClick={(bucket) =>
+            setDrilldown({
+              title: `Deals Signed — ${bucket.label}`,
+              deals: bucket.deals,
+              origin: buildOrigin('deals-signed', bucket),
+            })
+          }
         />
         <SignedBarChart
           title="FinServ Clients Signed"
@@ -350,7 +413,13 @@ export function SignedDealsAndARSection({ selectedQuarter }: { selectedQuarter: 
           months={finservSigned.months}
           isLoading={finservSigned.isLoading}
           color="hsl(var(--chart-4))"
-          onBarClick={(bucket) => setDrilldown({ title: `FinServ Clients Signed — ${bucket.label}`, deals: bucket.deals })}
+          onBarClick={(bucket) =>
+            setDrilldown({
+              title: `FinServ Clients Signed — ${bucket.label}`,
+              deals: bucket.deals,
+              origin: buildOrigin('finserv-clients-signed', bucket),
+            })
+          }
         />
         <OutstandingARPieChart />
       </div>
@@ -360,6 +429,7 @@ export function SignedDealsAndARSection({ selectedQuarter }: { selectedQuarter: 
         onClose={() => setDrilldown(null)}
         title={drilldown?.title ?? ''}
         deals={drilldown?.deals ?? []}
+        origin={drilldown?.origin ?? null}
       />
     </div>
   );

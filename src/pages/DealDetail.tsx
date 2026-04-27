@@ -13,6 +13,15 @@ import { LenderHistoryDrawer } from '@/components/deal/LenderHistoryDrawer';
 import { useLenderHistoryWarnings } from '@/hooks/useLenderHistoryWarning';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
+import {
+  loadPersistedDealOrigin,
+  persistDealOrigin,
+  clearPersistedDealOrigin,
+  pushPendingReopen,
+  type DealOrigin,
+  type DealOriginLocationState,
+  type DealOriginReturnState,
+} from '@/lib/dealOriginContext';
 import { INDUSTRY_OPTIONS } from '@/constants/industries';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, pointerWithin, rectIntersection } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, rectSortingStrategy } from '@dnd-kit/sortable';
@@ -481,6 +490,31 @@ export default function DealDetail() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // ── Smart back-navigation: resolve origin from location.state, falling
+  //    back to sessionStorage so a hard refresh on /deal/:id keeps the
+  //    "Back to {drilldown}" button intact.
+  const dealOrigin: DealOrigin | null = useMemo(() => {
+    const fromState = (location.state as DealOriginLocationState | null)?.dealOrigin;
+    if (fromState) return fromState;
+    if (id) return loadPersistedDealOrigin(id);
+    return null;
+  }, [location.state, id]);
+
+  // Persist origin so refreshes don't lose it.
+  useEffect(() => {
+    if (!id || !dealOrigin) return;
+    persistDealOrigin(id, dealOrigin);
+  }, [id, dealOrigin]);
+
+  const handleSmartBack = useCallback(() => {
+    if (!dealOrigin) return;
+    if (id) clearPersistedDealOrigin(id);
+    if (dealOrigin.reopen) pushPendingReopen(dealOrigin.reopen);
+    navigate(dealOrigin.returnTo, {
+      state: { reopenDrilldown: dealOrigin.reopen } satisfies DealOriginReturnState,
+    });
+  }, [dealOrigin, id, navigate]);
   const { state: sidebarState, isHovering } = useSidebar();
   const isEffectivelyExpanded = sidebarState === 'expanded' || isHovering;
   const highlightStale = searchParams.get('highlight') === 'stale';
@@ -2464,13 +2498,27 @@ export default function DealDetail() {
         <main className="container mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8 overflow-x-hidden">
           {/* Back button, alerts, and undo - side by side */}
           <div className="flex items-center gap-3 mb-1 flex-wrap">
-            <Button variant="ghost" size="sm" className="gap-2 shrink-0" asChild>
-              <Link to={isFinServDeal ? "/finserv" : isNaitiveDeal ? "/naitive-pipeline" : "/deals"}>
+            {dealOrigin ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2 shrink-0"
+                onClick={handleSmartBack}
+                title={dealOrigin.label}
+              >
                 <ArrowLeft className="h-4 w-4" />
-                <span className="hidden sm:inline">Back to Pipeline</span>
+                <span className="hidden sm:inline">{dealOrigin.label}</span>
                 <span className="sm:hidden">Back</span>
-              </Link>
-            </Button>
+              </Button>
+            ) : (
+              <Button variant="ghost" size="sm" className="gap-2 shrink-0" asChild>
+                <Link to={isFinServDeal ? "/finserv" : isNaitiveDeal ? "/naitive-pipeline" : "/deals"}>
+                  <ArrowLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline">Back to Pipeline</span>
+                  <span className="sm:hidden">Back</span>
+                </Link>
+              </Button>
+            )}
 
             {/* Proactive Alert Bar - inline */}
             <ProactiveAlertBar 
