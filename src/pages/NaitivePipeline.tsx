@@ -42,7 +42,7 @@ import {
   Dialog,
   DialogContent,
 } from '@/components/ui/dialog';
-import { StickyDashboardHeader } from '@/components/layout/StickyDashboardHeader';
+import { DashboardPage } from '@/components/layout/DashboardPage';
 
 function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleMilestone }: {
   deal: Deal; onStatusChange: (id: string, s: DealStatus) => void; isDragging?: boolean;
@@ -246,49 +246,51 @@ export default function NaitivePipeline() {
         <title>naitive Pipeline | naitive</title>
       </Helmet>
       <div className="bg-background">
-        <div className="container mx-auto py-8 px-4">
-          {/* Header (sticky) */}
-          <StickyDashboardHeader className="mb-6 flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">naitive Pipeline</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                {deals.length} {deals.length === 1 ? 'deal' : 'deals'} in pipeline
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              {/* View toggle pills */}
-              <div className="flex items-center bg-muted rounded-lg p-0.5">
-                {VIEWS.map((label, i) => (
-                  <button
-                    key={label}
-                    onClick={() => goTo(i as 0 | 1)}
-                    className={cn(
-                      "px-3.5 py-1.5 text-xs font-medium rounded-md transition-all duration-200",
-                      activeView === i
-                        ? "bg-background text-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
+        <DashboardPage
+          padding="sm"
+          header={
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">naitive Pipeline</h1>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {deals.length} {deals.length === 1 ? 'deal' : 'deals'} in pipeline
+                </p>
               </div>
-              <CreateDealDialog
-                trigger={
-                  <Button size="sm" className="gap-1.5">
-                    <Plus className="h-4 w-4" />
-                    Add Deal
-                  </Button>
-                }
-                initialValues={{
-                  pipelineId: pipelineId || undefined,
-                  dealStage: stages[0]?.id || 'prospects',
-                  dealClass: 'naitive',
-                }}
-              />
+              <div className="flex items-center gap-3">
+                {/* View toggle pills */}
+                <div className="flex items-center bg-muted rounded-lg p-0.5">
+                  {VIEWS.map((label, i) => (
+                    <button
+                      key={label}
+                      onClick={() => goTo(i as 0 | 1)}
+                      className={cn(
+                        "px-3.5 py-1.5 text-xs font-medium rounded-md transition-all duration-200",
+                        activeView === i
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <CreateDealDialog
+                  trigger={
+                    <Button size="sm" className="gap-1.5">
+                      <Plus className="h-4 w-4" />
+                      Add Deal
+                    </Button>
+                  }
+                  initialValues={{
+                    pipelineId: pipelineId || undefined,
+                    dealStage: stages[0]?.id || 'prospects',
+                    dealClass: 'naitive',
+                  }}
+                />
+              </div>
             </div>
-          </StickyDashboardHeader>
-
+          }
+        >
           {/* View container with arrows */}
           <div className="relative">
             {/* Left arrow — visible on Pipeline view */}

@@ -40,7 +40,7 @@ import {
 } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { StickyDashboardHeader } from '@/components/layout/StickyDashboardHeader';
+import { DashboardPage } from '@/components/layout/DashboardPage';
 
 function DraggableCard({ deal, onStatusChange, isDragging }: {
   deal: Deal; onStatusChange: (id: string, s: DealStatus) => void; isDragging?: boolean;
@@ -231,10 +231,15 @@ export default function FinServ() {
         <title>FinServ | naitive</title>
       </Helmet>
       <div className="bg-background">
-        <div className="container mx-auto py-8 px-4">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="mb-6">
-            {/* Sticky header: title + filters + tab strip */}
-            <StickyDashboardHeader>
+        <DashboardPage
+          padding="sm"
+          wrapper={(children) => (
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+              {children}
+            </Tabs>
+          )}
+          header={
+            <>
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <h1 className="text-2xl font-bold tracking-tight">FinServ</h1>
@@ -270,8 +275,9 @@ export default function FinServ() {
                 <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
                 <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
               </TabsList>
-            </StickyDashboardHeader>
-
+            </>
+          }
+        >
             <TabsContent value="dashboard">
               {isLoading ? (
                 <div className="flex items-center justify-center py-20">
@@ -319,8 +325,7 @@ export default function FinServ() {
                 </>
               )}
             </TabsContent>
-          </Tabs>
-        </div>
+        </DashboardPage>
       </div>
 
       {/* Fullscreen Dialog */}
