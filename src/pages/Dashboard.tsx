@@ -162,7 +162,6 @@ function EmailTileWithIntelligence({
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { DashboardTemplatesDialog } from '@/components/dashboard/DashboardTemplates';
 import { FullCalendarView } from '@/components/dashboard/FullCalendarView';
-import { NewsFeedPanel } from '@/components/dashboard/NewsFeedPanel';
 import { NewsFeedDialog } from '@/components/dashboard/NewsFeedDialog';
 import { toast } from 'sonner';
 import {
