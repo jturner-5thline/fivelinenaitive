@@ -9,7 +9,18 @@ import {
   type DealOrigin,
 } from '../dealOriginContext';
 
-// jsdom provides window.sessionStorage in vitest's default env.
+// Minimal sessionStorage shim for the default node test env.
+if (typeof (globalThis as any).sessionStorage === 'undefined') {
+  const store = new Map<string, string>();
+  (globalThis as any).sessionStorage = {
+    getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+    setItem: (k: string, v: string) => void store.set(k, String(v)),
+    removeItem: (k: string) => void store.delete(k),
+    clear: () => store.clear(),
+    key: (i: number) => Array.from(store.keys())[i] ?? null,
+    get length() { return store.size; },
+  };
+}
 
 const sampleOrigin: DealOrigin = {
   label: 'Back to Signed Deals (Apr 2026)',
