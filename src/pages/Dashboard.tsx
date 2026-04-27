@@ -130,7 +130,7 @@ function EmailTileWithIntelligence({
 
   return (
     <div
-      className={cn('relative flex flex-1 min-w-0 h-full', className)}
+      className={cn('relative h-full', className)}
       onMouseEnter={open}
       onMouseLeave={scheduleClose}
       onFocus={open}
@@ -588,7 +588,7 @@ export default function Dashboard() {
               quick-action tile row above. */}
           <div>
               {/* Preset tabs + Add Widget */}
-              <div className="flex flex-row items-center justify-between gap-3 sm:gap-4 w-full">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
                 <PresetManager
                   presets={presets}
                   activePreset={activePreset}
@@ -598,7 +598,7 @@ export default function Dashboard() {
                   onDelete={deletePreset}
                   onRename={handleRenamePreset}
                 />
-                <div className="flex flex-nowrap items-center gap-2 shrink-0">
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
                   {isSaving && <span className="text-xs text-muted-foreground animate-pulse">Saving...</span>}
                   <HintTooltip
                     hint="Click 'Edit' to customize your dashboard — add, remove, or rearrange widgets to match your workflow."

@@ -38,19 +38,19 @@ export const QuickActionTile = forwardRef<HTMLButtonElement, QuickActionTileProp
         onKeyDown={onKeyDown}
         aria-label={ariaLabel}
         className={cn(
-          'qa-tile group flex flex-1 min-w-0 flex-col items-center gap-2 cursor-pointer',
-          'outline-none',
+          'qa-tile group flex w-[72px] shrink-0 flex-col items-center gap-2 cursor-pointer',
+          'min-w-0 outline-none',
           'focus-visible:outline-none rounded-2xl',
           'focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#16181f]',
           className,
         )}
       >
         <div
-          className="qa-tile-icon w-full aspect-square max-w-[140px] min-w-[64px] mx-auto rounded-2xl flex items-center justify-center transition-shadow"
+          className="qa-tile-icon w-[72px] h-[72px] rounded-2xl flex items-center justify-center transition-shadow"
           style={{ background: theme.gradient, color: theme.iconColor }}
         >
-          {/* Icon inherits stroke/text color from its wrapper. Scales with container. */}
-          <span className="relative z-10 inline-flex items-center justify-center w-1/2 h-1/2 [&>svg]:w-full [&>svg]:h-full" aria-hidden="true">
+          {/* Icon inherits stroke/text color from its wrapper. */}
+          <span className="relative z-10 inline-flex" aria-hidden="true">
             {icon}
           </span>
         </div>
