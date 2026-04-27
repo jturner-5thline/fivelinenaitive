@@ -355,7 +355,7 @@ export function SignedDealsAndARSection({ selectedQuarter }: { selectedQuarter: 
         source: 'insights.signed-deals-and-ar',
         bucketKey: `${chart}|${bucket.key}`,
         bucketLabel: bucket.label,
-        quarterId: selectedQuarter.id,
+        quarterId: selectedQuarter.value,
       },
     };
   };
