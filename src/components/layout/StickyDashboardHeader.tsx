@@ -44,7 +44,13 @@ export interface StickyDashboardHeaderProps
    * Overrides `padding` when provided. Avoid unless absolutely necessary.
    */
   paddingClassName?: string;
-  /** Optional top offset (e.g. when nested under another fixed bar). */
+  /**
+   * Optional Tailwind class that overrides the default top offset. By default
+   * the header pins to `top: var(--app-top-bar-height, 0px)`, which is `0`
+   * today and will automatically respect any future global top bar that sets
+   * the CSS variable (see `<AppTopBarOffset />`). Provide this only when a
+   * specific page needs a different anchor.
+   */
   topClassName?: string;
 }
 
@@ -52,15 +58,19 @@ export function StickyDashboardHeader({
   className,
   padding = "sm",
   paddingClassName,
-  topClassName = "top-0",
+  topClassName,
   children,
   ...rest
 }: StickyDashboardHeaderProps) {
   const resolvedPadding = paddingClassName ?? PADDING_CLASSES[padding];
+  const stickyStyle: React.CSSProperties | undefined = topClassName
+    ? undefined
+    : { top: "var(--app-top-bar-height, 0px)" };
   return (
     <div
       {...rest}
       data-sticky-dashboard-header=""
+      style={{ ...stickyStyle, ...(rest.style || {}) }}
       className={cn(
         "sticky z-40 py-3 border-b border-white/5",
         "bg-background/70 backdrop-blur-md supports-[backdrop-filter]:bg-background/60",
