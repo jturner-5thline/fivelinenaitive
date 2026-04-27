@@ -402,7 +402,7 @@ export default function NaitivePipeline() {
               </div>
             </div>
           </div>
-        </div>
+        </DashboardPage>
       </div>
 
       {/* Fullscreen Dialog */}
