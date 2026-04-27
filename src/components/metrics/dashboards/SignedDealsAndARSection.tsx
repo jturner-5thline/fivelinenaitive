@@ -82,14 +82,44 @@ function SignedBarChart({
                 tickLine={false}
               />
               <Tooltip
-                formatter={(v: number) => [v, 'Deals']}
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--popover))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  color: 'hsl(var(--popover-foreground))',
+                content={({ active, payload }) => {
+                  if (!active || !payload || !payload.length) return null;
+                  const bucket = payload[0].payload as MonthBucket;
+                  return (
+                    <div
+                      style={{
+                        backgroundColor: 'hsl(var(--popover))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: 8,
+                        padding: '8px 10px',
+                        fontSize: 12,
+                        color: 'hsl(var(--popover-foreground))',
+                        maxWidth: 260,
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                        {bucket.label} · {bucket.count} deal{bucket.count !== 1 ? 's' : ''}
+                      </div>
+                      {bucket.deals.length > 0 ? (
+                        <ul style={{ margin: 0, paddingLeft: 14, lineHeight: 1.4 }}>
+                          {bucket.deals.slice(0, 8).map(d => (
+                            <li key={d.deal_id} style={{ color: 'hsl(var(--muted-foreground))' }}>
+                              {d.company}
+                            </li>
+                          ))}
+                          {bucket.deals.length > 8 && (
+                            <li style={{ color: 'hsl(var(--muted-foreground))' }}>
+                              +{bucket.deals.length - 8} more
+                            </li>
+                          )}
+                        </ul>
+                      ) : (
+                        <div style={{ color: 'hsl(var(--muted-foreground))' }}>No deals</div>
+                      )}
+                    </div>
+                  );
                 }}
+                wrapperStyle={{ outline: 'none' }}
                 cursor={{ fill: 'hsl(var(--accent))', fillOpacity: 0.15 }}
               />
               <Bar dataKey="count" shape={createGlassBarShape({ radius: 3 })} cursor="pointer" onClick={(d: MonthBucket) => onBarClick(d)}>
