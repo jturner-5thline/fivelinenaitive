@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -18,6 +18,7 @@ import type {
   DealOrigin,
   DealOriginLocationState,
 } from '@/lib/dealOriginContext';
+import { consumePendingReopen } from '@/lib/dealOriginContext';
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
@@ -359,6 +360,28 @@ export function SignedDealsAndARSection({ selectedQuarter }: { selectedQuarter: 
       },
     };
   };
+
+  // Re-open the originating drilldown when returning from the Deal Details page.
+  useEffect(() => {
+    if (debtSigned.isLoading || finservSigned.isLoading) return;
+    const reopen = consumePendingReopen(
+      (r) =>
+        r.source === 'insights.signed-deals-and-ar' &&
+        r.quarterId === selectedQuarter.value,
+    );
+    if (!reopen) return;
+    const [chart, monthKey] = reopen.bucketKey.split('|');
+    const series = chart === 'deals-signed' ? debtSigned : finservSigned;
+    const bucket = series.months.find((m) => m.key === monthKey);
+    if (!bucket) return;
+    const chartLabel = chart === 'deals-signed' ? 'Deals Signed' : 'FinServ Clients Signed';
+    setDrilldown({
+      title: `${chartLabel} — ${bucket.label}`,
+      deals: bucket.deals,
+      origin: buildOrigin(chart as 'deals-signed' | 'finserv-clients-signed', bucket),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debtSigned.isLoading, finservSigned.isLoading, selectedQuarter.value]);
 
   return (
     <div className="space-y-5">
