@@ -64,7 +64,7 @@ const TILE_INTERACTIVE_CLASSES =
   'focus-visible:bg-foreground/[0.06] focus-visible:border-border/70 ' +
   'focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-0';
 
-const handleTileKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, action: () => void) => {
+const handleTileKeyDown = (e: React.KeyboardEvent<Element>, action: () => void) => {
   if (e.key === 'Enter' || e.key === ' ') {
     e.preventDefault();
     action();
