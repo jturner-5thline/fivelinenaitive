@@ -25,9 +25,8 @@ export function ProtectedRoute({
   // Check if user is a 5thline.co user (auto-approved)
   const is5thLineUser = user?.email?.endsWith('@5thline.co') ?? false;
 
-  const isLoading = authLoading || profileLoading || (!is5thLineUser && !skipApprovalCheck && approvalLoading) || joinRequestsLoading;
-
-  if (isLoading) {
+  // While auth itself is resolving, show the spinner.
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -35,8 +34,25 @@ export function ProtectedRoute({
     );
   }
 
+  // No authenticated user — redirect to login immediately.
+  // (Do NOT wait on user-scoped queries; they stay in pending state when
+  // disabled, which would block the redirect and produce a blank screen.)
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Now that we have a user, wait for the user-scoped data to resolve.
+  const userDataLoading =
+    profileLoading ||
+    (!is5thLineUser && !skipApprovalCheck && approvalLoading) ||
+    joinRequestsLoading;
+
+  if (userDataLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   // Check approval status (skip for 5thline.co users or if explicitly skipped)
