@@ -626,7 +626,7 @@ export default function Dashboard() {
           })()}
           </HintTooltip>
 
-          <div className="-mt-2 sm:-mt-4">
+          <div className="mt-3">
             <DashboardAIInput />
           </div>
 
