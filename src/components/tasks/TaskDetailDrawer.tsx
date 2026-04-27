@@ -463,7 +463,18 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
 
           {/* Attachments */}
           <div className="flex items-center gap-2">
-            <Paperclip className="h-3.5 w-3.5 shrink-0" style={{ color: '#8b92a5' }} />
+            <div className="flex items-center gap-1 shrink-0">
+              <Paperclip className="h-3.5 w-3.5" style={{ color: '#8b92a5' }} />
+              {attachments.length > 0 && (
+                <span
+                  className="text-[11px] font-medium tabular-nums leading-none"
+                  style={{ color: '#8b92a5' }}
+                  aria-label={`${attachments.length} attachment${attachments.length === 1 ? '' : 's'}`}
+                >
+                  {attachments.length}
+                </span>
+              )}
+            </div>
             <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
             <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
               {attachments.map(a => (
