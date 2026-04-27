@@ -56,7 +56,7 @@ export default function SalesBD() {
             </TabsList>
             </StickyDashboardHeader>
 
-            <TabsContent value="overview">
+            <TabsContent value="overview" className="mt-4">
               <div className="space-y-8">
                 <PartnersByStageCards onNavigateToStage={navigateToStage} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
@@ -67,7 +67,7 @@ export default function SalesBD() {
               </div>
             </TabsContent>
 
-            <TabsContent value="channels">
+            <TabsContent value="channels" className="mt-4">
               <div className="space-y-6">
                 {/* Sub-navigation */}
                 <div className="flex items-center gap-1 bg-[hsl(260,20%,14%,0.5)] backdrop-blur-xl border border-[hsl(260,30%,45%,0.1)] ring-1 ring-inset ring-white/[0.03] rounded-lg p-0.5 w-fit shadow-[0_2px_8px_hsl(0,0%,0%,0.2)]">
