@@ -104,7 +104,7 @@ function EmailTileWithIntelligence({
   className,
 }: {
   onOpen: (el: HTMLElement) => void;
-  onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLButtonElement>) => void;
   className?: string;
 }) {
   const [isHovering, setIsHovering] = useState(false);
@@ -139,20 +139,13 @@ function EmailTileWithIntelligence({
         if (!e.currentTarget.contains(e.relatedTarget as Node)) scheduleClose();
       }}
     >
-      <Card
-        className={cn(TILE_INTERACTIVE_CLASSES, 'h-full overflow-hidden')}
+      <QuickActionTile
+        label="Email"
+        theme={QA_TILE_THEMES.email}
+        icon={<Mail {...QA_ICON_PROPS} />}
         onClick={(e) => onOpen(e.currentTarget as HTMLElement)}
-        role="button"
-        tabIndex={0}
         onKeyDown={onKeyDown}
-      >
-        <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-          <div className="relative h-12 w-12 rounded-xl border border-[hsl(280,85%,65%,0.55)] bg-[hsl(275,80%,40%,0.3)] backdrop-blur-xl flex items-center justify-center overflow-hidden">
-            <Mail className="relative z-10 h-7 w-7 text-foreground" />
-          </div>
-          <span className="text-sm font-medium text-foreground">Email</span>
-        </div>
-      </Card>
+      />
 
       {/*
         Hover-anchored Email Intelligence panel.
