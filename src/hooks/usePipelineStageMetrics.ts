@@ -38,7 +38,7 @@ function useStageEntryMetric(
 ): StageMetricResult {
   const { user } = useAuth();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching } = useQuery({
     queryKey: ['stage-entry-metric', targetStage, quarter.value, pipelineId],
     queryFn: async () => {
       const startDate = quarter.months[0].start;
@@ -78,7 +78,8 @@ function useStageEntryMetric(
   });
 
   return useMemo(() => {
-    if (!data) return { count: 0, dollarVolume: 0, deals: [], isLoading };
+    const loading = isLoading || isFetching;
+    if (!data) return { count: 0, dollarVolume: 0, deals: [], isLoading: loading };
 
     // Deduplicate: first entry per deal_id only
     const seen = new Map<string, StageEntryDeal>();
@@ -104,9 +105,9 @@ function useStageEntryMetric(
       count: deals.length,
       dollarVolume: deals.reduce((s, d) => s + d.value, 0),
       deals,
-      isLoading,
+      isLoading: loading,
     };
-  }, [data, isLoading, pipelineId]);
+  }, [data, isLoading, isFetching, pipelineId]);
 }
 
 /**
@@ -119,7 +120,7 @@ function usePipelineAddedMetric(
 ): StageMetricResult {
   const { user } = useAuth();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching } = useQuery({
     queryKey: ['pipeline-added-metric', pipelineId, quarter.value],
     queryFn: async () => {
       const startDate = quarter.months[0].start;
@@ -140,7 +141,8 @@ function usePipelineAddedMetric(
   });
 
   return useMemo(() => {
-    if (!data) return { count: 0, dollarVolume: 0, deals: [], isLoading };
+    const loading = isLoading || isFetching;
+    if (!data) return { count: 0, dollarVolume: 0, deals: [], isLoading: loading };
 
     const deals: StageEntryDeal[] = data
       .filter(d => !isExcludedDealName(d.company))
@@ -158,9 +160,9 @@ function usePipelineAddedMetric(
       count: deals.length,
       dollarVolume: deals.reduce((s, d) => s + d.value, 0),
       deals,
-      isLoading,
+      isLoading: loading,
     };
-  }, [data, isLoading]);
+  }, [data, isLoading, isFetching]);
 }
 
 /**
@@ -170,7 +172,7 @@ function usePipelineAddedMetric(
 function usePipelineDealsInPeriod(pipelineId: string, quarter: QuarterOption): StageMetricResult {
   const { user } = useAuth();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching } = useQuery({
     queryKey: ['pipeline-deals-in-period', pipelineId, quarter.value],
     queryFn: async () => {
       const startDate = quarter.months[0].start;
@@ -191,7 +193,8 @@ function usePipelineDealsInPeriod(pipelineId: string, quarter: QuarterOption): S
   });
 
   return useMemo(() => {
-    if (!data) return { count: 0, dollarVolume: 0, deals: [], isLoading };
+    const loading = isLoading || isFetching;
+    if (!data) return { count: 0, dollarVolume: 0, deals: [], isLoading: loading };
 
     const excludedStatuses = ['closed-won', 'closed-lost', 'on-hold', 'archived'];
     const excludedStages = ['closed-won', 'closed-lost'];
@@ -216,9 +219,9 @@ function usePipelineDealsInPeriod(pipelineId: string, quarter: QuarterOption): S
       count: activeDeals.length,
       dollarVolume: activeDeals.reduce((s, d) => s + d.value, 0),
       deals: activeDeals,
-      isLoading,
+      isLoading: loading,
     };
-  }, [data, isLoading]);
+  }, [data, isLoading, isFetching]);
 }
 
 // 5th Line company's pipeline IDs
