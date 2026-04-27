@@ -29,6 +29,7 @@ import { RepPerformanceModelGrid } from "@/components/metrics/rep-model/RepPerfo
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
 import { DraggableGridLayout } from "@/components/metrics/DraggableGridLayout";
+import { PeriodPicker } from "@/components/metrics/PeriodPicker";
 import { EditableDashboardWrapper } from "@/components/metrics/EditableDashboardWrapper";
 import { GridWidgetCard } from "@/components/metrics/GridWidgetCard";
 import { useGridLayout, generateDefaultLayout } from "@/hooks/useGridLayout";
@@ -1436,10 +1437,8 @@ export default function Metrics() {
 
   // ── Global dashboard quarter selector (Management Snapshot) ──
   const dashboardQuarterOptions = useMemo(() => buildQuarterOptions(8), []);
-  const [dashboardQuarterValue, setDashboardQuarterValue] = useState(() => getCurrentQuarter().value);
-  const dashboardSelectedQuarter = useMemo(
-    () => dashboardQuarterOptions.find(q => q.value === dashboardQuarterValue) ?? dashboardQuarterOptions[0],
-    [dashboardQuarterOptions, dashboardQuarterValue],
+  const [dashboardSelectedQuarter, setDashboardSelectedQuarter] = useState<QuarterOption>(
+    () => getCurrentQuarter(),
   );
   const allDashboardOptions = [
     ...DASHBOARD_OPTIONS,
@@ -2119,24 +2118,11 @@ export default function Metrics() {
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               {selectedDashboard === 'management-snapshot' && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <Select
-                    value={dashboardSelectedQuarter.value}
-                    onValueChange={setDashboardQuarterValue}
-                  >
-                    <SelectTrigger className="w-[140px] h-9 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {dashboardQuarterOptions.map(q => (
-                        <SelectItem key={q.value} value={q.value} className="text-xs">
-                          {q.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <PeriodPicker
+                  quarterOptions={dashboardQuarterOptions}
+                  selected={dashboardSelectedQuarter}
+                  onChange={setDashboardSelectedQuarter}
+                />
               )}
 
               <DropdownMenu>
@@ -2224,7 +2210,7 @@ export default function Metrics() {
                 gridLayout={snapshotGridLayout}
                 onGridLayoutChange={saveSnapshotGridLayout}
                 selectedQuarter={dashboardSelectedQuarter}
-                onQuarterChange={setDashboardQuarterValue}
+                onQuarterChange={() => { /* selector lives in page header */ }}
                 quarterOptions={dashboardQuarterOptions}
               >
                 {widgets.map((widget) => {
