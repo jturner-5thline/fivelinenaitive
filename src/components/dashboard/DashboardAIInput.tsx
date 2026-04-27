@@ -682,6 +682,22 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
               onFocus={() => setIsInputFocused(true)}
               onBlur={() => setIsInputFocused(false)}
             />
+            {/* Thinking indicator — shown directly below the input while a
+                response is being generated so the user has clear feedback
+                that the assistant is working. */}
+            {isLoading && (
+              <div
+                className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"
+                aria-live="polite"
+                role="status"
+              >
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60 opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+                </span>
+                <span className="animate-pulse">Assistant is thinking…</span>
+              </div>
+            )}
             {/* Quick-action chips appear below the input on focus or while
                 composing, then collapse out when the input is empty + blurred. */}
             {!isChatActive && !showHistory && (

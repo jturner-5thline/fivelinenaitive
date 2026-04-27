@@ -162,7 +162,6 @@ function EmailTileWithIntelligence({
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { DashboardTemplatesDialog } from '@/components/dashboard/DashboardTemplates';
 import { FullCalendarView } from '@/components/dashboard/FullCalendarView';
-import { NewsFeedPanel } from '@/components/dashboard/NewsFeedPanel';
 import { NewsFeedDialog } from '@/components/dashboard/NewsFeedDialog';
 import { toast } from 'sonner';
 import {
@@ -196,9 +195,7 @@ export default function Dashboard() {
   } = useDashboardPresets();
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const [dashboardTab, setDashboardTab] = useState<string>(() => {
-    return searchParams.get('tab') || 'overview';
-  });
+  const [newsFeedDialogOpen, setNewsFeedDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   // Carousel-driven open state for the top quick-action widgets
   const carouselIsOpen = useWidgetCarouselStore((s) => s.isOpen);
@@ -224,11 +221,16 @@ export default function Dashboard() {
   const [dealsDialogOpen, setDealsDialogOpen] = useState(false);
   const [dealsInitialView, setDealsInitialView] = useState<DealsCarouselView | undefined>(undefined);
 
-  // Sync tab from URL query params
+  // Backwards-compat deep link: previously the News Feed lived under
+  // ?tab=news-feed. It is now a popup, so we open the dialog and strip the
+  // legacy param so back/refresh doesn't reopen it unexpectedly.
   useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab === 'news-feed') setDashboardTab('news-feed');
-  }, [searchParams]);
+    if (searchParams.get('tab') === 'news-feed') {
+      setNewsFeedDialogOpen(true);
+      searchParams.delete('tab');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Auto-open Daily Briefing from email link (?briefing=true)
   useEffect(() => {
@@ -278,16 +280,6 @@ export default function Dashboard() {
     searchParams.delete('widget');
     setSearchParams(searchParams, { replace: true });
   }, [searchParams, setSearchParams, openCarouselWidget, widgetOrderEntries]);
-
-  const handleDashboardTabChange = (tab: string) => {
-    setDashboardTab(tab);
-    if (tab === 'overview') {
-      searchParams.delete('tab');
-    } else {
-      searchParams.set('tab', tab);
-    }
-    setSearchParams(searchParams, { replace: true });
-  };
 
   const getTimeBasedGreeting = () => {
     const hour = new Date().getHours();
@@ -615,6 +607,23 @@ export default function Dashboard() {
                 </div>
               </Card>
             )}
+            {/* News Feed tile — opens the News Feed in a popup overlay,
+                replacing the previous Overview/News Feed tab control. */}
+            <Card
+              className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-8')}
+              onClick={() => setNewsFeedDialogOpen(true)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => handleTileKeyDown(e, () => setNewsFeedDialogOpen(true))}
+              aria-label="Open News Feed"
+            >
+              <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
+                <div className="relative h-12 w-12 rounded-xl border border-sky-500/30 bg-sky-500/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                  <Newspaper className="relative z-10 h-7 w-7 text-sky-400" />
+                </div>
+                <span className="text-sm font-medium text-foreground">News Feed</span>
+              </div>
+            </Card>
           </div>
           </>
             );
@@ -623,17 +632,10 @@ export default function Dashboard() {
 
           <DashboardAIInput />
 
-          {/* Dashboard Tabs */}
-          <Tabs value={dashboardTab} onValueChange={handleDashboardTabChange}>
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="news-feed" className="gap-1.5">
-                <Newspaper className="h-3.5 w-3.5" />
-                News Feed
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="overview">
+          {/* Dashboard overview — the previous Overview/News Feed tab control
+              was removed. News Feed now lives in a popup launched from the
+              quick-action tile row above. */}
+          <div>
               {/* Header row: Edit button */}
               <div className="flex items-center justify-between">
                 <div />
@@ -730,12 +732,7 @@ export default function Dashboard() {
                   </div>
                 </div>
               )}
-            </TabsContent>
-
-            <TabsContent value="news-feed">
-              <NewsFeedPanel />
-            </TabsContent>
-          </Tabs>
+          </div>
         </div>
       </div>
 
@@ -804,6 +801,7 @@ export default function Dashboard() {
         }}
         initialView={dealsInitialView}
       />
+      <NewsFeedDialog open={newsFeedDialogOpen} onOpenChange={setNewsFeedDialogOpen} />
     </>
   );
 }
