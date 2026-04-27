@@ -46,6 +46,8 @@ interface DealPayload {
   useOfFunds?: string;
   existing_debt?: string;
   existingDebt?: string;
+  customer_base?: string;
+  customerBase?: string;
   
   // Company Overview
   billing_model?: string;
