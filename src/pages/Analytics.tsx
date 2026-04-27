@@ -1416,8 +1416,8 @@ export default function Analytics() {
               </div>
               <div className="flex items-center gap-2">
                 {/* Presets Dropdown */}
-                <UITooltip>
-                  <DropdownMenu>
+                <DropdownMenu>
+                  <UITooltip>
                     <TooltipTrigger asChild>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -1431,6 +1431,7 @@ export default function Analytics() {
                       </DropdownMenuTrigger>
                     </TooltipTrigger>
                     <TooltipContent>Presets</TooltipContent>
+                  </UITooltip>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuItem onClick={() => setSavePresetDialogOpen(true)}>
                       <Save className="h-4 w-4 mr-2" />
@@ -1469,8 +1470,7 @@ export default function Analytics() {
                       </>
                     )}
                   </DropdownMenuContent>
-                  </DropdownMenu>
-                </UITooltip>
+                </DropdownMenu>
                 <Button variant="outline" size="sm" onClick={handleResetWidgets} className="gap-1">
                   <RotateCcw className="h-4 w-4" />
                   Reset
