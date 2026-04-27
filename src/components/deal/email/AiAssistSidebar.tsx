@@ -755,10 +755,19 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                   regenerate the currently selected variant with an added
                   USER INSTRUCTIONS line. Wired to the same edge function as
                   Regenerate so behavior, model, and context handling are
-                  identical. Glassy translucent treatment matches the rest of
-                  the platform's chip system. */}
+                  identical. Single horizontally scrollable row — chips never
+                  wrap or compress; the row scrolls via trackpad / shift+wheel
+                  / drag. Subtle edge fade masks hint at additional chips when
+                  the row overflows the sidebar width. Glassy translucent
+                  treatment matches the rest of the platform's chip system. */}
               <div
-                className="flex flex-wrap gap-1.5"
+                className="flex flex-nowrap items-center gap-2 overflow-x-auto overflow-y-hidden -mx-0.5 px-0.5 py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                style={{
+                  WebkitMaskImage:
+                    'linear-gradient(to right, transparent 0, black 12px, black calc(100% - 12px), transparent 100%)',
+                  maskImage:
+                    'linear-gradient(to right, transparent 0, black 12px, black calc(100% - 12px), transparent 100%)',
+                }}
                 role="group"
                 aria-label="Refine draft"
               >
@@ -773,7 +782,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                       disabled={disabled}
                       title={option.label}
                       className={cn(
-                        'inline-flex items-center gap-1 h-6 px-2.5 rounded-full',
+                        'inline-flex items-center gap-1 h-6 px-2.5 rounded-full shrink-0 whitespace-nowrap',
                         'text-[11px] font-medium leading-none',
                         'border border-white/10 bg-white/5 backdrop-blur-sm',
                         'text-foreground/80 transition-colors',
