@@ -100,63 +100,16 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
   return (
     <SidebarProvider defaultOpen={true} className="h-svh" style={{ isolation: 'auto' } as React.CSSProperties}>
       <BodyScrollLock />
-      {/* Neutral dark decorative background with orbs and waves */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden z-0" aria-hidden="true" style={{ background: '#0A0C14' }}>
-        {/* Ambient glow orbs — purple gradient */}
-        <div className="absolute -top-20 -left-20 w-[600px] h-[600px] rounded-full opacity-[0.14]" style={{ background: 'radial-gradient(circle, hsl(268,75%,28%) 0%, hsl(272,60%,16%) 45%, transparent 70%)' }} />
-        <div className="absolute top-[40%] right-[10%] w-[400px] h-[400px] rounded-full opacity-[0.08]" style={{ background: 'radial-gradient(circle, hsl(278,80%,42%) 0%, hsl(270,65%,24%) 50%, transparent 70%)' }} />
-        <div className="absolute -bottom-20 left-[30%] w-[500px] h-[400px] rounded-full opacity-[0.10]" style={{ background: 'radial-gradient(ellipse, hsl(275,75%,34%) 0%, hsl(268,60%,18%) 50%, transparent 70%)' }} />
-
-        {/* Flowing wave shapes — purple gradient */}
-        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 1440 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="lwFill1" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="hsl(268,50%,5%)" stopOpacity="0.95" />
-              <stop offset="50%" stopColor="hsl(270,45%,4%)" stopOpacity="0.9" />
-              <stop offset="100%" stopColor="hsl(272,40%,3%)" stopOpacity="0.85" />
-            </linearGradient>
-            <linearGradient id="lwFill2" x1="100%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="hsl(270,50%,5%)" stopOpacity="0.95" />
-              <stop offset="50%" stopColor="hsl(268,45%,4%)" stopOpacity="0.9" />
-              <stop offset="100%" stopColor="hsl(272,40%,3%)" stopOpacity="0.85" />
-            </linearGradient>
-            <linearGradient id="lwFill3" x1="0%" y1="100%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="hsl(272,50%,5%)" stopOpacity="0.95" />
-              <stop offset="50%" stopColor="hsl(270,45%,4%)" stopOpacity="0.9" />
-              <stop offset="100%" stopColor="hsl(268,40%,3%)" stopOpacity="0.85" />
-            </linearGradient>
-            <linearGradient id="lwEdge1" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="hsl(272,100%,80%)" stopOpacity="0.0" />
-              <stop offset="30%" stopColor="hsl(272,100%,80%)" stopOpacity="0.95" />
-              <stop offset="70%" stopColor="hsl(268,100%,70%)" stopOpacity="0.85" />
-              <stop offset="100%" stopColor="hsl(268,100%,70%)" stopOpacity="0.0" />
-            </linearGradient>
-            <linearGradient id="lwEdge2" x1="100%" y1="0%" x2="0%" y2="0%">
-              <stop offset="0%" stopColor="hsl(272,100%,80%)" stopOpacity="0.0" />
-              <stop offset="25%" stopColor="hsl(272,100%,80%)" stopOpacity="0.9" />
-              <stop offset="75%" stopColor="hsl(268,100%,70%)" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="hsl(268,100%,70%)" stopOpacity="0.0" />
-            </linearGradient>
-            <linearGradient id="lwEdge3" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="hsl(268,100%,70%)" stopOpacity="0.0" />
-              <stop offset="20%" stopColor="hsl(268,100%,70%)" stopOpacity="0.8" />
-              <stop offset="80%" stopColor="hsl(272,100%,80%)" stopOpacity="0.9" />
-              <stop offset="100%" stopColor="hsl(272,100%,80%)" stopOpacity="0.0" />
-            </linearGradient>
-            <filter id="lwBlur"><feGaussianBlur stdDeviation="0.5" /></filter>
-          </defs>
-          <path d="M-100,120 C200,80 400,220 720,180 C1040,140 1200,280 1540,200 L1540,0 L-100,0 Z" fill="url(#lwFill1)" />
-          <path d="M-100,120 C200,80 400,220 720,180 C1040,140 1200,280 1540,200" fill="none" stroke="url(#lwEdge1)" strokeWidth="2.5" filter="url(#lwBlur)" />
-          <path d="M-100,120 C200,80 400,220 720,180 C1040,140 1200,280 1540,200" fill="none" stroke="url(#lwEdge1)" strokeWidth="1.5" opacity="1" />
-          <path d="M1540,380 C1200,320 1000,480 680,420 C360,360 200,500 -100,440 L-100,900 L1540,900 Z" fill="url(#lwFill2)" />
-          <path d="M1540,380 C1200,320 1000,480 680,420 C360,360 200,500 -100,440" fill="none" stroke="url(#lwEdge2)" strokeWidth="2.5" filter="url(#lwBlur)" />
-          <path d="M1540,380 C1200,320 1000,480 680,420 C360,360 200,500 -100,440" fill="none" stroke="url(#lwEdge2)" strokeWidth="1.5" opacity="1" />
-          <path d="M-100,700 C180,640 420,780 740,720 C1060,660 1280,800 1540,740 L1540,900 L-100,900 Z" fill="url(#lwFill3)" />
-          <path d="M-100,700 C180,640 420,780 740,720 C1060,660 1280,800 1540,740" fill="none" stroke="url(#lwEdge3)" strokeWidth="2.5" filter="url(#lwBlur)" />
-          <path d="M-100,700 C180,640 420,780 740,720 C1060,660 1280,800 1540,740" fill="none" stroke="url(#lwEdge3)" strokeWidth="1.5" opacity="1" />
-          <path d="M800,50 C1000,100 1150,30 1440,80" fill="none" stroke="url(#lwEdge1)" strokeWidth="2" opacity="0.7" />
-        </svg>
-      </div>
+      {/* App background — diagonal gradient */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0"
+        aria-hidden="true"
+        style={{
+          minHeight: '100vh',
+          background:
+            'linear-gradient(135deg, #0a0a1a 0%, #0d1b3e 20%, #0a1628 40%, #061020 60%, #1a0a2e 80%, #0a0014 100%)',
+        }}
+      />
 
       <div className="flex w-full h-full min-h-0 bg-transparent pt-2 pb-2 pl-2 pr-0 gap-1" style={{ isolation: 'auto' }}>
         <AppSidebar />
