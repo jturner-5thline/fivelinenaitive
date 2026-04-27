@@ -5879,6 +5879,50 @@ export type Database = {
           },
         ]
       }
+      deal_data_room_custom_folders: {
+        Row: {
+          color: string
+          created_at: string
+          created_by: string | null
+          deal_id: string
+          icon: string
+          id: string
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          deal_id: string
+          icon?: string
+          id?: string
+          name: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string
+          icon?: string
+          id?: string
+          name?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_data_room_custom_folders_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_email_prompts: {
         Row: {
           cc_json: Json
