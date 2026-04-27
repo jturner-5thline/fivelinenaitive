@@ -38,8 +38,8 @@ export const QuickActionTile = forwardRef<HTMLButtonElement, QuickActionTileProp
         onKeyDown={onKeyDown}
         aria-label={ariaLabel}
         className={cn(
-          'qa-tile group flex flex-col items-center gap-2 cursor-pointer',
-          'flex-1 basis-0 min-w-0 outline-none',
+          'qa-tile group flex w-[72px] shrink-0 flex-col items-center gap-2 cursor-pointer',
+          'min-w-0 outline-none',
           'focus-visible:outline-none rounded-2xl',
           'focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#16181f]',
           className,
