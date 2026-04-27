@@ -479,8 +479,8 @@ export default function Dashboard() {
               className="opacity-0"
               style={{ animation: 'fadeInUp 0.4s ease-out 0.2s forwards' }}
             >
-              <div className="flex w-full flex-wrap items-center gap-1.5">
-                <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+              <div className="flex w-full flex-wrap items-center gap-1.5 lg:flex-nowrap lg:justify-between">
+                <div className="flex shrink-0 flex-wrap items-center gap-1.5 lg:flex-nowrap">
                   {showMilestones ? (
                     <MilestoneManagerFilter
                       selected={filters.manager}
@@ -494,7 +494,7 @@ export default function Dashboard() {
                   )}
                 </div>
 
-                <div className="ml-auto flex shrink-0 flex-wrap items-center gap-1.5">
+                <div className="ml-auto flex shrink-0 flex-wrap items-center gap-1.5 lg:flex-nowrap">
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
