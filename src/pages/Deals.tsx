@@ -479,8 +479,8 @@ export default function Dashboard() {
               className="opacity-0"
               style={{ animation: 'fadeInUp 0.4s ease-out 0.2s forwards' }}
             >
-              <div className="flex w-full flex-wrap items-center gap-2">
-                <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <div className="flex w-full flex-wrap items-center gap-1.5">
+                <div className="flex shrink-0 flex-wrap items-center gap-1.5">
                   {showMilestones ? (
                     <MilestoneManagerFilter
                       selected={filters.manager}
@@ -494,7 +494,7 @@ export default function Dashboard() {
                   )}
                 </div>
 
-                <div className="ml-auto flex shrink-0 flex-wrap items-center gap-2">
+                <div className="ml-auto flex shrink-0 flex-wrap items-center gap-1.5">
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -611,9 +611,9 @@ export default function Dashboard() {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-9 shrink-0 gap-2">
+                    <Button variant="outline" size="sm" className="h-9 shrink-0 gap-1.5 px-2.5">
                       <ArrowUpDown className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Sort</span>
+                      <span className="hidden xl:inline">Sort</span>
                       {sortField === 'flexEngagement' && (
                         <Flame className="h-3 w-3 text-orange-500" />
                       )}
@@ -717,7 +717,7 @@ export default function Dashboard() {
                 </Select>
                 <Button
                   size="sm"
-                  className="gap-2 h-9 shrink-0"
+                  className="h-9 shrink-0 gap-1.5 px-2.5"
                   onClick={() => setShowMilestones(!showMilestones)}
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -725,7 +725,7 @@ export default function Dashboard() {
                     <circle cx="12" cy="12" r="6" />
                     <circle cx="12" cy="12" r="2" />
                   </svg>
-                  <span className="hidden sm:inline">Milestones</span>
+                  <span className="hidden xl:inline">Milestones</span>
                 </Button>
                 <div className="relative self-center">
                   <DealSavedViewsMenu
