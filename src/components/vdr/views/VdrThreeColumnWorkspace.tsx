@@ -248,6 +248,7 @@ export function VdrThreeColumnWorkspace({
   const groupByCategory = useCallback((docs: VdrDocument[]) => {
     const map = new Map<string, VdrDocument[]>();
     for (const cat of categoryNames) map.set(cat, []);
+    for (const cat of customFolderNames) map.set(cat, []);
     map.set(UNCATEGORIZED, []);
     for (const d of docs) {
       const k = docCategory(d);
@@ -256,7 +257,7 @@ export function VdrThreeColumnWorkspace({
       map.set(k, arr);
     }
     return map;
-  }, [categoryNames, docCategory]);
+  }, [categoryNames, customFolderNames, docCategory]);
 
   const internalGrouped = useMemo(() => groupByCategory(visibleInternal), [groupByCategory, visibleInternal]);
   const dataroomGrouped = useMemo(() => groupByCategory(visibleDataroom), [groupByCategory, visibleDataroom]);
