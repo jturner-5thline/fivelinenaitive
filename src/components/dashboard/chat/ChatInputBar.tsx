@@ -322,9 +322,18 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
         </div>
       )}
 
-      <div className="flex items-end gap-2 border border-[hsl(263,40%,30%,0.3)] bg-[linear-gradient(135deg,hsl(260,20%,10%,0.3)_0%,hsl(263,18%,8%,0.4)_100%)] backdrop-blur-sm rounded-xl px-1 transition-all duration-200 focus-within:border-[hsl(263,50%,40%,0.5)] focus-within:shadow-[0_0_12px_hsl(263,40%,30%,0.15)]">
+      <div
+        className={cn(
+          'flex items-end gap-2 px-4 py-3 min-h-[48px] rounded-xl',
+          'border border-white/10 bg-white/[0.03] backdrop-blur-md',
+          'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]',
+          'transition-all duration-200',
+          'focus-within:border-white/25 focus-within:ring-1 focus-within:ring-white/10',
+          'focus-within:shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_4px_20px_-4px_rgba(120,90,255,0.25),inset_0_1px_0_0_rgba(255,255,255,0.08)]',
+        )}
+      >
         <div className="relative flex-1">
-          <Sparkles className="absolute left-3 top-3 h-4 w-4 text-primary" />
+          <Sparkles className="absolute left-0 top-1.5 h-4 w-4 text-white/50" />
           <Textarea
             ref={textareaRef as any}
             placeholder={
@@ -339,13 +348,15 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
             onBlur={onBlur}
             rows={1}
             className={cn(
-              "pl-10 pr-3 min-h-[40px] max-h-[120px] resize-none border-0 text-sm placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent",
+              'pl-7 pr-2 py-0 min-h-[24px] max-h-[120px] resize-none border-0 text-sm leading-6',
+              'text-white/90 placeholder:text-white/40 caret-primary',
+              'focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent shadow-none',
               isListening && "placeholder:text-destructive placeholder:animate-pulse"
             )}
             disabled={isLoading}
           />
         </div>
-        <div className="flex items-center gap-1 pb-1.5">
+        <div className="flex items-center gap-2">
           {/* Clear button */}
           {hasInput && (
             <Tooltip>
@@ -354,7 +365,7 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 rounded-lg text-muted-foreground/40 hover:text-muted-foreground/80 transition-all duration-150"
+                  className="h-8 w-8 rounded-md text-white/60 hover:text-white/90 hover:bg-white/5 transition-all duration-150"
                   onClick={() => { setInputValue(''); textareaRef.current?.focus(); }}
                 >
                   <X className="h-4 w-4" />
@@ -383,10 +394,10 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  "h-8 w-8 rounded-lg transition-all duration-150",
+                  'h-8 w-8 rounded-md transition-all duration-150',
                   isListening
                     ? "bg-destructive/15 text-destructive animate-pulse"
-                    : "text-muted-foreground hover:text-foreground/90"
+                    : 'text-white/60 hover:text-white/90 hover:bg-white/5'
                 )}
                 onClick={toggleVoice}
               >
@@ -401,10 +412,11 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
                 type="button"
                 size="icon"
                 className={cn(
-                  "h-8 w-8 rounded-lg border border-primary/30 transition-all duration-150",
+                  'h-8 w-8 rounded-md border transition-all duration-150',
+                  'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.18),0_2px_8px_-2px_rgba(120,90,255,0.5)]',
                   hasInput && !isLoading
-                    ? "bg-primary/20 hover:bg-primary/30 text-primary cursor-pointer opacity-100"
-                    : "bg-primary/10 text-primary/40 cursor-not-allowed opacity-30"
+                    ? 'bg-gradient-to-br from-[hsl(263,70%,60%)] to-[hsl(263,70%,45%)] hover:from-[hsl(263,75%,65%)] hover:to-[hsl(263,75%,50%)] border-white/20 text-white cursor-pointer opacity-100'
+                    : 'bg-white/[0.04] border-white/10 text-white/30 cursor-not-allowed shadow-none'
                 )}
                 onClick={handleSubmit}
                 disabled={!hasInput || isLoading}
