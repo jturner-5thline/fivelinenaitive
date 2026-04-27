@@ -477,42 +477,27 @@ export default function Dashboard() {
             onDismiss={() => dismissHint('dashboard-quick-actions')}
             side="bottom"
           >
-          {(() => {
-            // Quick Prompts is now a tile too (4 base tiles).
-            // Niki's Daily Briefing renders in the top row for every user
-            // who is allowed to see it (jturner included). For jturner the
-            // tiles are also reordered via Tailwind `order-*` classes.
-            const nikiInTopRow = canSeeNiki;
-            // +1 for the always-on "Deals" tile that opens the AI insights carousel.
-            const tileCount = 4 + 1 + (isJTurner ? 1 : 0) + (nikiInTopRow ? 1 : 0) + (is5thLine ? 1 : 0);
-            const gridColsClass =
-              tileCount >= 8 ? 'grid-cols-4 sm:grid-cols-8'
-              : tileCount === 7 ? 'grid-cols-4 sm:grid-cols-7'
-              : tileCount === 6 ? 'grid-cols-3 sm:grid-cols-6'
-              : tileCount === 5 ? 'grid-cols-3 sm:grid-cols-5'
-              : tileCount === 4 ? 'grid-cols-2 sm:grid-cols-4'
-              : 'grid-cols-3';
-            return (
-          <>
-          <div className={`grid items-stretch gap-3 md:gap-4 ${gridColsClass}`}>
-            <Card
-              className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-1')}
+          {/*
+            Glassy quick-action tile row — dark #16181f rounded container with
+            color-tinted icon tiles. Tiles wrap consistently and keep the
+            existing lucide icons; only the surrounding tile design changed.
+          */}
+          <div
+            className="flex flex-wrap gap-2.5 p-4 rounded-[14px]"
+            style={{ background: '#16181f' }}
+          >
+            <QuickActionTile
+              label="Calendar"
+              theme={QA_TILE_THEMES.calendar}
+              icon={<CalendarIcon {...QA_ICON_PROPS} />}
+              className={isJTurner ? 'order-1' : undefined}
               onClick={(e) => openCarouselWidget('calendar', e.currentTarget as HTMLElement)}
-              role="button"
-              tabIndex={0}
               onKeyDown={(e) =>
                 handleTileKeyDown(e, () =>
                   openCarouselWidget('calendar', e.currentTarget as HTMLElement),
                 )
               }
-            >
-              <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                <div className="relative h-12 w-12 rounded-xl border border-primary/30 bg-primary/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
-                  <CalendarIcon className="relative z-10 h-7 w-7 text-primary" />
-                </div>
-                <span className="text-sm font-medium text-foreground">Calendar</span>
-              </div>
-            </Card>
+            />
             <EmailTileWithIntelligence
               className={isJTurner ? 'order-2' : undefined}
               onOpen={(el) => openCarouselWidget('email', el)}
@@ -522,124 +507,79 @@ export default function Dashboard() {
                 )
               }
             />
-            <Card
-              className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-4')}
+            <QuickActionTile
+              label="New Deal"
+              theme={QA_TILE_THEMES.newDeal}
+              icon={<Briefcase {...QA_ICON_PROPS} />}
+              className={isJTurner ? 'order-4' : undefined}
               onClick={(e) => openCarouselWidget('new-deal', e.currentTarget as HTMLElement)}
-              role="button"
-              tabIndex={0}
               onKeyDown={(e) =>
                 handleTileKeyDown(e, () =>
                   openCarouselWidget('new-deal', e.currentTarget as HTMLElement),
                 )
               }
-            >
-              <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                <div className="relative h-12 w-12 rounded-xl border border-accent/30 bg-accent/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
-                  <Briefcase className="relative z-10 h-7 w-7 text-accent-foreground" />
-                </div>
-                <span className="text-sm font-medium text-foreground">New Deal</span>
-              </div>
-            </Card>
+            />
             {isJTurner && (
-              <Card
-                className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', 'order-5')}
+              <QuickActionTile
+                label="Daily Briefing"
+                theme={QA_TILE_THEMES.dailyBriefing}
+                icon={<Newspaper {...QA_ICON_PROPS} />}
+                className="order-5"
                 onClick={(e) => openCarouselWidget('daily-briefing', e.currentTarget as HTMLElement)}
-                role="button"
-                tabIndex={0}
                 onKeyDown={(e) =>
                   handleTileKeyDown(e, () =>
                     openCarouselWidget('daily-briefing', e.currentTarget as HTMLElement),
                   )
                 }
-              >
-                <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                  <div className="relative h-12 w-12 rounded-xl border border-warning/30 bg-warning/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
-                    <Newspaper className="relative z-10 h-7 w-7 text-warning" />
-                  </div>
-                  <span className="text-sm font-medium text-foreground">Daily Briefing</span>
-                </div>
-              </Card>
+              />
             )}
-            {nikiInTopRow && (
-              <Card
-                className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-6')}
+            {canSeeNiki && (
+              <QuickActionTile
+                label={isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
+                theme={QA_TILE_THEMES.nikisBriefing}
+                icon={<Newspaper {...QA_ICON_PROPS} />}
+                className={isJTurner ? 'order-6' : undefined}
                 onClick={(e) => openCarouselWidget('niki-briefing', e.currentTarget as HTMLElement)}
-                role="button"
-                tabIndex={0}
                 onKeyDown={(e) =>
                   handleTileKeyDown(e, () =>
                     openCarouselWidget('niki-briefing', e.currentTarget as HTMLElement),
                   )
                 }
-              >
-                <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                  <div className="relative h-12 w-12 rounded-xl border border-[hsl(190,90%,55%,0.4)] bg-[hsl(190,90%,45%,0.18)] backdrop-blur-sm flex items-center justify-center overflow-hidden">
-                    <Newspaper className="relative z-10 h-7 w-7 text-[hsl(190,90%,70%)]" />
-                  </div>
-                  <span className="text-sm font-medium text-foreground">
-                    {isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
-                  </span>
-                </div>
-              </Card>
+              />
             )}
-            {/* Deals tile — opens the AI-powered Deals insights carousel.
-                Placed immediately to the right of Niki's Daily Briefing. */}
-            <Card
-              className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-7')}
+            <QuickActionTile
+              label="Deals"
+              theme={QA_TILE_THEMES.deals}
+              icon={<Handshake {...QA_ICON_PROPS} />}
+              ariaLabel="Open Deals insights"
+              className={isJTurner ? 'order-7' : undefined}
               onClick={() => setDealsDialogOpen(true)}
-              role="button"
-              tabIndex={0}
               onKeyDown={(e) => handleTileKeyDown(e, () => setDealsDialogOpen(true))}
-              aria-label="Open Deals insights"
-            >
-              <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                <div className="relative h-12 w-12 rounded-xl border border-emerald-500/30 bg-emerald-500/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
-                  <Handshake className="relative z-10 h-7 w-7 text-emerald-400" />
-                </div>
-                <span className="text-sm font-medium text-foreground">Deals</span>
-              </div>
-            </Card>
+            />
             {is5thLine && (
-              <Card
-                className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-3')}
+              <QuickActionTile
+                label="Deal Rundown"
+                theme={QA_TILE_THEMES.dealRundown}
+                icon={<Briefcase {...QA_ICON_PROPS} />}
+                className={isJTurner ? 'order-3' : undefined}
                 onClick={(e) => openCarouselWidget('deal-rundown', e.currentTarget as HTMLElement)}
-                role="button"
-                tabIndex={0}
                 onKeyDown={(e) =>
                   handleTileKeyDown(e, () =>
                     openCarouselWidget('deal-rundown', e.currentTarget as HTMLElement),
                   )
                 }
-              >
-                <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                  <div className="relative h-12 w-12 rounded-xl border border-primary/30 bg-primary/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
-                    <Briefcase className="relative z-10 h-7 w-7 text-primary" />
-                  </div>
-                  <span className="text-sm font-medium text-foreground">Deal Rundown</span>
-                </div>
-              </Card>
+              />
             )}
-            {/* News Feed tile — opens the News Feed in a popup overlay,
-                replacing the previous Overview/News Feed tab control. */}
-            <Card
-              className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-8')}
+            <QuickActionTile
+              label="News Feed"
+              theme={QA_TILE_THEMES.newsFeed}
+              icon={<Newspaper {...QA_ICON_PROPS} />}
+              ariaLabel="Open News Feed"
+              className={isJTurner ? 'order-8' : undefined}
               onClick={() => setNewsFeedDialogOpen(true)}
-              role="button"
-              tabIndex={0}
               onKeyDown={(e) => handleTileKeyDown(e, () => setNewsFeedDialogOpen(true))}
-              aria-label="Open News Feed"
-            >
-              <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                <div className="relative h-12 w-12 rounded-xl border border-sky-500/30 bg-sky-500/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
-                  <Newspaper className="relative z-10 h-7 w-7 text-sky-400" />
-                </div>
-                <span className="text-sm font-medium text-foreground">News Feed</span>
-              </div>
-            </Card>
+            />
           </div>
-          </>
-            );
-          })()}
           </HintTooltip>
 
           <div className="mt-3">
