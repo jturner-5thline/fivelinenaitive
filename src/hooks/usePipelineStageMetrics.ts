@@ -13,6 +13,10 @@ export interface StageEntryDeal {
   current_stage: string;
   entered_at: string;
   pipeline_id: string;
+  /** Stage moved FROM (from activity_logs.metadata->>from). May be null if unknown. */
+  from_stage?: string | null;
+  /** Stage moved TO (from activity_logs.metadata->>to). Equals the target stage for signed-deal series. */
+  to_stage?: string | null;
 }
 
 interface StageMetricResult {

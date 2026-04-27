@@ -46,6 +46,7 @@ function useStageEntryMonthlySeries(
         .select(`
           deal_id,
           created_at,
+          metadata,
           deals!inner (
             company,
             value,
@@ -75,6 +76,7 @@ function useStageEntryMonthlySeries(
       if (!deal || deal.pipeline_id !== pipelineId) continue;
       const ts = new Date(row.created_at);
       const monthKey = `${ts.getFullYear()}-${String(ts.getMonth() + 1).padStart(2, '0')}`;
+      const meta = (row as any).metadata ?? {};
       seen.set(row.deal_id, {
         deal_id: row.deal_id,
         company: deal.company ?? '—',
@@ -83,6 +85,8 @@ function useStageEntryMonthlySeries(
         current_stage: deal.stage,
         entered_at: row.created_at,
         pipeline_id: deal.pipeline_id,
+        from_stage: meta.from ?? null,
+        to_stage: meta.to ?? targetStage,
         monthKey,
       });
     }
