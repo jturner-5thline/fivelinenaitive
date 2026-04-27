@@ -739,8 +739,12 @@ export function VdrThreeColumnWorkspace({
   ) => {
     const collapsed = column === 'internal' ? collapsedInternal : collapsedDataroom;
     const fileInputRef = column === 'internal' ? internalFileInput : dataroomFileInput;
-    // Render in Settings order; show empty categories too so the taxonomy is always visible.
-    const order = [...categoryNames, UNCATEGORIZED];
+    // Render in Settings order, then per-deal custom folders, then Uncategorized.
+    // Custom folders are only shown in the Data Room column.
+    const order =
+      column === 'dataroom'
+        ? [...categoryNames, ...customFolderNames, UNCATEGORIZED]
+        : [...categoryNames, UNCATEGORIZED];
     return (
       <div className="space-y-1">
         {order.map(cat => {
@@ -750,14 +754,38 @@ export function VdrThreeColumnWorkspace({
           const isCollapsed = collapsed.has(cat);
           const isActive = activeCategory === cat || (cat === UNCATEGORIZED && activeCategory === UNCATEGORIZED);
           const label = cat === UNCATEGORIZED ? 'Uncategorized' : cat;
+          const isCustom = column === 'dataroom' && customFolderNameSet.has(cat);
+          const isDropFolder = column === 'dataroom' && dropFolderTarget === cat;
+          const draggableHeader = column === 'internal' && cat !== UNCATEGORIZED && docs.length > 0;
+          const customFolderRecord = isCustom ? customFolders.find(f => f.name === cat) : undefined;
           return (
             <div key={cat} className="">
               <div
+                draggable={draggableHeader}
+                onDragStart={
+                  draggableHeader
+                    ? (e) => handleCategoryDragStart(e, cat, docs.map(d => d.id))
+                    : undefined
+                }
+                onDragOver={
+                  column === 'dataroom' && cat !== UNCATEGORIZED
+                    ? (e) => allowFolderDrop(e, cat)
+                    : undefined
+                }
+                onDragLeave={
+                  column === 'dataroom' ? () => setDropFolderTarget(null) : undefined
+                }
+                onDrop={
+                  column === 'dataroom' && cat !== UNCATEGORIZED
+                    ? (e) => handleFolderDrop(e, cat)
+                    : undefined
+                }
                 className={cn(
                   'group/cat flex items-center gap-1.5 px-1.5 py-1 rounded-md text-[11px] font-medium uppercase tracking-wider transition-colors cursor-pointer',
                   isActive
                     ? 'bg-primary/10 text-foreground'
-                    : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground/90'
+                    : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground/90',
+                  isDropFolder && 'bg-primary/15 ring-1 ring-primary/40 text-foreground',
                 )}
                 onClick={() => toggleCollapsed(column, cat)}
               >
@@ -771,6 +799,11 @@ export function VdrThreeColumnWorkspace({
                 <span className="ml-1 text-[10px] tabular-nums text-muted-foreground/70 normal-case font-normal">
                   {docs.length}
                 </span>
+                {isCustom && (
+                  <span className="ml-1 text-[8.5px] uppercase tracking-wider text-primary/70 normal-case font-medium">
+                    Custom
+                  </span>
+                )}
                 {column === 'internal' && cat !== UNCATEGORIZED && (
                   <button
                     onClick={(e) => {
@@ -782,6 +815,18 @@ export function VdrThreeColumnWorkspace({
                     title={`Upload to ${label}`}
                   >
                     <Plus className="h-3 w-3" />
+                  </button>
+                )}
+                {isCustom && customFolderRecord && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCustomFolderToDelete({ id: customFolderRecord.id, name: customFolderRecord.name });
+                    }}
+                    className="ml-auto opacity-0 group-hover/cat:opacity-100 transition-opacity p-0.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
+                    title={`Remove folder ${cat}`}
+                  >
+                    <Trash2 className="h-3 w-3" />
                   </button>
                 )}
               </div>
@@ -1055,6 +1100,13 @@ export function VdrThreeColumnWorkspace({
                 title="Upload directly to Data Room"
               >
                 <Plus className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost" size="icon" className="h-6 w-6"
+                onClick={() => setShowCustomFolderDialog(true)}
+                title="New custom folder"
+              >
+                <FolderPlus className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
