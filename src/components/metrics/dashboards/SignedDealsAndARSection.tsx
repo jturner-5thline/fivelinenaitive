@@ -120,13 +120,6 @@ function SignedBarChart({
                   );
                 }}
                 wrapperStyle={{ outline: 'none' }}
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--popover))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  color: 'hsl(var(--popover-foreground))',
-                }}
                 cursor={{ fill: 'hsl(var(--accent))', fillOpacity: 0.15 }}
               />
               <Bar dataKey="count" shape={createGlassBarShape({ radius: 3 })} cursor="pointer" onClick={(d: MonthBucket) => onBarClick(d)}>
