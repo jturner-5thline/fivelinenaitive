@@ -55,13 +55,14 @@ export const QuickActionTile = forwardRef<HTMLButtonElement, QuickActionTileProp
           </span>
         </div>
         <span
-          className="text-center"
+          className="text-center block w-full whitespace-nowrap overflow-hidden text-ellipsis"
           style={{
             fontSize: '11px',
             fontWeight: 500,
             color: '#c8ccd8',
             lineHeight: 1.3,
           }}
+          title={typeof label === 'string' ? label : undefined}
         >
           {label}
         </span>
