@@ -9,8 +9,6 @@ import {
   RefreshCw,
   AlertTriangle,
   ArrowRight,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { cn } from '@/lib/utils';
