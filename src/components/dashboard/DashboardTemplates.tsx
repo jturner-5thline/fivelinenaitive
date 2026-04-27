@@ -104,14 +104,12 @@ const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
     widgets: [
       { id: 'my-day', type: 'my-day', title: 'My Day', config: {} },
       { id: 'my-tasks', type: 'my-tasks', title: 'My Tasks', config: { variant: 'expanded' } },
-      { id: 'key-alerts', type: 'key-alerts', title: 'Key Alerts', config: {} },
       { id: 'email-intelligence', type: 'email-intelligence', title: 'Email Intelligence', config: {} },
     ],
     grid: [
       { i: 'my-day', x: 0, y: 0, w: 6, h: 6, minW: 3, minH: 3 },
       { i: 'my-tasks', x: 6, y: 0, w: 6, h: 6, minW: 3, minH: 3 },
-      { i: 'key-alerts', x: 0, y: 6, w: 6, h: 4, minW: 3, minH: 2 },
-      { i: 'email-intelligence', x: 6, y: 6, w: 6, h: 4, minW: 3, minH: 2 },
+      { i: 'email-intelligence', x: 0, y: 6, w: 12, h: 4, minW: 3, minH: 2 },
     ],
   },
   {
