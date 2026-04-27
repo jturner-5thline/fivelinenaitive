@@ -155,6 +155,10 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   const [drDismissed, setDrDismissed] = useState(false);
   const [drDialogOpen, setDrDialogOpen] = useState(false);
   const [drSuggestion, setDrSuggestion] = useState<DataRoomDestinationSuggestion | null>(null);
+  // Tracks the intent chip that's currently driving an in-flight refine, so
+  // we can show a loading indicator on the active chip without blocking the
+  // rest of the panel.
+  const [activeIntentKey, setActiveIntentKey] = useState<string | null>(null);
   // Snapshot of the slim deal-context summary surfaced in the sidebar header
   // card. Forwarded to the edge function so the draft tone reflects whether
   // the deal is At Risk, Off Track, On Hold, etc.
