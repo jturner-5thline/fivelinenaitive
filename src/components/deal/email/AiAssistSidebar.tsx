@@ -604,104 +604,93 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             threadId={thread.threadId}
           />
 
-          {/* Draft area — always rendered as a shell so the panel never blocks. */}
+          {/* Unified Draft reply module — single card containing the section
+              header, variant selector, one shared draft preview, and (in the
+              footer below) the action row. Replaces the legacy "Draft AI
+              Reply" pill row + "Draft Options" card duo with a single
+              drafting workspace. */}
           {!error && (
-            <>
-              {/* Draft Options — mirrors the SUGGESTED UPDATE card pattern:
-                  same primary-tinted bordered surface, same uppercase header
-                  with Sparkles icon + counter + chevron arrow paginator. */}
-              <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-2.5 space-y-2 overflow-hidden max-w-full min-w-0 w-full">
-                {/* Header row — icon + label + counter + arrows (matches SUGGESTED UPDATE) */}
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <Sparkles className="h-3 w-3 text-primary shrink-0" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-primary/90 min-w-0 truncate">
-                    Draft Options
-                  </span>
-                  {isSelectedLoading && (
-                    <Loader2 className="h-2.5 w-2.5 animate-spin text-primary/60" />
-                  )}
-                  <div className="ml-auto flex items-center gap-0.5">
-                    <span className="text-[9px] tabular-nums text-muted-foreground/70">
-                      {TONE_ORDER.indexOf(selected) + 1} / {TONE_ORDER.length}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const i = TONE_ORDER.indexOf(selected);
-                        const prev = TONE_ORDER[(i - 1 + TONE_ORDER.length) % TONE_ORDER.length];
-                        handleSelectTone(prev);
-                      }}
-                      className="h-4 w-4 rounded hover:bg-primary/10 flex items-center justify-center text-primary/80 disabled:opacity-40"
-                      aria-label="Previous draft style"
-                    >
-                      <ChevronLeft className="h-3 w-3" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const i = TONE_ORDER.indexOf(selected);
-                        const next = TONE_ORDER[(i + 1) % TONE_ORDER.length];
-                        handleSelectTone(next);
-                      }}
-                      className="h-4 w-4 rounded hover:bg-primary/10 flex items-center justify-center text-primary/80 disabled:opacity-40"
-                      aria-label="Next draft style"
-                    >
-                      <ChevronRight className="h-3 w-3" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Active style title — same place SUGGESTED UPDATE puts its title */}
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <p
-                    className="text-[13px] text-foreground font-semibold leading-snug max-w-full"
-                    style={{ overflowWrap: 'anywhere', wordBreak: 'normal', whiteSpace: 'normal' }}
-                  >
-                    {TONE_LABELS[selected]}
-                  </p>
-                  {result?.recommended_tone === selected && (
-                    <span
-                      className="text-primary text-[12px] leading-none"
-                      title="Recommended"
-                      aria-label="Recommended"
-                    >
-                      ★
-                    </span>
-                  )}
-                </div>
-
-                {/* Subject + Body — inside the same card */}
-                {selectedOption ? (
-                  <div className="space-y-2 min-w-0 max-w-full w-full">
-                    <div className="min-w-0">
-                      <div
-                        className="max-w-full break-words text-[12px] leading-relaxed text-foreground/85"
-                        style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'normal' }}
-                      >
-                        {selectedOption.body ?? ''}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="space-y-1.5">
-                      <Skeleton className="h-3 w-full" />
-                      <Skeleton className="h-3 w-11/12" />
-                      <Skeleton className="h-3 w-10/12" />
-                      <Skeleton className="h-3 w-9/12" />
-                      {isSelectedLoading && (
-                        <div className="flex items-center gap-1.5 pt-1">
-                          <Loader2 className="h-3 w-3 animate-spin text-primary/70" />
-                          <span className="text-[10px] text-muted-foreground/70">
-                            Drafting {TONE_LABELS[selected]}…
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+            <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-2.5 space-y-2.5 overflow-hidden max-w-full min-w-0 w-full">
+              {/* Header — title + optional helper. No counter, no chevrons:
+                  the variant pill row below is the single switching surface. */}
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Sparkles className="h-3 w-3 text-primary shrink-0" />
+                <span className="text-[11px] font-semibold tracking-wide text-foreground min-w-0 truncate">
+                  Draft reply
+                </span>
+                {isSelectedLoading && (
+                  <Loader2 className="h-2.5 w-2.5 animate-spin text-primary/60" />
                 )}
               </div>
-            </>
+
+              {/* Variant selector — compact segmented pill row. Active state
+                  is visually clear but not heavy. Only one option active at
+                  a time; switching swaps the preview content in place. */}
+              <div
+                role="tablist"
+                aria-label="Draft variants"
+                className="inline-flex items-center gap-0.5 rounded-md border border-white/[0.06] bg-card/40 p-0.5 max-w-full"
+              >
+                {TONE_ORDER.map((tone) => {
+                  const isActive = selected === tone;
+                  const isRecommended = tone === 'balanced';
+                  return (
+                    <button
+                      key={tone}
+                      role="tab"
+                      aria-selected={isActive}
+                      type="button"
+                      onClick={() => handleSelectTone(tone)}
+                      className={cn(
+                        'h-6 px-2.5 rounded text-[11px] font-medium transition-colors inline-flex items-center gap-1',
+                        isActive
+                          ? 'bg-primary/15 text-primary'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04]',
+                      )}
+                    >
+                      {TONE_LABELS[tone]}
+                      {isRecommended && (
+                        <span
+                          className={cn('text-[10px] leading-none', isActive ? 'text-primary' : 'text-muted-foreground/60')}
+                          aria-hidden
+                        >
+                          ★
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Shared draft preview — dominant element. Layout never jumps;
+                  only the body text content swaps when the user switches
+                  variants. */}
+              {selectedOption ? (
+                <div className="min-w-0 max-w-full w-full">
+                  <div
+                    className="max-w-full break-words text-[12px] leading-relaxed text-foreground/85"
+                    style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'normal', minHeight: 96 }}
+                  >
+                    {selectedOption.body ?? ''}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1.5" style={{ minHeight: 96 }}>
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-11/12" />
+                  <Skeleton className="h-3 w-10/12" />
+                  <Skeleton className="h-3 w-9/12" />
+                  {isSelectedLoading && (
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <Loader2 className="h-3 w-3 animate-spin text-primary/70" />
+                      <span className="text-[10px] text-muted-foreground/70">
+                        Drafting {TONE_LABELS[selected]}…
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
 
         </div>
