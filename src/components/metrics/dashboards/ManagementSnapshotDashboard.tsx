@@ -583,31 +583,6 @@ export function ManagementSnapshotDashboard({
 
   return (
     <div className="space-y-6">
-      {/* Global Dashboard Period Selector */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Weekly Rundown</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            All sections synchronized to the selected period
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-          <Select value={selectedQuarter.value} onValueChange={onQuarterChange}>
-            <SelectTrigger className="w-[140px] h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {quarterOptions.map(q => (
-                <SelectItem key={q.value} value={q.value} className="text-xs">
-                  {q.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
       <DraggableGridLayout
         layout={gridLayout}
         onLayoutChange={onGridLayoutChange}
