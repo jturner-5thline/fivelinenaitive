@@ -2127,8 +2127,8 @@ export default function Metrics() {
                 />
               )}
 
-              <UITooltip>
-                <DropdownMenu>
+              <DropdownMenu>
+                <UITooltip>
                   <TooltipTrigger asChild>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -2142,6 +2142,7 @@ export default function Metrics() {
                     </DropdownMenuTrigger>
                   </TooltipTrigger>
                   <TooltipContent>Presets</TooltipContent>
+                </UITooltip>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setSavePresetOpen(true)}>
                     <Save className="h-4 w-4 mr-2" />
@@ -2162,8 +2163,7 @@ export default function Metrics() {
                     </>
                   )}
                 </DropdownMenuContent>
-                </DropdownMenu>
-              </UITooltip>
+              </DropdownMenu>
 
               {canEditMetrics && (
                 <UITooltip>

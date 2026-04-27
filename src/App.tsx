@@ -33,6 +33,7 @@ import { CookieConsent } from "@/components/CookieConsent";
 import { CopyProtection } from "@/components/CopyProtection";
 import { WelcomeScreenWrapper } from "@/components/WelcomeScreenWrapper";
 import { AppLayout } from "@/components/AppLayout";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Loader2 } from "lucide-react";
 import { lazyRetry } from "@/lib/lazyRetry";
 
@@ -174,7 +175,7 @@ const App = () => (
                             <ProtectedRoute><AppLayout><Deals /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/analytics" element={
-                            <ProtectedRoute><AppLayout><Analytics /></AppLayout></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><ErrorBoundary><Analytics /></ErrorBoundary></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/reports" element={
                             <ProtectedRoute><AppLayout><Reports /></AppLayout></ProtectedRoute>
@@ -186,7 +187,7 @@ const App = () => (
                             <ProtectedRoute><AppLayout><WidgetEditorPage /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/insights" element={
-                            <ProtectedRoute><AppLayout><Insights /></AppLayout></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><ErrorBoundary><Insights /></ErrorBoundary></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/sales-bd" element={
                             <ProtectedRoute><AppLayout><SalesBD /></AppLayout></ProtectedRoute>
