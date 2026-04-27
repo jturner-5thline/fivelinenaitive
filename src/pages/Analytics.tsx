@@ -1418,10 +1418,19 @@ export default function Analytics() {
                 {/* Presets Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-1">
-                      <FolderOpen className="h-4 w-4" />
-                      <span className="hidden sm:inline">Presets</span>
-                    </Button>
+                    <UITooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          aria-label="Presets"
+                          className="h-9 w-9 p-0"
+                        >
+                          <FolderOpen className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Presets</TooltipContent>
+                    </UITooltip>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuItem onClick={() => setSavePresetDialogOpen(true)}>
