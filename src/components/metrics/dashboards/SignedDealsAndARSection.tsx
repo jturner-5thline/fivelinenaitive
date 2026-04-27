@@ -14,6 +14,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useDealsSignedMonthlySeries, useFinServClientsSignedMonthlySeries, type MonthBucket } from '@/hooks/useSignedDealsMonthly';
 import { useOutstandingARByEntity } from '@/hooks/useOutstandingARByEntity';
 import type { StageEntryDeal } from '@/hooks/usePipelineStageMetrics';
+import type {
+  DealOrigin,
+  DealOriginLocationState,
+} from '@/lib/dealOriginContext';
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
@@ -239,11 +243,14 @@ function DealsDrilldownModal({
   onClose,
   title,
   deals,
+  origin,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   deals: StageEntryDeal[];
+  /** Back-navigation context handed to each deal-id link. */
+  origin: DealOrigin | null;
 }) {
   const total = deals.reduce((s, d) => s + d.value, 0);
 
@@ -295,6 +302,11 @@ function DealsDrilldownModal({
                     <td className="px-3 py-2 text-[11px] font-mono truncate max-w-[120px]">
                       <Link
                         to={`/deal/${deal.deal_id}`}
+                        state={
+                          origin
+                            ? ({ dealOrigin: origin } satisfies DealOriginLocationState)
+                            : undefined
+                        }
                         className="text-primary hover:underline focus:underline focus:outline-none rounded-sm"
                         title={`Open deal ${deal.deal_id}`}
                         onClick={onClose}
