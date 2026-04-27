@@ -607,6 +607,23 @@ export default function Dashboard() {
                 </div>
               </Card>
             )}
+            {/* News Feed tile — opens the News Feed in a popup overlay,
+                replacing the previous Overview/News Feed tab control. */}
+            <Card
+              className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-8')}
+              onClick={() => setNewsFeedDialogOpen(true)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => handleTileKeyDown(e, () => setNewsFeedDialogOpen(true))}
+              aria-label="Open News Feed"
+            >
+              <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
+                <div className="relative h-12 w-12 rounded-xl border border-sky-500/30 bg-sky-500/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                  <Newspaper className="relative z-10 h-7 w-7 text-sky-400" />
+                </div>
+                <span className="text-sm font-medium text-foreground">News Feed</span>
+              </div>
+            </Card>
           </div>
           </>
             );
