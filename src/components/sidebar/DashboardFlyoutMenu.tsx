@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, KeyboardEvent } from 'react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { LayoutDashboard, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -35,6 +35,7 @@ export function DashboardFlyoutMenu() {
   // menu and start arrow-key navigation. Hover-open should NOT steal focus.
   const openedViaKeyboardRef = useRef(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
 
@@ -101,30 +102,25 @@ export function DashboardFlyoutMenu() {
     requestAnimationFrame(() => triggerRef.current?.focus());
   };
 
-  const handleParentClick = (e: React.MouseEvent) => {
-    // On mobile, tap toggles the submenu instead of navigating.
-    if (isMobile && hasWidgets) {
-      e.preventDefault();
-      openedViaKeyboardRef.current = false;
-      setOpen((v) => !v);
-      return;
-    }
-    navigate('/dashboard');
+  const handleChevronClick = (e: React.MouseEvent) => {
+    // The chevron is a dedicated submenu toggle — never navigates.
+    e.preventDefault();
+    e.stopPropagation();
+    if (!hasWidgets) return;
+    openedViaKeyboardRef.current = false;
+    setOpen((v) => !v);
   };
 
-  const handleParentKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
+  const handleParentKeyDown = (e: KeyboardEvent<HTMLAnchorElement>) => {
     if (!hasWidgets) return;
     // Open + move focus into the submenu.
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
-      // Enter / Space on the parent: if menu is closed, open it AND let the
-      // default click-through navigate? No — we want predictable behavior:
-      // Enter/Space activates Dashboard navigation, Arrow keys open the menu.
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-        e.preventDefault();
-        clearTimers();
-        openedViaKeyboardRef.current = true;
-        setOpen(true);
-      }
+    // Enter / Space on the parent link: let it navigate to /dashboard (default).
+    // Arrow keys open the submenu instead.
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      clearTimers();
+      openedViaKeyboardRef.current = true;
+      setOpen(true);
     } else if (e.key === 'Escape' && open) {
       e.preventDefault();
       closeAndReturnFocus();
@@ -170,53 +166,78 @@ export function DashboardFlyoutMenu() {
     }
   };
 
-  const triggerButton = (
+  // The Dashboard label is always a real <Link> to /dashboard. The chevron is
+  // a separate button that toggles the flyout, so the two interactions never
+  // conflict. The whole row still triggers hover-to-open on desktop.
+  const dashboardLink = (
     <SidebarMenuButton
-      ref={triggerRef}
+      asChild
       isActive={isDashboardRoute}
       tooltip="Dashboard"
-      onClick={handleParentClick}
-      onKeyDown={handleParentKeyDown}
-      onMouseEnter={scheduleOpen}
-      onMouseLeave={scheduleClose}
-      // Don't auto-open on focus — that traps keyboard users. They use
-      // ArrowRight / ArrowDown to open intentionally.
-      aria-haspopup={hasWidgets ? 'menu' : undefined}
-      aria-expanded={hasWidgets ? open : undefined}
       className={cn(
         'hover:bg-sidebar-accent/50',
+        // Add right padding when the chevron is visible so its absolute
+        // position doesn't overlap the label text.
+        hasWidgets && showExpanded && 'pr-8',
         isDashboardRoute && 'bg-sidebar-accent text-sidebar-accent-foreground font-medium',
       )}
     >
-      <LayoutDashboard className="h-4 w-4" />
-      {showExpanded && (
-        <span className="flex flex-1 items-center justify-between gap-1.5">
-          <span>Dashboard</span>
-          {hasWidgets && (
-            <ChevronRight
-              className={cn(
-                'h-3.5 w-3.5 text-sidebar-foreground/60 transition-transform',
-                open && 'rotate-90',
-              )}
-              aria-hidden="true"
-            />
-          )}
-        </span>
-      )}
+      <Link
+        to="/dashboard"
+        onKeyDown={handleParentKeyDown}
+        aria-current={isDashboardRoute ? 'page' : undefined}
+      >
+        <LayoutDashboard className="h-4 w-4" />
+        {showExpanded && <span>Dashboard</span>}
+      </Link>
     </SidebarMenuButton>
   );
 
+  if (!hasWidgets) {
+    return <SidebarMenuItem>{dashboardLink}</SidebarMenuItem>;
+  }
+
   return (
     <SidebarMenuItem>
-      {hasWidgets ? (
-        <Popover
+      <div
+        ref={rowRef}
+        className="relative"
+        onMouseEnter={scheduleOpen}
+        onMouseLeave={scheduleClose}
+      >
+        {dashboardLink}
+        {showExpanded && (
+          <Popover
           open={open}
           onOpenChange={(next) => {
             if (!next) openedViaKeyboardRef.current = false;
             setOpen(next);
           }}
         >
-          <PopoverTrigger asChild>{triggerButton}</PopoverTrigger>
+            <PopoverTrigger asChild>
+              <button
+                ref={triggerRef}
+                type="button"
+                onClick={handleChevronClick}
+                aria-haspopup="menu"
+                aria-expanded={open}
+                aria-label="Open dashboard widgets submenu"
+                className={cn(
+                  'absolute right-1 top-1/2 -translate-y-1/2 z-10',
+                  'flex h-6 w-6 items-center justify-center rounded-sm',
+                  'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+                )}
+              >
+                <ChevronRight
+                  className={cn(
+                    'h-3.5 w-3.5 transition-transform',
+                    open && 'rotate-90',
+                  )}
+                  aria-hidden="true"
+                />
+              </button>
+            </PopoverTrigger>
           <PopoverContent
             side="right"
             align="start"
@@ -272,10 +293,9 @@ export function DashboardFlyoutMenu() {
               })}
             </div>
           </PopoverContent>
-        </Popover>
-      ) : (
-        triggerButton
-      )}
+          </Popover>
+        )}
+      </div>
     </SidebarMenuItem>
   );
 }
