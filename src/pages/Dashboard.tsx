@@ -130,7 +130,7 @@ function EmailTileWithIntelligence({
 
   return (
     <div
-      className={cn('relative h-full', className)}
+      className={cn('relative flex flex-1 min-w-0 h-full', className)}
       onMouseEnter={open}
       onMouseLeave={scheduleClose}
       onFocus={open}
