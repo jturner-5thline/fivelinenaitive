@@ -1228,6 +1228,122 @@ function SortableBoardCard({ task, priorityPill, todayStr, selectedTaskId, onSel
   );
 }
 
+// ── Saved-preset chip with inline rename + duplicate + delete ───────────────
+function PresetChip({
+  view, isActive, onLoad, onRename, onDuplicate, onDelete,
+}: {
+  view: TaskSavedView;
+  isActive: boolean;
+  onLoad: () => void;
+  onRename: (name: string) => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [draftName, setDraftName] = useState(view.name);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  useEffect(() => { if (!menuOpen) { setRenaming(false); setConfirmDelete(false); setDraftName(view.name); } }, [menuOpen, view.name]);
+
+  const commitRename = () => {
+    const trimmed = draftName.trim();
+    if (trimmed && trimmed !== view.name) onRename(trimmed);
+    setRenaming(false);
+    setMenuOpen(false);
+  };
+
+  return (
+    <div className="group flex items-stretch rounded-md overflow-hidden"
+      style={{
+        backgroundColor: isActive ? 'rgba(126,184,247,0.12)' : 'rgba(20,24,32,0.65)',
+        border: `1px solid ${isActive ? 'rgba(126,184,247,0.28)' : 'rgba(255,255,255,0.06)'}`,
+      }}
+    >
+      <button
+        onClick={onLoad}
+        onDoubleClick={() => { setMenuOpen(true); setRenaming(true); }}
+        className="flex items-center gap-1 h-6 pl-2.5 pr-1.5 text-[11px] font-medium transition-colors"
+        style={{ color: isActive ? '#cfe3ff' : '#9aa3b6' }}
+        title="Load preset · double-click to rename"
+      >
+        <Bookmark className="h-3 w-3" />
+        <span className="max-w-[160px] truncate">{view.name}</span>
+      </button>
+      <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+        <PopoverTrigger asChild>
+          <button
+            className="px-1 h-6 flex items-center justify-center transition-colors hover:bg-[rgba(255,255,255,0.06)]"
+            style={{ color: '#7a8194', borderLeft: '1px solid rgba(255,255,255,0.05)' }}
+            title="Preset actions"
+          >
+            <MoreVertical className="h-2.5 w-2.5" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          className="w-56 p-2 border"
+          style={{ backgroundColor: '#12151b', borderColor: 'rgba(255,255,255,0.06)' }}
+        >
+          {renaming ? (
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase tracking-wide font-medium" style={{ color: '#7a8194' }}>Rename preset</label>
+              <div className="flex items-center gap-1">
+                <Input
+                  autoFocus
+                  value={draftName}
+                  onChange={e => setDraftName(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { e.preventDefault(); commitRename(); }
+                    if (e.key === 'Escape') { setRenaming(false); setDraftName(view.name); }
+                  }}
+                  className="h-7 text-xs"
+                />
+                <Button size="sm" className="h-7 px-2" onClick={commitRename} disabled={!draftName.trim() || draftName.trim() === view.name}>
+                  <Check className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          ) : confirmDelete ? (
+            <div className="space-y-2">
+              <p className="text-[11px]" style={{ color: '#eef1f6' }}>Delete preset <span className="font-semibold">"{view.name}"</span>?</p>
+              <div className="flex justify-end gap-1">
+                <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+                <Button size="sm" className="h-7 text-[11px] bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { onDelete(); setMenuOpen(false); }}>Delete</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-0.5">
+              <button
+                onClick={() => setRenaming(true)}
+                className="flex items-center gap-2 px-2 py-1.5 rounded text-[12px] hover:bg-[rgba(255,255,255,0.04)]"
+                style={{ color: '#eef1f6' }}
+              >
+                <Pencil className="h-3 w-3" /> Rename
+              </button>
+              <button
+                onClick={() => { onDuplicate(); setMenuOpen(false); }}
+                className="flex items-center gap-2 px-2 py-1.5 rounded text-[12px] hover:bg-[rgba(255,255,255,0.04)]"
+                style={{ color: '#eef1f6' }}
+              >
+                <CopyIcon className="h-3 w-3" /> Duplicate
+              </button>
+              <div className="my-1 h-px" style={{ backgroundColor: 'rgba(255,255,255,0.05)' }} />
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="flex items-center gap-2 px-2 py-1.5 rounded text-[12px] hover:bg-[rgba(229,115,115,0.08)]"
+                style={{ color: '#e57373' }}
+              >
+                <X className="h-3 w-3" /> Delete preset
+              </button>
+            </div>
+          )}
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
 function BoardColumn({ groupKey, label, tasks: groupTasks, statusColor, priorityPill, todayStr, selectedTaskId, onSelectTask, onCreateTask, isCustom, onRemove }: {
   groupKey: string;
   label: string;
