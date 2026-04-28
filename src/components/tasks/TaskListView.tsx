@@ -19,6 +19,7 @@ import {
   Plus, MoreHorizontal, Trash2, ChevronDown, ChevronRight, GripVertical,
   Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star, AlertTriangle, Building2, User,
 } from 'lucide-react';
+import { ExpandedTaskDetails } from '@/components/tasks/ExpandedTaskDetails';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -40,7 +41,7 @@ import {
   type DueBoundaries,
 } from '@/lib/taskDateGrouping';
 
-const TASK_GRID_COLS = 'grid-cols-[20px_20px_auto_16px_1fr_100px_60px_100px_140px_100px_100px_40px]';
+const TASK_GRID_COLS = 'grid-cols-[20px_16px_20px_auto_16px_1fr_100px_60px_100px_140px_100px_100px_40px]';
 
 const STATUS_COLORS: Record<string, { label: string; bg: string; dot: string }> = {
   not_started: { label: 'Not Started', bg: '#7a8194', dot: '#7a8194' },
