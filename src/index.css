@@ -835,14 +835,35 @@
    - 12px corner radius
    - Diagonal sheen overlay (non-interactive, clipped to corners)
    ───────────────────────────────────────────────────────────── */
+/*
+ * Deal tile — sits ONE layer above the parent .glass-module on /deals.
+ * Slightly brighter fill, stronger border, and a soft inner highlight to
+ * create clear depth hierarchy:
+ *   page background  →  parent module  →  deal tile (foreground)
+ * Keep radius, blur amount and sheen overlay aligned with the rest of the
+ * platform so the tile still reads as the same glass family.
+ */
 .deal-glass {
   position: relative;
-  background: rgba(16, 28, 52, 0.75) !important;
-  border: 0.5px solid rgba(80, 140, 255, 0.18) !important;
+  background: rgba(28, 44, 74, 0.86) !important;
+  border: 1px solid rgba(120, 170, 240, 0.28) !important;
   border-radius: 12px !important;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  /* Inner top highlight + grounded outer shadow for subtle lift. */
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
+    0 1px 0 0 rgba(0, 0, 0, 0.25),
+    0 6px 18px -10px rgba(0, 0, 0, 0.55);
   overflow: hidden;
+}
+.deal-glass:hover {
+  background: rgba(34, 52, 86, 0.92) !important;
+  border-color: rgba(150, 195, 255, 0.42) !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+    0 2px 0 0 rgba(0, 0, 0, 0.28),
+    0 12px 28px -12px rgba(0, 0, 0, 0.65);
 }
 .deal-glass::before {
   content: '';
@@ -852,7 +873,7 @@
   pointer-events: none;
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.07) 0%,
+    rgba(255, 255, 255, 0.10) 0%,
     rgba(255, 255, 255, 0.00) 55%
   );
   z-index: 0;
