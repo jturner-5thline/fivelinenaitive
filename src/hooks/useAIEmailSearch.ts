@@ -216,59 +216,50 @@ export function useAIEmailSearch() {
           .slice(0, MAX_CANDIDATES)
           .map(toCandidate);
 
-        const userContent =
-          `Query: ${trimmed}\n\nCandidate emails (JSON):\n` + JSON.stringify(limited);
-
-        const response = await sendClaudeMessage(
-          {
-            messages: [{ role: 'user', content: userContent }],
-            system: buildSystemPrompt(),
-            temperature: 0.2,
-            max_tokens: 2000,
-            context: 'agent',
-          },
-          { retries: 1, timeoutMs: 30_000 }
+        // Server-side AI search: prompt + logging live in the edge function.
+        const { data: response, error: invokeError } = await supabase.functions.invoke(
+          'email-ai-search',
+          { body: { query: trimmed, candidates: limited } },
         );
 
         // Discard if a newer request started.
         if (requestId !== requestIdRef.current) return null;
 
-        if (!response.success) {
-          throw new Error(response.error || 'AI search failed');
+        if (invokeError) {
+          throw new Error(invokeError.message || 'AI search failed');
         }
-
-        const parsed = extractJsonBlock(response.response);
-        if (!parsed || !Array.isArray(parsed.results)) {
+        if (!response || !Array.isArray(response.results)) {
           throw new Error('AI returned an invalid response');
         }
 
         const validIds = new Set(candidates.map(c => c.id));
         const rankedIds: string[] = [];
         const reasons: Record<string, string> = {};
-        for (const r of parsed.results) {
+        for (const r of response.results) {
           if (r && typeof r.id === 'string' && validIds.has(r.id)) {
             rankedIds.push(r.id);
             if (typeof r.reason === 'string') reasons[r.id] = r.reason;
           }
         }
 
+        const filters = response.parsedFilters ?? {};
         const next: AIEmailSearchResult = {
           interpretation:
-            (typeof parsed.interpretation === 'string' && parsed.interpretation.trim()) ||
+            (typeof response.interpretation === 'string' && response.interpretation.trim()) ||
             `Showing results for "${trimmed}"`,
           rankedIds,
           reasons,
           filters: {
-            sender: parsed.filters?.sender ?? null,
-            senderRole: parsed.filters?.senderRole ?? null,
-            dateRange: parsed.filters?.dateRange ?? null,
-            dateRangeStart: parsed.filters?.dateRangeStart ?? null,
-            dateRangeEnd: parsed.filters?.dateRangeEnd ?? null,
-            category: parsed.filters?.category ?? null,
-            topics: Array.isArray(parsed.filters?.topics) ? parsed.filters.topics : [],
+            sender: filters.sender ?? null,
+            senderRole: filters.senderRole ?? null,
+            dateRange: filters.dateRange ?? null,
+            dateRangeStart: filters.dateRangeStart ?? null,
+            dateRangeEnd: filters.dateRangeEnd ?? null,
+            category: filters.category ?? null,
+            topics: Array.isArray(filters.topics) ? filters.topics : [],
             hasAttachments:
-              typeof parsed.filters?.hasAttachments === 'boolean'
-                ? parsed.filters.hasAttachments
+              typeof filters.hasAttachments === 'boolean'
+                ? filters.hasAttachments
                 : null,
           },
         };
@@ -277,10 +268,11 @@ export function useAIEmailSearch() {
         // eslint-disable-next-line no-console
         console.debug('[ai-email-search]', {
           query: trimmed,
-          parsedFilters: parsed.filters,
+          parsedFilters: filters,
           interpretation: next.interpretation,
           candidateCount: limited.length,
           resultCount: rankedIds.length,
+          latencyMs: response.latencyMs,
         });
 
         setResult(next);
