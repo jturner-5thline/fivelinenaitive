@@ -538,10 +538,59 @@ export function CashFlowManager() {
     return out;
   }, [computedWeekly, weeklyOverrides]);
 
-  // Merge scheduled cash flow entries into the weekly grid
+  // Apply Entity and Category filters to the scheduled (Configure) entries.
+  // When neither filter is active, all entries pass through unchanged.
+  const isConfigureFilterActive = filterEntities.length > 0 || filterCategories.length > 0;
+  const filteredScheduledItems = useMemo(() => {
+    if (!isConfigureFilterActive) return scheduledItems;
+    return (scheduledItems || []).filter((e) => {
+      // Migrate legacy parent storage so filtering is consistent with the grid.
+      const cat = e.category === 'Debt Advisory Revenue' ? DEBT_ADVISORY_DEFAULT_SUBCATEGORY : e.category;
+      const entityOk = filterEntities.length === 0 || filterEntities.includes(e.account);
+      const categoryOk = filterCategories.length === 0 || filterCategories.includes(cat);
+      return entityOk && categoryOk;
+    });
+  }, [scheduledItems, filterEntities, filterCategories, isConfigureFilterActive]);
+
+  // Build a zeroed shell of weekly entries (preserves week_ending, week_num, etc.)
+  // so that when a Configure filter is active we show ONLY filtered Configure
+  // values without inheriting daily-source receipts/disbursements.
+  const zeroedWeeklyShell = useMemo<WeeklyData>(() => {
+    const out: WeeklyData = {};
+    for (const [k, v] of Object.entries(rawWeekly)) {
+      const begin = (v['BEGINNING CASH'] as number) || 0;
+      out[k] = {
+        ...v,
+        // Zero out flow values; keep position/meta fields.
+        'TOTAL RECEIPTS': 0,
+        'TOTAL DISBURSEMENTS': 0,
+        'NET CHANGE': 0,
+        'BEGINNING CASH': begin,
+        'ENDING CASH': begin,
+      } as any;
+      // Zero out any per-category line items inherited from rawWeekly so the
+      // weekly grid only shows the filtered Configure rows.
+      for (const key of Object.keys(out[k])) {
+        const reserved = new Set([
+          'BEGINNING CASH', 'ENDING CASH', "Add'l Liquidity (Delayed Draw)",
+          'TOTAL CASH ON HAND', 'TOTAL RECEIPTS', 'TOTAL DISBURSEMENTS',
+          'NET CHANGE', 'week_ending', 'week_num', 'Internal Transfers',
+        ]);
+        if (reserved.has(key)) continue;
+        const val = (out[k] as any)[key];
+        if (typeof val === 'number') (out[k] as any)[key] = 0;
+      }
+    }
+    return out;
+  }, [rawWeekly]);
+
+  // Merge scheduled (filtered) cash flow entries into the weekly grid.
   const weeklyWithScheduled = useMemo<WeeklyData>(
-    () => mergeScheduledIntoWeekly(rawWeekly, scheduledItems),
-    [rawWeekly, scheduledItems],
+    () => mergeScheduledIntoWeekly(
+      isConfigureFilterActive ? zeroedWeeklyShell : rawWeekly,
+      filteredScheduledItems,
+    ),
+    [rawWeekly, zeroedWeeklyShell, filteredScheduledItems, isConfigureFilterActive],
   );
 
   const rawSidebar = useMemo(() => normalizeSidebarData(role === 'viewer' && sandboxSidebar ? sandboxSidebar : sidebarData), [role, sandboxSidebar, sidebarData]);
