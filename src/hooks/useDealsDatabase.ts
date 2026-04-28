@@ -328,6 +328,19 @@ export function useDealsDatabase() {
       closingDate: (dbDeal as any).closing_date || null,
       dashboardClosingDate: (dbDeal as any).dashboard_closing_date || null,
       dealClass: ((dbDeal as any).deal_class || 'standard') as DealClass,
+      onHold: (dbDeal as any).on_hold === true,
+      // Pipeline-specific (FinServ) fields
+      contactEmail: (dbDeal as any).contact_email || undefined,
+      leadSource: (dbDeal as any).lead_source || undefined,
+      referralSource: (dbDeal as any).referral_source || undefined,
+      opportunityType: (dbDeal as any).opportunity_type || undefined,
+      servicesOffered: Array.isArray((dbDeal as any).services_offered) ? (dbDeal as any).services_offered : undefined,
+      feeType: (dbDeal as any).fee_type || undefined,
+      mrr: (dbDeal as any).mrr ?? null,
+      oneTimeRevenue: (dbDeal as any).one_time_revenue ?? null,
+      projectedCloseDate: (dbDeal as any).projected_close_date || null,
+      contractStartDate: (dbDeal as any).contract_start_date || null,
+      contractEndDate: (dbDeal as any).contract_end_date || null,
     };
   }, []);
 
