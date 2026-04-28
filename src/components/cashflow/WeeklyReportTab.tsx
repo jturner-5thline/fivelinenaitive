@@ -11,6 +11,8 @@ import { CellCommentMenu } from './cellComments/CellCommentMenu';
 import { CellCommentPopover } from './cellComments/CellCommentPopover';
 import type { CellComment } from './cellComments/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { CashFlowDrilldownModal, type DrilldownContext } from './CashFlowDrilldownModal';
+import type { ScheduledCashFlow } from './scheduledCashFlows';
 
 interface SidebarItem {
   id?: string;
@@ -34,6 +36,7 @@ interface WeeklyReportTabProps {
   onSavePlan: (name: string) => void;
   onExport: () => void;
   onConfigureScheduled?: () => void;
+  scheduledItems?: ScheduledCashFlow[];
   onSidebarEditItem: (index: number, field: string, value: string | number) => void;
   onSidebarRemoveItem: (index: number) => void;
   onSidebarAddItem: () => void;
@@ -110,7 +113,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   weeklyData, weeklyOverrides, onCashOverride,
   sidebarData, sidebarDbItems, theme, isAdmin, companyId,
   planSnapshots, activePlanId, onActivePlanChange, onSavePlan,
-  onExport, onConfigureScheduled, onSidebarEditItem, onSidebarRemoveItem, onSidebarAddItem, onSidebarRemoveDbItem,
+  onExport, onConfigureScheduled, scheduledItems, onSidebarEditItem, onSidebarRemoveItem, onSidebarAddItem, onSidebarRemoveDbItem,
   onNoteEdit, onNoteRemove, onNoteAdd,
 }: WeeklyReportTabProps) {
   const { user } = useAuth();
@@ -213,6 +216,21 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
     if (el) cellRefs.current.set(key, el);
     else cellRefs.current.delete(key);
   }, []);
+
+  // ===== Drilldown state =====
+  const [drilldown, setDrilldown] = useState<DrilldownContext | null>(null);
+  const openDrilldown = useCallback(
+    (rowKey: string, rowLabel: string, weekKey: string, weekEnding: string | null, cellValue: number) => {
+      setDrilldown({
+        rowKey,
+        rowLabel,
+        weekKey,
+        weekEnding: weekEnding || weekKey,
+        cellValue,
+      });
+    },
+    [],
+  );
 
   const handleCellContextMenu = useCallback((e: React.MouseEvent<HTMLTableCellElement>, ctx: CellCtx) => {
     e.preventDefault();
@@ -474,9 +492,10 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                             key={weekKey}
                             ref={(el) => registerCellRef(ccKey, el)}
                             className={`${net > 0 ? 'cf-val-pos' : net < 0 ? 'cf-val-neg' : ''}${cellCommentsHere.length > 0 ? ' cf-cell-has-comment' : ''}`}
-                            style={{ fontWeight: 700 }}
+                            style={{ fontWeight: 700, cursor: 'pointer' }}
                             onContextMenu={(e) => handleCellContextMenu(e, cellCtx)}
-                            title={cellCommentsHere.length > 0 ? `${cellCommentsHere.length} comment${cellCommentsHere.length > 1 ? 's' : ''}` : undefined}
+                            onClick={() => openDrilldown('NET CHANGE', 'Net Change', weekKey, (entry?.week_ending as string) ?? null, net)}
+                            title={cellCommentsHere.length > 0 ? `${cellCommentsHere.length} comment${cellCommentsHere.length > 1 ? 's' : ''} • Click to view source entries` : 'Click to view source entries'}
                           >
                             <div>{fmtAbbrev(net)}</div>
                             {cellCommentsHere.length > 0 && (
@@ -583,8 +602,10 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                           key={weekKey}
                           ref={(el) => registerCellRef(ccKey, el)}
                           className={`${displayVal > 0 ? 'cf-val-pos' : displayVal < 0 ? 'cf-val-neg' : ''}${isOverridden ? ' cf-cell-override' : ''}${cellCommentsHere.length > 0 ? ' cf-cell-has-comment' : ''}`}
-                          title={isOverridden ? 'Manually overridden — double-click to clear' : (editable ? 'Click to edit' : (cellCommentsHere.length > 0 ? `${cellCommentsHere.length} comment${cellCommentsHere.length > 1 ? 's' : ''}` : undefined))}
+                          title={isOverridden ? 'Manually overridden — double-click to clear' : (editable ? 'Click to edit' : 'Click to view source entries')}
+                          style={!editable ? { cursor: 'pointer' } : undefined}
                           onContextMenu={(e) => handleCellContextMenu(e, cellCtx)}
+                          onClick={!editable ? () => openDrilldown(rowDef.key, labelText, weekKey, (entry?.week_ending as string) ?? null, displayVal) : undefined}
                           onDoubleClick={isOverridden && editable && overrideField
                             ? () => onCashOverride!(weekKey, overrideField, null)
                             : undefined}
@@ -706,6 +727,13 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
           </div>
         </div>
       )}
+
+      <CashFlowDrilldownModal
+        open={!!drilldown}
+        onClose={() => setDrilldown(null)}
+        context={drilldown}
+        items={scheduledItems || []}
+      />
     </div>
   );
 });
