@@ -13,7 +13,6 @@ import { TaskDetailDrawer } from '@/components/tasks/TaskDetailDrawer';
 import { TaskCalendarView } from '@/components/tasks/TaskCalendarView';
 import { TaskReportingView } from '@/components/tasks/TaskReportingView';
 import { TaskBulkActionBar } from '@/components/tasks/TaskBulkActionBar';
-import { TaskKPICards } from '@/components/tasks/TaskKPICards';
 import { TaskFocusMode } from '@/components/tasks/TaskFocusMode';
 import { useTaskNotifications } from '@/hooks/useTaskNotifications';
 import { useTaskSavedViews, type TaskSavedView } from '@/hooks/useTaskSavedViews';
@@ -48,7 +47,7 @@ import {
   ListTodo, LayoutGrid, Calendar, Plus, Search, Filter,
   SlidersHorizontal, Group, Trash2, BarChart3,
   Bookmark, BookmarkPlus, FileDown, Star, MoreVertical,
-  Tag, ClipboardList, Users, Briefcase, AlertTriangle, Building2,
+  Tag, ClipboardList, Users, Briefcase, Building2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { isToday, isPast, addDays, startOfDay } from 'date-fns';
