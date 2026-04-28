@@ -1388,6 +1388,58 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                   />
                   {/* Inline AI / clear controls */}
                   <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    {/* Effective-mode indicator: shows how the current query is actually being interpreted */}
+                    {(() => {
+                      const trimmed = searchQuery.trim();
+                      if (!trimmed) return null;
+                      const wordCount = trimmed.split(/\s+/).filter(Boolean).length;
+                      const autoWouldUseAI =
+                        trimmed.length >= AI_SEARCH_MIN_LENGTH && wordCount >= 2;
+                      const effective: 'literal' | 'ai' =
+                        searchMode === 'ai' || (searchMode === 'auto' && autoWouldUseAI)
+                          ? 'ai'
+                          : 'literal';
+                      const isAi = effective === 'ai';
+                      const label =
+                        searchMode === 'auto'
+                          ? isAi ? 'Auto · AI' : 'Auto · Literal'
+                          : isAi ? 'AI' : 'Literal';
+                      const tip =
+                        searchMode === 'auto'
+                          ? isAi
+                            ? 'Auto mode: query is long enough — interpreting with AI'
+                            : `Auto mode: too short for AI (need ≥${AI_SEARCH_MIN_LENGTH} chars & 2+ words) — using keyword match`
+                          : isAi
+                            ? aiSearch.isSearching
+                              ? 'AI is interpreting your query…'
+                              : aiSearchActive
+                                ? 'Showing AI-ranked results'
+                                : 'AI mode: query will be interpreted with AI'
+                            : 'Literal mode: keyword match only';
+                      return (
+                        <span
+                          title={tip}
+                          aria-label={`Search interpretation: ${label}`}
+                          className={cn(
+                            'inline-flex items-center gap-1 h-5 px-1.5 rounded text-[9px] font-semibold uppercase tracking-wide border',
+                            isAi
+                              ? 'bg-primary/15 text-primary border-primary/30'
+                              : 'bg-white/[0.04] text-muted-foreground border-white/[0.08]'
+                          )}
+                        >
+                          {isAi ? (
+                            aiSearch.isSearching ? (
+                              <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-2.5 w-2.5" />
+                            )
+                          ) : (
+                            <Search className="h-2.5 w-2.5" />
+                          )}
+                          {label}
+                        </span>
+                      );
+                    })()}
                     {/* Mode toggle: Literal | Auto | AI */}
                     <div
                       className="inline-flex items-center rounded border border-white/[0.08] bg-white/[0.03] overflow-hidden"
