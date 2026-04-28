@@ -67,11 +67,13 @@ export const DEFAULT_LABEL_COLORS = [
 ] as const;
 
 export type EmailLabelRuleField =
-  | "from"
-  | "to"
+  | "sender_email"
+  | "sender_domain"
+  | "recipient_email"
   | "subject"
   | "body"
-  | "any";
+  | "deal_name"
+  | "category";
 export type EmailLabelRuleOperator =
   | "contains"
   | "equals"
@@ -80,11 +82,13 @@ export type EmailLabelRuleOperator =
   | "regex";
 
 export const LABEL_FIELD_OPTIONS: { value: EmailLabelRuleField; label: string }[] = [
-  { value: "from", label: "From" },
-  { value: "to", label: "To" },
+  { value: "sender_email", label: "Sender email" },
+  { value: "sender_domain", label: "Sender domain" },
+  { value: "recipient_email", label: "Recipient email" },
   { value: "subject", label: "Subject" },
   { value: "body", label: "Body" },
-  { value: "any", label: "Any field" },
+  { value: "deal_name", label: "Deal name" },
+  { value: "category", label: "Category" },
 ];
 
 export const LABEL_OPERATOR_OPTIONS: { value: EmailLabelRuleOperator; label: string }[] = [
@@ -101,6 +105,7 @@ export interface EmailLabelRule {
   field: EmailLabelRuleField;
   operator: EmailLabelRuleOperator;
   value: string;
+  is_active: boolean;
   case_sensitive?: boolean;
 }
 
@@ -109,67 +114,100 @@ export interface EmailLabelRule {
  * canonical `EmailLabel` and adds `scope`/`is_default` derived fields.
  */
 export interface LegacyEmailLabel extends EmailLabel {
-  scope: "personal" | "team";
+  scope: "user" | "team";
   is_default: boolean;
 }
 
 function toLegacyLabel(l: EmailLabel): LegacyEmailLabel {
   return {
     ...l,
-    scope: l.is_shared ? "team" : "personal",
+    scope: l.is_shared ? "team" : "user",
     is_default: false,
   };
 }
 
 /**
  * Legacy facade used by the old settings + thread bar. Returns labels in
- * the augmented shape and an empty rules list (the rules engine is not
- * part of this Foundation slice).
+ * the augmented shape, an empty rules list (rules engine is not part of
+ * this Foundation slice), and mutate-style helpers that proxy to the new
+ * mutation hooks.
  */
-export function useEmailLabels(): {
-  labels: LegacyEmailLabel[];
-  rules: EmailLabelRule[];
-  isLoading: boolean;
-  addLabel: (input: { name: string; color?: LabelColor; description?: string | null }) => Promise<LegacyEmailLabel>;
-  updateLabel: (id: string, patch: Partial<Pick<EmailLabel, "name" | "color" | "icon" | "description">>) => Promise<LegacyEmailLabel>;
-  deleteLabel: (id: string) => Promise<string>;
-  addRule: (_rule: Omit<EmailLabelRule, "id">) => Promise<EmailLabelRule>;
-  updateRule: (_id: string, _patch: Partial<EmailLabelRule>) => Promise<EmailLabelRule>;
-  deleteRule: (_id: string) => Promise<string>;
-} {
+export function useEmailLabels() {
   const { data: labels = [], isLoading } = useLabels();
   const create = useCreateLabel();
   const update = useUpdateLabel();
   const del = useDeleteLabel();
+
+  const allLegacy = labels.map(toLegacyLabel);
+  const teamLabels = allLegacy.filter((l) => l.scope === "team");
+  const userLabels = allLegacy.filter((l) => l.scope === "user");
+
+  // No-op rule mutator with the same call signature as a useMutation result.
+  const noopRuleMutator = {
+    mutate: (_input?: unknown) => {
+      console.warn("Auto-label rules are not available in this build");
+    },
+    mutateAsync: async (_input?: unknown) => {
+      throw new Error("Auto-label rules are not available in this build");
+    },
+    isPending: false,
+  };
+
   return {
-    labels: labels.map(toLegacyLabel),
-    rules: [],
+    // Data
+    labels: allLegacy,
+    teamLabels,
+    userLabels,
+    rules: [] as EmailLabelRule[],
     isLoading,
-    addLabel: async (input) => toLegacyLabel(await create.mutateAsync(input)),
-    updateLabel: async (id, patch) => toLegacyLabel(await update.mutateAsync({ id, patch })),
-    deleteLabel: async (id) => del.mutateAsync(id),
-    addRule: async () => {
-      throw new Error("Auto-label rules are not available in this build");
+    getRulesForLabel: (_labelId: string): EmailLabelRule[] => [],
+
+    // Mutation surfaces — expose both async helpers and useMutation-style
+    // objects (consumers use both `mutate` and `mutateAsync`).
+    createLabel: {
+      mutate: (input: { name: string; color?: LabelColor; description?: string | null; scope?: "user" | "team"; is_default?: boolean }) => {
+        create.mutate({ name: input.name, color: input.color, description: input.description ?? null });
+      },
+      mutateAsync: async (input: { name: string; color?: LabelColor; description?: string | null; scope?: "user" | "team"; is_default?: boolean }) => {
+        return toLegacyLabel(await create.mutateAsync({ name: input.name, color: input.color, description: input.description ?? null }));
+      },
+      isPending: create.isPending,
     },
-    updateRule: async () => {
-      throw new Error("Auto-label rules are not available in this build");
+    updateLabel: {
+      mutate: (input: { id: string; name?: string; color?: LabelColor; description?: string | null; icon?: string | null; is_default?: boolean }) => {
+        const { id, is_default: _ignored, ...patch } = input;
+        update.mutate({ id, patch });
+      },
+      mutateAsync: async (input: { id: string; name?: string; color?: LabelColor; description?: string | null; icon?: string | null; is_default?: boolean }) => {
+        const { id, is_default: _ignored, ...patch } = input;
+        return toLegacyLabel(await update.mutateAsync({ id, patch }));
+      },
+      isPending: update.isPending,
     },
-    deleteRule: async () => {
-      throw new Error("Auto-label rules are not available in this build");
+    deleteLabel: {
+      mutate: (id: string) => del.mutate(id),
+      mutateAsync: async (id: string) => del.mutateAsync(id),
+      isPending: del.isPending,
     },
+
+    // Rules — no-ops so the settings UI renders empty state cleanly.
+    createRule: noopRuleMutator,
+    updateRule: noopRuleMutator,
+    deleteRule: noopRuleMutator,
+    toggleRule: noopRuleMutator,
+
+    // Convenience aliases used by older callers
+    addLabel: async (input: { name: string; color?: LabelColor; description?: string | null }) =>
+      toLegacyLabel(await create.mutateAsync(input)),
   };
 }
 
 /**
  * Legacy facade for the thread-labels bar. Returns the labels currently
- * applied to `threadId` and exposes add/remove helpers.
+ * applied to `threadId` (in the rich row shape used by ThreadLabelsBar)
+ * and exposes mutate-style add/remove helpers.
  */
-export function useThreadLabels(threadId: string): {
-  threadLabels: { label: LegacyEmailLabel; appliedVia: "manual" | "rule" }[];
-  isLoading: boolean;
-  addLabel: (labelId: string) => Promise<void>;
-  removeLabel: (labelId: string) => Promise<void>;
-} {
+export function useThreadLabels(threadId: string) {
   const { data: labels = [] } = useLabels();
   const { data: assignments = [], isLoading } = useAllLabelAssignments();
   const apply = useApplyLabel();
@@ -178,18 +216,37 @@ export function useThreadLabels(threadId: string): {
   const byId = new Map(labels.map((l) => [l.id, l] as const));
   const threadLabels = assignments
     .filter((a) => a.thread_id === threadId)
-    .map((a) => byId.get(a.label_id))
-    .filter((l): l is EmailLabel => !!l)
-    .map((l) => ({ label: toLegacyLabel(l), appliedVia: "manual" as const }));
+    .map((a) => {
+      const lab = byId.get(a.label_id);
+      if (!lab) return null;
+      return {
+        id: a.id,
+        label_id: a.label_id,
+        label: toLegacyLabel(lab),
+        applied_via: "manual" as const,
+        appliedVia: "manual" as const,
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => !!x);
 
   return {
     threadLabels,
     isLoading,
-    addLabel: async (labelId: string) => {
-      await apply.mutateAsync({ threadId, labelId });
+    addLabel: {
+      mutate: (input: { labelId: string; via?: "manual" | "rule" }) => {
+        apply.mutate({ threadId, labelId: input.labelId });
+      },
+      mutateAsync: async (input: { labelId: string; via?: "manual" | "rule" }) => {
+        await apply.mutateAsync({ threadId, labelId: input.labelId });
+      },
+      isPending: apply.isPending,
     },
-    removeLabel: async (labelId: string) => {
-      await remove.mutateAsync({ threadId, labelId });
+    removeLabel: {
+      mutate: (labelId: string) => remove.mutate({ threadId, labelId }),
+      mutateAsync: async (labelId: string) => {
+        await remove.mutateAsync({ threadId, labelId });
+      },
+      isPending: remove.isPending,
     },
   };
 }
