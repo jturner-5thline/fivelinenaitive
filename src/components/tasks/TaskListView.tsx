@@ -19,6 +19,7 @@ import {
   Plus, MoreHorizontal, Trash2, ChevronDown, ChevronRight, GripVertical,
   Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star, AlertTriangle, Building2, User,
 } from 'lucide-react';
+import { ExpandedTaskDetails } from '@/components/tasks/ExpandedTaskDetails';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -40,7 +41,7 @@ import {
   type DueBoundaries,
 } from '@/lib/taskDateGrouping';
 
-const TASK_GRID_COLS = 'grid-cols-[20px_20px_auto_16px_1fr_100px_60px_100px_140px_100px_100px_40px]';
+const TASK_GRID_COLS = 'grid-cols-[20px_16px_20px_auto_16px_1fr_100px_60px_100px_140px_100px_100px_40px]';
 
 const STATUS_COLORS: Record<string, { label: string; bg: string; dot: string }> = {
   not_started: { label: 'Not Started', bg: '#7a8194', dot: '#7a8194' },
@@ -151,6 +152,7 @@ export function TaskListView({
   onToggleStar, focusedTaskIndex, taskNameWarning,
 }: TaskListViewProps) {
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(['complete']));
+  const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(new Set());
   const [dragActiveId, setDragActiveId] = useState<string | null>(null);
   const taskIds = useMemo(() => tasks.map(t => t.id), [tasks]);
   const collaboratorsMap = useTaskCollaboratorsBatch(taskIds);
@@ -168,6 +170,14 @@ export function TaskListView({
       return next;
     });
   };
+
+  const toggleExpanded = useCallback((taskId: string) => {
+    setExpandedTaskIds(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId); else next.add(taskId);
+      return next;
+    });
+  }, []);
 
   const handleDragStart = (event: DragStartEvent) => setDragActiveId(event.active.id as string);
   const handleDragEnd = (event: DragEndEvent) => {
@@ -222,6 +232,7 @@ export function TaskListView({
         <div className={`grid ${TASK_GRID_COLS} gap-2 items-center px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide sticky top-0 z-10`}
           style={{ backgroundColor: 'rgba(18,21,27,0.92)', backdropFilter: 'blur(8px)', color: '#7a8194', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
           <div />
+          <div />
           <div className="cursor-pointer" onClick={onSelectAll} title="Select all (Ctrl+A)">
             <Checkbox checked={selectedTaskIds && selectedTaskIds.size > 0 && selectedTaskIds.size === tasks.length} onCheckedChange={() => onSelectAll?.()} className="h-3.5 w-3.5" />
           </div>
@@ -252,6 +263,8 @@ export function TaskListView({
             onToggleComplete={handleCompleteWithCelebration}
             onToggleSelect={onToggleSelect}
             onToggleStar={onToggleStar}
+            expandedTaskIds={expandedTaskIds}
+            onToggleExpanded={toggleExpanded}
           />
         )}
 
@@ -312,6 +325,9 @@ export function TaskListView({
                           onToggleStar={onToggleStar ? () => onToggleStar(task.id, task.is_starred) : undefined}
                           showSelectCheckbox={(selectedTaskIds?.size || 0) > 0}
                           collaborators={collaboratorsMap.get(task.id)}
+                          isExpanded={expandedTaskIds.has(task.id)}
+                          onToggleExpanded={() => toggleExpanded(task.id)}
+                          onOpenFullDetail={() => onSelectTask(task.id)}
                         />
                       );
                     })}
@@ -366,7 +382,7 @@ export function TaskListView({
 }
 
 // Pinned Overdue Section
-function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focusedTaskIndex, allTasks, onSelectTask, onUpdateTask, onDeleteTask, onToggleComplete, onToggleSelect, onToggleStar }: {
+function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focusedTaskIndex, allTasks, onSelectTask, onUpdateTask, onDeleteTask, onToggleComplete, onToggleSelect, onToggleStar, expandedTaskIds, onToggleExpanded }: {
   tasks: Task[];
   todayStr: string;
   selectedTaskId: string | null;
@@ -379,6 +395,8 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
   onToggleComplete: (id: string, status: string) => void;
   onToggleSelect?: (id: string) => void;
   onToggleStar?: (id: string, current: boolean) => void;
+  expandedTaskIds?: Set<string>;
+  onToggleExpanded?: (taskId: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -419,6 +437,9 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
             onToggleSelect={onToggleSelect ? () => onToggleSelect(task.id) : undefined}
             onToggleStar={onToggleStar ? () => onToggleStar(task.id, task.is_starred) : undefined}
             showSelectCheckbox={(selectedTaskIds?.size || 0) > 0}
+            isExpanded={expandedTaskIds?.has(task.id)}
+            onToggleExpanded={onToggleExpanded ? () => onToggleExpanded(task.id) : undefined}
+            onOpenFullDetail={() => onSelectTask(task.id)}
           />
         );
       })}
@@ -487,7 +508,7 @@ function QuickDatePicker({ value, onChange, todayStr }: { value: string | null; 
 }
 
 // Sortable task row
-function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocused, onSelect, onUpdate, onDelete, onToggleComplete, onToggleSelect, onToggleStar, showSelectCheckbox, collaborators }: {
+function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocused, onSelect, onUpdate, onDelete, onToggleComplete, onToggleSelect, onToggleStar, showSelectCheckbox, collaborators, isExpanded, onToggleExpanded, onOpenFullDetail }: {
   task: Task;
   todayStr: string;
   isSelected: boolean;
@@ -501,6 +522,9 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
   onToggleStar?: () => void;
   showSelectCheckbox?: boolean;
   collaborators?: { user_id: string; display_name: string; avatar_url: string | null }[];
+  isExpanded?: boolean;
+  onToggleExpanded?: () => void;
+  onOpenFullDetail?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.3 : 1 };
@@ -520,6 +544,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
   const blockerNote = (task as any).blocker_note;
 
   return (
+    <>
     <div
       ref={setNodeRef}
       className={cn(
@@ -537,6 +562,24 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       {/* Drag handle */}
       <div className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing" {...attributes} {...listeners} onClick={e => e.stopPropagation()}>
         <GripVertical className="h-3 w-3" style={{ color: '#7a8194' }} />
+      </div>
+
+      {/* Expand toggle */}
+      <div onClick={e => e.stopPropagation()}>
+        <button
+          type="button"
+          onClick={() => onToggleExpanded?.()}
+          className="h-4 w-4 flex items-center justify-center rounded hover:bg-[rgba(255,255,255,0.06)] transition-colors"
+          aria-expanded={!!isExpanded}
+          aria-label={isExpanded ? 'Hide details' : 'Show details'}
+          title={isExpanded ? 'Hide details' : 'Show details'}
+        >
+          {isExpanded ? (
+            <ChevronDown className="h-3 w-3" style={{ color: '#cfe3ff' }} />
+          ) : (
+            <ChevronRight className="h-3 w-3" style={{ color: '#7a8194' }} />
+          )}
+        </button>
       </div>
 
       {/* Multi-select */}
@@ -700,5 +743,13 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
         </DropdownMenu>
       </div>
     </div>
+    {isExpanded && (
+      <ExpandedTaskDetails
+        task={task}
+        onUpdate={onUpdate}
+        onOpenFullDetail={onOpenFullDetail || onSelect}
+      />
+    )}
+    </>
   );
 }
