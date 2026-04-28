@@ -179,6 +179,8 @@ export function createGlassBarShape(options?: {
 
     let anchoredY = Number(props.y ?? 0);
     let anchoredHeight = Math.abs(Number(props.height ?? 0));
+    let baselineY: number | undefined;
+    let anchoredValueY: number | undefined;
 
     if (typeof yAxis?.scale === 'function' && Number.isFinite(datumValue)) {
       const zeroBaselineY = Number(yAxis.scale(0));
@@ -193,6 +195,8 @@ export function createGlassBarShape(options?: {
         && Number.isFinite(plotTop)
         && Number.isFinite(plotBottom)
       ) {
+        baselineY = Math.max(plotTop, Math.min(plotBottom, zeroBaselineY));
+        anchoredValueY = Math.max(plotTop, Math.min(plotBottom, valueY));
         anchoredY = Math.max(plotTop, Math.min(zeroBaselineY, valueY));
         const anchoredBottom = Math.min(plotBottom, Math.max(zeroBaselineY, valueY));
         anchoredHeight = Math.max(0, anchoredBottom - anchoredY);
@@ -204,6 +208,8 @@ export function createGlassBarShape(options?: {
         {...props}
         y={anchoredY}
         height={anchoredHeight}
+        baselineY={baselineY}
+        valueY={anchoredValueY}
         radius={radius}
         isTopSegment={isTop}
         valueSign={valueSign}
