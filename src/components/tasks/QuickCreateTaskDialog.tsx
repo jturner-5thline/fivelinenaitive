@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/u
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CalendarIcon, Loader2, UserCheck, Zap, Sun, Sunrise, CalendarDays, Flame, Coffee } from 'lucide-react';
+import { CalendarIcon, Loader2, UserCheck, Zap, Sun, Sunrise, CalendarDays, Flame, Coffee, Repeat } from 'lucide-react';
 import { addDays, format, isSameDay, nextMonday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { type TeamMember } from '@/hooks/useTeamMembers';
@@ -18,6 +18,7 @@ export interface QuickTaskInput {
   due_date: string | null;
   status: 'not_started' | 'in_progress' | 'blocked' | 'complete';
   assigned_to: string;
+  recurrence_rule: string | null;
 }
 
 interface Props {
@@ -36,6 +37,7 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [status, setStatus] = useState<QuickTaskInput['status']>('not_started');
   const [assignedTo, setAssignedTo] = useState<string>(currentUserId);
+  const [recurrence, setRecurrence] = useState<string | null>(null);
   const [warning, setWarning] = useState('');
   const [confirmedJunk, setConfirmedJunk] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -47,6 +49,7 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
       setDueDate(undefined);
       setStatus('not_started');
       setAssignedTo(currentUserId);
+      setRecurrence(null);
       setWarning('');
       setConfirmedJunk(false);
       setSubmitting(false);
@@ -127,6 +130,7 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
         due_date: dueDate ? format(dueDate, 'yyyy-MM-dd') : null,
         status,
         assigned_to: assignedTo,
+        recurrence_rule: recurrence,
       });
       onClose();
     } finally {
@@ -305,6 +309,46 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Recurrence */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase tracking-wide font-medium flex items-center gap-1" style={{ color: '#7a8194' }}>
+              <Repeat className="h-3 w-3" /> Repeat
+            </label>
+            <div className="flex flex-wrap gap-1">
+              {[
+                { value: null, label: 'None' },
+                { value: 'daily', label: 'Daily' },
+                { value: 'weekdays', label: 'Weekdays' },
+                { value: 'weekly', label: 'Weekly' },
+                { value: 'biweekly', label: 'Biweekly' },
+                { value: 'monthly', label: 'Monthly' },
+                { value: 'quarterly', label: 'Quarterly' },
+              ].map(opt => {
+                const active = recurrence === opt.value;
+                return (
+                  <button
+                    key={opt.label}
+                    type="button"
+                    onClick={() => setRecurrence(opt.value)}
+                    className="px-2 py-1 rounded-md text-[11px] font-medium border transition-colors"
+                    style={{
+                      color: active ? '#cfe3ff' : '#9aa3b6',
+                      borderColor: active ? 'rgba(126,184,247,0.45)' : 'rgba(255,255,255,0.08)',
+                      backgroundColor: active ? 'rgba(126,184,247,0.14)' : 'rgba(20,24,32,0.65)',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+            {recurrence && !dueDate && (
+              <p className="text-[10px]" style={{ color: '#e89b6c' }}>
+                Tip: set a due date — the next task is generated when this one is completed.
+              </p>
+            )}
           </div>
 
           {/* Assignee */}
