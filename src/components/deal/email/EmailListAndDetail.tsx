@@ -2155,6 +2155,73 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 // Lightweight searchable list backed by the user's deals table. Render only
 // when triggered, so the query runs lazily on open.
 // ─────────────────────────────────────────────────────────────────────────────
+const LINK_REPLY_RECENT_KEY = 'naitive.linkReplyDialog.recent';
+const LINK_REPLY_RECENT_MAX = 5;
+
+function loadRecentPickedDeals(): Array<{ id: string; name: string }> {
+  try {
+    const raw = localStorage.getItem(LINK_REPLY_RECENT_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((d) => d && typeof d.id === 'string' && typeof d.name === 'string')
+      .slice(0, LINK_REPLY_RECENT_MAX);
+  } catch {
+    return [];
+  }
+}
+
+function pushRecentPickedDeal(deal: { id: string; name: string }) {
+  try {
+    const prev = loadRecentPickedDeals().filter((d) => d.id !== deal.id);
+    const next = [deal, ...prev].slice(0, LINK_REPLY_RECENT_MAX);
+    localStorage.setItem(LINK_REPLY_RECENT_KEY, JSON.stringify(next));
+  } catch {
+    /* storage disabled — recents simply won't persist */
+  }
+}
+
+/**
+ * Lightweight fuzzy scorer used by the link-to-deal picker. Returns a number
+ * in roughly [0,1] (higher = better). 0 means "no subsequence match at all".
+ * Heuristics:
+ *  - prefix match on the name → big boost
+ *  - word-boundary matches (e.g. typing "ac" hits "Acme Corp") → boost
+ *  - tighter clusters of matched chars score higher than scattered ones
+ */
+function fuzzyScore(name: string, query: string): number {
+  if (!query) return 0;
+  const n = name.toLowerCase();
+  const q = query.toLowerCase().trim();
+  if (!q) return 0;
+  if (n === q) return 1;
+  if (n.startsWith(q)) return 0.95;
+  if (n.includes(q)) return 0.85;
+
+  // Subsequence walk
+  let qi = 0;
+  let score = 0;
+  let lastIdx = -2;
+  let prevIsBoundary = true;
+  for (let i = 0; i < n.length && qi < q.length; i++) {
+    const c = n[i];
+    const isBoundary = prevIsBoundary || /[\s\-_./]/.test(n[i - 1] || '');
+    if (c === q[qi]) {
+      let bonus = 0.1;
+      if (i === lastIdx + 1) bonus += 0.15; // adjacency
+      if (isBoundary) bonus += 0.2;          // word start
+      score += bonus;
+      lastIdx = i;
+      qi++;
+    }
+    prevIsBoundary = /[\s\-_./]/.test(c);
+  }
+  if (qi < q.length) return 0; // not all chars matched
+  // Normalize roughly by query length so longer queries don't always win.
+  return Math.min(0.8, score / (q.length * 0.45));
+}
+
 function LinkReplyToDealDialog({
   open,
   onOpenChange,
@@ -2171,10 +2238,12 @@ function LinkReplyToDealDialog({
   const [query, setQuery] = useState(defaultQuery || '');
   const [deals, setDeals] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(false);
+  const [recents, setRecents] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
     if (!open) return;
     setQuery(defaultQuery || '');
+    setRecents(loadRecentPickedDeals());
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -2183,7 +2252,7 @@ function LinkReplyToDealDialog({
           .from('deals')
           .select('id, company')
           .order('updated_at', { ascending: false })
-          .limit(50);
+          .limit(200);
         if (cancelled) return;
         setDeals((data || []).map((d: any) => ({ id: d.id, name: d.company || 'Untitled deal' })));
       } finally {
@@ -2193,11 +2262,43 @@ function LinkReplyToDealDialog({
     return () => { cancelled = true; };
   }, [open, defaultQuery]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return deals.slice(0, 20);
-    return deals.filter((d) => d.name.toLowerCase().includes(q)).slice(0, 20);
-  }, [deals, query]);
+  // When there's no query, show "Recent" first then most-recently-updated
+  // deals beneath it (deduped). When the user types, run the fuzzy scorer
+  // across BOTH recents and deals so a recent pick still ranks at the top
+  // when its name matches the query well.
+  const { recentMatches, dealMatches, hasQuery } = useMemo(() => {
+    const q = query.trim();
+    const recentIds = new Set(recents.map((d) => d.id));
+    const dealsExcludingRecents = deals.filter((d) => !recentIds.has(d.id));
+
+    if (!q) {
+      return {
+        hasQuery: false,
+        recentMatches: recents,
+        dealMatches: dealsExcludingRecents.slice(0, 20),
+      };
+    }
+
+    const scoreAndSort = (list: Array<{ id: string; name: string }>) =>
+      list
+        .map((d) => ({ d, s: fuzzyScore(d.name, q) }))
+        .filter((x) => x.s > 0)
+        .sort((a, b) => b.s - a.s)
+        .map((x) => x.d);
+
+    return {
+      hasQuery: true,
+      recentMatches: scoreAndSort(recents),
+      dealMatches: scoreAndSort(dealsExcludingRecents).slice(0, 20),
+    };
+  }, [deals, recents, query]);
+
+  const handlePick = (deal: { id: string; name: string }) => {
+    pushRecentPickedDeal(deal);
+    onPick(deal);
+  };
+
+  const isEmpty = !loading && recentMatches.length === 0 && dealMatches.length === 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -2217,24 +2318,56 @@ function LinkReplyToDealDialog({
             placeholder="Search deals…"
             autoFocus
           />
-          <div className="max-h-64 overflow-y-auto rounded-md border border-border/50 divide-y divide-border/40">
+          <div className="max-h-64 overflow-y-auto rounded-md border border-border/50">
             {loading ? (
               <div className="p-3 text-xs text-muted-foreground inline-flex items-center gap-2">
                 <Loader2 className="h-3 w-3 animate-spin" /> Loading deals…
               </div>
-            ) : filtered.length === 0 ? (
+            ) : isEmpty ? (
               <div className="p-3 text-xs text-muted-foreground">No matching deals.</div>
             ) : (
-              filtered.map((d) => (
-                <button
-                  key={d.id}
-                  type="button"
-                  onClick={() => onPick(d)}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted/40 transition-colors"
-                >
-                  {d.name}
-                </button>
-              ))
+              <>
+                {recentMatches.length > 0 && (
+                  <div>
+                    <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Recent
+                    </div>
+                    <div className="divide-y divide-border/40">
+                      {recentMatches.map((d) => (
+                        <button
+                          key={`recent-${d.id}`}
+                          type="button"
+                          onClick={() => handlePick(d)}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted/40 transition-colors"
+                        >
+                          {d.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {dealMatches.length > 0 && (
+                  <div>
+                    {recentMatches.length > 0 && (
+                      <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-t border-border/40">
+                        {hasQuery ? 'Other matches' : 'All deals'}
+                      </div>
+                    )}
+                    <div className="divide-y divide-border/40">
+                      {dealMatches.map((d) => (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => handlePick(d)}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted/40 transition-colors"
+                        >
+                          {d.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
