@@ -30,7 +30,7 @@ export const GridWidgetCard = forwardRef<HTMLDivElement, GridWidgetCardProps>(
         )}
         {...rest}
       >
-        <Card className="h-full flex flex-col overflow-hidden relative group">
+        <Card className="glass-module h-full flex flex-col overflow-hidden relative group">
           {/* Drag handle bar */}
           {isEditMode && (
             <div className="widget-drag-handle absolute top-0 left-0 right-0 h-8 cursor-grab active:cursor-grabbing z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
