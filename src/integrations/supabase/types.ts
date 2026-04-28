@@ -8428,6 +8428,44 @@ export type Database = {
         }
         Relationships: []
       }
+      email_label_assignments: {
+        Row: {
+          applied_at: string
+          applied_by: string
+          id: string
+          label_id: string
+          message_id: string | null
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string
+          applied_by: string
+          id?: string
+          label_id: string
+          message_id?: string | null
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          applied_at?: string
+          applied_by?: string
+          id?: string
+          label_id?: string
+          message_id?: string | null
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_label_assignments_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "email_labels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_label_rules: {
         Row: {
           created_at: string
@@ -8475,11 +8513,14 @@ export type Database = {
           company_id: string | null
           created_at: string
           description: string | null
+          icon: string | null
           id: string
           is_default: boolean | null
+          is_shared: boolean
           name: string
           position: number | null
           scope: string
+          sort_order: number
           updated_at: string
           user_id: string | null
         }
@@ -8488,11 +8529,14 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           description?: string | null
+          icon?: string | null
           id?: string
           is_default?: boolean | null
+          is_shared?: boolean
           name: string
           position?: number | null
           scope?: string
+          sort_order?: number
           updated_at?: string
           user_id?: string | null
         }
@@ -8501,11 +8545,14 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           description?: string | null
+          icon?: string | null
           id?: string
           is_default?: boolean | null
+          is_shared?: boolean
           name?: string
           position?: number | null
           scope?: string
+          sort_order?: number
           updated_at?: string
           user_id?: string | null
         }
