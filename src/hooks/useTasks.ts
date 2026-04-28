@@ -478,10 +478,10 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
             const nextDueDate = calculateNextDueDate(completedTask.due_date, completedTask.recurrence_rule);
             const seriesEnd = (completedTask as any).recurrence_end_date as string | null | undefined;
             // Stop the series if the next occurrence falls past the end date
-            // (or if no next date can be computed at all).
-            if (!nextDueDate || (seriesEnd && nextDueDate > seriesEnd)) {
-              return;
-            }
+            // (or if no next date can be computed at all). We still continue
+            // with the rest of the completion flow (Zapier/Asana sync etc.).
+            const seriesShouldContinue = !!nextDueDate && (!seriesEnd || nextDueDate <= seriesEnd);
+            if (seriesShouldContinue) {
              const { data: newRecurringTask } = await supabase.from('tasks').insert({
                title: completedTask.title,
                description: completedTask.description,
@@ -517,6 +517,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
              } catch (e) {
                console.error('[AsanaSync] Recurring task sync failed:', e);
              }
+            }
           }
         }
       }
