@@ -635,6 +635,21 @@ export function EmailUnifiedAiAction({
                 loading={taskLoading}
               />
             )}
+            {suggestion.intent === 'note' && suggestion.lender?.name && (
+              <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-primary/20 bg-primary/[0.04] px-2 py-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-primary/80">
+                  Also updates lender
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10.5px] font-medium text-foreground/90">
+                  {suggestion.lender.name}
+                </span>
+                {suggestion.lender.status && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10.5px] font-medium text-foreground/90">
+                    Status: {suggestion.lender.status.replace(/-/g, ' ')}
+                  </span>
+                )}
+              </div>
+            )}
             <div className="flex items-center justify-between gap-2 pt-0.5">
               <span className="text-[10px] text-muted-foreground italic">
                 {suggestion.rationale}
