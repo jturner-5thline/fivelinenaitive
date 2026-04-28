@@ -613,6 +613,12 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
     const norm = tp.trim().toLowerCase();
     const q = activeQuarterLabel.trim().toLowerCase();
     const h = activeHalfLabel.trim().toLowerCase();
+    const exact = !!s.asanaGoalExactMatch;
+    if (exact) {
+      if (q && norm === q) return true;
+      if (h && norm === h) return true;
+      return false;
+    }
     if (q && norm.includes(q)) return true;
     if (h && norm.includes(h)) return true;
     return false;
