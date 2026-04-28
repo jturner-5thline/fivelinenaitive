@@ -570,11 +570,15 @@ export default function Dashboard() {
                 )
               }
             >
-              <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                <div className={TILE_ICON_CHIP_CLASSES}>
-                  <CalendarIcon className="relative z-10 h-7 w-7 text-primary" />
+              <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
+                <div
+                  className={TILE_CHIP_BASE}
+                  style={{ background: TILE_CHIP_GRADIENTS.calendar }}
+                >
+                  <TileChipGloss />
+                  <CalendarIcon className="relative z-10 h-8 w-8" style={{ color: '#7b9ff5' }} />
                 </div>
-                <span className="text-sm font-medium text-foreground">Calendar</span>
+                <span className={TILE_LABEL_CLASSES}>Calendar</span>
               </div>
             </Card>
             <EmailTileWithIntelligence
@@ -597,11 +601,15 @@ export default function Dashboard() {
                 )
               }
             >
-              <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                <div className={TILE_ICON_CHIP_CLASSES}>
-                  <Briefcase className="relative z-10 h-7 w-7 text-accent-foreground" />
+              <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
+                <div
+                  className={TILE_CHIP_BASE}
+                  style={{ background: TILE_CHIP_GRADIENTS.newDeal }}
+                >
+                  <TileChipGloss />
+                  <Briefcase className="relative z-10 h-8 w-8" style={{ color: '#6b9cf5' }} />
                 </div>
-                <span className="text-sm font-medium text-foreground">New Deal</span>
+                <span className={TILE_LABEL_CLASSES}>New Deal</span>
               </div>
             </Card>
             {isJTurner && (
@@ -616,11 +624,15 @@ export default function Dashboard() {
                   )
                 }
               >
-                <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                  <div className={TILE_ICON_CHIP_CLASSES}>
-                    <Newspaper className="relative z-10 h-7 w-7 text-warning" />
+                <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
+                  <div
+                    className={TILE_CHIP_BASE}
+                    style={{ background: TILE_CHIP_GRADIENTS.briefing }}
+                  >
+                    <TileChipGloss />
+                    <Newspaper className="relative z-10 h-8 w-8" style={{ color: '#f5a623' }} />
                   </div>
-                  <span className="text-sm font-medium text-foreground">Daily Briefing</span>
+                  <span className={TILE_LABEL_CLASSES}>Daily Briefing</span>
                 </div>
               </Card>
             )}
@@ -636,11 +648,15 @@ export default function Dashboard() {
                   )
                 }
               >
-                <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                  <div className={TILE_ICON_CHIP_CLASSES}>
-                    <Newspaper className="relative z-10 h-7 w-7 text-[hsl(190,90%,70%)]" />
+                <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
+                  <div
+                    className={TILE_CHIP_BASE}
+                    style={{ background: TILE_CHIP_GRADIENTS.niki }}
+                  >
+                    <TileChipGloss />
+                    <Newspaper className="relative z-10 h-8 w-8" style={{ color: '#2dd4b8' }} />
                   </div>
-                  <span className="text-sm font-medium text-foreground">
+                  <span className={TILE_LABEL_CLASSES}>
                     {isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
                   </span>
                 </div>
@@ -656,11 +672,15 @@ export default function Dashboard() {
               onKeyDown={(e) => handleTileKeyDown(e, () => setDealsDialogOpen(true))}
               aria-label="Open Deals insights"
             >
-              <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                <div className={TILE_ICON_CHIP_CLASSES}>
-                  <Handshake className="relative z-10 h-7 w-7 text-emerald-400" />
+              <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
+                <div
+                  className={TILE_CHIP_BASE}
+                  style={{ background: TILE_CHIP_GRADIENTS.deals }}
+                >
+                  <TileChipGloss />
+                  <Handshake className="relative z-10 h-8 w-8" style={{ color: '#2dd4b8' }} />
                 </div>
-                <span className="text-sm font-medium text-foreground">Deals</span>
+                <span className={TILE_LABEL_CLASSES}>Deals</span>
               </div>
             </Card>
             {is5thLine && (
@@ -675,11 +695,15 @@ export default function Dashboard() {
                   )
                 }
               >
-                <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                  <div className={TILE_ICON_CHIP_CLASSES}>
-                    <Briefcase className="relative z-10 h-7 w-7 text-primary" />
+                <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
+                  <div
+                    className={TILE_CHIP_BASE}
+                    style={{ background: TILE_CHIP_GRADIENTS.dealRundown }}
+                  >
+                    <TileChipGloss />
+                    <Briefcase className="relative z-10 h-8 w-8" style={{ color: '#6b9cf5' }} />
                   </div>
-                  <span className="text-sm font-medium text-foreground">Deal Rundown</span>
+                  <span className={TILE_LABEL_CLASSES}>Deal Rundown</span>
                 </div>
               </Card>
             )}
