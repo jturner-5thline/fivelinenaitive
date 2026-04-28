@@ -147,7 +147,7 @@ function EmailTileWithIntelligence({
         onKeyDown={onKeyDown}
       >
         <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-          <div className="relative h-12 w-12 rounded-xl border border-[hsl(280,85%,65%,0.55)] bg-[hsl(275,80%,40%,0.3)] backdrop-blur-xl flex items-center justify-center overflow-hidden">
+          <div className={TILE_ICON_CHIP_CLASSES}>
             <Mail className="relative z-10 h-7 w-7 text-foreground" />
           </div>
           <span className="text-sm font-medium text-foreground">Email</span>
