@@ -48,7 +48,7 @@ import {
   ListTodo, LayoutGrid, Calendar, Plus, Search, Filter,
   SlidersHorizontal, Group, Trash2, BarChart3,
   Bookmark, BookmarkPlus, FileDown, Star, MoreVertical,
-  Tag, ClipboardList, Users, Briefcase, Building2,
+  Tag, ClipboardList, Users, Briefcase, Building2, CalendarDays, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { isToday, isPast, addDays, startOfDay } from 'date-fns';
@@ -66,6 +66,7 @@ import { CSS } from '@dnd-kit/utilities';
 type ViewMode = 'list' | 'board' | 'calendar' | 'reporting' | 'focus';
 type FilterStatus = 'all' | 'incomplete' | 'not_started' | 'in_progress' | 'blocked' | 'complete';
 type SortBy = 'due_date' | 'priority' | 'created_at' | 'title' | 'deal';
+type FilterDueDate = 'all' | 'overdue' | 'today' | 'this_week' | 'no_date';
 
 export default function Tasks() {
   const [ownerFilter, setOwnerFilter] = useState<TaskOwnerFilter>('mine');
@@ -118,6 +119,7 @@ export default function Tasks() {
   const [focusedTaskIndex, setFocusedTaskIndex] = useState<number>(-1);
   const [filterDealIds, setFilterDealIds] = useState<Set<string>>(new Set());
   const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
+  const [filterDueDate, setFilterDueDate] = useState<FilterDueDate>('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showFocusMode, setShowFocusMode] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
@@ -189,6 +191,24 @@ export default function Tasks() {
       if (filterLabelIds.size > 0) {
         const taskLabels = taskLabelMap.get(t.id);
         if (!taskLabels || ![...filterLabelIds].some(lid => taskLabels.has(lid))) return false;
+      }
+      if (filterDueDate !== 'all') {
+        const today = startOfDay(new Date());
+        if (filterDueDate === 'no_date') {
+          if (t.due_date) return false;
+        } else if (!t.due_date) {
+          return false;
+        } else {
+          const d = new Date(t.due_date + 'T00:00:00');
+          if (filterDueDate === 'overdue') {
+            if (!(isPast(d) && !isToday(d)) || t.status === 'complete') return false;
+          } else if (filterDueDate === 'today') {
+            if (!isToday(d)) return false;
+          } else if (filterDueDate === 'this_week') {
+            const weekOut = addDays(today, 7);
+            if (!(d >= today && d <= weekOut)) return false;
+          }
+        }
       }
       return true;
     })
@@ -360,7 +380,17 @@ export default function Tasks() {
     if (!newViewName.trim()) return;
     saveView.mutate({
       name: newViewName.trim(),
-      view_config: { viewMode, filterStatus, sortBy, groupBy, search },
+      view_config: {
+        viewMode,
+        filterStatus,
+        sortBy,
+        groupBy,
+        search,
+        ownerFilter,
+        filterDealIds: Array.from(filterDealIds),
+        filterLabelIds: Array.from(filterLabelIds),
+        filterDueDate,
+      },
     });
     setNewViewName('');
     setShowSaveViewDialog(false);
@@ -373,8 +403,31 @@ export default function Tasks() {
     if (c.sortBy) setSortBy(c.sortBy as SortBy);
     if (c.groupBy) setGroupBy(c.groupBy as GroupBy);
     if (c.search !== undefined) setSearch(c.search);
+    if (c.ownerFilter) setOwnerFilter(c.ownerFilter as TaskOwnerFilter);
+    if (Array.isArray(c.filterDealIds)) setFilterDealIds(new Set(c.filterDealIds));
+    if (Array.isArray(c.filterLabelIds)) setFilterLabelIds(new Set(c.filterLabelIds));
+    if (c.filterDueDate) setFilterDueDate(c.filterDueDate as FilterDueDate);
     toast.success(`Loaded view: ${view.name}`);
   };
+
+  // Determine which preset (if any) is currently active for highlight
+  const activePresetId = useMemo(() => {
+    for (const v of savedViews) {
+      const c = v.view_config || {};
+      if (
+        (c.viewMode ?? viewMode) === viewMode &&
+        (c.filterStatus ?? filterStatus) === filterStatus &&
+        (c.sortBy ?? sortBy) === sortBy &&
+        (c.groupBy ?? groupBy) === groupBy &&
+        (c.search ?? search) === search &&
+        (c.ownerFilter ?? ownerFilter) === ownerFilter &&
+        (c.filterDueDate ?? filterDueDate) === filterDueDate &&
+        JSON.stringify((c.filterDealIds ?? []).slice().sort()) === JSON.stringify(Array.from(filterDealIds).sort()) &&
+        JSON.stringify((c.filterLabelIds ?? []).slice().sort()) === JSON.stringify(Array.from(filterLabelIds).sort())
+      ) return v.id;
+    }
+    return null;
+  }, [savedViews, viewMode, filterStatus, sortBy, groupBy, search, ownerFilter, filterDueDate, filterDealIds, filterLabelIds]);
 
   const handleExportCSV = () => {
     const headers = ['Title', 'Status', 'Priority', 'Due Date', 'Assignee', 'Created'];
@@ -562,6 +615,50 @@ export default function Tasks() {
           />
         )}
 
+        {/* Filter presets bar — quick switch between saved combinations */}
+        <div className="flex items-center gap-1.5 px-6 py-2 flex-wrap" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+          <span className="text-[10px] uppercase tracking-wide font-medium mr-1" style={{ color: '#5b6173' }}>Presets</span>
+          {savedViews.length === 0 && (
+            <span className="text-[11px]" style={{ color: '#7a8194' }}>None saved yet — configure filters then click Save preset.</span>
+          )}
+          {savedViews.map(v => {
+            const isActive = activePresetId === v.id;
+            return (
+              <div key={v.id} className="group flex items-center">
+                <button
+                  onClick={() => handleLoadView(v)}
+                  className="flex items-center gap-1 h-6 pl-2.5 pr-1.5 text-[11px] font-medium rounded-md transition-all"
+                  style={{
+                    color: isActive ? '#cfe3ff' : '#9aa3b6',
+                    backgroundColor: isActive ? 'rgba(126,184,247,0.12)' : 'rgba(20,24,32,0.65)',
+                    border: `1px solid ${isActive ? 'rgba(126,184,247,0.28)' : 'rgba(255,255,255,0.06)'}`,
+                  }}
+                  title="Load preset"
+                >
+                  <Bookmark className="h-3 w-3" />
+                  <span className="max-w-[160px] truncate">{v.name}</span>
+                  <button
+                    onClick={e => { e.stopPropagation(); if (confirm(`Delete preset "${v.name}"?`)) deleteView.mutate(v.id); }}
+                    className="ml-1 h-4 w-4 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-[rgba(255,255,255,0.06)]"
+                    title="Delete preset"
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                </button>
+              </div>
+            );
+          })}
+          <button
+            onClick={() => setShowSaveViewDialog(true)}
+            className="flex items-center gap-1 h-6 px-2 text-[11px] font-medium rounded-md transition-colors hover:bg-[rgba(255,255,255,0.04)]"
+            style={{ color: '#7a8194', border: '1px dashed rgba(255,255,255,0.08)' }}
+            title="Save current filters as a preset"
+          >
+            <BookmarkPlus className="h-3 w-3" />
+            Save preset
+          </button>
+        </div>
+
         {/* Unified filter toolbar */}
         <div className="flex items-center gap-2 px-6 py-2.5 border-y" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'rgba(18,21,27,0.5)' }}>
           <div className="relative flex-1 max-w-[280px]">
@@ -589,6 +686,19 @@ export default function Tasks() {
               <SelectItem value="not_started" className="text-xs">Not Started</SelectItem>
               <SelectItem value="in_progress" className="text-xs">In Progress</SelectItem>
               <SelectItem value="blocked" className="text-xs">Blocked</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={filterDueDate} onValueChange={v => setFilterDueDate(v as FilterDueDate)}>
+            <SelectTrigger className="h-7 w-[130px] text-[11px] text-[#9aa3b6]" style={{ backgroundColor: 'rgba(20,24,32,0.65)', borderColor: 'rgba(255,255,255,0.06)' }}>
+              <CalendarDays className="h-3 w-3 mr-1.5" /><SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">Any due date</SelectItem>
+              <SelectItem value="overdue" className="text-xs">Overdue</SelectItem>
+              <SelectItem value="today" className="text-xs">Due today</SelectItem>
+              <SelectItem value="this_week" className="text-xs">Due this week</SelectItem>
+              <SelectItem value="no_date" className="text-xs">No due date</SelectItem>
             </SelectContent>
           </Select>
 
@@ -845,16 +955,24 @@ export default function Tasks() {
         <Dialog open={showSaveViewDialog} onOpenChange={setShowSaveViewDialog}>
           <DialogContent className="max-w-sm">
             <DialogHeader>
-              <DialogTitle className="text-sm">Save Current View</DialogTitle>
+              <DialogTitle className="text-sm">Save Filter Preset</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
-              <Input value={newViewName} onChange={e => setNewViewName(e.target.value)} placeholder="View name..." className="text-sm" onKeyDown={e => { if (e.key === 'Enter') handleSaveView(); }} autoFocus />
-              <div className="text-xs text-muted-foreground space-y-1">
-                <p>Will save: {viewMode} view, {filterStatus} filter, {sortBy} sort, {groupBy} group</p>
+              <Input value={newViewName} onChange={e => setNewViewName(e.target.value)} placeholder="e.g. My overdue deal tasks" className="text-sm" onKeyDown={e => { if (e.key === 'Enter') handleSaveView(); }} autoFocus />
+              <div className="text-[11px] text-muted-foreground space-y-0.5 rounded-md p-2.5" style={{ backgroundColor: 'rgba(20,24,32,0.6)' }}>
+                <p className="font-medium text-foreground mb-1">This preset will remember:</p>
+                <p>• Search: {search ? `"${search}"` : '—'}</p>
+                <p>• Assignee scope: {ownerFilter}</p>
+                <p>• Status: {filterStatus}</p>
+                <p>• Due date: {filterDueDate}</p>
+                <p>• Type / Deals: {filterDealIds.size > 0 ? `${filterDealIds.size} selected` : 'all'}</p>
+                <p>• Labels: {filterLabelIds.size > 0 ? `${filterLabelIds.size} selected` : 'all'}</p>
+                <p>• Group by: {groupBy} · Sort by: {sortBy}</p>
+                <p>• View: {viewMode}</p>
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => setShowSaveViewDialog(false)}>Cancel</Button>
-                <Button size="sm" onClick={handleSaveView}>Save</Button>
+                <Button size="sm" onClick={handleSaveView} disabled={!newViewName.trim()}>Save preset</Button>
               </div>
             </div>
           </DialogContent>
