@@ -10,6 +10,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { useQueryClient } from '@tanstack/react-query';
 import { createTaskFromDraft, type TaskDraft } from '@/hooks/useNaitiveTaskParse';
 import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
+import { useUiPreference } from '@/hooks/useUiPreference';
 import type { WorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
 
 type Suggestion = NonNullable<WorkflowAnalysis['suggested_tasks']>[number];
@@ -105,6 +106,9 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
   const { user } = useAuth();
   const { company } = useCompany();
   const queryClient = useQueryClient();
+  // Profile-level default for "Sync new tasks to Asana". Editable on the
+  // Account page; per-card switches still override on a one-off basis.
+  const [defaultAsanaSync] = useUiPreference<boolean>('default_asana_sync', true);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [retryingKey, setRetryingKey] = useState<string | null>(null);
   type AsanaStatus = 'synced' | 'skipped' | 'failed';
@@ -117,9 +121,12 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
   };
   const [createdKeys, setCreatedKeys] = useState<Record<string, CreatedRecord>>({});
   const [dismissedKeys, setDismissedKeys] = useState<Record<string, true>>({});
-  // Per-card "Sync to Asana" toggle. Defaults to ON for every suggested
-  // task; users can flip individual cards off before clicking Create.
+  // Per-card "Sync to Asana" toggle. Initialized from the user's
+  // profile-level default (`default_asana_sync`); each card can still be
+  // flipped individually before clicking Create.
   const [asanaSyncByKey, setAsanaSyncByKey] = useState<Record<string, boolean>>({});
+  const isAsanaSyncOn = (key: string) =>
+    asanaSyncByKey[key] !== undefined ? asanaSyncByKey[key] : defaultAsanaSync;
 
   const items = useMemo(() => {
     const seen = new Set<string>();
@@ -137,7 +144,7 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
   if (items.length === 0) return null;
 
   const handleCreate = async (s: Suggestion, key: string) => {
-    const syncToAsana = asanaSyncByKey[key] !== false; // default ON
+    const syncToAsana = isAsanaSyncOn(key);
     if (!user?.id) {
       toast.error('Sign in required to create tasks');
       return;
