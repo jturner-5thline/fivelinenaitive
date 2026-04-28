@@ -29,6 +29,7 @@ import {
 import { TaskModeChips } from '@/components/dashboard/chat/TaskModeChips';
 import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
 import type { EmailThread } from './mockEmailData';
+import { inferLenderStatus } from './inferLenderStatus';
 
 interface Props {
   thread: EmailThread;
@@ -337,21 +338,6 @@ export function EmailUnifiedAiAction({
             promptText: text,
             suggestion,
           });
-
-          // Keyword fallback: if the AI didn't extract a lender.status but the
-          // user's prompt or note body clearly implies one, fill it in client
-          // side. Mapping mirrors LENDER_STATUS_CONFIG ids.
-          const inferLenderStatus = (
-            ...sources: Array<string | undefined | null>
-          ): 'in-review' | 'terms-issued' | 'in-diligence' | 'closed-funded' | undefined => {
-            const haystack = sources.filter(Boolean).join(' ').toLowerCase();
-            if (!haystack) return undefined;
-            if (/(in[\s-]?diligence|due[\s-]?diligence|in[\s-]?dd\b|under[\s-]?dd\b)/.test(haystack)) return 'in-diligence';
-            if (/(closed[\s-]?(?:and[\s-]?)?funded|funded\b)/.test(haystack)) return 'closed-funded';
-            if (/(term[\s-]?sheet|terms?[\s-]?issued|issued[\s-]?terms?)/.test(haystack)) return 'terms-issued';
-            if (/(in[\s-]?review|reviewing|evaluating|under[\s-]?review)/.test(haystack)) return 'in-review';
-            return undefined;
-          };
 
           // Effective lender block (AI-extracted + client fallback)
           let effectiveLender = suggestion.lender
