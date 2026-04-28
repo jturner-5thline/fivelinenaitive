@@ -30,6 +30,10 @@ export interface EmailLabel {
   is_shared: boolean;
   created_at: string;
   updated_at: string;
+  /** Legacy convenience flag — derived from `is_shared`. */
+  scope?: "user" | "team";
+  /** Legacy flag carried for compatibility with the old settings UI; always false in this build. */
+  is_default?: boolean;
 }
 
 export interface EmailLabelAssignment {
