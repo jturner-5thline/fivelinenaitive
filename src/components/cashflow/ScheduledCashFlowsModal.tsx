@@ -283,13 +283,16 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
           ) : (
             <div className="flex flex-col">
               {/* Column Headers */}
-              <div className="grid grid-cols-[16px_minmax(0,1.1fr)_minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,2fr)_140px_32px] gap-2 items-center px-2 pb-2 mb-1 border-b border-border">
+              <div className="grid grid-cols-[16px_minmax(0,1.1fr)_minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,2fr)_140px_32px] gap-2 items-center px-2 pb-2 mb-1 border-b border-border">
                 <span />
                 <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
                   Account
                 </span>
                 <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
                   Category
+                </span>
+                <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
+                  Description
                 </span>
                 <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
                   Amount
@@ -309,7 +312,7 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
                   return (
                     <div
                       key={d._draftId}
-                      className="grid grid-cols-[16px_minmax(0,1.1fr)_minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,2fr)_140px_32px] gap-2 items-start px-2 py-3 border-b border-border/60 hover:bg-muted/40 transition-colors rounded-md"
+                      className="grid grid-cols-[16px_minmax(0,1.1fr)_minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,2fr)_140px_32px] gap-2 items-start px-2 py-3 border-b border-border/60 hover:bg-muted/40 transition-colors rounded-md"
                     >
                       {/* Drag handle */}
                       <div className="flex items-center justify-center pt-2 text-muted-foreground/50 cursor-grab">
@@ -376,6 +379,17 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
                               ))}
                         </SelectContent>
                       </Select>
+
+                      {/* Description */}
+                      <Input
+                        type="text"
+                        value={d.notes ?? ''}
+                        placeholder="Add a note…"
+                        onChange={(e) =>
+                          updateRow(d._draftId, { notes: e.target.value || null })
+                        }
+                        className="h-9"
+                      />
 
                       {/* Amount */}
                       <div className="relative">
