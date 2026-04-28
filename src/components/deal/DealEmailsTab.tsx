@@ -1276,7 +1276,13 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   )}
                   <Input
-                    placeholder='Search mail with AI… e.g. "calendar invites I declined"'
+                    placeholder={
+                      searchMode === 'literal'
+                        ? 'Search mail (keyword)…'
+                        : searchMode === 'ai'
+                          ? 'Ask AI… e.g. "signed NDAs from lenders last week"'
+                          : 'Search mail with AI… e.g. "calendar invites I declined"'
+                    }
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => {
@@ -1290,32 +1296,51 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                       }
                     }}
                     className={cn(
-                      'pl-8 pr-16 h-8 text-xs bg-white/[0.03] border-white/[0.08] rounded focus:border-white/[0.15]',
+                      'pl-8 pr-[120px] h-8 text-xs bg-white/[0.03] border-white/[0.08] rounded focus:border-white/[0.15]',
                       aiSearchActive && 'border-primary/40 focus:border-primary/60'
                     )}
                   />
                   {/* Inline AI / clear controls */}
                   <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                    {aiSearchActive && (
+                    {/* Mode toggle: Literal | Auto | AI */}
+                    <div
+                      className="inline-flex items-center rounded border border-white/[0.08] bg-white/[0.03] overflow-hidden"
+                      role="group"
+                      aria-label="Search mode"
+                    >
+                      {(['literal', 'auto', 'ai'] as const).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setSearchMode(m)}
+                          aria-pressed={searchMode === m}
+                          title={
+                            m === 'literal'
+                              ? 'Literal: keyword match only'
+                              : m === 'ai'
+                                ? 'AI: always interpret with AI'
+                                : 'Auto: AI on long queries'
+                          }
+                          className={cn(
+                            'px-1.5 h-5 text-[9px] font-semibold uppercase tracking-wide transition-colors',
+                            searchMode === m
+                              ? 'bg-primary/20 text-primary'
+                              : 'text-muted-foreground hover:text-foreground'
+                          )}
+                        >
+                          {m === 'literal' ? 'Lit' : m === 'auto' ? 'Auto' : 'AI'}
+                        </button>
+                      ))}
+                    </div>
+                    {(aiSearchActive || searchQuery) && (
                       <button
                         type="button"
                         onClick={() => { clearAISearch(); setSearchQuery(''); }}
                         className="text-[10px] text-muted-foreground hover:text-foreground transition-colors px-1"
-                        aria-label="Clear AI search"
-                        title="Clear AI search (Esc)"
+                        aria-label="Clear search"
+                        title="Clear search (Esc)"
                       >
                         <X className="h-3 w-3" />
-                      </button>
-                    )}
-                    {searchQuery.trim().length >= AI_SEARCH_MIN_LENGTH && !aiSearch.isSearching && !aiSearchActive && (
-                      <button
-                        type="button"
-                        onClick={runAISearch}
-                        className="inline-flex items-center gap-1 rounded-sm bg-primary/15 hover:bg-primary/25 text-primary text-[10px] font-medium px-1.5 py-0.5 transition-colors"
-                        title="Search with AI (Enter)"
-                      >
-                        <Sparkles className="h-3 w-3" />
-                        AI
                       </button>
                     )}
                   </div>
