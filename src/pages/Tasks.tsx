@@ -13,6 +13,7 @@ import { TaskDetailDrawer } from '@/components/tasks/TaskDetailDrawer';
 import { TaskCalendarView } from '@/components/tasks/TaskCalendarView';
 import { TaskReportingView } from '@/components/tasks/TaskReportingView';
 import { TaskBulkActionBar } from '@/components/tasks/TaskBulkActionBar';
+import { QuickCreateTaskDialog } from '@/components/tasks/QuickCreateTaskDialog';
 import { TaskFocusMode } from '@/components/tasks/TaskFocusMode';
 import { useTaskNotifications } from '@/hooks/useTaskNotifications';
 import { useTaskSavedViews, type TaskSavedView } from '@/hooks/useTaskSavedViews';
@@ -119,6 +120,7 @@ export default function Tasks() {
   const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showFocusMode, setShowFocusMode] = useState(false);
+  const [showQuickCreate, setShowQuickCreate] = useState(false);
 
   // Fetch label assignments for all tasks for filtering
   const { data: allLabelAssignments = [] } = useQuery({
@@ -762,7 +764,7 @@ export default function Tasks() {
                 borderColor: 'rgba(126,184,247,0.35)',
                 boxShadow: '0 1px 0 rgba(255,255,255,0.05) inset, 0 4px 14px -8px rgba(80,135,210,0.55)',
               }}
-              onClick={() => { setIsCreating(true); setTaskNameWarning(''); setTaskNameConfirmed(false); setTimeout(() => newTaskRef.current?.focus(), 50); }}
+              onClick={() => setShowQuickCreate(true)}
             >
               <Plus className="h-3.5 w-3.5" />
               Add Task
