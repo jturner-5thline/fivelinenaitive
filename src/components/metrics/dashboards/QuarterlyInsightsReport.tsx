@@ -519,7 +519,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
       color: TEXT_MUTED,
       fontSize: 12,
       border: '1px dashed rgba(120,170,255,0.18)',
-      borderRadius: 10,
+      borderRadius: RADIUS,
       background: 'rgba(255,255,255,0.02)',
     }}>
       <div style={{ fontWeight: 600, color: TEXT_PRIMARY, marginBottom: 4 }}>No Asana Goals synced</div>
@@ -573,7 +573,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
       color: TEXT_MUTED,
       fontSize: 12,
       border: '1px dashed rgba(120,170,255,0.18)',
-      borderRadius: 10,
+      borderRadius: RADIUS,
       background: 'rgba(255,255,255,0.02)',
     }}>
       <div style={{ fontWeight: 600, color: TEXT_PRIMARY }}>No goals found for {preparedBy}</div>
