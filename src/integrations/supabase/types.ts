@@ -6341,6 +6341,7 @@ export type Database = {
           created_at: string
           deal_id: string
           id: string
+          last_contact_at: string | null
           name: string
           notes: string | null
           pass_reason: string | null
@@ -6357,6 +6358,7 @@ export type Database = {
           created_at?: string
           deal_id: string
           id?: string
+          last_contact_at?: string | null
           name: string
           notes?: string | null
           pass_reason?: string | null
@@ -6373,6 +6375,7 @@ export type Database = {
           created_at?: string
           deal_id?: string
           id?: string
+          last_contact_at?: string | null
           name?: string
           notes?: string | null
           pass_reason?: string | null
