@@ -280,9 +280,14 @@ function formatKPI(value: string, format: KPIFormat): string {
   const n = Number(value);
   if (!Number.isFinite(n)) return '—';
   if (format === 'currency') {
-    if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
-    if (Math.abs(n) >= 1_000) return `$${(n / 1_000).toFixed(1)}k`;
-    return `$${n.toFixed(0)}`;
+    // Whole-dollar USD with comma separators, no decimals, no abbreviation.
+    // Negative values render as -$1,234 via the standard 'sign' formatter.
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+      minimumFractionDigits: 0,
+    }).format(Math.trunc(n));
   }
   if (format === 'percent') return `${n.toFixed(1)}%`;
   return n.toLocaleString();
