@@ -198,13 +198,13 @@ function EmailTileWithIntelligence({
         tabIndex={0}
         onKeyDown={onKeyDown}
       >
-        <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
+        <div className="flex flex-col items-center justify-center text-center gap-2.5 h-full">
           <div
             className={TILE_CHIP_BASE}
             style={{ background: TILE_CHIP_GRADIENTS.email }}
           >
             <TileChipGloss />
-            <Mail className="relative z-10 h-8 w-8" style={{ color: '#c084f5' }} />
+            <Mail className="relative z-10 h-10 w-10" style={{ color: '#c084f5' }} />
           </div>
           <span className={TILE_LABEL_CLASSES}>Email</span>
         </div>
@@ -581,13 +581,13 @@ export default function Dashboard() {
                 )
               }
             >
-              <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
+              <div className="flex flex-col items-center justify-center text-center gap-2.5 h-full">
                 <div
                   className={TILE_CHIP_BASE}
                   style={{ background: TILE_CHIP_GRADIENTS.calendar }}
                 >
                   <TileChipGloss />
-                  <CalendarIcon className="relative z-10 h-8 w-8" style={{ color: '#7b9ff5' }} />
+                  <CalendarIcon className="relative z-10 h-10 w-10" style={{ color: '#7b9ff5' }} />
                 </div>
                 <span className={TILE_LABEL_CLASSES}>Calendar</span>
               </div>
@@ -612,13 +612,13 @@ export default function Dashboard() {
                 )
               }
             >
-              <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
+              <div className="flex flex-col items-center justify-center text-center gap-2.5 h-full">
                 <div
                   className={TILE_CHIP_BASE}
                   style={{ background: TILE_CHIP_GRADIENTS.newDeal }}
                 >
                   <TileChipGloss />
-                  <Briefcase className="relative z-10 h-8 w-8" style={{ color: '#6b9cf5' }} />
+                  <Briefcase className="relative z-10 h-10 w-10" style={{ color: '#6b9cf5' }} />
                 </div>
                 <span className={TILE_LABEL_CLASSES}>New Deal</span>
               </div>
@@ -635,13 +635,13 @@ export default function Dashboard() {
                   )
                 }
               >
-                <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
+                <div className="flex flex-col items-center justify-center text-center gap-2.5 h-full">
                   <div
                     className={TILE_CHIP_BASE}
                     style={{ background: TILE_CHIP_GRADIENTS.briefing }}
                   >
                     <TileChipGloss />
-                    <Newspaper className="relative z-10 h-8 w-8" style={{ color: '#f5a623' }} />
+                    <Newspaper className="relative z-10 h-10 w-10" style={{ color: '#f5a623' }} />
                   </div>
                   <span className={TILE_LABEL_CLASSES}>Daily Briefing</span>
                 </div>
@@ -659,13 +659,13 @@ export default function Dashboard() {
                   )
                 }
               >
-                <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
+                <div className="flex flex-col items-center justify-center text-center gap-2.5 h-full">
                   <div
                     className={TILE_CHIP_BASE}
                     style={{ background: TILE_CHIP_GRADIENTS.niki }}
                   >
                     <TileChipGloss />
-                    <Newspaper className="relative z-10 h-8 w-8" style={{ color: '#2dd4b8' }} />
+                    <Newspaper className="relative z-10 h-10 w-10" style={{ color: '#2dd4b8' }} />
                   </div>
                   <span className={TILE_LABEL_CLASSES}>
                     {isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
@@ -683,13 +683,13 @@ export default function Dashboard() {
               onKeyDown={(e) => handleTileKeyDown(e, () => setDealsDialogOpen(true))}
               aria-label="Open Deals insights"
             >
-              <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
+              <div className="flex flex-col items-center justify-center text-center gap-2.5 h-full">
                 <div
                   className={TILE_CHIP_BASE}
                   style={{ background: TILE_CHIP_GRADIENTS.deals }}
                 >
                   <TileChipGloss />
-                  <Handshake className="relative z-10 h-8 w-8" style={{ color: '#2dd4b8' }} />
+                  <Handshake className="relative z-10 h-10 w-10" style={{ color: '#2dd4b8' }} />
                 </div>
                 <span className={TILE_LABEL_CLASSES}>Deals</span>
               </div>
@@ -706,13 +706,13 @@ export default function Dashboard() {
                   )
                 }
               >
-                <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
+                <div className="flex flex-col items-center justify-center text-center gap-2.5 h-full">
                   <div
                     className={TILE_CHIP_BASE}
                     style={{ background: TILE_CHIP_GRADIENTS.dealRundown }}
                   >
                     <TileChipGloss />
-                    <Briefcase className="relative z-10 h-8 w-8" style={{ color: '#6b9cf5' }} />
+                    <Briefcase className="relative z-10 h-10 w-10" style={{ color: '#6b9cf5' }} />
                   </div>
                   <span className={TILE_LABEL_CLASSES}>Deal Rundown</span>
                 </div>
