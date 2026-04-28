@@ -417,7 +417,7 @@ function ReportKpisSection({ s, set }: { s: ReportState; set: ReportSetState }) 
                   gap: 10,
                   alignItems: 'center',
                   padding: '10px 12px',
-                  borderRadius: 10,
+                  borderRadius: RADIUS,
                   background: 'rgba(255,255,255,0.02)',
                   border: '1px solid rgba(255,255,255,0.05)',
                 }}
