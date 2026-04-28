@@ -17,6 +17,7 @@ export interface TaskSavedView {
     filterDealIds?: string[];
     filterLabelIds?: string[];
     filterDueDate?: string; // 'all' | 'overdue' | 'today' | 'this_week' | 'no_date'
+    filterRecurring?: string; // 'all' | 'recurring' | 'paused'
   };
   is_default: boolean;
   position: number;
