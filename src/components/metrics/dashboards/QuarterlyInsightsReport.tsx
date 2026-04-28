@@ -1010,7 +1010,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
             <ul style={{ margin: 0, paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 120, overflowY: 'auto' }}>
               {visibleGoals.slice(0, 8).map(g => (
                 <li key={g.id} style={{ fontSize: 11, color: TEXT_PRIMARY }}>
-                  <span>{g.name}</span>
+                  <span>{g.title}</span>
                   {g.timePeriod && (
                     <span style={{ color: TEXT_MUTED }}> — <code style={{ color: '#7cc8f0' }}>{g.timePeriod}</code></span>
                   )}
