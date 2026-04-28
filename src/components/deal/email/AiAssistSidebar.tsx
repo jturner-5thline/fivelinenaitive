@@ -623,6 +623,8 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               onLinkDeal={async (id, name) => {
                 if (onLinkDeal) await onLinkDeal(id, name);
               }}
+              suggestedTasks={workflowAnalysis?.suggested_tasks || []}
+              threadId={thread.threadId}
             />
           )}
 
