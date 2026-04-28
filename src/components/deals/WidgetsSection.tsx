@@ -28,6 +28,7 @@ import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { Deal } from '@/types/deal';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { useDealTypes } from '@/contexts/DealTypesContext';
 import {
   Dialog,
   DialogContent,
@@ -101,6 +102,12 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const { widgets, addWidget, updateWidget, deleteWidget, reorderWidgets, specialWidgets, toggleSpecialWidget } = useWidgets();
   const { formatCurrencyValue } = usePreferences();
   const { isHintVisible, dismissHint } = useFirstTimeHints();
+  const { dealTypes: dealTypeOptions } = useDealTypes();
+  const dealTypeLabelById = useMemo(() => {
+    const map: Record<string, string> = {};
+    dealTypeOptions.forEach(dt => { map[dt.id] = dt.label; });
+    return map;
+  }, [dealTypeOptions]);
   const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
@@ -113,7 +120,8 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const [chartDialogOpen, setChartDialogOpen] = useState(false);
   const [chartDialogType, setChartDialogType] = useState<'count' | 'value' | null>(null);
   const [chartDialogTitle, setChartDialogTitle] = useState('');
-  const [chartGroupBy, setChartGroupBy] = useState<'stage' | 'status' | 'manager'>('stage');
+  const [chartGroupBy, setChartGroupBy] = useState<GroupByKey>('stage');
+  const [allowedGroupBys, setAllowedGroupBys] = useState<GroupByKey[]>(['stage']);
   const [chartFilterFn, setChartFilterFn] = useState<((d: Deal) => boolean) | null>(null);
   const [chartViewType, setChartViewType] = useState<'pie' | 'bar' | 'line'>('pie');
 
