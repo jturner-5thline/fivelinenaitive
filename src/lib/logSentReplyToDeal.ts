@@ -6,12 +6,68 @@ import { supabase } from '@/integrations/supabase/client';
  * suggestion after sending. Heuristic — covers the common phrasings used
  * in advisor → lender / advisor → borrower replies.
  */
+/**
+ * Coarse intent buckets for the next-step phrase. These power the
+ * follow-up task title prefix and the `next_step_intent` field stored on
+ * the activity log so reporting can group sent replies by the kind of
+ * commitment the sender made (meeting, doc follow-up, approval, etc).
+ */
+export type NextStepIntent =
+  | 'meeting_request'
+  | 'schedule_call'
+  | 'document_followup'
+  | 'approval_request'
+  | 'info_request'
+  | 'review_commitment'
+  | 'follow_up'
+  | 'unknown';
+
+const INTENT_LABELS: Record<NextStepIntent, string> = {
+  meeting_request: 'Meeting request',
+  schedule_call: 'Schedule call',
+  document_followup: 'Document follow-up',
+  approval_request: 'Approval request',
+  info_request: 'Info request',
+  review_commitment: 'Review commitment',
+  follow_up: 'Follow-up',
+  unknown: 'Follow-up',
+};
+
+/**
+ * Ordered intent rules — first match wins. Each rule scans the matched
+ * trigger phrase (and falls back to the wider body) for verbs/nouns
+ * specific to that intent.
+ */
+const INTENT_RULES: Array<{ intent: NextStepIntent; pattern: RegExp }> = [
+  { intent: 'meeting_request',    pattern: /\b(meet(ing)?|sit\s*down|catch\s*up|coffee|zoom|teams|google\s*meet|in[-\s]?person)\b/i },
+  { intent: 'schedule_call',      pattern: /\b(schedule|set\s*up|book|pencil\s*in|calendar|invite)\b[^.\n]{0,40}\b(call|chat|sync|conversation|discussion)\b|\bjump\s+on\s+a\s+(call|chat)\b/i },
+  { intent: 'document_followup',  pattern: /\b(send|share|forward|circulate|prepare|draft|put\s*together|pull\s*together|attach)\b[^.\n]{0,80}\b(deck|memo|model|term\s*sheet|loi|nda|agreement|contract|drl|due\s*diligence|diligence\s*list|financials?|cim|teaser|write[-\s]?up|materials?|documents?|docs?|report|summary)\b/i },
+  { intent: 'approval_request',   pattern: /\b(approval|sign[-\s]?off|green[-\s]?light|authoriz(?:e|ation)|need\s+your\s+ok|confirm\s+(?:approval|sign[-\s]?off))\b/i },
+  { intent: 'info_request',       pattern: /\b(could you|can you|please\s+(send|share|provide|confirm)|need(?:ed)?\s+(?:from\s+you|by\s+you))\b/i },
+  { intent: 'review_commitment',  pattern: /\b(review|look\s+(?:over|into)|take\s+a\s+look|check)\b/i },
+  { intent: 'follow_up',          pattern: /\b(follow\s*up|circle\s*back|reach\s*out|get\s*back\s*to\s*you|touch\s*base)\b/i },
+];
+
+function classifyIntent(trigger: string, body: string): { intent: NextStepIntent; label: string } {
+  const haystack = `${trigger || ''}\n${body || ''}`;
+  for (const rule of INTENT_RULES) {
+    if (rule.pattern.test(haystack)) {
+      return { intent: rule.intent, label: INTENT_LABELS[rule.intent] };
+    }
+  }
+  return { intent: 'unknown', label: INTENT_LABELS.unknown };
+}
+
 export interface NextStepDetection {
   hasNextStep: boolean;
   /** Verbatim phrase that triggered the detection. */
   trigger: string | null;
   /** Suggested task title pre-filled from the phrase. */
   suggestedTaskTitle: string | null;
+  /** Classified intent bucket; 'unknown' when no clear next step. */
+  intent: NextStepIntent;
+  /** Human-readable intent label, e.g. "Document follow-up". */
+  intentLabel: string;
 }
 
 const NEXT_STEP_PATTERNS: Array<{ pattern: RegExp; verb: string }> = [
@@ -25,25 +81,46 @@ const NEXT_STEP_PATTERNS: Array<{ pattern: RegExp; verb: string }> = [
 
 export function detectNextStep(body: string): NextStepDetection {
   const text = (body || '').replace(/\s+/g, ' ').trim();
-  if (!text) return { hasNextStep: false, trigger: null, suggestedTaskTitle: null };
+  if (!text) {
+    return {
+      hasNextStep: false,
+      trigger: null,
+      suggestedTaskTitle: null,
+      intent: 'unknown',
+      intentLabel: INTENT_LABELS.unknown,
+    };
+  }
   for (const { pattern } of NEXT_STEP_PATTERNS) {
     const m = text.match(pattern);
     if (m && m[0]) {
       const trigger = m[0].replace(/\s+/g, ' ').trim().slice(0, 160);
       // Convert "I'll send the diligence list tomorrow" → "Send the diligence list"
-      const taskTitle = trigger
+      const baseTitle = trigger
         .replace(/^(i(?:'| wi)?ll|i(?:'| a)m|let me|allow me to|will)\s+/i, '')
         .replace(/^./, (c) => c.toUpperCase())
         .replace(/\b(by|before)\s+(end of day|eod|end of week|eow|tomorrow|monday|tuesday|wednesday|thursday|friday|next week|this week|cob)\b.*$/i, '')
         .trim();
+      const { intent, label } = classifyIntent(trigger, text);
+      // Prefix the suggested task title with the intent label so the user
+      // immediately sees the classification (e.g. "Meeting request — …").
+      const titleCore = baseTitle.length > 8 ? baseTitle.slice(0, 110) : trigger.slice(0, 110);
+      const suggestedTaskTitle = `${label} — ${titleCore}`.slice(0, 140);
       return {
         hasNextStep: true,
         trigger,
-        suggestedTaskTitle: taskTitle.length > 8 ? taskTitle.slice(0, 120) : trigger.slice(0, 120),
+        suggestedTaskTitle,
+        intent,
+        intentLabel: label,
       };
     }
   }
-  return { hasNextStep: false, trigger: null, suggestedTaskTitle: null };
+  return {
+    hasNextStep: false,
+    trigger: null,
+    suggestedTaskTitle: null,
+    intent: 'unknown',
+    intentLabel: INTENT_LABELS.unknown,
+  };
 }
 
 export interface SentReplyLogInput {
@@ -131,6 +208,8 @@ export async function logSentReplyToDeal(input: SentReplyLogInput): Promise<Sent
         sent_at: new Date().toISOString(),
         next_step_detected: result.nextStep.hasNextStep,
         next_step_trigger: result.nextStep.trigger,
+        next_step_intent: result.nextStep.intent,
+        next_step_intent_label: result.nextStep.intentLabel,
       },
     });
 
