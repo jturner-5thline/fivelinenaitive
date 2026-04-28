@@ -8832,6 +8832,65 @@ export type Database = {
           },
         ]
       }
+      email_threads: {
+        Row: {
+          created_at: string
+          id: string
+          is_clients_deals: boolean
+          last_classified_at: string | null
+          latest_message_at: string | null
+          match_confidence: number
+          match_signals: Json
+          matched_deal_id: string | null
+          needs_reclassify: boolean
+          subject: string | null
+          thread_id: string
+          updated_at: string
+          user_id: string
+          user_override_clients_deals: boolean | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_clients_deals?: boolean
+          last_classified_at?: string | null
+          latest_message_at?: string | null
+          match_confidence?: number
+          match_signals?: Json
+          matched_deal_id?: string | null
+          needs_reclassify?: boolean
+          subject?: string | null
+          thread_id: string
+          updated_at?: string
+          user_id: string
+          user_override_clients_deals?: boolean | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_clients_deals?: boolean
+          last_classified_at?: string | null
+          latest_message_at?: string | null
+          match_confidence?: number
+          match_signals?: Json
+          matched_deal_id?: string | null
+          needs_reclassify?: boolean
+          subject?: string | null
+          thread_id?: string
+          updated_at?: string
+          user_id?: string
+          user_override_clients_deals?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_threads_matched_deal_id_fkey"
+            columns: ["matched_deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_unsubscribe_tokens: {
         Row: {
           created_at: string
@@ -19850,6 +19909,15 @@ export type Database = {
           _target_type: string
         }
         Returns: string
+      }
+      mark_email_thread_dirty: {
+        Args: {
+          _latest_message_at?: string
+          _subject?: string
+          _thread_id: string
+          _user_id: string
+        }
+        Returns: undefined
       }
       move_to_dlq: {
         Args: {
