@@ -66,6 +66,8 @@ import { useLenderPassDetection } from '@/hooks/useLenderPassDetection';
 import { SendToDataRoomDialog } from './SendToDataRoomDialog';
 import { FolderPlus } from 'lucide-react';
 import { useThreadWorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
+import { useEmailPrioritySignals } from '@/hooks/useEmailPrioritySignals';
+import type { DetectedSignal } from '@/lib/emailPrioritySignals';
 import { useAutoEmailLabelEvaluator } from '@/hooks/useAutoEmailLabelEvaluator';
 import type { EmailLabel } from '@/hooks/useEmailLabels';
 import { supabase } from '@/integrations/supabase/client';
@@ -182,9 +184,10 @@ interface ThreadListItemProps {
   onArchive?: (email: MockEmail) => void;
   onDelete?: (email: MockEmail) => void;
   autoLabels?: EmailLabel[];
+  priorityFlag?: DetectedSignal;
 }
 
-function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels }: ThreadListItemProps) {
+function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels, priorityFlag }: ThreadListItemProps) {
   const [hovered, setHovered] = useState(false);
   const latest = thread.latestEmail;
   const displayName = latest.folder === 'sent' ? `To: ${latest.to_name || latest.to_email}` : latest.from_name;
@@ -289,6 +292,16 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
           
           {/* Row 3: Preview text + deal pill */}
           <div className="flex items-center gap-1.5 mt-0.5">
+            {priorityFlag && (
+              <Badge
+                variant="outline"
+                className="text-[9px] h-[16px] px-1 gap-0.5 bg-amber-500/12 text-amber-500 border-amber-500/35 shrink-0"
+                title={`Priority signal: ${priorityFlag.label} — "${priorityFlag.quote}"`}
+              >
+                <Flag className="h-2.5 w-2.5 fill-amber-500 text-amber-500" />
+                {priorityFlag.label}
+              </Badge>
+            )}
             {dealMatch ? (
               <DealMatchBadge match={dealMatch} variant="compact" />
             ) : thread.dealName ? (
@@ -469,6 +482,10 @@ interface EmailListProps {
 
 export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink, onToggleStar, isLoading, selectedIds, onSelectionChange, onMarkRead, onMarkUnread, onArchive, onDelete }: EmailListProps) {
   const { evaluate: evaluateAutoLabels } = useAutoEmailLabelEvaluator();
+  // Detect high-priority deal signals (e.g. "due diligence", "term sheet",
+  // "wire", "signed") and dispatch in-app + Slack notifications. Returns a
+  // map keyed by threadId so individual rows render the priority flag.
+  const { flagsByThread } = useEmailPrioritySignals(emails);
   // Group emails into threads only when the email array identity changes.
   // Without this memo, this O(n) loop ran on every parent re-render (selection
  // change, hover, AI Assist updates) and produced a fresh array each time,
@@ -526,6 +543,7 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
           onArchive={onArchive}
           onDelete={onDelete}
           evaluateAutoLabels={evaluateAutoLabels}
+          priorityFlag={flagsByThread[thread.threadId]}
         />
       ))}
     </div>
@@ -549,6 +567,7 @@ interface ThreadListRowProps {
   onArchive?: (email: MockEmail) => void;
   onDelete?: (email: MockEmail) => void;
   evaluateAutoLabels: (email: MockEmail) => EmailLabel[];
+  priorityFlag?: DetectedSignal;
 }
 
 const ThreadListRow = memo(function ThreadListRow({
@@ -564,6 +583,7 @@ const ThreadListRow = memo(function ThreadListRow({
   onArchive,
   onDelete,
   evaluateAutoLabels,
+  priorityFlag,
 }: ThreadListRowProps) {
   const onSelect = useCallback(() => onSelectThread(thread), [onSelectThread, thread]);
   const onCheckChange = useCallback(
@@ -589,6 +609,7 @@ const ThreadListRow = memo(function ThreadListRow({
       onArchive={onArchive}
       onDelete={onDelete}
       autoLabels={autoLabels}
+      priorityFlag={priorityFlag}
     />
   );
 });

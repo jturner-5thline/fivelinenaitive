@@ -8486,6 +8486,36 @@ export type Database = {
           },
         ]
       }
+      email_priority_signal_log: {
+        Row: {
+          deal_id: string | null
+          detected_at: string
+          detected_by: string | null
+          id: string
+          lender_name: string | null
+          message_id: string
+          signal_type: string
+        }
+        Insert: {
+          deal_id?: string | null
+          detected_at?: string
+          detected_by?: string | null
+          id?: string
+          lender_name?: string | null
+          message_id: string
+          signal_type: string
+        }
+        Update: {
+          deal_id?: string | null
+          detected_at?: string
+          detected_by?: string | null
+          id?: string
+          lender_name?: string | null
+          message_id?: string
+          signal_type?: string
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string

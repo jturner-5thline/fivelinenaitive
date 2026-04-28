@@ -18,6 +18,8 @@ import {
   NotificationTriggerConfig,
   type TriggerCustomConfig,
 } from './NotificationTriggerConfig';
+import { EmailPrioritySignalsConfig } from './EmailPrioritySignalsConfig';
+import type { EmailPrioritySignalType } from '@/lib/emailPrioritySignals';
 
 const CHANNEL_ICONS: Record<string, React.ReactNode> = {
   in_app: <Bell className="h-3.5 w-3.5" />,
@@ -238,6 +240,23 @@ export function UserNotificationSettings() {
                         metadata={rule.metadata as Record<string, unknown>}
                         currentConfig={getCustomConfig(rule.trigger_key)}
                         onConfigChange={(config) => handleConfigChange(rule.trigger_key, config)}
+                        disabled={upsertPref.isPending}
+                      />
+                    )}
+
+                    {enabled && rule.trigger_key === 'email_priority_signal' && (
+                      <EmailPrioritySignalsConfig
+                        currentConfig={
+                          getCustomConfig(rule.trigger_key) as
+                            | { signal_types?: EmailPrioritySignalType[] }
+                            | null
+                        }
+                        onChange={(cfg) =>
+                          handleConfigChange(
+                            rule.trigger_key,
+                            cfg as unknown as TriggerCustomConfig,
+                          )
+                        }
                         disabled={upsertPref.isPending}
                       />
                     )}
