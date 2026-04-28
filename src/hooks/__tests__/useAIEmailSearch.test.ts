@@ -259,7 +259,7 @@ describe('useAIEmailSearch', () => {
   });
 
   it('surfaces an error when the AI service fails', async () => {
-    mockedInvoke.mockResolvedValueOnce({ success: false, error: 'rate limit' });
+    mockedInvoke.mockResolvedValueOnce({ data: null, error: { message: 'rate limit' } });
 
     const harness = renderHook(() => useAIEmailSearch());
     await act(async () => {
