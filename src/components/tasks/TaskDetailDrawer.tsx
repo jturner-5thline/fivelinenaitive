@@ -29,7 +29,7 @@ import {
   X, Calendar, Flag, User, MessageSquare, Activity, Plus,
   CheckSquare, Trash2, Clock, Sun, Sunrise, ArrowRight,
   Link2, Paperclip, Download, FileText, Users,
-  Repeat, ExternalLink, AlertTriangle,
+  Repeat, ExternalLink, AlertTriangle, Pause, Play, Square,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow, format, addDays, nextMonday } from 'date-fns';
