@@ -587,6 +587,38 @@ async function sendWorkflowEmail(
   if (!assigneeId) return;
   try {
     const subject = ((config.subject as string) || "Workflow Update").replace("{deal_name}", dealName);
+
+    // Suppress workflow reminder emails for jturner@5thline.co — these
+    // follow-up reminders are now surfaced in the in-app Daily Briefing
+    // ("Today's Follow-Ups") instead of being delivered via email. The
+    // underlying wf_tasks records and reminder logic remain intact.
+    try {
+      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (supabaseServiceKey) {
+        const userResp = await fetch(
+          `${supabaseUrl}/auth/v1/admin/users/${assigneeId}`,
+          {
+            headers: {
+              apikey: supabaseServiceKey,
+              Authorization: `Bearer ${supabaseServiceKey}`,
+            },
+          }
+        );
+        if (userResp.ok) {
+          const userJson = await userResp.json();
+          const email = (userJson?.email || "").toLowerCase();
+          if (email === "jturner@5thline.co") {
+            console.log(
+              `[email] Skipping workflow reminder email to jturner@5thline.co (subject="${subject}") — surfaced in in-app Daily Briefing instead`
+            );
+            return;
+          }
+        }
+      }
+    } catch (lookupErr) {
+      console.error("[email] jturner suppression lookup failed:", lookupErr);
+    }
+
     await fetch(`${supabaseUrl}/functions/v1/send-notification-email`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
