@@ -53,9 +53,6 @@ export function WidgetCard({ widget, value, isEditMode, isClickable, onEdit, onD
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    background: 'rgba(16, 28, 52, 0.75)',
-    border: '0.5px solid rgba(80, 140, 255, 0.18)',
-    borderRadius: '12px',
   };
 
   const handleClick = () => {
@@ -68,7 +65,7 @@ export function WidgetCard({ widget, value, isEditMode, isClickable, onEdit, onD
     <Card
       ref={setNodeRef}
       style={style}
-      className={`relative group overflow-hidden backdrop-blur-xl before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(255,255,255,0.07)_0%,rgba(255,255,255,0.00)_55%)] transition-all duration-200 ${isDragging ? 'z-50 opacity-50' : ''} ${isClickable && !isEditMode ? 'cursor-pointer hover:-translate-y-0.5' : ''}`}
+      className={`deal-glass group transition-all duration-200 ${isDragging ? 'z-50 opacity-50' : ''} ${isClickable && !isEditMode ? 'cursor-pointer hover:-translate-y-0.5' : ''}`}
       onClick={handleClick}
     >
       {isEditMode && (
