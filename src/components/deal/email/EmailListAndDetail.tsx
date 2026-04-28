@@ -97,6 +97,8 @@ const PRIORITY_ICON_CLASSES: Record<PrioritySignalSeverity, string> = {
 };
 import { useAutoEmailLabelEvaluator } from '@/hooks/useAutoEmailLabelEvaluator';
 import type { EmailLabel } from '@/hooks/useEmailLabels';
+import { useLabels, useAllLabelAssignments, buildThreadLabelMap } from '@/hooks/useEmailLabels';
+import { labelSwatch } from './EmailLabelsManageDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -211,9 +213,10 @@ interface ThreadListItemProps {
   onDelete?: (email: MockEmail) => void;
   autoLabels?: EmailLabel[];
   priorityFlag?: DetectedSignal;
+  userLabels?: EmailLabel[];
 }
 
-function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels, priorityFlag }: ThreadListItemProps) {
+function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels, priorityFlag, userLabels }: ThreadListItemProps) {
   const [hovered, setHovered] = useState(false);
   const latest = thread.latestEmail;
   const displayName = latest.folder === 'sent' ? `To: ${latest.to_name || latest.to_email}` : latest.from_name;
@@ -374,6 +377,40 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
                 Responded
               </Badge>
             )}
+            {userLabels && userLabels.length > 0 && (
+              <div className="flex items-center gap-1 shrink-0 min-w-0 max-w-[55%] overflow-hidden">
+                {userLabels.slice(0, 3).map((l) => {
+                  const hex = labelSwatch(l.color);
+                  return (
+                    <Badge
+                      key={l.id}
+                      variant="outline"
+                      title={l.name}
+                      className="text-[9px] h-[16px] px-1 gap-1 shrink-0 border bg-transparent"
+                      style={{
+                        color: hex,
+                        borderColor: `${hex}55`,
+                        backgroundColor: `${hex}1a`,
+                      }}
+                    >
+                      <span
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ background: hex }}
+                      />
+                      <span className="truncate max-w-[80px]">{l.name}</span>
+                    </Badge>
+                  );
+                })}
+                {userLabels.length > 3 && (
+                  <span
+                    className="text-[9px] text-muted-foreground shrink-0"
+                    title={userLabels.slice(3).map((l) => l.name).join(', ')}
+                  >
+                    +{userLabels.length - 3}
+                  </span>
+                )}
+              </div>
+            )}
             <p className="text-[11px] text-[hsl(var(--email-text-muted))] truncate flex-1 min-w-0">
               {latest.snippet}
             </p>
@@ -432,7 +469,8 @@ const ThreadListItem = memo(ThreadListItemImpl, (prev, next) => {
     prev.onMarkUnread === next.onMarkUnread &&
     prev.onArchive === next.onArchive &&
     prev.onDelete === next.onDelete &&
-    autoLabelsEqual(prev.autoLabels, next.autoLabels)
+    autoLabelsEqual(prev.autoLabels, next.autoLabels) &&
+    autoLabelsEqual(prev.userLabels, next.userLabels)
   );
 });
 
@@ -538,6 +576,14 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
   // "wire", "signed") and dispatch in-app + Slack notifications. Returns a
   // map keyed by threadId so individual rows render the priority flag.
   const { flagsByThread } = useEmailPrioritySignals(emails);
+  // User-defined labels applied per thread. Build the map once at the list
+  // level and pass each row only its slice so memoization stays intact.
+  const { data: userLabelDefs = [] } = useLabels();
+  const { data: labelAssignments = [] } = useAllLabelAssignments();
+  const threadLabelMap = useMemo(
+    () => buildThreadLabelMap(userLabelDefs, labelAssignments),
+    [userLabelDefs, labelAssignments],
+  );
   // Group emails into threads only when the email array identity changes.
   // Without this memo, this O(n) loop ran on every parent re-render (selection
  // change, hover, AI Assist updates) and produced a fresh array each time,
@@ -600,6 +646,7 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
           onDelete={onDelete}
           evaluateAutoLabels={evaluateAutoLabels}
           priorityFlag={flagsByThread[thread.threadId]}
+          userLabels={threadLabelMap.get(thread.threadId)}
         />
       ))}
     </div>
@@ -624,6 +671,7 @@ interface ThreadListRowProps {
   onDelete?: (email: MockEmail) => void;
   evaluateAutoLabels: (email: MockEmail) => EmailLabel[];
   priorityFlag?: DetectedSignal;
+  userLabels?: EmailLabel[];
 }
 
 const ThreadListRow = memo(function ThreadListRow({
@@ -640,6 +688,7 @@ const ThreadListRow = memo(function ThreadListRow({
   onDelete,
   evaluateAutoLabels,
   priorityFlag,
+  userLabels,
 }: ThreadListRowProps) {
   const onSelect = useCallback(() => onSelectThread(thread), [onSelectThread, thread]);
   const onCheckChange = useCallback(
@@ -666,6 +715,7 @@ const ThreadListRow = memo(function ThreadListRow({
       onDelete={onDelete}
       autoLabels={autoLabels}
       priorityFlag={priorityFlag}
+      userLabels={userLabels}
     />
   );
 });
