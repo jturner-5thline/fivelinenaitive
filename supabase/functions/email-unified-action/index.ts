@@ -70,12 +70,20 @@ their intent into ONE of:
 Then produce a short title (max ~80 chars), a body (1-4 sentences for ask/note/draft,
 or the suggested task title for task), and a 1-sentence rationale.
 
-When intent is "note", ALSO inspect the thread + prompt for any specific
-lender/firm being discussed. If you can identify one, populate the optional
-"lender" field with:
+When intent is "note", you MUST also inspect the thread + prompt for any
+specific lender/firm being discussed. If you can identify one, populate the
+optional "lender" field with:
   - name   : the lender / firm name as written in the thread
-  - status : one of "in-review" | "terms-issued" | "in-diligence" | "closed-funded"
-             (omit if the email gives no signal)
+  - status : ALWAYS try to set this. Map signals to one of:
+             "in-review"      — lender is reviewing materials, evaluating, in early diligence
+             "terms-issued"   — a term sheet / proposal has been sent
+             "in-diligence"   — formal due diligence is underway (DD, in-DD, "in diligence", credit committee, underwriting)
+             "closed-funded"  — the loan has closed and funded
+             Only omit "status" if the email truly gives no signal at all.
+             Cue words: "evaluating / reviewing / under review" → in-review.
+             "in diligence / in DD / due diligence / underwriting / credit committee" → in-diligence.
+             "term sheet issued / proposal / draft terms" → terms-issued.
+             "funded / closed" → closed-funded.
   - note   : a one-sentence summary of the lender's current position that
              should be saved on the lender record (different from the deal-level
              note body — this one is lender-specific)
