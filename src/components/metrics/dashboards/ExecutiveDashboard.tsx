@@ -1,13 +1,33 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useMemo } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Lock, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line, ComposedChart, Area, PieChart, Pie, Cell, Legend } from 'recharts';
+import { Lock, TrendingUp, TrendingDown } from 'lucide-react';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Line, ComposedChart, Area, PieChart, Pie, Cell, Legend } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { PieGlassDefs, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
+import { GlassCard, GlassCardHeader, GlassCardBody, GLASS_TOKENS } from '@/components/metrics/GlassCard';
+
+// ── Shared chart primitives (axis/grid/tooltip) ──────────────────────────────
+// Mirrors the Liquid Glass treatment used by Profit by Entity / Revenue
+// Overview so every Executive Dashboard chart sits inside the same visual
+// language as the rest of Weekly Rundown.
+const AXIS_TICK = { fontSize: 10, fill: 'rgba(180, 210, 245, 0.55)' } as const;
+const AXIS_LINE = { stroke: 'rgba(160, 200, 255, 0.12)' } as const;
+const GRID_STROKE = 'rgba(160, 200, 255, 0.10)';
+const TOOLTIP_STYLE: React.CSSProperties = {
+  backgroundColor: 'hsl(var(--popover) / 0.96)',
+  border: '1px solid hsl(0 0% 100% / 0.14)',
+  borderRadius: '8px',
+  fontSize: '12px',
+  color: 'hsl(0 0% 100%)',
+  boxShadow: 'var(--shadow-xl)',
+  backdropFilter: 'blur(16px)',
+};
+const LEGEND_STYLE: React.CSSProperties = {
+  fontSize: 11,
+  color: 'rgba(180, 210, 245, 0.7)',
+  paddingTop: 4,
+};
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
@@ -75,10 +95,13 @@ function DealsByStatusPieChart() {
 
   if (isLoading) {
     return (
-      <Card className="glass-module">
-        <CardHeader className="pb-2"><Skeleton className="h-5 w-32" /><Skeleton className="h-3 w-48 mt-1" /></CardHeader>
-        <CardContent><Skeleton className="h-[220px] w-full" /></CardContent>
-      </Card>
+      <GlassCard>
+        <GlassCardHeader>
+          <Skeleton className="h-3 w-32" />
+          <Skeleton className="h-3 w-48 mt-2" />
+        </GlassCardHeader>
+        <GlassCardBody><Skeleton className="h-[220px] w-full" /></GlassCardBody>
+      </GlassCard>
     );
   }
 
@@ -93,18 +116,28 @@ function DealsByStatusPieChart() {
   }));
 
   return (
-    <Card className="glass-module glass-module-interactive">
-      <CardHeader className="pb-2 flex flex-row items-start justify-between">
-        <div>
-          <CardTitle className="text-sm font-medium text-foreground">Deals by Status</CardTitle>
-          <p className="text-xs text-muted-foreground mt-0.5">By total fee · current pipeline</p>
-        </div>
-        <div className="text-right">
-          <p className="text-lg font-bold text-foreground">{formatCurrency(total)}</p>
-          <p className="text-[10px] text-muted-foreground">Total Fee</p>
-        </div>
-      </CardHeader>
-      <CardContent>
+    <GlassCard interactive>
+      <GlassCardHeader
+        title="Deals by Status"
+        subtitle="By total fee · current pipeline"
+        right={
+          <div className="text-right">
+            <p
+              className="text-xl font-semibold tabular-nums leading-none tracking-tight"
+              style={{ color: GLASS_TOKENS.valueColor }}
+            >
+              {formatCurrency(total)}
+            </p>
+            <p
+              className="text-[10px] mt-1.5 uppercase tracking-wider"
+              style={{ color: GLASS_TOKENS.metaColor }}
+            >
+              Total Fee
+            </p>
+          </div>
+        }
+      />
+      <GlassCardBody>
         <div style={{ height: 170 }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -129,87 +162,92 @@ function DealsByStatusPieChart() {
                   const pct = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
                   return [`${formatCurrencyFull(value)} (${pct}%)`, name];
                 }}
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--popover) / 0.96)',
-                  border: '1px solid hsl(0 0% 100% / 0.14)',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  color: 'hsl(0 0% 100%)',
-                  boxShadow: 'var(--shadow-xl)',
-                  backdropFilter: 'blur(16px)',
-                }}
+                contentStyle={TOOLTIP_STYLE}
               />
             </PieChart>
           </ResponsiveContainer>
         </div>
         {/* Below-chart legend — matches Outstanding A/R formatting */}
-        <div className="mt-2 space-y-1.5">
+        <div className="mt-3 space-y-1.5">
           {legendItems.map((item, i) => (
             <div key={i} className="flex items-center gap-2 text-xs">
               <span className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color, opacity: 0.75 }} />
-              <span className="text-muted-foreground truncate flex-1" title={item.label}>{item.label}</span>
-              <span className="font-medium text-foreground flex-shrink-0">{item.value}</span>
+              <span className="truncate flex-1" style={{ color: 'rgba(180, 210, 245, 0.7)' }} title={item.label}>{item.label}</span>
+              <span className="font-medium tabular-nums flex-shrink-0" style={{ color: GLASS_TOKENS.valueColor }}>{item.value}</span>
             </div>
           ))}
         </div>
-      </CardContent>
-    </Card>
+      </GlassCardBody>
+    </GlassCard>
   );
 }
 
-const COLORS = [
-  "hsl(var(--primary))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
-];
-
-function StatCard({ 
-  title, 
-  value, 
-  subtitle, 
+function StatCard({
+  title,
+  value,
+  subtitle,
   trend,
-  trendValue 
-}: { 
-  title: string; 
-  value: string | number; 
+  trendValue,
+}: {
+  title: string;
+  value: string | number;
   subtitle?: string;
   trend?: 'up' | 'down';
   trendValue?: string;
 }) {
+  const trendColor = trend === 'up' ? 'hsl(152, 58%, 52%)' : 'hsl(354, 62%, 56%)';
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        {subtitle && <Badge variant="outline" className="w-fit text-xs">{subtitle}</Badge>}
-      </CardHeader>
-      <CardContent>
-        <p className="text-2xl font-bold">{value}</p>
+    <GlassCard interactive>
+      <GlassCardHeader title={title} />
+      <GlassCardBody className="pt-0 pb-5">
+        <p
+          className={GLASS_TOKENS.valueClass}
+          style={{ color: GLASS_TOKENS.valueColor }}
+        >
+          {value}
+        </p>
+        {subtitle && (
+          <p
+            className={GLASS_TOKENS.metaClass}
+            style={{ color: GLASS_TOKENS.metaColor }}
+          >
+            {subtitle}
+          </p>
+        )}
         {trend && trendValue && (
-          <div className={`flex items-center gap-1 text-xs mt-1 ${trend === 'up' ? 'text-success' : 'text-destructive'}`}>
+          <div
+            className="flex items-center gap-1 text-[11px] mt-2 tabular-nums"
+            style={{ color: trendColor }}
+          >
             {trend === 'up' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
             <span>{trendValue}</span>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </GlassCardBody>
+    </GlassCard>
   );
 }
 
 function NoDataCard({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        {subtitle && <Badge variant="outline" className="w-fit text-xs">{subtitle}</Badge>}
-      </CardHeader>
-      <CardContent className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-        <Lock className="h-8 w-8 mb-2 opacity-30" />
-        <p className="text-sm font-medium">No Data Available</p>
-      </CardContent>
-    </Card>
+    <GlassCard>
+      <GlassCardHeader title={title} subtitle={subtitle} />
+      <GlassCardBody className="flex flex-col items-center justify-center py-10">
+        <Lock className="h-8 w-8 mb-2" style={{ color: 'rgba(160, 200, 255, 0.30)' }} />
+        <p
+          className="text-[11px] uppercase tracking-wider"
+          style={{ color: GLASS_TOKENS.metaColor }}
+        >
+          No Data Available
+        </p>
+      </GlassCardBody>
+    </GlassCard>
   );
+}
+
+/** Shared header bundle for chart cards — matches Profit by Entity / Revenue Overview. */
+function ChartCardHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  return <GlassCardHeader title={title} subtitle={subtitle} />;
 }
 
 export function ExecutiveDashboard() {
@@ -282,103 +320,93 @@ export function ExecutiveDashboard() {
 
       {/* Row 2: Revenue & Pipeline */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Revenue by Month</CardTitle>
-            <Badge variant="outline" className="w-fit text-xs">Last 6 Months</Badge>
-          </CardHeader>
-          <CardContent>
+        <GlassCard interactive>
+          <ChartCardHeader title="Revenue by Month" subtitle="Last 6 Months" />
+          <GlassCardBody>
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={revenueByMonthData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-                  <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                  <Area type="monotone" dataKey="revenue" fill="hsl(var(--primary) / 0.2)" stroke="hsl(var(--primary))" />
-                  <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }} />
+                <ComposedChart data={revenueByMonthData} margin={{ top: 8, right: 8, left: -10, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="2 4" stroke={GRID_STROKE} vertical={false} />
+                  <XAxis dataKey="month" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
+                  <YAxis tickFormatter={formatCurrency} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={TOOLTIP_STYLE} />
+                  <Area type="monotone" dataKey="revenue" fill="hsl(var(--primary) / 0.18)" stroke="transparent" />
+                  <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3, fill: 'hsl(var(--primary))', strokeWidth: 0 }} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
+          </GlassCardBody>
+        </GlassCard>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Pipeline by Stage</CardTitle>
-            <Badge variant="outline" className="w-fit text-xs">Current</Badge>
-          </CardHeader>
-          <CardContent>
+        <GlassCard interactive>
+          <ChartCardHeader title="Pipeline by Stage" subtitle="Current" />
+          <GlassCardBody>
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={pipelineByStageData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis type="number" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
-                  <YAxis dataKey="stage" type="category" width={90} tick={{ fontSize: 10 }} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                <BarChart data={pipelineByStageData} layout="vertical" margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="2 4" stroke={GRID_STROKE} horizontal={false} />
+                  <XAxis type="number" tickFormatter={formatCurrency} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
+                  <YAxis dataKey="stage" type="category" width={96} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(160,200,255,0.06)' }} />
                   <Bar dataKey="value" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
+          </GlassCardBody>
+        </GlassCard>
       </div>
 
       {/* Row 3: Deal Types & Cash Flow */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <DealsByStatusPieChart />
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Cash Flow</CardTitle>
-            <Badge variant="outline" className="w-fit text-xs">Last 6 Months</Badge>
-          </CardHeader>
-          <CardContent>
+        <GlassCard interactive>
+          <ChartCardHeader title="Cash Flow" subtitle="Last 6 Months" />
+          <GlassCardBody>
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={cashFlowData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-                  <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                  <Legend />
-                  <Bar dataKey="inflow" fill="hsl(var(--success))" name="Inflow" shape={createGlassBarShape({ radius: 4 })} />
-                  <Bar dataKey="outflow" fill="hsl(var(--destructive))" name="Outflow" shape={createGlassBarShape({ radius: 4 })} />
+                <BarChart data={cashFlowData} margin={{ top: 8, right: 8, left: -10, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="2 4" stroke={GRID_STROKE} vertical={false} />
+                  <XAxis dataKey="month" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
+                  <YAxis tickFormatter={formatCurrency} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(160,200,255,0.06)' }} />
+                  <Legend wrapperStyle={LEGEND_STYLE} iconType="circle" iconSize={8} />
+                  <Bar dataKey="inflow" fill="hsl(152, 58%, 52%)" name="Inflow" shape={createGlassBarShape({ radius: 4 })} />
+                  <Bar dataKey="outflow" fill="hsl(354, 62%, 56%)" name="Outflow" shape={createGlassBarShape({ radius: 4 })} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
+          </GlassCardBody>
+        </GlassCard>
       </div>
 
       {/* Row 4: Team Performance */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Team Performance</CardTitle>
-          <Badge variant="outline" className="w-fit text-xs">Quarter to date</Badge>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[200px]">
+      <GlassCard interactive>
+        <ChartCardHeader title="Team Performance" subtitle="Quarter to date" />
+        <GlassCardBody>
+          <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={teamPerformanceData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis yAxisId="left" tick={{ fontSize: 10 }} />
-                <YAxis yAxisId="right" orientation="right" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
-                <Tooltip 
+              <BarChart data={teamPerformanceData} margin={{ top: 8, right: 8, left: -10, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="2 4" stroke={GRID_STROKE} vertical={false} />
+                <XAxis dataKey="name" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
+                <YAxis yAxisId="left" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
+                <YAxis yAxisId="right" orientation="right" tickFormatter={formatCurrency} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
+                <Tooltip
                   formatter={(value: number, name: string) => [
-                    name === 'value' ? formatCurrency(value) : value,
-                    name === 'value' ? 'Deal Value' : 'Deals Closed'
-                  ]} 
+                    name === 'Deal Value' ? formatCurrency(value) : value,
+                    name,
+                  ]}
+                  contentStyle={TOOLTIP_STYLE}
+                  cursor={{ fill: 'rgba(160,200,255,0.06)' }}
                 />
-                <Legend />
+                <Legend wrapperStyle={LEGEND_STYLE} iconType="circle" iconSize={8} />
                 <Bar yAxisId="left" dataKey="closed" fill="hsl(var(--primary))" name="Deals Closed" shape={createGlassBarShape({ radius: 4 })} />
                 <Bar yAxisId="right" dataKey="value" fill="hsl(var(--chart-2))" name="Deal Value" shape={createGlassBarShape({ radius: 4 })} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardBody>
+      </GlassCard>
     </div>
   );
 }
