@@ -12,6 +12,16 @@ import { createTaskFromDraft, type TaskDraft } from '@/hooks/useNaitiveTaskParse
 import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
 import { useUiPreference } from '@/hooks/useUiPreference';
 import type { WorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 type Suggestion = NonNullable<WorkflowAnalysis['suggested_tasks']>[number];
 
@@ -109,6 +119,13 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
   // Profile-level default for "Sync new tasks to Asana". Editable on the
   // Account page; per-card switches still override on a one-off basis.
   const [defaultAsanaSync] = useUiPreference<boolean>('default_asana_sync', true);
+  // Tracks whether the user has already acknowledged the one-time
+  // "tasks will only live in naitive" notice when turning Asana sync off.
+  const [asanaOffAck, setAsanaOffAck] = useUiPreference<boolean>(
+    'asana_off_confirmed',
+    false,
+  );
+  const [pendingOffKey, setPendingOffKey] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [retryingKey, setRetryingKey] = useState<string | null>(null);
   type AsanaStatus = 'synced' | 'skipped' | 'failed';
@@ -127,6 +144,28 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
   const [asanaSyncByKey, setAsanaSyncByKey] = useState<Record<string, boolean>>({});
   const isAsanaSyncOn = (key: string) =>
     asanaSyncByKey[key] !== undefined ? asanaSyncByKey[key] : defaultAsanaSync;
+
+  /**
+   * Intercept Asana toggle changes. The first time a user turns the
+   * sync OFF, surface a lightweight confirmation explaining that the
+   * task will only be created inside naitive. After they confirm once,
+   * the preference is remembered and subsequent toggles are silent.
+   */
+  const handleAsanaToggle = (key: string, next: boolean) => {
+    if (!next && !asanaOffAck) {
+      setPendingOffKey(key);
+      return;
+    }
+    setAsanaSyncByKey((prev) => ({ ...prev, [key]: next }));
+  };
+
+  const confirmAsanaOff = () => {
+    if (pendingOffKey) {
+      setAsanaSyncByKey((prev) => ({ ...prev, [pendingOffKey]: false }));
+    }
+    setAsanaOffAck(true);
+    setPendingOffKey(null);
+  };
 
   const items = useMemo(() => {
     const seen = new Set<string>();
@@ -276,6 +315,29 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
 
   return (
     <div className="space-y-2">
+      <AlertDialog
+        open={pendingOffKey !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingOffKey(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Turn off Asana sync?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This task will be created only in naitive and won't appear in
+              Asana. You can flip the toggle back on at any time before
+              creating the task. We'll remember your choice for next time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep Asana sync on</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmAsanaOff}>
+              Turn off
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {items.map((s, idx) => {
         const key = dedupSignature(s) || `${s.title}::${idx}`;
         if (dismissedKeys[key]) return null;
@@ -391,9 +453,7 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
                 >
                   <Switch
                     checked={isAsanaSyncOn(key)}
-                    onCheckedChange={(v) =>
-                      setAsanaSyncByKey((prev) => ({ ...prev, [key]: v }))
-                    }
+                    onCheckedChange={(v) => handleAsanaToggle(key, v)}
                     className="h-3.5 w-6 data-[state=checked]:bg-primary"
                   />
                   <Link2 className="h-2.5 w-2.5" />
