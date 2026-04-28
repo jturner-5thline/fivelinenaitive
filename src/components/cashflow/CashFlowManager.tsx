@@ -19,7 +19,7 @@ import { ScheduledCashFlowsModal } from './ScheduledCashFlowsModal';
 import { useCashFlowImport } from './useCashFlowImport';
 import { useCashInItems } from './useCashInItems';
 import { useScheduledCashFlows } from './useScheduledCashFlows';
-import { mergeScheduledIntoWeekly } from './scheduledCashFlows';
+import { mergeScheduledIntoWeekly, ACCOUNT_OPTIONS, DEBT_ADVISORY_DEFAULT_SUBCATEGORY } from './scheduledCashFlows';
 import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -441,6 +441,10 @@ export function CashFlowManager() {
   const [debouncedYears, setDebouncedYears] = useState<string[]>([]);
   const [debouncedQuarters, setDebouncedQuarters] = useState<string[]>([]);
 
+  // Entity (account) and Category filters for Configure-driven KPIs/charts/grid
+  const [filterEntities, setFilterEntities] = useState<string[]>([]);
+  const [filterCategories, setFilterCategories] = useState<string[]>([]);
+
   // Debounce filters by 200ms
   useEffect(() => {
     const t = setTimeout(() => {
@@ -534,15 +538,80 @@ export function CashFlowManager() {
     return out;
   }, [computedWeekly, weeklyOverrides]);
 
-  // Merge scheduled cash flow entries into the weekly grid
+  // Apply Entity and Category filters to the scheduled (Configure) entries.
+  // When neither filter is active, all entries pass through unchanged.
+  const isConfigureFilterActive = filterEntities.length > 0 || filterCategories.length > 0;
+  const filteredScheduledItems = useMemo(() => {
+    if (!isConfigureFilterActive) return scheduledItems;
+    return (scheduledItems || []).filter((e) => {
+      // Migrate legacy parent storage so filtering is consistent with the grid.
+      const cat = e.category === 'Debt Advisory Revenue' ? DEBT_ADVISORY_DEFAULT_SUBCATEGORY : e.category;
+      const entityOk = filterEntities.length === 0 || filterEntities.includes(e.account);
+      const categoryOk = filterCategories.length === 0 || filterCategories.includes(cat);
+      return entityOk && categoryOk;
+    });
+  }, [scheduledItems, filterEntities, filterCategories, isConfigureFilterActive]);
+
+  // Build a zeroed shell of weekly entries (preserves week_ending, week_num, etc.)
+  // so that when a Configure filter is active we show ONLY filtered Configure
+  // values without inheriting daily-source receipts/disbursements.
+  const zeroedWeeklyShell = useMemo<WeeklyData>(() => {
+    const out: WeeklyData = {};
+    for (const [k, v] of Object.entries(rawWeekly)) {
+      const begin = (v['BEGINNING CASH'] as number) || 0;
+      out[k] = {
+        ...v,
+        // Zero out flow values; keep position/meta fields.
+        'TOTAL RECEIPTS': 0,
+        'TOTAL DISBURSEMENTS': 0,
+        'NET CHANGE': 0,
+        'BEGINNING CASH': begin,
+        'ENDING CASH': begin,
+      } as any;
+      // Zero out any per-category line items inherited from rawWeekly so the
+      // weekly grid only shows the filtered Configure rows.
+      for (const key of Object.keys(out[k])) {
+        const reserved = new Set([
+          'BEGINNING CASH', 'ENDING CASH', "Add'l Liquidity (Delayed Draw)",
+          'TOTAL CASH ON HAND', 'TOTAL RECEIPTS', 'TOTAL DISBURSEMENTS',
+          'NET CHANGE', 'week_ending', 'week_num', 'Internal Transfers',
+        ]);
+        if (reserved.has(key)) continue;
+        const val = (out[k] as any)[key];
+        if (typeof val === 'number') (out[k] as any)[key] = 0;
+      }
+    }
+    return out;
+  }, [rawWeekly]);
+
+  // Merge scheduled (filtered) cash flow entries into the weekly grid.
   const weeklyWithScheduled = useMemo<WeeklyData>(
-    () => mergeScheduledIntoWeekly(rawWeekly, scheduledItems),
-    [rawWeekly, scheduledItems],
+    () => mergeScheduledIntoWeekly(
+      isConfigureFilterActive ? zeroedWeeklyShell : rawWeekly,
+      filteredScheduledItems,
+    ),
+    [rawWeekly, zeroedWeeklyShell, filteredScheduledItems, isConfigureFilterActive],
   );
 
   const rawSidebar = useMemo(() => normalizeSidebarData(role === 'viewer' && sandboxSidebar ? sandboxSidebar : sidebarData), [role, sandboxSidebar, sidebarData]);
 
   const availableYears = useMemo(() => getAvailableYears(rawDaily.dates), [rawDaily.dates]);
+
+  // Distinct entities/categories present in Configure entries (preserve canonical ordering)
+  const availableEntities = useMemo(() => {
+    const present = new Set((scheduledItems || []).map((e) => e.account));
+    const inOrder = (ACCOUNT_OPTIONS as readonly string[]).filter((a) => present.has(a));
+    const extras = Array.from(present).filter((a) => !(ACCOUNT_OPTIONS as readonly string[]).includes(a)).sort();
+    return [...inOrder, ...extras];
+  }, [scheduledItems]);
+  const availableCategories = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of scheduledItems || []) {
+      const cat = e.category === 'Debt Advisory Revenue' ? DEBT_ADVISORY_DEFAULT_SUBCATEGORY : e.category;
+      set.add(cat);
+    }
+    return Array.from(set).sort();
+  }, [scheduledItems]);
 
   // Filtered data using debounced values
   const filteredDaily = useMemo(() => filterDailyByPeriod(rawDaily, debouncedYears, debouncedQuarters), [rawDaily, debouncedYears, debouncedQuarters]);
@@ -904,11 +973,60 @@ export function CashFlowManager() {
             })}
           </div>
         </div>
-        {(filterYears.length > 0 || filterQuarters.length > 0) && (
+        {availableEntities.length > 0 && (
+          <div className="cf-filter-group">
+            <label className="cf-filter-label">Entity</label>
+            <div className="cf-toggle-group">
+              {availableEntities.map(ent => {
+                const active = filterEntities.includes(ent);
+                return (
+                  <button
+                    key={ent}
+                    className={`cf-toggle-btn ${active ? 'active' : ''}`}
+                    onClick={() => setFilterEntities(prev =>
+                      active ? prev.filter(v => v !== ent) : [...prev, ent]
+                    )}
+                    title={`Show only entries for ${ent}`}
+                  >
+                    {ent}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {availableCategories.length > 0 && (
+          <div className="cf-filter-group">
+            <label className="cf-filter-label">Category</label>
+            <div className="cf-toggle-group">
+              {availableCategories.map(cat => {
+                const active = filterCategories.includes(cat);
+                return (
+                  <button
+                    key={cat}
+                    className={`cf-toggle-btn ${active ? 'active' : ''}`}
+                    onClick={() => setFilterCategories(prev =>
+                      active ? prev.filter(v => v !== cat) : [...prev, cat]
+                    )}
+                    title={`Show only ${cat} entries`}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {(filterYears.length > 0 || filterQuarters.length > 0 || filterEntities.length > 0 || filterCategories.length > 0) && (
           <button
             className="cf-btn cf-btn-ghost"
             style={{ fontSize: 11, marginLeft: 4 }}
-            onClick={() => { setFilterYears([]); setFilterQuarters([]); }}
+            onClick={() => {
+              setFilterYears([]);
+              setFilterQuarters([]);
+              setFilterEntities([]);
+              setFilterCategories([]);
+            }}
           >
             Clear
           </button>
@@ -917,6 +1035,11 @@ export function CashFlowManager() {
           {activeTab === 'daily'
             ? `${filteredDaily.dates.length} days`
             : `${Object.keys(filteredWeekly).length} weeks`}
+          {isConfigureFilterActive && (
+            <span style={{ marginLeft: 8, opacity: 0.75 }}>
+              · Configure-only: {filteredScheduledItems.length} entr{filteredScheduledItems.length === 1 ? 'y' : 'ies'}
+            </span>
+          )}
         </span>
       </div>
 
@@ -959,7 +1082,7 @@ export function CashFlowManager() {
           onSavePlan={handleSavePlan}
           onExport={handleOpenExport}
           onConfigureScheduled={() => setScheduledModalOpen(true)}
-          scheduledItems={scheduledItems}
+          scheduledItems={filteredScheduledItems}
           onSidebarEditItem={handleSidebarEditItem}
           onSidebarRemoveItem={handleSidebarRemoveItem}
           onSidebarAddItem={handleSidebarAddItem}
