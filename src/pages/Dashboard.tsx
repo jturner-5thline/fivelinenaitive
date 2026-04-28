@@ -22,7 +22,6 @@ import { AddWidgetDialog } from '@/components/dashboard/AddWidgetDialog';
 import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
 import { EmailIntelligenceWidget } from '@/components/dashboard/EmailIntelligenceWidget';
 import { cn } from '@/lib/utils';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 /**
  * Shared interaction styles for the dashboard widget tiles
