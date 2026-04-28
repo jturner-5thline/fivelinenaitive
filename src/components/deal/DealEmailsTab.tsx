@@ -1087,6 +1087,11 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         <span className="w-[52px] flex items-center justify-center shrink-0">
           {item.indicatorColor ? (
             <span className={cn('w-2 h-2 rounded-full', item.indicatorColor)} />
+          ) : item.emoji && item.emoji.startsWith('#') ? (
+            <span
+              className="w-2.5 h-2.5 rounded-full ring-1 ring-foreground/10"
+              style={{ background: item.emoji }}
+            />
           ) : (
             <item.icon
               className={cn(
