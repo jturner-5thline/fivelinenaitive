@@ -873,6 +873,24 @@ export default function Tasks() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Quick-create task dialog */}
+        <QuickCreateTaskDialog
+          open={showQuickCreate}
+          onClose={() => setShowQuickCreate(false)}
+          teamMembers={teamMembers}
+          currentUserId={user?.id || ''}
+          onCreate={async (input) => {
+            await createTask.mutateAsync({
+              title: input.title,
+              priority: input.priority,
+              due_date: input.due_date || undefined,
+              status: input.status,
+              assigned_to: input.assigned_to,
+            });
+            toast.success(`Task created: "${input.title}"`);
+          }}
+        />
       </div>
     </>
   );
