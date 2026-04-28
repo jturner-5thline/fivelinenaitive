@@ -197,14 +197,16 @@ export function TaskListView({
     if (newStatus === 'complete') fireCelebration();
   }, [onUpdateTask]);
 
+  // Shared, timezone-aware day boundaries — single source of truth for
+  // overdue / today / tomorrow / this week. Auto-rolls at local midnight.
+  // IMPORTANT: This hook must be called unconditionally before any early
+  // return below (React's Rules of Hooks).
+  const boundaries = useDueBoundaries();
+  const todayStr = boundaries.today;
+
   if (isLoading) {
     return <div className="p-4 space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>;
   }
-
-  // Shared, timezone-aware day boundaries — single source of truth for
-  // overdue / today / tomorrow / this week. Auto-rolls at local midnight.
-  const boundaries = useDueBoundaries();
-  const todayStr = boundaries.today;
 
   // Pinned overdue section uses the same bucket logic as the groupings so
   // a task can never appear simultaneously as Overdue and within its status group.
