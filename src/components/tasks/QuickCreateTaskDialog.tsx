@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CalendarIcon, Loader2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { CalendarIcon, Loader2, UserCheck, Zap, Sun, Sunrise, CalendarDays, Flame, Coffee } from 'lucide-react';
+import { addDays, format, isSameDay, nextMonday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { type TeamMember } from '@/hooks/useTeamMembers';
 
@@ -52,6 +52,61 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
     }
   }, [open, currentUserId]);
 
+  // ─── One-click presets ────────────────────────────────────────────────
+  // Combo presets snap several fields at once (priority + due + status).
+  const combos: { id: string; label: string; icon: React.ReactNode; tone: string; apply: () => void }[] = [
+    {
+      id: 'urgent_today',
+      label: 'Urgent · Today',
+      icon: <Flame className="h-3 w-3" />,
+      tone: '#e57373',
+      apply: () => { setPriority('urgent'); setDueDate(new Date()); setStatus('not_started'); },
+    },
+    {
+      id: 'high_tomorrow',
+      label: 'High · Tomorrow',
+      icon: <Zap className="h-3 w-3" />,
+      tone: '#e89b6c',
+      apply: () => { setPriority('high'); setDueDate(addDays(new Date(), 1)); setStatus('not_started'); },
+    },
+    {
+      id: 'this_week',
+      label: 'Medium · This week',
+      icon: <CalendarDays className="h-3 w-3" />,
+      tone: '#7eb8f7',
+      apply: () => { setPriority('medium'); setDueDate(addDays(new Date(), 5)); setStatus('not_started'); },
+    },
+    {
+      id: 'quick_todo',
+      label: 'Quick todo',
+      icon: <Coffee className="h-3 w-3" />,
+      tone: '#9aa3b6',
+      apply: () => { setPriority('low'); setDueDate(undefined); setStatus('not_started'); },
+    },
+  ];
+
+  // Per-field due-date presets
+  const datePresets = [
+    { id: 'today',    label: 'Today',    icon: <Sun className="h-3 w-3" />,         value: new Date() },
+    { id: 'tomorrow', label: 'Tomorrow', icon: <Sunrise className="h-3 w-3" />,     value: addDays(new Date(), 1) },
+    { id: 'monday',   label: 'Next Mon', icon: <CalendarDays className="h-3 w-3" />, value: nextMonday(new Date()) },
+    { id: 'week',     label: '+1 week',  icon: <CalendarDays className="h-3 w-3" />, value: addDays(new Date(), 7) },
+  ];
+  const dateMatches = (preset: Date) => !!dueDate && isSameDay(dueDate, preset);
+
+  const priorityPresets: { value: QuickTaskInput['priority']; label: string; tone: string }[] = [
+    { value: 'urgent', label: 'Urgent', tone: '#e57373' },
+    { value: 'high',   label: 'High',   tone: '#e89b6c' },
+    { value: 'medium', label: 'Medium', tone: '#d4a45a' },
+    { value: 'low',    label: 'Low',    tone: '#7a8194' },
+  ];
+  const statusPresets: { value: QuickTaskInput['status']; label: string; tone: string }[] = [
+    { value: 'not_started', label: 'Not Started', tone: '#7a8194' },
+    { value: 'in_progress', label: 'In Progress', tone: '#7eb8f7' },
+    { value: 'blocked',     label: 'Blocked',     tone: '#e57373' },
+    { value: 'complete',    label: 'Complete',    tone: '#7fc89a' },
+  ];
+
   const handleSubmit = async () => {
     const trimmed = title.trim();
     if (!trimmed) {
@@ -93,6 +148,23 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
         </DialogHeader>
 
         <div className="px-5 py-4 space-y-4">
+          {/* Combo presets — one-click multi-field setup */}
+          <div className="flex flex-wrap gap-1.5">
+            {combos.map(c => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={c.apply}
+                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium border transition-colors hover:brightness-110"
+                style={{ color: c.tone, borderColor: `${c.tone}33`, backgroundColor: `${c.tone}10` }}
+                title={`Apply "${c.label}" preset`}
+              >
+                {c.icon}
+                {c.label}
+              </button>
+            ))}
+          </div>
+
           {/* Title */}
           <div className="space-y-1.5">
             <label className="text-[10px] uppercase tracking-wide font-medium" style={{ color: '#7a8194' }}>
@@ -115,51 +187,96 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
             {warning && <p className="text-[11px]" style={{ color: '#e57373' }}>{warning}</p>}
           </div>
 
-          {/* Two-column row: Priority + Status */}
+          {/* Quick priority + status pills */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-[10px] uppercase tracking-wide font-medium" style={{ color: '#7a8194' }}>Priority</label>
-              <Select value={priority} onValueChange={(v) => setPriority(v as QuickTaskInput['priority'])}>
-                <SelectTrigger className="h-9 text-sm text-white" style={{ backgroundColor: 'rgba(20,24,32,0.65)', borderColor: 'rgba(255,255,255,0.07)' }}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="urgent" className="text-xs">Urgent</SelectItem>
-                  <SelectItem value="high" className="text-xs">High</SelectItem>
-                  <SelectItem value="medium" className="text-xs">Medium</SelectItem>
-                  <SelectItem value="low" className="text-xs">Low</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex flex-wrap gap-1">
+                {priorityPresets.map(p => {
+                  const active = priority === p.value;
+                  return (
+                    <button
+                      key={p.value}
+                      type="button"
+                      onClick={() => setPriority(p.value)}
+                      className="px-2 py-1 rounded-md text-[11px] font-medium border transition-colors"
+                      style={{
+                        color: active ? p.tone : '#9aa3b6',
+                        borderColor: active ? `${p.tone}66` : 'rgba(255,255,255,0.08)',
+                        backgroundColor: active ? `${p.tone}1f` : 'rgba(20,24,32,0.65)',
+                      }}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] uppercase tracking-wide font-medium" style={{ color: '#7a8194' }}>Status</label>
-              <Select value={status} onValueChange={(v) => setStatus(v as QuickTaskInput['status'])}>
-                <SelectTrigger className="h-9 text-sm text-white" style={{ backgroundColor: 'rgba(20,24,32,0.65)', borderColor: 'rgba(255,255,255,0.07)' }}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="not_started" className="text-xs">Not Started</SelectItem>
-                  <SelectItem value="in_progress" className="text-xs">In Progress</SelectItem>
-                  <SelectItem value="blocked" className="text-xs">Blocked</SelectItem>
-                  <SelectItem value="complete" className="text-xs">Complete</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex flex-wrap gap-1">
+                {statusPresets.map(s => {
+                  const active = status === s.value;
+                  return (
+                    <button
+                      key={s.value}
+                      type="button"
+                      onClick={() => setStatus(s.value)}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium border transition-colors"
+                      style={{
+                        color: active ? s.tone : '#9aa3b6',
+                        borderColor: active ? `${s.tone}66` : 'rgba(255,255,255,0.08)',
+                        backgroundColor: active ? `${s.tone}1a` : 'rgba(20,24,32,0.65)',
+                      }}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: s.tone }} />
+                      {s.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          {/* Two-column row: Due date + Assignee */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase tracking-wide font-medium" style={{ color: '#7a8194' }}>Due date</label>
+          {/* Quick due-date presets + full picker fallback */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase tracking-wide font-medium" style={{ color: '#7a8194' }}>Due date</label>
+            <div className="flex flex-wrap gap-1.5">
+              {datePresets.map(p => {
+                const active = dateMatches(p.value);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setDueDate(active ? undefined : p.value)}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] border transition-colors"
+                    style={{
+                      color: active ? '#cfe3ff' : '#9aa3b6',
+                      borderColor: active ? 'rgba(126,184,247,0.45)' : 'rgba(255,255,255,0.08)',
+                      backgroundColor: active ? 'rgba(126,184,247,0.14)' : 'rgba(20,24,32,0.65)',
+                    }}
+                  >
+                    {p.icon}
+                    {p.label}
+                  </button>
+                );
+              })}
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
+                    type="button"
                     variant="outline"
-                    className={cn('h-9 w-full justify-start text-sm font-normal', !dueDate && 'text-[#7a8194]')}
-                    style={{ backgroundColor: 'rgba(20,24,32,0.65)', borderColor: 'rgba(255,255,255,0.07)', color: dueDate ? '#eef1f6' : '#7a8194' }}
+                    className="inline-flex items-center gap-1 px-2 py-1 h-auto rounded-md text-[11px] font-normal border"
+                    style={{
+                      color: dueDate && !datePresets.some(p => isSameDay(p.value, dueDate)) ? '#cfe3ff' : '#9aa3b6',
+                      borderColor: 'rgba(255,255,255,0.08)',
+                      backgroundColor: 'rgba(20,24,32,0.65)',
+                    }}
                   >
-                    <CalendarIcon className="h-3.5 w-3.5 mr-2" />
-                    {dueDate ? format(dueDate, 'PPP') : 'No date'}
+                    <CalendarIcon className="h-3 w-3" />
+                    {dueDate && !datePresets.some(p => isSameDay(p.value, dueDate))
+                      ? format(dueDate, 'MMM d')
+                      : 'Pick…'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -170,42 +287,62 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
                     initialFocus
                     className={cn('p-3 pointer-events-auto')}
                   />
-                  {dueDate && (
-                    <div className="border-t p-2">
-                      <Button variant="ghost" size="sm" className="w-full text-xs text-destructive" onClick={() => setDueDate(undefined)}>
-                        Clear date
-                      </Button>
-                    </div>
-                  )}
                 </PopoverContent>
               </Popover>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase tracking-wide font-medium" style={{ color: '#7a8194' }}>Assignee</label>
-              <Select value={assignedTo} onValueChange={setAssignedTo}>
-                <SelectTrigger className="h-9 text-sm text-white" style={{ backgroundColor: 'rgba(20,24,32,0.65)', borderColor: 'rgba(255,255,255,0.07)' }}>
-                  <div className="flex items-center gap-2 truncate">
-                    {assignee && (
-                      <Avatar className="h-5 w-5">
-                        {assignee.avatar_url && <AvatarImage src={assignee.avatar_url} />}
-                        <AvatarFallback className="text-[8px]" style={{ backgroundColor: 'rgba(126,184,247,0.18)', color: '#cfe3ff' }}>
-                          {assignee.display_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
-                    <span className="truncate">{assignee?.display_name || 'Select…'}</span>
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  {teamMembers.map(m => (
-                    <SelectItem key={m.id} value={m.id} className="text-xs">
-                      {m.display_name}{m.id === currentUserId ? ' (me)' : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {dueDate && (
+                <button
+                  type="button"
+                  onClick={() => setDueDate(undefined)}
+                  className="inline-flex items-center px-2 py-1 rounded-md text-[11px] border transition-colors hover:text-[#e57373]"
+                  style={{ color: '#7a8194', borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'transparent' }}
+                >
+                  Clear
+                </button>
+              )}
             </div>
           </div>
+
+          {/* Assignee */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] uppercase tracking-wide font-medium" style={{ color: '#7a8194' }}>Assignee</label>
+              {assignedTo !== currentUserId && (
+                <button
+                  type="button"
+                  onClick={() => setAssignedTo(currentUserId)}
+                  className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded hover:bg-[rgba(126,184,247,0.1)] transition-colors"
+                  style={{ color: '#7eb8f7' }}
+                  title="Assign this task to me"
+                >
+                  <UserCheck className="h-2.5 w-2.5" />
+                  Assign to me
+                </button>
+              )}
+            </div>
+            <Select value={assignedTo} onValueChange={setAssignedTo}>
+              <SelectTrigger className="h-9 text-sm text-white" style={{ backgroundColor: 'rgba(20,24,32,0.65)', borderColor: 'rgba(255,255,255,0.07)' }}>
+                <div className="flex items-center gap-2 truncate">
+                  {assignee && (
+                    <Avatar className="h-5 w-5">
+                      {assignee.avatar_url && <AvatarImage src={assignee.avatar_url} />}
+                      <AvatarFallback className="text-[8px]" style={{ backgroundColor: 'rgba(126,184,247,0.18)', color: '#cfe3ff' }}>
+                        {assignee.display_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                  <span className="truncate">{assignee?.display_name || 'Select…'}</span>
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                {teamMembers.map(m => (
+                  <SelectItem key={m.id} value={m.id} className="text-xs">
+                    {m.display_name}{m.id === currentUserId ? ' (me)' : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
         </div>
 
         <DialogFooter className="px-5 py-3 border-t flex items-center justify-between gap-2 sm:justify-between" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'rgba(15,18,22,0.6)' }}>
