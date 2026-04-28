@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Plus, Settings2, PieChartIcon, BarChart3, TrendingUp, Download, Image, FileText } from 'lucide-react';
 import {
   DndContext,
@@ -46,6 +46,16 @@ import { toast } from '@/hooks/use-toast';
 interface WidgetsSectionProps {
   deals: Deal[];
 }
+
+type GroupByKey = 'stage' | 'status' | 'manager' | 'owner' | 'fund-type';
+
+const GROUP_BY_LABELS: Record<GroupByKey, string> = {
+  stage: 'Stage',
+  status: 'Status',
+  manager: 'Manager',
+  owner: 'Deal Owner',
+  'fund-type': 'Fund Type',
+};
 
 /**
  * Stage IDs that count as "Active Deals" — Final Credit Items through
