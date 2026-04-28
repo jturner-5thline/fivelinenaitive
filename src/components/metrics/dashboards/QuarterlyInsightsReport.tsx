@@ -631,7 +631,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
   const visibleGoals = useMemo(
     () => ownerGoals.filter(g => matchesPeriod(g.timePeriod)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [ownerGoals, activeQuarterLabel, activeHalfLabel]
+    [ownerGoals, activeQuarterLabel, activeHalfLabel, s.asanaGoalExactMatch]
   );
 
   const [filterEditorOpen, setFilterEditorOpen] = useState(false);
