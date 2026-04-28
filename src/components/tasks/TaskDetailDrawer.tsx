@@ -710,8 +710,24 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
+                const prevRule = task.recurrence_rule ?? null;
+                const prevEnd = (task as any).recurrence_end_date ?? null;
+                const prevIsRecurring = (task as any).is_recurring ?? false;
                 onUpdate({ recurrence_rule: null, recurrence_end_date: null, is_recurring: false } as any);
-                toast.success('Recurrence stopped');
+                toast.success('Recurrence stopped', {
+                  duration: 10000,
+                  action: {
+                    label: 'Undo',
+                    onClick: () => {
+                      onUpdate({
+                        recurrence_rule: prevRule,
+                        recurrence_end_date: prevEnd,
+                        is_recurring: prevIsRecurring,
+                      } as any);
+                      toast.success('Recurrence restored');
+                    },
+                  },
+                });
                 setStopRecurrenceOpen(false);
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
