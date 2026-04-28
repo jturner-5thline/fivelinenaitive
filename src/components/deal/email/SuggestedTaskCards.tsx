@@ -1,0 +1,271 @@
+import { useState, useMemo } from 'react';
+import { Check, X, Loader2, ListTodo, Calendar as CalendarIcon, User as UserIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
+import { useQueryClient } from '@tanstack/react-query';
+import { createTaskFromDraft, type TaskDraft } from '@/hooks/useNaitiveTaskParse';
+import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
+import type { WorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
+
+type Suggestion = NonNullable<WorkflowAnalysis['suggested_tasks']>[number];
+
+interface Props {
+  suggestions: Suggestion[];
+  dealId: string | null | undefined;
+  dealName: string | null | undefined;
+  threadId?: string | null;
+}
+
+/**
+ * Compute the next business day in the user's local timezone, returning
+ * an ISO 'YYYY-MM-DD' string. Skips Saturday and Sunday.
+ */
+function nextBusinessDayISO(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  while (d.getDay() === 0 || d.getDay() === 6) {
+    d.setDate(d.getDate() + 1);
+  }
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function resolveDueDate(hint: string): string {
+  if (!hint) return nextBusinessDayISO();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(hint)) return hint;
+  return nextBusinessDayISO();
+}
+
+function formatDue(iso: string): string {
+  try {
+    return new Date(iso + 'T00:00:00').toLocaleDateString(undefined, {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    });
+  } catch {
+    return iso;
+  }
+}
+
+/**
+ * Resolve a deal-manager name string (e.g. deals.manager) into a profile
+ * user_id by case-insensitive match against display_name / first_name.
+ * Mirrors the resolution used by `receive-flex-activity`.
+ */
+async function resolveManagerUserId(dealId: string): Promise<{ userId: string | null; label: string | null }> {
+  const { data: deal } = await supabase
+    .from('deals')
+    .select('manager, deal_owner')
+    .eq('id', dealId)
+    .maybeSingle();
+  const name = (deal?.manager || deal?.deal_owner || '').trim();
+  if (!name) return { userId: null, label: null };
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, display_name, first_name')
+    .or(`display_name.ilike.${name},first_name.ilike.${name}`)
+    .limit(1)
+    .maybeSingle();
+  return { userId: profile?.id || null, label: name };
+}
+
+export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: Props) {
+  const { user } = useAuth();
+  const { company } = useCompany();
+  const queryClient = useQueryClient();
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [createdKeys, setCreatedKeys] = useState<Record<string, { dueDate: string; assigneeLabel: string | null }>>({});
+  const [dismissedKeys, setDismissedKeys] = useState<Record<string, true>>({});
+
+  const items = useMemo(() => {
+    return (suggestions || []).filter((s) => s && s.title && s.title.trim().length > 0);
+  }, [suggestions]);
+
+  if (items.length === 0) return null;
+
+  const handleCreate = async (s: Suggestion, key: string) => {
+    if (!user?.id) {
+      toast.error('Sign in required to create tasks');
+      return;
+    }
+    setBusyKey(key);
+    try {
+      const dueDate = resolveDueDate(s.due_date_hint);
+      let ownerId: string | null = user.id;
+      let ownerLabel: string | null = 'You';
+      if (dealId && (!s.assignee_hint || s.assignee_hint === 'deal_manager')) {
+        const resolved = await resolveManagerUserId(dealId);
+        if (resolved.userId) {
+          ownerId = resolved.userId;
+          ownerLabel = resolved.label;
+        } else if (resolved.label) {
+          ownerLabel = `${resolved.label} (unresolved — assigned to you)`;
+        }
+      }
+
+      const draft: TaskDraft = {
+        title: s.title,
+        description: s.why || null,
+        due_date: dueDate,
+        due_time: null,
+        priority: s.priority || 'normal',
+        type: s.task_type || 'follow_up',
+        is_recurring: false,
+        recurrence_rule: null,
+        confidence: 1,
+        owner_id: ownerId,
+        owner_label: ownerLabel,
+        owner_ambiguous: null,
+        deal_id: dealId || null,
+        deal_label: dealName || null,
+        lender_id: null,
+        lender_label: null,
+        contact_id: null,
+        contact_label: null,
+        source_thread_id: threadId || null,
+        hints: { owner: null, deal: null, lender: null, contact: null },
+      };
+
+      const created = await createTaskFromDraft(draft, user.id, company?.id || null, {
+        syncSource: 'naitive_email_assist_workflow',
+        sourceThreadId: threadId || null,
+      });
+
+      if (created?.id) {
+        // Best-effort Asana sync — non-fatal.
+        try {
+          const ctx = await getAsanaSyncContext(created.assigned_to);
+          if (ctx) {
+            await syncTaskToAsana({
+              taskId: created.id,
+              title: draft.title,
+              description: draft.description,
+              due_date: draft.due_date,
+              priority: draft.priority,
+              assigned_to: created.assigned_to,
+              ctx,
+            });
+          }
+        } catch (e) {
+          console.warn('[SuggestedTaskCards] Asana sync skipped:', e);
+        }
+
+        setCreatedKeys((prev) => ({
+          ...prev,
+          [key]: { dueDate, assigneeLabel: ownerLabel },
+        }));
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        toast.success('Task created', {
+          description: `${s.title} • due ${formatDue(dueDate)}`,
+        });
+      }
+    } catch (e: any) {
+      console.error('[SuggestedTaskCards] create failed', e);
+      toast.error(e?.message || 'Failed to create task');
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      {items.map((s, idx) => {
+        const key = `${s.title}::${idx}`;
+        if (dismissedKeys[key]) return null;
+        const created = createdKeys[key];
+        const previewDue = created
+          ? created.dueDate
+          : resolveDueDate(s.due_date_hint);
+        const previewAssignee = created?.assigneeLabel
+          || (s.assignee_hint && s.assignee_hint !== 'deal_manager'
+            ? s.assignee_hint
+            : 'Deal manager');
+
+        return (
+          <div
+            key={key}
+            className="rounded-md border border-primary/15 bg-primary/[0.03] p-2.5 space-y-2 max-w-full min-w-0"
+          >
+            <div className="flex items-start gap-1.5 min-w-0">
+              <ListTodo className="h-3 w-3 text-primary shrink-0 mt-0.5" />
+              <div className="min-w-0 flex-1">
+                <p
+                  className="text-[12px] text-foreground font-semibold leading-snug"
+                  style={{ overflowWrap: 'anywhere', whiteSpace: 'normal' }}
+                >
+                  {created ? <span className="line-through opacity-70">{s.title}</span> : s.title}
+                </p>
+                {s.why && (
+                  <p
+                    className="text-[10px] text-muted-foreground mt-0.5 leading-snug"
+                    style={{ overflowWrap: 'anywhere', whiteSpace: 'normal' }}
+                  >
+                    {s.why}
+                  </p>
+                )}
+              </div>
+              {created && (
+                <Badge
+                  variant="outline"
+                  className="shrink-0 text-[9px] h-4 px-1.5 border bg-emerald-500/10 text-emerald-400 border-emerald-500/30 gap-1"
+                >
+                  <Check className="h-2.5 w-2.5" /> Created
+                </Badge>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+              <span className="inline-flex items-center gap-1 min-w-0 truncate">
+                <CalendarIcon className="h-2.5 w-2.5 shrink-0" />
+                <span className="truncate">{formatDue(previewDue)}</span>
+              </span>
+              <span className="inline-flex items-center gap-1 min-w-0 truncate">
+                <UserIcon className="h-2.5 w-2.5 shrink-0" />
+                <span className="truncate">{previewAssignee}</span>
+              </span>
+              {dealName && (
+                <span className="inline-flex items-center gap-1 min-w-0 truncate ml-auto">
+                  <span className="truncate">{dealName}</span>
+                </span>
+              )}
+            </div>
+
+            {!created && (
+              <div className="flex items-center gap-1 min-w-0">
+                <Button
+                  size="sm"
+                  className="h-7 px-2 text-[11px] gap-1 flex-1 min-w-0"
+                  disabled={busyKey === key}
+                  onClick={() => handleCreate(s, key)}
+                >
+                  {busyKey === key ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Check className="h-3 w-3" />
+                  )}
+                  Create task
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-6 p-0 text-muted-foreground"
+                  onClick={() => setDismissedKeys((prev) => ({ ...prev, [key]: true }))}
+                  title="Dismiss"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
