@@ -403,35 +403,61 @@ export default function Dashboard() {
       <div className="bg-transparent">
         <DealsHeader />
 
-        <main className="w-full px-4 pt-4 pb-3 sm:px-6">
+        <main className="w-full px-4 pt-5 pb-3 sm:px-6">
           <OnboardingModal open={showOnboarding} onComplete={completeOnboarding} />
-          
+
           <EmailVerificationBanner />
           <DemoBanner onDataCleared={refreshDeals} />
           <CreateCompanyBanner />
+
           {/*
-            Deal content sits directly inside the AppLayout's main glass
-            surface — no nested frosted panel. Only vertical rhythm is
-            preserved here so the page no longer reads as glass-in-glass.
+            Page-specific layers — mirrors Tasks/Dashboard rhythm:
+              1. Page header (title + subtitle | primary actions)
+              2. Stats / widgets row
+              3. Filter / toolbar row
+              4. Content
+            All container surfaces use the same shared full radius (no
+            top-only rounding) so the page reads as the same component
+            family as the rest of the platform.
           */}
-          <div className="space-y-6">
-            {/* Page Header & Widgets */}
-            <div className="space-y-2">
-              <div 
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 opacity-0"
-                style={{ animation: 'fadeInUp 0.4s ease-out forwards' }}
-              >
-                <div className="flex items-center gap-3">
-                  <h1 className="text-2xl sm:text-3xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">{company?.name || ''}</h1>
+          <div className="space-y-5">
+            {/* 1. Page header */}
+            <div
+              className="flex items-end justify-between gap-4 flex-wrap opacity-0"
+              style={{ animation: 'fadeInUp 0.4s ease-out forwards' }}
+            >
+              <div className="min-w-0 flex items-end gap-3">
+                <div className="min-w-0">
+                  <h1
+                    className="text-[20px] font-semibold tracking-tight leading-none truncate"
+                    style={{ color: '#f3f4f6' }}
+                  >
+                    {company?.name ? `${company.name} · Deals` : 'Deals'}
+                  </h1>
+                  <p className="mt-1.5 text-[12px]" style={{ color: '#7a8194' }}>
+                    <span>{deals.filter(d => d.status !== 'archived').length} active</span>
+                    <span className="mx-1.5 opacity-60">·</span>
+                    <span>{deals.length} total</span>
+                    {staleDealCount > 0 && (
+                      <>
+                        <span className="mx-1.5 opacity-60">·</span>
+                        <span style={{ color: '#e5a663' }}>{staleDealCount} stale</span>
+                      </>
+                    )}
+                  </p>
+                </div>
+                <div className="pb-[2px]">
                   <PipelineSelector />
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
+              </div>
+
+              <div className="flex items-center gap-1.5 flex-wrap shrink-0">
                   <NotificationsDropdown />
                   <LatestUpdatesDropdown />
-                  
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="icon" className="h-9 w-9">
+                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-md">
                         <Download className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -459,19 +485,20 @@ export default function Dashboard() {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </div>
               </div>
-              {isLoading ? (
-                <WidgetsSectionSkeleton />
-              ) : (
-                <div 
-                  className="opacity-0"
-                  style={{ animation: 'fadeInUp 0.4s ease-out 0.1s forwards' }}
-                >
-                  <WidgetsSection deals={deals} />
-                </div>
-              )}
             </div>
+
+            {/* 2. Stats / widgets row */}
+            {isLoading ? (
+              <WidgetsSectionSkeleton />
+            ) : (
+              <div
+                className="opacity-0"
+                style={{ animation: 'fadeInUp 0.4s ease-out 0.1s forwards' }}
+              >
+                <WidgetsSection deals={deals} />
+              </div>
+            )}
             
             <style>{`
               @keyframes fadeInUp {
