@@ -811,6 +811,18 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginRight: 'auto', fontSize: 11, color: TEXT_PRIMARY, cursor: 'pointer', userSelect: 'none' }}>
+            <input
+              type="checkbox"
+              checked={!!s.asanaGoalExactMatch}
+              onChange={e => set(prev => ({ ...prev, asanaGoalExactMatch: e.target.checked }))}
+              style={{ accentColor: '#5ba3d0' }}
+            />
+            Exact match (case-insensitive)
+            <span style={{ fontSize: 10, color: TEXT_MUTED }}>
+              — when off, matches by substring so different FY formats still match
+            </span>
+          </label>
           <Btn variant="ghost" onClick={() => set(prev => ({ ...prev, asanaGoalFilters: DEFAULT_ASANA_GOAL_FILTERS, asanaGoalOverride: null }))}>
             Reset mapping
           </Btn>
