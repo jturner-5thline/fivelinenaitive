@@ -479,6 +479,49 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
       const { error } = await supabase.from('tasks').update(updateData).eq('id', id);
       if (error) throw error;
 
+      // Audit: log recurrence pause/resume/stop changes
+      try {
+        const recurrenceTouched =
+          updates.recurrence_rule !== undefined
+          || (updates as any).recurrence_end_date !== undefined
+          || (updates as any).is_recurring !== undefined;
+        if (recurrenceTouched) {
+          const prev = tasks.find(t => t.id === id) as any;
+          const prevRule: string | null = prev?.recurrence_rule ?? null;
+          const prevEnd: string | null = prev?.recurrence_end_date ?? null;
+          const newRule: string | null = updates.recurrence_rule !== undefined ? (updates.recurrence_rule as any) : prevRule;
+          const newEnd: string | null = (updates as any).recurrence_end_date !== undefined ? ((updates as any).recurrence_end_date as any) : prevEnd;
+          const todayStr = new Date().toISOString().slice(0, 10);
+          const wasPaused = !!prevEnd && prevEnd <= todayStr && !!prevRule;
+          const isPaused = !!newEnd && newEnd <= todayStr && !!newRule;
+
+          let event: 'recurrence_stopped' | 'recurrence_paused' | 'recurrence_resumed' | 'recurrence_updated' | null = null;
+          if (prevRule && !newRule) event = 'recurrence_stopped';
+          else if (!wasPaused && isPaused) event = 'recurrence_paused';
+          else if (wasPaused && !isPaused) event = 'recurrence_resumed';
+          else if (prevRule !== newRule || prevEnd !== newEnd) event = 'recurrence_updated';
+
+          if (event) {
+            const { data: { user: au } } = await supabase.auth.getUser();
+            if (au) {
+              await supabase.from('task_activity').insert({
+                task_id: id,
+                actor_id: au.id,
+                event_type: event,
+                payload: {
+                  previous_rule: prevRule,
+                  new_rule: newRule,
+                  previous_end_date: prevEnd,
+                  new_end_date: newEnd,
+                },
+              } as any);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[Recurrence audit] Failed to log activity', e);
+      }
+
       // Handle recurring task: if completing a recurring task, create the next instance
       if (updates.status === 'complete' || updates.status === 'completed') {
         const completedTask = tasks.find(t => t.id === id);
@@ -638,6 +681,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
       queryClient.invalidateQueries({ queryKey: TASKS_KEY });
       queryClient.invalidateQueries({ queryKey: ['contact-tasks'] });
       queryClient.invalidateQueries({ queryKey: ['crm-company-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['task-activity'] });
     },
     onError: () => toast.error('Failed to update task'),
   });
