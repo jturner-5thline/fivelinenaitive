@@ -129,7 +129,7 @@ export function ManagementReviewDashboard() {
   const hlTd: React.CSSProperties = { ...snTd, background: 'rgba(29,148,255,0.12)' };
 
   return (
-    <div style={{ background: '#061828', color: '#c8e8ff', fontFamily: 'system-ui, sans-serif', padding: 16, display: 'flex', flexDirection: 'column', gap: 12, minHeight: '100vh' }}>
+    <div style={{ background: 'transparent', color: '#c8e8ff', fontFamily: 'system-ui, sans-serif', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Header */}
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', flexWrap: 'wrap', gap: 8 }}>
