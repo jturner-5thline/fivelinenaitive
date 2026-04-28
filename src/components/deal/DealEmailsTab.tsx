@@ -1225,6 +1225,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       </div>
 
       <EmailIntelligenceDialog open={intelligenceOpen} onOpenChange={setIntelligenceOpen} />
+      <EmailLabelsManageDialog open={manageLabelsOpen} onOpenChange={setManageLabelsOpen} />
 
       <CardContent className="p-0 flex-1 min-h-0">
         <div className="grid h-full min-w-0 max-w-full overflow-hidden" style={{ gridTemplateColumns: `${railExpanded ? 168 : 52}px minmax(0, ${currentThread || composeOpen ? `${Math.round(inboxWidth)}px` : '1fr'}) minmax(0, 1fr)` }}>
