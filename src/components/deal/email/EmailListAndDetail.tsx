@@ -540,6 +540,14 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
   // "wire", "signed") and dispatch in-app + Slack notifications. Returns a
   // map keyed by threadId so individual rows render the priority flag.
   const { flagsByThread } = useEmailPrioritySignals(emails);
+  // User-defined labels applied per thread. Build the map once at the list
+  // level and pass each row only its slice so memoization stays intact.
+  const { data: userLabelDefs = [] } = useLabels();
+  const { data: labelAssignments = [] } = useAllLabelAssignments();
+  const threadLabelMap = useMemo(
+    () => buildThreadLabelMap(userLabelDefs, labelAssignments),
+    [userLabelDefs, labelAssignments],
+  );
   // Group emails into threads only when the email array identity changes.
   // Without this memo, this O(n) loop ran on every parent re-render (selection
  // change, hover, AI Assist updates) and produced a fresh array each time,
