@@ -46,6 +46,12 @@ interface Suggestion {
   title: string;
   body: string;
   rationale: string;
+  /** Optional lender extraction returned by the edge function for note intent. */
+  lender?: {
+    name: string;
+    status?: 'in-review' | 'terms-issued' | 'in-diligence' | 'closed-funded';
+    note?: string;
+  };
 }
 
 const INTENT_META: Record<
