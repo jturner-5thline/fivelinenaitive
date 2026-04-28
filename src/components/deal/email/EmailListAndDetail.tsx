@@ -1978,7 +1978,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
               {/* Thread labels */}
               <div className="px-5 mb-2">
-                <ThreadLabelsBar threadId={thread.threadId} />
+                <ThreadLabelsBar threadId={thread.provider_thread_id || thread.threadId} />
               </div>
 
               {/* AI-detected lender pass banner */}
