@@ -984,7 +984,7 @@ Return STRICT JSON only — no markdown fences, no commentary:
   },
   "recommended_update": {
     "kind": "deal_stage|lender_status|none",
-    "title": "string — explicit confirm-first prompt, e.g. 'Mark TriplePoint Capital as Passed on Arbolus?' or 'Update Arbolus to Terms Issued?'",
+    "title": "string — confirm-first prompt that ALWAYS follows the format: 'Update <Lender Name> status on <Deal Name>'. Do NOT include the new status value, a verb other than 'Update', or a question mark — the UI shows the pre-selected status next to the prompt. Example: 'Update TriplePoint Capital status on Arbolus' or 'Update Prospeq status on Upflex'.",
     "deal_id": "string — id of the deal this update targets (use linked dealId if present, else likely_deal.id)",
     "deal_name": "string",
     "lender_id": "string — id of the lender candidate this targets, or empty",
