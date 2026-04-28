@@ -194,19 +194,19 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
               <TooltipTrigger asChild>
                 <div className="absolute top-2 right-2 z-10">
                   <div
-                    className="flex items-center justify-center h-6 w-6 rounded-full"
+                    className="flex items-center justify-center h-8 w-8 rounded-full"
                     style={{
                       background:
-                        'linear-gradient(135deg, rgba(40, 70, 130, 0.85) 0%, rgba(20, 36, 70, 0.85) 100%)',
-                      border: '0.5px solid rgba(160, 200, 255, 0.35)',
+                        'linear-gradient(135deg, rgba(60, 30, 40, 0.85) 0%, rgba(30, 18, 28, 0.85) 100%)',
+                      border: '0.5px solid rgba(227, 93, 106, 0.45)',
                       boxShadow:
-                        'inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 0 2px rgba(16, 28, 52, 0.55)',
+                        'inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 0 2px rgba(16, 28, 52, 0.55), 0 0 10px rgba(227, 93, 106, 0.25)',
                       backdropFilter: 'blur(8px)',
                     }}
                   >
                     <Bell
-                      className="h-3 w-3"
-                      style={{ color: 'rgba(190, 215, 255, 0.85)' }}
+                      className="h-[18px] w-[18px]"
+                      style={{ color: 'rgba(227, 93, 106, 0.95)' }}
                     />
                   </div>
                 </div>
