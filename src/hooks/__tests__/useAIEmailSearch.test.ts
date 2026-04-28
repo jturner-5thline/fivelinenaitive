@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import * as React from 'react';
+import * as ReactDOMClient from 'react-dom/client';
 
 // Mock the Claude service before importing the hook so the mocked module
 // is what the hook closes over.
@@ -12,6 +13,53 @@ import { useAIEmailSearch } from '@/hooks/useAIEmailSearch';
 import type { MockEmail } from '@/components/deal/email/mockEmailData';
 
 const mockedSend = sendClaudeMessage as unknown as ReturnType<typeof vi.fn>;
+
+// ── Tiny renderHook shim ───────────────────────────────────────
+// We avoid @testing-library/react (not in this project) and drive the hook
+// through React's standard root API on a jsdom-ish container.
+type HookHarness<T> = {
+  current: T;
+  rerender: () => void;
+  unmount: () => void;
+};
+
+function ensureDom() {
+  // vitest's default env is node — minimally polyfill what react-dom needs.
+  const g = globalThis as any;
+  if (!g.document) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { JSDOM } = require('jsdom');
+    const dom = new JSDOM('<!doctype html><html><body><div id="r"></div></body></html>');
+    g.window = dom.window;
+    g.document = dom.window.document;
+    g.navigator = dom.window.navigator;
+    g.HTMLElement = dom.window.HTMLElement;
+  }
+}
+
+function renderHook<T>(hook: () => T): HookHarness<T> {
+  ensureDom();
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const ref: { current: T | null } = { current: null };
+  const Wrapper: React.FC = () => {
+    ref.current = hook();
+    return null;
+  };
+  const root = ReactDOMClient.createRoot(container);
+  root.render(React.createElement(Wrapper));
+  return {
+    get current() { return ref.current as T; },
+    rerender: () => root.render(React.createElement(Wrapper)),
+    unmount: () => { root.unmount(); container.remove(); },
+  };
+}
+
+async function act(fn: () => unknown | Promise<unknown>) {
+  await fn();
+  // Flush microtasks + a macrotask for React's commit phase.
+  await new Promise((r) => setTimeout(r, 0));
+}
 
 function makeEmail(id: string, overrides: Partial<MockEmail> = {}): MockEmail {
   return {
@@ -133,22 +181,22 @@ describe('useAIEmailSearch', () => {
       }),
     );
 
-    const { result } = renderHook(() => useAIEmailSearch());
-    const firstCall = act(async () => {
-      await result.current.search('first', [makeEmail('a'), makeEmail('b')]);
-    });
-    // Kick off a second search before the first resolves.
+    const harness = renderHook(() => useAIEmailSearch());
+    // Kick off the first (slow) call without awaiting completion.
+    const firstCall = harness.current.search('first', [makeEmail('a'), makeEmail('b')]);
+    // Start the second call while the first is in flight; it will resolve quickly.
     await act(async () => {
-      await result.current.search('second', [makeEmail('a'), makeEmail('b')]);
+      await harness.current.search('second', [makeEmail('a'), makeEmail('b')]);
     });
     // Now resolve the stale first call — it should be discarded.
     resolveFirst(
       aiResponse({ interpretation: 'stale', filters: {}, results: [{ id: 'a', reason: 'x' }] }),
     );
     await firstCall;
+    await act(async () => {});
 
-    expect(result.current.result?.interpretation).toBe('newer');
-    expect(result.current.result?.rankedIds).toEqual(['b']);
+    expect(harness.current.result?.interpretation).toBe('newer');
+    expect(harness.current.result?.rankedIds).toEqual(['b']);
   });
 
   it('caches identical queries within the TTL window', async () => {
@@ -199,11 +247,11 @@ describe('useAIEmailSearch', () => {
   it('surfaces an error when the AI service fails', async () => {
     mockedSend.mockResolvedValueOnce({ success: false, error: 'rate limit' });
 
-    const { result } = renderHook(() => useAIEmailSearch());
+    const harness = renderHook(() => useAIEmailSearch());
     await act(async () => {
-      await result.current.search('q', [makeEmail('a')]);
+      await harness.current.search('q', [makeEmail('a')]);
     });
-    await waitFor(() => expect(result.current.error).toBe('rate limit'));
-    expect(result.current.result).toBeNull();
+    expect(harness.current.error).toBe('rate limit');
+    expect(harness.current.result).toBeNull();
   });
 });
