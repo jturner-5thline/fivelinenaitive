@@ -864,7 +864,27 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           <div>
-            <div style={lbl}>Override quarter (this report)</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+              <div style={lbl}>Override quarter (this report)</div>
+              {activeOverride?.quarterLabel ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = { ...(activeOverride || {}) };
+                    delete (next as any).quarterLabel;
+                    const nextOverride = (next.halfLabel ? next : null) as typeof activeOverride;
+                    set(prev => ({ ...prev, asanaGoalOverride: nextOverride }));
+                    void prefs.save({ override: nextOverride });
+                  }}
+                  style={{ background: 'transparent', border: 'none', color: '#7cc8f0', fontSize: 10, cursor: 'pointer', padding: 0 }}
+                  title={`Use derived: ${derived.quarterLabel}`}
+                >
+                  Use derived
+                </button>
+              ) : (
+                <span style={{ fontSize: 10, color: TEXT_MUTED }}>Using derived</span>
+              )}
+            </div>
             <input
               placeholder={derived.quarterLabel}
               value={activeOverride?.quarterLabel ?? ''}
@@ -877,7 +897,27 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
             />
           </div>
           <div>
-            <div style={lbl}>Override half (this report)</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+              <div style={lbl}>Override half (this report)</div>
+              {activeOverride?.halfLabel ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = { ...(activeOverride || {}) };
+                    delete (next as any).halfLabel;
+                    const nextOverride = (next.quarterLabel ? next : null) as typeof activeOverride;
+                    set(prev => ({ ...prev, asanaGoalOverride: nextOverride }));
+                    void prefs.save({ override: nextOverride });
+                  }}
+                  style={{ background: 'transparent', border: 'none', color: '#7cc8f0', fontSize: 10, cursor: 'pointer', padding: 0 }}
+                  title={`Use derived: ${derived.halfLabel}`}
+                >
+                  Use derived
+                </button>
+              ) : (
+                <span style={{ fontSize: 10, color: TEXT_MUTED }}>Using derived</span>
+              )}
+            </div>
             <input
               placeholder={derived.halfLabel}
               value={activeOverride?.halfLabel ?? ''}
