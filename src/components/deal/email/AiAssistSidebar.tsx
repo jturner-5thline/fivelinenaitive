@@ -618,6 +618,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                 subject: thread.subject,
                 body_preview: thread.latestEmail.body_preview,
                 body_text: thread.latestEmail.body_text,
+                folder: thread.latestEmail.folder,
               }}
               onLinkDeal={async (id, name) => {
                 if (onLinkDeal) await onLinkDeal(id, name);
