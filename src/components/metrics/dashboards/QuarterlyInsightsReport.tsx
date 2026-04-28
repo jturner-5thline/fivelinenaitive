@@ -431,6 +431,14 @@ function ReportNarrativeSection({ s, set }: { s: ReportState; set: ReportSetStat
 function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState }) {
   const { goals: asanaGoals, loading, error, lastSyncedAt, configured, refresh } = useAsanaGoals();
 
+  const preparedBy = s.authors[0] || 'James Turner';
+  const normalize = (v: string) => v.trim().toLowerCase().replace(/\s+/g, ' ');
+  const preparedByKey = normalize(preparedBy);
+  const visibleGoals = useMemo(
+    () => asanaGoals.filter(g => g.owner && normalize(g.owner) === preparedByKey),
+    [asanaGoals, preparedByKey]
+  );
+
   const thStyle: React.CSSProperties = { textAlign: 'left', fontSize: 9, fontWeight: 700, color: 'rgba(140,175,200,0.5)', letterSpacing: '.08em', textTransform: 'uppercase', padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)' };
   const tdStyle: React.CSSProperties = { padding: '8px 10px', fontSize: 12, color: TEXT_PRIMARY, verticalAlign: 'middle', borderBottom: '1px solid rgba(255,255,255,0.04)' };
 
@@ -509,15 +517,30 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
     </div>
   );
 
-  const showEmpty = !loading && !error && asanaGoals.length === 0;
   const showSkeleton = loading && asanaGoals.length === 0;
+  const showEmpty = !showSkeleton && !error && asanaGoals.length === 0;
+  const showOwnerEmpty = !showSkeleton && !showEmpty && !error && visibleGoals.length === 0;
+
+  const renderOwnerEmpty = () => (
+    <div style={{
+      padding: '24px 18px',
+      textAlign: 'center',
+      color: TEXT_MUTED,
+      fontSize: 12,
+      border: '1px dashed rgba(120,170,255,0.18)',
+      borderRadius: 10,
+      background: 'rgba(255,255,255,0.02)',
+    }}>
+      <div style={{ fontWeight: 600, color: TEXT_PRIMARY }}>No goals found for {preparedBy}</div>
+    </div>
+  );
 
   return (
     <Card>
       <div style={{ padding: '16px 18px' }}>
         <SectionTitle right={headerRight}>Goals</SectionTitle>
         {error && renderError()}
-        {showSkeleton ? renderSkeleton() : showEmpty ? renderEmpty() : (
+        {showSkeleton ? renderSkeleton() : showEmpty ? renderEmpty() : showOwnerEmpty ? renderOwnerEmpty() : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
               <thead>
@@ -531,7 +554,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
                 </tr>
               </thead>
               <tbody>
-                {asanaGoals.map((goal: AsanaGoalRow, index: number) => (
+                {visibleGoals.map((goal: AsanaGoalRow, index: number) => (
                   <tr key={goal.id}>
                     <td style={{ ...tdStyle, color: TEXT_LABEL, fontVariantNumeric: 'tabular-nums' }}>{index + 1}</td>
                     <td style={tdStyle}>
