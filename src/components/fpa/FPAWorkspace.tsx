@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { FPAStatusBar } from './FPAStatusBar';
@@ -31,7 +31,29 @@ const MODULE_TAB_DEFS = [
 ] as const;
 
 export function FPAWorkspace() {
-  const [activeModule, setActiveModule] = useState('dashboards');
+  const [activeModule, setActiveModule] = useState(() => {
+    if (typeof window === 'undefined') return 'dashboards';
+    const h = window.location.hash.replace('#', '');
+    return h && MODULE_TAB_DEFS.some(t => t.key === h) ? h : 'dashboards';
+  });
+
+  // Sync from external hash changes (e.g. header section pills).
+  useEffect(() => {
+    const onHash = () => {
+      const h = window.location.hash.replace('#', '');
+      if (h && MODULE_TAB_DEFS.some(t => t.key === h)) setActiveModule(h);
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  // Keep hash in sync when user clicks the inner Tabs.
+  const handleModuleChange = useCallback((next: string) => {
+    setActiveModule(next);
+    if (typeof window !== 'undefined' && window.location.hash.replace('#', '') !== next) {
+      window.history.replaceState(null, '', `#${next}`);
+    }
+  }, []);
   const [uploadWizardOpen, setUploadWizardOpen] = useState(false);
   const { canViewModuleTab } = useFPATabPermissions();
 
@@ -76,7 +98,7 @@ export function FPAWorkspace() {
 
 
           {/* Module Navigation */}
-          <Tabs value={effectiveModule} onValueChange={setActiveModule} className="space-y-4">
+          <Tabs value={effectiveModule} onValueChange={handleModuleChange} className="space-y-4">
             <div className="flex items-center justify-between overflow-x-auto gap-2">
               <TabsList className="inline-flex w-auto">
                 {visibleModuleTabs.map(tab => (
