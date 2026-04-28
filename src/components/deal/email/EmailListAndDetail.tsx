@@ -377,6 +377,40 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
                 Responded
               </Badge>
             )}
+            {userLabels && userLabels.length > 0 && (
+              <div className="flex items-center gap-1 shrink-0 min-w-0 max-w-[55%] overflow-hidden">
+                {userLabels.slice(0, 3).map((l) => {
+                  const hex = labelSwatch(l.color);
+                  return (
+                    <Badge
+                      key={l.id}
+                      variant="outline"
+                      title={l.name}
+                      className="text-[9px] h-[16px] px-1 gap-1 shrink-0 border bg-transparent"
+                      style={{
+                        color: hex,
+                        borderColor: `${hex}55`,
+                        backgroundColor: `${hex}1a`,
+                      }}
+                    >
+                      <span
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ background: hex }}
+                      />
+                      <span className="truncate max-w-[80px]">{l.name}</span>
+                    </Badge>
+                  );
+                })}
+                {userLabels.length > 3 && (
+                  <span
+                    className="text-[9px] text-muted-foreground shrink-0"
+                    title={userLabels.slice(3).map((l) => l.name).join(', ')}
+                  >
+                    +{userLabels.length - 3}
+                  </span>
+                )}
+              </div>
+            )}
             <p className="text-[11px] text-[hsl(var(--email-text-muted))] truncate flex-1 min-w-0">
               {latest.snippet}
             </p>
