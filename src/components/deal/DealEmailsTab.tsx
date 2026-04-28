@@ -242,6 +242,40 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   // real (externally hydrated) emails — never mock fixtures.
   const { markRead: providerMarkRead } = useGmail();
 
+  // Tracks locally-mutated fields (is_read / is_starred / is_linked_to_deal /
+  // needs_response) that have not yet been confirmed by the upstream provider
+  // hydration. Without this, every refresh of `externalEmails` would clobber
+  // optimistic UI updates and visually flip read items back to unread until
+  // the next provider round-trip lands.
+  const localOverridesRef = useRef<Map<string, Partial<MockEmail>>>(new Map());
+
+  const applyLocalOverride = useCallback(
+    (id: string, patch: Partial<MockEmail>) => {
+      const prev = localOverridesRef.current.get(id) || {};
+      localOverridesRef.current.set(id, { ...prev, ...patch });
+    },
+    []
+  );
+
+  const clearLocalOverride = useCallback(
+    (id: string, keys?: (keyof MockEmail)[]) => {
+      const cur = localOverridesRef.current.get(id);
+      if (!cur) return;
+      if (!keys) {
+        localOverridesRef.current.delete(id);
+        return;
+      }
+      const next = { ...cur };
+      keys.forEach((k) => delete (next as any)[k]);
+      if (Object.keys(next).length === 0) {
+        localOverridesRef.current.delete(id);
+      } else {
+        localOverridesRef.current.set(id, next);
+      }
+    },
+    []
+  );
+
   // Sync a batch of provider-backed messages to the real mailbox.
   // Optimistic UI is already applied by the caller; on failure we
   // revert via `onRevert` and surface a single toast.
@@ -256,6 +290,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       const anyFailed = results.some((ok) => !ok);
       if (anyFailed) {
         onRevert();
+        // Roll back the override so a subsequent external refresh can take
+        // hold again. Successful ids stay overridden until upstream catches up.
+        messageIds.forEach((id) => clearLocalOverride(id, ['is_read']));
         toast.error(
           read
             ? "Couldn't sync read state to Gmail/Outlook"
@@ -264,7 +301,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         );
       }
     },
-    [externalEmails, providerMarkRead]
+    [externalEmails, providerMarkRead, clearLocalOverride]
   );
   const navigate = useNavigate();
   const { queueSend } = useUndoSend();
@@ -276,7 +313,28 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
   useEffect(() => {
     if (externalEmails) {
-      setEmails(externalEmails.map(e => isAutoReplyOrNewsletter(e) ? { ...e, needs_response: false } : e));
+      // Reconcile: drop overrides whose upstream value already matches what
+      // the user requested locally — that means the provider has caught up
+      // and no replay is needed. Then apply remaining overrides on top so
+      // optimistic UI changes survive an external refresh.
+      const overrides = localOverridesRef.current;
+      if (overrides.size) {
+        for (const e of externalEmails) {
+          const ov = overrides.get(e.id);
+          if (!ov) continue;
+          const stillDifferent = (Object.keys(ov) as (keyof MockEmail)[]).some(
+            (k) => (e as any)[k] !== (ov as any)[k]
+          );
+          if (!stillDifferent) overrides.delete(e.id);
+        }
+      }
+      setEmails(
+        externalEmails.map((e) => {
+          const base = isAutoReplyOrNewsletter(e) ? { ...e, needs_response: false } : e;
+          const ov = overrides.get(e.id);
+          return ov ? { ...base, ...ov } : base;
+        })
+      );
     }
   }, [externalEmails]);
 
@@ -638,6 +696,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       const threads = groupEmailsByThread([e]);
       if (threads.some(t => selectedIds.has(t.threadId))) {
         affectedIds.push(e.id);
+        applyLocalOverride(e.id, { is_read: true });
         return { ...e, is_read: true };
       }
       return e;
@@ -645,7 +704,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     toast.success(`${selectedIds.size} marked as read`);
     setSelectedIds(new Set());
     void syncReadStateToProvider(affectedIds, true, () => setEmails(prevSnapshot));
-  }, [selectedIds, emails, syncReadStateToProvider]);
+  }, [selectedIds, emails, syncReadStateToProvider, applyLocalOverride]);
 
   const handleBulkMarkUnread = useCallback(() => {
     const prevSnapshot = emails;
@@ -654,6 +713,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       const threads = groupEmailsByThread([e]);
       if (threads.some(t => selectedIds.has(t.threadId))) {
         affectedIds.push(e.id);
+        applyLocalOverride(e.id, { is_read: false });
         return { ...e, is_read: false };
       }
       return e;
@@ -661,7 +721,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     toast.success(`${selectedIds.size} marked as unread`);
     setSelectedIds(new Set());
     void syncReadStateToProvider(affectedIds, false, () => setEmails(prevSnapshot));
-  }, [selectedIds, emails, syncReadStateToProvider]);
+  }, [selectedIds, emails, syncReadStateToProvider, applyLocalOverride]);
 
   const handleBulkArchive = useCallback(() => {
     const idsToArchive = new Set<string>();
@@ -687,15 +747,17 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
   const handleMarkRead = useCallback((email: MockEmail) => {
     const prevSnapshot = emails;
+    applyLocalOverride(email.id, { is_read: true });
     setEmails(prev => prev.map(e => e.id === email.id ? { ...e, is_read: true } : e));
     void syncReadStateToProvider([email.id], true, () => setEmails(prevSnapshot));
-  }, [emails, syncReadStateToProvider]);
+  }, [emails, syncReadStateToProvider, applyLocalOverride]);
 
   const handleMarkUnread = useCallback((email: MockEmail) => {
     const prevSnapshot = emails;
+    applyLocalOverride(email.id, { is_read: false });
     setEmails(prev => prev.map(e => e.id === email.id ? { ...e, is_read: false } : e));
     void syncReadStateToProvider([email.id], false, () => setEmails(prevSnapshot));
-  }, [emails, syncReadStateToProvider]);
+  }, [emails, syncReadStateToProvider, applyLocalOverride]);
 
   const handleArchiveEmail = useCallback((email: MockEmail) => {
     setEmails(prev => prev.filter(e => e.id !== email.id));
@@ -713,6 +775,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     if (thread.hasUnread) {
       const unreadIds = new Set(thread.emails.filter(e => !e.is_read).map(e => e.id));
       const prevSnapshot = emails;
+      unreadIds.forEach((id) => applyLocalOverride(id, { is_read: true }));
       setEmails(prev => prev.map(e => unreadIds.has(e.id) ? { ...e, is_read: true } : e));
       // Auto-mark-as-read when opening a thread must also propagate to the
       // user's actual mailbox so it doesn't show as unread in Gmail/Outlook.
@@ -722,7 +785,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         () => setEmails(prevSnapshot)
       );
     }
-  }, [emails, syncReadStateToProvider]);
+  }, [emails, syncReadStateToProvider, applyLocalOverride]);
 
   const isSectionOpen = (section: SidebarSection) => {
     if (collapsedSections[section.title] !== undefined) return !collapsedSections[section.title];
