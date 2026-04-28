@@ -192,8 +192,10 @@ export function generateOccurrences(
 export function mergeScheduledIntoWeekly(
   weekly: WeeklyData,
   entries: ScheduledCashFlow[],
+  options?: { lockHistoricalThrough?: string },
 ): WeeklyData {
-  if (!entries || entries.length === 0) return weekly;
+  const lockThrough = options?.lockHistoricalThrough ?? null;
+  if ((!entries || entries.length === 0) && !lockThrough) return weekly;
   const sortedKeys = Object.keys(weekly).sort();
   if (sortedKeys.length === 0) return weekly;
 
@@ -220,9 +222,13 @@ export function mergeScheduledIntoWeekly(
   };
 
   // Apply entries
-  for (const entry of entries) {
+  for (const entry of entries || []) {
     const occurrences = generateOccurrences(entry, rangeStart, rangeEnd);
     for (const occ of occurrences) {
+      // Ignore occurrences that fall on/before the historical lock cutoff —
+      // those weeks are seeded from historical data and must not be mutated
+      // by Configure entries.
+      if (lockThrough && occ <= lockThrough) continue;
       const wk = findWeekKey(occ);
       if (!wk) continue;
       const target = out[wk] as any;
@@ -247,11 +253,22 @@ export function mergeScheduledIntoWeekly(
   let prevEnd: number | null = null;
   for (const k of sortedKeys) {
     const target = out[k] as any;
+    const weekEnding = typeof target.week_ending === 'string' ? target.week_ending : k;
+    // Historical (locked) weeks: keep their seeded BEGINNING/ENDING CASH and
+    // TOTAL CASH ON HAND untouched. Just carry forward their ending cash so
+    // the first forward week starts from the correct balance.
+    if (lockThrough && weekEnding <= lockThrough) {
+      const ec = Number(target['ENDING CASH']);
+      prevEnd = Number.isFinite(ec) ? ec : prevEnd;
+      continue;
+    }
     const begin = prevEnd !== null ? prevEnd : (Number(target['BEGINNING CASH']) || 0);
     target['BEGINNING CASH'] = begin;
     const newEnd = begin + (Number(target['NET CHANGE']) || 0);
     target['ENDING CASH'] = Math.round(newEnd);
-    target['TOTAL CASH ON HAND'] = Math.round(newEnd + (Number(target["Add'l Liquidity (Delayed Draw)"]) || 0));
+    const addlLegacy = Number(target["Add'l Liquidity (Delayed Draw)"]) || 0;
+    const addlNew = Number(target['Addl Liquidity Chase Tax Reserve MT Chk']) || 0;
+    target['TOTAL CASH ON HAND'] = Math.round(newEnd + addlLegacy + addlNew);
     prevEnd = target['ENDING CASH'];
   }
 

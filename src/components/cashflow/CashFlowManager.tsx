@@ -20,6 +20,7 @@ import { useCashFlowImport } from './useCashFlowImport';
 import { useCashInItems } from './useCashInItems';
 import { useScheduledCashFlows } from './useScheduledCashFlows';
 import { mergeScheduledIntoWeekly, ACCOUNT_OPTIONS, DEBT_ADVISORY_DEFAULT_SUBCATEGORY } from './scheduledCashFlows';
+import { WEEKLY_HISTORICAL_SEED, LAST_HISTORICAL_WEEK_ENDING } from './weeklyHistoricalSeed';
 import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -482,61 +483,86 @@ export function CashFlowManager() {
   //                  | else resolved Beginning Cash + Net Change
   // The resolved Ending Cash carries into the next week's Beginning Cash unless
   // that next week has its own explicit override (which starts a new chain).
+  // Build the weekly grid as: historical seed (≤ LAST_HISTORICAL_WEEK_ENDING)
+  // + empty Friday-ending forward weeks (from the next Friday through end of
+  // the planning horizon). Forward weeks are populated by the Configure
+  // Payments & Revenue merge below — historical weeks are LOCKED and never
+  // mutated by Configure edits.
   const rawWeekly = useMemo<WeeklyData>(() => {
-    const sortedKeys = Object.keys(computedWeekly).sort();
-    if (sortedKeys.length === 0) return computedWeekly;
-    const hasOverrides = weeklyOverrides && Object.keys(weeklyOverrides).length > 0;
-    if (!hasOverrides) return computedWeekly;
-
     const out: WeeklyData = {};
-    let prevResolvedEnd: number | null = null;
 
-    for (const key of sortedKeys) {
-      const entry = computedWeekly[key];
-      const ov = weeklyOverrides?.[key];
-      const baseBegin = (entry['BEGINNING CASH'] as number) || 0;
-      const baseEnd = (entry['ENDING CASH'] as number) || 0;
-      const netChange = (entry['NET CHANGE'] as number) || 0;
-      const addl = (entry["Add'l Liquidity (Delayed Draw)"] as number) || 0;
-
-      // Resolve Beginning Cash
-      let resolvedBegin: number;
-      if (ov?.beginningCash !== undefined) {
-        resolvedBegin = ov.beginningCash;
-      } else if (prevResolvedEnd !== null) {
-        // Chain from prior week's resolved ending cash
-        resolvedBegin = prevResolvedEnd;
-      } else {
-        resolvedBegin = baseBegin;
-      }
-
-      // Resolve Ending Cash
-      let resolvedEnd: number;
-      if (ov?.endingCash !== undefined) {
-        resolvedEnd = ov.endingCash;
-      } else {
-        resolvedEnd = Math.round(resolvedBegin + netChange);
-      }
-
-      // Only emit a modified entry when values diverge from the base
-      const beginChanged = resolvedBegin !== baseBegin;
-      const endChanged = resolvedEnd !== baseEnd;
-
-      if (beginChanged || endChanged) {
-        out[key] = {
-          ...entry,
-          'BEGINNING CASH': resolvedBegin,
-          'ENDING CASH': resolvedEnd,
-          'TOTAL CASH ON HAND': resolvedEnd + addl,
-        };
-      } else {
-        out[key] = entry;
-      }
-
-      prevResolvedEnd = resolvedEnd;
+    // 1) Seed historical weeks (deep-copy values so downstream mutations
+    //    can't bleed back into the imported constant).
+    let lastHistoricalEnd = 0;
+    let lastHistoricalAddl = 0;
+    let lastHistoricalWeekNum = 0;
+    const historicalKeys = Object.keys(WEEKLY_HISTORICAL_SEED).sort();
+    for (const k of historicalKeys) {
+      const entry = WEEKLY_HISTORICAL_SEED[k] as any;
+      out[k] = { ...entry };
+      lastHistoricalEnd = Number(entry['ENDING CASH']) || lastHistoricalEnd;
+      lastHistoricalAddl = Number(entry['Addl Liquidity Chase Tax Reserve MT Chk']) || lastHistoricalAddl;
+      lastHistoricalWeekNum = Number(entry.week_num) || lastHistoricalWeekNum;
     }
+
+    // 2) Determine the forward horizon — at minimum end of 2026-12-25 (last
+    //    Friday of 2026), extended further if Configure entries reach beyond.
+    const parseISO = (s: string) => new Date(s + 'T00:00:00');
+    const fmtISO = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+    let horizonEnd = parseISO('2026-12-25');
+    for (const e of scheduledItems || []) {
+      const candidates = [
+        e.frequency_config?.one_time_date,
+        e.end_date,
+        e.start_date,
+      ].filter(Boolean) as string[];
+      for (const c of candidates) {
+        const d = parseISO(c);
+        if (d > horizonEnd) horizonEnd = d;
+      }
+    }
+
+    // 3) Generate Friday-ending forward weeks (week-start = prior Saturday).
+    // First forward week ending = first Friday strictly after LAST_HISTORICAL_WEEK_ENDING.
+    const lastHistEnd = parseISO(LAST_HISTORICAL_WEEK_ENDING);
+    let weekEnd = new Date(lastHistEnd);
+    weekEnd.setDate(weekEnd.getDate() + 7); // next Friday
+    let prevEnd = lastHistoricalEnd;
+    let weekNum = lastHistoricalWeekNum;
+    while (weekEnd <= horizonEnd) {
+      weekNum += 1;
+      const weekStart = new Date(weekEnd);
+      weekStart.setDate(weekStart.getDate() - 6); // Saturday before that Friday
+      const startKey = fmtISO(weekStart);
+      const endKey = fmtISO(weekEnd);
+      const ov = weeklyOverrides?.[startKey];
+      const begin = ov?.beginningCash !== undefined ? ov.beginningCash : prevEnd;
+      const end = ov?.endingCash !== undefined ? ov.endingCash : begin;
+      out[startKey] = {
+        week_num: weekNum,
+        week_ending: endKey,
+        'BEGINNING CASH': begin,
+        'ENDING CASH': end,
+        // Carry the latest historical liquidity buffer forward as the default.
+        'Addl Liquidity Chase Tax Reserve MT Chk': lastHistoricalAddl,
+        "Add'l Liquidity (Delayed Draw)": 0,
+        'TOTAL CASH ON HAND': end + lastHistoricalAddl,
+        'TOTAL RECEIPTS': 0,
+        'TOTAL DISBURSEMENTS': 0,
+        'NET CHANGE': 0,
+      } as any;
+      prevEnd = end;
+      weekEnd = new Date(weekEnd);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+    }
+
     return out;
-  }, [computedWeekly, weeklyOverrides]);
+  }, [scheduledItems, weeklyOverrides]);
 
   // Apply Entity and Category filters to the scheduled (Configure) entries.
   // When neither filter is active, all entries pass through unchanged.
@@ -558,6 +584,13 @@ export function CashFlowManager() {
   const zeroedWeeklyShell = useMemo<WeeklyData>(() => {
     const out: WeeklyData = {};
     for (const [k, v] of Object.entries(rawWeekly)) {
+      const weekEnding = typeof (v as any).week_ending === 'string' ? (v as any).week_ending : k;
+      // Historical (locked) weeks remain untouched even when Configure
+      // filters are active.
+      if (weekEnding <= LAST_HISTORICAL_WEEK_ENDING) {
+        out[k] = { ...(v as any) };
+        continue;
+      }
       const begin = (v['BEGINNING CASH'] as number) || 0;
       out[k] = {
         ...v,
@@ -589,6 +622,7 @@ export function CashFlowManager() {
     () => mergeScheduledIntoWeekly(
       isConfigureFilterActive ? zeroedWeeklyShell : rawWeekly,
       filteredScheduledItems,
+      { lockHistoricalThrough: LAST_HISTORICAL_WEEK_ENDING },
     ),
     [rawWeekly, zeroedWeeklyShell, filteredScheduledItems, isConfigureFilterActive],
   );
