@@ -42,36 +42,68 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
  *   - Hover: subtle surface brighten + tiny lift, no glow.
  */
 /**
- * Frosted-glass shortcut tile.
+ * Frosted-glass shortcut tile container.
  *
- * Restrained financial-SaaS take on glassmorphism, themed via semantic
- * tokens so the surface remains readable in both light and dark modes:
- *   - Translucent surface tinted with `--card` + backdrop blur.
- *   - Low-contrast `--border` outline with a soft inner highlight.
- *   - Gentle ambient shadow (no glow, no heavy elevation).
- *   - Hover: tiny lift + slight surface brighten.
+ * Mirrors the reference glassy icon-tile composition: the visible "tile" is
+ * the icon chip itself, with the label centered below it. The surrounding
+ * `<Card>` is intentionally stripped of its dashboard-card chrome
+ * (no background, no border, no shadow) so the chip reads as a standalone
+ * frosted shortcut, identical in spirit to the attached reference.
+ *
+ * The `group` class lets the inner chip respond to hover/focus on the tile.
+ * `!` important overrides neutralize the base `<Card>` dark-mode glass styles.
  */
 const TILE_INTERACTIVE_CLASSES =
-  'group relative p-4 rounded-2xl cursor-pointer outline-none ' +
-  'border border-border/50 bg-card/40 backdrop-blur-xl ' +
-  'shadow-[inset_0_1px_0_0_hsl(var(--foreground)/0.04),0_4px_14px_-8px_hsl(var(--background)/0.6)] ' +
-  'transition-[background-color,border-color,transform,box-shadow] duration-200 ease-out ' +
-  // Hover: very slight lift + brighter glass surface
-  'hover:bg-card/60 hover:border-border/70 hover:-translate-y-[1px] ' +
-  'hover:shadow-[inset_0_1px_0_0_hsl(var(--foreground)/0.06),0_8px_22px_-10px_hsl(var(--background)/0.7)] ' +
-  // Keyboard focus: same brightening + soft ring
-  'focus-visible:bg-card/70 focus-visible:border-border/80 ' +
+  'group relative cursor-pointer outline-none p-2 ' +
+  '!border-0 !bg-transparent !shadow-none !backdrop-blur-none !backdrop-saturate-100 ' +
+  'dark:!bg-transparent dark:!border-0 dark:!shadow-none ' +
+  'dark:hover:!border-0 dark:hover:!shadow-none ' +
+  'rounded-2xl transition-transform duration-200 ease-out ' +
   'focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-0';
 
 /**
- * Neutral frosted icon chip used inside each shortcut tile.
- * Replaces per-tile saturated color chips so the grid reads calm and uniform,
- * while the original colored icon glyphs remain untouched.
+ * Reference-styled glassy icon chip. The chip is the tile.
+ *
+ *   - Deep tinted gradient background (per category, 145°).
+ *   - Inner highlight overlay: white 18% → white 4% → black 10%.
+ *   - 1px white/13% border + subtle ambient shadow.
+ *   - Rounded-2xl corners matching the reference's 16px radius feel.
+ *   - Group-hover lift to mimic the reference's tappable feel.
  */
-const TILE_ICON_CHIP_CLASSES =
-  'relative h-12 w-12 rounded-2xl flex items-center justify-center overflow-hidden ' +
-  'border border-border/60 bg-foreground/[0.04] backdrop-blur-md ' +
-  'shadow-[inset_0_1px_0_0_hsl(var(--foreground)/0.06),0_2px_6px_-3px_hsl(var(--background)/0.5)]';
+const TILE_CHIP_BASE =
+  'relative h-16 w-16 rounded-2xl flex items-center justify-center overflow-hidden ' +
+  'border border-white/[0.13] ' +
+  'shadow-[0_4px_14px_-6px_rgba(0,0,0,0.55),inset_0_1px_0_0_rgba(255,255,255,0.08)] ' +
+  'transition-transform duration-200 ease-out ' +
+  'group-hover:-translate-y-[2px] group-focus-visible:-translate-y-[2px]';
+
+/** Inner glassy highlight overlay (matches reference `.wg-icon::before`). */
+const TileChipGloss = () => (
+  <span
+    aria-hidden
+    className="pointer-events-none absolute inset-0 rounded-2xl"
+    style={{
+      background:
+        'linear-gradient(145deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 60%, rgba(0,0,0,0.10) 100%)',
+    }}
+  />
+);
+
+/** Per-category deep gradients mirroring the reference palette. */
+const TILE_CHIP_GRADIENTS: Record<string, string> = {
+  calendar: 'linear-gradient(145deg, #2a3a8c, #1a2466)',
+  email: 'linear-gradient(145deg, #6b2fa0, #4a1d7a)',
+  newDeal: 'linear-gradient(145deg, #1e3a6e, #142a55)',
+  dealRundown: 'linear-gradient(145deg, #1e3a6e, #142a55)',
+  briefing: 'linear-gradient(145deg, #8a5c10, #6b4208)',
+  niki: 'linear-gradient(145deg, #0d5c52, #0a4540)',
+  deals: 'linear-gradient(145deg, #0d5c52, #0a4540)',
+};
+
+/** Tile label styling — centered under the chip, like the reference. */
+const TILE_LABEL_CLASSES =
+  'text-[11px] font-medium text-center leading-tight tracking-[0.01em] ' +
+  'text-muted-foreground group-hover:text-foreground transition-colors';
 
 const handleTileKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, action: () => void) => {
   if (e.key === 'Enter' || e.key === ' ') {
@@ -155,11 +187,15 @@ function EmailTileWithIntelligence({
         tabIndex={0}
         onKeyDown={onKeyDown}
       >
-        <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-          <div className={TILE_ICON_CHIP_CLASSES}>
-            <Mail className="relative z-10 h-7 w-7 text-foreground" />
+        <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
+          <div
+            className={TILE_CHIP_BASE}
+            style={{ background: TILE_CHIP_GRADIENTS.email }}
+          >
+            <TileChipGloss />
+            <Mail className="relative z-10 h-8 w-8" style={{ color: '#c084f5' }} />
           </div>
-          <span className="text-sm font-medium text-foreground">Email</span>
+          <span className={TILE_LABEL_CLASSES}>Email</span>
         </div>
       </Card>
 
@@ -534,11 +570,15 @@ export default function Dashboard() {
                 )
               }
             >
-              <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                <div className={TILE_ICON_CHIP_CLASSES}>
-                  <CalendarIcon className="relative z-10 h-7 w-7 text-primary" />
+              <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
+                <div
+                  className={TILE_CHIP_BASE}
+                  style={{ background: TILE_CHIP_GRADIENTS.calendar }}
+                >
+                  <TileChipGloss />
+                  <CalendarIcon className="relative z-10 h-8 w-8" style={{ color: '#7b9ff5' }} />
                 </div>
-                <span className="text-sm font-medium text-foreground">Calendar</span>
+                <span className={TILE_LABEL_CLASSES}>Calendar</span>
               </div>
             </Card>
             <EmailTileWithIntelligence
@@ -561,11 +601,15 @@ export default function Dashboard() {
                 )
               }
             >
-              <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                <div className={TILE_ICON_CHIP_CLASSES}>
-                  <Briefcase className="relative z-10 h-7 w-7 text-accent-foreground" />
+              <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
+                <div
+                  className={TILE_CHIP_BASE}
+                  style={{ background: TILE_CHIP_GRADIENTS.newDeal }}
+                >
+                  <TileChipGloss />
+                  <Briefcase className="relative z-10 h-8 w-8" style={{ color: '#6b9cf5' }} />
                 </div>
-                <span className="text-sm font-medium text-foreground">New Deal</span>
+                <span className={TILE_LABEL_CLASSES}>New Deal</span>
               </div>
             </Card>
             {isJTurner && (
@@ -580,11 +624,15 @@ export default function Dashboard() {
                   )
                 }
               >
-                <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                  <div className={TILE_ICON_CHIP_CLASSES}>
-                    <Newspaper className="relative z-10 h-7 w-7 text-warning" />
+                <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
+                  <div
+                    className={TILE_CHIP_BASE}
+                    style={{ background: TILE_CHIP_GRADIENTS.briefing }}
+                  >
+                    <TileChipGloss />
+                    <Newspaper className="relative z-10 h-8 w-8" style={{ color: '#f5a623' }} />
                   </div>
-                  <span className="text-sm font-medium text-foreground">Daily Briefing</span>
+                  <span className={TILE_LABEL_CLASSES}>Daily Briefing</span>
                 </div>
               </Card>
             )}
@@ -600,11 +648,15 @@ export default function Dashboard() {
                   )
                 }
               >
-                <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                  <div className={TILE_ICON_CHIP_CLASSES}>
-                    <Newspaper className="relative z-10 h-7 w-7 text-[hsl(190,90%,70%)]" />
+                <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
+                  <div
+                    className={TILE_CHIP_BASE}
+                    style={{ background: TILE_CHIP_GRADIENTS.niki }}
+                  >
+                    <TileChipGloss />
+                    <Newspaper className="relative z-10 h-8 w-8" style={{ color: '#2dd4b8' }} />
                   </div>
-                  <span className="text-sm font-medium text-foreground">
+                  <span className={TILE_LABEL_CLASSES}>
                     {isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
                   </span>
                 </div>
@@ -620,11 +672,15 @@ export default function Dashboard() {
               onKeyDown={(e) => handleTileKeyDown(e, () => setDealsDialogOpen(true))}
               aria-label="Open Deals insights"
             >
-              <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                <div className={TILE_ICON_CHIP_CLASSES}>
-                  <Handshake className="relative z-10 h-7 w-7 text-emerald-400" />
+              <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
+                <div
+                  className={TILE_CHIP_BASE}
+                  style={{ background: TILE_CHIP_GRADIENTS.deals }}
+                >
+                  <TileChipGloss />
+                  <Handshake className="relative z-10 h-8 w-8" style={{ color: '#2dd4b8' }} />
                 </div>
-                <span className="text-sm font-medium text-foreground">Deals</span>
+                <span className={TILE_LABEL_CLASSES}>Deals</span>
               </div>
             </Card>
             {is5thLine && (
@@ -639,11 +695,15 @@ export default function Dashboard() {
                   )
                 }
               >
-                <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                  <div className={TILE_ICON_CHIP_CLASSES}>
-                    <Briefcase className="relative z-10 h-7 w-7 text-primary" />
+                <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
+                  <div
+                    className={TILE_CHIP_BASE}
+                    style={{ background: TILE_CHIP_GRADIENTS.dealRundown }}
+                  >
+                    <TileChipGloss />
+                    <Briefcase className="relative z-10 h-8 w-8" style={{ color: '#6b9cf5' }} />
                   </div>
-                  <span className="text-sm font-medium text-foreground">Deal Rundown</span>
+                  <span className={TILE_LABEL_CLASSES}>Deal Rundown</span>
                 </div>
               </Card>
             )}
