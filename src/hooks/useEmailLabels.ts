@@ -58,7 +58,7 @@ export interface EmailLabelAssignment {
 // label as a personal/non-default label.
 
 /** Color preset palette used by the legacy settings UI. */
-export const DEFAULT_LABEL_COLORS = [
+export const DEFAULT_LABEL_COLORS: string[] = [
   "#94a3b8", // slate
   "#f59e0b", // amber
   "#10b981", // emerald
@@ -68,7 +68,7 @@ export const DEFAULT_LABEL_COLORS = [
   "#fb923c", // orange
   "#14b8a6", // teal
   "#d946ef", // fuchsia
-] as const;
+];
 
 export type EmailLabelRuleField =
   | "sender_email"
