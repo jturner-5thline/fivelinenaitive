@@ -69,12 +69,6 @@ export function DealMatchBadge({ match, variant = 'compact' }: Props) {
               <Briefcase className="h-2.5 w-2.5 shrink-0" />
               <span className="truncate">{dealLabelText}</span>
             </Badge>
-            <Badge
-              variant="outline"
-              className={cn('text-[9px] h-[16px] px-1 gap-0.5 shrink-0', status.className)}
-            >
-              {status.label}
-            </Badge>
           </span>
         </TooltipTrigger>
         <TooltipContent side="top" className="text-[11px]">
