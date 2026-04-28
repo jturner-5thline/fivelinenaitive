@@ -547,11 +547,14 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
     <>
     <div
       ref={setNodeRef}
+      data-task-id={task.id}
+      tabIndex={-1}
       className={cn(
         `grid ${TASK_GRID_COLS} gap-2 items-center px-4 cursor-pointer transition-colors group`,
         isSelected && 'bg-[rgba(126,184,247,0.07)]',
         isMultiSelected && 'bg-[rgba(126,184,247,0.04)]',
         isFocused && 'ring-1 ring-inset ring-[rgba(126,184,247,0.3)]',
+        'focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[rgba(126,184,247,0.45)]',
         isDragging && 'z-50',
       )}
       style={{ ...style, minHeight: 48, borderBottom: '1px solid rgba(255,255,255,0.04)' }}
