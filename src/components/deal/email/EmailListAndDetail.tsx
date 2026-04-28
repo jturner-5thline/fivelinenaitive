@@ -940,7 +940,11 @@ interface EmailDetailProps {
   onBack: () => void;
   onToggleLink: (email: MockEmail) => void;
   onToggleStar: (email: MockEmail) => void;
-  onSendReply: (email: Omit<MockEmail, 'id' | 'threadId'>, threadId: string) => void;
+  onSendReply: (
+    email: Omit<MockEmail, 'id' | 'threadId'>,
+    threadId: string,
+    linkContext?: { dealId: string | null; dealName: string | null },
+  ) => void;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
   onDelete?: (email: MockEmail) => void;
