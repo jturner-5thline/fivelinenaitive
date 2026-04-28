@@ -591,10 +591,41 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
   const preparedBy = s.authors[0] || 'James Turner';
   const normalize = (v: string) => v.trim().toLowerCase().replace(/\s+/g, ' ');
   const preparedByKey = normalize(preparedBy);
-  const visibleGoals = useMemo(
+
+  const templates = s.asanaGoalFilters || DEFAULT_ASANA_GOAL_FILTERS;
+  const derived = useMemo(() => deriveAsanaGoalPeriod(s, templates), [s, templates]);
+  const activeQuarterLabel = s.asanaGoalOverride?.quarterLabel ?? derived.quarterLabel;
+  const activeHalfLabel = s.asanaGoalOverride?.halfLabel ?? derived.halfLabel;
+
+  // Reset manual override whenever the underlying period changes.
+  useEffect(() => {
+    if (s.asanaGoalOverride) {
+      set(prev => ({ ...prev, asanaGoalOverride: null }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.period, s.quarter, s.month]);
+
+  const matchesPeriod = (tp: string | null): boolean => {
+    if (!tp) return false;
+    const norm = tp.trim().toLowerCase();
+    const q = activeQuarterLabel.trim().toLowerCase();
+    const h = activeHalfLabel.trim().toLowerCase();
+    if (q && norm.includes(q)) return true;
+    if (h && norm.includes(h)) return true;
+    return false;
+  };
+
+  const ownerGoals = useMemo(
     () => asanaGoals.filter(g => g.owner && normalize(g.owner) === preparedByKey),
     [asanaGoals, preparedByKey]
   );
+  const visibleGoals = useMemo(
+    () => ownerGoals.filter(g => matchesPeriod(g.timePeriod)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ownerGoals, activeQuarterLabel, activeHalfLabel]
+  );
+
+  const [filterEditorOpen, setFilterEditorOpen] = useState(false);
 
   const thStyle: React.CSSProperties = { textAlign: 'left', fontSize: 9, fontWeight: 700, color: 'rgba(140,175,200,0.5)', letterSpacing: '.08em', textTransform: 'uppercase', padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)' };
   const tdStyle: React.CSSProperties = { padding: '8px 10px', fontSize: 12, color: TEXT_PRIMARY, verticalAlign: 'middle', borderBottom: '1px solid rgba(255,255,255,0.04)' };
@@ -618,6 +649,9 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
           Synced {formatSyncedAt(lastSyncedAt)}
         </span>
       )}
+      <Btn icon={SlidersHorizontal} variant="ghost" onClick={() => setFilterEditorOpen(o => !o)}>
+        Filters
+      </Btn>
       <Btn icon={RefreshCw} variant="ghost" onClick={() => { void refresh(); }}>
         {loading ? 'Syncing…' : 'Sync'}
       </Btn>
@@ -676,9 +710,9 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
 
   const showSkeleton = loading && asanaGoals.length === 0;
   const showEmpty = !showSkeleton && !error && asanaGoals.length === 0;
-  const showOwnerEmpty = !showSkeleton && !showEmpty && !error && visibleGoals.length === 0;
+  const showFilteredEmpty = !showSkeleton && !showEmpty && !error && visibleGoals.length === 0;
 
-  const renderOwnerEmpty = () => (
+  const renderFilteredEmpty = () => (
     <div style={{
       padding: '24px 18px',
       textAlign: 'center',
@@ -688,16 +722,114 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
       borderRadius: RADIUS,
       background: 'rgba(255,255,255,0.02)',
     }}>
-      <div style={{ fontWeight: 600, color: TEXT_PRIMARY }}>No goals found for {preparedBy}</div>
+      <div style={{ fontWeight: 600, color: TEXT_PRIMARY }}>No goals match the current filters</div>
+      <div style={{ marginTop: 4 }}>
+        Filtered by: {preparedBy} · {activeQuarterLabel || '—'} · {activeHalfLabel || '—'}
+      </div>
     </div>
   );
+
+  const updateTemplate = (kind: 'quarters' | 'halves', key: string, val: string) => {
+    set(prev => {
+      const base = prev.asanaGoalFilters || DEFAULT_ASANA_GOAL_FILTERS;
+      const nextSection = { ...base[kind], [key]: val } as Record<string, string>;
+      return {
+        ...prev,
+        asanaGoalFilters: { ...base, [kind]: nextSection } as AsanaGoalFilterTemplates,
+      };
+    });
+  };
+
+  const renderFilterEditor = () => {
+    const inp: React.CSSProperties = { ...inputStyle, width: '100%' };
+    const lbl: React.CSSProperties = { fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: TEXT_LABEL, marginBottom: 4 };
+    return (
+      <div style={{
+        marginBottom: 12,
+        padding: 12,
+        borderRadius: RADIUS,
+        border: '1px solid rgba(120,170,255,0.18)',
+        background: 'rgba(255,255,255,0.02)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: TEXT_PRIMARY }}>Asana Goals filter mapping</div>
+          <div style={{ fontSize: 10, color: TEXT_MUTED }}>
+            Use <code style={{ color: '#7cc8f0' }}>{'{year}'}</code> to template the year. Matches Asana <em>time period</em> by substring.
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 10 }}>
+          {(['Q1','Q2','Q3','Q4'] as QKey[]).map(q => (
+            <div key={q}>
+              <div style={lbl}>{q}</div>
+              <input
+                value={templates.quarters[q]}
+                onChange={e => updateTemplate('quarters', q, e.target.value)}
+                style={inp}
+              />
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 10 }}>
+          {(['H1','H2'] as HKey[]).map(h => (
+            <div key={h}>
+              <div style={lbl}>{h}</div>
+              <input
+                value={templates.halves[h]}
+                onChange={e => updateTemplate('halves', h, e.target.value)}
+                style={inp}
+              />
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <div>
+            <div style={lbl}>Override quarter (this report)</div>
+            <input
+              placeholder={derived.quarterLabel}
+              value={s.asanaGoalOverride?.quarterLabel ?? ''}
+              onChange={e => set(prev => ({ ...prev, asanaGoalOverride: { ...(prev.asanaGoalOverride || {}), quarterLabel: e.target.value || undefined } }))}
+              style={inp}
+            />
+          </div>
+          <div>
+            <div style={lbl}>Override half (this report)</div>
+            <input
+              placeholder={derived.halfLabel}
+              value={s.asanaGoalOverride?.halfLabel ?? ''}
+              onChange={e => set(prev => ({ ...prev, asanaGoalOverride: { ...(prev.asanaGoalOverride || {}), halfLabel: e.target.value || undefined } }))}
+              style={inp}
+            />
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
+          <Btn variant="ghost" onClick={() => set(prev => ({ ...prev, asanaGoalFilters: DEFAULT_ASANA_GOAL_FILTERS, asanaGoalOverride: null }))}>
+            Reset mapping
+          </Btn>
+          <Btn variant="ghost" onClick={() => setFilterEditorOpen(false)}>Done</Btn>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Card>
       <div style={{ padding: '16px 18px' }}>
         <SectionTitle right={headerRight}>Goals</SectionTitle>
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 10 }}>
+          Filtered by: <span style={{ color: TEXT_PRIMARY, fontWeight: 600 }}>{preparedBy}</span>
+          {' · '}
+          <span style={{ color: TEXT_PRIMARY }}>{activeQuarterLabel || '—'}</span>
+          {' · '}
+          <span style={{ color: TEXT_PRIMARY }}>{activeHalfLabel || '—'}</span>
+          {s.asanaGoalOverride && (s.asanaGoalOverride.quarterLabel || s.asanaGoalOverride.halfLabel) && (
+            <span style={{ marginLeft: 8, fontSize: 9, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#f0a45a' }}>
+              · manual override
+            </span>
+          )}
+        </div>
+        {filterEditorOpen && renderFilterEditor()}
         {error && renderError()}
-        {showSkeleton ? renderSkeleton() : showEmpty ? renderEmpty() : showOwnerEmpty ? renderOwnerEmpty() : (
+        {showSkeleton ? renderSkeleton() : showEmpty ? renderEmpty() : showFilteredEmpty ? renderFilteredEmpty() : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
               <thead>
