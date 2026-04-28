@@ -54,6 +54,28 @@ function formatFileSize(bytes: number) {
   return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
+function describeRecurrence(rule: string | null | undefined): string {
+  if (!rule) return '';
+  if (rule.startsWith('every:')) {
+    const [, n, unit] = rule.split(':');
+    const num = parseInt(n, 10);
+    if (!num || !unit) return rule;
+    const unitLabel = num === 1
+      ? unit.replace(/s$/, '')
+      : unit;
+    return `Every ${num} ${unitLabel}`;
+  }
+  switch (rule) {
+    case 'daily': return 'Daily';
+    case 'weekdays': return 'Weekdays';
+    case 'weekly': return 'Weekly';
+    case 'biweekly': return 'Every 2 weeks';
+    case 'monthly': return 'Monthly';
+    case 'yearly': return 'Yearly';
+    default: return rule;
+  }
+}
+
 
 const STATUS_COLORS: Record<string, { label: string; bg: string }> = {
   not_started: { label: 'Not Started', bg: '#6b7280' },
