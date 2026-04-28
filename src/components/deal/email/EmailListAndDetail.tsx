@@ -1271,13 +1271,37 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     })();
   }, [flushSave, inlineDraft, popOutDraft, dealId, thread, resolveDeal, createPendingSuggestion]);
 
-  const handleSendFromComposer = useCallback((emailData: Omit<MockEmail, 'id' | 'threadId'>) => {
-    onSendReply(emailData, thread.threadId);
-    clearDraftOnSend();
-    setReplyTo(null);
-    setPopOutDraft(null);
-    setInlineDraft(null);
-  }, [onSendReply, thread.threadId, clearDraftOnSend]);
+  const performSendWithLink = useCallback(
+    (
+      emailData: Omit<MockEmail, 'id' | 'threadId'>,
+      linkContext?: { dealId: string | null; dealName: string | null },
+    ) => {
+      onSendReply(emailData, thread.threadId, linkContext);
+      clearDraftOnSend();
+      setReplyTo(null);
+      setPopOutDraft(null);
+      setInlineDraft(null);
+    },
+    [onSendReply, thread.threadId, clearDraftOnSend],
+  );
+
+  const handleSendFromComposer = useCallback(
+    (emailData: Omit<MockEmail, 'id' | 'threadId'>) => {
+      // If a deal is already resolvable (explicit prop, per-thread link, or
+      // workflow likely-match) — log automatically. Otherwise prompt the user
+      // to pick one before sending.
+      if (effectiveDealId) {
+        performSendWithLink(emailData, {
+          dealId: effectiveDealId,
+          dealName: effectiveDealName || null,
+        });
+        return;
+      }
+      pendingSendRef.current = emailData;
+      setLinkPromptOpen(true);
+    },
+    [effectiveDealId, effectiveDealName, performSendWithLink],
+  );
 
   const handleDiscard = useCallback(() => {
     discardDraft();
