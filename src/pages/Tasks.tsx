@@ -645,6 +645,19 @@ export default function Tasks() {
             </SelectContent>
           </Select>
 
+          <Select value={filterDueDate} onValueChange={v => setFilterDueDate(v as FilterDueDate)}>
+            <SelectTrigger className="h-7 w-[130px] text-[11px] text-[#9aa3b6]" style={{ backgroundColor: 'rgba(20,24,32,0.65)', borderColor: 'rgba(255,255,255,0.06)' }}>
+              <CalendarDays className="h-3 w-3 mr-1.5" /><SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">Any due date</SelectItem>
+              <SelectItem value="overdue" className="text-xs">Overdue</SelectItem>
+              <SelectItem value="today" className="text-xs">Due today</SelectItem>
+              <SelectItem value="this_week" className="text-xs">Due this week</SelectItem>
+              <SelectItem value="no_date" className="text-xs">No due date</SelectItem>
+            </SelectContent>
+          </Select>
+
           {/* Deal filter */}
           {uniqueDeals.length > 0 && (
             <Popover>
