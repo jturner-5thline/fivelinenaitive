@@ -244,7 +244,7 @@ export function BenchmarkForecastsPage() {
   useChart(p2signRef, () => bars4Cfg(p2SignR, p2SignO, p2SignC, p2SignA, (v: number) => '$' + v + 'MM'));
 
   return (
-    <div style={{ background: '#0f1923', color: '#d0dce8', fontFamily: 'system-ui, sans-serif', padding: '14px 0' }}>
+    <div style={{ background: 'transparent', color: '#d0dce8', fontFamily: 'system-ui, sans-serif', padding: '14px 0' }}>
       {/* Header */}
       <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '12px 14px', background: '#1a2d42', borderColor: 'rgba(255,255,255,0.09)' }}>
         <div>
