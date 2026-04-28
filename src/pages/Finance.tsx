@@ -2,9 +2,66 @@ import { AppLayout } from "@/components/AppLayout";
 import { FPAWorkspace } from "@/components/fpa/FPAWorkspace";
 import { useCompany } from "@/hooks/useCompany";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2 } from "lucide-react";
+import { Building2, BarChart3, Database, FileSpreadsheet, Sparkles, Zap, ChevronRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardPage } from "@/components/layout/DashboardPage";
+import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
+
+const SECTION_LINKS = [
+  { key: "dashboards", label: "Dashboards", icon: BarChart3 },
+  { key: "data", label: "Data", icon: Database },
+  { key: "sheets", label: "Sheets", icon: FileSpreadsheet },
+  { key: "ai", label: "AI", icon: Sparkles },
+  { key: "automations", label: "Automations", icon: Zap },
+] as const;
+
+function FinanceHeader() {
+  const [active, setActive] = useState<string>(() =>
+    (typeof window !== "undefined" && window.location.hash.replace("#", "")) || "dashboards"
+  );
+
+  useEffect(() => {
+    const onHash = () => setActive(window.location.hash.replace("#", "") || "dashboards");
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  const go = (key: string) => {
+    window.location.hash = key;
+    setActive(key);
+  };
+
+  return (
+    <div className="flex items-center gap-3 flex-wrap">
+      <h1 className="text-2xl font-bold leading-none">Finance</h1>
+      <ChevronRight className="h-4 w-4 text-muted-foreground/60 shrink-0" />
+      <nav className="flex items-center gap-1 flex-wrap" aria-label="Finance sections">
+        {SECTION_LINKS.map((s) => {
+          const isActive = active === s.key;
+          const Icon = s.icon;
+          return (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => go(s.key)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                isActive
+                  ? "bg-primary/10 text-primary border border-primary/20"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent"
+              )}
+              aria-current={isActive ? "page" : undefined}
+            >
+              <Icon className="h-3 w-3" />
+              {s.label}
+            </button>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}
 
 export default function Finance() {
   const { company, isLoading: companyLoading } = useCompany();
@@ -44,7 +101,7 @@ export default function Finance() {
         padding="md"
         container={false}
         bodySpacing="space-y-4"
-        header={<h1 className="text-2xl font-bold leading-none">Finance</h1>}
+        header={<FinanceHeader />}
       >
         <FPAWorkspace />
       </DashboardPage>
