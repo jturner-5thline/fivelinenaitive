@@ -688,6 +688,29 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
           </Tabs>
         </div>
       </ScrollArea>
+      <AlertDialog open={stopRecurrenceOpen} onOpenChange={setStopRecurrenceOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Stop this recurring series?</AlertDialogTitle>
+            <AlertDialogDescription>
+              No more tasks will be generated from this rule. Existing tasks already created will not be affected. This action removes the recurrence rule entirely — to temporarily halt generation instead, use Pause.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                onUpdate({ recurrence_rule: null, recurrence_end_date: null, is_recurring: false } as any);
+                toast.success('Recurrence stopped');
+                setStopRecurrenceOpen(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Stop recurrence
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
