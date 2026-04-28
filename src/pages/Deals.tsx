@@ -409,18 +409,12 @@ export default function Dashboard() {
           <EmailVerificationBanner />
           <DemoBanner onDataCleared={refreshDeals} />
           <CreateCompanyBanner />
-          <div
-            className={
-              // Frosted-glass module wrapper, identical tonal system to the
-              // dashboard: translucent white surface, hairline white/10 border,
-              // backdrop-blur + saturate for the glass quality, and a soft
-              // ambient shadow with an inner top highlight for elevation.
-              'space-y-6 rounded-xl border border-white/10 ' +
-              'bg-white/[0.04] backdrop-blur-md backdrop-saturate-150 ' +
-              'shadow-[0_8px_22px_-12px_rgba(0,0,0,0.55),inset_0_1px_0_0_rgba(255,255,255,0.06)] ' +
-              'p-4 sm:p-6'
-            }
-          >
+          {/*
+            Deal content sits directly inside the AppLayout's main glass
+            surface — no nested frosted panel. Only vertical rhythm is
+            preserved here so the page no longer reads as glass-in-glass.
+          */}
+          <div className="space-y-6">
             {/* Page Header & Widgets */}
             <div className="space-y-2">
               <div 
