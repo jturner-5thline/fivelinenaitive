@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Loader2, Check, X, Quote, AlertCircle, Briefcase, User, Building2, Zap, Link2, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { Loader2, Check, X, Quote, AlertCircle, Briefcase, User, Building2, Zap, Link2, Plus } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -167,8 +167,11 @@ export function WorkflowIntelligenceCard({
   const [selectedReasonLabels, setSelectedReasonLabels] = useState<string[]>(aiSuggestedLabels);
   const [reasonPickerOpen, setReasonPickerOpen] = useState(false);
   const [renderedKey, setRenderedKey] = useState<string | null>(null);
-  // Two-panel slider: 'suggested' (primary, default) <-> 'intelligence' (entities + signal context).
-  const [activePanel, setActivePanel] = useState<'suggested' | 'intelligence'>('suggested');
+  // The card used to be a 2-panel slider ("Suggested Update" / "Workflow
+  // Intelligence") that required navigating between them. Per design, both
+  // panels now render simultaneously as a single vertical card so users can
+  // see the suggested action AND its supporting context at the same time
+  // without paging.
 
   const analysisKey = `${analysis.signal.type}::${rec.lender_id || rec.master_lender_id || rec.lender_name}::${rec.new_stage}::${rec.suggested_detail || ''}::${passReasonOptions.length}`;
   if (renderedKey !== analysisKey) {
@@ -295,57 +298,21 @@ export function WorkflowIntelligenceCard({
 
   return (
     <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-2.5 space-y-2 overflow-hidden max-w-full min-w-0 w-full">
-      {/* Header — title swaps with the active panel; arrow controls slide between the two. */}
+      {/* Single header — both sections render stacked below, no pagination. */}
       <div className="flex items-center gap-1.5 min-w-0">
-        {activePanel === 'intelligence' && (
-          <button
-            type="button"
-            onClick={() => setActivePanel('suggested')}
-            className="h-4 w-4 -ml-0.5 rounded hover:bg-primary/10 flex items-center justify-center text-primary/80"
-            aria-label="Back to suggested update"
-          >
-            <ChevronLeft className="h-3 w-3" />
-          </button>
-        )}
         <Sparkles className="h-3 w-3 text-primary shrink-0" />
         <span className="text-[10px] font-semibold uppercase tracking-wider text-primary/90 min-w-0 truncate">
-          {activePanel === 'suggested' ? 'Suggested Update' : 'Workflow Intelligence'}
+          Suggested Update
         </span>
         {loading && <Loader2 className="h-2.5 w-2.5 animate-spin text-primary/60" />}
-        <div className="ml-auto flex items-center gap-0.5">
-          <span className="text-[9px] tabular-nums text-muted-foreground/70">
-            {activePanel === 'suggested' ? '1 / 2' : '2 / 2'}
-          </span>
-          {activePanel === 'suggested' ? (
-            <button
-              type="button"
-              onClick={() => setActivePanel('intelligence')}
-              className="h-4 w-4 rounded hover:bg-primary/10 flex items-center justify-center text-primary/80"
-              aria-label="View workflow intelligence"
-            >
-              <ChevronRight className="h-3 w-3" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setActivePanel('suggested')}
-              className="h-4 w-4 rounded hover:bg-primary/10 flex items-center justify-center text-primary/80"
-              aria-label="Back to suggested update"
-            >
-              <ChevronRight className="h-3 w-3 rotate-180" />
-            </button>
-          )}
-        </div>
       </div>
 
-      {/* Sliding viewport — two panels share width; transform controls which is visible. */}
-      <div className="relative overflow-hidden max-w-full min-w-0 w-full">
-        <div
-          className="flex w-[200%] min-w-0 transition-transform duration-300 ease-out"
-          style={{ transform: activePanel === 'suggested' ? 'translateX(0%)' : 'translateX(-50%)' }}
-        >
-          {/* PANEL 1 — Suggested Update (primary) */}
-          <div className="w-1/2 shrink-0 min-w-0 pr-2 space-y-2">
+      {/* Stacked vertical layout — Suggested Update on top, Workflow
+          Intelligence (entities + detected signal) immediately below as
+          supporting context. No slider, no "1 of 2", no nav. */}
+      <div className="space-y-3 max-w-full min-w-0 w-full">
+        {/* SECTION 1 — Suggested Update (primary) */}
+        <div className="min-w-0 space-y-2">
             {hasUpdate ? (
               <div className="space-y-2">
                 <p
@@ -559,11 +526,17 @@ export function WorkflowIntelligenceCard({
                 Also consider: <span className="text-foreground/70">{analysis.secondary_action.title}</span>
               </p>
             )}
-          </div>
+        </div>
 
-          {/* PANEL 2 — Workflow Intelligence (entities + detected signal) */}
-          <div className="w-1/2 shrink-0 min-w-0 pl-2 space-y-3">
-            <div className="space-y-1.5 text-[11px]">
+        {/* SECTION 2 — Workflow Intelligence (entities + detected signal).
+            Shown beneath the action as the "why" context. */}
+        <div className="min-w-0 space-y-3 pt-2 border-t border-primary/10">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80 min-w-0 truncate">
+              Why this was suggested
+            </span>
+          </div>
+          <div className="space-y-1.5 text-[11px]">
         <div className="flex items-start gap-1.5 min-w-0">
           <Briefcase className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
           <span className="text-muted-foreground shrink-0">Deal:</span>
@@ -637,7 +610,6 @@ export function WorkflowIntelligenceCard({
                 )}
               </div>
             )}
-          </div>
         </div>
       </div>
     </div>
