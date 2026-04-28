@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2 } from 'lucide-react';
+import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2, SlidersHorizontal } from 'lucide-react';
 import { useAsanaGoals, type AsanaGoalRow } from '@/hooks/useAsanaGoals';
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -40,6 +40,62 @@ function monthsForQuarter(quarter: string): string[] {
   const [q, year] = quarter.split(' ');
   const names = QUARTER_MONTHS[q] || [];
   return names.map(m => `${m} ${year}`);
+}
+
+/* ── Asana Goals: period → filter mapping ────────────────────────────────
+   Templates may include "{year}" which is replaced with the report's year.
+   This keeps the mapping configurable yet generic across years. */
+export type QKey = 'Q1' | 'Q2' | 'Q3' | 'Q4';
+export type HKey = 'H1' | 'H2';
+export interface AsanaGoalFilterTemplates {
+  quarters: Record<QKey, string>;
+  halves: Record<HKey, string>;
+}
+export const DEFAULT_ASANA_GOAL_FILTERS: AsanaGoalFilterTemplates = {
+  quarters: {
+    Q1: 'Q1 {year}',
+    Q2: 'Q2 {year}',
+    Q3: 'Q3 {year}',
+    Q4: 'Q4 {year}',
+  },
+  halves: {
+    H1: 'H1 {year}',
+    H2: 'H2 {year}',
+  },
+};
+const Q_TO_HALF: Record<QKey, HKey> = { Q1: 'H1', Q2: 'H1', Q3: 'H2', Q4: 'H2' };
+const MONTH_TO_Q: Record<string, QKey> = {
+  January: 'Q1', February: 'Q1', March: 'Q1',
+  April: 'Q2', May: 'Q2', June: 'Q2',
+  July: 'Q3', August: 'Q3', September: 'Q3',
+  October: 'Q4', November: 'Q4', December: 'Q4',
+};
+
+/** Derive the Asana quarter/half labels for the active report period. */
+export function deriveAsanaGoalPeriod(
+  s: Pick<ReportState, 'period' | 'quarter' | 'month'>,
+  templates: AsanaGoalFilterTemplates = DEFAULT_ASANA_GOAL_FILTERS,
+): { qKey: QKey; hKey: HKey; year: string; quarterLabel: string; halfLabel: string } {
+  let qKey: QKey;
+  let year: string;
+  if (s.period === 'monthly') {
+    const [monthName, monthYear] = (s.month || '').split(' ');
+    qKey = (MONTH_TO_Q[monthName] || 'Q1') as QKey;
+    year = monthYear || (s.quarter.split(' ')[1] ?? '');
+  } else {
+    const [q, qYear] = s.quarter.split(' ');
+    qKey = (q as QKey) || 'Q1';
+    year = qYear || '';
+  }
+  const hKey = Q_TO_HALF[qKey];
+  const fill = (tpl: string) => tpl.replace(/\{year\}/g, year);
+  return {
+    qKey,
+    hKey,
+    year,
+    quarterLabel: fill(templates.quarters[qKey] || ''),
+    halfLabel: fill(templates.halves[hKey] || ''),
+  };
 }
 
 function Card({ children, style, className }: { children: React.ReactNode; style?: React.CSSProperties; className?: string }) {
