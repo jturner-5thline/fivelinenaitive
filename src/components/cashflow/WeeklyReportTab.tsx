@@ -727,6 +727,13 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
           </div>
         </div>
       )}
+
+      <CashFlowDrilldownModal
+        open={!!drilldown}
+        onClose={() => setDrilldown(null)}
+        context={drilldown}
+        items={scheduledItems || []}
+      />
     </div>
   );
 });
