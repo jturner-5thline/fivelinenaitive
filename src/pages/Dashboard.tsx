@@ -54,7 +54,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
  * `!` important overrides neutralize the base `<Card>` dark-mode glass styles.
  */
 const TILE_INTERACTIVE_CLASSES =
-  'group relative cursor-pointer outline-none p-2 ' +
+  'group relative cursor-pointer outline-none p-[calc(var(--tile-size)*0.08)] ' +
   '!border-0 !bg-transparent !shadow-none !backdrop-blur-none !backdrop-saturate-100 ' +
   'dark:!bg-transparent dark:!border-0 dark:!shadow-none ' +
   'dark:hover:!border-0 dark:hover:!shadow-none ' +
@@ -71,10 +71,11 @@ const TILE_INTERACTIVE_CLASSES =
  *   - Group-hover lift to mimic the reference's tappable feel.
  */
 const TILE_CHIP_BASE =
-  // 96×96 chip (~+20% over the previous 80px) with the platform-standard 8px
-  // radius (rounded-lg) so tiles feel native to the rest of the Naitive UI
-  // while preserving the glassy reference treatment.
-  'relative h-24 w-24 rounded-lg flex items-center justify-center overflow-hidden ' +
+  // Fully responsive chip — its width/height track the `--tile-size` CSS var
+  // defined on the dashboard grid, so every tile scales proportionally with
+  // the available viewport width while keeping a 1:1 aspect ratio.
+  'relative rounded-lg flex items-center justify-center overflow-hidden ' +
+  'h-[var(--tile-size)] w-[var(--tile-size)] ' +
   'border border-white/[0.13] ' +
   'shadow-[0_8px_22px_-8px_rgba(0,0,0,0.6),inset_0_1px_0_0_rgba(255,255,255,0.08)] ' +
   'transition-transform duration-200 ease-out ' +
@@ -114,9 +115,11 @@ const TILE_CHIP_GRADIENTS: Record<string, string> = {
 
 /** Tile label styling — centered under the chip, like the reference. */
 const TILE_LABEL_CLASSES =
-  // White, single-line label scaled with the larger tile. `whitespace-nowrap`
+  // White, single-line label whose font-size scales with `--tile-size` so the
+  // label always feels balanced relative to the chip. `whitespace-nowrap`
   // guarantees titles never wrap; the parent flex column keeps it centered.
-  'text-[14px] font-medium text-center leading-tight tracking-[0.01em] whitespace-nowrap ' +
+  'font-medium text-center leading-tight tracking-[0.01em] whitespace-nowrap ' +
+  'text-[calc(var(--tile-size)*0.16)] ' +
   'text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)]';
 
 const handleTileKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, action: () => void) => {
