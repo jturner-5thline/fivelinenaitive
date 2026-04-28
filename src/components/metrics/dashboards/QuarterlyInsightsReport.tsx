@@ -154,7 +154,7 @@ function Chip({ children }: { children: React.ReactNode }) {
         color: '#cfe2f7',
         background: 'rgba(40,90,150,0.25)',
         border: '1px solid rgba(80,150,220,0.22)',
-        borderRadius: 999,
+        borderRadius: RADIUS_PILL,
       }}
     >
       {children}
