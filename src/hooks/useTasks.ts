@@ -324,7 +324,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
   }));
 
   const createTask = useMutation({
-    mutationFn: async (task: { title: string; description?: string; assigned_to?: string; priority?: string; due_date?: string; status?: string; project_id?: string; section_id?: string; deal_id?: string; contact_id?: string; crm_company_id?: string; recurrence_rule?: string | null }) => {
+    mutationFn: async (task: { title: string; description?: string; assigned_to?: string; priority?: string; due_date?: string; status?: string; project_id?: string; section_id?: string; deal_id?: string; contact_id?: string; crm_company_id?: string; recurrence_rule?: string | null; recurrence_end_date?: string | null }) => {
       if (!user) throw new Error('Not authenticated');
       // Get company_id
       const { data: membership } = await supabase
@@ -352,6 +352,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
           company_id: membership?.company_id || null,
           recurrence_rule: task.recurrence_rule ?? null,
           is_recurring: !!task.recurrence_rule,
+          recurrence_end_date: task.recurrence_end_date ?? null,
         } as any)
         .select()
         .single();
@@ -475,6 +476,12 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
           const { data: { user: u } } = await supabase.auth.getUser();
           if (u) {
             const nextDueDate = calculateNextDueDate(completedTask.due_date, completedTask.recurrence_rule);
+            const seriesEnd = (completedTask as any).recurrence_end_date as string | null | undefined;
+            // Stop the series if the next occurrence falls past the end date
+            // (or if no next date can be computed at all). We still continue
+            // with the rest of the completion flow (Zapier/Asana sync etc.).
+            const seriesShouldContinue = !!nextDueDate && (!seriesEnd || nextDueDate <= seriesEnd);
+            if (seriesShouldContinue) {
              const { data: newRecurringTask } = await supabase.from('tasks').insert({
                title: completedTask.title,
                description: completedTask.description,
@@ -488,6 +495,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
                recurrence_source_id: completedTask.recurrence_source_id || id,
                due_date: nextDueDate,
                task_type: completedTask.task_type,
+               recurrence_end_date: seriesEnd ?? null,
              } as any).select().single();
 
              // Fire-and-forget Asana sync for the new recurring task
@@ -509,6 +517,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
              } catch (e) {
                console.error('[AsanaSync] Recurring task sync failed:', e);
              }
+            }
           }
         }
       }

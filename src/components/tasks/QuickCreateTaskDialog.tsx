@@ -20,6 +20,8 @@ export interface QuickTaskInput {
   status: 'not_started' | 'in_progress' | 'blocked' | 'complete';
   assigned_to: string;
   recurrence_rule: string | null;
+  /** YYYY-MM-DD; if set, no new occurrence is generated past this date. */
+  recurrence_end_date: string | null;
 }
 
 interface Props {
@@ -82,6 +84,10 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
   // selected due date. If no due date is set when this is enabled, today is
   // used as the anchor.
   const [startFromDueDate, setStartFromDueDate] = useState(false);
+  // End conditions for the recurring series.
+  const [endMode, setEndMode] = useState<'never' | 'on_date' | 'after_n'>('never');
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [endAfterN, setEndAfterN] = useState<number>(5);
   const [warning, setWarning] = useState('');
   const [confirmedJunk, setConfirmedJunk] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -99,6 +105,9 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
       setCustomN(3);
       setCustomUnit('days');
       setStartFromDueDate(false);
+      setEndMode('never');
+      setEndDate(undefined);
+      setEndAfterN(5);
       setWarning('');
       setConfirmedJunk(false);
       setSubmitting(false);
@@ -113,6 +122,8 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
     fn();
     setRecurrence(null);
     setStartFromDueDate(false);
+    setEndMode('never');
+    setEndDate(undefined);
     setWarning('');
     setConfirmedJunk(false);
   };
@@ -182,6 +193,26 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
     }
     setSubmitting(true);
     try {
+      // Resolve the series end date based on the chosen end condition.
+      // For "after_n" we step the recurrence engine N times from the anchor.
+      let resolvedEndDate: string | null = null;
+      if (recurrence) {
+        const anchor = dueDate ?? new Date();
+        if (endMode === 'on_date' && endDate) {
+          resolvedEndDate = format(endDate, 'yyyy-MM-dd');
+        } else if (endMode === 'after_n') {
+          const safeN = Math.max(1, Math.min(365, Math.floor(endAfterN)));
+          // The first task counts as occurrence #1, so we advance N-1 times
+          // and use that date as the inclusive end-of-series boundary.
+          let cursor: Date | null = new Date(anchor);
+          for (let i = 1; i < safeN; i++) {
+            const next = previewNextOccurrence(cursor!, recurrence);
+            if (!next) { cursor = null; break; }
+            cursor = next;
+          }
+          if (cursor) resolvedEndDate = format(cursor, 'yyyy-MM-dd');
+        }
+      }
       await onCreate({
         title: trimmed,
         priority,
@@ -189,6 +220,7 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
         status,
         assigned_to: assignedTo,
         recurrence_rule: recurrence,
+        recurrence_end_date: resolvedEndDate,
       });
       try {
         window.localStorage.setItem(LAST_ASSIGNEE_KEY, assignedTo);
@@ -526,6 +558,105 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
               <p className="text-[10px]" style={{ color: '#e89b6c' }}>
                 Tip: set a due date — the next task is generated when this one is completed.
               </p>
+            )}
+            {recurrence && (
+              <div className="mt-1 space-y-1">
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="text-[10px] uppercase tracking-wide font-medium mr-1" style={{ color: '#7a8194' }}>
+                    Ends
+                  </span>
+                  {([
+                    { v: 'never',    l: 'Never' },
+                    { v: 'on_date',  l: 'On date' },
+                    { v: 'after_n',  l: 'After…' },
+                  ] as const).map(opt => {
+                    const active = endMode === opt.v;
+                    return (
+                      <button
+                        key={opt.v}
+                        type="button"
+                        onClick={() => {
+                          setEndMode(opt.v);
+                          if (opt.v === 'on_date' && !endDate) {
+                            // Sensible default: 90 days out from anchor
+                            setEndDate(addDays(dueDate ?? new Date(), 90));
+                          }
+                        }}
+                        className="px-2 py-0.5 rounded text-[11px] font-medium border transition-colors"
+                        style={{
+                          color: active ? '#cfe3ff' : '#9aa3b6',
+                          borderColor: active ? 'rgba(126,184,247,0.45)' : 'rgba(255,255,255,0.08)',
+                          backgroundColor: active ? 'rgba(126,184,247,0.14)' : 'rgba(20,24,32,0.65)',
+                        }}
+                      >
+                        {opt.l}
+                      </button>
+                    );
+                  })}
+                  {endMode === 'on_date' && (
+                    <input
+                      type="date"
+                      value={endDate ? format(endDate, 'yyyy-MM-dd') : ''}
+                      min={dueDate ? format(dueDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setEndDate(v ? new Date(v + 'T00:00:00') : undefined);
+                      }}
+                      className="h-7 px-2 rounded border text-[11px]"
+                      style={{
+                        backgroundColor: 'rgba(20,24,32,0.85)',
+                        borderColor: 'rgba(255,255,255,0.08)',
+                        color: '#cfe3ff',
+                        colorScheme: 'dark',
+                      }}
+                    />
+                  )}
+                  {endMode === 'after_n' && (
+                    <div className="inline-flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={1}
+                        max={365}
+                        value={endAfterN}
+                        onChange={(e) => {
+                          const n = Math.max(1, Math.min(365, parseInt(e.target.value, 10) || 1));
+                          setEndAfterN(n);
+                        }}
+                        className="w-14 h-7 px-1.5 rounded border text-[12px] text-center"
+                        style={{
+                          backgroundColor: 'rgba(20,24,32,0.85)',
+                          borderColor: 'rgba(255,255,255,0.08)',
+                          color: '#cfe3ff',
+                        }}
+                      />
+                      <span className="text-[11px]" style={{ color: '#9aa3b6' }}>occurrences</span>
+                    </div>
+                  )}
+                </div>
+                {(() => {
+                  if (endMode === 'never' || !recurrence) return null;
+                  const anchor = dueDate ?? new Date();
+                  let resolved: Date | null = null;
+                  if (endMode === 'on_date' && endDate) resolved = endDate;
+                  if (endMode === 'after_n') {
+                    let cursor: Date | null = new Date(anchor);
+                    const safeN = Math.max(1, Math.min(365, Math.floor(endAfterN)));
+                    for (let i = 1; i < safeN; i++) {
+                      const next = previewNextOccurrence(cursor!, recurrence);
+                      if (!next) { cursor = null; break; }
+                      cursor = next;
+                    }
+                    resolved = cursor;
+                  }
+                  if (!resolved) return null;
+                  return (
+                    <p className="text-[10px]" style={{ color: '#7a8194' }}>
+                      Series ends on <span style={{ color: '#cfe3ff' }}>{format(resolved, 'EEE, MMM d, yyyy')}</span>
+                      {endMode === 'after_n' && <> · {endAfterN} occurrence{endAfterN === 1 ? '' : 's'}</>}
+                    </p>
+                  );
+                })()}
+              </div>
             )}
           </div>
 
