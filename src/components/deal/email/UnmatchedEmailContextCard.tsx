@@ -103,6 +103,11 @@ export function UnmatchedEmailContextCard({
   const linkContactDeal = useLinkContactToDeal();
   const [contactAdded, setContactAdded] = useState<{ id: string; name: string } | null>(null);
 
+  // Hoisted so React's hook order is preserved across the early
+  // contactLoading return below.
+  const senderIsInternalDomain = isInternalEmail(senderEmail);
+  const { isTeamMember: senderIsTeamMember } = useIsTeamMemberEmail(senderEmail);
+
   const linkSuggestion = async (id: string, name: string) => {
     setLinkingTarget(id);
     try {
@@ -209,10 +214,6 @@ export function UnmatchedEmailContextCard({
   const senderDomain = senderEmail.includes('@') ? senderEmail.split('@')[1] : '';
   const inferredCompany =
     highMatch?.deal.company || highMatch?.deal.name || senderDomain || '';
-
-  // Guards: never offer to add an internal/team sender as a "new contact".
-  const senderIsInternalDomain = isInternalEmail(senderEmail);
-  const { isTeamMember: senderIsTeamMember } = useIsTeamMemberEmail(senderEmail);
 
   // Outbound = the latest message in the thread was sent by us (internal
   // user). In that case the "sender" is one of our own teammates and the
