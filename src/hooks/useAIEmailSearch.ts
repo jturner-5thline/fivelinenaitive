@@ -42,6 +42,11 @@ interface CandidateEmail {
   folder: string;
   is_read: boolean;
   needs_response: boolean;
+  labels: string[];
+  category?: string;
+  deal_name?: string;
+  has_attachments: boolean;
+  attachment_names?: string[];
 }
 
 // Keep the prompt cheap — cap how many candidates we send to Claude per call.
@@ -59,26 +64,62 @@ function toCandidate(e: MockEmail): CandidateEmail {
     folder: e.folder,
     is_read: e.is_read,
     needs_response: e.needs_response,
+    labels: Array.isArray(e.labels) ? e.labels : [],
+    category: (e as any).category,
+    deal_name: (e as any).deal_name,
+    has_attachments: !!e.has_attachments,
+    attachment_names: Array.isArray((e as any).attachments)
+      ? (e as any).attachments
+          .map((a: any) => a?.filename || a?.name)
+          .filter(Boolean)
+          .slice(0, 5)
+      : [],
   };
 }
 
 function buildSystemPrompt(): string {
-  return `You are an email search assistant. Given a user's natural-language search query and a JSON list of candidate emails, you must:
+  const today = new Date().toISOString().slice(0, 10);
+  return `You are an email search assistant. Today is ${today}. Given a user's natural-language search query and a JSON list of candidate emails, you must:
 
-1. Infer the user's intent (sender, time range, category like "calendar" or "asana_projects" or "clients_deals", topics, action state like "needs response").
-2. Return ONLY emails that genuinely match the intent — semantic matches are allowed, but do not return obviously unrelated mail.
+1. Infer the user's intent (sender, time range, category, topics, action state).
+2. Return ALL emails that genuinely match the intent — favor recall over precision. Semantic matches are allowed.
 3. Rank by relevance first, then recency.
-4. For each result, give a SHORT (max ~8 words) reason such as "sender match", "topic: invoices", "calendar invite", "semantically related to lender outreach".
+4. For each result, give a SHORT (max ~8 words) reason.
+
+TERM MAPPING — apply these expansions when interpreting the query:
+
+- "signed" / "executed" / "countersigned" / "fully signed" →
+    match if ANY of: \`labels\` contains "Signed" (case-insensitive), \`subject\` or \`snippet\` mentions signed/executed/countersigned/DocuSign/HelloSign,
+    OR any \`attachment_names\` entry matches /signed|executed|countersigned|_fully|-fully|fully[_-]signed/i.
+- "NDA" / "non-disclosure" → \`subject\`/\`snippet\`/\`attachment_names\` mentions NDA, non-disclosure, mutual NDA, MNDA, confidentiality.
+- "lender" / "lenders" / "from lenders" → sender is a lender. Match if ANY of:
+    \`category\` is "lender", \`labels\` contains "Lender", or the sender's name/domain looks like a lending institution
+    (bank, capital, credit, finance, fund, lending, partners, mezzanine, ventures-debt). Do NOT require the literal token "lender" in the email.
+- "client" / "clients" → \`category\` is "deal" or "prospect", or \`deal_name\` is set.
+- "last week" → received_at within the last 7 days from today (inclusive).
+  "this week" → received_at since the start of the current ISO week.
+  "last month" / "this month" / "today" / "yesterday" → analogous calendar windows.
+  "recent" / "lately" → last 14 days.
+- "needs response" / "to reply to" / "waiting on me" → \`needs_response\` is true.
+- "with attachments" / "files" / "documents" → \`has_attachments\` is true.
+- "from <name>" / "by <name>" → fuzzy match on sender name, email local-part, or sender domain.
+
+Combine constraints with AND. If the query says "signed NDAs from lenders in the last week", a result must satisfy ALL of:
+(signed) AND (NDA) AND (lender sender) AND (last 7 days). Do not drop a constraint silently — instead return fewer results.
 
 Respond ONLY with a single JSON object inside a \`\`\`json code block. Schema:
 
 {
-  "interpretation": "Showing emails from <X> about <Y> from <when>",
+  "interpretation": "Plain-English summary of what you searched for",
   "filters": {
     "sender": "string or null",
-    "dateRange": "today | yesterday | this_week | last_week | this_month | last_month | last_2_days | last_7_days | all",
+    "senderRole": "lender | client | internal | prospect | null",
+    "dateRange": "today | yesterday | this_week | last_week | this_month | last_month | last_2_days | last_7_days | last_14_days | last_30_days | all",
+    "dateRangeStart": "YYYY-MM-DD or null",
+    "dateRangeEnd": "YYYY-MM-DD or null",
     "category": "calendar | asana_projects | clients_deals | invoices | scheduling | needs_response | null",
-    "topics": ["short topic tags"]
+    "topics": ["short topic tags, e.g. 'NDA', 'signed', 'term sheet'"],
+    "hasAttachments": true | false | null
   },
   "results": [
     { "id": "<email_id>", "reason": "short reason" }
@@ -87,7 +128,7 @@ Respond ONLY with a single JSON object inside a \`\`\`json code block. Schema:
 
 Rules:
 - Return at most 50 results.
-- If nothing reasonably matches, return an empty results array (do not invent matches).
+- If nothing matches, return an empty results array (do not invent matches).
 - Use the email ids exactly as provided.
 - Do not include any prose outside the JSON code block.`;
 }
@@ -190,6 +231,16 @@ export function useAIEmailSearch() {
             topics: Array.isArray(parsed.filters?.topics) ? parsed.filters.topics : [],
           },
         };
+
+        // Debug log so we can audit recall during manual QA.
+        // eslint-disable-next-line no-console
+        console.debug('[ai-email-search]', {
+          query: trimmed,
+          parsedFilters: parsed.filters,
+          interpretation: next.interpretation,
+          candidateCount: limited.length,
+          resultCount: rankedIds.length,
+        });
 
         setResult(next);
         return next;
