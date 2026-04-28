@@ -58,7 +58,7 @@ const TILE_INTERACTIVE_CLASSES =
   '!border-0 !bg-transparent !shadow-none !backdrop-blur-none !backdrop-saturate-100 ' +
   'dark:!bg-transparent dark:!border-0 dark:!shadow-none ' +
   'dark:hover:!border-0 dark:hover:!shadow-none ' +
-  'rounded-2xl transition-transform duration-200 ease-out ' +
+  'rounded-lg transition-transform duration-200 ease-out ' +
   'focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-0';
 
 /**
@@ -71,10 +71,12 @@ const TILE_INTERACTIVE_CLASSES =
  *   - Group-hover lift to mimic the reference's tappable feel.
  */
 const TILE_CHIP_BASE =
-  // ~+25% size bump (64 → 80px) with proportional radius for the larger surface.
-  'relative h-20 w-20 rounded-[20px] flex items-center justify-center overflow-hidden ' +
+  // 96×96 chip (~+20% over the previous 80px) with the platform-standard 8px
+  // radius (rounded-lg) so tiles feel native to the rest of the Naitive UI
+  // while preserving the glassy reference treatment.
+  'relative h-24 w-24 rounded-lg flex items-center justify-center overflow-hidden ' +
   'border border-white/[0.13] ' +
-  'shadow-[0_6px_18px_-6px_rgba(0,0,0,0.6),inset_0_1px_0_0_rgba(255,255,255,0.08)] ' +
+  'shadow-[0_8px_22px_-8px_rgba(0,0,0,0.6),inset_0_1px_0_0_rgba(255,255,255,0.08)] ' +
   'transition-transform duration-200 ease-out ' +
   'group-hover:-translate-y-[2px] group-focus-visible:-translate-y-[2px]';
 
@@ -91,7 +93,7 @@ void TILE_ICON_CHIP_CLASSES;
 const TileChipGloss = () => (
   <span
     aria-hidden
-    className="pointer-events-none absolute inset-0 rounded-[20px]"
+    className="pointer-events-none absolute inset-0 rounded-lg"
     style={{
       background:
         'linear-gradient(145deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 60%, rgba(0,0,0,0.10) 100%)',
@@ -112,8 +114,9 @@ const TILE_CHIP_GRADIENTS: Record<string, string> = {
 
 /** Tile label styling — centered under the chip, like the reference. */
 const TILE_LABEL_CLASSES =
-  // White for stronger contrast against the glassy chip; scaled with the larger tile.
-  'text-[13px] font-medium text-center leading-tight tracking-[0.01em] ' +
+  // White, single-line label scaled with the larger tile. `whitespace-nowrap`
+  // guarantees titles never wrap; the parent flex column keeps it centered.
+  'text-[14px] font-medium text-center leading-tight tracking-[0.01em] whitespace-nowrap ' +
   'text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)]';
 
 const handleTileKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, action: () => void) => {
@@ -204,7 +207,7 @@ function EmailTileWithIntelligence({
             style={{ background: TILE_CHIP_GRADIENTS.email }}
           >
             <TileChipGloss />
-            <Mail className="relative z-10 h-10 w-10" style={{ color: '#c084f5' }} />
+            <Mail className="relative z-10 h-12 w-12" style={{ color: '#c084f5' }} />
           </div>
           <span className={TILE_LABEL_CLASSES}>Email</span>
         </div>
@@ -587,7 +590,7 @@ export default function Dashboard() {
                   style={{ background: TILE_CHIP_GRADIENTS.calendar }}
                 >
                   <TileChipGloss />
-                  <CalendarIcon className="relative z-10 h-10 w-10" style={{ color: '#7b9ff5' }} />
+                  <CalendarIcon className="relative z-10 h-12 w-12" style={{ color: '#7b9ff5' }} />
                 </div>
                 <span className={TILE_LABEL_CLASSES}>Calendar</span>
               </div>
@@ -618,7 +621,7 @@ export default function Dashboard() {
                   style={{ background: TILE_CHIP_GRADIENTS.newDeal }}
                 >
                   <TileChipGloss />
-                  <Briefcase className="relative z-10 h-10 w-10" style={{ color: '#6b9cf5' }} />
+                  <Briefcase className="relative z-10 h-12 w-12" style={{ color: '#6b9cf5' }} />
                 </div>
                 <span className={TILE_LABEL_CLASSES}>New Deal</span>
               </div>
@@ -641,7 +644,7 @@ export default function Dashboard() {
                     style={{ background: TILE_CHIP_GRADIENTS.briefing }}
                   >
                     <TileChipGloss />
-                    <Newspaper className="relative z-10 h-10 w-10" style={{ color: '#f5a623' }} />
+                    <Newspaper className="relative z-10 h-12 w-12" style={{ color: '#f5a623' }} />
                   </div>
                   <span className={TILE_LABEL_CLASSES}>Daily Briefing</span>
                 </div>
@@ -665,7 +668,7 @@ export default function Dashboard() {
                     style={{ background: TILE_CHIP_GRADIENTS.niki }}
                   >
                     <TileChipGloss />
-                    <Newspaper className="relative z-10 h-10 w-10" style={{ color: '#2dd4b8' }} />
+                    <Newspaper className="relative z-10 h-12 w-12" style={{ color: '#2dd4b8' }} />
                   </div>
                   <span className={TILE_LABEL_CLASSES}>
                     {isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
@@ -689,7 +692,7 @@ export default function Dashboard() {
                   style={{ background: TILE_CHIP_GRADIENTS.deals }}
                 >
                   <TileChipGloss />
-                  <Handshake className="relative z-10 h-10 w-10" style={{ color: '#2dd4b8' }} />
+                  <Handshake className="relative z-10 h-12 w-12" style={{ color: '#2dd4b8' }} />
                 </div>
                 <span className={TILE_LABEL_CLASSES}>Deals</span>
               </div>
@@ -712,7 +715,7 @@ export default function Dashboard() {
                     style={{ background: TILE_CHIP_GRADIENTS.dealRundown }}
                   >
                     <TileChipGloss />
-                    <Briefcase className="relative z-10 h-10 w-10" style={{ color: '#6b9cf5' }} />
+                    <Briefcase className="relative z-10 h-12 w-12" style={{ color: '#6b9cf5' }} />
                   </div>
                   <span className={TILE_LABEL_CLASSES}>Deal Rundown</span>
                 </div>
