@@ -15,7 +15,7 @@ const footerLinks = {
 
 export const HomepageFooter = () => {
   return (
-    <footer className="py-12 bg-[#0a0a12] border-t border-white/10">
+    <footer className="py-12 bg-transparent border-t border-white/10">
       <div className="container mx-auto px-6">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-9">
           {/* Brand */}
