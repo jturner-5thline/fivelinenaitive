@@ -394,6 +394,54 @@ export default function Tasks() {
     setShowSaveViewDialog(false);
   };
 
+  // Build a smart default preset name based on current filters. Examples:
+  //   "My overdue tasks (board)"
+  //   "Team — High priority · This week (3 deals)"
+  //   "All open tasks grouped by deal"
+  const suggestPresetName = useCallback((): string => {
+    const parts: string[] = [];
+    // Scope
+    if (ownerFilter === 'mine') parts.push('My');
+    else if (ownerFilter === 'others') parts.push('Delegated');
+    else if (ownerFilter === 'all') parts.push('Team');
+    // Due / status
+    if (filterDueDate === 'overdue') parts.push('overdue');
+    else if (filterDueDate === 'today') parts.push('due today');
+    else if (filterDueDate === 'this_week') parts.push('this week');
+    else if (filterDueDate === 'no_date') parts.push('undated');
+    if (filterStatus && filterStatus !== 'incomplete') {
+      parts.push(filterStatus.replace(/_/g, ' '));
+    }
+    parts.push('tasks');
+    // Refinements
+    const refinements: string[] = [];
+    if (filterDealIds.size > 0) refinements.push(`${filterDealIds.size} deal${filterDealIds.size === 1 ? '' : 's'}`);
+    if (filterLabelIds.size > 0) refinements.push(`${filterLabelIds.size} label${filterLabelIds.size === 1 ? '' : 's'}`);
+    if (search.trim()) refinements.push(`"${search.trim().slice(0, 24)}"`);
+    if (groupBy && groupBy !== 'status') refinements.push(`by ${groupBy}`);
+    if (viewMode && viewMode !== 'list') refinements.push(viewMode);
+
+    let label = parts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+    label = label.charAt(0).toUpperCase() + label.slice(1);
+    if (refinements.length) label += ` · ${refinements.join(' · ')}`;
+
+    // Disambiguate against existing names
+    const existing = new Set(savedViews.map(v => v.name.toLowerCase()));
+    if (!existing.has(label.toLowerCase())) return label;
+    let n = 2;
+    while (existing.has(`${label} (${n})`.toLowerCase())) n++;
+    return `${label} (${n})`;
+  }, [ownerFilter, filterDueDate, filterStatus, filterDealIds, filterLabelIds, search, groupBy, viewMode, savedViews]);
+
+  // Auto-suggest a name when the Save dialog opens (only if user hasn't typed one).
+  useEffect(() => {
+    if (showSaveViewDialog && !newViewName.trim()) {
+      setNewViewName(suggestPresetName());
+    }
+    // Intentionally not depending on newViewName — we only want to auto-fill on open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showSaveViewDialog]);
+
   const handleLoadView = (view: TaskSavedView) => {
     const c = view.view_config;
     if (c.viewMode) setViewMode(c.viewMode as ViewMode);
@@ -1003,7 +1051,28 @@ export default function Tasks() {
               <DialogTitle className="text-sm">Save Filter Preset</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
-              <Input value={newViewName} onChange={e => setNewViewName(e.target.value)} placeholder="e.g. My overdue deal tasks" className="text-sm" onKeyDown={e => { if (e.key === 'Enter') handleSaveView(); }} autoFocus />
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Preset name</label>
+                  <button
+                    type="button"
+                    onClick={() => setNewViewName(suggestPresetName())}
+                    className="text-[10px] font-medium text-primary hover:underline"
+                    title="Generate a name from the current filters"
+                  >
+                    Suggest from filters
+                  </button>
+                </div>
+                <Input
+                  value={newViewName}
+                  onChange={e => setNewViewName(e.target.value)}
+                  placeholder="e.g. My overdue deal tasks"
+                  className="text-sm"
+                  onKeyDown={e => { if (e.key === 'Enter') handleSaveView(); }}
+                  autoFocus
+                  onFocus={(e) => e.currentTarget.select()}
+                />
+              </div>
               <div className="text-[11px] text-muted-foreground space-y-0.5 rounded-md p-2.5" style={{ backgroundColor: 'rgba(20,24,32,0.6)' }}>
                 <p className="font-medium text-foreground mb-1">This preset will remember:</p>
                 <p>• Search: {search ? `"${search}"` : '—'}</p>
