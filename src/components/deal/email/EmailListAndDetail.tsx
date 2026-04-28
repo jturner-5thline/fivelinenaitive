@@ -448,9 +448,20 @@ function autoLabelsEqual(a?: EmailLabel[], b?: EmailLabel[]) {
 // ─── Email List Skeleton ─────────────────────────────────────
 function EmailListSkeleton() {
   return (
-    <div className="space-y-0">
+    <div
+      className="space-y-0"
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+      aria-label="Searching emails"
+    >
+      <span className="sr-only">Searching emails…</span>
       {Array.from({ length: 10 }).map((_, i) => (
-        <div key={i} className="flex items-start gap-2.5 px-3 py-2 border-l-2 border-transparent">
+        <div
+          key={i}
+          aria-hidden="true"
+          className="flex items-start gap-2.5 px-3 py-2 border-l-2 border-transparent"
+        >
           <div className="h-6 w-6 rounded bg-muted/30 animate-pulse shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0 space-y-1.5">
             <div className="flex items-center justify-between">
@@ -548,8 +559,12 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
 
   if (threads.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full py-16 text-center">
-        <MessageSquare className="h-8 w-8 text-muted-foreground/30 mb-2" />
+      <div
+        className="flex flex-col items-center justify-center h-full py-16 text-center"
+        role="status"
+        aria-live="polite"
+      >
+        <MessageSquare className="h-8 w-8 text-muted-foreground/30 mb-2" aria-hidden="true" />
         <p className="text-sm text-muted-foreground">No emails in this folder</p>
       </div>
     );

@@ -1678,6 +1678,21 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 onDelete={handleDeleteEmail}
                 isLoading={aiSearch.isSearching}
               />
+              {/*
+                Screen-reader-only announcer for search progress + result counts.
+                The visible AI status banner above already announces interpretation
+                (role=status). This region adds a count summary so SR users hear
+                "12 results for 'signed NDAs'" or "No matching emails" once the
+                search settles. We render it OUTSIDE the EmailList so swapping
+                between skeleton/empty/list does not blow away the live region.
+              */}
+              <SearchResultAnnouncer
+                isSearching={aiSearch.isSearching}
+                aiSearchActive={aiSearchActive}
+                aiError={aiSearch.error}
+                searchQuery={searchQuery}
+                resultCount={filteredEmails.length}
+              />
               {/* Pagination footer: shows Load more, loading, or end-of-inbox */}
               {(onLoadMore || hasMore || isLoadingMore || isAutoPaginating) && (
                 <PaginationFooter
@@ -1984,6 +1999,62 @@ function InboxSummaryPane({ emails, classifierEntities, orgCtx, onSelectCategory
           Select a message to begin reading.
         </p>
       </div>
+    </div>
+  );
+}
+
+// ─── Screen-reader announcer for search progress + results ──────────
+// A polite live region that emits a single short message per state change
+// so SR users hear what the search is doing without spamming on every
+// keystroke. We intentionally:
+//   • debounce by 300ms so rapid typing collapses into one announcement
+//   • only announce a result count once the search has SETTLED (not while
+//     `isSearching` is true) — the visible status banner already covers the
+//     "Searching with AI…" beat.
+function SearchResultAnnouncer({
+  isSearching,
+  aiSearchActive,
+  aiError,
+  searchQuery,
+  resultCount,
+}: {
+  isSearching: boolean;
+  aiSearchActive: boolean;
+  aiError: string | null;
+  searchQuery: string;
+  resultCount: number;
+}) {
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    let next = '';
+    if (isSearching) {
+      next = 'Searching emails…';
+    } else if (aiError) {
+      next = `AI search failed: ${aiError}. Showing keyword results.`;
+    } else if (aiSearchActive) {
+      next =
+        resultCount === 0
+          ? `No matching emails for ${trimmed || 'your search'}.`
+          : `${resultCount} ${resultCount === 1 ? 'result' : 'results'} for ${trimmed || 'your search'}.`;
+    } else if (trimmed) {
+      next =
+        resultCount === 0
+          ? `No matching emails for ${trimmed}.`
+          : `${resultCount} ${resultCount === 1 ? 'result' : 'results'} for ${trimmed}.`;
+    } else {
+      // Cleared search — stay silent.
+      next = '';
+    }
+
+    const t = window.setTimeout(() => setMessage(next), 300);
+    return () => window.clearTimeout(t);
+  }, [isSearching, aiSearchActive, aiError, searchQuery, resultCount]);
+
+  return (
+    <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+      {message}
     </div>
   );
 }
