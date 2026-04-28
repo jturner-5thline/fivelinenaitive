@@ -1883,6 +1883,34 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 dealId={dealId}
                 dealName={linkedDealName || thread.dealName}
                 onClose={() => setShowAiAssist(false)}
+                onLinkDeal={async (id, name) => {
+                  setLinkedDealId(id);
+                  setLinkedDealName(name);
+                  onToggleLink(thread.latestEmail);
+                  try {
+                    const { data: auth } = await supabase.auth.getUser();
+                    const userId = auth?.user?.id;
+                    if (!userId) return;
+                    const rows = thread.emails
+                      .map((e) => e.id)
+                      .filter((mid) => mid && !mid.startsWith('mock-'))
+                      .map((mid) => ({
+                        deal_id: id,
+                        gmail_message_id: mid,
+                        user_id: userId,
+                      }));
+                    if (rows.length > 0) {
+                      await supabase
+                        .from('deal_emails')
+                        .upsert(rows, {
+                          onConflict: 'deal_id,gmail_message_id',
+                          ignoreDuplicates: true,
+                        });
+                    }
+                  } catch (err) {
+                    console.error('[ai-assist link-to-deal] persist failed', err);
+                  }
+                }}
                 onInsertDraft={(body) => {
                   const target = getReplyTarget();
                   // Reply lives in the existing thread — keep the current
