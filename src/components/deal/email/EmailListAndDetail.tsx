@@ -1013,7 +1013,24 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const [smartPopoverOpen, setSmartPopoverOpen] = useState(false);
   // AI Assist sidebar is always-on by default. On desktop it's persistently rendered;
   // on smaller widths it collapses into a toggleable drawer driven by this state.
-  const [showAiAssist, setShowAiAssist] = useState(true);
+  const AI_ASSIST_PREF_KEY = 'email.aiAssistOpen';
+  const [showAiAssist, setShowAiAssist] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const raw = window.localStorage.getItem(AI_ASSIST_PREF_KEY);
+      return raw === null ? true : raw === '1';
+    } catch {
+      return true;
+    }
+  });
+  const aiAssistButtonRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(AI_ASSIST_PREF_KEY, showAiAssist ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }, [showAiAssist]);
   const [showAiDraft, setShowAiDraft] = useState(false);
   const [aiDraftMode, setAiDraftMode] = useState<DraftMode | undefined>(undefined);
   const [linkedDealName, setLinkedDealName] = useState<string | undefined>(thread.dealName);
@@ -1514,6 +1531,10 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
       }
       if (e.key === 'f' || e.key === 'F') { e.preventDefault(); handleForward(); }
       if (e.key === 'l' || e.key === 'L') { e.preventDefault(); onToggleLink(thread.latestEmail); }
+      if (e.key === 'a' || e.key === 'A') {
+        e.preventDefault();
+        setShowAiAssist((v) => !v);
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -1623,9 +1644,12 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
+                  ref={aiAssistButtonRef}
                   onClick={() => setShowAiAssist(!showAiAssist)}
+                  aria-pressed={showAiAssist}
+                  aria-label="Toggle AI Assist"
                   className={cn(
-                    'flex flex-col items-center gap-0.5 px-3 py-1 rounded transition-colors border min-[1100px]:hidden',
+                    'flex flex-col items-center gap-0.5 px-3 py-1 rounded transition-colors border',
                     showAiAssist
                       ? 'bg-[hsl(var(--outlook-blue)/0.1)] border-[hsl(var(--outlook-blue)/0.3)] text-[hsl(var(--outlook-blue))]'
                       : 'border-transparent hover:bg-muted/40'
@@ -1635,7 +1659,9 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                   <span className={cn('text-[10px]', showAiAssist ? 'text-[hsl(var(--outlook-blue))]' : 'text-foreground/60')}>AI Assist</span>
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">Show AI suggestions</TooltipContent>
+              <TooltipContent side="bottom" className="text-xs">
+                {showAiAssist ? 'Hide AI Assist (A)' : 'Show AI Assist (A)'}
+              </TooltipContent>
             </Tooltip>
 
             {hasUploadableAttachments && (
@@ -2019,7 +2045,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 thread={thread}
                 dealId={dealId}
                 dealName={linkedDealName || thread.dealName}
-                onClose={() => setShowAiAssist(false)}
+                onClose={() => {
+                  setShowAiAssist(false);
+                  // Return focus to the toolbar toggle for keyboard users.
+                  requestAnimationFrame(() => aiAssistButtonRef.current?.focus());
+                }}
                 onLinkDeal={async (id, name) => {
                   setLinkedDealId(id);
                   setLinkedDealName(name);
