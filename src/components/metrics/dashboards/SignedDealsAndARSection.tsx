@@ -107,33 +107,35 @@ function SignedBarChart({
                   return (
                     <div
                       style={{
-                        backgroundColor: 'hsl(var(--popover))',
-                        border: '1px solid hsl(var(--border))',
+                        backgroundColor: 'hsl(var(--popover) / 0.96)',
+                        border: '1px solid hsl(0 0% 100% / 0.14)',
                         borderRadius: 8,
                         padding: '8px 10px',
                         fontSize: 12,
-                        color: 'hsl(var(--popover-foreground))',
+                        color: 'hsl(0 0% 100%)',
                         maxWidth: 260,
+                        boxShadow: 'var(--shadow-xl)',
+                        backdropFilter: 'blur(16px)',
                       }}
                     >
-                      <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                      <div style={{ fontWeight: 600, marginBottom: 4, color: 'hsl(0 0% 100%)' }}>
                         {bucket.label} · {bucket.count} deal{bucket.count !== 1 ? 's' : ''}
                       </div>
                       {bucket.deals.length > 0 ? (
                         <ul style={{ margin: 0, paddingLeft: 14, lineHeight: 1.4 }}>
                           {bucket.deals.slice(0, 8).map(d => (
-                            <li key={d.deal_id} style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            <li key={d.deal_id} style={{ color: 'hsl(0 0% 100% / 0.88)' }}>
                               {d.company}
                             </li>
                           ))}
                           {bucket.deals.length > 8 && (
-                            <li style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            <li style={{ color: 'hsl(0 0% 100% / 0.78)' }}>
                               +{bucket.deals.length - 8} more
                             </li>
                           )}
                         </ul>
                       ) : (
-                        <div style={{ color: 'hsl(var(--muted-foreground))' }}>No deals</div>
+                        <div style={{ color: 'hsl(0 0% 100% / 0.78)' }}>No deals</div>
                       )}
                     </div>
                   );
@@ -213,11 +215,13 @@ function OutstandingARPieChart() {
                   return [`${formatCurrencyFull(value)} (${pct}%)`, name];
                 }}
                 contentStyle={{
-                  backgroundColor: 'hsl(var(--popover))',
-                  border: '1px solid hsl(var(--border))',
+                  backgroundColor: 'hsl(var(--popover) / 0.96)',
+                  border: '1px solid hsl(0 0% 100% / 0.14)',
                   borderRadius: '8px',
                   fontSize: '12px',
-                  color: 'hsl(var(--popover-foreground))',
+                  color: 'hsl(0 0% 100%)',
+                  boxShadow: 'var(--shadow-xl)',
+                  backdropFilter: 'blur(16px)',
                 }}
               />
             </PieChart>

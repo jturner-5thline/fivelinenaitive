@@ -162,10 +162,10 @@ function ChartCard({
 function CurrencyTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border bg-popover px-3 py-2 shadow-md text-xs">
-      <p className="font-medium text-popover-foreground mb-1">{label}</p>
+    <div className="rounded-lg border border-white/15 bg-[hsl(var(--popover)/0.96)] px-3 py-2 text-xs text-white shadow-xl backdrop-blur-xl">
+      <p className="mb-1 font-semibold text-white">{label}</p>
       {payload.map((p: any, i: number) => (
-        <p key={i} className="text-muted-foreground">
+        <p key={i} className="font-medium text-white/90">
           {formatCurrencyFull(p.value)}
         </p>
       ))}
