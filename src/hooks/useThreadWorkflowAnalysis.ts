@@ -53,6 +53,23 @@ export interface WorkflowAnalysis {
     title: string;
     details: string;
   };
+  /**
+   * Optional next-action task suggestions detected from the inbound email
+   * (e.g. "send the due diligence list", "schedule a call"). Rendered as
+   * confirm-first cards in the Suggested Updates list. Backend defaults
+   * to [] when no clear next action is present.
+   */
+  suggested_tasks?: Array<{
+    title: string;
+    why: string;
+    task_type: 'follow_up' | 'call' | 'email' | 'review' | 'send_doc' | 'meeting' | 'general';
+    /** Either an ISO date 'YYYY-MM-DD' or the literal 'next_business_day'. */
+    due_date_hint: string;
+    /** 'deal_manager' or a verbatim person name from the email. */
+    assignee_hint: string;
+    priority: 'low' | 'normal' | 'high' | 'urgent';
+    confidence: WorkflowConfidence;
+  }>;
 }
 
 interface UseThreadWorkflowAnalysisOptions {

@@ -1001,7 +1001,18 @@ Return STRICT JSON only — no markdown fences, no commentary:
     "kind": "draft_reply|log_activity|none",
     "title": "string — short prompt, e.g. 'Log lender feedback to Arbolus activity'",
     "details": "string — empty if none"
-  }
+  },
+  "suggested_tasks": [
+    {
+      "title": "string — concrete task name pre-filled from the email context, action-verb led. Include the counterparty and deal where natural. Example: 'Send due diligence list to Steven Adler @ Prospeq'.",
+      "why": "string — ONE short sentence explaining which sentence in the email triggered this task suggestion. Keep under 120 chars.",
+      "task_type": "follow_up|call|email|review|send_doc|meeting|general",
+      "due_date_hint": "string — either an ISO date 'YYYY-MM-DD' if the email explicitly states a date (e.g. 'by Friday', 'before Nov 14'), or the literal token 'next_business_day' when no date is stated.",
+      "assignee_hint": "string — 'deal_manager' when the next action is on our side, or the verbatim person name from the email when the email assigns it to a specific teammate. Default to 'deal_manager'.",
+      "priority": "low|normal|high|urgent",
+      "confidence": "low|medium|high"
+    }
+  ]
 }
 
 CLASSIFICATION GUIDE:
@@ -1056,7 +1067,18 @@ CONFIDENCE:
 - medium = strong inference but some ambiguity (e.g., regional nuance).
 - low = weak inference; requires user to confirm associations first.
 
-If the email is internal commentary only (kind="internal_note"), recommended_update should be {"kind":"none"}.`;
+If the email is internal commentary only (kind="internal_note"), recommended_update should be {"kind":"none"}.
+
+SUGGESTED TASKS:
+- Detect clear next-action language in the inbound email — e.g. "send the due diligence list", "follow up with a term sheet", "schedule a call", "confirm the wire", "share the model", "circle back next week", "get me the cap table".
+- Each detected next action becomes ONE entry in suggested_tasks. Up to 3 tasks max. Return [] when there is no clear next action.
+- Title MUST be a concrete, action-verb-led sentence pre-filled from the email context. Include the counterparty name and the deal name when they are known. Examples:
+  • "Send due diligence list to Steven Adler @ Prospeq"
+  • "Schedule intro call with Kayne Anderson on Upflex"
+  • "Confirm wire instructions with Brookfield"
+- Default assignee_hint to "deal_manager" unless the email explicitly addresses or names a specific teammate (e.g. "James, can you send the model?" → assignee_hint: "James").
+- Default due_date_hint to "next_business_day". Only return an ISO date when the email explicitly states one ("by Friday Nov 14" → "2025-11-14"). Never invent dates.
+- Keep "why" to ONE sentence quoting the trigger phrase from the email when possible.`;
 
         userPrompt = `${dealContext}
 
