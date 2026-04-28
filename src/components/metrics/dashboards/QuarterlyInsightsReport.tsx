@@ -11,7 +11,11 @@ import { useAsanaGoals, type AsanaGoalRow } from '@/hooks/useAsanaGoals';
 const SURFACE = 'rgba(16,28,52,0.75)';
 const SURFACE_BORDER = '1px solid rgba(80,140,255,0.18)';
 const SHEEN = 'linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.00) 55%)';
-const RADIUS = 12;
+/* Canonical platform radius tokens (mirrors src/index.css --radius-*).
+   Containers/cards/inputs/selects/buttons → RADIUS (8px).
+   Pills/badges/progress → RADIUS_PILL (full). */
+const RADIUS = 8;
+const RADIUS_PILL = 9999;
 const TEXT_PRIMARY = '#dde8f8';
 const TEXT_MUTED = 'rgba(180,200,230,0.65)';
 const TEXT_LABEL = 'rgba(160,200,255,0.55)';
@@ -134,7 +138,7 @@ function Pill({ tone, children }: { tone: 'pos' | 'neu' | 'neg' | 'info'; childr
     neg: { background: 'rgba(220,80,80,0.15)', color: '#f08585', border: '1px solid rgba(220,80,80,0.28)' },
     info: { background: 'rgba(60,140,210,0.15)', color: '#7cc8f0', border: '1px solid rgba(60,150,220,0.25)' },
   };
-  return <span style={{ display: 'inline-block', fontSize: 9, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 20, ...s[tone] }}>{children}</span>;
+  return <span style={{ display: 'inline-block', fontSize: 9, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', padding: '2px 8px', borderRadius: RADIUS_PILL, ...s[tone] }}>{children}</span>;
 }
 
 function Chip({ children }: { children: React.ReactNode }) {
