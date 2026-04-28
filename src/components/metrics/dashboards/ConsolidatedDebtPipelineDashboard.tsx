@@ -218,7 +218,7 @@ function CompactFundedBarChart({
         </div>
         <div className="text-right">
           <p className="text-lg font-bold text-foreground">{totalFormatter(total)}</p>
-          <p className="text-[10px] text-muted-foreground">{buckets.length} {mode === 'monthly' ? 'Months' : 'Quarters'}</p>
+          <p className="text-[10px] text-muted-foreground">{buckets.length} {buckets.length === 6 ? 'Months' : 'Quarters'}</p>
         </div>
       </CardHeader>
       <CardContent>
