@@ -254,6 +254,34 @@
     min-height: 100vh;
   }
 
+  .recharts-default-tooltip {
+    background: hsl(var(--popover) / 0.96) !important;
+    border: 1px solid hsl(0 0% 100% / 0.14) !important;
+    border-radius: 8px !important;
+    color: hsl(0 0% 100%) !important;
+    box-shadow: var(--shadow-xl) !important;
+    backdrop-filter: blur(16px);
+  }
+
+  .recharts-default-tooltip,
+  .recharts-default-tooltip * {
+    color: hsl(0 0% 100%) !important;
+  }
+
+  .recharts-tooltip-label {
+    color: hsl(0 0% 100%) !important;
+    font-weight: 600 !important;
+  }
+
+  .recharts-tooltip-item-name {
+    color: hsl(0 0% 100% / 0.88) !important;
+  }
+
+  .recharts-tooltip-item-value {
+    color: hsl(0 0% 100%) !important;
+    font-weight: 600 !important;
+  }
+
   table, th, td, input, textarea, select, button {
     font-family: inherit;
   }
