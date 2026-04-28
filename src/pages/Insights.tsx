@@ -2204,69 +2204,75 @@ export default function Metrics() {
             {selectedDashboard === 'management-snapshot' && (
               <WeeklyRundownCarousel
                 page1={
-                  <ManagementSnapshotDashboard
-                isEditMode={isEditMode}
-                onEditCard={handleEditManagementSnapshotCard}
-                onDeleteCard={handleDeleteManagementSnapshotCard}
-                hiddenCards={hiddenSnapshotCards}
-                onTimeWindowChange={(cardId, window) => {
-                  setManagementSnapshotCards(prev => {
-                    const card = prev[cardId];
-                    const existingDR = (card.datarailsConfig || {}) as Record<string, any>;
-                    return {
-                      ...prev,
-                      [cardId]: {
-                        ...card,
-                        datarailsConfig: {
-                          ...existingDR,
-                          xAxis: { ...(existingDR.xAxis || {}), window },
-                        },
-                      },
-                    };
-                  });
-                }}
-                cardConfigs={managementSnapshotCardConfigs}
-                gridLayout={snapshotGridLayout}
-                onGridLayoutChange={saveSnapshotGridLayout}
-                selectedQuarter={dashboardSelectedQuarter}
-                onQuarterChange={() => { /* selector lives in page header */ }}
-                quarterOptions={dashboardQuarterOptions}
-              >
-                {widgets.map((widget) => {
-                  // Hidden from the Weekly Rundown dashboard per product spec.
-                  // These six widgets render in other dashboards / templates if
-                  // the user wants them — they just no longer appear here.
-                  const HIDDEN_WEEKLY_RUNDOWN_SOURCES = new Set([
-                    'closed-won',
-                    'pipeline-by-stage',
-                    'active-pipeline',
-                    'total-fees',
-                    'avg-deal-size',
-                    'deal-activity-12m',
-                  ]);
-                  if (HIDDEN_WEEKLY_RUNDOWN_SOURCES.has(widget.dataSource as string)) {
-                    return null;
-                  }
-                  const isStat = getWidgetDisplayType(widget) === 'stat';
-                  return (
-                    <div key={widget.id}>
-                      <GridWidgetCard
-                        isEditMode={isEditMode}
-                        onEdit={() => handleEdit(widget)}
-                        onDelete={() => {
-                          setWidgetToDelete(widget.id);
-                          setDeleteConfirmOpen(true);
-                        }}
-                      >
-                        {isStat
-                          ? renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets, { rawDeals, rawInvoices, rawPayments, rawExpenses })
-                          : renderChartContent(widget, metrics, qbMetrics, hsMetrics)
+                  <div className="space-y-8">
+                    <ManagementSnapshotDashboard
+                      isEditMode={isEditMode}
+                      onEditCard={handleEditManagementSnapshotCard}
+                      onDeleteCard={handleDeleteManagementSnapshotCard}
+                      hiddenCards={hiddenSnapshotCards}
+                      onTimeWindowChange={(cardId, window) => {
+                        setManagementSnapshotCards(prev => {
+                          const card = prev[cardId];
+                          const existingDR = (card.datarailsConfig || {}) as Record<string, any>;
+                          return {
+                            ...prev,
+                            [cardId]: {
+                              ...card,
+                              datarailsConfig: {
+                                ...existingDR,
+                                xAxis: { ...(existingDR.xAxis || {}), window },
+                              },
+                            },
+                          };
+                        });
+                      }}
+                      cardConfigs={managementSnapshotCardConfigs}
+                      gridLayout={snapshotGridLayout}
+                      onGridLayoutChange={saveSnapshotGridLayout}
+                      selectedQuarter={dashboardSelectedQuarter}
+                      onQuarterChange={() => { /* selector lives in page header */ }}
+                      quarterOptions={dashboardQuarterOptions}
+                    >
+                      {widgets.map((widget) => {
+                        const HIDDEN_WEEKLY_RUNDOWN_SOURCES = new Set([
+                          'closed-won',
+                          'pipeline-by-stage',
+                          'active-pipeline',
+                          'total-fees',
+                          'avg-deal-size',
+                          'deal-activity-12m',
+                        ]);
+                        if (HIDDEN_WEEKLY_RUNDOWN_SOURCES.has(widget.dataSource as string)) {
+                          return null;
                         }
-                      </GridWidgetCard>
+                        const isStat = getWidgetDisplayType(widget) === 'stat';
+                        return (
+                          <div key={widget.id}>
+                            <GridWidgetCard
+                              isEditMode={isEditMode}
+                              onEdit={() => handleEdit(widget)}
+                              onDelete={() => {
+                                setWidgetToDelete(widget.id);
+                                setDeleteConfirmOpen(true);
+                              }}
+                            >
+                              {isStat
+                                ? renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets, { rawDeals, rawInvoices, rawPayments, rawExpenses })
+                                : renderChartContent(widget, metrics, qbMetrics, hsMetrics)
+                              }
+                            </GridWidgetCard>
+                          </div>
+                        );
+                      })}
+                    </ManagementSnapshotDashboard>
+
+                    <div className="space-y-4">
+                      <div>
+                        <h2 className="text-lg font-semibold text-foreground">Executive Dashboard</h2>
+                      </div>
+                      <ExecutiveDashboard />
                     </div>
-                  );
-                })}
-                  </ManagementSnapshotDashboard>
+                  </div>
                 }
               />
             )}
@@ -2276,7 +2282,6 @@ export default function Metrics() {
               <ConsolidatedDebtPipelineDashboard selectedQuarter={dashboardSelectedQuarter} />
             )}
             {selectedDashboard === 'controller-dashboard' && <ControllerDashboard />}
-            {selectedDashboard === 'executive-dashboard' && <ExecutiveDashboard />}
             {selectedDashboard === 'finserv-financial-metrics' && <FinServFinancialMetricsDashboard />}
             {selectedDashboard === 'quickbooks-financial' && <QuickBooksFinancialDashboard />}
             {selectedDashboard === 'management-review' && <ManagementReviewCarousel />}
