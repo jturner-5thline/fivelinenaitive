@@ -16,6 +16,8 @@ export interface AsanaGoalRow {
   url: string | null;
   syncedAt: string;      // ISO
   source: 'asana';
+  /** Asana time period display name (e.g. "Q2 FY26", "H1 FY26", "Q2 2026"). May be null. */
+  timePeriod: string | null;
 }
 
 function mapStatus(raw: string | null | undefined, isCompleted = false): AsanaGoalRow['status'] {
@@ -41,6 +43,7 @@ interface AsanaGoalApi {
   status?: string | null;
   progress_status?: string | null;
   current_status_update?: { status_type?: string; title?: string } | null;
+  time_period?: { display_name?: string | null; gid?: string } | null;
 }
 
 export interface UseAsanaGoalsResult {
@@ -128,6 +131,7 @@ export function useAsanaGoals(): UseAsanaGoalsResult {
           url: g.permalink_url || null,
           syncedAt: now,
           source: 'asana',
+          timePeriod: g.time_period?.display_name || null,
         };
       });
 
