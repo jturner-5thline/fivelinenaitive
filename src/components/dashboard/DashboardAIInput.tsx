@@ -669,15 +669,24 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
               </div>
             )}
 
-            {/* Input bar — always visible */}
+            {/* Recent prompts — gated to input focus, mirrors quick-action chips */}
             {!isChatActive && !showHistory && recentPrompts.length > 0 && (
-              <RecentPromptsStrip
-                prompts={recentPrompts}
-                onSelect={(prompt) => { setInputValue(prompt); handleSend(prompt); }}
-                onClear={clearPrompts}
-                isLoading={isLoading}
-                className="mb-2"
-              />
+              <div
+                className={cn(
+                  'overflow-hidden transition-all duration-200 ease-out',
+                  (isInputFocused || inputValue.length > 0)
+                    ? 'mb-2 max-h-24 opacity-100 translate-y-0'
+                    : 'mb-0 max-h-0 opacity-0 -translate-y-1 pointer-events-none',
+                )}
+                aria-hidden={!(isInputFocused || inputValue.length > 0)}
+              >
+                <RecentPromptsStrip
+                  prompts={recentPrompts}
+                  onSelect={(prompt) => { setInputValue(prompt); handleSend(prompt); }}
+                  onClear={clearPrompts}
+                  isLoading={isLoading}
+                />
+              </div>
             )}
             <ChatInputBar
               onSend={(text) => handleSend(text)}
