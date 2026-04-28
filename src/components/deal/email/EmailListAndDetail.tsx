@@ -1531,6 +1531,10 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
       }
       if (e.key === 'f' || e.key === 'F') { e.preventDefault(); handleForward(); }
       if (e.key === 'l' || e.key === 'L') { e.preventDefault(); onToggleLink(thread.latestEmail); }
+      if (e.key === 'a' || e.key === 'A') {
+        e.preventDefault();
+        setShowAiAssist((v) => !v);
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
