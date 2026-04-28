@@ -547,6 +547,24 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
     onInsertDraft(selectedOption.body ?? '');
   };
 
+  // ── Bridge: EmailComposerCard "Draft from AI Assist" button ────────────
+  // The composer dispatches `naitive:ai-assist:request-draft`; we respond
+  // with `naitive:ai-assist:draft-ready` carrying the currently-selected
+  // tone's body. Decoupled so the composer doesn't need a sidebar ref.
+  useEffect(() => {
+    const onRequest = () => {
+      const body = selectedOption?.body;
+      if (!body) return;
+      try {
+        window.dispatchEvent(
+          new CustomEvent('naitive:ai-assist:draft-ready', { detail: { body, source: 'ai-assist-sidebar' } })
+        );
+      } catch {}
+    };
+    window.addEventListener('naitive:ai-assist:request-draft', onRequest);
+    return () => window.removeEventListener('naitive:ai-assist:request-draft', onRequest);
+  }, [selectedOption]);
+
   // Expose a tiny debug snapshot so the top-level ErrorBoundary can include
   // AiAssist state in its fallback when something downstream crashes.
   useEffect(() => {
