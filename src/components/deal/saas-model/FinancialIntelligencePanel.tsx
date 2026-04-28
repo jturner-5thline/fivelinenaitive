@@ -523,7 +523,7 @@ function InlineChart({ spec, getMetricSeries }: { spec: ChartSpec; getMetricSeri
               <YAxis tick={{ fontSize: 9 }} tickLine={false} width={40} />
               <Tooltip contentStyle={{ fontSize: 10 }} />
               {spec.metric_keys.map((key, i) => (
-                <Line key={key} type="monotone" dataKey={key} stroke={colors[i % colors.length]} strokeWidth={1.5} dot={false} />
+                <Line key={key} type="monotone" dataKey={key} stroke={colors[i % colors.length]} strokeWidth={0.75} dot={false} />
               ))}
             </LineChart>
           )}

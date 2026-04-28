@@ -122,7 +122,7 @@ function renderRevenueChart(chartType: ChartType, colors: string[], config: Char
         <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${(v/1000).toFixed(0)}M`} />
         <RechartsTooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v}K`, undefined]} />
         {segments.map((seg, i) => (
-          <Line key={seg} type={config.curveType} dataKey={seg} stroke={colors[i]} strokeWidth={2} dot={{ r: 2 }} isAnimationActive={config.animationEnabled} />
+          <Line key={seg} type={config.curveType} dataKey={seg} stroke={colors[i]} strokeWidth={1} dot={{ r: 2 }} isAnimationActive={config.animationEnabled} />
         ))}
         {config.showLegend && <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />}
       </LineChart>
@@ -137,7 +137,7 @@ function renderRevenueChart(chartType: ChartType, colors: string[], config: Char
         <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${(v/1000).toFixed(0)}M`} />
         <RechartsTooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v}K`, undefined]} />
         <Bar dataKey="Enterprise" fill={colors[0]} barSize={20} isAnimationActive={config.animationEnabled} />
-        <Line type={config.curveType} dataKey="Mid-market" stroke={colors[1]} strokeWidth={2} isAnimationActive={config.animationEnabled} />
+        <Line type={config.curveType} dataKey="Mid-market" stroke={colors[1]} strokeWidth={1} isAnimationActive={config.animationEnabled} />
         <Area type={config.curveType} dataKey="SMB" fill={colors[2]} fillOpacity={0.3} stroke={colors[2]} isAnimationActive={config.animationEnabled} />
         {config.showLegend && <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />}
       </ComposedChart>
@@ -189,7 +189,7 @@ function renderMarginChart(chartType: ChartType, colors: string[], config: Chart
         <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `${v}%`} />
         <RechartsTooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${v}%`, undefined]} />
         {metrics.map((m, i) => (
-          <Area key={m} type={config.curveType} dataKey={m} stroke={colors[i]} fill={colors[i]} fillOpacity={0.15} strokeWidth={2} isAnimationActive={config.animationEnabled} />
+          <Area key={m} type={config.curveType} dataKey={m} stroke={colors[i]} fill={colors[i]} fillOpacity={0.15} strokeWidth={1} isAnimationActive={config.animationEnabled} />
         ))}
         {config.showLegend && <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />}
       </AreaChart>
@@ -204,7 +204,7 @@ function renderMarginChart(chartType: ChartType, colors: string[], config: Chart
       <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `${v}%`} />
       <RechartsTooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${v}%`, undefined]} />
       {metrics.map((m, i) => (
-        <Line key={m} type={config.curveType} dataKey={m} stroke={colors[i]} strokeWidth={2} dot={{ r: 2 }} isAnimationActive={config.animationEnabled} />
+        <Line key={m} type={config.curveType} dataKey={m} stroke={colors[i]} strokeWidth={1} dot={{ r: 2 }} isAnimationActive={config.animationEnabled} />
       ))}
       {config.showLegend && <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />}
     </LineChart>

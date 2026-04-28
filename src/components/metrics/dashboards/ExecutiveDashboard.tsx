@@ -154,7 +154,7 @@ function DealsByStatusPieChart() {
                 activeShape={GlassActiveShape}
               >
                 {pieData.map((_, i) => (
-                  <Cell key={i} fill={STATUS_COLORS[i]} fillOpacity={0.75} stroke={STATUS_COLORS[i]} strokeWidth={1} />
+                  <Cell key={i} fill={STATUS_COLORS[i]} fillOpacity={0.75} stroke={STATUS_COLORS[i]} strokeWidth={0.5} />
                 ))}
               </Pie>
               <Tooltip
@@ -340,7 +340,7 @@ export function ExecutiveDashboard() {
                   <YAxis tickFormatter={formatCurrency} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
                   <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={TOOLTIP_STYLE} />
                   <Area type="monotone" dataKey="revenue" fill="hsl(var(--primary) / 0.18)" stroke="transparent" />
-                  <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3, fill: 'hsl(var(--primary))', strokeWidth: 0 }} />
+                  <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={1} dot={{ r: 3, fill: 'hsl(var(--primary))', strokeWidth: 0 }} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>

@@ -253,7 +253,7 @@ export function FinServFinancialMetricsDashboard() {
                       domain={[(min: number) => Math.min(min, 0), (max: number) => Math.max(max, 0)]}
                     />
                     <Tooltip formatter={(v: number) => [fmtCurrencyFull(v), 'Operating Profit']} />
-                    <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeWidth={1.5} />
+                    <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeWidth={0.75} />
                     <Bar dataKey="operatingProfit" fill="hsl(var(--primary))" name="Operating Profit" shape={createGlassBarShape({ radius: 4 })}>
                       {profits.quarters.map((entry, i) => (
                         <Cell key={i} fill={entry.operatingProfit >= 0 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'} />
@@ -315,7 +315,7 @@ export function FinServFinancialMetricsDashboard() {
                       <Cell key={i} fill={entry.value >= 0 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'} />
                     ))}
                   </Bar>
-                  <Line type="monotone" dataKey="value" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={false} name="Trend" />
+                  <Line type="monotone" dataKey="value" stroke="hsl(var(--chart-2))" strokeWidth={1} dot={false} name="Trend" />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -342,7 +342,7 @@ export function FinServFinancialMetricsDashboard() {
                     name,
                   ]} />
                   <Bar dataKey="count" fill="hsl(var(--primary))" name="Active Clients" shape={createGlassBarShape({ radius: 4 })} />
-                  <Line type="monotone" dataKey="count" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={{ r: 3 }} name="Trend" />
+                  <Line type="monotone" dataKey="count" stroke="hsl(var(--chart-2))" strokeWidth={1} dot={{ r: 3 }} name="Trend" />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>

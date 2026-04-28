@@ -328,7 +328,7 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
         <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`} />
         <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        {negEnabled && <ReferenceLine y={negThreshold} stroke={negColor} strokeDasharray="4 4" strokeWidth={1} />}
+        {negEnabled && <ReferenceLine y={negThreshold} stroke={negColor} strokeDasharray="4 4" strokeWidth={0.5} />}
         {dataKeys.map((name, i) => {
           const isLastSeries = i === dataKeys.length - 1;
           return isLine ? (
@@ -341,7 +341,7 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
                     return typeof v === 'number' && v >= negThreshold ? v : undefined;
                   }}
                   stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                  strokeWidth={2}
+                  strokeWidth={1}
                   dot={{ r: 3 }}
                   connectNulls={false}
                   name={name}
@@ -353,7 +353,7 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
                     return typeof v === 'number' && v < negThreshold ? v : undefined;
                   }}
                   stroke={negColor}
-                  strokeWidth={2}
+                  strokeWidth={1}
                   dot={{ r: 3, fill: negColor }}
                   connectNulls={false}
                   name={`${name} (neg)`}
@@ -361,7 +361,7 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
                 />
               </React.Fragment>
             ) : (
-              <Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} connectNulls>
+              <Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={1} dot={{ r: 3 }} connectNulls>
                 {dataLabels?.enabled && <LabelList dataKey={name} content={renderDataLabel} />}
                 {isLastSeries && showPeriodTotals && dataKeys.length > 1 && (
                   <LabelList dataKey="__period_total" content={renderLinePeriodTotalLabel} />
@@ -397,7 +397,7 @@ function ChartPreview({ config, data }: { config: WidgetConfig; data: Record<str
           );
         })}
         {trendLine?.enabled && (
-          <Line type="monotone" dataKey="__trend_line" stroke={CHART_COLORS[0]} strokeWidth={2}
+          <Line type="monotone" dataKey="__trend_line" stroke={CHART_COLORS[0]} strokeWidth={1}
             strokeDasharray="6 3" strokeOpacity={0.45} dot={false} connectNulls legendType="none" />
         )}
       </ChartComponent>

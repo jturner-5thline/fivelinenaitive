@@ -773,9 +773,9 @@ export function PortfolioRiskAnalysis() {
               <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} tickFormatter={(v) => formatCurrency(v)} />
               <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => formatCurrency(value)} />
               <Legend />
-              <Area type="monotone" dataKey="On Track" stackId="1" fill="#22c55e" fillOpacity={0.5} stroke="#22c55e" strokeWidth={2} />
-              <Area type="monotone" dataKey="At Risk" stackId="1" fill="#f59e0b" fillOpacity={0.5} stroke="#f59e0b" strokeWidth={2} />
-              <Area type="monotone" dataKey="Off Track" stackId="1" fill="#ef4444" fillOpacity={0.5} stroke="#ef4444" strokeWidth={2} />
+              <Area type="monotone" dataKey="On Track" stackId="1" fill="#22c55e" fillOpacity={0.5} stroke="#22c55e" strokeWidth={1} />
+              <Area type="monotone" dataKey="At Risk" stackId="1" fill="#f59e0b" fillOpacity={0.5} stroke="#f59e0b" strokeWidth={1} />
+              <Area type="monotone" dataKey="Off Track" stackId="1" fill="#ef4444" fillOpacity={0.5} stroke="#ef4444" strokeWidth={1} />
             </AreaChart>
           </ResponsiveContainer>
         </DialogContent>

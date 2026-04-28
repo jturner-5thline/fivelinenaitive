@@ -480,7 +480,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                               return `${sign}$${abs}`;
                             }} width={55} domain={['auto', 'auto']} />
                           {chartData.some(d => d.ebitda !== null && d.ebitda < 0) && <ReferenceLine y={0} stroke={T.cardBorder} strokeDasharray="3 3" />}
-                          <Area type="monotone" dataKey="ebitda" stroke={T.green} fill="url(#ebitdaGrad)" strokeWidth={2} dot={{ r: 3, fill: T.green }} baseValue={0} />
+                          <Area type="monotone" dataKey="ebitda" stroke={T.green} fill="url(#ebitdaGrad)" strokeWidth={1} dot={{ r: 3, fill: T.green }} baseValue={0} />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
@@ -508,7 +508,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                           <XAxis dataKey="year" tick={{ fontSize: 11, fill: T.mutedFg }} axisLine={false} tickLine={false} />
                           <YAxis tick={{ fontSize: 10, fill: T.mutedFg }} axisLine={false} tickLine={false}
                             tickFormatter={v => `${v.toFixed(0)}%`} width={40} />
-                          <Line type="monotone" dataKey="grossMargin" stroke={CHART_COLORS[0]} strokeWidth={2}
+                          <Line type="monotone" dataKey="grossMargin" stroke={CHART_COLORS[0]} strokeWidth={1}
                             dot={{ r: 4, fill: CHART_COLORS[0], stroke: '#fff', strokeWidth: 2 }}>
                             <LabelList
                               content={({ x, y, value, index }: any) => {
@@ -553,7 +553,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                           <XAxis dataKey="year" tick={{ fontSize: 11, fill: T.mutedFg }} axisLine={false} tickLine={false} />
                           <YAxis tick={{ fontSize: 10, fill: T.mutedFg }} axisLine={false} tickLine={false}
                             tickFormatter={v => `${v.toFixed(0)}%`} width={40} />
-                          <Line type="monotone" dataKey="ebitdaMargin" stroke={T.green} strokeWidth={2}
+                          <Line type="monotone" dataKey="ebitdaMargin" stroke={T.green} strokeWidth={1}
                             dot={{ r: 4, fill: T.green, stroke: '#fff', strokeWidth: 2 }}>
                             <LabelList
                               content={({ x, y, value, index }: any) => {

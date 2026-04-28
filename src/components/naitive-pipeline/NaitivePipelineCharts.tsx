@@ -57,9 +57,9 @@ export function NaitiveTrendChart({ data }: { data: PipelineTrendPoint[] }) {
             <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
             <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }} />
             <Legend wrapperStyle={{ fontSize: 10 }} />
-            <Line type="monotone" dataKey="created" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} name="Created" />
-            <Line type="monotone" dataKey="closedWon" stroke="hsl(var(--success))" strokeWidth={2} dot={{ r: 3 }} name="Won" />
-            <Line type="monotone" dataKey="closedLost" stroke="hsl(var(--destructive))" strokeWidth={2} dot={{ r: 3 }} name="Lost" />
+            <Line type="monotone" dataKey="created" stroke="hsl(var(--primary))" strokeWidth={1} dot={{ r: 3 }} name="Created" />
+            <Line type="monotone" dataKey="closedWon" stroke="hsl(var(--success))" strokeWidth={1} dot={{ r: 3 }} name="Won" />
+            <Line type="monotone" dataKey="closedLost" stroke="hsl(var(--destructive))" strokeWidth={1} dot={{ r: 3 }} name="Lost" />
           </LineChart>
         </ResponsiveContainer>
       </CardContent>
@@ -120,7 +120,7 @@ export function NaitivHealthMixChart({ data }: { data: HealthMixItem[] }) {
               <PieGlassDefs colors={filtered.map(e => e.color)} />
               <Pie data={filtered} dataKey="count" nameKey="label" cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} activeShape={GlassActiveShape}>
                 {filtered.map((entry, i) => (
-                  <Cell key={i} fill={pieGlassFill(i)} stroke={entry.color} strokeWidth={0.5} />
+                  <Cell key={i} fill={pieGlassFill(i)} stroke={entry.color} strokeWidth={0.25} />
                 ))}
               </Pie>
               <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }} />

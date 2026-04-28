@@ -318,7 +318,7 @@ export function SaaSModelSensitivity({ model, scenarios, updateScenarios }: Prop
                     <ReferenceLine y={0} stroke="rgba(255,255,255,0.15)" strokeDasharray="5 5" />
                     {scenarios.map((_, i) => (
                       <Line key={i} type="monotone" dataKey={`scenario${i}`} name={SCENARIO_LABELS[i]}
-                        stroke={SCENARIO_COLORS[i]} strokeWidth={2} dot={false} />
+                        stroke={SCENARIO_COLORS[i]} strokeWidth={1} dot={false} />
                     ))}
                   </LineChart>
                 </ResponsiveContainer>

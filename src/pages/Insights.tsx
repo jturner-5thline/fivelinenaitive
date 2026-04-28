@@ -315,7 +315,7 @@ function renderChartContent(
                 <Tooltip formatter={(value: number, name: string) => [formatCurrency(value), name === "closedWon" ? "Closed Value" : "Fees"]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
                 <Legend />
                 <Bar yAxisId="left" dataKey="closedWon" fill="hsl(var(--primary))" name="Closed Value" radius={[4, 4, 0, 0]} />
-                <Line yAxisId="right" type="monotone" dataKey="fees" stroke="hsl(var(--chart-2))" name="Fees Earned" strokeWidth={2} dot={{ r: 3 }} />
+                <Line yAxisId="right" type="monotone" dataKey="fees" stroke="hsl(var(--chart-2))" name="Fees Earned" strokeWidth={1} dot={{ r: 3 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -429,7 +429,7 @@ function renderChartContent(
                 <Tooltip formatter={(value: number) => [formatCurrency(value), "Cumulative Value"]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
                 <Legend />
                 <Area type="monotone" dataKey="closedWonValue" fill={`${widget.color}33`} stroke={widget.color} name="YTD Value" />
-                <Line type="monotone" dataKey="closedWonValue" stroke={widget.color} strokeWidth={2} dot={{ r: 4 }} />
+                <Line type="monotone" dataKey="closedWonValue" stroke={widget.color} strokeWidth={1} dot={{ r: 4 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -532,7 +532,7 @@ function renderChartContent(
                 <Tooltip formatter={(value: number, name: string) => [name === "value" ? formatCurrency(value) : value, name === "value" ? "Pipeline Value" : "Deal Count"]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
                 <Legend />
                 <Bar yAxisId="left" dataKey="value" fill={widget.color} name="Pipeline Value" radius={[4, 4, 0, 0]} />
-                <Line yAxisId="right" type="monotone" dataKey="count" stroke="hsl(var(--chart-2))" name="Deal Count" strokeWidth={2} dot={{ r: 4 }} />
+                <Line yAxisId="right" type="monotone" dataKey="count" stroke="hsl(var(--chart-2))" name="Deal Count" strokeWidth={1} dot={{ r: 4 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -727,7 +727,7 @@ function renderChartContent(
                 <Tooltip formatter={(v: number, name: string) => [formatCurrency(v), name]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
                 <Legend />
                 <Bar dataKey="revenue" fill="hsl(var(--primary))" name="Revenue" radius={[4, 4, 0, 0]} />
-                <Line type="monotone" dataKey="payments" stroke="hsl(var(--chart-2))" name="Payments" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="payments" stroke="hsl(var(--chart-2))" name="Payments" strokeWidth={1} dot={{ r: 3 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -946,7 +946,7 @@ function renderChartContent(
                 <Legend />
                 <Bar dataKey="revenue" fill="hsl(var(--primary))" name="Revenue" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="expenses" fill="hsl(var(--destructive))" name="Expenses" radius={[4, 4, 0, 0]} />
-                <Line type="monotone" dataKey="payments" stroke="hsl(var(--chart-2))" name="Payments" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="payments" stroke="hsl(var(--chart-2))" name="Payments" strokeWidth={1} dot={{ r: 3 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -1015,7 +1015,7 @@ function renderChartContent(
                 <Tooltip formatter={(v: number, name: string) => [name === 'value' ? formatCurrency(v) : v, name === 'value' ? 'Deal Value' : 'Deal Count']} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
                 <Legend />
                 <Bar yAxisId="left" dataKey="value" fill={widget.color} name="Deal Value" radius={[4, 4, 0, 0]} />
-                <Line yAxisId="right" type="monotone" dataKey="count" stroke="hsl(var(--chart-2))" name="Deal Count" strokeWidth={2} dot={{ r: 3 }} />
+                <Line yAxisId="right" type="monotone" dataKey="count" stroke="hsl(var(--chart-2))" name="Deal Count" strokeWidth={1} dot={{ r: 3 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>

@@ -123,7 +123,7 @@ function ChartRenderer({ chart, sheet }: { chart: ChartConfig; sheet: Spreadshee
             <Tooltip contentStyle={{ fontSize: 11 }} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             {headers.map((h, i) => (
-              <Line key={h} type="monotone" dataKey={h} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} />
+              <Line key={h} type="monotone" dataKey={h} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={1} dot={{ r: 3 }} />
             ))}
           </ReLineChart>
         </ResponsiveContainer>

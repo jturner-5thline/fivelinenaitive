@@ -805,7 +805,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
                           type="monotone" 
                           dataKey="value" 
                           stroke="hsl(var(--primary))" 
-                          strokeWidth={2}
+                          strokeWidth={1}
                           fill="url(#colorValue)" 
                         />
                       </AreaChart>

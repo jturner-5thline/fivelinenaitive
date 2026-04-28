@@ -188,9 +188,9 @@ export function RevenueForecast({ className }: { className?: string }) {
                   formatter={(v: number) => formatCurrency(v)}
                 />
                 <Legend />
-                <Area type="monotone" dataKey="revenue" name="Revenue" fill="hsl(var(--success) / 0.2)" stroke="hsl(var(--success))" strokeWidth={2} />
-                <Area type="monotone" dataKey="expenses" name="Expenses" fill="hsl(var(--destructive) / 0.2)" stroke="hsl(var(--destructive))" strokeWidth={2} />
-                <Line type="monotone" dataKey="cashBalance" name="Cash Balance" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                <Area type="monotone" dataKey="revenue" name="Revenue" fill="hsl(var(--success) / 0.2)" stroke="hsl(var(--success))" strokeWidth={1} />
+                <Area type="monotone" dataKey="expenses" name="Expenses" fill="hsl(var(--destructive) / 0.2)" stroke="hsl(var(--destructive))" strokeWidth={1} />
+                <Line type="monotone" dataKey="cashBalance" name="Cash Balance" stroke="hsl(var(--primary))" strokeWidth={1} dot={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
