@@ -540,6 +540,7 @@ export default function Tasks() {
         (c.search ?? search) === search &&
         (c.ownerFilter ?? ownerFilter) === ownerFilter &&
         (c.filterDueDate ?? filterDueDate) === filterDueDate &&
+        (c.filterRecurring ?? filterRecurring) === filterRecurring &&
         JSON.stringify((c.filterDealIds ?? []).slice().sort()) === JSON.stringify(Array.from(filterDealIds).sort()) &&
         JSON.stringify((c.filterLabelIds ?? []).slice().sort()) === JSON.stringify(Array.from(filterLabelIds).sort())
       ) return v.id;
