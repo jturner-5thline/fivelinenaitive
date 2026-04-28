@@ -319,7 +319,7 @@ function ReportHeaderSection({ s, set, reset, print }: { s: ReportState; set: Re
             </div>
             <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: TEXT_PRIMARY, letterSpacing: '-.2px' }}>
               {s.period === 'monthly'
-                ? `Monthly Insights Report — ${s.month || s.quarter}`
+                ? `Monthly Insights Report — ${monthsForQuarter(s.quarter).includes(s.month) ? s.month : (monthsForQuarter(s.quarter)[0] || s.quarter)}`
                 : `Quarterly Insights Report — ${s.quarter}`}
             </div>
           </div>
@@ -334,7 +334,18 @@ function ReportHeaderSection({ s, set, reset, print }: { s: ReportState; set: Re
             {(['monthly', 'quarterly'] as const).map(period => (
               <button
                 key={period}
-                onClick={() => set(prev => ({ ...prev, period }))}
+                onClick={() => set(prev => {
+                  if (period === 'monthly') {
+                    const validMonths = monthsForQuarter(prev.quarter);
+                    const monthStillValid = validMonths.includes(prev.month);
+                    return {
+                      ...prev,
+                      period,
+                      month: monthStillValid ? prev.month : (validMonths[0] || ''),
+                    };
+                  }
+                  return { ...prev, period };
+                })}
                 style={{
                   padding: '6px 12px',
                   fontSize: 11,
