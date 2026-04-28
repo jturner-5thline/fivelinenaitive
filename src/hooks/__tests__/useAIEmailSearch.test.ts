@@ -1,18 +1,20 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as React from 'react';
 import * as ReactDOMClient from 'react-dom/client';
+import { act as reactAct } from 'react';
 
-// Mock the Claude service before importing the hook so the mocked module
-// is what the hook closes over.
-vi.mock('@/services/claude', () => ({
-  sendClaudeMessage: vi.fn(),
+// Mock the supabase client's `functions.invoke` before importing the hook so
+// the mocked module is what the hook closes over.
+const mockedInvoke = vi.fn();
+vi.mock('@/integrations/supabase/client', () => ({
+  supabase: {
+    functions: { invoke: (...args: any[]) => mockedInvoke(...args) },
+  },
 }));
 
-import { sendClaudeMessage } from '@/services/claude';
 import { useAIEmailSearch } from '@/hooks/useAIEmailSearch';
 import type { MockEmail } from '@/components/deal/email/mockEmailData';
-
-const mockedSend = sendClaudeMessage as unknown as ReturnType<typeof vi.fn>;
 
 // ── Tiny renderHook shim ───────────────────────────────────────
 // We avoid @testing-library/react (not in this project) and drive the hook
@@ -23,22 +25,9 @@ type HookHarness<T> = {
   unmount: () => void;
 };
 
-function ensureDom() {
-  // vitest's default env is node — minimally polyfill what react-dom needs.
-  const g = globalThis as any;
-  if (!g.document) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { JSDOM } = require('jsdom');
-    const dom = new JSDOM('<!doctype html><html><body><div id="r"></div></body></html>');
-    g.window = dom.window;
-    g.document = dom.window.document;
-    g.navigator = dom.window.navigator;
-    g.HTMLElement = dom.window.HTMLElement;
-  }
-}
-
 function renderHook<T>(hook: () => T): HookHarness<T> {
-  ensureDom();
+  // jsdom env (see directive at top of file) provides document/window.
+  (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   const container = document.createElement('div');
   document.body.appendChild(container);
   const ref: { current: T | null } = { current: null };
@@ -47,7 +36,9 @@ function renderHook<T>(hook: () => T): HookHarness<T> {
     return null;
   };
   const root = ReactDOMClient.createRoot(container);
-  root.render(React.createElement(Wrapper));
+  reactAct(() => {
+    root.render(React.createElement(Wrapper));
+  });
   const harness: HookHarness<T> = {
     get current(): T { return ref.current as T; },
     rerender: () => root.render(React.createElement(Wrapper)),
@@ -57,9 +48,9 @@ function renderHook<T>(hook: () => T): HookHarness<T> {
 }
 
 async function act(fn: () => unknown | Promise<unknown>) {
-  await fn();
-  // Flush microtasks + a macrotask for React's commit phase.
-  await new Promise((r) => setTimeout(r, 0));
+  await reactAct(async () => {
+    await fn();
+  });
 }
 
 function makeEmail(id: string, overrides: Partial<MockEmail> = {}): MockEmail {
@@ -88,20 +79,33 @@ function makeEmail(id: string, overrides: Partial<MockEmail> = {}): MockEmail {
   } as unknown as MockEmail;
 }
 
-function aiResponse(payload: unknown) {
+/**
+ * Build a successful `functions.invoke` response from the legacy payload shape
+ * the tests use (`{ interpretation, filters, results }`). The edge function
+ * returns `{ interpretation, parsedFilters, results, latencyMs, model }`, so we
+ * normalize here to keep the test cases readable.
+ */
+function aiResponse(payload: any) {
   return {
-    success: true,
-    response: '```json\n' + JSON.stringify(payload) + '\n```',
+    data: {
+      interpretation: payload.interpretation ?? null,
+      parsedFilters: payload.filters ?? {},
+      results: payload.results ?? [],
+      executedQuery: '',
+      latencyMs: 0,
+      model: 'test-model',
+    },
+    error: null,
   };
 }
 
 beforeEach(() => {
-  mockedSend.mockReset();
+  mockedInvoke.mockReset();
 });
 
 describe('useAIEmailSearch', () => {
   it('returns ranked results and parsed filters from the AI response', async () => {
-    mockedSend.mockResolvedValueOnce(
+    mockedInvoke.mockResolvedValueOnce(
       aiResponse({
         interpretation: 'Signed NDAs from lenders last week',
         filters: {
@@ -135,7 +139,7 @@ describe('useAIEmailSearch', () => {
   });
 
   it('removeFilter drops a single chip without mutating ranked ids', async () => {
-    mockedSend.mockResolvedValueOnce(
+    mockedInvoke.mockResolvedValueOnce(
       aiResponse({
         interpretation: 'x',
         filters: {
@@ -155,15 +159,15 @@ describe('useAIEmailSearch', () => {
       await harness.current.search('q', [makeEmail('a')]);
     });
 
-    act(() => harness.current.removeFilter('dateRange'));
+    await act(() => harness.current.removeFilter('dateRange'));
     expect(harness.current.result?.filters.dateRange).toBeNull();
     expect(harness.current.result?.filters.dateRangeStart).toBeNull();
     expect(harness.current.result?.filters.dateRangeEnd).toBeNull();
 
-    act(() => harness.current.removeFilter('topic:NDA'));
+    await act(() => harness.current.removeFilter('topic:NDA'));
     expect(harness.current.result?.filters.topics).toEqual(['signed']);
 
-    act(() => harness.current.removeFilter('hasAttachments'));
+    await act(() => harness.current.removeFilter('hasAttachments'));
     expect(harness.current.result?.filters.hasAttachments).toBeNull();
 
     // rankedIds preserved
@@ -173,8 +177,8 @@ describe('useAIEmailSearch', () => {
   it('discards stale responses when a newer search starts', async () => {
     let resolveFirst: (v: unknown) => void = () => {};
     const firstPromise = new Promise((res) => { resolveFirst = res; });
-    mockedSend.mockImplementationOnce(() => firstPromise as any);
-    mockedSend.mockResolvedValueOnce(
+    mockedInvoke.mockImplementationOnce(() => firstPromise as any);
+    mockedInvoke.mockResolvedValueOnce(
       aiResponse({
         interpretation: 'newer',
         filters: {},
@@ -201,7 +205,7 @@ describe('useAIEmailSearch', () => {
   });
 
   it('caches identical queries within the TTL window', async () => {
-    mockedSend.mockResolvedValueOnce(
+    mockedInvoke.mockResolvedValueOnce(
       aiResponse({
         interpretation: 'cached',
         filters: {},
@@ -214,18 +218,18 @@ describe('useAIEmailSearch', () => {
     await act(async () => {
       await harness.current.search('hello world', candidates);
     });
-    expect(mockedSend).toHaveBeenCalledTimes(1);
+    expect(mockedInvoke).toHaveBeenCalledTimes(1);
 
     // Second identical call — should hit the cache, not the network.
     await act(async () => {
       await harness.current.search('hello world', candidates);
     });
-    expect(mockedSend).toHaveBeenCalledTimes(1);
+    expect(mockedInvoke).toHaveBeenCalledTimes(1);
     expect(harness.current.result?.interpretation).toBe('cached');
   });
 
   it('cancel() flips isSearching off without clearing the existing result', async () => {
-    mockedSend.mockResolvedValueOnce(
+    mockedInvoke.mockResolvedValueOnce(
       aiResponse({
         interpretation: 'done',
         filters: {},
@@ -239,14 +243,14 @@ describe('useAIEmailSearch', () => {
     });
     expect(harness.current.result).not.toBeNull();
 
-    act(() => harness.current.cancel());
+    await act(() => harness.current.cancel());
     expect(harness.current.isSearching).toBe(false);
     // Cancel keeps the prior result around (chips stay visible).
     expect(harness.current.result?.rankedIds).toEqual(['a']);
   });
 
   it('surfaces an error when the AI service fails', async () => {
-    mockedSend.mockResolvedValueOnce({ success: false, error: 'rate limit' });
+    mockedInvoke.mockResolvedValueOnce({ data: null, error: { message: 'rate limit' } });
 
     const harness = renderHook(() => useAIEmailSearch());
     await act(async () => {
