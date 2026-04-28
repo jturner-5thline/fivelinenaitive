@@ -75,7 +75,7 @@ function DealsByStatusPieChart() {
 
   if (isLoading) {
     return (
-      <Card className="bg-card/50 backdrop-blur border-border/50">
+      <Card className="glass-module">
         <CardHeader className="pb-2"><Skeleton className="h-5 w-32" /><Skeleton className="h-3 w-48 mt-1" /></CardHeader>
         <CardContent><Skeleton className="h-[220px] w-full" /></CardContent>
       </Card>
@@ -93,7 +93,7 @@ function DealsByStatusPieChart() {
   }));
 
   return (
-    <Card className="bg-card/50 backdrop-blur border-border/50 hover:border-border transition-colors">
+    <Card className="glass-module glass-module-interactive">
       <CardHeader className="pb-2 flex flex-row items-start justify-between">
         <div>
           <CardTitle className="text-sm font-medium text-foreground">Deals by Status</CardTitle>
