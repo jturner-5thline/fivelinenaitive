@@ -83,7 +83,7 @@ function StageColumn({
 
   return (
     <div ref={setNodeRef} className={cn("flex-shrink-0 w-[300px] bg-muted/30 rounded-lg border transition-colors", isOver && "ring-2 ring-primary bg-primary/5")}>
-      <div className="p-3 border-b bg-muted/50 rounded-t-lg">
+      <div className="p-3 border-b bg-muted/50 rounded-lg">
         <div className="flex items-center gap-2">
           <span className={cn("h-2.5 w-2.5 rounded-full flex-shrink-0", stage.color)} />
           <h3 className="font-medium text-sm truncate">{stage.label}</h3>

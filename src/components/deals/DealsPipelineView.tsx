@@ -126,7 +126,7 @@ function DroppableStageColumn({
       )}
     >
       {/* Stage Header */}
-      <div className="p-3 border-b bg-muted/50 rounded-t-lg">
+      <div className="p-3 border-b bg-muted/50 rounded-lg">
         <div className="flex items-center gap-2">
           <span
             className={cn(
