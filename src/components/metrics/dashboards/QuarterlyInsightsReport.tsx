@@ -247,9 +247,31 @@ export function createQuarterlyReportSeed(overrides?: Partial<ReportState>): Rep
   };
 }
 
-export function useQuarterlyReportState(initialState?: ReportState) {
-  const [state, setState] = useState<ReportState>(() => initialState ? createQuarterlyReportSeed(initialState) : cloneSeed());
-  const reset = () => setState(initialState ? createQuarterlyReportSeed(initialState) : cloneSeed());
+export function useQuarterlyReportState(initialState?: ReportState, storageKey?: string) {
+  const buildInitial = (): ReportState => {
+    const base = initialState ? createQuarterlyReportSeed(initialState) : cloneSeed();
+    if (typeof window === 'undefined' || !storageKey) return base;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (!raw) return base;
+      const saved = JSON.parse(raw) as Partial<ReportState>;
+      return { ...base, ...saved } as ReportState;
+    } catch {
+      return base;
+    }
+  };
+  const [state, setState] = useState<ReportState>(buildInitial);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !storageKey) return;
+    try { window.localStorage.setItem(storageKey, JSON.stringify(state)); } catch {}
+  }, [state, storageKey]);
+  const reset = () => {
+    const fresh = initialState ? createQuarterlyReportSeed(initialState) : cloneSeed();
+    setState(fresh);
+    if (typeof window !== 'undefined' && storageKey) {
+      try { window.localStorage.removeItem(storageKey); } catch {}
+    }
+  };
   const print = () => { try { window.print(); } catch {} };
   return { state, setState, reset, print };
 }
