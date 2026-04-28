@@ -890,3 +890,124 @@
 .deal-glass > *:not([class*="absolute"]):not([class*="fixed"]) {
   position: relative;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Insights "Liquid Glass" skin
+   --------------------------------------------------------------------
+   A scoped visual retrofit applied to the /insights page so every embedded
+   dashboard (Insights Dashboard, Revenue & Customers, Controller, Sales
+   Team Board, FinServ Financial Metrics, Consolidated Debt Pipeline,
+   Sales & BD ROI, QuickBooks Financial, etc.) renders in the same Weekly
+   Rundown / GlassCard visual family without rewriting each dashboard's
+   logic. Weekly Rundown itself is rendered inside the carousel modal
+   portal and is unaffected.
+
+   Rules implemented here:
+     • Cards use the Weekly Rundown deep-navy translucent surface, soft
+       accent border, 12px radius, sheen highlight, no white outlines.
+     • Recharts surfaces inherit muted axis text, hairline gridlines,
+       and a custom dark glass tooltip — no library defaults.
+     • Typography is tightened: KPI values stay tabular, labels become
+       compact uppercase muted captions matching GLASS_TOKENS.
+     • Positive / negative deltas use semantic emerald / red.
+   ───────────────────────────────────────────────────────────────────── */
+.insights-glass-skin {
+  /* tabular numbers everywhere keep KPI columns visually stable */
+  font-variant-numeric: tabular-nums;
+}
+
+/* Card surfaces — only inside the dark theme, only inside the skin */
+.dark .insights-glass-skin [data-slot="card"] {
+  background: rgba(16, 28, 52, 0.75) !important;
+  border: 0.5px solid rgba(80, 140, 255, 0.18) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+  position: relative;
+  overflow: hidden;
+}
+.dark .insights-glass-skin [data-slot="card"]:hover {
+  border-color: rgba(120, 170, 255, 0.28) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+/* Diagonal sheen highlight matching <GlassCard /> */
+.dark .insights-glass-skin [data-slot="card"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.00) 55%);
+  z-index: 0;
+}
+.dark .insights-glass-skin [data-slot="card"] > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Card titles — bring oversized dashboard titles down to GLASS_TOKENS scale */
+.dark .insights-glass-skin [data-slot="card-title"] {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(160, 200, 255, 0.55);
+}
+
+/* Recharts — strip default chrome, apply platform-consistent muted styling */
+.dark .insights-glass-skin .recharts-surface { overflow: visible; }
+.dark .insights-glass-skin .recharts-cartesian-grid line {
+  stroke: rgba(255, 255, 255, 0.05) !important;
+}
+.dark .insights-glass-skin .recharts-cartesian-axis-line,
+.dark .insights-glass-skin .recharts-cartesian-axis-tick-line {
+  stroke: rgba(255, 255, 255, 0.08) !important;
+}
+.dark .insights-glass-skin .recharts-cartesian-axis-tick text,
+.dark .insights-glass-skin .recharts-text {
+  fill: rgba(180, 200, 230, 0.55) !important;
+  font-size: 10px;
+}
+.dark .insights-glass-skin .recharts-legend-item-text {
+  color: rgba(180, 200, 230, 0.65) !important;
+  font-size: 10px;
+}
+.dark .insights-glass-skin .recharts-default-tooltip,
+.dark .insights-glass-skin .recharts-tooltip-wrapper > div {
+  background: rgba(10, 18, 36, 0.95) !important;
+  border: 1px solid rgba(80, 140, 255, 0.25) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+  color: #ffffff !important;
+  font-size: 11px !important;
+  padding: 8px 10px !important;
+}
+.dark .insights-glass-skin .recharts-tooltip-label,
+.dark .insights-glass-skin .recharts-tooltip-item,
+.dark .insights-glass-skin .recharts-tooltip-item-name,
+.dark .insights-glass-skin .recharts-tooltip-item-value,
+.dark .insights-glass-skin .recharts-tooltip-item-separator {
+  color: #ffffff !important;
+}
+.dark .insights-glass-skin .recharts-tooltip-cursor {
+  fill: rgba(120, 170, 255, 0.06) !important;
+}
+
+/* KPI / metric values — keep them as the focal point but compact */
+.dark .insights-glass-skin .recharts-pie-label-text {
+  fill: rgba(220, 232, 248, 0.85) !important;
+}
+
+/* Numeric cells in tables stay tabular for stable column widths */
+.insights-glass-skin table td,
+.insights-glass-skin table th {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Light theme: keep cards readable but apply the same soft border + radius
+   so spacing rhythm matches Weekly Rundown across themes */
+.insights-glass-skin [data-slot="card"] {
+  border-radius: 12px;
+}
+
