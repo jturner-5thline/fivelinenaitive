@@ -2045,7 +2045,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 thread={thread}
                 dealId={dealId}
                 dealName={linkedDealName || thread.dealName}
-                onClose={() => setShowAiAssist(false)}
+                onClose={() => {
+                  setShowAiAssist(false);
+                  // Return focus to the toolbar toggle for keyboard users.
+                  requestAnimationFrame(() => aiAssistButtonRef.current?.focus());
+                }}
                 onLinkDeal={async (id, name) => {
                   setLinkedDealId(id);
                   setLinkedDealName(name);
