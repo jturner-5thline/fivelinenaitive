@@ -48,11 +48,12 @@ function renderHook<T>(hook: () => T): HookHarness<T> {
   };
   const root = ReactDOMClient.createRoot(container);
   root.render(React.createElement(Wrapper));
-  return {
-    get current() { return ref.current as T; },
+  const harness: HookHarness<T> = {
+    get current(): T { return ref.current as T; },
     rerender: () => root.render(React.createElement(Wrapper)),
     unmount: () => { root.unmount(); container.remove(); },
   };
+  return harness;
 }
 
 async function act(fn: () => unknown | Promise<unknown>) {
