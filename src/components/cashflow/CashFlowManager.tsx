@@ -597,6 +597,22 @@ export function CashFlowManager() {
 
   const availableYears = useMemo(() => getAvailableYears(rawDaily.dates), [rawDaily.dates]);
 
+  // Distinct entities/categories present in Configure entries (preserve canonical ordering)
+  const availableEntities = useMemo(() => {
+    const present = new Set((scheduledItems || []).map((e) => e.account));
+    const inOrder = (ACCOUNT_OPTIONS as readonly string[]).filter((a) => present.has(a));
+    const extras = Array.from(present).filter((a) => !(ACCOUNT_OPTIONS as readonly string[]).includes(a)).sort();
+    return [...inOrder, ...extras];
+  }, [scheduledItems]);
+  const availableCategories = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of scheduledItems || []) {
+      const cat = e.category === 'Debt Advisory Revenue' ? DEBT_ADVISORY_DEFAULT_SUBCATEGORY : e.category;
+      set.add(cat);
+    }
+    return Array.from(set).sort();
+  }, [scheduledItems]);
+
   // Filtered data using debounced values
   const filteredDaily = useMemo(() => filterDailyByPeriod(rawDaily, debouncedYears, debouncedQuarters), [rawDaily, debouncedYears, debouncedQuarters]);
   const filteredWeekly = useMemo(() => filterWeeklyByPeriod(weeklyWithScheduled, debouncedYears, debouncedQuarters), [weeklyWithScheduled, debouncedYears, debouncedQuarters]);
