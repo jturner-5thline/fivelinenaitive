@@ -20,6 +20,8 @@ export interface QuickTaskInput {
   status: 'not_started' | 'in_progress' | 'blocked' | 'complete';
   assigned_to: string;
   recurrence_rule: string | null;
+  /** YYYY-MM-DD; if set, no new occurrence is generated past this date. */
+  recurrence_end_date: string | null;
 }
 
 interface Props {
@@ -82,6 +84,10 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
   // selected due date. If no due date is set when this is enabled, today is
   // used as the anchor.
   const [startFromDueDate, setStartFromDueDate] = useState(false);
+  // End conditions for the recurring series.
+  const [endMode, setEndMode] = useState<'never' | 'on_date' | 'after_n'>('never');
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [endAfterN, setEndAfterN] = useState<number>(5);
   const [warning, setWarning] = useState('');
   const [confirmedJunk, setConfirmedJunk] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -99,6 +105,9 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
       setCustomN(3);
       setCustomUnit('days');
       setStartFromDueDate(false);
+      setEndMode('never');
+      setEndDate(undefined);
+      setEndAfterN(5);
       setWarning('');
       setConfirmedJunk(false);
       setSubmitting(false);
@@ -113,6 +122,8 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
     fn();
     setRecurrence(null);
     setStartFromDueDate(false);
+    setEndMode('never');
+    setEndDate(undefined);
     setWarning('');
     setConfirmedJunk(false);
   };
@@ -182,6 +193,26 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
     }
     setSubmitting(true);
     try {
+      // Resolve the series end date based on the chosen end condition.
+      // For "after_n" we step the recurrence engine N times from the anchor.
+      let resolvedEndDate: string | null = null;
+      if (recurrence) {
+        const anchor = dueDate ?? new Date();
+        if (endMode === 'on_date' && endDate) {
+          resolvedEndDate = format(endDate, 'yyyy-MM-dd');
+        } else if (endMode === 'after_n') {
+          const safeN = Math.max(1, Math.min(365, Math.floor(endAfterN)));
+          // The first task counts as occurrence #1, so we advance N-1 times
+          // and use that date as the inclusive end-of-series boundary.
+          let cursor: Date | null = new Date(anchor);
+          for (let i = 1; i < safeN; i++) {
+            const next = previewNextOccurrence(cursor!, recurrence);
+            if (!next) { cursor = null; break; }
+            cursor = next;
+          }
+          if (cursor) resolvedEndDate = format(cursor, 'yyyy-MM-dd');
+        }
+      }
       await onCreate({
         title: trimmed,
         priority,
@@ -189,6 +220,7 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
         status,
         assigned_to: assignedTo,
         recurrence_rule: recurrence,
+        recurrence_end_date: resolvedEndDate,
       });
       try {
         window.localStorage.setItem(LAST_ASSIGNEE_KEY, assignedTo);
