@@ -323,16 +323,58 @@ export function EmailUnifiedAiAction({
           const noteTitle =
             suggestion.title?.slice(0, 120) || 'AI-suggested note';
 
+          // Telemetry: capture the full request → write trace so we can
+          // diagnose silent failures (the user reported a "success but no
+          // change persisted" case where the AI omitted lender.status).
+          const traceId = `note-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+          const trace = (step: string, payload: Record<string, unknown> = {}) =>
+            console.info('[EmailUnifiedAiAction:note]', traceId, step, payload);
+
+          trace('start', {
+            dealId: resolvedDealId,
+            dealName: resolvedDealName,
+            threadId: thread.threadId,
+            promptText: text,
+            suggestion,
+          });
+
+          // Keyword fallback: if the AI didn't extract a lender.status but the
+          // user's prompt or note body clearly implies one, fill it in client
+          // side. Mapping mirrors LENDER_STATUS_CONFIG ids.
+          const inferLenderStatus = (
+            ...sources: Array<string | undefined | null>
+          ): 'in-review' | 'terms-issued' | 'in-diligence' | 'closed-funded' | undefined => {
+            const haystack = sources.filter(Boolean).join(' ').toLowerCase();
+            if (!haystack) return undefined;
+            if (/(in[\s-]?diligence|due[\s-]?diligence|in[\s-]?dd\b|under[\s-]?dd\b)/.test(haystack)) return 'in-diligence';
+            if (/(closed[\s-]?(?:and[\s-]?)?funded|funded\b)/.test(haystack)) return 'closed-funded';
+            if (/(term[\s-]?sheet|terms?[\s-]?issued|issued[\s-]?terms?)/.test(haystack)) return 'terms-issued';
+            if (/(in[\s-]?review|reviewing|evaluating|under[\s-]?review)/.test(haystack)) return 'in-review';
+            return undefined;
+          };
+
+          // Effective lender block (AI-extracted + client fallback)
+          let effectiveLender = suggestion.lender
+            ? { ...suggestion.lender }
+            : undefined;
+          if (effectiveLender && !effectiveLender.status) {
+            const inferred = inferLenderStatus(text, suggestion.body, suggestion.title);
+            if (inferred) {
+              effectiveLender.status = inferred;
+              trace('status:inferred-client-side', { inferred });
+            }
+          }
+
           // Step 1: resolve a matching deal_lenders row (if the AI extracted one)
           let matchedLender: { id: string; name: string; notes: string | null } | null = null;
-          if (suggestion.lender?.name) {
+          if (effectiveLender?.name) {
             try {
               const { data: lenderRows, error: lenderFetchErr } = await supabase
                 .from('deal_lenders')
                 .select('id, name, notes')
                 .eq('deal_id', resolvedDealId);
               if (lenderFetchErr) throw lenderFetchErr;
-              const target = (suggestion.lender.name || '')
+              const target = (effectiveLender.name || '')
                 .toLowerCase()
                 .replace(/[^a-z0-9]+/g, ' ')
                 .trim();
@@ -348,8 +390,15 @@ export function EmailUnifiedAiAction({
                     target.startsWith(n)
                   );
                 }) || null;
+              trace('lender:lookup', {
+                requestedName: effectiveLender.name,
+                candidateCount: lenderRows?.length || 0,
+                matchedLenderId: matchedLender?.id || null,
+                matchedLenderName: matchedLender?.name || null,
+              });
             } catch (e: any) {
               console.error('[EmailUnifiedAiAction] lender lookup failed', e);
+              trace('lender:lookup-error', { message: e?.message });
               toast.error("Couldn't load lenders for this deal", {
                 description: e?.message || 'Try again in a moment.',
               });
@@ -357,8 +406,9 @@ export function EmailUnifiedAiAction({
             }
 
             if (!matchedLender) {
+              trace('lender:not-on-deal', { requestedName: effectiveLender.name });
               toast.error(
-                `Lender "${suggestion.lender.name}" isn't on this deal`,
+                `Lender "${effectiveLender.name}" isn't on this deal`,
                 {
                   description:
                     'Add the lender to the deal first, then re-run "Add note".',
@@ -384,17 +434,21 @@ export function EmailUnifiedAiAction({
 
           if (noteErr || !noteRow?.id) {
             console.error('[EmailUnifiedAiAction] note insert failed', noteErr);
+            trace('note:insert-error', { message: noteErr?.message });
             toast.error('Failed to save deal note', {
               description: noteErr?.message || 'Please try again.',
             });
             return;
           }
+          trace('note:inserted', { noteId: noteRow.id });
 
           // Step 3: if we matched a lender, update lender record + history.
           // Best-effort rollback of the note if either lender write fails.
+          let appliedLenderStatus: string | null = null;
+          let lenderNotesChanged = false;
           if (matchedLender) {
             const lenderNoteText =
-              suggestion.lender?.note?.trim() || noteContent;
+              effectiveLender?.note?.trim() || noteContent;
             const lenderUpdates: Record<string, any> = {
               notes: lenderNoteText,
               tracking_status: 'active',
@@ -402,9 +456,13 @@ export function EmailUnifiedAiAction({
             };
             // Map LENDER_STATUS_CONFIG ids onto deal_lenders.substage —
             // the lender "status" concept persists on substage in this schema.
-            if (suggestion.lender?.status) {
-              lenderUpdates.substage = suggestion.lender.status;
+            if (effectiveLender?.status) {
+              lenderUpdates.substage = effectiveLender.status;
             }
+            trace('lender:update-attempt', {
+              dealLenderId: matchedLender.id,
+              updates: lenderUpdates,
+            });
 
             const { data: updatedLenderRows, error: lenderUpdateErr } =
               await supabase
@@ -412,7 +470,7 @@ export function EmailUnifiedAiAction({
                 .update(lenderUpdates)
                 .eq('id', matchedLender.id)
                 .eq('deal_id', resolvedDealId)
-                .select('id');
+                .select('id, substage, notes, tracking_status, updated_at');
 
             if (
               lenderUpdateErr ||
@@ -423,6 +481,10 @@ export function EmailUnifiedAiAction({
                 '[EmailUnifiedAiAction] lender update failed — rolling back note',
                 lenderUpdateErr,
               );
+              trace('lender:update-failed-rolling-back-note', {
+                message: lenderUpdateErr?.message,
+                rowsUpdated: updatedLenderRows?.length || 0,
+              });
               // Rollback the note insert so we don't silently half-succeed
               await supabase
                 .from('deal_space_notes')
@@ -435,6 +497,15 @@ export function EmailUnifiedAiAction({
               });
               return;
             }
+            const verified = updatedLenderRows[0] as any;
+            appliedLenderStatus = verified?.substage || null;
+            lenderNotesChanged =
+              (matchedLender.notes || '') !== (verified?.notes || '');
+            trace('lender:update-verified', {
+              dealLenderId: matchedLender.id,
+              row: verified,
+              lenderNotesChanged,
+            });
 
             // History row is best-effort — we already verified the lender update
             const { error: historyErr } = await supabase
@@ -449,6 +520,9 @@ export function EmailUnifiedAiAction({
                 '[EmailUnifiedAiAction] lender_notes_history insert failed (non-fatal)',
                 historyErr,
               );
+              trace('lender_notes_history:insert-error', { message: historyErr.message });
+            } else {
+              trace('lender_notes_history:inserted');
             }
           }
 
@@ -458,14 +532,29 @@ export function EmailUnifiedAiAction({
           queryClient.invalidateQueries({ queryKey: ['deal-notes', resolvedDealId] });
           queryClient.invalidateQueries({ queryKey: ['deal-space-notes', resolvedDealId] });
           queryClient.invalidateQueries({ queryKey: ['deal-lenders', resolvedDealId] });
+          // Lender notes side-panel cache (keyed by lender NAME, not deal id)
+          if (matchedLender?.name) {
+            queryClient.invalidateQueries({ queryKey: ['lender-notes', matchedLender.name] });
+            queryClient.invalidateQueries({ queryKey: ['lender-note-count', matchedLender.name] });
+          }
 
           if (matchedLender) {
+            // Spell out exactly what changed so the user can immediately
+            // verify the persistence and not assume the toast is "simulated".
+            const changedBits: string[] = [];
+            if (appliedLenderStatus) {
+              changedBits.push(`status → ${appliedLenderStatus.replace(/-/g, ' ')}`);
+            }
+            if (lenderNotesChanged) changedBits.push('notes updated');
+            changedBits.push('history entry added');
+            const description = changedBits.length
+              ? changedBits.join(' · ')
+              : 'Lender record refreshed.';
+            trace('done', { matchedLenderId: matchedLender.id, appliedLenderStatus, lenderNotesChanged });
             toast.success(
               `Note added & ${matchedLender.name} updated on ${resolvedDealName || 'deal'}`,
               {
-                description: suggestion.lender?.status
-                  ? `Lender status set to "${suggestion.lender.status.replace(/-/g, ' ')}".`
-                  : 'Lender record refreshed.',
+                description,
                 action: {
                   label: 'Open deal →',
                   onClick: () => {
@@ -475,6 +564,7 @@ export function EmailUnifiedAiAction({
               },
             );
           } else {
+            trace('done', { matchedLenderId: null });
             toast.success('Note added to deal', {
               description:
                 noteContent.length > 120
