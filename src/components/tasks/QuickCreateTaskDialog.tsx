@@ -32,12 +32,23 @@ interface Props {
 
 const JUNK_NAMES = ['test', 'asdf', 'aaa', 'abc', 'xxx', 'zzz', 'asd', 'qwe', 'foo', 'bar'];
 
+const LAST_ASSIGNEE_KEY = 'quickCreateTask:lastAssigneeId';
+
+const readLastAssignee = (fallback: string): string => {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    return window.localStorage.getItem(LAST_ASSIGNEE_KEY) || fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, currentUserId }: Props) {
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<QuickTaskInput['priority']>('medium');
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [status, setStatus] = useState<QuickTaskInput['status']>('not_started');
-  const [assignedTo, setAssignedTo] = useState<string>(currentUserId);
+  const [assignedTo, setAssignedTo] = useState<string>(() => readLastAssignee(currentUserId));
   const [recurrence, setRecurrence] = useState<string | null>(null);
   const [warning, setWarning] = useState('');
   const [confirmedJunk, setConfirmedJunk] = useState(false);
@@ -49,13 +60,15 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
       setPriority('medium');
       setDueDate(undefined);
       setStatus('not_started');
-      setAssignedTo(currentUserId);
+      const remembered = readLastAssignee(currentUserId);
+      const isValid = remembered === currentUserId || teamMembers.some(m => m.id === remembered);
+      setAssignedTo(isValid ? remembered : currentUserId);
       setRecurrence(null);
       setWarning('');
       setConfirmedJunk(false);
       setSubmitting(false);
     }
-  }, [open, currentUserId]);
+  }, [open, currentUserId, teamMembers]);
 
   // ─── One-click presets ────────────────────────────────────────────────
   // Combo presets snap several fields at once (priority + due + status).
@@ -133,6 +146,11 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
         assigned_to: assignedTo,
         recurrence_rule: recurrence,
       });
+      try {
+        window.localStorage.setItem(LAST_ASSIGNEE_KEY, assignedTo);
+      } catch {
+        /* ignore storage errors */
+      }
       onClose();
     } finally {
       setSubmitting(false);
