@@ -435,8 +435,18 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
                           className="h-6 text-[10px] px-2 rounded-full border-[#2a2f3e] gap-1"
                           style={{ color: '#f59e0b' }}
                           onClick={() => {
+                            const prevEnd = (task as any).recurrence_end_date ?? null;
                             onUpdate({ recurrence_end_date: todayStr } as any);
-                            toast.success('Recurrence paused — no further occurrences will be generated');
+                            toast.success('Recurrence paused — no further occurrences will be generated', {
+                              duration: 8000,
+                              action: {
+                                label: 'Undo',
+                                onClick: () => {
+                                  onUpdate({ recurrence_end_date: prevEnd } as any);
+                                  toast.success('Pause undone');
+                                },
+                              },
+                            });
                           }}
                           title="Stop generating new occurrences but keep the rule so you can resume later"
                         >
@@ -700,8 +710,24 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
+                const prevRule = task.recurrence_rule ?? null;
+                const prevEnd = (task as any).recurrence_end_date ?? null;
+                const prevIsRecurring = (task as any).is_recurring ?? false;
                 onUpdate({ recurrence_rule: null, recurrence_end_date: null, is_recurring: false } as any);
-                toast.success('Recurrence stopped');
+                toast.success('Recurrence stopped', {
+                  duration: 10000,
+                  action: {
+                    label: 'Undo',
+                    onClick: () => {
+                      onUpdate({
+                        recurrence_rule: prevRule,
+                        recurrence_end_date: prevEnd,
+                        is_recurring: prevIsRecurring,
+                      } as any);
+                      toast.success('Recurrence restored');
+                    },
+                  },
+                });
                 setStopRecurrenceOpen(false);
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
