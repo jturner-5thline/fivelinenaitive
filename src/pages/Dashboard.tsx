@@ -58,7 +58,7 @@ const TILE_INTERACTIVE_CLASSES =
   '!border-0 !bg-transparent !shadow-none !backdrop-blur-none !backdrop-saturate-100 ' +
   'dark:!bg-transparent dark:!border-0 dark:!shadow-none ' +
   'dark:hover:!border-0 dark:hover:!shadow-none ' +
-  'rounded-2xl transition-transform duration-200 ease-out ' +
+  'rounded-lg transition-transform duration-200 ease-out ' +
   'focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-0';
 
 /**
