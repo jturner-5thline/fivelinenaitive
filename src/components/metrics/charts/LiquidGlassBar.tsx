@@ -121,13 +121,36 @@ export function createGlassBarShape(options?: {
   topSegmentKey?: string;
   /** current bar's dataKey */
   dataKey?: string;
+  /** Field on the data payload to inspect for sign (defaults to props.value / dataKey) */
+  valueKey?: string;
 }) {
-  const { radius = 3, topSegmentKey, dataKey } = options || {};
+  const { radius = 3, topSegmentKey, dataKey, valueKey } = options || {};
 
   return (props: Record<string, unknown>) => {
     const isTop = topSegmentKey
       ? dataKey === topSegmentKey
       : true;
-    return <LiquidGlassBar {...props} radius={radius} isTopSegment={isTop} />;
+
+    // Resolve the underlying datum value so we can detect negatives even when
+    // Recharts hands us a positive `height` (its standard behaviour for bars
+    // crossing a zero baseline).
+    const payload = (props.payload ?? {}) as Record<string, unknown>;
+    const rechartsValue = props.value as number | undefined;
+    const lookupKey = valueKey ?? dataKey;
+    const datumValue =
+      typeof rechartsValue === 'number'
+        ? rechartsValue
+        : (lookupKey ? Number(payload[lookupKey]) : NaN);
+    const valueSign: 'positive' | 'negative' | undefined =
+      Number.isFinite(datumValue) ? (datumValue < 0 ? 'negative' : 'positive') : undefined;
+
+    return (
+      <LiquidGlassBar
+        {...props}
+        radius={radius}
+        isTopSegment={isTop}
+        valueSign={valueSign}
+      />
+    );
   };
 }
