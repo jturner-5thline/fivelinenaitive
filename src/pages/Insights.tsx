@@ -2273,7 +2273,9 @@ export default function Metrics() {
             )}
             {selectedDashboard === 'sales-bd-roi' && <SalesBDROIDashboard />}
             {selectedDashboard === 'sales-team-board' && <SalesTeamBoardDashboard />}
-            {selectedDashboard === 'consolidated-debt-pipeline' && <ConsolidatedDebtPipelineDashboard />}
+            {selectedDashboard === 'consolidated-debt-pipeline' && (
+              <ConsolidatedDebtPipelineDashboard selectedQuarter={dashboardSelectedQuarter} />
+            )}
             {selectedDashboard === 'controller-dashboard' && <ControllerDashboard />}
             {selectedDashboard === 'executive-dashboard' && <ExecutiveDashboard />}
             {selectedDashboard === 'finserv-financial-metrics' && <FinServFinancialMetricsDashboard />}
