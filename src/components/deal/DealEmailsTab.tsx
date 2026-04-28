@@ -1500,6 +1500,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 onMarkUnread={handleMarkUnread}
                 onArchive={handleArchiveEmail}
                 onDelete={handleDeleteEmail}
+                isLoading={aiSearch.isSearching}
               />
               {/* Pagination footer: shows Load more, loading, or end-of-inbox */}
               {(onLoadMore || hasMore || isLoadingMore || isAutoPaginating) && (
