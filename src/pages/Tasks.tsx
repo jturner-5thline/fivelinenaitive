@@ -50,7 +50,7 @@ import {
   Bookmark, BookmarkPlus, FileDown, Star, MoreVertical,
   Tag, ClipboardList, Users, Briefcase, Building2, CalendarDays, X,
   Pencil, Copy as CopyIcon, Check,
-  Link2, Pin, PinOff,
+  Link2, Pin, PinOff, Repeat,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDueBoundaries } from '@/hooks/useDueBoundaries';
@@ -70,6 +70,7 @@ type ViewMode = 'list' | 'board' | 'calendar' | 'reporting' | 'focus';
 type FilterStatus = 'all' | 'incomplete' | 'not_started' | 'in_progress' | 'blocked' | 'complete';
 type SortBy = 'due_date' | 'priority' | 'created_at' | 'title' | 'deal';
 type FilterDueDate = 'all' | 'overdue' | 'today' | 'this_week' | 'no_date';
+type FilterRecurring = 'all' | 'recurring' | 'paused';
 
 export default function Tasks() {
   const [ownerFilter, setOwnerFilter] = useState<TaskOwnerFilter>('mine');
