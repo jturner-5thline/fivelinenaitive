@@ -4,25 +4,26 @@ import { ManagementReviewDashboard } from './ManagementReviewDashboard';
 import { BenchmarkForecastsPage } from './BenchmarkForecastsPage';
 import { KeyMetricsPage } from './KeyMetricsPage';
 import {
-  QuarterlyReportOverview,
-  QuarterlyReportGoals,
-  QuarterlyReportRisks,
+  QuarterlyInsightsReportPage,
   QuarterlyReportPrintStyles,
+  createQuarterlyReportSeed,
   useQuarterlyReportState,
 } from './QuarterlyInsightsReport';
 
 export function ManagementReviewCarousel() {
   const [activeIndex, setActiveIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
-  const report = useQuarterlyReportState();
+  const reportOne = useQuarterlyReportState(createQuarterlyReportSeed());
+  const reportTwo = useQuarterlyReportState(createQuarterlyReportSeed());
+  const reportThree = useQuarterlyReportState(createQuarterlyReportSeed());
 
   const PAGES: { title: string; render: () => JSX.Element }[] = [
     { title: 'Insights Dashboard',                          render: () => <ManagementReviewDashboard /> },
     { title: 'Benchmark Forecasts',                         render: () => <BenchmarkForecastsPage /> },
     { title: 'Key Metrics',                                 render: () => <KeyMetricsPage /> },
-    { title: 'Quarterly Insights Report — Overview',        render: () => <QuarterlyReportOverview s={report.state} set={report.setState} reset={report.reset} print={report.print} /> },
-    { title: 'Quarterly Insights Report — Goals & Initiatives', render: () => <QuarterlyReportGoals s={report.state} set={report.setState} /> },
-    { title: 'Quarterly Insights Report — Risks & Export View', render: () => <QuarterlyReportRisks s={report.state} set={report.setState} print={report.print} /> },
+    { title: 'Quarterly Insights Report — Report 1',        render: () => <QuarterlyInsightsReportPage s={reportOne.state} set={reportOne.setState} reset={reportOne.reset} print={reportOne.print} /> },
+    { title: 'Quarterly Insights Report — Report 2',        render: () => <QuarterlyInsightsReportPage s={reportTwo.state} set={reportTwo.setState} reset={reportTwo.reset} print={reportTwo.print} /> },
+    { title: 'Quarterly Insights Report — Report 3',        render: () => <QuarterlyInsightsReportPage s={reportThree.state} set={reportThree.setState} reset={reportThree.reset} print={reportThree.print} /> },
   ];
 
   const goTo = useCallback((dir: -1 | 1) => {
