@@ -229,6 +229,18 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
     subject: thread.subject,
     fromEmail: latest.from_email,
     fromName: latest.from_name,
+    // Feed the full thread so the matcher can weigh recipient domains,
+    // repeated body mentions, and affiliated participants — not just the
+    // latest sender.
+    messages: thread.emails.map((e, idx) => ({
+      subject: e.subject,
+      body: e.body_text || e.body_html || e.body_preview || e.snippet || '',
+      fromEmail: e.from_email,
+      fromName: e.from_name,
+      toEmails: e.to_email ? [e.to_email] : undefined,
+      isLatest: idx === 0,
+      isQuoted: idx > 0,
+    })),
   });
 
   // True when the most recent message in the thread is one we sent.
