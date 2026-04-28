@@ -955,16 +955,24 @@ export default function Tasks() {
         <Dialog open={showSaveViewDialog} onOpenChange={setShowSaveViewDialog}>
           <DialogContent className="max-w-sm">
             <DialogHeader>
-              <DialogTitle className="text-sm">Save Current View</DialogTitle>
+              <DialogTitle className="text-sm">Save Filter Preset</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
-              <Input value={newViewName} onChange={e => setNewViewName(e.target.value)} placeholder="View name..." className="text-sm" onKeyDown={e => { if (e.key === 'Enter') handleSaveView(); }} autoFocus />
-              <div className="text-xs text-muted-foreground space-y-1">
-                <p>Will save: {viewMode} view, {filterStatus} filter, {sortBy} sort, {groupBy} group</p>
+              <Input value={newViewName} onChange={e => setNewViewName(e.target.value)} placeholder="e.g. My overdue deal tasks" className="text-sm" onKeyDown={e => { if (e.key === 'Enter') handleSaveView(); }} autoFocus />
+              <div className="text-[11px] text-muted-foreground space-y-0.5 rounded-md p-2.5" style={{ backgroundColor: 'rgba(20,24,32,0.6)' }}>
+                <p className="font-medium text-foreground mb-1">This preset will remember:</p>
+                <p>• Search: {search ? `"${search}"` : '—'}</p>
+                <p>• Assignee scope: {ownerFilter}</p>
+                <p>• Status: {filterStatus}</p>
+                <p>• Due date: {filterDueDate}</p>
+                <p>• Type / Deals: {filterDealIds.size > 0 ? `${filterDealIds.size} selected` : 'all'}</p>
+                <p>• Labels: {filterLabelIds.size > 0 ? `${filterLabelIds.size} selected` : 'all'}</p>
+                <p>• Group by: {groupBy} · Sort by: {sortBy}</p>
+                <p>• View: {viewMode}</p>
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => setShowSaveViewDialog(false)}>Cancel</Button>
-                <Button size="sm" onClick={handleSaveView}>Save</Button>
+                <Button size="sm" onClick={handleSaveView} disabled={!newViewName.trim()}>Save preset</Button>
               </div>
             </div>
           </DialogContent>
