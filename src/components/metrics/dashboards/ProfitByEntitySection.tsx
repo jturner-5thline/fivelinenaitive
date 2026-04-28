@@ -23,6 +23,25 @@ const formatCurrencyFull = (value: number) => {
   return neg ? `(${str})` : str;
 };
 
+/* Restrained loss/profit palette tuned for dark navy UI */
+const LOSS_COLOR = 'hsl(354, 62%, 56%)';     // muted rose, not neon
+const LOSS_COLOR_SOFT = 'hsl(354, 62%, 56%, 0.65)';
+const PROFIT_COLOR = 'hsl(152, 58%, 52%)';   // restrained green
+
+const GLASS_CARD_STYLE: React.CSSProperties = {
+  background: 'rgba(16, 28, 52, 0.75)',
+  border: '0.5px solid rgba(80, 140, 255, 0.18)',
+  borderRadius: '12px',
+};
+const GLASS_SHEEN_STYLE: React.CSSProperties = {
+  position: 'absolute',
+  inset: 0,
+  borderRadius: 'inherit',
+  pointerEvents: 'none',
+  background:
+    'linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.00) 55%)',
+};
+
 function ProfitBarChart({
   title,
   entityName,
@@ -40,89 +59,141 @@ function ProfitBarChart({
 }) {
   if (isLoading) {
     return (
-      <Card className="bg-card/50 backdrop-blur border-border/50">
-        <CardHeader className="pb-2"><Skeleton className="h-5 w-32" /><Skeleton className="h-3 w-48 mt-1" /></CardHeader>
-        <CardContent><Skeleton className="h-[220px] w-full" /></CardContent>
+      <Card style={GLASS_CARD_STYLE} className="relative overflow-hidden backdrop-blur-xl">
+        <div style={GLASS_SHEEN_STYLE} />
+        <CardHeader className="pb-2 relative"><Skeleton className="h-5 w-32" /><Skeleton className="h-3 w-48 mt-1" /></CardHeader>
+        <CardContent className="relative"><Skeleton className="h-[260px] w-full" /></CardContent>
       </Card>
     );
   }
 
   const hasNegative = months.some(m => m.profit < 0);
   const hasPositive = months.some(m => m.profit > 0);
+  const isLossQuarter = total < 0;
 
   // Auto-scale: include 0 in range, pad so bars don't touch edges
   const minVal = Math.min(...months.map(m => m.profit), 0);
   const maxVal = Math.max(...months.map(m => m.profit), 0);
   const range = Math.max(maxVal - minVal, 1000);
   const domainMin = minVal - range * 0.15;
-  const domainMax = maxVal + range * 0.15;
+  const domainMax = maxVal + range * 0.2;
 
   return (
-    <Card className="bg-card/50 backdrop-blur border-border/50 hover:border-border transition-colors">
-      <CardHeader className="pb-2 flex flex-row items-start justify-between">
-        <div>
-          <CardTitle className="text-sm font-medium text-foreground">{title}</CardTitle>
-          <p className="text-xs text-muted-foreground mt-0.5">Operating Profit · {entityName.split(',')[0]}</p>
+    <Card
+      style={GLASS_CARD_STYLE}
+      className="relative overflow-hidden backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5"
+    >
+      <div style={GLASS_SHEEN_STYLE} />
+      <CardHeader className="pb-3 pt-5 relative">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <CardTitle
+              className="text-[11px] font-medium uppercase tracking-[0.08em]"
+              style={{ color: 'rgba(160, 200, 255, 0.50)' }}
+            >
+              {title}
+            </CardTitle>
+            <p
+              className="text-[11px] mt-1 truncate"
+              style={{ color: 'rgba(120, 170, 255, 0.45)' }}
+            >
+              Operating Profit · {entityName.split(',')[0]}
+            </p>
+          </div>
+          <span
+            className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-md shrink-0"
+            style={
+              isLossQuarter
+                ? {
+                    background: 'rgba(220, 70, 90, 0.10)',
+                    border: '0.5px solid rgba(220, 70, 90, 0.28)',
+                    color: LOSS_COLOR,
+                  }
+                : {
+                    background: 'rgba(34, 201, 122, 0.12)',
+                    border: '0.5px solid rgba(34, 201, 122, 0.30)',
+                    color: '#22c97a',
+                  }
+            }
+          >
+            {isLossQuarter ? 'Loss' : 'Profit'}
+          </span>
         </div>
-        <div className="text-right">
-          <p className={`text-lg font-semibold tabular-nums ${total < 0 ? 'text-red-400' : 'text-foreground'}`}>
+
+        {/* Focal quarter total */}
+        <div className="mt-4">
+          <p
+            className="text-3xl font-semibold tabular-nums leading-none tracking-tight"
+            style={{ color: isLossQuarter ? LOSS_COLOR : '#dde8f8' }}
+          >
             {formatCurrency(total)}
           </p>
-          <p className="text-[10px] text-muted-foreground">{months.length} Months</p>
+          <p
+            className="text-[10px] mt-1.5 uppercase tracking-wider"
+            style={{ color: 'rgba(120, 170, 255, 0.40)' }}
+          >
+            {months.length}-Month Quarter Total
+          </p>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="relative pt-1">
         <div style={{ height: 220 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={months} margin={{ top: 8, right: 8, left: -6, bottom: 0 }}>
+            <BarChart data={months} margin={{ top: 12, right: 8, left: -10, bottom: 0 }} barCategoryGap="28%">
               <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="hsl(var(--border))"
-                strokeOpacity={0.3}
+                strokeDasharray="2 4"
+                stroke="rgba(160, 200, 255, 0.10)"
                 vertical={false}
               />
               <XAxis
                 dataKey="label"
-                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                axisLine={{ stroke: 'hsl(var(--border))', strokeOpacity: 0.5 }}
+                tick={{ fontSize: 10, fill: 'rgba(160, 200, 255, 0.50)' }}
+                axisLine={false}
                 tickLine={false}
+                dy={4}
               />
               <YAxis
                 domain={[domainMin, domainMax]}
                 tickFormatter={formatCurrency}
-                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                tick={{ fontSize: 10, fill: 'rgba(160, 200, 255, 0.40)' }}
                 axisLine={false}
                 tickLine={false}
-                width={52}
+                width={56}
+                tickCount={4}
               />
               <Tooltip
                 formatter={(v: number) => [formatCurrencyFull(v), v < 0 ? 'Loss' : 'Profit']}
                 labelFormatter={(label) => `${label} · ${entityName.split(',')[0]}`}
                 contentStyle={{
-                  backgroundColor: 'hsl(var(--popover))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '6px',
+                  backgroundColor: 'rgba(16, 28, 52, 0.95)',
+                  border: '0.5px solid rgba(80, 140, 255, 0.30)',
+                  borderRadius: '8px',
                   fontSize: '11px',
-                  color: 'hsl(var(--popover-foreground))',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  color: '#dde8f8',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                  backdropFilter: 'blur(12px)',
                 }}
-                cursor={{ fill: 'hsl(var(--accent))', fillOpacity: 0.1 }}
+                cursor={{ fill: 'rgba(160, 200, 255, 0.06)' }}
               />
               {/* Zero baseline – more prominent than gridlines */}
               {(hasNegative || hasPositive) && (
                 <ReferenceLine
                   y={0}
-                  stroke="hsl(var(--muted-foreground))"
-                  strokeWidth={1.5}
-                  strokeOpacity={0.5}
+                  stroke="rgba(200, 220, 255, 0.55)"
+                  strokeWidth={1.25}
+                  ifOverflow="extendDomain"
                 />
               )}
-              <Bar dataKey="profit" shape={createGlassBarShape({ radius: 3 })}>
+              <Bar
+                dataKey="profit"
+                shape={createGlassBarShape({ radius: 4 })}
+                maxBarSize={44}
+              >
                 {months.map((m, i) => (
                   <Cell
                     key={i}
-                    fill={m.profit >= 0 ? color : 'hsl(0, 65%, 48%)'}
-                    fillOpacity={0.85}
+                    fill={m.profit >= 0 ? PROFIT_COLOR : LOSS_COLOR}
+                    fillOpacity={m.profit >= 0 ? 0.9 : 0.82}
                   />
                 ))}
               </Bar>
