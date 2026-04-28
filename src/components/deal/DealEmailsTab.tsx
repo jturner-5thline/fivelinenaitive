@@ -601,6 +601,32 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       filtered = filtered
         .filter(e => order.has(e.id))
         .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+
+      // Apply (still-active) AI parsed filters as a post-filter pass so
+      // chip removal in the banner actually relaxes constraints.
+      const f = aiSearch.result.filters;
+      if (f.sender) {
+        const s = f.sender.toLowerCase();
+        filtered = filtered.filter(
+          e =>
+            e.from_name.toLowerCase().includes(s) ||
+            e.from_email.toLowerCase().includes(s)
+        );
+      }
+      if (f.dateRangeStart || f.dateRangeEnd) {
+        const start = f.dateRangeStart ? new Date(f.dateRangeStart).getTime() : -Infinity;
+        const endDate = f.dateRangeEnd ? new Date(f.dateRangeEnd) : null;
+        // Treat end as inclusive end-of-day.
+        const end = endDate
+          ? new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999).getTime()
+          : Infinity;
+        filtered = filtered.filter(e => {
+          const t = new Date(e.received_at).getTime();
+          return t >= start && t <= end;
+        });
+      }
+      if (f.hasAttachments === true) filtered = filtered.filter(e => e.has_attachments);
+      if (f.hasAttachments === false) filtered = filtered.filter(e => !e.has_attachments);
     } else if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
