@@ -77,6 +77,15 @@ const TILE_CHIP_BASE =
   'transition-transform duration-200 ease-out ' +
   'group-hover:-translate-y-[2px] group-focus-visible:-translate-y-[2px]';
 
+/**
+ * Backwards-compat alias for the prior constant name. Some HMR sessions
+ * may still reference `TILE_ICON_CHIP_CLASSES`; aliasing it to the new
+ * `TILE_CHIP_BASE` prevents a stale ReferenceError without changing the
+ * intended frosted-glass visual treatment.
+ */
+const TILE_ICON_CHIP_CLASSES = TILE_CHIP_BASE;
+void TILE_ICON_CHIP_CLASSES;
+
 /** Inner glassy highlight overlay (matches reference `.wg-icon::before`). */
 const TileChipGloss = () => (
   <span
