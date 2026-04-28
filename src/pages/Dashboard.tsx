@@ -32,15 +32,37 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
  * No glow, no drop shadow, no scale — we explicitly override the default
  * dark-mode hover shadow from `<Card>` via `dark:hover:shadow-none`.
  */
+/**
+ * Frosted-glass shortcut tile.
+ *
+ * Restrained financial-SaaS take on glassmorphism:
+ *   - Translucent neutral surface with backdrop blur.
+ *   - Soft inner highlight via inset ring (top edge).
+ *   - Low-contrast border, gentle (not heavy) shadow.
+ *   - Hover: subtle surface brighten + tiny lift, no glow.
+ */
 const TILE_INTERACTIVE_CLASSES =
-  'p-4 cursor-pointer outline-none transition-colors duration-150 ' +
-  // Hover: subtle glass tint + slightly brighter border
-  'hover:bg-foreground/[0.04] hover:border-border/60 ' +
-  // Kill the default Card dark-mode hover shadow/glow
-  'hover:shadow-none dark:hover:shadow-none ' +
-  // Keyboard focus: same surface change + ring on the border
-  'focus-visible:bg-foreground/[0.06] focus-visible:border-border/70 ' +
-  'focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-0';
+  'group relative p-4 rounded-2xl cursor-pointer outline-none ' +
+  'border border-white/[0.06] bg-white/[0.03] backdrop-blur-xl ' +
+  'shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_4px_14px_-8px_rgba(0,0,0,0.5)] ' +
+  'transition-[background-color,border-color,transform,box-shadow] duration-200 ease-out ' +
+  // Hover: very slight lift + brighter glass surface
+  'hover:bg-white/[0.06] hover:border-white/[0.12] hover:-translate-y-[1px] ' +
+  'hover:shadow-[0_1px_0_0_rgba(255,255,255,0.06)_inset,0_8px_22px_-10px_rgba(0,0,0,0.55)] ' +
+  'dark:hover:shadow-[0_1px_0_0_rgba(255,255,255,0.06)_inset,0_8px_22px_-10px_rgba(0,0,0,0.6)] ' +
+  // Keyboard focus: same brightening + soft ring
+  'focus-visible:bg-white/[0.07] focus-visible:border-white/[0.14] ' +
+  'focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-0';
+
+/**
+ * Neutral frosted icon chip used inside each shortcut tile.
+ * Replaces per-tile saturated color chips so the grid reads calm and uniform,
+ * while the original colored icon glyphs remain untouched.
+ */
+const TILE_ICON_CHIP_CLASSES =
+  'relative h-12 w-12 rounded-2xl flex items-center justify-center overflow-hidden ' +
+  'border border-white/[0.08] bg-white/[0.04] backdrop-blur-md ' +
+  'shadow-[0_1px_0_0_rgba(255,255,255,0.06)_inset,0_2px_6px_-3px_rgba(0,0,0,0.4)]';
 
 const handleTileKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, action: () => void) => {
   if (e.key === 'Enter' || e.key === ' ') {
@@ -125,7 +147,7 @@ function EmailTileWithIntelligence({
         onKeyDown={onKeyDown}
       >
         <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-          <div className="relative h-12 w-12 rounded-xl border border-[hsl(280,85%,65%,0.55)] bg-[hsl(275,80%,40%,0.3)] backdrop-blur-xl flex items-center justify-center overflow-hidden">
+          <div className={TILE_ICON_CHIP_CLASSES}>
             <Mail className="relative z-10 h-7 w-7 text-foreground" />
           </div>
           <span className="text-sm font-medium text-foreground">Email</span>
@@ -504,7 +526,7 @@ export default function Dashboard() {
               }
             >
               <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                <div className="relative h-12 w-12 rounded-xl border border-primary/30 bg-primary/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                <div className={TILE_ICON_CHIP_CLASSES}>
                   <CalendarIcon className="relative z-10 h-7 w-7 text-primary" />
                 </div>
                 <span className="text-sm font-medium text-foreground">Calendar</span>
@@ -531,7 +553,7 @@ export default function Dashboard() {
               }
             >
               <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                <div className="relative h-12 w-12 rounded-xl border border-accent/30 bg-accent/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                <div className={TILE_ICON_CHIP_CLASSES}>
                   <Briefcase className="relative z-10 h-7 w-7 text-accent-foreground" />
                 </div>
                 <span className="text-sm font-medium text-foreground">New Deal</span>
@@ -550,7 +572,7 @@ export default function Dashboard() {
                 }
               >
                 <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                  <div className="relative h-12 w-12 rounded-xl border border-warning/30 bg-warning/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                  <div className={TILE_ICON_CHIP_CLASSES}>
                     <Newspaper className="relative z-10 h-7 w-7 text-warning" />
                   </div>
                   <span className="text-sm font-medium text-foreground">Daily Briefing</span>
@@ -570,7 +592,7 @@ export default function Dashboard() {
                 }
               >
                 <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                  <div className="relative h-12 w-12 rounded-xl border border-[hsl(190,90%,55%,0.4)] bg-[hsl(190,90%,45%,0.18)] backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                  <div className={TILE_ICON_CHIP_CLASSES}>
                     <Newspaper className="relative z-10 h-7 w-7 text-[hsl(190,90%,70%)]" />
                   </div>
                   <span className="text-sm font-medium text-foreground">
@@ -590,7 +612,7 @@ export default function Dashboard() {
               aria-label="Open Deals insights"
             >
               <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                <div className="relative h-12 w-12 rounded-xl border border-emerald-500/30 bg-emerald-500/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                <div className={TILE_ICON_CHIP_CLASSES}>
                   <Handshake className="relative z-10 h-7 w-7 text-emerald-400" />
                 </div>
                 <span className="text-sm font-medium text-foreground">Deals</span>
@@ -609,7 +631,7 @@ export default function Dashboard() {
                 }
               >
                 <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                  <div className="relative h-12 w-12 rounded-xl border border-primary/30 bg-primary/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                  <div className={TILE_ICON_CHIP_CLASSES}>
                     <Briefcase className="relative z-10 h-7 w-7 text-primary" />
                   </div>
                   <span className="text-sm font-medium text-foreground">Deal Rundown</span>
