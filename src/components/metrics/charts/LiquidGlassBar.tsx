@@ -12,6 +12,7 @@ export interface LiquidGlassBarProps {
   width?: number;
   height?: number;
   baselineY?: number;
+  valueY?: number;
   clipRect?: {
     x: number;
     y: number;
@@ -35,6 +36,8 @@ export function LiquidGlassBar(props: LiquidGlassBarProps) {
     y = 0,
     width = 0,
     height = 0,
+    baselineY,
+    valueY,
     clipRect,
     fill = 'hsl(var(--primary))',
     isTopSegment = true,
@@ -46,40 +49,39 @@ export function LiquidGlassBar(props: LiquidGlassBarProps) {
 
   if (width <= 0 || height === 0) return null;
 
-  // Recharts emits a *positive* height for negative-value bars when the y-axis
-  // crosses zero (the bar is positioned at the zero baseline and extends down).
-  // Trust an explicit `valueSign` override when provided, otherwise fall back to
-  // the height sign (which only catches inverted-axis cases).
-  const isNegative = valueSign ? valueSign === 'negative' : height < 0;
-  const absHeight = Math.abs(height);
+  const hasExplicitAnchors = Number.isFinite(baselineY) && Number.isFinite(valueY);
+  const barTop = hasExplicitAnchors ? Math.min(baselineY as number, valueY as number) : y;
+  const barBottom = hasExplicitAnchors ? Math.max(baselineY as number, valueY as number) : y + Math.abs(height);
+  const isNegative = valueSign ? valueSign === 'negative' : (hasExplicitAnchors ? (valueY as number) > (baselineY as number) : height < 0);
+  const absHeight = Math.max(0, barBottom - barTop);
   const r = isTopSegment ? Math.min(radius, width / 2, absHeight / 2) : 0;
 
   let path: string;
   if (isNegative) {
-    // Bar goes from y (baseline) down to y + absHeight
+    // Bar goes from the zero baseline down to the scaled negative value.
     // Round the BOTTOM corners (the exposed end)
     if (isTopSegment && r > 0) {
       path =
-        `M${x},${y}` +
+        `M${x},${barTop}` +
         `H${x + width}` +
-        `V${y + absHeight - r}` +
-        `Q${x + width},${y + absHeight} ${x + width - r},${y + absHeight}` +
+        `V${barBottom - r}` +
+        `Q${x + width},${barBottom} ${x + width - r},${barBottom}` +
         `H${x + r}` +
-        `Q${x},${y + absHeight} ${x},${y + absHeight - r}` +
-        `V${y}` +
+        `Q${x},${barBottom} ${x},${barBottom - r}` +
+        `V${barTop}` +
         `Z`;
     } else {
-      path = `M${x},${y}H${x + width}V${y + absHeight}H${x}Z`;
+      path = `M${x},${barTop}H${x + width}V${barBottom}H${x}Z`;
     }
   } else {
-    // Positive bar: round top corners
+    // Positive bar goes from the scaled positive value up to the zero baseline.
     path =
-      `M${x},${y + absHeight}` +
-      `V${y + r}` +
-      `Q${x},${y} ${x + r},${y}` +
+      `M${x},${barBottom}` +
+      `V${barTop + r}` +
+      `Q${x},${barTop} ${x + r},${barTop}` +
       `H${x + width - r}` +
-      `Q${x + width},${y} ${x + width},${y + r}` +
-      `V${y + absHeight}` +
+      `Q${x + width},${barTop} ${x + width},${barTop + r}` +
+      `V${barBottom}` +
       `Z`;
   }
 
@@ -177,6 +179,8 @@ export function createGlassBarShape(options?: {
 
     let anchoredY = Number(props.y ?? 0);
     let anchoredHeight = Math.abs(Number(props.height ?? 0));
+    let baselineY: number | undefined;
+    let anchoredValueY: number | undefined;
 
     if (typeof yAxis?.scale === 'function' && Number.isFinite(datumValue)) {
       const zeroBaselineY = Number(yAxis.scale(0));
@@ -191,6 +195,8 @@ export function createGlassBarShape(options?: {
         && Number.isFinite(plotTop)
         && Number.isFinite(plotBottom)
       ) {
+        baselineY = Math.max(plotTop, Math.min(plotBottom, zeroBaselineY));
+        anchoredValueY = Math.max(plotTop, Math.min(plotBottom, valueY));
         anchoredY = Math.max(plotTop, Math.min(zeroBaselineY, valueY));
         const anchoredBottom = Math.min(plotBottom, Math.max(zeroBaselineY, valueY));
         anchoredHeight = Math.max(0, anchoredBottom - anchoredY);
@@ -202,6 +208,8 @@ export function createGlassBarShape(options?: {
         {...props}
         y={anchoredY}
         height={anchoredHeight}
+        baselineY={baselineY}
+        valueY={anchoredValueY}
         radius={radius}
         isTopSegment={isTop}
         valueSign={valueSign}
