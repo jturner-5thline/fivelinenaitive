@@ -66,6 +66,7 @@ import { CSS } from '@dnd-kit/utilities';
 type ViewMode = 'list' | 'board' | 'calendar' | 'reporting' | 'focus';
 type FilterStatus = 'all' | 'incomplete' | 'not_started' | 'in_progress' | 'blocked' | 'complete';
 type SortBy = 'due_date' | 'priority' | 'created_at' | 'title' | 'deal';
+type FilterDueDate = 'all' | 'overdue' | 'today' | 'this_week' | 'no_date';
 
 export default function Tasks() {
   const [ownerFilter, setOwnerFilter] = useState<TaskOwnerFilter>('mine');
@@ -118,6 +119,7 @@ export default function Tasks() {
   const [focusedTaskIndex, setFocusedTaskIndex] = useState<number>(-1);
   const [filterDealIds, setFilterDealIds] = useState<Set<string>>(new Set());
   const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
+  const [filterDueDate, setFilterDueDate] = useState<FilterDueDate>('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showFocusMode, setShowFocusMode] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
@@ -189,6 +191,24 @@ export default function Tasks() {
       if (filterLabelIds.size > 0) {
         const taskLabels = taskLabelMap.get(t.id);
         if (!taskLabels || ![...filterLabelIds].some(lid => taskLabels.has(lid))) return false;
+      }
+      if (filterDueDate !== 'all') {
+        const today = startOfDay(new Date());
+        if (filterDueDate === 'no_date') {
+          if (t.due_date) return false;
+        } else if (!t.due_date) {
+          return false;
+        } else {
+          const d = new Date(t.due_date + 'T00:00:00');
+          if (filterDueDate === 'overdue') {
+            if (!(isPast(d) && !isToday(d)) || t.status === 'complete') return false;
+          } else if (filterDueDate === 'today') {
+            if (!isToday(d)) return false;
+          } else if (filterDueDate === 'this_week') {
+            const weekOut = addDays(today, 7);
+            if (!(d >= today && d <= weekOut)) return false;
+          }
+        }
       }
       return true;
     })
@@ -360,7 +380,17 @@ export default function Tasks() {
     if (!newViewName.trim()) return;
     saveView.mutate({
       name: newViewName.trim(),
-      view_config: { viewMode, filterStatus, sortBy, groupBy, search },
+      view_config: {
+        viewMode,
+        filterStatus,
+        sortBy,
+        groupBy,
+        search,
+        ownerFilter,
+        filterDealIds: Array.from(filterDealIds),
+        filterLabelIds: Array.from(filterLabelIds),
+        filterDueDate,
+      },
     });
     setNewViewName('');
     setShowSaveViewDialog(false);
@@ -373,8 +403,31 @@ export default function Tasks() {
     if (c.sortBy) setSortBy(c.sortBy as SortBy);
     if (c.groupBy) setGroupBy(c.groupBy as GroupBy);
     if (c.search !== undefined) setSearch(c.search);
+    if (c.ownerFilter) setOwnerFilter(c.ownerFilter as TaskOwnerFilter);
+    if (Array.isArray(c.filterDealIds)) setFilterDealIds(new Set(c.filterDealIds));
+    if (Array.isArray(c.filterLabelIds)) setFilterLabelIds(new Set(c.filterLabelIds));
+    if (c.filterDueDate) setFilterDueDate(c.filterDueDate as FilterDueDate);
     toast.success(`Loaded view: ${view.name}`);
   };
+
+  // Determine which preset (if any) is currently active for highlight
+  const activePresetId = useMemo(() => {
+    for (const v of savedViews) {
+      const c = v.view_config || {};
+      if (
+        (c.viewMode ?? viewMode) === viewMode &&
+        (c.filterStatus ?? filterStatus) === filterStatus &&
+        (c.sortBy ?? sortBy) === sortBy &&
+        (c.groupBy ?? groupBy) === groupBy &&
+        (c.search ?? search) === search &&
+        (c.ownerFilter ?? ownerFilter) === ownerFilter &&
+        (c.filterDueDate ?? filterDueDate) === filterDueDate &&
+        JSON.stringify((c.filterDealIds ?? []).slice().sort()) === JSON.stringify(Array.from(filterDealIds).sort()) &&
+        JSON.stringify((c.filterLabelIds ?? []).slice().sort()) === JSON.stringify(Array.from(filterLabelIds).sort())
+      ) return v.id;
+    }
+    return null;
+  }, [savedViews, viewMode, filterStatus, sortBy, groupBy, search, ownerFilter, filterDueDate, filterDealIds, filterLabelIds]);
 
   const handleExportCSV = () => {
     const headers = ['Title', 'Status', 'Priority', 'Due Date', 'Assignee', 'Created'];
