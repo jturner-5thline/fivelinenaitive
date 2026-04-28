@@ -308,7 +308,7 @@ export function TaskListView({
                 </button>
 
                 {!isCollapsed && (
-                  <div>
+                  <div className="pt-1.5 pb-1 space-y-1 px-2">
                     {group.tasks.map(task => {
                       const globalIndex = tasks.indexOf(task);
                       return (
@@ -552,17 +552,22 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       data-task-id={task.id}
       tabIndex={-1}
       className={cn(
-        `grid ${TASK_GRID_COLS} gap-2 items-center px-4 cursor-pointer transition-colors group`,
-        isSelected && 'bg-[rgba(126,184,247,0.07)]',
-        isMultiSelected && 'bg-[rgba(126,184,247,0.04)]',
-        isFocused && 'ring-1 ring-inset ring-[rgba(126,184,247,0.3)]',
-        'focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[rgba(126,184,247,0.45)]',
+        // Glass tile — matches platform-wide glass module language
+        // (translucent surface, soft border, subtle blur, lg radius).
+        // Compact vertical spacing is provided by the parent group's
+        // `space-y-1` so tiles read as a tight stack of distinct objects.
+        `grid ${TASK_GRID_COLS} gap-2 items-center px-3 cursor-pointer group rounded-lg border transition-all duration-150`,
+        'bg-white/[0.025] dark:bg-white/[0.025] border-white/[0.06] backdrop-blur-md',
+        'hover:bg-white/[0.045] hover:border-white/[0.10]',
+        'shadow-[0_1px_0_0_rgba(255,255,255,0.03)_inset]',
+        isSelected && '!bg-[rgba(126,184,247,0.09)] !border-[rgba(126,184,247,0.25)]',
+        isMultiSelected && '!bg-[rgba(126,184,247,0.06)] !border-[rgba(126,184,247,0.2)]',
+        isFocused && 'ring-1 ring-[rgba(126,184,247,0.35)]',
+        'focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(126,184,247,0.45)]',
         isDragging && 'z-50',
       )}
-      style={{ ...style, minHeight: 48, borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+      style={{ ...style, minHeight: 44 }}
       onClick={onSelect}
-      onMouseEnter={(e) => { if (!isDragging) (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.025)'; }}
-      onMouseLeave={(e) => { if (!isSelected && !isMultiSelected) (e.currentTarget as HTMLElement).style.backgroundColor = ''; }}
     >
       {/* Drag handle */}
       <div className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing" {...attributes} {...listeners} onClick={e => e.stopPropagation()}>
