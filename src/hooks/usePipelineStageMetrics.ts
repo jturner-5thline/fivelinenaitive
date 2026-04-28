@@ -34,6 +34,25 @@ export interface AverageMetricResult {
   isLoading: boolean;
 }
 
+interface PeriodBucketDef {
+  key: string;
+  label: string;
+  start: string;
+  end: string;
+}
+
+export interface StageTrendBucket extends PeriodBucketDef {
+  count: number;
+  dollarVolume: number;
+  deals: StageEntryDeal[];
+}
+
+export interface StageTrendSeriesResult {
+  monthly: StageTrendBucket[];
+  quarterly: StageTrendBucket[];
+  isLoading: boolean;
+}
+
 interface RevenuePeriodTotalResult {
   total: number;
   isLoading: boolean;
@@ -69,6 +88,163 @@ function buildRollingMonthsPeriod(anchorEndDate: string, monthCount: number): Qu
     endDate: anchorEndDate,
     months,
   };
+}
+
+function buildRollingMonthBuckets(anchorEndDate: string, monthCount: number): PeriodBucketDef[] {
+  const period = buildRollingMonthsPeriod(anchorEndDate, monthCount);
+  return period.months.map((month) => ({
+    ...month,
+    label: `${month.label} ${month.key.slice(2, 4)}`,
+  }));
+}
+
+function buildRollingQuarterBuckets(anchorEndDate: string, quarterCount: number): PeriodBucketDef[] {
+  const [year, month] = anchorEndDate.split('-').map(Number);
+  const anchor = new Date(year, month - 1, 1);
+  const anchorQuarterStartMonth = Math.floor(anchor.getMonth() / 3) * 3;
+  const firstQuarter = new Date(
+    anchor.getFullYear(),
+    anchorQuarterStartMonth - (quarterCount - 1) * 3,
+    1,
+  );
+
+  const buckets: PeriodBucketDef[] = [];
+  const cursor = new Date(firstQuarter);
+
+  while (cursor <= anchor) {
+    const quarterYear = cursor.getFullYear();
+    const quarterStartMonth = Math.floor(cursor.getMonth() / 3) * 3;
+    const quarterNumber = Math.floor(quarterStartMonth / 3) + 1;
+    const quarterEnd = new Date(quarterYear, quarterStartMonth + 3, 0);
+
+    buckets.push({
+      key: `${quarterYear}-Q${quarterNumber}`,
+      label: `Q${quarterNumber} ${String(quarterYear).slice(2, 4)}`,
+      start: `${quarterYear}-${String(quarterStartMonth + 1).padStart(2, '0')}-01`,
+      end: `${quarterYear}-${String(quarterStartMonth + 3).padStart(2, '0')}-${quarterEnd.getDate()}`,
+    });
+
+    cursor.setMonth(cursor.getMonth() + 3);
+  }
+
+  return buckets;
+}
+
+function getQuarterKey(timestamp: string): string {
+  const year = timestamp.slice(0, 4);
+  const month = Number(timestamp.slice(5, 7));
+  return `${year}-Q${Math.floor((month - 1) / 3) + 1}`;
+}
+
+function aggregateStageEntryTrendBuckets(
+  rows: Array<Record<string, any>>,
+  bucketDefs: PeriodBucketDef[],
+  grain: 'monthly' | 'quarterly',
+  pipelineId: string,
+  targetStage: string,
+): StageTrendBucket[] {
+  const buckets: StageTrendBucket[] = bucketDefs.map((bucket) => ({
+    ...bucket,
+    count: 0,
+    dollarVolume: 0,
+    deals: [],
+  }));
+
+  if (bucketDefs.length === 0) return buckets;
+
+  const windowStart = `${bucketDefs[0].start}T00:00:00.000Z`;
+  const windowEnd = `${bucketDefs[bucketDefs.length - 1].end}T23:59:59.999Z`;
+  const seen = new Set<string>();
+  const bucketMap = new Map(buckets.map((bucket) => [bucket.key, bucket]));
+
+  for (const row of rows ?? []) {
+    if (row.created_at < windowStart || row.created_at > windowEnd) continue;
+    if (seen.has(row.deal_id)) continue;
+
+    const deal = row.deals as Record<string, any> | null;
+    if (!deal || deal.pipeline_id !== pipelineId || isExcludedDealName(deal.company)) continue;
+
+    const bucketKey = grain === 'monthly' ? row.created_at.slice(0, 7) : getQuarterKey(row.created_at);
+    const bucket = bucketMap.get(bucketKey);
+    if (!bucket) continue;
+
+    seen.add(row.deal_id);
+
+    const metadata = (row.metadata as Record<string, unknown> | null) ?? {};
+    const entry: StageEntryDeal = {
+      deal_id: row.deal_id,
+      company: deal.company ?? '—',
+      value: Number(deal.value) || 0,
+      manager: deal.manager ?? null,
+      current_stage: deal.stage ?? '',
+      entered_at: row.created_at,
+      pipeline_id: deal.pipeline_id ?? '',
+      from_stage: typeof metadata.from === 'string' ? metadata.from : null,
+      to_stage: typeof metadata.to === 'string' ? metadata.to : targetStage,
+    };
+
+    bucket.count += 1;
+    bucket.dollarVolume += entry.value;
+    bucket.deals.push(entry);
+  }
+
+  return buckets;
+}
+
+function useStageEntryTrendSeries(
+  targetStage: string,
+  anchorEndDate: string,
+  pipelineId: string,
+): StageTrendSeriesResult {
+  const { user } = useAuth();
+
+  const monthlyBuckets = useMemo(
+    () => buildRollingMonthBuckets(anchorEndDate, 6),
+    [anchorEndDate],
+  );
+  const quarterlyBuckets = useMemo(
+    () => buildRollingQuarterBuckets(anchorEndDate, 4),
+    [anchorEndDate],
+  );
+
+  const queryStart = quarterlyBuckets[0]?.start ?? monthlyBuckets[0]?.start ?? '';
+  const queryEnd = quarterlyBuckets[quarterlyBuckets.length - 1]?.end ?? monthlyBuckets[monthlyBuckets.length - 1]?.end ?? '';
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['stage-entry-trend-series', targetStage, pipelineId, queryStart, queryEnd],
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from('activity_logs')
+        .select(`
+          deal_id,
+          created_at,
+          metadata,
+          deals!inner (
+            company,
+            value,
+            manager,
+            stage,
+            pipeline_id
+          )
+        `)
+        .eq('activity_type', 'stage_change')
+        .eq('metadata->>to', targetStage)
+        .gte('created_at', queryStart)
+        .lte('created_at', `${queryEnd}T23:59:59.999Z`)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      return rows ?? [];
+    },
+    enabled: !!user && !!queryStart && !!queryEnd,
+    staleTime: 30_000,
+  });
+
+  return useMemo(() => ({
+    monthly: aggregateStageEntryTrendBuckets(data ?? [], monthlyBuckets, 'monthly', pipelineId, targetStage),
+    quarterly: aggregateStageEntryTrendBuckets(data ?? [], quarterlyBuckets, 'quarterly', pipelineId, targetStage),
+    isLoading: isLoading || isFetching,
+  }), [data, isLoading, isFetching, monthlyBuckets, pipelineId, quarterlyBuckets, targetStage]);
 }
 
 function useRevenueTotalForPeriod(realmId: string, period: QuarterOption): RevenuePeriodTotalResult {
@@ -379,6 +555,7 @@ export interface ConsolidatedDebtPipelineMetrics {
   proposalsIssued: StageMetricResult;
   finalCreditItems: StageMetricResult;
   fundedInvoiced: StageMetricResult;
+  fundedInvoicedTrend: StageTrendSeriesResult;
   termsIssued: StageMetricResult;
   inDueDiligence: StageMetricResult;
   averageDealOnBoard: AverageMetricResult;
@@ -404,6 +581,7 @@ export function useConsolidatedDebtPipelineMetrics(
   const proposalsIssued = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const finalCreditItems = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const fundedInvoiced = useStageEntryMetric(FUNDED_INVOICED_STAGE, quarter, ACTIVE_PIPELINE_ID);
+  const fundedInvoicedTrend = useStageEntryTrendSeries(FUNDED_INVOICED_STAGE, quarter.endDate, ACTIVE_PIPELINE_ID);
   const termsIssued = useStageEntryMetric(TERMS_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const inDueDiligence = useStageEntryMetric(IN_DUE_DILIGENCE_STAGE, quarter, ACTIVE_PIPELINE_ID);
 
@@ -419,6 +597,7 @@ export function useConsolidatedDebtPipelineMetrics(
     proposalsIssued,
     finalCreditItems,
     fundedInvoiced,
+    fundedInvoicedTrend,
     termsIssued,
     inDueDiligence,
     averageDealOnBoard: useAverageDealMetric(ndaNeedsListRolling6),
