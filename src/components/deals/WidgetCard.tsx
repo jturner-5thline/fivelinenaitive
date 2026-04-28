@@ -1,4 +1,4 @@
-import { Pencil, Trash2, GripVertical, TrendingUp, Briefcase, FileSearch, DollarSign, Target, CheckCircle, AlertTriangle, BarChart3, Inbox, Banknote } from 'lucide-react';
+import { Pencil, Trash2, GripVertical } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,33 +15,7 @@ interface WidgetCardProps {
   onClick?: () => void;
 }
 
-const metricIcons: Record<WidgetMetric, typeof TrendingUp> = {
-  'active-deals': Briefcase,
-  'active-deal-volume': TrendingUp,
-  'deals-in-diligence': FileSearch,
-  'dollars-in-diligence': DollarSign,
-  'total-deals': BarChart3,
-  'archived-deals': CheckCircle,
-  'on-track-deals': Target,
-  'at-risk-deals': AlertTriangle,
-  'total-pipeline-value': TrendingUp,
-  'average-deal-size': DollarSign,
-  'sales-pipeline-deals': Inbox,
-  'sales-pipeline-volume': Banknote,
-};
-
-const colorClasses: Record<Widget['color'], { text: string; bg: string; glow: string }> = {
-  primary: { text: 'text-primary', bg: 'bg-primary/15 border-primary/30 shadow-[0_0_12px_hsl(var(--primary)/0.2),inset_0_1px_1px_hsl(var(--primary)/0.15)]', glow: 'before:from-primary/20 before:to-transparent' },
-  accent: { text: 'text-accent', bg: 'bg-accent/15 border-accent/30 shadow-[0_0_12px_hsl(var(--accent)/0.2),inset_0_1px_1px_hsl(var(--accent)/0.15)]', glow: 'before:from-accent/20 before:to-transparent' },
-  success: { text: 'text-success', bg: 'bg-success/15 border-success/30 shadow-[0_0_12px_hsl(var(--success)/0.2),inset_0_1px_1px_hsl(var(--success)/0.15)]', glow: 'before:from-success/20 before:to-transparent' },
-  warning: { text: 'text-warning', bg: 'bg-warning/15 border-warning/30 shadow-[0_0_12px_hsl(var(--warning)/0.2),inset_0_1px_1px_hsl(var(--warning)/0.15)]', glow: 'before:from-warning/20 before:to-transparent' },
-  destructive: { text: 'text-destructive', bg: 'bg-destructive/15 border-destructive/30 shadow-[0_0_12px_hsl(var(--destructive)/0.2),inset_0_1px_1px_hsl(var(--destructive)/0.15)]', glow: 'before:from-destructive/20 before:to-transparent' },
-};
-
 export function WidgetCard({ widget, value, isEditMode, isClickable, onEdit, onDelete, onClick }: WidgetCardProps) {
-  const Icon = metricIcons[widget.metric];
-  const colors = colorClasses[widget.color];
-
   const {
     attributes,
     listeners,
@@ -99,14 +73,20 @@ export function WidgetCard({ widget, value, isEditMode, isClickable, onEdit, onD
           </Button>
         </div>
       )}
-      <CardContent className="flex items-center gap-4 p-4">
-        <div className={`relative flex h-12 w-12 items-center justify-center rounded-lg border backdrop-blur-sm flex-shrink-0 overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-b before:rounded-lg ${colors.bg} ${colors.glow}`}>
-          <Icon className={`relative z-10 h-6 w-6 ${colors.text}`} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm truncate" style={{ color: 'rgba(160, 200, 255, 0.50)' }}>{widget.label}</p>
-          <p className="text-2xl font-semibold" style={{ color: '#dde8f8' }}>{value}</p>
-        </div>
+      <CardContent className="flex flex-col justify-center gap-1 px-3 py-3">
+        <p
+          className="text-[11px] font-medium uppercase tracking-wide truncate leading-tight"
+          style={{ color: 'rgba(160, 200, 255, 0.55)' }}
+          title={widget.label}
+        >
+          {widget.label}
+        </p>
+        <p
+          className="text-xl font-semibold tabular-nums truncate leading-tight"
+          style={{ color: '#dde8f8' }}
+        >
+          {value}
+        </p>
       </CardContent>
     </Card>
   );
