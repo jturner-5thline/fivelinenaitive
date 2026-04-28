@@ -390,7 +390,7 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
                   title="Also create this task in Asana"
                 >
                   <Switch
-                    checked={asanaSyncByKey[key] !== false}
+                    checked={isAsanaSyncOn(key)}
                     onCheckedChange={(v) =>
                       setAsanaSyncByKey((prev) => ({ ...prev, [key]: v }))
                     }
