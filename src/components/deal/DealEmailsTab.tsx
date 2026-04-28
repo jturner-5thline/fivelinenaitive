@@ -1264,6 +1264,43 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             <ScrollArea className="flex-1">
               <div className="py-1.5">
                 {systemFolders.map(item => renderSidebarItem(item))}
+                {/* ── Custom labels section ── */}
+                <div className="mt-2 pt-2 border-t border-white/[0.04]">
+                  <div
+                    className={cn(
+                      'flex items-center gap-1 px-3 pb-1 transition-opacity duration-150',
+                      railExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none h-0 pb-0'
+                    )}
+                    aria-hidden={!railExpanded}
+                  >
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 flex-1">
+                      Labels
+                    </span>
+                    <Tooltip delayDuration={150}>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => setManageLabelsOpen(true)}
+                          className="h-5 w-5 flex items-center justify-center rounded text-muted-foreground/70 hover:text-foreground hover:bg-foreground/10"
+                          aria-label="Manage labels"
+                        >
+                          <PlusIcon className="h-3 w-3" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="text-xs">Manage labels</TooltipContent>
+                    </Tooltip>
+                  </div>
+                  {labelFolders.length === 0 && railExpanded && (
+                    <button
+                      type="button"
+                      onClick={() => setManageLabelsOpen(true)}
+                      className="w-full text-left text-[11px] text-muted-foreground/70 hover:text-foreground px-3 py-1"
+                    >
+                      + Create label
+                    </button>
+                  )}
+                  {labelFolders.map(item => renderSidebarItem(item))}
+                </div>
               </div>
             </ScrollArea>
           </div>
