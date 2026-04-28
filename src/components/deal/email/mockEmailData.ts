@@ -23,6 +23,13 @@ export interface EmailAttachment {
 export interface MockEmail {
   id: string;
   threadId: string;
+  /**
+   * Canonical provider (Gmail/Nylas) thread id. Use this — not `threadId` —
+   * as the persistence key for cross-deal artifacts like label assignments
+   * so they survive navigation between deal scopes and provider re-fetches
+   * where the local `threadId` may differ.
+   */
+  provider_thread_id?: string | null;
   subject: string;
   from_name: string;
   from_email: string;
@@ -271,6 +278,8 @@ export const mockEmails: MockEmail[] = [
 // Thread grouping helpers
 export interface EmailThread {
   threadId: string;
+  /** Canonical provider (Gmail/Nylas) thread id when known. Preferred persistence key. */
+  provider_thread_id?: string | null;
   subject: string;
   emails: MockEmail[];
   latestEmail: MockEmail;
@@ -288,9 +297,13 @@ export const groupEmailsByThread = (emails: MockEmail[]): EmailThread[] => {
   const threadMap = new Map<string, MockEmail[]>();
   
   emails.forEach(email => {
-    const existing = threadMap.get(email.threadId) || [];
+    // Group by canonical provider thread id when available so that messages
+    // belonging to the same Gmail thread always coalesce — even if the local
+    // `threadId` fell back to a per-message id during mapping.
+    const key = email.provider_thread_id || email.threadId;
+    const existing = threadMap.get(key) || [];
     existing.push(email);
-    threadMap.set(email.threadId, existing);
+    threadMap.set(key, existing);
   });
 
   const threads: EmailThread[] = [];
@@ -306,6 +319,7 @@ export const groupEmailsByThread = (emails: MockEmail[]): EmailThread[] => {
 
     threads.push({
       threadId,
+      provider_thread_id: latest.provider_thread_id ?? null,
       subject: latest.subject.replace(/^Re:\s*/i, ''),
       emails: sorted,
       latestEmail: latest,

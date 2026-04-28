@@ -439,7 +439,10 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
     <EmailContextMenu
       isRead={!isUnread}
       isStarred={thread.isStarred}
-      threadId={thread.threadId}
+      // Persist label assignments against the canonical provider thread id
+      // so they carry across deals / sessions / refetches. Falls back to the
+      // local UI threadId when the provider id is unknown (mock data).
+      threadId={thread.provider_thread_id || thread.threadId}
       onMarkRead={() => onMarkRead?.(latest)}
       onMarkUnread={() => onMarkUnread?.(latest)}
       onToggleStar={() => onToggleStar(latest)}
@@ -646,7 +649,7 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
           onDelete={onDelete}
           evaluateAutoLabels={evaluateAutoLabels}
           priorityFlag={flagsByThread[thread.threadId]}
-          userLabels={threadLabelMap.get(thread.threadId)}
+          userLabels={threadLabelMap.get(thread.provider_thread_id || thread.threadId)}
         />
       ))}
     </div>
@@ -1975,7 +1978,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
               {/* Thread labels */}
               <div className="px-5 mb-2">
-                <ThreadLabelsBar threadId={thread.threadId} />
+                <ThreadLabelsBar threadId={thread.provider_thread_id || thread.threadId} />
               </div>
 
               {/* AI-detected lender pass banner */}

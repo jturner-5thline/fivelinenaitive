@@ -46,6 +46,28 @@ export interface EmailLabelAssignment {
   applied_at: string;
 }
 
+/**
+ * Resolve the canonical persistence key for a thread's label assignments.
+ * Prefers the provider (Gmail/Nylas) thread id when available, falling back
+ * to the local UI `threadId` so mock data and not-yet-hydrated rows still
+ * work. Always pass the result of this helper to label apply/remove/lookup
+ * APIs so labels survive cross-deal navigation and provider re-fetches.
+ */
+export function getThreadLabelKey(thread: {
+  threadId: string;
+  provider_thread_id?: string | null;
+}): string {
+  return thread.provider_thread_id || thread.threadId;
+}
+
+/** Same as getThreadLabelKey, for a single MockEmail-like row. */
+export function getEmailLabelKey(email: {
+  threadId: string;
+  provider_thread_id?: string | null;
+}): string {
+  return email.provider_thread_id || email.threadId;
+}
+
 // ─────────────────────────────────────────────────────────────────
 // Legacy compatibility surface
 // ─────────────────────────────────────────────────────────────────
