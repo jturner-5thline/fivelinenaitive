@@ -993,6 +993,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const [linkedDealId, setLinkedDealId] = useState<string | undefined>(undefined);
   const [showSendToDataRoom, setShowSendToDataRoom] = useState(false);
 
+  // ─── Pre-send "link this reply to a deal?" prompt ───────────
+  // Shown automatically when the user clicks Send on a reply for which we
+  // can't resolve a deal (no explicit dealId, no per-thread link, no
+  // workflow likely-deal). The dialog offers a quick deal selector and a
+  // "Send without logging" escape hatch so we never block the send.
+  const [linkPromptOpen, setLinkPromptOpen] = useState(false);
+  const pendingSendRef = useRef<Omit<MockEmail, 'id' | 'threadId'> | null>(null);
+
   // Lift workflow analysis here so the in-thread Attachments module can show the
   // "Add to Data Room" CTA whenever a likely-deal match exists (mirrors AI Assist).
   const workflowThreadData = {
