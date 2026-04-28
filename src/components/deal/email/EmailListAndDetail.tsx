@@ -2084,7 +2084,135 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           initialDealName={linkedDealName}
         />
       )}
+
+      {/* Pre-send link-to-deal prompt */}
+      <LinkReplyToDealDialog
+        open={linkPromptOpen}
+        onOpenChange={(v) => {
+          setLinkPromptOpen(v);
+          if (!v) pendingSendRef.current = null;
+        }}
+        defaultQuery={thread.dealName || thread.subject || ''}
+        onPick={(picked) => {
+          const pending = pendingSendRef.current;
+          pendingSendRef.current = null;
+          setLinkPromptOpen(false);
+          if (!pending) return;
+          setLinkedDealId(picked.id);
+          setLinkedDealName(picked.name);
+          performSendWithLink(pending, { dealId: picked.id, dealName: picked.name });
+        }}
+        onSendWithoutLogging={() => {
+          const pending = pendingSendRef.current;
+          pendingSendRef.current = null;
+          setLinkPromptOpen(false);
+          if (!pending) return;
+          performSendWithLink(pending, { dealId: null, dealName: null });
+        }}
+      />
     </>
 
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pre-send "Link this reply to a deal?" dialog
+// Lightweight searchable list backed by the user's deals table. Render only
+// when triggered, so the query runs lazily on open.
+// ─────────────────────────────────────────────────────────────────────────────
+function LinkReplyToDealDialog({
+  open,
+  onOpenChange,
+  defaultQuery,
+  onPick,
+  onSendWithoutLogging,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  defaultQuery?: string;
+  onPick: (deal: { id: string; name: string }) => void;
+  onSendWithoutLogging: () => void;
+}) {
+  const [query, setQuery] = useState(defaultQuery || '');
+  const [deals, setDeals] = useState<Array<{ id: string; name: string }>>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setQuery(defaultQuery || '');
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const { data } = await supabase
+          .from('deals')
+          .select('id, company')
+          .order('updated_at', { ascending: false })
+          .limit(50);
+        if (cancelled) return;
+        setDeals((data || []).map((d: any) => ({ id: d.id, name: d.company || 'Untitled deal' })));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, defaultQuery]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return deals.slice(0, 20);
+    return deals.filter((d) => d.name.toLowerCase().includes(q)).slice(0, 20);
+  }, [deals, query]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Link this reply to a deal before sending?</DialogTitle>
+          <DialogDescription>
+            Linking lets us log the reply to that deal&rsquo;s activity timeline and
+            update the matched lender&rsquo;s last-contact date.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2">
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search deals…"
+            autoFocus
+          />
+          <div className="max-h-64 overflow-y-auto rounded-md border border-border/50 divide-y divide-border/40">
+            {loading ? (
+              <div className="p-3 text-xs text-muted-foreground inline-flex items-center gap-2">
+                <Loader2 className="h-3 w-3 animate-spin" /> Loading deals…
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="p-3 text-xs text-muted-foreground">No matching deals.</div>
+            ) : (
+              filtered.map((d) => (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => onPick(d)}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted/40 transition-colors"
+                >
+                  {d.name}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2 sm:gap-2">
+          <Button variant="ghost" onClick={onSendWithoutLogging}>
+            Send without logging
+          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
