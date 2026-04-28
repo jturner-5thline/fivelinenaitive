@@ -686,6 +686,7 @@ export default function Tasks() {
                 onDuplicate={() => duplicateView.mutate(v)}
                 onDelete={() => deleteView.mutate(v.id)}
                 onCopyLink={() => handleCopyPresetLink(v)}
+                onTogglePin={() => togglePinView.mutate(v)}
               />
             );
           })}
