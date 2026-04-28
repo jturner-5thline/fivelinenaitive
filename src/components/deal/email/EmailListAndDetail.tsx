@@ -331,16 +331,22 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
           
           {/* Row 3: Preview text + deal pill */}
           <div className="flex items-center gap-1.5 mt-0.5">
-            {priorityFlag && (
-              <Badge
-                variant="outline"
-                className="text-[9px] h-[16px] px-1 gap-0.5 bg-amber-500/12 text-amber-500 border-amber-500/35 shrink-0"
-                title={`Priority signal: ${priorityFlag.label} — "${priorityFlag.quote}"`}
-              >
-                <Flag className="h-2.5 w-2.5 fill-amber-500 text-amber-500" />
-                {priorityFlag.label}
-              </Badge>
-            )}
+            {priorityFlag && (() => {
+              const sev = getSignalSeverity(priorityFlag.type);
+              return (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'text-[9px] h-[16px] px-1 gap-0.5 shrink-0',
+                    PRIORITY_PILL_CLASSES[sev],
+                  )}
+                  title={`Priority signal: ${priorityFlag.label} — "${priorityFlag.quote}"`}
+                >
+                  <Flag className={cn('h-2.5 w-2.5', PRIORITY_ICON_CLASSES[sev])} />
+                  {priorityFlag.label}
+                </Badge>
+              );
+            })()}
             {dealMatch ? (
               <DealMatchBadge match={dealMatch} variant="compact" />
             ) : thread.dealName ? (
