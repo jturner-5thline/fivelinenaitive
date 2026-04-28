@@ -441,6 +441,10 @@ export function CashFlowManager() {
   const [debouncedYears, setDebouncedYears] = useState<string[]>([]);
   const [debouncedQuarters, setDebouncedQuarters] = useState<string[]>([]);
 
+  // Entity (account) and Category filters for Configure-driven KPIs/charts/grid
+  const [filterEntities, setFilterEntities] = useState<string[]>([]);
+  const [filterCategories, setFilterCategories] = useState<string[]>([]);
+
   // Debounce filters by 200ms
   useEffect(() => {
     const t = setTimeout(() => {
