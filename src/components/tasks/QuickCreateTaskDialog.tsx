@@ -72,34 +72,42 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
 
   // ─── One-click presets ────────────────────────────────────────────────
   // Combo presets snap several fields at once (priority + due + status).
+  // Applying a combo also clears conflicting state: any prior recurrence
+  // rule (the combo redefines the schedule) and stale validation warnings.
+  const applyCombo = (fn: () => void) => {
+    fn();
+    setRecurrence(null);
+    setWarning('');
+    setConfirmedJunk(false);
+  };
   const combos: { id: string; label: string; icon: React.ReactNode; tone: string; apply: () => void }[] = [
     {
       id: 'urgent_today',
       label: 'Urgent · Today',
       icon: <Flame className="h-3 w-3" />,
       tone: '#e57373',
-      apply: () => { setPriority('urgent'); setDueDate(new Date()); setStatus('not_started'); },
+      apply: () => applyCombo(() => { setPriority('urgent'); setDueDate(new Date()); setStatus('not_started'); }),
     },
     {
       id: 'high_tomorrow',
       label: 'High · Tomorrow',
       icon: <Zap className="h-3 w-3" />,
       tone: '#e89b6c',
-      apply: () => { setPriority('high'); setDueDate(addDays(new Date(), 1)); setStatus('not_started'); },
+      apply: () => applyCombo(() => { setPriority('high'); setDueDate(addDays(new Date(), 1)); setStatus('not_started'); }),
     },
     {
       id: 'this_week',
       label: 'Medium · This week',
       icon: <CalendarDays className="h-3 w-3" />,
       tone: '#7eb8f7',
-      apply: () => { setPriority('medium'); setDueDate(addDays(new Date(), 5)); setStatus('not_started'); },
+      apply: () => applyCombo(() => { setPriority('medium'); setDueDate(addDays(new Date(), 5)); setStatus('not_started'); }),
     },
     {
       id: 'quick_todo',
       label: 'Quick todo',
       icon: <Coffee className="h-3 w-3" />,
       tone: '#9aa3b6',
-      apply: () => { setPriority('low'); setDueDate(undefined); setStatus('not_started'); },
+      apply: () => applyCombo(() => { setPriority('low'); setDueDate(undefined); setStatus('not_started'); }),
     },
   ];
 
