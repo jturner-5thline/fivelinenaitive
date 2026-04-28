@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2, SlidersHorizontal } from 'lucide-react';
 import { useAsanaGoals, type AsanaGoalRow } from '@/hooks/useAsanaGoals';
+import { useAsanaGoalFilterPrefs } from '@/hooks/useAsanaGoalFilterPrefs';
 
 /* ─────────────────────────────────────────────────────────────────────────
    Quarterly Insights Report — reusable full report page for the existing
@@ -590,20 +591,39 @@ function ReportNarrativeSection({ s, set }: { s: ReportState; set: ReportSetStat
 
 function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState }) {
   const { goals: asanaGoals, loading, error, lastSyncedAt, configured, refresh } = useAsanaGoals();
+  const prefs = useAsanaGoalFilterPrefs();
+
+  // When server prefs finish loading, hydrate the per-report state once so
+  // downstream code (and persisted localStorage snapshot) stays in sync.
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (!prefs.isLoaded || hydratedRef.current) return;
+    hydratedRef.current = true;
+    set(prev => ({
+      ...prev,
+      asanaGoalFilters: prefs.filters,
+      asanaGoalOverride: prefs.override,
+      asanaGoalExactMatch: prefs.exactMatch,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefs.isLoaded]);
 
   const preparedBy = s.authors[0] || 'James Turner';
   const normalize = (v: string) => v.trim().toLowerCase().replace(/\s+/g, ' ');
   const preparedByKey = normalize(preparedBy);
 
-  const templates = s.asanaGoalFilters || DEFAULT_ASANA_GOAL_FILTERS;
+  const templates = (prefs.isLoaded ? prefs.filters : (s.asanaGoalFilters || DEFAULT_ASANA_GOAL_FILTERS));
   const derived = useMemo(() => deriveAsanaGoalPeriod(s, templates), [s, templates]);
-  const activeQuarterLabel = s.asanaGoalOverride?.quarterLabel ?? derived.quarterLabel;
-  const activeHalfLabel = s.asanaGoalOverride?.halfLabel ?? derived.halfLabel;
+  const activeOverride = prefs.isLoaded ? prefs.override : s.asanaGoalOverride;
+  const activeExactMatch = prefs.isLoaded ? prefs.exactMatch : !!s.asanaGoalExactMatch;
+  const activeQuarterLabel = activeOverride?.quarterLabel ?? derived.quarterLabel;
+  const activeHalfLabel = activeOverride?.halfLabel ?? derived.halfLabel;
 
   // Reset manual override whenever the underlying period changes.
   useEffect(() => {
-    if (s.asanaGoalOverride) {
+    if (activeOverride) {
       set(prev => ({ ...prev, asanaGoalOverride: null }));
+      if (prefs.isLoaded) void prefs.save({ override: null });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.period, s.quarter, s.month]);
@@ -613,7 +633,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
     const norm = tp.trim().toLowerCase();
     const q = activeQuarterLabel.trim().toLowerCase();
     const h = activeHalfLabel.trim().toLowerCase();
-    const exact = !!s.asanaGoalExactMatch;
+    const exact = activeExactMatch;
     if (exact) {
       if (q && norm === q) return true;
       if (h && norm === h) return true;
@@ -631,7 +651,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
   const visibleGoals = useMemo(
     () => ownerGoals.filter(g => matchesPeriod(g.timePeriod)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [ownerGoals, activeQuarterLabel, activeHalfLabel, s.asanaGoalExactMatch]
+    [ownerGoals, activeQuarterLabel, activeHalfLabel, activeExactMatch]
   );
 
   const [filterEditorOpen, setFilterEditorOpen] = useState(false);
@@ -739,14 +759,11 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
   );
 
   const updateTemplate = (kind: 'quarters' | 'halves', key: string, val: string) => {
-    set(prev => {
-      const base = prev.asanaGoalFilters || DEFAULT_ASANA_GOAL_FILTERS;
-      const nextSection = { ...base[kind], [key]: val } as Record<string, string>;
-      return {
-        ...prev,
-        asanaGoalFilters: { ...base, [kind]: nextSection } as AsanaGoalFilterTemplates,
-      };
-    });
+    const base = templates;
+    const nextSection = { ...base[kind], [key]: val } as Record<string, string>;
+    const nextFilters = { ...base, [kind]: nextSection } as AsanaGoalFilterTemplates;
+    set(prev => ({ ...prev, asanaGoalFilters: nextFilters }));
+    void prefs.save({ filters: nextFilters });
   };
 
   const renderFilterEditor = () => {
@@ -795,8 +812,12 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
             <div style={lbl}>Override quarter (this report)</div>
             <input
               placeholder={derived.quarterLabel}
-              value={s.asanaGoalOverride?.quarterLabel ?? ''}
-              onChange={e => set(prev => ({ ...prev, asanaGoalOverride: { ...(prev.asanaGoalOverride || {}), quarterLabel: e.target.value || undefined } }))}
+              value={activeOverride?.quarterLabel ?? ''}
+              onChange={e => {
+                const nextOverride = { ...(activeOverride || {}), quarterLabel: e.target.value || undefined };
+                set(prev => ({ ...prev, asanaGoalOverride: nextOverride }));
+                void prefs.save({ override: nextOverride });
+              }}
               style={inp}
             />
           </div>
@@ -804,8 +825,12 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
             <div style={lbl}>Override half (this report)</div>
             <input
               placeholder={derived.halfLabel}
-              value={s.asanaGoalOverride?.halfLabel ?? ''}
-              onChange={e => set(prev => ({ ...prev, asanaGoalOverride: { ...(prev.asanaGoalOverride || {}), halfLabel: e.target.value || undefined } }))}
+              value={activeOverride?.halfLabel ?? ''}
+              onChange={e => {
+                const nextOverride = { ...(activeOverride || {}), halfLabel: e.target.value || undefined };
+                set(prev => ({ ...prev, asanaGoalOverride: nextOverride }));
+                void prefs.save({ override: nextOverride });
+              }}
               style={inp}
             />
           </div>
@@ -814,8 +839,12 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginRight: 'auto', fontSize: 11, color: TEXT_PRIMARY, cursor: 'pointer', userSelect: 'none' }}>
             <input
               type="checkbox"
-              checked={!!s.asanaGoalExactMatch}
-              onChange={e => set(prev => ({ ...prev, asanaGoalExactMatch: e.target.checked }))}
+              checked={activeExactMatch}
+              onChange={e => {
+                const next = e.target.checked;
+                set(prev => ({ ...prev, asanaGoalExactMatch: next }));
+                void prefs.save({ exactMatch: next });
+              }}
               style={{ accentColor: '#5ba3d0' }}
             />
             Exact match (case-insensitive)
@@ -823,7 +852,10 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
               — when off, matches by substring so different FY formats still match
             </span>
           </label>
-          <Btn variant="ghost" onClick={() => set(prev => ({ ...prev, asanaGoalFilters: DEFAULT_ASANA_GOAL_FILTERS, asanaGoalOverride: null }))}>
+          <Btn variant="ghost" onClick={() => {
+            set(prev => ({ ...prev, asanaGoalFilters: DEFAULT_ASANA_GOAL_FILTERS, asanaGoalOverride: null }));
+            void prefs.reset();
+          }}>
             Reset mapping
           </Btn>
           <Btn variant="ghost" onClick={() => setFilterEditorOpen(false)}>Done</Btn>
@@ -843,9 +875,9 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
           {' · '}
           <span style={{ color: TEXT_PRIMARY }}>{activeHalfLabel || '—'}</span>
           <span style={{ marginLeft: 8, fontSize: 9, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: TEXT_LABEL }}>
-            · {s.asanaGoalExactMatch ? 'exact' : 'substring'}
+            · {activeExactMatch ? 'exact' : 'substring'}
           </span>
-          {s.asanaGoalOverride && (s.asanaGoalOverride.quarterLabel || s.asanaGoalOverride.halfLabel) && (
+          {activeOverride && (activeOverride.quarterLabel || activeOverride.halfLabel) && (
             <span style={{ marginLeft: 8, fontSize: 9, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#f0a45a' }}>
               · manual override
             </span>
