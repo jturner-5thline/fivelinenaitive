@@ -654,6 +654,21 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
     [ownerGoals, activeQuarterLabel, activeHalfLabel, activeExactMatch]
   );
 
+  // Preview counts for both modes — used in the filter editor next to the toggle.
+  const matchPreview = useMemo(() => {
+    const q = activeQuarterLabel.trim().toLowerCase();
+    const h = activeHalfLabel.trim().toLowerCase();
+    const exactMatches: typeof ownerGoals = [];
+    const substringMatches: typeof ownerGoals = [];
+    for (const g of ownerGoals) {
+      const tp = (g.timePeriod || '').trim().toLowerCase();
+      if (!tp) continue;
+      if ((q && tp === q) || (h && tp === h)) exactMatches.push(g);
+      if ((q && tp.includes(q)) || (h && tp.includes(h))) substringMatches.push(g);
+    }
+    return { exact: exactMatches, substring: substringMatches };
+  }, [ownerGoals, activeQuarterLabel, activeHalfLabel]);
+
   const [filterEditorOpen, setFilterEditorOpen] = useState(false);
 
   const thStyle: React.CSSProperties = { textAlign: 'left', fontSize: 9, fontWeight: 700, color: 'rgba(140,175,200,0.5)', letterSpacing: '.08em', textTransform: 'uppercase', padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)' };
