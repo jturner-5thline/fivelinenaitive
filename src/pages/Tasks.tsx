@@ -13,7 +13,6 @@ import { TaskDetailDrawer } from '@/components/tasks/TaskDetailDrawer';
 import { TaskCalendarView } from '@/components/tasks/TaskCalendarView';
 import { TaskReportingView } from '@/components/tasks/TaskReportingView';
 import { TaskBulkActionBar } from '@/components/tasks/TaskBulkActionBar';
-import { TaskKPICards } from '@/components/tasks/TaskKPICards';
 import { TaskFocusMode } from '@/components/tasks/TaskFocusMode';
 import { useTaskNotifications } from '@/hooks/useTaskNotifications';
 import { useTaskSavedViews, type TaskSavedView } from '@/hooks/useTaskSavedViews';
@@ -48,7 +47,7 @@ import {
   ListTodo, LayoutGrid, Calendar, Plus, Search, Filter,
   SlidersHorizontal, Group, Trash2, BarChart3,
   Bookmark, BookmarkPlus, FileDown, Star, MoreVertical,
-  Tag, ClipboardList, Users, Briefcase, AlertTriangle, Building2,
+  Tag, ClipboardList, Users, Briefcase, Building2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { isToday, isPast, addDays, startOfDay } from 'date-fns';
@@ -442,29 +441,30 @@ export default function Tasks() {
   return (
     <>
       <Helmet><title>Tasks | 5thLine</title></Helmet>
-      <div className="flex flex-col h-full" style={{ backgroundColor: '#0d1117' }}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b min-w-0 gap-4 flex-nowrap" style={{ borderColor: '#2a2f3e' }}>
-          <div className="flex items-center gap-3 min-w-0 overflow-hidden">
-            <h1 className="text-xl font-semibold" style={{ color: 'white' }}>
+      <div className="flex flex-col h-full" style={{ backgroundColor: '#0f1216' }}>
+        {/* Header — title + muted summary + segmented view control */}
+        <div className="flex items-end justify-between px-6 pt-5 pb-3 min-w-0 gap-4 flex-nowrap">
+          <div className="min-w-0">
+            <h1 className="text-[20px] font-semibold tracking-tight leading-none" style={{ color: '#f3f4f6' }}>
               {ownerFilter === 'mine' ? 'My Tasks' : ownerFilter === 'others' ? "Others' Tasks" : 'All Tasks'}
             </h1>
-            <span className="text-sm" style={{ color: '#8b92a5' }}>
-              {filtered.length} task{filtered.length !== 1 ? 's' : ''}
-            </span>
-            {overdueCount > 0 && (
-              <span
-                className="text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1"
-                style={{ backgroundColor: '#ff4d4d', color: 'white' }}
-              >
-                <AlertTriangle className="h-3 w-3" />
-                {overdueCount} overdue
-              </span>
-            )}
+            <p className="mt-1.5 text-[12px]" style={{ color: '#7a8194' }}>
+              <span>{filtered.filter(t => t.status !== 'complete').length} open</span>
+              {overdueCount > 0 && (
+                <>
+                  <span className="mx-1.5 opacity-60">·</span>
+                  <span style={{ color: '#e57373' }}>{overdueCount} overdue</span>
+                </>
+              )}
+            </p>
           </div>
+
           <div className="flex items-center gap-2 flex-shrink-0 flex-nowrap">
-            {/* View tabs as pills */}
-            <div className="flex items-center rounded-lg p-0.5" style={{ backgroundColor: '#1a1f2e' }}>
+            {/* Refined segmented control */}
+            <div
+              className="flex items-center rounded-md p-[3px] border"
+              style={{ backgroundColor: 'rgba(20,24,32,0.7)', borderColor: 'rgba(255,255,255,0.06)' }}
+            >
               {viewTabs.map(tab => {
                 const Icon = tab.icon;
                 const isActive = viewMode === tab.key;
@@ -473,33 +473,74 @@ export default function Tasks() {
                     key={tab.key}
                     onClick={() => setViewMode(tab.key as ViewMode)}
                     className={cn(
-                      'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all',
-                      isActive ? 'shadow-sm' : ''
+                      'flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-[5px] transition-all'
                     )}
                     style={{
-                      backgroundColor: isActive ? '#3b7eff' : 'transparent',
-                      color: isActive ? 'white' : '#8b92a5',
+                      backgroundColor: isActive ? 'rgba(126,184,247,0.12)' : 'transparent',
+                      color: isActive ? '#cfe3ff' : '#7a8194',
+                      boxShadow: isActive ? 'inset 0 0 0 1px rgba(126,184,247,0.25)' : 'none',
                     }}
                   >
-                    <Icon className="h-3.5 w-3.5" />
+                    <Icon className="h-3 w-3" />
                     <span className="hidden sm:inline">{tab.label}</span>
                   </button>
                 );
               })}
             </div>
-            <Button
-              size="sm"
-              className="h-8 text-xs gap-1.5 rounded-lg font-semibold"
-              style={{ backgroundColor: '#3b7eff', color: 'white' }}
+            <button
+              className="h-7 px-2.5 text-[11px] font-medium rounded-md flex items-center gap-1.5 transition-colors"
+              style={{ color: '#cfe3ff', backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.08)' }}
               onClick={() => setShowFocusMode(true)}
             >
-              <Star className="h-3.5 w-3.5" /> Focus
-            </Button>
+              <Star className="h-3 w-3" /> Focus
+            </button>
             <ClaapRoutingTasksBadge />
           </div>
         </div>
 
-        {/* Custom Tab Bar */}
+        {/* Scope tabs row — My / Deal / Personal / Completed */}
+        <div className="flex items-center gap-1 px-6 pb-2.5 flex-wrap">
+          {([
+            { key: 'my', label: 'My', test: (t: Task) => user && t.assigned_to === user.id && t.status !== 'complete' },
+            { key: 'deal', label: 'Deal', test: (t: Task) => !!t.deal_id && t.status !== 'complete' },
+            { key: 'personal', label: 'Personal', test: (t: Task) => !t.deal_id && !t.crm_company_id && !t.contact_id && t.status !== 'complete' },
+            { key: 'completed', label: 'Completed', test: (t: Task) => t.status === 'complete' },
+          ] as const).map(s => {
+            const count = tasks.filter(s.test as any).length;
+            const isCompletedScope = s.key === 'completed';
+            const isActive = isCompletedScope ? filterStatus === 'complete'
+              : s.key === 'my' ? (ownerFilter === 'mine' && filterStatus !== 'complete')
+              : false;
+            return (
+              <button
+                key={s.key}
+                onClick={() => {
+                  if (s.key === 'completed') { setFilterStatus('complete'); }
+                  else if (s.key === 'my') { setOwnerFilter('mine'); setFilterStatus('incomplete'); }
+                  else if (s.key === 'deal') { setFilterStatus('incomplete'); }
+                  else { setFilterStatus('incomplete'); }
+                }}
+                className="flex items-center gap-1.5 px-2.5 h-7 text-[11px] font-medium rounded-md transition-all"
+                style={{
+                  color: isActive ? '#e6ecf5' : '#7a8194',
+                  backgroundColor: isActive ? 'rgba(126,184,247,0.08)' : 'transparent',
+                  border: `1px solid ${isActive ? 'rgba(126,184,247,0.2)' : 'rgba(255,255,255,0.05)'}`,
+                }}
+              >
+                {s.label}
+                <span
+                  className="text-[10px] px-1.5 rounded-full"
+                  style={{
+                    backgroundColor: isActive ? 'rgba(126,184,247,0.15)' : 'rgba(255,255,255,0.04)',
+                    color: isActive ? '#cfe3ff' : '#7a8194',
+                  }}
+                >{count}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Custom Tab Bar (user saved views) */}
         {viewTabs2.length > 0 && (
           <TaskTabBar
             tabs={viewTabs2}
@@ -519,17 +560,14 @@ export default function Tasks() {
           />
         )}
 
-        {/* KPI Cards */}
-        <TaskKPICards tasks={tasks} />
-
-        {/* Toolbar */}
-        <div className="flex items-center gap-2 px-6 py-2 border-b" style={{ borderColor: '#2a2f3e', backgroundColor: 'rgba(26,31,46,0.5)' }}>
+        {/* Unified filter toolbar */}
+        <div className="flex items-center gap-2 px-6 py-2.5 border-y" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'rgba(18,21,27,0.5)' }}>
           <div className="relative flex-1 max-w-[280px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: '#8b92a5' }} />
-            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tasks..." className="h-8 text-xs pl-8 border-[#2a2f3e] bg-[#13181f] text-white placeholder:text-[#8b92a5]" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: '#7a8194' }} />
+            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tasks…" className="h-7 text-[11px] pl-8 text-white placeholder:text-[#7a8194]" style={{ backgroundColor: 'rgba(20,24,32,0.65)', border: '1px solid rgba(255,255,255,0.06)' }} />
           </div>
           <Select value={ownerFilter} onValueChange={v => setOwnerFilter(v as TaskOwnerFilter)}>
-            <SelectTrigger className="h-8 w-[130px] text-xs border-[#2a2f3e] bg-[#13181f] text-[#8b92a5]">
+            <SelectTrigger className="h-7 w-[120px] text-[11px] text-[#9aa3b6]" style={{ backgroundColor: 'rgba(20,24,32,0.65)', borderColor: 'rgba(255,255,255,0.06)' }}>
               <Users className="h-3 w-3 mr-1.5" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -539,7 +577,7 @@ export default function Tasks() {
             </SelectContent>
           </Select>
           <Select value={filterStatus} onValueChange={v => setFilterStatus(v as FilterStatus)}>
-            <SelectTrigger className="h-8 w-[140px] text-xs border-[#2a2f3e] bg-[#13181f] text-[#8b92a5]">
+            <SelectTrigger className="h-7 w-[130px] text-[11px] text-[#9aa3b6]" style={{ backgroundColor: 'rgba(20,24,32,0.65)', borderColor: 'rgba(255,255,255,0.06)' }}>
               <Filter className="h-3 w-3 mr-1.5" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -556,7 +594,7 @@ export default function Tasks() {
           {uniqueDeals.length > 0 && (
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant={filterDealIds.size > 0 ? "secondary" : "outline"} size="sm" className="h-8 text-xs gap-1.5 border-[#2a2f3e]">
+                <Button variant={filterDealIds.size > 0 ? "secondary" : "outline"} size="sm" className="h-7 text-[11px] gap-1.5" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(20,24,32,0.65)', color: '#9aa3b6' }}>
                   <Briefcase className="h-3 w-3" />
                   {filterDealIds.size > 0
                     ? `Deal: ${uniqueDeals.filter(([id]) => filterDealIds.has(id)).map(([, name]) => name).join(', ')}`
@@ -593,7 +631,7 @@ export default function Tasks() {
           {labels.length > 0 && (
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant={filterLabelIds.size > 0 ? "secondary" : "outline"} size="sm" className="h-8 text-xs gap-1.5 border-[#2a2f3e]">
+                <Button variant={filterLabelIds.size > 0 ? "secondary" : "outline"} size="sm" className="h-7 text-[11px] gap-1.5" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(20,24,32,0.65)', color: '#9aa3b6' }}>
                   <Tag className="h-3 w-3" />
                   {filterLabelIds.size > 0
                     ? `Labels: ${labels.filter(l => filterLabelIds.has(l.id)).map(l => l.name).join(', ')}`
@@ -628,7 +666,7 @@ export default function Tasks() {
           )}
 
           <Select value={sortBy} onValueChange={v => setSortBy(v as SortBy)}>
-            <SelectTrigger className="h-8 w-[130px] text-xs border-[#2a2f3e] bg-[#13181f] text-[#8b92a5]">
+            <SelectTrigger className="h-7 w-[120px] text-[11px] text-[#9aa3b6]" style={{ backgroundColor: 'rgba(20,24,32,0.65)', borderColor: 'rgba(255,255,255,0.06)' }}>
               <SlidersHorizontal className="h-3 w-3 mr-1.5" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -640,7 +678,7 @@ export default function Tasks() {
             </SelectContent>
           </Select>
           <Select value={groupBy} onValueChange={v => setGroupBy(v as GroupBy)}>
-            <SelectTrigger className="h-8 w-[130px] text-xs border-[#2a2f3e] bg-[#13181f] text-[#8b92a5]">
+            <SelectTrigger className="h-7 w-[120px] text-[11px] text-[#9aa3b6]" style={{ backgroundColor: 'rgba(20,24,32,0.65)', borderColor: 'rgba(255,255,255,0.06)' }}>
               <Group className="h-3 w-3 mr-1.5" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -655,7 +693,7 @@ export default function Tasks() {
           {savedViews.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs gap-1 border-[#2a2f3e]">
+                <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(20,24,32,0.65)', color: '#9aa3b6' }}>
                   <Bookmark className="h-3 w-3" /> Views
                 </Button>
               </DropdownMenuTrigger>
@@ -685,7 +723,7 @@ export default function Tasks() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 w-8 p-0 border-[#2a2f3e]">
+              <Button variant="outline" size="sm" className="h-7 w-7 p-0" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(20,24,32,0.65)', color: '#9aa3b6' }}>
                 <MoreVertical className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
@@ -717,8 +755,13 @@ export default function Tasks() {
           >
             <Button
               size="sm"
-              className="h-8 text-xs gap-1.5 rounded-lg font-semibold"
-              style={{ backgroundColor: '#3b7eff', color: 'white' }}
+              className="h-7 text-[11px] gap-1.5 rounded-md font-semibold border"
+              style={{
+                background: 'linear-gradient(180deg, rgba(126,184,247,0.22) 0%, rgba(80,135,210,0.22) 100%)',
+                color: '#eaf2ff',
+                borderColor: 'rgba(126,184,247,0.35)',
+                boxShadow: '0 1px 0 rgba(255,255,255,0.05) inset, 0 4px 14px -8px rgba(80,135,210,0.55)',
+              }}
               onClick={() => { setIsCreating(true); setTaskNameWarning(''); setTaskNameConfirmed(false); setTimeout(() => newTaskRef.current?.focus(), 50); }}
             >
               <Plus className="h-3.5 w-3.5" />

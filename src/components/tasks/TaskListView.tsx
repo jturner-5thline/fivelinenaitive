@@ -35,17 +35,17 @@ import { addDays, isToday, isTomorrow, isThisWeek, isPast, format, startOfDay, n
 const TASK_GRID_COLS = 'grid-cols-[20px_20px_auto_16px_1fr_100px_60px_100px_140px_100px_100px_40px]';
 
 const STATUS_COLORS: Record<string, { label: string; bg: string; dot: string }> = {
-  not_started: { label: 'Not Started', bg: '#6b7280', dot: '#6b7280' },
-  in_progress: { label: 'In Progress', bg: '#3b7eff', dot: '#3b7eff' },
-  blocked: { label: 'Blocked', bg: '#ff4d4d', dot: '#ff4d4d' },
-  complete: { label: 'Complete', bg: '#22c55e', dot: '#22c55e' },
+  not_started: { label: 'Not Started', bg: '#7a8194', dot: '#7a8194' },
+  in_progress: { label: 'In Progress', bg: '#7eb8f7', dot: '#7eb8f7' },
+  blocked: { label: 'Blocked', bg: '#e57373', dot: '#e57373' },
+  complete: { label: 'Complete', bg: '#7fc89a', dot: '#7fc89a' },
 };
 
 const PRIORITY_PILL: Record<string, { label: string; bg: string }> = {
-  urgent: { label: 'Urgent', bg: '#ff4d4d' },
-  high: { label: 'High', bg: '#ff4d4d' },
-  medium: { label: 'Medium', bg: '#f59e0b' },
-  low: { label: 'Low', bg: '#6b7280' },
+  urgent: { label: 'Urgent', bg: '#e57373' },
+  high: { label: 'High', bg: '#e89b6c' },
+  medium: { label: 'Medium', bg: '#d4a45a' },
+  low: { label: 'Low', bg: '#7a8194' },
 };
 
 export type GroupBy = 'status' | 'time' | 'priority' | 'focus';
@@ -208,7 +208,7 @@ export function TaskListView({
       <div>
         {/* Column header */}
         <div className={`grid ${TASK_GRID_COLS} gap-2 items-center px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide sticky top-0 z-10`}
-          style={{ backgroundColor: '#1a1f2e', color: '#8b92a5', borderBottom: '1px solid #2a2f3e' }}>
+          style={{ backgroundColor: 'rgba(18,21,27,0.92)', backdropFilter: 'blur(8px)', color: '#7a8194', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
           <div />
           <div className="cursor-pointer" onClick={onSelectAll} title="Select all (Ctrl+A)">
             <Checkbox checked={selectedTaskIds && selectedTaskIds.size > 0 && selectedTaskIds.size === tasks.length} onCheckedChange={() => onSelectAll?.()} className="h-3.5 w-3.5" />
@@ -254,24 +254,27 @@ export function TaskListView({
                 {/* Section header */}
                 <button
                   onClick={() => toggleSection(group.key)}
-                  className="w-full flex items-center gap-2.5 px-4 h-11 transition-colors text-left"
+                  className="w-full flex items-center gap-2.5 px-4 h-9 transition-colors text-left sticky z-[5]"
                   style={{
-                    borderLeft: `3px solid ${accentColor}`,
-                    backgroundColor: `${accentColor}0d`,
+                    top: 38,
+                    borderLeft: `2px solid ${accentColor}`,
+                    backgroundColor: `${accentColor}10`,
+                    backdropFilter: 'blur(6px)',
+                    borderBottom: '1px solid rgba(255,255,255,0.04)',
                   }}
                 >
                   {isCollapsed ? (
-                    <ChevronRight className="h-3.5 w-3.5" style={{ color: '#8b92a5' }} />
+                    <ChevronRight className="h-3 w-3" style={{ color: '#7a8194' }} />
                   ) : (
-                    <ChevronDown className="h-3.5 w-3.5" style={{ color: '#8b92a5' }} />
+                    <ChevronDown className="h-3 w-3" style={{ color: '#7a8194' }} />
                   )}
-                  <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: accentColor }} />
-                  <span className="text-xs font-bold" style={{ color: 'white' }}>{group.label}</span>
-                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: `${accentColor}25`, color: accentColor }}>
+                  <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accentColor }} />
+                  <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: '#cfd5e0' }}>{group.label}</span>
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md" style={{ backgroundColor: `${accentColor}1f`, color: accentColor }}>
                     {group.tasks.length}
                   </span>
                   {group.key === 'complete' && (
-                    <span className="text-[10px] ml-2" style={{ color: '#8b92a5' }}>
+                    <span className="text-[10px] ml-2" style={{ color: '#7a8194' }}>
                       {isCollapsed ? 'Show completed' : 'Hide completed'}
                     </span>
                   )}
@@ -371,16 +374,19 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
     <div>
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="w-full flex items-center gap-2.5 px-4 h-11 transition-colors text-left"
+        className="w-full flex items-center gap-2.5 px-4 h-9 transition-colors text-left sticky z-[5]"
         style={{
-          borderLeft: '3px solid #ff4d4d',
-          backgroundColor: 'rgba(255,77,77,0.05)',
+          top: 38,
+          borderLeft: '2px solid #e57373',
+          backgroundColor: 'rgba(229,115,115,0.08)',
+          backdropFilter: 'blur(6px)',
+          borderBottom: '1px solid rgba(255,255,255,0.04)',
         }}
       >
-        {collapsed ? <ChevronRight className="h-3.5 w-3.5" style={{ color: '#ff4d4d' }} /> : <ChevronDown className="h-3.5 w-3.5" style={{ color: '#ff4d4d' }} />}
-        <AlertTriangle className="h-3.5 w-3.5" style={{ color: '#ff4d4d' }} />
-        <span className="text-xs font-bold" style={{ color: '#ff4d4d' }}>Overdue</span>
-        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(255,77,77,0.2)', color: '#ff4d4d' }}>
+        {collapsed ? <ChevronRight className="h-3 w-3" style={{ color: '#e57373' }} /> : <ChevronDown className="h-3 w-3" style={{ color: '#e57373' }} />}
+        <AlertTriangle className="h-3 w-3" style={{ color: '#e57373' }} />
+        <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: '#e57373' }}>Overdue</span>
+        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md" style={{ backgroundColor: 'rgba(229,115,115,0.18)', color: '#e57373' }}>
           {tasks.length}
         </span>
       </button>
@@ -507,19 +513,19 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       ref={setNodeRef}
       className={cn(
         `grid ${TASK_GRID_COLS} gap-2 items-center px-4 cursor-pointer transition-colors group`,
-        isSelected && 'bg-[#3b7eff]/10',
-        isMultiSelected && 'bg-[#3b7eff]/5',
-        isFocused && 'ring-1 ring-inset ring-[#3b7eff]/40',
+        isSelected && 'bg-[rgba(126,184,247,0.07)]',
+        isMultiSelected && 'bg-[rgba(126,184,247,0.04)]',
+        isFocused && 'ring-1 ring-inset ring-[rgba(126,184,247,0.3)]',
         isDragging && 'z-50',
       )}
-      style={{ ...style, minHeight: 56, borderBottom: '1px solid #2a2f3e' }}
+      style={{ ...style, minHeight: 48, borderBottom: '1px solid rgba(255,255,255,0.04)' }}
       onClick={onSelect}
-      onMouseEnter={(e) => { if (!isDragging) (e.currentTarget as HTMLElement).style.backgroundColor = '#1e2433'; }}
+      onMouseEnter={(e) => { if (!isDragging) (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.025)'; }}
       onMouseLeave={(e) => { if (!isSelected && !isMultiSelected) (e.currentTarget as HTMLElement).style.backgroundColor = ''; }}
     >
       {/* Drag handle */}
       <div className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing" {...attributes} {...listeners} onClick={e => e.stopPropagation()}>
-        <GripVertical className="h-3.5 w-3.5" style={{ color: '#8b92a5' }} />
+        <GripVertical className="h-3 w-3" style={{ color: '#7a8194' }} />
       </div>
 
       {/* Multi-select */}
@@ -529,7 +535,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
 
       {/* Complete checkbox */}
       <Checkbox checked={isComplete} onCheckedChange={() => onToggleComplete()} onClick={e => e.stopPropagation()}
-        className={cn('h-4 w-4 rounded-full transition-all', isComplete && 'bg-[#22c55e] border-[#22c55e]')} />
+        className={cn('h-4 w-4 rounded-full transition-all', isComplete && 'bg-[#7fc89a] border-[#7fc89a]')} />
 
       {/* Star */}
       <div onClick={e => e.stopPropagation()}>
@@ -547,33 +553,33 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
         ) : (
           <div>
             <span
-              className={cn('text-[15px] font-semibold truncate block cursor-text hover:bg-[#1e2433] rounded px-1 -mx-1 py-0.5 transition-colors', isComplete && 'line-through')}
-              style={{ color: isComplete ? '#8b92a5' : 'white' }}
+              className={cn('text-[13.5px] font-semibold truncate block cursor-text hover:bg-[rgba(255,255,255,0.04)] rounded px-1 -mx-1 py-0.5 transition-colors leading-tight', isComplete && 'line-through')}
+              style={{ color: isComplete ? '#7a8194' : '#eef1f6', letterSpacing: '-0.005em' }}
               onDoubleClick={() => { setTitleValue(task.title); setEditingTitle(true); }}
               onClick={onSelect}
             >
               {task.title}
             </span>
             {task.deal_id && task.deal?.company && (
-              <Link to={`/deal/${task.deal_id}`} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium mt-0.5 -mx-0.5 hover:brightness-125 transition-all" style={{ backgroundColor: 'rgba(30,58,95,0.6)', color: '#93c5fd' }} onClick={e => e.stopPropagation()}>
+              <Link to={`/deal/${task.deal_id}`} className="inline-flex items-center gap-1 px-1 py-0.5 rounded text-[10px] font-normal mt-0.5 -mx-0.5 hover:text-[#cfe3ff] transition-colors" style={{ color: '#7a8194' }} onClick={e => e.stopPropagation()}>
                 <Building2 className="h-2.5 w-2.5" />
                 {task.deal.company}
               </Link>
             )}
             {task.contact_id && (task as any).contact?.full_name && (
-              <Link to={`/contacts/${task.contact_id}`} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium mt-0.5 -mx-0.5 hover:brightness-125 transition-all" style={{ backgroundColor: 'rgba(75,30,95,0.6)', color: '#d8b4fe' }} onClick={e => e.stopPropagation()}>
+              <Link to={`/contacts/${task.contact_id}`} className="inline-flex items-center gap-1 px-1 py-0.5 rounded text-[10px] font-normal mt-0.5 -mx-0.5 hover:text-[#cfe3ff] transition-colors" style={{ color: '#7a8194' }} onClick={e => e.stopPropagation()}>
                 <User className="h-2.5 w-2.5" />
                 {(task as any).contact.full_name}
               </Link>
             )}
             {task.crm_company_id && (task as any).crm_company?.name && (
-              <Link to={`/crm-companies/${task.crm_company_id}`} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium mt-0.5 -mx-0.5 hover:brightness-125 transition-all" style={{ backgroundColor: 'rgba(30,95,75,0.6)', color: '#86efac' }} onClick={e => e.stopPropagation()}>
+              <Link to={`/crm-companies/${task.crm_company_id}`} className="inline-flex items-center gap-1 px-1 py-0.5 rounded text-[10px] font-normal mt-0.5 -mx-0.5 hover:text-[#cfe3ff] transition-colors" style={{ color: '#7a8194' }} onClick={e => e.stopPropagation()}>
                 <Building2 className="h-2.5 w-2.5" />
                 {(task as any).crm_company.name}
               </Link>
             )}
             {task.status === 'blocked' && blockerNote && (
-              <span className="text-[11px] italic block px-1 -mx-1 mt-0.5" style={{ color: '#ff4d4d' }}>
+              <span className="text-[11px] italic block px-1 -mx-1 mt-0.5" style={{ color: '#e57373' }}>
                 {blockerNote}
               </span>
             )}
@@ -585,18 +591,18 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       <div className="flex items-center gap-1.5 min-w-0">
         {task.assignee_profile ? (
           <>
-            <Avatar className="h-5 w-5">
+            <Avatar className="h-4 w-4">
               {task.assignee_profile.avatar_url && <AvatarImage src={task.assignee_profile.avatar_url} />}
-              <AvatarFallback className="text-[8px]" style={{ backgroundColor: '#3b7eff', color: 'white' }}>
+              <AvatarFallback className="text-[8px]" style={{ backgroundColor: 'rgba(126,184,247,0.18)', color: '#cfe3ff' }}>
                 {task.assignee_profile.display_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="text-[11px] truncate" style={{ color: '#8b92a5' }}>
+            <span className="text-[11px] truncate" style={{ color: '#7a8194' }}>
               {task.assignee_profile.display_name?.split(' ')[0]}
             </span>
           </>
         ) : (
-          <span className="text-[11px]" style={{ color: '#8b92a5' }}>—</span>
+          <span className="text-[11px]" style={{ color: '#5b6173' }}>—</span>
         )}
       </div>
 
@@ -622,7 +628,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
 
       <div className="min-w-0" onClick={e => e.stopPropagation()}>
         {task.deal_id && task.deal ? (
-          <Link to={`/deal/${task.deal_id}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold hover:brightness-125 transition-all" style={{ backgroundColor: 'rgba(30,58,95,0.6)', color: '#93c5fd' }} onClick={e => e.stopPropagation()}>
+          <Link to={`/deal/${task.deal_id}`} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium hover:text-[#cfe3ff] transition-colors" style={{ color: '#9aa3b6' }} onClick={e => e.stopPropagation()}>
             <Building2 className="h-2.5 w-2.5 shrink-0" />
             <span className="truncate">{task.deal.company}</span>
           </Link>
@@ -637,8 +643,8 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       {/* Priority pill */}
       <div onClick={e => e.stopPropagation()}>
         <Select value={task.priority} onValueChange={v => onUpdate({ priority: v } as any)}>
-          <SelectTrigger className="h-6 text-[10px] border-none bg-transparent px-0 w-[80px] focus:ring-0 [&>svg]:opacity-0 [&>svg]:group-hover:opacity-100">
-            <span className="px-3 py-1 rounded-full text-[10px] font-medium" style={{ backgroundColor: priorityPill.bg, color: 'white' }}>
+          <SelectTrigger className="h-6 text-[10px] border-none bg-transparent px-0 w-[80px] focus:ring-0 [&>svg]:hidden hover:bg-[rgba(255,255,255,0.04)] rounded">
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-medium" style={{ backgroundColor: `${priorityPill.bg}1f`, color: priorityPill.bg, border: `1px solid ${priorityPill.bg}33` }}>
               {priorityPill.label}
             </span>
           </SelectTrigger>
@@ -654,8 +660,9 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       {/* Status pill */}
       <div onClick={e => e.stopPropagation()}>
         <Select value={task.status} onValueChange={v => { onUpdate({ status: v } as any); if (v === 'complete') fireCelebration(); }}>
-          <SelectTrigger className="h-6 text-[10px] border-none bg-transparent px-0 w-[90px] [&>svg]:opacity-0 [&>svg]:group-hover:opacity-100">
-            <span className="px-2.5 py-1 rounded-full text-[10px] font-medium" style={{ backgroundColor: `${statusConf.bg}25`, color: statusConf.bg }}>
+          <SelectTrigger className="h-6 text-[10px] border-none bg-transparent px-0 w-[90px] [&>svg]:hidden hover:bg-[rgba(255,255,255,0.04)] rounded">
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-medium inline-flex items-center gap-1" style={{ backgroundColor: `${statusConf.bg}1a`, color: statusConf.bg, border: `1px solid ${statusConf.bg}2e` }}>
+              <span className="h-1 w-1 rounded-full" style={{ backgroundColor: statusConf.bg }} />
               {statusConf.label}
             </span>
           </SelectTrigger>
