@@ -76,8 +76,25 @@ import { SendToDataRoomDialog } from './SendToDataRoomDialog';
 import { FolderPlus } from 'lucide-react';
 import { useThreadWorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
 import { useEmailPrioritySignals } from '@/hooks/useEmailPrioritySignals';
-import type { DetectedSignal, EmailPrioritySignalType } from '@/lib/emailPrioritySignals';
-import { getSignalDef } from '@/lib/emailPrioritySignals';
+import type { DetectedSignal, EmailPrioritySignalType, PrioritySignalSeverity } from '@/lib/emailPrioritySignals';
+import { getSignalDef, getSignalSeverity } from '@/lib/emailPrioritySignals';
+
+// Visual styling for the inbox-row priority indicator. Red = urgent
+// (pass / decline / wire / funded / not_a_fit). Yellow = action
+// (diligence, term sheet, close, etc.). Kept inline so the row component
+// can resolve everything from the detected signal alone.
+const PRIORITY_EDGE_BAR: Record<PrioritySignalSeverity, string> = {
+  urgent: 'bg-red-500',
+  action: 'bg-amber-500',
+};
+const PRIORITY_PILL_CLASSES: Record<PrioritySignalSeverity, string> = {
+  urgent: 'bg-red-500/12 text-red-500 border-red-500/35',
+  action: 'bg-amber-500/12 text-amber-500 border-amber-500/35',
+};
+const PRIORITY_ICON_CLASSES: Record<PrioritySignalSeverity, string> = {
+  urgent: 'fill-red-500 text-red-500',
+  action: 'fill-amber-500 text-amber-500',
+};
 import { useAutoEmailLabelEvaluator } from '@/hooks/useAutoEmailLabelEvaluator';
 import type { EmailLabel } from '@/hooks/useEmailLabels';
 import { supabase } from '@/integrations/supabase/client';
@@ -236,6 +253,18 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
       {isSelected && (
         <div className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-[hsl(var(--outlook-blue))]" />
       )}
+      {/* Priority signal accent bar — red for urgent, yellow for action.
+          Hidden when the row is selected so the blue selection bar wins. */}
+      {priorityFlag && !isSelected && (
+        <div
+          className={cn(
+            'absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full',
+            PRIORITY_EDGE_BAR[getSignalSeverity(priorityFlag.type)],
+          )}
+          aria-label={`Priority signal: ${priorityFlag.label}`}
+          title={`Priority signal: ${priorityFlag.label} — "${priorityFlag.quote}"`}
+        />
+      )}
       <div className="flex items-start gap-2.5 px-3 py-2 min-w-0">
         {/* Checkbox or avatar area */}
         <div className="relative flex items-center justify-center shrink-0 mt-0.5" style={{ width: 24, height: 24 }}>
@@ -302,16 +331,22 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
           
           {/* Row 3: Preview text + deal pill */}
           <div className="flex items-center gap-1.5 mt-0.5">
-            {priorityFlag && (
-              <Badge
-                variant="outline"
-                className="text-[9px] h-[16px] px-1 gap-0.5 bg-amber-500/12 text-amber-500 border-amber-500/35 shrink-0"
-                title={`Priority signal: ${priorityFlag.label} — "${priorityFlag.quote}"`}
-              >
-                <Flag className="h-2.5 w-2.5 fill-amber-500 text-amber-500" />
-                {priorityFlag.label}
-              </Badge>
-            )}
+            {priorityFlag && (() => {
+              const sev = getSignalSeverity(priorityFlag.type);
+              return (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'text-[9px] h-[16px] px-1 gap-0.5 shrink-0',
+                    PRIORITY_PILL_CLASSES[sev],
+                  )}
+                  title={`Priority signal: ${priorityFlag.label} — "${priorityFlag.quote}"`}
+                >
+                  <Flag className={cn('h-2.5 w-2.5', PRIORITY_ICON_CLASSES[sev])} />
+                  {priorityFlag.label}
+                </Badge>
+              );
+            })()}
             {dealMatch ? (
               <DealMatchBadge match={dealMatch} variant="compact" />
             ) : thread.dealName ? (

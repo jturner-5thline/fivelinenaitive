@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useBrowserNotifications, sendDesktopNotification } from '@/hooks/useBrowserNotifications';
 import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
+import { EmailSignalSlackSettings } from './EmailSignalSlackSettings';
 
 interface NotificationSettingsProps {
   collapsible?: boolean;
@@ -616,6 +617,10 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
             </div>
           </div>
         </div>
+
+        <Separator />
+
+        <EmailSignalSlackSettings />
       </CardContent>
     );
 

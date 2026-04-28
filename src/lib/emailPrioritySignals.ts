@@ -107,6 +107,26 @@ export const PRIORITY_SIGNAL_DEFS: PrioritySignalDef[] = [
   },
 ];
 
+/**
+ * Visual severity bucket for a detected signal:
+ *   - "urgent" → render as RED on the inbox row (pass / decline / wire / funded / not_a_fit)
+ *   - "action" → render as YELLOW on the inbox row (diligence, term sheet,
+ *                close, agreement, signed, committed)
+ */
+export type PrioritySignalSeverity = 'urgent' | 'action';
+
+const URGENT_SIGNALS = new Set<EmailPrioritySignalType>([
+  'pass',
+  'decline',
+  'not_a_fit',
+  'wire',
+  'funded',
+]);
+
+export function getSignalSeverity(type: EmailPrioritySignalType): PrioritySignalSeverity {
+  return URGENT_SIGNALS.has(type) ? 'urgent' : 'action';
+}
+
 const DEF_MAP = new Map<EmailPrioritySignalType, PrioritySignalDef>(
   PRIORITY_SIGNAL_DEFS.map((d) => [d.type, d])
 );
