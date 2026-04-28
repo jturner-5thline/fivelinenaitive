@@ -56,7 +56,7 @@ export function NewsFeedWidget({ defaultOpen = true }: NewsFeedWidgetProps) {
 
   return (
     <Collapsible open={isOpen} onOpenChange={handleToggle}>
-      <Card>
+      <Card className="deal-glass">
         <CollapsibleTrigger asChild>
           <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
             <CardTitle className="text-lg font-medium flex items-center justify-between">
