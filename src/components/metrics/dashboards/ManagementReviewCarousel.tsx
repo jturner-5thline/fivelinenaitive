@@ -1,22 +1,45 @@
-import { useState, useCallback, useRef, TouchEvent } from 'react';
+import { useState, useCallback, useRef, useEffect, TouchEvent } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ManagementReviewDashboard } from './ManagementReviewDashboard';
 import { BenchmarkForecastsPage } from './BenchmarkForecastsPage';
 import { KeyMetricsPage } from './KeyMetricsPage';
-
-const PAGES = [
-  { title: 'Insights Dashboard', component: ManagementReviewDashboard },
-  { title: 'Benchmark Forecasts', component: BenchmarkForecastsPage },
-  { title: 'Key Metrics', component: KeyMetricsPage },
-];
+import {
+  QuarterlyReportOverview,
+  QuarterlyReportGoals,
+  QuarterlyReportRisks,
+  QuarterlyReportPrintStyles,
+  useQuarterlyReportState,
+} from './QuarterlyInsightsReport';
 
 export function ManagementReviewCarousel() {
   const [activeIndex, setActiveIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
+  const report = useQuarterlyReportState();
+
+  const PAGES: { title: string; render: () => JSX.Element }[] = [
+    { title: 'Insights Dashboard',                          render: () => <ManagementReviewDashboard /> },
+    { title: 'Benchmark Forecasts',                         render: () => <BenchmarkForecastsPage /> },
+    { title: 'Key Metrics',                                 render: () => <KeyMetricsPage /> },
+    { title: 'Quarterly Insights Report — Overview',        render: () => <QuarterlyReportOverview s={report.state} set={report.setState} reset={report.reset} print={report.print} /> },
+    { title: 'Quarterly Insights Report — Goals & Initiatives', render: () => <QuarterlyReportGoals s={report.state} set={report.setState} /> },
+    { title: 'Quarterly Insights Report — Risks & Export View', render: () => <QuarterlyReportRisks s={report.state} set={report.setState} print={report.print} /> },
+  ];
 
   const goTo = useCallback((dir: -1 | 1) => {
     setActiveIndex(prev => (prev + dir + PAGES.length) % PAGES.length);
-  }, []);
+  }, [PAGES.length]);
+
+  // Keyboard left/right navigation (skip when typing in inputs)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      if (e.key === 'ArrowLeft') goTo(-1);
+      else if (e.key === 'ArrowRight') goTo(1);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [goTo]);
 
   const onTouchStart = (e: TouchEvent) => { touchStartX.current = e.touches[0].clientX; };
   const onTouchEnd = (e: TouchEvent) => {
@@ -26,7 +49,7 @@ export function ManagementReviewCarousel() {
     touchStartX.current = null;
   };
 
-  const ActivePage = PAGES[activeIndex].component;
+  const activePage = PAGES[activeIndex];
 
   return (
     <div
@@ -40,10 +63,10 @@ export function ManagementReviewCarousel() {
         padding: '12px 16px', position: 'sticky', top: 0, zIndex: 20,
         background: 'rgba(15,25,35,0.92)', backdropFilter: 'blur(8px)',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
-      }}>
+      }} className="qir-no-print">
         <div style={{ textAlign: 'center', minWidth: 200 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#e8f4ff', letterSpacing: '-.2px' }}>
-            {PAGES[activeIndex].title}
+            {activePage.title}
           </div>
           <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 4 }}>
             {PAGES.map((_, i) => (
@@ -69,6 +92,7 @@ export function ManagementReviewCarousel() {
         <button
           onClick={() => goTo(-1)}
           aria-label="Previous page"
+          className="qir-no-print"
           style={{
             position: 'fixed', left: 12, top: '50%', transform: 'translateY(-50%)',
             width: 44, height: 44, borderRadius: 12,
@@ -95,6 +119,7 @@ export function ManagementReviewCarousel() {
         <button
           onClick={() => goTo(1)}
           aria-label="Next page"
+          className="qir-no-print"
           style={{
             position: 'fixed', right: 12, top: '50%', transform: 'translateY(-50%)',
             width: 44, height: 44, borderRadius: 12,
@@ -118,7 +143,8 @@ export function ManagementReviewCarousel() {
           <ChevronRight size={20} color="rgba(200,225,245,0.9)" />
         </button>
 
-        <ActivePage />
+        <QuarterlyReportPrintStyles />
+        {activePage.render()}
       </div>
     </div>
   );
