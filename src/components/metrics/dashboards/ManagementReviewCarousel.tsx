@@ -58,36 +58,6 @@ export function ManagementReviewCarousel() {
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      {/* Navigation header (title + dots only — arrows are floating side overlays) */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16,
-        padding: '12px 16px', position: 'sticky', top: 0, zIndex: 20,
-        background: 'rgba(15,25,35,0.92)', backdropFilter: 'blur(8px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-      }} className="qir-no-print">
-        <div style={{ textAlign: 'center', minWidth: 200 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#e8f4ff', letterSpacing: '-.2px' }}>
-            {activePage.title}
-          </div>
-          <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 4 }}>
-            {PAGES.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setActiveIndex(i)}
-                style={{
-                  width: 7, height: 7, borderRadius: '50%', border: 'none', cursor: 'pointer', transition: 'background .2s',
-                  background: i === activeIndex ? 'rgba(80,160,230,0.7)' : 'rgba(80,140,200,0.25)',
-                }}
-              />
-            ))}
-          </div>
-        </div>
-
-        <span style={{ fontSize: 10, color: 'rgba(140,175,200,0.4)', fontWeight: 600, letterSpacing: '.5px', position: 'absolute', right: 16 }}>
-          {activeIndex + 1} / {PAGES.length}
-        </span>
-      </div>
-
       {/* Floating side navigation arrows + page content */}
       <div style={{ position: 'relative', padding: '0 48px' }}>
         <button
