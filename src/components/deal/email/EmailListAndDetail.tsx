@@ -69,7 +69,6 @@ import { useThreadWorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
 import { useEmailPrioritySignals } from '@/hooks/useEmailPrioritySignals';
 import type { DetectedSignal, EmailPrioritySignalType } from '@/lib/emailPrioritySignals';
 import { getSignalDef } from '@/lib/emailPrioritySignals';
-import { Sparkles } from 'lucide-react';
 import { useAutoEmailLabelEvaluator } from '@/hooks/useAutoEmailLabelEvaluator';
 import type { EmailLabel } from '@/hooks/useEmailLabels';
 import { supabase } from '@/integrations/supabase/client';
