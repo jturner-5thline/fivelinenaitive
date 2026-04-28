@@ -11,7 +11,11 @@ import { useAsanaGoals, type AsanaGoalRow } from '@/hooks/useAsanaGoals';
 const SURFACE = 'rgba(16,28,52,0.75)';
 const SURFACE_BORDER = '1px solid rgba(80,140,255,0.18)';
 const SHEEN = 'linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.00) 55%)';
-const RADIUS = 12;
+/* Canonical platform radius tokens (mirrors src/index.css --radius-*).
+   Containers/cards/inputs/selects/buttons → RADIUS (8px).
+   Pills/badges/progress → RADIUS_PILL (full). */
+const RADIUS = 8;
+const RADIUS_PILL = 9999;
 const TEXT_PRIMARY = '#dde8f8';
 const TEXT_MUTED = 'rgba(180,200,230,0.65)';
 const TEXT_LABEL = 'rgba(160,200,255,0.55)';
@@ -134,7 +138,7 @@ function Pill({ tone, children }: { tone: 'pos' | 'neu' | 'neg' | 'info'; childr
     neg: { background: 'rgba(220,80,80,0.15)', color: '#f08585', border: '1px solid rgba(220,80,80,0.28)' },
     info: { background: 'rgba(60,140,210,0.15)', color: '#7cc8f0', border: '1px solid rgba(60,150,220,0.25)' },
   };
-  return <span style={{ display: 'inline-block', fontSize: 9, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 20, ...s[tone] }}>{children}</span>;
+  return <span style={{ display: 'inline-block', fontSize: 9, fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase', padding: '2px 8px', borderRadius: RADIUS_PILL, ...s[tone] }}>{children}</span>;
 }
 
 function Chip({ children }: { children: React.ReactNode }) {
@@ -150,7 +154,7 @@ function Chip({ children }: { children: React.ReactNode }) {
         color: '#cfe2f7',
         background: 'rgba(40,90,150,0.25)',
         border: '1px solid rgba(80,150,220,0.22)',
-        borderRadius: 999,
+        borderRadius: RADIUS_PILL,
       }}
     >
       {children}
@@ -413,7 +417,7 @@ function ReportKpisSection({ s, set }: { s: ReportState; set: ReportSetState }) 
                   gap: 10,
                   alignItems: 'center',
                   padding: '10px 12px',
-                  borderRadius: 10,
+                  borderRadius: RADIUS,
                   background: 'rgba(255,255,255,0.02)',
                   border: '1px solid rgba(255,255,255,0.05)',
                 }}
@@ -515,7 +519,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
       color: TEXT_MUTED,
       fontSize: 12,
       border: '1px dashed rgba(120,170,255,0.18)',
-      borderRadius: 10,
+      borderRadius: RADIUS,
       background: 'rgba(255,255,255,0.02)',
     }}>
       <div style={{ fontWeight: 600, color: TEXT_PRIMARY, marginBottom: 4 }}>No Asana Goals synced</div>
@@ -569,7 +573,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
       color: TEXT_MUTED,
       fontSize: 12,
       border: '1px dashed rgba(120,170,255,0.18)',
-      borderRadius: 10,
+      borderRadius: RADIUS,
       background: 'rgba(255,255,255,0.02)',
     }}>
       <div style={{ fontWeight: 600, color: TEXT_PRIMARY }}>No goals found for {preparedBy}</div>
@@ -639,7 +643,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
                         letterSpacing: '.06em',
                         textTransform: 'uppercase',
                         padding: '2px 7px',
-                        borderRadius: 20,
+                        borderRadius: RADIUS_PILL,
                         color: '#f0a45a',
                         background: 'rgba(240,140,40,0.10)',
                         border: '1px solid rgba(240,140,40,0.22)',
@@ -731,7 +735,7 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
                         onChange={e => updateInit(init.id, { progress: Math.max(0, Math.min(100, Number(e.target.value) || 0)) })}
                         style={{ ...inputStyle, width: 60 }}
                       />
-                      <div style={{ flex: 1, height: 6, borderRadius: 999, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                      <div style={{ flex: 1, height: 6, borderRadius: RADIUS_PILL, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
                         <div
                           style={{
                             width: `${init.progress}%`,
