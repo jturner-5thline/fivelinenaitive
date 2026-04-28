@@ -50,6 +50,10 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
   const [status, setStatus] = useState<QuickTaskInput['status']>('not_started');
   const [assignedTo, setAssignedTo] = useState<string>(() => readLastAssignee(currentUserId));
   const [recurrence, setRecurrence] = useState<string | null>(null);
+  // When true, day-based recurrences (daily/weekdays/weekly) anchor to the
+  // selected due date. If no due date is set when this is enabled, today is
+  // used as the anchor.
+  const [startFromDueDate, setStartFromDueDate] = useState(false);
   const [warning, setWarning] = useState('');
   const [confirmedJunk, setConfirmedJunk] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -64,6 +68,7 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
       const isValid = remembered === currentUserId || teamMembers.some(m => m.id === remembered);
       setAssignedTo(isValid ? remembered : currentUserId);
       setRecurrence(null);
+      setStartFromDueDate(false);
       setWarning('');
       setConfirmedJunk(false);
       setSubmitting(false);
@@ -77,6 +82,7 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
   const applyCombo = (fn: () => void) => {
     fn();
     setRecurrence(null);
+    setStartFromDueDate(false);
     setWarning('');
     setConfirmedJunk(false);
   };
@@ -358,7 +364,12 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
                   <button
                     key={opt.label}
                     type="button"
-                    onClick={() => setRecurrence(opt.value)}
+                    onClick={() => {
+                      setRecurrence(opt.value);
+                      // Clearing recurrence also disables the anchor toggle
+                      // so it can't apply when there's nothing to anchor.
+                      if (!opt.value) setStartFromDueDate(false);
+                    }}
                     className="px-2 py-1 rounded-md text-[11px] font-medium border transition-colors"
                     style={{
                       color: active ? '#cfe3ff' : '#9aa3b6',
@@ -371,6 +382,33 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
                 );
               })}
             </div>
+            {recurrence && (recurrence === 'daily' || recurrence === 'weekdays' || recurrence === 'weekly') && (
+              <label
+                className="flex items-center gap-2 text-[11px] cursor-pointer select-none mt-1"
+                style={{ color: startFromDueDate ? '#cfe3ff' : '#9aa3b6' }}
+                title="Anchor the recurring cycle to the selected due date"
+              >
+                <input
+                  type="checkbox"
+                  checked={startFromDueDate}
+                  onChange={(e) => {
+                    const next = e.target.checked;
+                    setStartFromDueDate(next);
+                    // If turning on without a due date, anchor to today
+                    if (next && !dueDate) setDueDate(new Date());
+                  }}
+                  className="h-3 w-3 accent-[#7eb8f7]"
+                />
+                <span>
+                  Starting from due date
+                  {startFromDueDate && dueDate && (
+                    <span className="ml-1" style={{ color: '#7a8194' }}>
+                      · anchored to {format(dueDate, 'MMM d')}
+                    </span>
+                  )}
+                </span>
+              </label>
+            )}
             {recurrence && !dueDate && (
               <p className="text-[10px]" style={{ color: '#e89b6c' }}>
                 Tip: set a due date — the next task is generated when this one is completed.
