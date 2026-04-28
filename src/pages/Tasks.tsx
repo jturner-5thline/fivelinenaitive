@@ -615,6 +615,50 @@ export default function Tasks() {
           />
         )}
 
+        {/* Filter presets bar — quick switch between saved combinations */}
+        <div className="flex items-center gap-1.5 px-6 py-2 flex-wrap" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+          <span className="text-[10px] uppercase tracking-wide font-medium mr-1" style={{ color: '#5b6173' }}>Presets</span>
+          {savedViews.length === 0 && (
+            <span className="text-[11px]" style={{ color: '#7a8194' }}>None saved yet — configure filters then click Save preset.</span>
+          )}
+          {savedViews.map(v => {
+            const isActive = activePresetId === v.id;
+            return (
+              <div key={v.id} className="group flex items-center">
+                <button
+                  onClick={() => handleLoadView(v)}
+                  className="flex items-center gap-1 h-6 pl-2.5 pr-1.5 text-[11px] font-medium rounded-md transition-all"
+                  style={{
+                    color: isActive ? '#cfe3ff' : '#9aa3b6',
+                    backgroundColor: isActive ? 'rgba(126,184,247,0.12)' : 'rgba(20,24,32,0.65)',
+                    border: `1px solid ${isActive ? 'rgba(126,184,247,0.28)' : 'rgba(255,255,255,0.06)'}`,
+                  }}
+                  title="Load preset"
+                >
+                  <Bookmark className="h-3 w-3" />
+                  <span className="max-w-[160px] truncate">{v.name}</span>
+                  <button
+                    onClick={e => { e.stopPropagation(); if (confirm(`Delete preset "${v.name}"?`)) deleteView.mutate(v.id); }}
+                    className="ml-1 h-4 w-4 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-[rgba(255,255,255,0.06)]"
+                    title="Delete preset"
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                </button>
+              </div>
+            );
+          })}
+          <button
+            onClick={() => setShowSaveViewDialog(true)}
+            className="flex items-center gap-1 h-6 px-2 text-[11px] font-medium rounded-md transition-colors hover:bg-[rgba(255,255,255,0.04)]"
+            style={{ color: '#7a8194', border: '1px dashed rgba(255,255,255,0.08)' }}
+            title="Save current filters as a preset"
+          >
+            <BookmarkPlus className="h-3 w-3" />
+            Save preset
+          </button>
+        </div>
+
         {/* Unified filter toolbar */}
         <div className="flex items-center gap-2 px-6 py-2.5 border-y" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'rgba(18,21,27,0.5)' }}>
           <div className="relative flex-1 max-w-[280px]">
