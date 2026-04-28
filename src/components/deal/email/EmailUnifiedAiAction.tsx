@@ -310,12 +310,176 @@ export function EmailUnifiedAiAction({
           return;
         }
         case 'note': {
-          if (resolvedDealId) {
-            toast.success('Note suggestion ready', {
+          if (!resolvedDealId) {
+            toast.error('Link a deal first to add a note');
+            return;
+          }
+          if (!user) {
+            toast.error('You must be signed in to add notes');
+            return;
+          }
+
+          const noteContent = suggestion.body || suggestion.title;
+          const noteTitle =
+            suggestion.title?.slice(0, 120) || 'AI-suggested note';
+
+          // Step 1: resolve a matching deal_lenders row (if the AI extracted one)
+          let matchedLender: { id: string; name: string; notes: string | null } | null = null;
+          if (suggestion.lender?.name) {
+            try {
+              const { data: lenderRows, error: lenderFetchErr } = await supabase
+                .from('deal_lenders')
+                .select('id, name, notes')
+                .eq('deal_id', resolvedDealId);
+              if (lenderFetchErr) throw lenderFetchErr;
+              const target = (suggestion.lender.name || '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, ' ')
+                .trim();
+              matchedLender =
+                (lenderRows || []).find((r) => {
+                  const n = (r.name || '')
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, ' ')
+                    .trim();
+                  return (
+                    n === target ||
+                    n.startsWith(target) ||
+                    target.startsWith(n)
+                  );
+                }) || null;
+            } catch (e: any) {
+              console.error('[EmailUnifiedAiAction] lender lookup failed', e);
+              toast.error("Couldn't load lenders for this deal", {
+                description: e?.message || 'Try again in a moment.',
+              });
+              return;
+            }
+
+            if (!matchedLender) {
+              toast.error(
+                `Lender "${suggestion.lender.name}" isn't on this deal`,
+                {
+                  description:
+                    'Add the lender to the deal first, then re-run "Add note".',
+                },
+              );
+              return;
+            }
+          }
+
+          // Step 2: insert deal note (linked to the lender if matched)
+          const { data: noteRow, error: noteErr } = await supabase
+            .from('deal_space_notes')
+            .insert({
+              deal_id: resolvedDealId,
+              user_id: user.id,
+              title: noteTitle,
+              content: noteContent,
+              linked_lender_id: matchedLender?.id || null,
+              tags: ['ai-assist'],
+            })
+            .select('id')
+            .single();
+
+          if (noteErr || !noteRow?.id) {
+            console.error('[EmailUnifiedAiAction] note insert failed', noteErr);
+            toast.error('Failed to save deal note', {
+              description: noteErr?.message || 'Please try again.',
+            });
+            return;
+          }
+
+          // Step 3: if we matched a lender, update lender record + history.
+          // Best-effort rollback of the note if either lender write fails.
+          if (matchedLender) {
+            const lenderNoteText =
+              suggestion.lender?.note?.trim() || noteContent;
+            const lenderUpdates: Record<string, any> = {
+              notes: lenderNoteText,
+              tracking_status: 'active',
+              updated_at: new Date().toISOString(),
+            };
+            // Map LENDER_STATUS_CONFIG ids onto deal_lenders.substage —
+            // the lender "status" concept persists on substage in this schema.
+            if (suggestion.lender?.status) {
+              lenderUpdates.substage = suggestion.lender.status;
+            }
+
+            const { data: updatedLenderRows, error: lenderUpdateErr } =
+              await supabase
+                .from('deal_lenders')
+                .update(lenderUpdates)
+                .eq('id', matchedLender.id)
+                .eq('deal_id', resolvedDealId)
+                .select('id');
+
+            if (
+              lenderUpdateErr ||
+              !updatedLenderRows ||
+              updatedLenderRows.length === 0
+            ) {
+              console.error(
+                '[EmailUnifiedAiAction] lender update failed — rolling back note',
+                lenderUpdateErr,
+              );
+              // Rollback the note insert so we don't silently half-succeed
+              await supabase
+                .from('deal_space_notes')
+                .delete()
+                .eq('id', noteRow.id);
+              toast.error('Failed to update lender — note was rolled back', {
+                description:
+                  lenderUpdateErr?.message ||
+                  'No lender row was updated. Please try again.',
+              });
+              return;
+            }
+
+            // History row is best-effort — we already verified the lender update
+            const { error: historyErr } = await supabase
+              .from('lender_notes_history')
+              .insert({
+                deal_lender_id: matchedLender.id,
+                user_id: user.id,
+                text: lenderNoteText,
+              });
+            if (historyErr) {
+              console.warn(
+                '[EmailUnifiedAiAction] lender_notes_history insert failed (non-fatal)',
+                historyErr,
+              );
+            }
+          }
+
+          // Step 4: refresh deal-related caches so UI reflects both writes
+          queryClient.invalidateQueries({ queryKey: ['deal', resolvedDealId] });
+          queryClient.invalidateQueries({ queryKey: ['deals'] });
+          queryClient.invalidateQueries({ queryKey: ['deal-notes', resolvedDealId] });
+          queryClient.invalidateQueries({ queryKey: ['deal-space-notes', resolvedDealId] });
+          queryClient.invalidateQueries({ queryKey: ['deal-lenders', resolvedDealId] });
+
+          if (matchedLender) {
+            toast.success(
+              `Note added & ${matchedLender.name} updated on ${resolvedDealName || 'deal'}`,
+              {
+                description: suggestion.lender?.status
+                  ? `Lender status set to "${suggestion.lender.status.replace(/-/g, ' ')}".`
+                  : 'Lender record refreshed.',
+                action: {
+                  label: 'Open deal →',
+                  onClick: () => {
+                    window.location.href = `/deals/${resolvedDealId}?tab=lenders`;
+                  },
+                },
+              },
+            );
+          } else {
+            toast.success('Note added to deal', {
               description:
-                suggestion.body.length > 120
-                  ? suggestion.body.slice(0, 117) + '…'
-                  : suggestion.body,
+                noteContent.length > 120
+                  ? noteContent.slice(0, 117) + '…'
+                  : noteContent,
               action: {
                 label: 'Open deal →',
                 onClick: () => {
@@ -323,8 +487,6 @@ export function EmailUnifiedAiAction({
                 },
               },
             });
-          } else {
-            toast.error('Link a deal first to add a note');
           }
           reset();
           return;
