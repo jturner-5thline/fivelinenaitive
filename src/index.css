@@ -882,6 +882,11 @@
 }
 /* Ensure widget contents render above the sheen overlay */
 .deal-glass > * {
-  position: relative;
   z-index: 1;
+}
+/* Anything explicitly positioned (e.g. absolute corner overlays like the
+   notification dot) keeps its own positioning. We only need the default
+   stacking context above the ::before sheen. */
+.deal-glass > *:not([class*="absolute"]):not([class*="fixed"]) {
+  position: relative;
 }
