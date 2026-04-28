@@ -266,7 +266,9 @@ export function mergeScheduledIntoWeekly(
     target['BEGINNING CASH'] = begin;
     const newEnd = begin + (Number(target['NET CHANGE']) || 0);
     target['ENDING CASH'] = Math.round(newEnd);
-    target['TOTAL CASH ON HAND'] = Math.round(newEnd + (Number(target["Add'l Liquidity (Delayed Draw)"]) || 0));
+    const addlLegacy = Number(target["Add'l Liquidity (Delayed Draw)"]) || 0;
+    const addlNew = Number(target['Addl Liquidity Chase Tax Reserve MT Chk']) || 0;
+    target['TOTAL CASH ON HAND'] = Math.round(newEnd + addlLegacy + addlNew);
     prevEnd = target['ENDING CASH'];
   }
 
