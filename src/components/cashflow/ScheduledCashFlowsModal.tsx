@@ -380,6 +380,17 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
                         </SelectContent>
                       </Select>
 
+                      {/* Description */}
+                      <Input
+                        type="text"
+                        value={d.notes ?? ''}
+                        placeholder="Add a note…"
+                        onChange={(e) =>
+                          updateRow(d._draftId, { notes: e.target.value || null })
+                        }
+                        className="h-9"
+                      />
+
                       {/* Amount */}
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
