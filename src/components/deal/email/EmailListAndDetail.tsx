@@ -482,6 +482,10 @@ interface EmailListProps {
 
 export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink, onToggleStar, isLoading, selectedIds, onSelectionChange, onMarkRead, onMarkUnread, onArchive, onDelete }: EmailListProps) {
   const { evaluate: evaluateAutoLabels } = useAutoEmailLabelEvaluator();
+  // Detect high-priority deal signals (e.g. "due diligence", "term sheet",
+  // "wire", "signed") and dispatch in-app + Slack notifications. Returns a
+  // map keyed by threadId so individual rows render the priority flag.
+  const { flagsByThread } = useEmailPrioritySignals(emails);
   // Group emails into threads only when the email array identity changes.
   // Without this memo, this O(n) loop ran on every parent re-render (selection
  // change, hover, AI Assist updates) and produced a fresh array each time,
@@ -539,6 +543,7 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
           onArchive={onArchive}
           onDelete={onDelete}
           evaluateAutoLabels={evaluateAutoLabels}
+          priorityFlag={flagsByThread[thread.threadId]}
         />
       ))}
     </div>
