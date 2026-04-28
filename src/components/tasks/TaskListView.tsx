@@ -432,14 +432,13 @@ function QuickDatePicker({ value, onChange, todayStr }: { value: string | null; 
   const nextMon = format(nextMonday(new Date()), 'yyyy-MM-dd');
 
   const getRelativeLabel = () => {
-    if (!value) return null;
-    if (value < todayStr) {
-      const days = differenceInDays(new Date(todayStr), new Date(value + 'T00:00:00'));
-      return { text: `${days}d overdue`, color: '#ff4d4d', bold: true };
-    }
-    if (value === todayStr) return { text: 'Due today', color: '#f59e0b', bold: true };
-    const days = differenceInDays(new Date(value + 'T00:00:00'), new Date(todayStr));
-    return { text: `Due in ${days}d`, color: '#8b92a5', bold: false };
+    const due = normalizeDueDate(value);
+    if (!due) return null;
+    const diff = daysFromToday(due, { today: todayStr, tomorrow: todayStr, weekEnd: todayStr });
+    if (diff === null) return null;
+    if (diff < 0) return { text: `${Math.abs(diff)}d overdue`, color: '#ff4d4d', bold: true };
+    if (diff === 0) return { text: 'Due today', color: '#f59e0b', bold: true };
+    return { text: `Due in ${diff}d`, color: '#8b92a5', bold: false };
   };
 
   const rel = getRelativeLabel();
