@@ -41,6 +41,9 @@ const PipelineMemoView = lazy(() =>
 );
 import { useUiPreference } from '@/hooks/useUiPreference';
 import { LayoutGrid } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useMorningFollowups } from '@/hooks/useMorningFollowups';
+import { ListTodo } from 'lucide-react';
 
 interface DailyBriefingModalProps {
   open: boolean;
