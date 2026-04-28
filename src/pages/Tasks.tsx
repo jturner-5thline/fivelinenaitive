@@ -50,7 +50,7 @@ import {
   Bookmark, BookmarkPlus, FileDown, Star, MoreVertical,
   Tag, ClipboardList, Users, Briefcase, Building2, CalendarDays, X,
   Pencil, Copy as CopyIcon, Check,
-  Link2,
+  Link2, Pin, PinOff,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDueBoundaries } from '@/hooks/useDueBoundaries';
@@ -78,7 +78,7 @@ export default function Tasks() {
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const { notifications } = useTaskNotifications();
-  const { savedViews, saveView, deleteView, renameView, duplicateView } = useTaskSavedViews();
+  const { savedViews, saveView, deleteView, renameView, duplicateView, togglePinView } = useTaskSavedViews();
   const { templates, applyTemplate } = useTaskTemplates();
   const teamMembers = useTeamMembers();
   const { labels, createLabel } = useTaskLabels();
