@@ -13,9 +13,9 @@ import {
 export function ManagementReviewCarousel() {
   const [activeIndex, setActiveIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
-  const reportOne = useQuarterlyReportState(createQuarterlyReportSeed());
-  const reportTwo = useQuarterlyReportState(createQuarterlyReportSeed());
-  const reportThree = useQuarterlyReportState(createQuarterlyReportSeed());
+  const reportOne = useQuarterlyReportState(createQuarterlyReportSeed(), 'naitive.quarterlyReport.v1.report1');
+  const reportTwo = useQuarterlyReportState(createQuarterlyReportSeed(), 'naitive.quarterlyReport.v1.report2');
+  const reportThree = useQuarterlyReportState(createQuarterlyReportSeed(), 'naitive.quarterlyReport.v1.report3');
 
   const PAGES: { title: string; render: () => JSX.Element }[] = [
     { title: 'Insights Dashboard',                          render: () => <ManagementReviewDashboard /> },
