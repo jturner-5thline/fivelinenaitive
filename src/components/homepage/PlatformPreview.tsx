@@ -34,8 +34,12 @@ const statusConfig = {
 };
 
 export const PlatformPreviewDealPipeline = () => {
+  const mockupBg = {
+    background:
+      'linear-gradient(135deg, #0a0a1a 0%, #0d1b3e 20%, #0a1628 40%, #061020 60%, #1a0a2e 80%, #0a0014 100%)',
+  };
   return (
-    <div className="p-6 bg-[#0e0e18]">
+    <div className="p-6" style={mockupBg}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -112,7 +116,13 @@ export const PlatformPreviewLenderKanban = () => {
   ];
 
   return (
-    <div className="p-6 bg-[#0e0e18]">
+    <div
+      className="p-6"
+      style={{
+        background:
+          'linear-gradient(135deg, #0a0a1a 0%, #0d1b3e 20%, #0a1628 40%, #061020 60%, #1a0a2e 80%, #0a0014 100%)',
+      }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -157,7 +167,13 @@ export const PlatformPreviewDataRoom = () => {
   ];
 
   return (
-    <div className="p-6 bg-[#0e0e18]">
+    <div
+      className="p-6"
+      style={{
+        background:
+          'linear-gradient(135deg, #0a0a1a 0%, #0d1b3e 20%, #0a1628 40%, #061020 60%, #1a0a2e 80%, #0a0014 100%)',
+      }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
