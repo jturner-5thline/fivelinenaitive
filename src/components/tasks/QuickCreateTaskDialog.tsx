@@ -11,6 +11,7 @@ import { addDays, format, isSameDay, nextMonday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { type TeamMember } from '@/hooks/useTeamMembers';
 import { useAssigneeOpenTaskCounts } from '@/hooks/useAssigneeOpenTaskCounts';
+import { toast } from 'sonner';
 
 export interface QuickTaskInput {
   title: string;
@@ -358,7 +359,10 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
               {assignedTo !== currentUserId && (
                 <button
                   type="button"
-                  onClick={() => setAssignedTo(currentUserId)}
+                  onClick={() => {
+                    setAssignedTo(currentUserId);
+                    toast.success('Assigned to you');
+                  }}
                   className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded hover:bg-[rgba(126,184,247,0.1)] transition-colors"
                   style={{ color: '#7eb8f7' }}
                   title="Assign this task to me"
