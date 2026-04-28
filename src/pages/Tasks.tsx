@@ -867,7 +867,10 @@ export default function Tasks() {
                 borderColor: 'rgba(126,184,247,0.35)',
                 boxShadow: '0 1px 0 rgba(255,255,255,0.05) inset, 0 4px 14px -8px rgba(80,135,210,0.55)',
               }}
-              onClick={() => setShowQuickCreate(true)}
+              onClick={(e) => {
+                quickCreateTriggerRef.current = e.currentTarget as HTMLElement;
+                setShowQuickCreate(true);
+              }}
             >
               <Plus className="h-3.5 w-3.5" />
               Add Task
