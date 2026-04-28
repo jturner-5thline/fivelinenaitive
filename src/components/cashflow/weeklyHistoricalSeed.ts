@@ -2229,4 +2229,4 @@ export const WEEKLY_HISTORICAL_SEED: WeeklyData = ({
     "Other Cash Out": 0,
     "TOTAL NET CASH CHANGE": 4248.71,
   },
-};
+}) as unknown as WeeklyData;
