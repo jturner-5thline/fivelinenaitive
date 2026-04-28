@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
-import { Check, X, Loader2, ListTodo, Calendar as CalendarIcon, User as UserIcon } from 'lucide-react';
+import { Check, X, Loader2, ListTodo, Calendar as CalendarIcon, User as UserIcon, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -107,6 +108,9 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [createdKeys, setCreatedKeys] = useState<Record<string, { dueDate: string; assigneeLabel: string | null }>>({});
   const [dismissedKeys, setDismissedKeys] = useState<Record<string, true>>({});
+  // Per-card "Sync to Asana" toggle. Defaults to ON for every suggested
+  // task; users can flip individual cards off before clicking Create.
+  const [asanaSyncByKey, setAsanaSyncByKey] = useState<Record<string, boolean>>({});
 
   const items = useMemo(() => {
     const seen = new Set<string>();
@@ -124,6 +128,7 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
   if (items.length === 0) return null;
 
   const handleCreate = async (s: Suggestion, key: string) => {
+    const syncToAsana = asanaSyncByKey[key] !== false; // default ON
     if (!user?.id) {
       toast.error('Sign in required to create tasks');
       return;
@@ -172,19 +177,21 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
       });
 
       if (created?.id) {
-        // Best-effort Asana sync — non-fatal.
-        try {
-          const ctx = await getAsanaSyncContext(company?.id || null);
-          if (ctx) {
-            await syncTaskToAsana(ctx, {
-              id: created.id,
-              title: draft.title,
-              description: draft.description,
-              due_date: draft.due_date,
-            });
+        // Best-effort Asana sync — non-fatal. Gated by the per-card toggle.
+        if (syncToAsana) {
+          try {
+            const ctx = await getAsanaSyncContext(company?.id || null);
+            if (ctx) {
+              await syncTaskToAsana(ctx, {
+                id: created.id,
+                title: draft.title,
+                description: draft.description,
+                due_date: draft.due_date,
+              });
+            }
+          } catch (e) {
+            console.warn('[SuggestedTaskCards] Asana sync skipped:', e);
           }
-        } catch (e) {
-          console.warn('[SuggestedTaskCards] Asana sync skipped:', e);
         }
 
         setCreatedKeys((prev) => ({
@@ -268,7 +275,21 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
             </div>
 
             {!created && (
-              <div className="flex items-center gap-1 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <label
+                  className="inline-flex items-center gap-1 text-[10px] text-muted-foreground select-none cursor-pointer shrink-0"
+                  title="Also create this task in Asana"
+                >
+                  <Switch
+                    checked={asanaSyncByKey[key] !== false}
+                    onCheckedChange={(v) =>
+                      setAsanaSyncByKey((prev) => ({ ...prev, [key]: v }))
+                    }
+                    className="h-3.5 w-6 data-[state=checked]:bg-primary"
+                  />
+                  <Link2 className="h-2.5 w-2.5" />
+                  Asana
+                </label>
                 <Button
                   size="sm"
                   className="h-7 px-2 text-[11px] gap-1 flex-1 min-w-0"
