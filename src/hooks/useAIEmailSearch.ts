@@ -174,6 +174,16 @@ export function useAIEmailSearch() {
   const [error, setError] = useState<string | null>(null);
   // Bump on every new search so stale responses can be discarded.
   const requestIdRef = useRef(0);
+  // 60s in-memory cache, keyed by query + candidate-fingerprint.
+  const cacheRef = useRef<Map<string, { at: number; value: AIEmailSearchResult }>>(new Map());
+  const CACHE_TTL_MS = 60_000;
+
+  const buildCacheKey = (q: string, candidates: MockEmail[]) => {
+    // Cheap fingerprint: count + newest id + newest received_at. Good enough
+    // to invalidate when the inbox actually changes.
+    const newest = candidates[0];
+    return `${q.toLowerCase()}|${candidates.length}|${newest?.id || ''}|${newest?.received_at || ''}`;
+  };
 
   const search = useCallback(
     async (query: string, candidates: MockEmail[]): Promise<AIEmailSearchResult | null> => {
@@ -187,6 +197,17 @@ export function useAIEmailSearch() {
       const requestId = ++requestIdRef.current;
       setIsSearching(true);
       setError(null);
+
+      // Cache hit short-circuits the network call.
+      const cacheKey = buildCacheKey(trimmed, candidates);
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
+        if (requestId === requestIdRef.current) {
+          setResult(cached.value);
+          setIsSearching(false);
+        }
+        return cached.value;
+      }
 
       try {
         // Sort candidates newest-first and cap to keep the prompt small.
@@ -263,6 +284,7 @@ export function useAIEmailSearch() {
         });
 
         setResult(next);
+        cacheRef.current.set(cacheKey, { at: Date.now(), value: next });
         return next;
       } catch (e) {
         if (requestId !== requestIdRef.current) return null;
@@ -283,6 +305,12 @@ export function useAIEmailSearch() {
     requestIdRef.current++;
     setResult(null);
     setError(null);
+    setIsSearching(false);
+  }, []);
+
+  /** Cancel any in-flight request without clearing the existing result. */
+  const cancel = useCallback(() => {
+    requestIdRef.current++;
     setIsSearching(false);
   }, []);
 
@@ -313,5 +341,5 @@ export function useAIEmailSearch() {
     });
   }, []);
 
-  return { search, clear, removeFilter, result, isSearching, error };
+  return { search, clear, cancel, removeFilter, result, isSearching, error };
 }

@@ -495,6 +495,34 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const [aiSearchActive, setAiSearchActive] = useState(false);
   const lastAiQueryRef = useRef<string>('');
 
+  // ── Search mode (Phase 3) ──────────────────────────────────
+  // 'literal' = keyword only (never call AI)
+  // 'ai'      = always run AI when query meets min length
+  // 'auto'    = keyword by default, escalate to AI on long queries (≥ MIN length)
+  type SearchMode = 'literal' | 'ai' | 'auto';
+  const [searchMode, setSearchMode] = useState<SearchMode>(() => {
+    const m = searchParams.get('mode');
+    return m === 'literal' || m === 'ai' || m === 'auto' ? m : 'auto';
+  });
+  // Hydrate query from ?q=
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q && q !== searchQuery) setSearchQuery(q);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Persist q + mode to URL (debounced via the same debounce that runs search).
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    const trimmed = searchQuery.trim();
+    if (trimmed) next.set('q', trimmed); else next.delete('q');
+    if (searchMode !== 'auto') next.set('mode', searchMode); else next.delete('mode');
+    // Only write when something actually changed to avoid history spam.
+    const cur = searchParams.toString();
+    const nxt = next.toString();
+    if (cur !== nxt) setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, searchMode]);
+
   // Counts
   const needsResponseCount = emails.filter(e => e.needs_response && e.folder === 'inbox').length;
   const starredCount = emails.filter(e => e.is_starred).length;
@@ -669,13 +697,59 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     lastAiQueryRef.current = '';
   }, [aiSearch]);
 
-  // If the user keeps typing after running an AI search, downgrade to keyword
-  // search until they explicitly run AI again. Avoids stale interpretations.
+  // ── Lifecycle: debounce + cancel + auto-trigger ────────────
+  // 150ms for literal (cheap, just a re-render); 500ms for AI (network).
+  // When the query changes, cancel any in-flight AI call and either:
+  //   - mode==='literal': just clear AI state and rely on keyword filter
+  //   - mode==='ai':      auto-run AI when query meets min length
+  //   - mode==='auto':    auto-run AI when query meets min length, else keyword
   useEffect(() => {
-    if (aiSearchActive && searchQuery.trim() !== lastAiQueryRef.current) {
-      setAiSearchActive(false);
+    const trimmed = searchQuery.trim();
+
+    // Mode change or empty query → kill any active AI search.
+    if (!trimmed) {
+      if (aiSearchActive) clearAISearch();
+      return;
     }
-  }, [searchQuery, aiSearchActive]);
+
+    // Literal mode never escalates to AI.
+    if (searchMode === 'literal') {
+      if (aiSearchActive) {
+        aiSearch.cancel();
+        setAiSearchActive(false);
+        lastAiQueryRef.current = '';
+      }
+      return;
+    }
+
+    // If we already ran AI for this exact query, do nothing.
+    if (aiSearchActive && trimmed === lastAiQueryRef.current) return;
+
+    // Auto-mode only escalates when the query is long enough.
+    const shouldRunAI =
+      searchMode === 'ai'
+        ? trimmed.length >= AI_SEARCH_MIN_LENGTH
+        : trimmed.length >= AI_SEARCH_MIN_LENGTH;
+
+    // Cancel any in-flight request before scheduling a new one.
+    aiSearch.cancel();
+
+    const delay = shouldRunAI ? 500 : 150;
+    const handle = window.setTimeout(() => {
+      if (shouldRunAI && aiSearchCandidates.length > 0) {
+        lastAiQueryRef.current = trimmed;
+        setAiSearchActive(true);
+        void aiSearch.search(trimmed, aiSearchCandidates);
+      } else if (aiSearchActive) {
+        // Query too short for AI now (auto mode) — drop back to keyword.
+        setAiSearchActive(false);
+        lastAiQueryRef.current = '';
+      }
+    }, delay);
+
+    return () => window.clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, searchMode, aiSearchCandidates]);
 
 
   const currentThread = useMemo(() => {
@@ -1202,7 +1276,13 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   )}
                   <Input
-                    placeholder='Search mail with AI… e.g. "calendar invites I declined"'
+                    placeholder={
+                      searchMode === 'literal'
+                        ? 'Search mail (keyword)…'
+                        : searchMode === 'ai'
+                          ? 'Ask AI… e.g. "signed NDAs from lenders last week"'
+                          : 'Search mail with AI… e.g. "calendar invites I declined"'
+                    }
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => {
@@ -1216,32 +1296,51 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                       }
                     }}
                     className={cn(
-                      'pl-8 pr-16 h-8 text-xs bg-white/[0.03] border-white/[0.08] rounded focus:border-white/[0.15]',
+                      'pl-8 pr-[120px] h-8 text-xs bg-white/[0.03] border-white/[0.08] rounded focus:border-white/[0.15]',
                       aiSearchActive && 'border-primary/40 focus:border-primary/60'
                     )}
                   />
                   {/* Inline AI / clear controls */}
                   <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                    {aiSearchActive && (
+                    {/* Mode toggle: Literal | Auto | AI */}
+                    <div
+                      className="inline-flex items-center rounded border border-white/[0.08] bg-white/[0.03] overflow-hidden"
+                      role="group"
+                      aria-label="Search mode"
+                    >
+                      {(['literal', 'auto', 'ai'] as const).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setSearchMode(m)}
+                          aria-pressed={searchMode === m}
+                          title={
+                            m === 'literal'
+                              ? 'Literal: keyword match only'
+                              : m === 'ai'
+                                ? 'AI: always interpret with AI'
+                                : 'Auto: AI on long queries'
+                          }
+                          className={cn(
+                            'px-1.5 h-5 text-[9px] font-semibold uppercase tracking-wide transition-colors',
+                            searchMode === m
+                              ? 'bg-primary/20 text-primary'
+                              : 'text-muted-foreground hover:text-foreground'
+                          )}
+                        >
+                          {m === 'literal' ? 'Lit' : m === 'auto' ? 'Auto' : 'AI'}
+                        </button>
+                      ))}
+                    </div>
+                    {(aiSearchActive || searchQuery) && (
                       <button
                         type="button"
                         onClick={() => { clearAISearch(); setSearchQuery(''); }}
                         className="text-[10px] text-muted-foreground hover:text-foreground transition-colors px-1"
-                        aria-label="Clear AI search"
-                        title="Clear AI search (Esc)"
+                        aria-label="Clear search"
+                        title="Clear search (Esc)"
                       >
                         <X className="h-3 w-3" />
-                      </button>
-                    )}
-                    {searchQuery.trim().length >= AI_SEARCH_MIN_LENGTH && !aiSearch.isSearching && !aiSearchActive && (
-                      <button
-                        type="button"
-                        onClick={runAISearch}
-                        className="inline-flex items-center gap-1 rounded-sm bg-primary/15 hover:bg-primary/25 text-primary text-[10px] font-medium px-1.5 py-0.5 transition-colors"
-                        title="Search with AI (Enter)"
-                      >
-                        <Sparkles className="h-3 w-3" />
-                        AI
                       </button>
                     )}
                   </div>
