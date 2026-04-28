@@ -32,6 +32,10 @@ function mapGmailToMockEmails(gmailMessages: any[], folderOverride: 'inbox' | 's
   return gmailMessages.map((msg) => ({
     id: msg.id || msg.gmail_message_id,
     threadId: msg.thread_id || msg.id || msg.gmail_message_id,
+    // Canonical provider thread id — never falls back to a message id, so
+    // label assignments persisted against this key remain stable across
+    // deals, sessions and refetches.
+    provider_thread_id: msg.thread_id || null,
     subject: msg.subject || '(No subject)',
     from_name: msg.from_name || msg.from_email || 'Unknown',
     from_email: msg.from_email || '',
