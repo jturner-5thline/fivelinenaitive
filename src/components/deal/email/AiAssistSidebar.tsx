@@ -627,22 +627,19 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             />
           )}
 
-          {/* Always-on Ask AI prompt — works for matched and unmatched
-              emails alike. */}
-          <EmailAskAiBox thread={thread} dealId={dealId} />
-
-          {/* Thread Summary — auto-generated for multi-message threads, collapsed by default */}
-          <ThreadSummaryCard thread={thread} dealId={dealId} />
-
-          {/* Quick Task — inline NL task input. Renders as a plain text box at
-              rest; expands inline (chips + preview) on focus or first keystroke. */}
-          <EmailQuickTaskSection
+          {/* Unified AI action — replaces the previous Ask AI + Quick Task
+              boxes with a single natural-language input that infers intent
+              (ask / task / note / data room / draft) and routes accordingly. */}
+          <EmailUnifiedAiAction
             thread={thread}
             dealId={dealId}
             dealName={dealName}
             fallbackDealId={workflowAnalysis?.likely_deal?.id || null}
             fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
           />
+
+          {/* Thread Summary — auto-generated for multi-message threads, collapsed by default */}
+          <ThreadSummaryCard thread={thread} dealId={dealId} />
 
           {/* Error (non-blocking — shell still renders below) */}
           {error && (
