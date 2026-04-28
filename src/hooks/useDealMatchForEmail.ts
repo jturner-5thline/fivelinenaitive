@@ -1,19 +1,26 @@
 import { useMemo } from 'react';
 import { useDealsContext } from '@/contexts/DealsContext';
-import {
-  extractCompanyFromSubject,
-  fuzzyNameScore,
-  normalizeDomain,
-} from '@/lib/detectDraftEmails';
 import type { Deal, DealStatus } from '@/types/deal';
+import {
+  rankDealsForThread,
+  type EvidenceMessage,
+  type EvidenceReason,
+  type ConfidenceBand,
+} from '@/lib/dealEvidenceMatcher';
 
 export interface DealMatch {
   deal: Deal;
   /** Confidence score 0-100 */
   score: number;
-  confidence: 'high' | 'medium' | 'low';
-  /** Why we matched: domain match, name match, or both */
-  reason: 'domain' | 'name' | 'domain+name';
+  confidence: ConfidenceBand;
+  /** Legacy compact reason label kept for backward compatibility with older UI. */
+  reason: 'domain' | 'name' | 'domain+name' | 'thread';
+  /** Top weighted reasons explaining the match (new evidence model). */
+  reasons: EvidenceReason[];
+  /** True when the engine recommends auto-linking the thread to this deal. */
+  shouldAutoLink: boolean;
+  /** True when the UI should render this as "Likely: …" with a confirm action. */
+  shouldSuggest: boolean;
   /** Lender row on this deal whose contact email/name matched the sender, if any */
   matchedLenderId?: string;
   matchedLenderName?: string;
@@ -23,22 +30,9 @@ export interface EmailMatchInput {
   subject?: string;
   fromEmail?: string;
   fromName?: string;
+  /** Optional richer thread context — newest message first. */
+  messages?: EvidenceMessage[];
 }
-
-function dealDomain(deal: Deal): string {
-  if (!deal.companyUrl) return '';
-  try {
-    const url = deal.companyUrl.startsWith('http')
-      ? deal.companyUrl
-      : `https://${deal.companyUrl}`;
-    return normalizeDomain(new URL(url).hostname);
-  } catch {
-    return normalizeDomain(deal.companyUrl);
-  }
-}
-
-const HIGH_THRESHOLD = 95;
-const MEDIUM_THRESHOLD = 55;
 
 /**
  * Resolve the most likely deal for a single inbox email using a hybrid of:
@@ -46,74 +40,57 @@ const MEDIUM_THRESHOLD = 55;
  *   • Sender domain vs deal.companyUrl host (exact / sub-domain)
  *   • Sender email/name vs any deal_lender contact on the deal
  *
- * Returns null when no candidate clears the medium-confidence threshold so
- * unmatched emails render with no badge.
+ * When `messages` is supplied this delegates to the weighted-evidence engine
+ * which also considers recipient domains, repeated body mentions, and
+ * affiliated participants. Returns null when no candidate clears the
+ * medium-confidence threshold so unmatched emails render with no badge.
  */
 export function useDealMatchForEmail(input: EmailMatchInput): DealMatch | null {
   const { deals } = useDealsContext();
 
   return useMemo(() => {
     if (!deals?.length) return null;
-    const subjectCompany = extractCompanyFromSubject(input.subject || '');
-    const senderDomain = normalizeDomain((input.fromEmail || '').split('@')[1] || '');
-    const senderEmail = (input.fromEmail || '').toLowerCase();
-    const senderName = (input.fromName || '').toLowerCase();
 
-    let best: DealMatch | null = null;
+    // If caller didn't provide a richer message list, synthesize a single
+    // "latest message" from the legacy fields so the engine still gets
+    // sender-domain + subject signals.
+    const messages: EvidenceMessage[] = input.messages && input.messages.length
+      ? input.messages
+      : [{
+          subject: input.subject,
+          fromEmail: input.fromEmail,
+          fromName: input.fromName,
+          isLatest: true,
+        }];
 
-    for (const deal of deals) {
-      const dDomain = dealDomain(deal);
-      const domainMatch = !!dDomain && !!senderDomain && (
-        senderDomain === dDomain
-        || dDomain.endsWith(`.${senderDomain}`)
-        || senderDomain.endsWith(`.${dDomain}`)
-      );
+    const ranked = rankDealsForThread(deals, {
+      subject: input.subject,
+      messages,
+    });
 
-      const nameScore = Math.max(
-        fuzzyNameScore(subjectCompany, deal.company || ''),
-        fuzzyNameScore(subjectCompany, deal.name || ''),
-      );
-      const nameMatch = nameScore >= 0.55;
+    const best = ranked.best;
+    if (!best || best.confidence === 'low') return null;
 
-      // Lender contact match on this deal
-      let lenderHit: { id: string; name: string } | undefined;
-      if (deal.lenders && (senderEmail || senderName)) {
-        for (const l of deal.lenders) {
-          const ln = (l.name || '').toLowerCase();
-          if (!ln) continue;
-          if (senderName && (ln === senderName || senderName.includes(ln) || ln.includes(senderName))) {
-            lenderHit = { id: l.id, name: l.name };
-            break;
-          }
-        }
-      }
+    const hasDomain = best.reasons.some(r => r.kind === 'sender_domain' || r.kind === 'recipient_domain');
+    const hasName = best.reasons.some(r => r.kind === 'subject_company' || r.kind === 'subject_partial');
+    const hasThreadOnly = !hasDomain && !hasName && best.reasons.length > 0;
+    const reason: DealMatch['reason'] = hasThreadOnly
+      ? 'thread'
+      : hasDomain && hasName ? 'domain+name'
+      : hasDomain ? 'domain' : 'name';
 
-      let score = 0;
-      if (domainMatch) score += 70;
-      score += nameScore * 50;
-      if (domainMatch && nameMatch) score += 25;
-      if (lenderHit) score += 30;
-
-      if (score < MEDIUM_THRESHOLD) continue;
-
-      const reason: DealMatch['reason'] = domainMatch && nameMatch
-        ? 'domain+name'
-        : domainMatch ? 'domain' : 'name';
-      const confidence: DealMatch['confidence'] = score >= HIGH_THRESHOLD
-        ? 'high' : score >= MEDIUM_THRESHOLD ? 'medium' : 'low';
-
-      const candidate: DealMatch = {
-        deal,
-        score,
-        confidence,
-        reason,
-        matchedLenderId: lenderHit?.id,
-        matchedLenderName: lenderHit?.name,
-      };
-      if (!best || candidate.score > best.score) best = candidate;
-    }
-    return best;
-  }, [deals, input.subject, input.fromEmail, input.fromName]);
+    return {
+      deal: best.deal,
+      score: best.score,
+      confidence: best.confidence,
+      reason,
+      reasons: best.reasons,
+      shouldAutoLink: ranked.shouldAutoLink,
+      shouldSuggest: ranked.shouldSuggest,
+      matchedLenderId: best.matchedLenderId,
+      matchedLenderName: best.matchedLenderName,
+    };
+  }, [deals, input.subject, input.fromEmail, input.fromName, input.messages]);
 }
 
 /** Map deal.status -> short label + tone for the badge. */
