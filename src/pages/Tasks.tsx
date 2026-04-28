@@ -511,7 +511,6 @@ export default function Tasks() {
             const isCompletedScope = s.key === 'completed';
             const isActive = isCompletedScope ? filterStatus === 'complete'
               : s.key === 'my' ? (ownerFilter === 'mine' && filterStatus !== 'complete')
-              : s.key === 'deal' ? (filterDealIds.size === 0 && tabs2HasDealActive())
               : false;
             return (
               <button
