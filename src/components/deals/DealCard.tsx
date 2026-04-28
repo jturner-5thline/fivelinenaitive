@@ -184,7 +184,13 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
   return (
     <>
     <Link to={`/deal/${deal.id}`} className="block w-full min-w-0 h-full" onClick={(e) => { if (isEditingStatus) { e.preventDefault(); } }}>
-      <Card className={`group cursor-pointer h-full flex flex-col relative overflow-visible border border-[hsl(272,100%,80%,0.35)] bg-[linear-gradient(145deg,hsl(222,30%,18%)_0%,hsl(230,25%,14%)_50%,hsl(238,22%,11%)_100%)] backdrop-blur-xl shadow-[inset_0_1px_2px_hsl(272,100%,80%,0.15),inset_0_-1px_1px_hsl(0,0%,0%,0.2),0_0_12px_hsl(272,100%,70%,0.1),0_6px_28px_hsl(0,0%,0%,0.5)] transition-all duration-200 hover:border-[hsl(272,100%,80%,0.55)] hover:bg-[linear-gradient(145deg,hsl(222,30%,21%)_0%,hsl(230,25%,17%)_50%,hsl(238,22%,14%)_100%)] hover:shadow-[inset_0_1px_2px_hsl(272,100%,85%,0.2),inset_0_-1px_1px_hsl(0,0%,0%,0.25),0_0_20px_hsl(272,100%,70%,0.18),0_10px_40px_hsl(0,0%,0%,0.6)] hover:-translate-y-0.5 before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(272,80%,75%,0.08)_0%,transparent_40%,hsl(268,60%,50%,0.04)_100%)] min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
+      <Card
+        style={{
+          background: 'rgba(16, 28, 52, 0.75)',
+          border: '0.5px solid rgba(80, 140, 255, 0.18)',
+          borderRadius: '12px',
+        }}
+        className={`group cursor-pointer h-full flex flex-col relative overflow-hidden backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5 before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(255,255,255,0.07)_0%,rgba(255,255,255,0.00)_55%)] min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
 
         {/* Notification badge */}
         {notificationCount > 0 && (
@@ -257,7 +263,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
             {/* Left: Name + Value */}
             <div className="flex-1 min-w-0 space-y-1">
               <div className="flex items-center gap-2 min-w-0">
-                <h3 className="text-lg font-bold text-foreground leading-tight truncate">{deal.company}</h3>
+                <h3 className="text-lg font-bold leading-tight truncate" style={{ color: '#dde8f8' }}>{deal.company}</h3>
                 {/* Action buttons inline with name */}
                 {onToggleFlag && (
                   <>
@@ -312,7 +318,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                   />
                 )}
               </div>
-              <p className="text-xl font-semibold text-foreground tracking-tight">{formatCurrencyValue(deal.value)}</p>
+              <p className="text-xl font-semibold tracking-tight" style={{ color: '#dde8f8' }}>{formatCurrencyValue(deal.value)}</p>
             </div>
 
             {/* Right: Status + Stage pills */}
@@ -426,7 +432,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                 <div className="relative group/status">
                   <HoverCard openDelay={300}>
                     <HoverCardTrigger asChild>
-                      <p className="text-sm leading-relaxed line-clamp-2 text-muted-foreground cursor-pointer pr-6">
+                      <p className="text-sm leading-relaxed line-clamp-2 cursor-pointer pr-6" style={{ color: 'rgba(160, 200, 255, 0.55)' }}>
                         {notesPlainText}
                       </p>
                     </HoverCardTrigger>
@@ -446,7 +452,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                 </div>
               ) : (
                 <div className="relative group/status">
-                  <p className="text-sm leading-relaxed line-clamp-2 text-muted-foreground/50 italic pr-6">
+                  <p className="text-sm leading-relaxed line-clamp-2 italic pr-6" style={{ color: 'rgba(160, 200, 255, 0.55)' }}>
                     No Status
                   </p>
                   <button
@@ -466,11 +472,11 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
           {/* ── ROW: Manager (left) | Time ago (right) ── */}
           {!compact && (
             <div className="flex items-center justify-between gap-4 min-w-0">
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1.5 text-sm" style={{ color: 'rgba(120, 170, 255, 0.35)' }}>
                 <User className="h-3.5 w-3.5" />
                 <span className="truncate">{deal.manager || 'No manager'}</span>
               </div>
-              <div className={`flex items-center gap-1.5 text-xs text-muted-foreground shrink-0 ${timeAgoData.highlightClass}`}>
+              <div className={`flex items-center gap-1.5 text-xs shrink-0 ${timeAgoData.highlightClass}`} style={timeAgoData.highlightClass ? undefined : { color: 'rgba(120, 170, 255, 0.35)' }}>
                 <Clock className="h-3 w-3" />
                 <span>{timeAgoData.text}</span>
               </div>
@@ -480,7 +486,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
           {/* ── ROW: Engagement + Deal Type pills ── */}
           {!compact && (
             <div className="flex items-center gap-3 flex-wrap min-w-0">
-              <span className="text-xs font-medium text-muted-foreground">
+              <span className="text-xs font-medium" style={{ color: 'rgba(160, 200, 255, 0.50)' }}>
                 {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
               </span>
               {deal.exclusivity && EXCLUSIVITY_CONFIG[deal.exclusivity] && (
@@ -489,7 +495,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                 </Badge>
               )}
               {dealTypeLabels.map((label, index) => (
-                <span key={index} className="text-xs font-medium text-muted-foreground">
+                <span key={index} className="text-xs font-medium" style={{ color: 'rgba(160, 200, 255, 0.50)' }}>
                   {label}
                 </span>
               ))}

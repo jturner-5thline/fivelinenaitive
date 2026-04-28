@@ -17,6 +17,15 @@ interface InlineStatusDropdownProps {
 export function InlineStatusDropdown({ dealId, status, onStatusChange, className = '' }: InlineStatusDropdownProps) {
   const statusConfig = STATUS_CONFIG[status] || { label: status, dotColor: 'bg-muted', badgeColor: 'bg-muted' };
 
+  const onTrackStyle: React.CSSProperties | undefined =
+    status === 'on-track'
+      ? {
+          background: 'rgba(34, 201, 122, 0.12)',
+          border: '0.5px solid rgba(34, 201, 122, 0.30)',
+          color: '#22c97a',
+        }
+      : undefined;
+
   const handleTriggerClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
@@ -33,7 +42,8 @@ export function InlineStatusDropdown({ dealId, status, onStatusChange, className
         >
           <Badge
             variant="outline"
-            className={`${statusConfig.badgeColor} border-0 text-xs rounded-lg font-semibold cursor-pointer hover:opacity-80 transition-opacity ${className}`}
+            style={onTrackStyle}
+            className={`${status === 'on-track' ? '' : `${statusConfig.badgeColor} border-0`} text-xs rounded-lg font-semibold cursor-pointer hover:opacity-80 transition-opacity ${className}`}
           >
             {statusConfig.label}
           </Badge>
