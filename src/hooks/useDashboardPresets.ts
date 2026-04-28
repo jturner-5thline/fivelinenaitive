@@ -38,14 +38,12 @@ export interface DashboardPreset {
 const DEFAULT_GRID: GridItem[] = [
   { i: 'my-deals', x: 0, y: 0, w: 6, h: 6, minW: 3, minH: 3 },
   { i: 'my-tasks', x: 6, y: 0, w: 6, h: 6, minW: 3, minH: 3 },
-  { i: 'my-day', x: 0, y: 6, w: 6, h: 4, minW: 3, minH: 3 },
-  { i: 'email-intelligence', x: 6, y: 6, w: 6, h: 4, minW: 3, minH: 2 },
+  { i: 'email-intelligence', x: 0, y: 6, w: 12, h: 4, minW: 3, minH: 2 },
 ];
 
 const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: 'my-deals', type: 'my-deals', title: 'My Deals', config: { maxItems: 10, variant: 'expanded' } },
   { id: 'my-tasks', type: 'my-tasks', title: 'My Tasks', config: { variant: 'expanded' } },
-  { id: 'my-day', type: 'my-day', title: 'My Day', config: {} },
   { id: 'email-intelligence', type: 'email-intelligence', title: 'Email Intelligence', config: {} },
 ];
 

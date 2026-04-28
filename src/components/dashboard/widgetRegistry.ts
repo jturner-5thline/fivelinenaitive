@@ -17,7 +17,6 @@ export interface WidgetDefinition {
 // Lazy-load widget components
 const MyDealsWidget = React.lazy(lazyRetry(() => import('./MyDealsWidget').then(m => ({ default: m.MyDealsWidget }))));
 const MyTasksWidget = React.lazy(lazyRetry(() => import('./MyTasksWidget').then(m => ({ default: m.MyTasksWidget }))));
-const MyDayWidget = React.lazy(lazyRetry(() => import('./MyDayWidget').then(m => ({ default: m.MyDayWidget }))));
 const EmailIntelligenceWidget = React.lazy(lazyRetry(() => import('./EmailIntelligenceWidget').then(m => ({ default: m.EmailIntelligenceWidget }))));
 const NotificationCarousel = React.lazy(lazyRetry(() => import('./NotificationCarousel').then(m => ({ default: m.NotificationCarousel }))));
 const WorkflowSuggestionsWidget = React.lazy(lazyRetry(() => import('./WorkflowSuggestionsWidget').then(m => ({ default: m.WorkflowSuggestionsWidget }))));
@@ -51,16 +50,6 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
     defaultSize: { w: 6, h: 6 },
     minSize: { w: 3, h: 3 },
     component: MyTasksWidget,
-  },
-  'my-day': {
-    type: 'my-day',
-    label: 'My Day',
-    description: 'Today\'s calendar events with contact and deal context',
-    icon: Calendar,
-    category: 'core',
-    defaultSize: { w: 4, h: 4 },
-    minSize: { w: 3, h: 3 },
-    component: MyDayWidget,
   },
   'sales-call-prep': {
     type: 'sales-call-prep',
