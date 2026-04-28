@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, Printer, RotateCcw } from 'lucide-react';
+import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2 } from 'lucide-react';
+import { useAsanaGoals, type AsanaGoalRow } from '@/hooks/useAsanaGoals';
 
 /* ─────────────────────────────────────────────────────────────────────────
    Quarterly Insights Report — reusable full report page for the existing
@@ -412,59 +413,166 @@ function ReportNarrativeSection({ s, set }: { s: ReportState; set: ReportSetStat
 }
 
 function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState }) {
-  const updateGoal = (id: string, patch: Partial<Goal>) => set(prev => ({ ...prev, goals: prev.goals.map(goal => goal.id === id ? { ...goal, ...patch } : goal) }));
-  const removeGoal = (id: string) => set(prev => ({ ...prev, goals: prev.goals.filter(goal => goal.id !== id) }));
-  const addGoal = () => set(prev => ({ ...prev, goals: [...prev.goals, { id: uid(), title: '', owner: PEOPLE[0], status: 'On Track', due: '' }] }));
+  const { goals: asanaGoals, loading, error, lastSyncedAt, configured, refresh } = useAsanaGoals();
+
   const thStyle: React.CSSProperties = { textAlign: 'left', fontSize: 9, fontWeight: 700, color: 'rgba(140,175,200,0.5)', letterSpacing: '.08em', textTransform: 'uppercase', padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)' };
-  const tdStyle: React.CSSProperties = { padding: '6px 8px', fontSize: 12, color: TEXT_PRIMARY, verticalAlign: 'middle', borderBottom: '1px solid rgba(255,255,255,0.04)' };
+  const tdStyle: React.CSSProperties = { padding: '8px 10px', fontSize: 12, color: TEXT_PRIMARY, verticalAlign: 'middle', borderBottom: '1px solid rgba(255,255,255,0.04)' };
+
+  const formatSyncedAt = (iso: string | null): string => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const diffMs = Date.now() - d.getTime();
+    const mins = Math.round(diffMs / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return d.toLocaleDateString();
+  };
+
+  const headerRight = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      {lastSyncedAt && (
+        <span style={{ fontSize: 10, color: TEXT_LABEL, letterSpacing: '.04em' }}>
+          Synced {formatSyncedAt(lastSyncedAt)}
+        </span>
+      )}
+      <Btn icon={RefreshCw} variant="ghost" onClick={() => { void refresh(); }}>
+        {loading ? 'Syncing…' : 'Sync'}
+      </Btn>
+    </div>
+  );
+
+  const renderEmpty = () => (
+    <div style={{
+      padding: '28px 18px',
+      textAlign: 'center',
+      color: TEXT_MUTED,
+      fontSize: 12,
+      border: '1px dashed rgba(120,170,255,0.18)',
+      borderRadius: 10,
+      background: 'rgba(255,255,255,0.02)',
+    }}>
+      <div style={{ fontWeight: 600, color: TEXT_PRIMARY, marginBottom: 4 }}>No Asana Goals synced</div>
+      <div style={{ marginBottom: 10 }}>
+        {configured
+          ? 'No Goals were returned from your connected Asana workspace.'
+          : 'Connect Asana to sync goals into this report.'}
+      </div>
+      <Btn icon={Link2} variant="ghost" onClick={() => window.open('/integrations', '_blank')}>
+        {configured ? 'Manage Asana' : 'Connect Asana'}
+      </Btn>
+    </div>
+  );
+
+  const renderError = () => (
+    <div style={{
+      padding: '10px 12px',
+      fontSize: 11,
+      color: '#f08585',
+      background: 'rgba(220,80,80,0.08)',
+      border: '1px solid rgba(220,80,80,0.2)',
+      borderRadius: 8,
+      marginBottom: 10,
+    }}>
+      Asana sync error: {error}
+    </div>
+  );
+
+  const renderSkeleton = () => (
+    <div style={{ display: 'grid', gap: 8 }}>
+      {[0, 1, 2, 3].map(i => (
+        <div key={i} style={{
+          height: 36,
+          borderRadius: 8,
+          background: 'linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.06), rgba(255,255,255,0.03))',
+          backgroundSize: '200% 100%',
+          animation: 'pulse 1.4s ease-in-out infinite',
+        }} />
+      ))}
+    </div>
+  );
+
+  const showEmpty = !loading && !error && asanaGoals.length === 0;
+  const showSkeleton = loading && asanaGoals.length === 0;
 
   return (
     <Card>
       <div style={{ padding: '16px 18px' }}>
-        <SectionTitle right={<Btn icon={Plus} variant="ghost" onClick={addGoal}>Add Row</Btn>}>Goals</SectionTitle>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
-            <thead>
-              <tr>
-                <th style={{ ...thStyle, width: 36 }}>#</th>
-                <th style={thStyle}>Title</th>
-                <th style={{ ...thStyle, width: 170 }}>Owner</th>
-                <th style={{ ...thStyle, width: 130 }}>Status</th>
-                <th style={{ ...thStyle, width: 140 }}>Due Date</th>
-                <th style={{ ...thStyle, width: 40 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {s.goals.map((goal, index) => (
-                <tr key={goal.id}>
-                  <td style={{ ...tdStyle, color: TEXT_LABEL, fontVariantNumeric: 'tabular-nums' }}>{index + 1}</td>
-                  <td style={tdStyle}>
-                    <input value={goal.title} onChange={e => updateGoal(goal.id, { title: e.target.value })} placeholder="Goal title or Asana link" style={inputStyle} />
-                  </td>
-                  <td style={tdStyle}>
-                    <select value={goal.owner} onChange={e => updateGoal(goal.id, { owner: e.target.value })} style={selectStyle}>
-                      {PEOPLE.map(person => <option key={person} value={person}>{person}</option>)}
-                    </select>
-                  </td>
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <select value={goal.status} onChange={e => updateGoal(goal.id, { status: e.target.value })} style={selectStyle}>
-                        {['On Track', 'At Risk', 'Behind', 'Achieved'].map(option => <option key={option} value={option}>{option}</option>)}
-                      </select>
-                      <Pill tone={statusTone(goal.status)}>{goal.status}</Pill>
-                    </div>
-                  </td>
-                  <td style={tdStyle}>
-                    <input type="date" value={goal.due} onChange={e => updateGoal(goal.id, { due: e.target.value })} style={inputStyle} />
-                  </td>
-                  <td style={tdStyle}>
-                    <Btn icon={Trash2} variant="danger" ariaLabel="Remove goal" onClick={() => removeGoal(goal.id)} />
-                  </td>
+        <SectionTitle right={headerRight}>Goals</SectionTitle>
+        {error && renderError()}
+        {showSkeleton ? renderSkeleton() : showEmpty ? renderEmpty() : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+              <thead>
+                <tr>
+                  <th style={{ ...thStyle, width: 36 }}>#</th>
+                  <th style={thStyle}>Title</th>
+                  <th style={{ ...thStyle, width: 170 }}>Owner</th>
+                  <th style={{ ...thStyle, width: 110 }}>Status</th>
+                  <th style={{ ...thStyle, width: 120 }}>Due Date</th>
+                  <th style={{ ...thStyle, width: 70 }}>Source</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {asanaGoals.map((goal: AsanaGoalRow, index: number) => (
+                  <tr key={goal.id}>
+                    <td style={{ ...tdStyle, color: TEXT_LABEL, fontVariantNumeric: 'tabular-nums' }}>{index + 1}</td>
+                    <td style={tdStyle}>
+                      {goal.url ? (
+                        <a
+                          href={goal.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            color: TEXT_PRIMARY,
+                            textDecoration: 'none',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            fontWeight: 500,
+                          }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#7cc8f0'; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = TEXT_PRIMARY; }}
+                        >
+                          {goal.title}
+                          <ExternalLink size={11} style={{ opacity: 0.55 }} />
+                        </a>
+                      ) : (
+                        <span>{goal.title}</span>
+                      )}
+                    </td>
+                    <td style={{ ...tdStyle, color: TEXT_PRIMARY }}>{goal.owner}</td>
+                    <td style={tdStyle}>
+                      <Pill tone={statusTone(goal.status)}>{goal.status}</Pill>
+                    </td>
+                    <td style={{ ...tdStyle, color: TEXT_PRIMARY, fontVariantNumeric: 'tabular-nums' }}>
+                      {goal.due || <span style={{ color: TEXT_LABEL }}>—</span>}
+                    </td>
+                    <td style={tdStyle}>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        fontSize: 9,
+                        fontWeight: 700,
+                        letterSpacing: '.06em',
+                        textTransform: 'uppercase',
+                        padding: '2px 7px',
+                        borderRadius: 20,
+                        color: '#f0a45a',
+                        background: 'rgba(240,140,40,0.10)',
+                        border: '1px solid rgba(240,140,40,0.22)',
+                      }}>
+                        Asana
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </Card>
   );

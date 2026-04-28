@@ -201,6 +201,53 @@ serve(async (req) => {
         break;
       }
 
+      case "list_goals": {
+        // Fetch Asana Goals (separate from tasks/projects).
+        // Asana's Goals API requires either a workspace, team, or portfolio scope.
+        // We use workspace_gid as the primary scope.
+        const resolvedToken = await resolveToken(token, integration_id);
+        const workspace = params.workspace_gid;
+        if (!workspace) {
+          result = { success: false, error: "workspace_gid is required" };
+          break;
+        }
+        const optFields = [
+          "name",
+          "notes",
+          "html_notes",
+          "due_on",
+          "start_on",
+          "status",
+          "progress_status",
+          "current_status_update.status_type",
+          "current_status_update.title",
+          "is_workspace_level",
+          "owner.name",
+          "owner.email",
+          "owner.gid",
+          "team.name",
+          "team.gid",
+          "permalink_url",
+          "liked",
+          "metric.current_display_value",
+          "metric.progress_source",
+          "time_period.display_name",
+        ].join(",");
+
+        try {
+          const data = await asanaFetch(
+            `/goals?workspace=${workspace}&is_workspace_level=true&limit=100&opt_fields=${optFields}`,
+            resolvedToken
+          );
+          result = { success: true, goals: data.data || [] };
+        } catch (e) {
+          // Fallback: some workspaces require team scope. Return clear error.
+          const msg = e instanceof Error ? e.message : "Unknown error fetching goals";
+          result = { success: false, error: msg, goals: [] };
+        }
+        break;
+      }
+
       default:
         result = { success: false, error: `Unknown action: ${action}` };
     }
