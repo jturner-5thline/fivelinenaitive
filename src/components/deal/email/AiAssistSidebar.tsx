@@ -608,6 +608,28 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             onSummaryChange={setDealContextSummary}
           />
 
+          {/* Unmatched-email context: contact card / body-mention deal
+              suggestion / Link Deal fallback. Only renders when no deal is
+              linked to the thread. */}
+          {!dealId && (
+            <UnmatchedEmailContextCard
+              email={{
+                from_email: thread.latestEmail.from_email,
+                from_name: thread.latestEmail.from_name,
+                subject: thread.subject,
+                body_preview: thread.latestEmail.body_preview,
+                body_text: thread.latestEmail.body_text,
+              }}
+              onLinkDeal={async (id, name) => {
+                if (onLinkDeal) await onLinkDeal(id, name);
+              }}
+            />
+          )}
+
+          {/* Always-on Ask AI prompt — works for matched and unmatched
+              emails alike. */}
+          <EmailAskAiBox thread={thread} dealId={dealId} />
+
           {/* Thread Summary — auto-generated for multi-message threads, collapsed by default */}
           <ThreadSummaryCard thread={thread} dealId={dealId} />
 
