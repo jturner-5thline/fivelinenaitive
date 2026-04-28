@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Check, X, Loader2, ListTodo, Calendar as CalendarIcon, User as UserIcon, Link2, MinusCircle, AlertTriangle } from 'lucide-react';
+import { Check, X, Loader2, ListTodo, Calendar as CalendarIcon, User as UserIcon, Link2, MinusCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -106,10 +106,16 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
   const { company } = useCompany();
   const queryClient = useQueryClient();
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [retryingKey, setRetryingKey] = useState<string | null>(null);
   type AsanaStatus = 'synced' | 'skipped' | 'failed';
-  const [createdKeys, setCreatedKeys] = useState<
-    Record<string, { dueDate: string; assigneeLabel: string | null; asana: AsanaStatus }>
-  >({});
+  type CreatedRecord = {
+    dueDate: string;
+    assigneeLabel: string | null;
+    asana: AsanaStatus;
+    taskId: string;
+    draft: { title: string; description: string | null; due_date: string };
+  };
+  const [createdKeys, setCreatedKeys] = useState<Record<string, CreatedRecord>>({});
   const [dismissedKeys, setDismissedKeys] = useState<Record<string, true>>({});
   // Per-card "Sync to Asana" toggle. Defaults to ON for every suggested
   // task; users can flip individual cards off before clicking Create.
@@ -207,7 +213,17 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
 
         setCreatedKeys((prev) => ({
           ...prev,
-          [key]: { dueDate, assigneeLabel: ownerLabel, asana: asanaStatus },
+          [key]: {
+            dueDate,
+            assigneeLabel: ownerLabel,
+            asana: asanaStatus,
+            taskId: created.id,
+            draft: {
+              title: draft.title,
+              description: draft.description,
+              due_date: draft.due_date,
+            },
+          },
         }));
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
         toast.success('Task created', {
@@ -219,6 +235,35 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
       toast.error(e?.message || 'Failed to create task');
     } finally {
       setBusyKey(null);
+    }
+  };
+
+  const handleRetryAsana = async (key: string) => {
+    const rec = createdKeys[key];
+    if (!rec) return;
+    setRetryingKey(key);
+    try {
+      const ctx = await getAsanaSyncContext(company?.id || null);
+      if (!ctx) {
+        toast.error('Asana is not configured for this workspace');
+        return;
+      }
+      await syncTaskToAsana(ctx, {
+        id: rec.taskId,
+        title: rec.draft.title,
+        description: rec.draft.description,
+        due_date: rec.draft.due_date,
+      });
+      setCreatedKeys((prev) => ({
+        ...prev,
+        [key]: { ...prev[key], asana: 'synced' },
+      }));
+      toast.success('Synced to Asana');
+    } catch (e: any) {
+      console.warn('[SuggestedTaskCards] Asana retry failed:', e);
+      toast.error(e?.message || 'Asana sync failed — please try again');
+    } finally {
+      setRetryingKey(null);
     }
   };
 
@@ -286,13 +331,30 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
                     </Badge>
                   )}
                   {created.asana === 'failed' && (
-                    <Badge
-                      variant="outline"
-                      className="text-[9px] h-4 px-1.5 border bg-amber-500/10 text-amber-400 border-amber-500/30 gap-1"
-                      title="Task created in naitive but Asana sync failed"
-                    >
-                      <AlertTriangle className="h-2.5 w-2.5" /> Asana failed
-                    </Badge>
+                    <div className="flex items-center gap-1">
+                      <Badge
+                        variant="outline"
+                        className="text-[9px] h-4 px-1.5 border bg-amber-500/10 text-amber-400 border-amber-500/30 gap-1"
+                        title="Task created in naitive but Asana sync failed"
+                      >
+                        <AlertTriangle className="h-2.5 w-2.5" /> Asana failed
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-4 px-1.5 text-[9px] gap-1 border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                        disabled={retryingKey === key}
+                        onClick={() => handleRetryAsana(key)}
+                        title="Retry syncing this task to Asana"
+                      >
+                        {retryingKey === key ? (
+                          <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-2.5 w-2.5" />
+                        )}
+                        Retry
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}
