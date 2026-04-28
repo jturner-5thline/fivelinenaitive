@@ -308,7 +308,7 @@ export function TaskListView({
                 </button>
 
                 {!isCollapsed && (
-                  <div className="px-2 pt-1.5 pb-1 space-y-1">
+                  <div className="pt-1.5 pb-1 space-y-1 px-2">
                     {group.tasks.map(task => {
                       const globalIndex = tasks.indexOf(task);
                       return (
