@@ -2,7 +2,7 @@
 // DO NOT EDIT VALUES — they are seeded historicals from the Excel master through 2026-04-17.
 // Forward weeks (2026-04-24 onward) are computed from Configure Payments & Revenue entries.
 
-import type { WeeklyData } from './types';
+import type { WeeklyData, WeeklyEntry } from './types';
 
 // Row keys used in the weekly cash flow grid. These match the labels exactly
 // as displayed in the table (see WEEKLY_ROW_ORDER in WeeklyReportTab.tsx).
@@ -47,7 +47,12 @@ export const CASH_OUT_ROWS = [
 // computed from Configure Payments & Revenue entries.
 export const LAST_HISTORICAL_WEEK_ENDING = '2026-04-17';
 
-export const WEEKLY_HISTORICAL_SEED: WeeklyData = {
+// Cast at the top level — the historical entries don't include the legacy
+// "Add'l Liquidity (Delayed Draw)" key (replaced by the new
+// "Addl Liquidity Chase Tax Reserve MT Chk" key from the Excel template),
+// so we widen here. The `[key: string]: number | string` index signature on
+// WeeklyEntry still applies for downstream lookups.
+export const WEEKLY_HISTORICAL_SEED: WeeklyData = ({
   "2025-01-03": {
     week_num: 1,
     week_ending: "2025-01-03",
