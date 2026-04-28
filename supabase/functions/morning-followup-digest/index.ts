@@ -50,6 +50,16 @@ Deno.serve(async (req) => {
     const dt = p.morning_digest_time || "07:00:00";
     if (!isAtDigestTime(tz, dt, now)) { skipped++; continue; }
 
+    // James Turner reads his follow-ups in the in-app Daily Briefing
+    // (Pipeline & Clients tab → "Today's Follow-Ups" section) instead of
+    // receiving the standalone "Your follow-ups for today" email. The
+    // briefing UI re-runs the same wf_tasks + scheduled_followup_actions
+    // query, so no content is lost — only the delivery surface changes.
+    if ((p.email || "").toLowerCase() === "jturner@5thline.co") {
+      skipped++;
+      continue;
+    }
+
     // Dedup: don't send twice in same local day
     const { count: alreadySent } = await supabase
       .from("notification_audit")
