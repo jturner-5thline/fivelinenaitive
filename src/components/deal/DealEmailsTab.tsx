@@ -1342,7 +1342,12 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
             {/* AI search status / interpretation banner */}
             {(aiSearch.isSearching || aiSearchActive || aiSearch.error) && (
-              <div className="px-3 py-1.5 border-b border-white/[0.06] bg-primary/[0.04]">
+              <div
+                className="px-3 py-1.5 border-b border-white/[0.06] bg-primary/[0.04]"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+              >
                 {aiSearch.isSearching ? (
                   <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                     <Loader2 className="h-3 w-3 animate-spin text-primary" />
@@ -1500,6 +1505,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 onMarkUnread={handleMarkUnread}
                 onArchive={handleArchiveEmail}
                 onDelete={handleDeleteEmail}
+                isLoading={aiSearch.isSearching}
               />
               {/* Pagination footer: shows Load more, loading, or end-of-inbox */}
               {(onLoadMore || hasMore || isLoadingMore || isAutoPaginating) && (
