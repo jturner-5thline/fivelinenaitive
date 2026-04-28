@@ -188,20 +188,31 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
         className={`deal-glass group relative cursor-pointer h-full flex flex-col transition-all duration-200 hover:-translate-y-0.5 min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
 
         {/*
-          Notification indicator — small solid red circle mounted on the
-          top-right border of the tile. Pure absolute overlay: removed from
-          normal flow so its presence/absence cannot shift the title's top
-          inset or any other in-card content. Uses the `destructive` token
-          so it stays consistent with other red alert markers.
+          Notification indicator — single overlay anchored to the top-right
+          corner of the tile. Pure absolute overlay (outside content flow)
+          so its presence/absence cannot shift the title's top inset or any
+          other in-card content. Renders as a small solid dot when there is
+          no count, or a compact red pill with the count when > 1. Includes
+          a 2px ring in the page background so it pops cleanly off the tile,
+          and a soft red glow for visibility on dark surfaces.
         */}
         {notificationCount > 0 && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div
-                  aria-label={`${notificationCount} notification${notificationCount !== 1 ? 's' : ''}`}
-                  className="absolute -top-1.5 -right-1.5 z-20 h-3 w-3 rounded-full bg-destructive ring-2 ring-background shadow-[0_1px_3px_rgba(0,0,0,0.45)]"
-                />
+                {notificationCount > 1 ? (
+                  <div
+                    aria-label={`${notificationCount} notifications`}
+                    className="absolute -top-1.5 -right-1.5 z-30 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-destructive-foreground tabular-nums ring-2 ring-background shadow-[0_0_0_1px_rgba(0,0,0,0.25),0_2px_8px_hsl(var(--destructive)/0.55)]"
+                  >
+                    {notificationCount > 99 ? '99+' : notificationCount}
+                  </div>
+                ) : (
+                  <div
+                    aria-label="1 notification"
+                    className="absolute -top-1.5 -right-1.5 z-30 h-3 w-3 rounded-full bg-destructive ring-2 ring-background shadow-[0_0_0_1px_rgba(0,0,0,0.25),0_2px_8px_hsl(var(--destructive)/0.55)]"
+                  />
+                )}
               </TooltipTrigger>
               <TooltipContent>
                 <p>{notificationCount} item{notificationCount !== 1 ? 's' : ''} need attention</p>
@@ -210,23 +221,11 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
           </TooltipProvider>
         )}
 
-        {/* Stale indicator */}
-        {timeAgoData.isStale && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="absolute top-2 left-2 z-10">
-                  <div className={`flex items-center justify-center h-6 w-6 rounded-full ${timeAgoData.days >= 30 ? 'bg-destructive' : 'bg-warning'} shadow-md`}>
-                    <AlertTriangle className="h-3.5 w-3.5 text-white" />
-                  </div>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Stale deal - no updates for {timeAgoData.days} days</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
+        {/*
+          Stale state is communicated via the card ring (warning) and the
+          notification dot — the previous top-left AlertTriangle badge was
+          removed per design to keep a single corner indicator.
+        */}
 
         {/* Mark reviewed button */}
         {timeAgoData.isStale && onMarkReviewed && !compact && (
