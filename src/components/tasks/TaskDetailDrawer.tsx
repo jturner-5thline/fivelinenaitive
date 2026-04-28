@@ -26,6 +26,10 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover';
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   X, Calendar, Flag, User, MessageSquare, Activity, Plus,
   CheckSquare, Trash2, Clock, Sun, Sunrise, ArrowRight,
   Link2, Paperclip, Download, FileText, Users,
@@ -92,6 +96,7 @@ const PRIORITY_PILL: Record<string, { label: string; bg: string }> = {
 };
 
 export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage = false }: TaskDetailDrawerProps) {
+  const [stopRecurrenceOpen, setStopRecurrenceOpen] = useState(false);
   const navigate = useNavigate();
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(task.title);
@@ -457,11 +462,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
                         size="sm"
                         className="h-6 text-[10px] px-2 rounded-full border-[#2a2f3e] gap-1"
                         style={{ color: '#ff4d4d' }}
-                        onClick={() => {
-                          if (!confirm('Stop this recurring series? No more tasks will be generated.')) return;
-                          onUpdate({ recurrence_rule: null, recurrence_end_date: null, is_recurring: false } as any);
-                          toast.success('Recurrence stopped');
-                        }}
+                        onClick={() => setStopRecurrenceOpen(true)}
                         title="Permanently stop the recurring series"
                       >
                         <Square className="h-3 w-3" /> Stop
@@ -687,6 +688,29 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
           </Tabs>
         </div>
       </ScrollArea>
+      <AlertDialog open={stopRecurrenceOpen} onOpenChange={setStopRecurrenceOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Stop this recurring series?</AlertDialogTitle>
+            <AlertDialogDescription>
+              No more tasks will be generated from this rule. Existing tasks already created will not be affected. This action removes the recurrence rule entirely — to temporarily halt generation instead, use Pause.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                onUpdate({ recurrence_rule: null, recurrence_end_date: null, is_recurring: false } as any);
+                toast.success('Recurrence stopped');
+                setStopRecurrenceOpen(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Stop recurrence
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
