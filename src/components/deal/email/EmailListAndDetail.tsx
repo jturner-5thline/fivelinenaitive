@@ -1013,7 +1013,24 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const [smartPopoverOpen, setSmartPopoverOpen] = useState(false);
   // AI Assist sidebar is always-on by default. On desktop it's persistently rendered;
   // on smaller widths it collapses into a toggleable drawer driven by this state.
-  const [showAiAssist, setShowAiAssist] = useState(true);
+  const AI_ASSIST_PREF_KEY = 'email.aiAssistOpen';
+  const [showAiAssist, setShowAiAssist] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const raw = window.localStorage.getItem(AI_ASSIST_PREF_KEY);
+      return raw === null ? true : raw === '1';
+    } catch {
+      return true;
+    }
+  });
+  const aiAssistButtonRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(AI_ASSIST_PREF_KEY, showAiAssist ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }, [showAiAssist]);
   const [showAiDraft, setShowAiDraft] = useState(false);
   const [aiDraftMode, setAiDraftMode] = useState<DraftMode | undefined>(undefined);
   const [linkedDealName, setLinkedDealName] = useState<string | undefined>(thread.dealName);
