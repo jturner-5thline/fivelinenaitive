@@ -69,6 +69,12 @@ import { EmailIntelligenceDialog } from './email/EmailIntelligenceDialog';
 import { InlineComposePanel } from './email/InlineComposePanel';
 import { useAIEmailSearch, AI_SEARCH_MIN_LENGTH } from '@/hooks/useAIEmailSearch';
 import { Sparkles, Loader2 } from 'lucide-react';
+import { useGmail } from '@/hooks/useGmail';
+
+// A message id is a real provider (Nylas/Gmail/Outlook) id only when the
+// inbox is hydrated from `externalEmails`. Mock fixtures use the `mock-`
+// prefix and must NEVER be sent to the provider sync endpoint.
+const isProviderMessageId = (id: string) => !!id && !id.startsWith('mock-');
 
 interface DealEmailsTabProps {
   dealId: string;
