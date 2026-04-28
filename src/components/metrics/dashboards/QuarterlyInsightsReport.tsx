@@ -240,6 +240,8 @@ export interface ReportState {
   asanaGoalFilters?: AsanaGoalFilterTemplates;
   /** Optional manual override for the active report (resets when period changes). */
   asanaGoalOverride?: { quarterLabel?: string; halfLabel?: string } | null;
+  /** When true, match Asana time_period by exact label (case-insensitive) instead of substring. */
+  asanaGoalExactMatch?: boolean;
 }
 
 const SEED: ReportState = {
@@ -293,6 +295,7 @@ Looking forward, our Q2 focus is sustaining pipeline velocity, hardening the age
   ],
   asanaGoalFilters: DEFAULT_ASANA_GOAL_FILTERS,
   asanaGoalOverride: null,
+  asanaGoalExactMatch: false,
 };
 
 const cloneSeed = (): ReportState => JSON.parse(JSON.stringify(SEED));
