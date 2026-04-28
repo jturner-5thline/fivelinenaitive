@@ -476,6 +476,12 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
           const { data: { user: u } } = await supabase.auth.getUser();
           if (u) {
             const nextDueDate = calculateNextDueDate(completedTask.due_date, completedTask.recurrence_rule);
+            const seriesEnd = (completedTask as any).recurrence_end_date as string | null | undefined;
+            // Stop the series if the next occurrence falls past the end date
+            // (or if no next date can be computed at all).
+            if (!nextDueDate || (seriesEnd && nextDueDate > seriesEnd)) {
+              return id;
+            }
              const { data: newRecurringTask } = await supabase.from('tasks').insert({
                title: completedTask.title,
                description: completedTask.description,
@@ -489,6 +495,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
                recurrence_source_id: completedTask.recurrence_source_id || id,
                due_date: nextDueDate,
                task_type: completedTask.task_type,
+               recurrence_end_date: seriesEnd ?? null,
              } as any).select().single();
 
              // Fire-and-forget Asana sync for the new recurring task
