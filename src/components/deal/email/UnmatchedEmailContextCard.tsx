@@ -112,8 +112,14 @@ export function UnmatchedEmailContextCard({
             <span className="text-emerald-400">{linkedConfirmation.dealName}</span>
           </p>
           <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug inline-flex items-center gap-1">
-            <ListTodo className="h-2.5 w-2.5" />
-            We detected a next action — create a follow-up task?
+            <ListTodo className="h-2.5 w-2.5 shrink-0" />
+            <span>Suggested next action</span>
+          </p>
+          <p
+            className="text-[11px] text-foreground/90 mt-1 leading-snug italic break-words"
+            title={primarySuggestion.title}
+          >
+            “{primarySuggestion.title}”
           </p>
         </div>
         <Button
