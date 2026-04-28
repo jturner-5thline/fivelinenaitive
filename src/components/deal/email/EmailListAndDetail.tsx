@@ -66,6 +66,8 @@ import { useLenderPassDetection } from '@/hooks/useLenderPassDetection';
 import { SendToDataRoomDialog } from './SendToDataRoomDialog';
 import { FolderPlus } from 'lucide-react';
 import { useThreadWorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
+import { useEmailPrioritySignals } from '@/hooks/useEmailPrioritySignals';
+import type { DetectedSignal } from '@/lib/emailPrioritySignals';
 import { useAutoEmailLabelEvaluator } from '@/hooks/useAutoEmailLabelEvaluator';
 import type { EmailLabel } from '@/hooks/useEmailLabels';
 import { supabase } from '@/integrations/supabase/client';
@@ -182,9 +184,10 @@ interface ThreadListItemProps {
   onArchive?: (email: MockEmail) => void;
   onDelete?: (email: MockEmail) => void;
   autoLabels?: EmailLabel[];
+  priorityFlag?: DetectedSignal;
 }
 
-function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels }: ThreadListItemProps) {
+function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels, priorityFlag }: ThreadListItemProps) {
   const [hovered, setHovered] = useState(false);
   const latest = thread.latestEmail;
   const displayName = latest.folder === 'sent' ? `To: ${latest.to_name || latest.to_email}` : latest.from_name;
