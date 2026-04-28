@@ -70,6 +70,18 @@ import { InlineComposePanel } from './email/InlineComposePanel';
 import { useAIEmailSearch, AI_SEARCH_MIN_LENGTH } from '@/hooks/useAIEmailSearch';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { useGmail } from '@/hooks/useGmail';
+import { logSentReplyToDeal } from '@/lib/logSentReplyToDeal';
+import { createTaskFromDraft, type TaskDraft } from '@/hooks/useNaitiveTaskParse';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
+
+/** Compute next business day in local TZ as 'YYYY-MM-DD'. Skips weekends. */
+function nextBusinessDayISO(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 // A message id is a real provider (Nylas/Gmail/Outlook) id only when the
 // inbox is hydrated from `externalEmails`. Mock fixtures use the `mock-`
