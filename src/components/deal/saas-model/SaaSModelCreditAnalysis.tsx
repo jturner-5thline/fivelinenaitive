@@ -625,9 +625,9 @@ export function SaaSModelCreditAnalysis({ model }: Props) {
                             formatter={(v: number) => [cov.format(v), cov.name]}
                             contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 6, fontSize: 10 }}
                           />
-                          <Line type="monotone" dataKey="value" stroke="#4C6FFF" strokeWidth={2} dot={{ r: 3 }} />
+                          <Line type="monotone" dataKey="value" stroke="#4C6FFF" strokeWidth={1} dot={{ r: 3 }} />
                           {cov.thresholdNum < 1000 && (
-                            <ReferenceLine y={cov.thresholdNum} stroke="#F97373" strokeDasharray="4 3" strokeWidth={1}
+                            <ReferenceLine y={cov.thresholdNum} stroke="#F97373" strokeDasharray="4 3" strokeWidth={0.5}
                               label={{ value: cov.threshold, position: 'right', style: { fontSize: 8, fill: '#F97373' } }} />
                           )}
                         </LineChart>

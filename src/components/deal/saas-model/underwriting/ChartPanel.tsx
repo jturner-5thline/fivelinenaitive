@@ -74,8 +74,8 @@ export function RevenueVsExpensesChart({ title, data, height = 180 }: ChartPanel
             <YAxis tick={AXIS_STYLE} tickFormatter={v => fmtMM(v)} />
             <Tooltip formatter={(v: number, name: string) => [fmtMM(v), name]} contentStyle={TOOLTIP_STYLE} />
             <Legend wrapperStyle={LEGEND_STYLE} />
-            <Line type="monotone" dataKey="revenue" name="Revenue" stroke={COLORS.revenue} strokeWidth={2} dot={{ r: 2, fill: COLORS.revenue }} />
-            <Line type="monotone" dataKey="expenses" name="Expenses" stroke={COLORS.expenses} strokeWidth={2} dot={{ r: 2, fill: COLORS.expenses }} strokeDasharray="5 5" />
+            <Line type="monotone" dataKey="revenue" name="Revenue" stroke={COLORS.revenue} strokeWidth={1} dot={{ r: 2, fill: COLORS.revenue }} />
+            <Line type="monotone" dataKey="expenses" name="Expenses" stroke={COLORS.expenses} strokeWidth={1} dot={{ r: 2, fill: COLORS.expenses }} strokeDasharray="5 5" />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
@@ -101,7 +101,7 @@ export function EbitdaChart({ title, data, height = 180 }: ChartPanelProps) {
                 <Cell key={i} fill={entry.isProjected ? COLORS.projected : COLORS.ebitda} />
               ))}
             </Bar>
-            <Line type="monotone" dataKey="operating_income" name="Op. Income" stroke={COLORS.operating_income} strokeWidth={2} dot={{ r: 2, fill: COLORS.operating_income }} />
+            <Line type="monotone" dataKey="operating_income" name="Op. Income" stroke={COLORS.operating_income} strokeWidth={1} dot={{ r: 2, fill: COLORS.operating_income }} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>

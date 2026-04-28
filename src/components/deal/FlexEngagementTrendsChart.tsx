@@ -113,7 +113,7 @@ export function FlexEngagementTrendsChart({ dealId }: FlexEngagementTrendsChartP
           <YAxis {...commonAxisProps.yAxis} />
           <Tooltip content={<CustomTooltip />} />
           {visibleMetrics.map(m => (
-            <Line key={m} type="monotone" dataKey={m} name={METRIC_NAMES[m]} stroke={CHART_COLORS[m as keyof typeof CHART_COLORS]} strokeWidth={2} dot={false} />
+            <Line key={m} type="monotone" dataKey={m} name={METRIC_NAMES[m]} stroke={CHART_COLORS[m as keyof typeof CHART_COLORS]} strokeWidth={1} dot={false} />
           ))}
         </LineChart>
       );
@@ -134,7 +134,7 @@ export function FlexEngagementTrendsChart({ dealId }: FlexEngagementTrendsChartP
         <YAxis {...commonAxisProps.yAxis} />
         <Tooltip content={<CustomTooltip />} />
         {visibleMetrics.map(m => (
-          <Area key={m} type="monotone" dataKey={m} name={METRIC_NAMES[m]} stroke={CHART_COLORS[m as keyof typeof CHART_COLORS]} fillOpacity={1} fill={`url(#color-${m})`} strokeWidth={2} />
+          <Area key={m} type="monotone" dataKey={m} name={METRIC_NAMES[m]} stroke={CHART_COLORS[m as keyof typeof CHART_COLORS]} fillOpacity={1} fill={`url(#color-${m})`} strokeWidth={1} />
         ))}
       </AreaChart>
     );

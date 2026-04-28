@@ -188,7 +188,7 @@ export function DatarailsLiveChart({ widget }: DatarailsLiveChartProps) {
                 }}
               />
               <Legend />
-              {negEnabled && <ReferenceLine y={negThreshold} stroke={negColor} strokeDasharray="4 4" strokeWidth={1} />}
+              {negEnabled && <ReferenceLine y={negThreshold} stroke={negColor} strokeDasharray="4 4" strokeWidth={0.5} />}
               {dataKeys.map((name, i) => {
                 const normalColor = COLORS[i % COLORS.length];
                 if (negEnabled) {
@@ -210,7 +210,7 @@ export function DatarailsLiveChart({ widget }: DatarailsLiveChartProps) {
                     type="monotone"
                     dataKey={name}
                     stroke={normalColor}
-                    strokeWidth={2}
+                    strokeWidth={1}
                     dot={{ r: 3 }}
                     name={name.replace('f-', '').replace(/-/g, ' ')}
                   />
@@ -255,7 +255,7 @@ export function DatarailsLiveChart({ widget }: DatarailsLiveChartProps) {
                 }}
               />
               <Legend />
-              {negEnabled && <ReferenceLine yAxisId="left" y={negThreshold} stroke={negColor} strokeDasharray="4 4" strokeWidth={1} />}
+              {negEnabled && <ReferenceLine yAxisId="left" y={negThreshold} stroke={negColor} strokeDasharray="4 4" strokeWidth={0.5} />}
               {dataKeys.map((name, i) => (
                 <Bar
                   key={name}
@@ -284,7 +284,7 @@ export function DatarailsLiveChart({ widget }: DatarailsLiveChartProps) {
                   type="monotone"
                   dataKey="__trendLine"
                   stroke={trendLineColor}
-                  strokeWidth={2}
+                  strokeWidth={1}
                   dot={{ r: 4, fill: trendLineColor }}
                   name="Trend"
                 >
@@ -330,7 +330,7 @@ function NegativeAwareLine({
           return typeof v === 'number' && v >= threshold ? v : undefined;
         }}
         stroke={normalColor}
-        strokeWidth={2}
+        strokeWidth={1}
         dot={{ r: 3, fill: normalColor }}
         name={name}
         connectNulls={false}
@@ -342,7 +342,7 @@ function NegativeAwareLine({
           return typeof v === 'number' && v < threshold ? v : undefined;
         }}
         stroke={negativeColor}
-        strokeWidth={2}
+        strokeWidth={1}
         dot={{ r: 3, fill: negativeColor }}
         name={`${name} (below threshold)`}
         connectNulls={false}

@@ -221,7 +221,7 @@ export function ReportPreviewDialog({ open, onOpenChange, report }: ReportPrevie
                     <YAxis tick={{ fontSize: 11 }} />
                     <Tooltip />
                     {showLegend && <Legend />}
-                    <Line type="monotone" dataKey="value" stroke={COLORS[0]} strokeWidth={2} />
+                    <Line type="monotone" dataKey="value" stroke={COLORS[0]} strokeWidth={1} />
                   </LineChart>
                 ) : chartType === 'area' ? (
                   <AreaChart data={data}>
@@ -230,7 +230,7 @@ export function ReportPreviewDialog({ open, onOpenChange, report }: ReportPrevie
                     <YAxis tick={{ fontSize: 11 }} />
                     <Tooltip />
                     {showLegend && <Legend />}
-                    <Area type="monotone" dataKey="value" fill={COLORS[0]} fillOpacity={0.2} stroke={COLORS[0]} strokeWidth={2} />
+                    <Area type="monotone" dataKey="value" fill={COLORS[0]} fillOpacity={0.2} stroke={COLORS[0]} strokeWidth={1} />
                   </AreaChart>
                 ) : (
                   <BarChart data={data}>

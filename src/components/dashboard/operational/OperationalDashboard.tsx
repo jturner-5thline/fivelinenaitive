@@ -334,7 +334,7 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                   <PieGlassDefs colors={milestoneOwnership.map((_, i) => CHART_COLORS[i % CHART_COLORS.length])} />
                   <Pie data={milestoneOwnership} dataKey="count" nameKey="assignee" cx="50%" cy="50%" innerRadius={32} outerRadius={60} paddingAngle={3} activeShape={GlassActiveShape}>
                     {milestoneOwnership.map((_, i) => (
-                      <Cell key={i} fill={pieGlassFill(i)} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={0.5} />
+                      <Cell key={i} fill={pieGlassFill(i)} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={0.25} />
                     ))}
                   </Pie>
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
@@ -397,7 +397,7 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                   <PieGlassDefs colors={projectStatus.map(s => s.color)} />
                   <Pie data={projectStatus} dataKey="count" nameKey="status" cx="50%" cy="50%" innerRadius={32} outerRadius={60} paddingAngle={3} activeShape={GlassActiveShape}>
                     {projectStatus.map((entry, i) => (
-                      <Cell key={i} fill={pieGlassFill(i)} stroke={entry.color} strokeWidth={0.5} />
+                      <Cell key={i} fill={pieGlassFill(i)} stroke={entry.color} strokeWidth={0.25} />
                     ))}
                   </Pie>
                   <Tooltip contentStyle={TOOLTIP_STYLE} />

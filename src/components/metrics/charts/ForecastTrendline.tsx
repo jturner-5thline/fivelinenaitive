@@ -56,7 +56,7 @@ export function ForecastTrendline({ data, height = 240, color = 'hsl(var(--prima
           type="monotone"
           dataKey="actual"
           stroke={color}
-          strokeWidth={2}
+          strokeWidth={1}
           dot={{ r: 3 }}
           name="Actual"
         />
@@ -65,7 +65,7 @@ export function ForecastTrendline({ data, height = 240, color = 'hsl(var(--prima
           type="monotone"
           dataKey="forecast"
           stroke={color}
-          strokeWidth={2}
+          strokeWidth={1}
           strokeDasharray="5 5"
           dot={{ r: 3, strokeDasharray: '' }}
           name="Forecast"

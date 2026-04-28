@@ -206,7 +206,7 @@ function OutstandingARPieChart() {
                 activeShape={GlassActiveShape}
               >
                 {pieData.map((_, i) => (
-                  <Cell key={i} fill={PIE_COLORS[i]} fillOpacity={0.75} stroke={PIE_COLORS[i]} strokeWidth={1} />
+                  <Cell key={i} fill={PIE_COLORS[i]} fillOpacity={0.75} stroke={PIE_COLORS[i]} strokeWidth={0.5} />
                 ))}
               </Pie>
               <Tooltip

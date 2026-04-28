@@ -184,7 +184,7 @@ export function BalanceCashFlow({ view, dateRange, comparisonMode = 'prior_perio
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${v}K`} />
                 <RechartsTooltip contentStyle={tooltipStyle} />
                 <Bar yAxisId="right" dataKey="fcf" fill="hsl(var(--chart-2))" opacity={0.6} barSize={20} radius={[3, 3, 0, 0]} name="FCF" />
-                <Line yAxisId="left" type="monotone" dataKey="cash" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} name="Cash" />
+                <Line yAxisId="left" type="monotone" dataKey="cash" stroke="hsl(var(--primary))" strokeWidth={1} dot={{ r: 3 }} name="Cash" />
                 <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />
               </ComposedChart>
             </ResponsiveContainer>

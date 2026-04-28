@@ -107,8 +107,8 @@ export function PnLTrendCharts({ periodColumns, financialData, lineItems, classN
                   <Legend />
                   <Bar yAxisId="left" dataKey="revenue" name="Revenue" fill="hsl(var(--primary) / 0.7)" radius={[4, 4, 0, 0]} />
                   <Bar yAxisId="left" dataKey="grossProfit" name="Gross Profit" fill="hsl(var(--success) / 0.5)" radius={[4, 4, 0, 0]} />
-                  <Line yAxisId="right" type="monotone" dataKey="grossMarginPct" name="Gross Margin %" stroke="hsl(var(--success))" strokeWidth={2} dot={{ r: 3 }} />
-                  <Line yAxisId="right" type="monotone" dataKey="netMarginPct" name="Net Margin %" stroke="hsl(var(--warning))" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line yAxisId="right" type="monotone" dataKey="grossMarginPct" name="Gross Margin %" stroke="hsl(var(--success))" strokeWidth={1} dot={{ r: 3 }} />
+                  <Line yAxisId="right" type="monotone" dataKey="netMarginPct" name="Net Margin %" stroke="hsl(var(--warning))" strokeWidth={1} dot={{ r: 3 }} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -184,9 +184,9 @@ export function PnLTrendCharts({ periodColumns, financialData, lineItems, classN
                   <ReTooltip {...tooltipStyle} formatter={(v: number) => `${v.toFixed(1)}%`} />
                   <Legend />
                   <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
-                  <Line type="monotone" dataKey="revenueChg" name="Revenue" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="grossProfitChg" name="Gross Profit" stroke="hsl(var(--success))" strokeWidth={2} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="netIncomeChg" name="Net Income" stroke="hsl(var(--warning))" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="revenueChg" name="Revenue" stroke="hsl(var(--primary))" strokeWidth={1} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="grossProfitChg" name="Gross Profit" stroke="hsl(var(--success))" strokeWidth={1} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="netIncomeChg" name="Net Income" stroke="hsl(var(--warning))" strokeWidth={1} dot={{ r: 3 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>

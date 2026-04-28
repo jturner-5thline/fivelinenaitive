@@ -310,7 +310,7 @@ function GenericDashboardCard({
             <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
             <Tooltip formatter={(value: number) => formatCurrency(value)} />
             <Legend />
-            {negEnabled && <ReferenceLine y={negThreshold} stroke={negColor} strokeDasharray="4 4" strokeWidth={1} />}
+            {negEnabled && <ReferenceLine y={negThreshold} stroke={negColor} strokeDasharray="4 4" strokeWidth={0.5} />}
             {dataKeys.map((key, i) => {
               const lineColor = CHART_COLORS[i % CHART_COLORS.length];
               if (negEnabled) {
@@ -321,7 +321,7 @@ function GenericDashboardCard({
                     dataKey={key}
                     stroke={lineColor}
                     name={key}
-                    strokeWidth={2}
+                    strokeWidth={1}
                     dot={(dotProps: any) => {
                       const val = dotProps.payload?.[key];
                       const isBelowThreshold = typeof val === 'number' && val < negThreshold;
@@ -346,7 +346,7 @@ function GenericDashboardCard({
                   dataKey={key}
                   stroke={lineColor}
                   name={key}
-                  strokeWidth={2}
+                  strokeWidth={1}
                 />
               );
             })}
@@ -379,7 +379,7 @@ function GenericDashboardCard({
           {showTrendLine && <YAxis yAxisId="right" orientation="right" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />}
           <Tooltip formatter={(value: number) => formatCurrency(value)} />
           <Legend />
-          {negEnabled && <ReferenceLine yAxisId="left" y={negThreshold} stroke={negColor} strokeDasharray="4 4" strokeWidth={1} />}
+          {negEnabled && <ReferenceLine yAxisId="left" y={negThreshold} stroke={negColor} strokeDasharray="4 4" strokeWidth={0.5} />}
           {dataKeys.map((key, i) => (
             <Bar
               key={key}
@@ -411,7 +411,7 @@ function GenericDashboardCard({
               type="monotone"
               dataKey="__trendLine"
               stroke={trendLineColor}
-              strokeWidth={2}
+              strokeWidth={1}
               dot={{ r: 4, fill: trendLineColor }}
               name="Trend"
             >

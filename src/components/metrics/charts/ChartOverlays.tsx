@@ -52,7 +52,7 @@ export function TrendlineOverlay({
       type="monotone"
       dataKey={dataKey}
       stroke={color}
-      strokeWidth={1.5}
+      strokeWidth={0.75}
       strokeDasharray="6 3"
       dot={false}
       activeDot={false}
@@ -83,7 +83,7 @@ export function PlanReferenceLine({ value, label, color = 'hsl(var(--chart-4))' 
     <ReferenceLine
       y={value}
       stroke={color}
-      strokeWidth={1.5}
+      strokeWidth={0.75}
       strokeDasharray="8 4"
       label={{
         value: label || `Plan: ${value.toLocaleString()}`,

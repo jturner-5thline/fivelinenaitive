@@ -152,8 +152,8 @@ export function BDChartGrid({ revenue, headcount, dealflow, finPerf, computed, v
             <YAxis tickFormatter={fmt} tick={AXIS_TICK} />
             <Tooltip formatter={(v: number) => fmt(v)} {...tooltipStyle} />
             <Legend wrapperStyle={LEGEND_STYLE} />
-            <Line type="monotone" dataKey="Revenue" stroke={COLORS.revenue} strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="Costs" stroke={COLORS.costs} strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="Revenue" stroke={COLORS.revenue} strokeWidth={1} dot={false} />
+            <Line type="monotone" dataKey="Costs" stroke={COLORS.costs} strokeWidth={1} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </ChartCard>
@@ -168,7 +168,7 @@ export function BDChartGrid({ revenue, headcount, dealflow, finPerf, computed, v
             <Tooltip {...tooltipStyle} />
             <Legend wrapperStyle={LEGEND_STYLE} />
             <Bar yAxisId="left" dataKey="Margin" fill={COLORS.margin} />
-            <Line yAxisId="right" type="monotone" dataKey="Margin %" stroke={COLORS.marginPct} strokeWidth={2} dot={false} />
+            <Line yAxisId="right" type="monotone" dataKey="Margin %" stroke={COLORS.marginPct} strokeWidth={1} dot={false} />
           </ComposedChart>
         </ResponsiveContainer>
       </ChartCard>
@@ -180,7 +180,7 @@ export function BDChartGrid({ revenue, headcount, dealflow, finPerf, computed, v
             <XAxis dataKey="quarter" tick={AXIS_TICK} />
             <YAxis tickFormatter={v => `${v?.toFixed(1)}x`} tick={AXIS_TICK} />
             <Tooltip formatter={(v: number) => `${v?.toFixed(2)}x`} {...tooltipStyle} />
-            <Line type="monotone" dataKey="TTM ROI" stroke={COLORS.roi} strokeWidth={2} dot={{ r: 3 }} />
+            <Line type="monotone" dataKey="TTM ROI" stroke={COLORS.roi} strokeWidth={1} dot={{ r: 3 }} />
           </LineChart>
         </ResponsiveContainer>
       </ChartCard>
@@ -207,7 +207,7 @@ export function BDChartGrid({ revenue, headcount, dealflow, finPerf, computed, v
             <XAxis dataKey="quarter" tick={AXIS_TICK} />
             <YAxis tickFormatter={fmt} tick={AXIS_TICK} />
             <Tooltip formatter={(v: number) => fmt(v)} {...tooltipStyle} />
-            <Area type="monotone" dataKey="Cumulative Profit" fill={COLORS.profit} fillOpacity={0.2} stroke={COLORS.profit} strokeWidth={2} />
+            <Area type="monotone" dataKey="Cumulative Profit" fill={COLORS.profit} fillOpacity={0.2} stroke={COLORS.profit} strokeWidth={1} />
           </AreaChart>
         </ResponsiveContainer>
       </ChartCard>
@@ -249,8 +249,8 @@ export function BDChartGrid({ revenue, headcount, dealflow, finPerf, computed, v
             <YAxis tickFormatter={v => `${v?.toFixed(1)}x`} tick={AXIS_TICK} />
             <Tooltip formatter={(v: number) => `${v?.toFixed(2)}x`} {...tooltipStyle} />
             <Legend wrapperStyle={LEGEND_STYLE} />
-            <Line type="monotone" dataKey="RunRate ROI" stroke={COLORS.runRate} strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="TTM ROI" stroke={COLORS.roi} strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="RunRate ROI" stroke={COLORS.runRate} strokeWidth={1} dot={false} />
+            <Line type="monotone" dataKey="TTM ROI" stroke={COLORS.roi} strokeWidth={1} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </ChartCard>

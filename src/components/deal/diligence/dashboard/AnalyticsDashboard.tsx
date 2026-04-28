@@ -140,7 +140,7 @@ export function AnalyticsDashboard({ statements, metrics, issues, auditMode, cla
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Bar dataKey="revenue" name="Revenue" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} opacity={0.8} />
                     <Bar dataKey="ebitda" name="EBITDA" fill={CHART_COLORS[1]} radius={[4, 4, 0, 0]} opacity={0.8} />
-                    <Line type="monotone" dataKey="net_income" name="Net Income" stroke={CHART_COLORS[2]} strokeWidth={2} dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="net_income" name="Net Income" stroke={CHART_COLORS[2]} strokeWidth={1} dot={{ r: 3 }} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
@@ -163,9 +163,9 @@ export function AnalyticsDashboard({ statements, metrics, issues, auditMode, cla
                     <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `${v}%`} />
                     <ReTooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }} formatter={(v: number) => `${v?.toFixed(1)}%`} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Area type="monotone" dataKey="grossMargin" name="Gross Margin" stroke={CHART_COLORS[1]} fill={CHART_COLORS[1]} fillOpacity={0.1} strokeWidth={2} />
-                    <Area type="monotone" dataKey="ebitdaMargin" name="EBITDA Margin" stroke={CHART_COLORS[0]} fill={CHART_COLORS[0]} fillOpacity={0.1} strokeWidth={2} />
-                    <Area type="monotone" dataKey="netMargin" name="Net Margin" stroke={CHART_COLORS[2]} fill={CHART_COLORS[2]} fillOpacity={0.1} strokeWidth={2} />
+                    <Area type="monotone" dataKey="grossMargin" name="Gross Margin" stroke={CHART_COLORS[1]} fill={CHART_COLORS[1]} fillOpacity={0.1} strokeWidth={1} />
+                    <Area type="monotone" dataKey="ebitdaMargin" name="EBITDA Margin" stroke={CHART_COLORS[0]} fill={CHART_COLORS[0]} fillOpacity={0.1} strokeWidth={1} />
+                    <Area type="monotone" dataKey="netMargin" name="Net Margin" stroke={CHART_COLORS[2]} fill={CHART_COLORS[2]} fillOpacity={0.1} strokeWidth={1} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>

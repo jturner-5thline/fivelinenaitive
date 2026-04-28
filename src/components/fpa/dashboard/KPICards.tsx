@@ -217,7 +217,7 @@ export function KPICards({ onKPIClick, selectedKPI }: KPICardsProps) {
                         stroke={sparkColor}
                         fill={sparkColor}
                         fillOpacity={0.15}
-                        strokeWidth={1.5}
+                        strokeWidth={0.75}
                         dot={false}
                       />
                     </AreaChart>

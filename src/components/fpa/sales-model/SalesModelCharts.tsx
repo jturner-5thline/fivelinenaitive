@@ -162,7 +162,7 @@ export function SalesModelCharts() {
                       labelStyle={{ color: '#94a3b8' }}
                     />
                     {chart.series.map(s => (
-                      <Line key={s.key} type="monotone" dataKey={s.key} stroke={s.color} name={s.name} strokeWidth={2} dot={{ r: 2 }} />
+                      <Line key={s.key} type="monotone" dataKey={s.key} stroke={s.color} name={s.name} strokeWidth={1} dot={{ r: 2 }} />
                     ))}
                   </LineChart>
                 )}

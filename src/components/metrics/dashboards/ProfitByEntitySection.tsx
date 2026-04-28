@@ -192,7 +192,7 @@ function ProfitBarChart({
               <ReferenceLine
                 y={0}
                 stroke={ZERO_LINE_COLOR}
-                strokeWidth={1.5}
+                strokeWidth={0.75}
                 ifOverflow="extendDomain"
                 label={{
                   value: '0',
@@ -214,7 +214,7 @@ function ProfitBarChart({
                     fillOpacity={m.profit >= 0 ? 0.95 : 0.92}
                     stroke={m.profit >= 0 ? PROFIT_COLOR : LOSS_COLOR}
                     strokeOpacity={0.6}
-                    strokeWidth={0.75}
+                    strokeWidth={0.38}
                   />
                 ))}
                 <LabelList

@@ -65,7 +65,7 @@ export function MetricExplainDialog({ open, onOpenChange, metricLabel, explanati
                     <ReTooltip
                       contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }}
                     />
-                    <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3, fill: 'hsl(var(--primary))' }} />
+                    <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={1} dot={{ r: 3, fill: 'hsl(var(--primary))' }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>

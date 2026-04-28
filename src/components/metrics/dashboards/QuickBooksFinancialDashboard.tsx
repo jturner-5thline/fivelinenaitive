@@ -117,7 +117,7 @@ export function QuickBooksFinancialDashboard() {
                   <Tooltip formatter={(v: number, name: string) => [formatCurrency(v), name]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
                   <Legend />
                   <Bar dataKey="revenue" fill="hsl(var(--primary))" name="Revenue" radius={[3, 3, 0, 0]} />
-                  <Line type="monotone" dataKey="payments" stroke="hsl(var(--chart-2))" name="Payments" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="payments" stroke="hsl(var(--chart-2))" name="Payments" strokeWidth={1} dot={{ r: 3 }} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -207,7 +207,7 @@ export function QuickBooksFinancialDashboard() {
                       activeShape={GlassActiveShape}
                     >
                       {metrics.invoiceStatusBreakdown.map((_, index) => (
-                        <Cell key={index} fill={pieGlassFill(index)} stroke={COLORS[index % COLORS.length]} strokeWidth={0.5} />
+                        <Cell key={index} fill={pieGlassFill(index)} stroke={COLORS[index % COLORS.length]} strokeWidth={0.25} />
                       ))}
                     </Pie>
                     <Tooltip formatter={(v: number) => [formatCurrency(v), "Value"]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />

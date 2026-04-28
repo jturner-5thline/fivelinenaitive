@@ -235,8 +235,8 @@ export function StressTesting() {
                     <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} className="fill-muted-foreground" />
                     <Tooltip formatter={(v: number) => fmtCurrency(v)} contentStyle={{ fontSize: 11, background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }} />
                     <ReferenceLine y={0} stroke="hsl(var(--destructive))" strokeDasharray="4 4" label={{ value: 'Insolvency', fontSize: 9, fill: 'hsl(var(--destructive))' }} />
-                    <Area type="monotone" dataKey="baseline" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.1} strokeWidth={2} name="Baseline" />
-                    <Area type="monotone" dataKey="stressed" stroke="hsl(var(--destructive))" fill="hsl(var(--destructive))" fillOpacity={0.1} strokeWidth={2} strokeDasharray="5 3" name="Stressed" />
+                    <Area type="monotone" dataKey="baseline" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.1} strokeWidth={1} name="Baseline" />
+                    <Area type="monotone" dataKey="stressed" stroke="hsl(var(--destructive))" fill="hsl(var(--destructive))" fillOpacity={0.1} strokeWidth={1} strokeDasharray="5 3" name="Stressed" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>

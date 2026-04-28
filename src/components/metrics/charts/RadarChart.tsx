@@ -30,7 +30,7 @@ export function RadarChart({ data, dataKeys, height = 240 }: RadarChartProps) {
             stroke={dk.color}
             fill={dk.color}
             fillOpacity={0.15}
-            strokeWidth={2}
+            strokeWidth={1}
           />
         ))}
         <Tooltip
