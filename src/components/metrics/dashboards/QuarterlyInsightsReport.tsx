@@ -735,7 +735,7 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
                         onChange={e => updateInit(init.id, { progress: Math.max(0, Math.min(100, Number(e.target.value) || 0)) })}
                         style={{ ...inputStyle, width: 60 }}
                       />
-                      <div style={{ flex: 1, height: 6, borderRadius: 999, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                      <div style={{ flex: 1, height: 6, borderRadius: RADIUS_PILL, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
                         <div
                           style={{
                             width: `${init.progress}%`,
