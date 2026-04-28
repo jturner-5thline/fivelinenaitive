@@ -631,11 +631,13 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
           )}
 
           <div className={cn('flex-1 flex flex-col min-w-0', expanded ? 'p-4' : '')}>
-            {/* #32: Hide shortcut cards when chat is active */}
+            {/* #32: Hide shortcut cards when chat is active.
+                ProactiveAlerts returns null when there are no alerts and
+                manages its own bottom spacing, so we render it directly
+                without an outer wrapper to avoid an empty bordered strip
+                above the composer. */}
             {!showHistory && !isChatActive && (
-              <div className="mb-4 space-y-4">
-                <ProactiveAlerts onAction={(prompt) => { setInputValue(prompt); handleSend(prompt); }} />
-              </div>
+              <ProactiveAlerts onAction={(prompt) => { setInputValue(prompt); handleSend(prompt); }} />
             )}
 
             {/* AI conversation — renders below the header */}
