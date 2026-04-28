@@ -567,11 +567,18 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
   return (
     <div className="relative" ref={chatSectionRef}>
       <Card className={cn(
-        'shadow-lg overflow-hidden transition-all duration-300',
+        'overflow-hidden transition-all duration-300',
         isDrawerMode ? 'border-0 shadow-none h-full flex flex-col' : '',
-        !isDrawerMode && expanded ? 'fixed inset-4 z-50 flex flex-col' : !isDrawerMode ? 'p-4' : '',
-        // #8: Make sticky when chat is active
-        !isDrawerMode && !expanded && isChatActive ? 'sticky top-4 z-30' : ''
+        !isDrawerMode && expanded
+          ? 'fixed inset-4 z-50 flex flex-col shadow-lg'
+          : !isDrawerMode && isChatActive
+            // Active chat keeps the framed surface so the transcript reads as a panel
+            ? 'p-4 shadow-lg sticky top-4 z-30'
+            : !isDrawerMode
+              // Idle state: strip the outer card chrome so the input sits
+              // directly on the page rather than inside a padded module.
+              ? 'border-0 bg-transparent shadow-none p-0'
+              : ''
       )}>
         {/* Toolbar — always visible when there are messages or expanded */}
         {(messages.length > 0 || expanded) && (
