@@ -76,6 +76,9 @@ const TILE_CHIP_BASE =
   // the available viewport width while keeping a 1:1 aspect ratio.
   'relative rounded-lg flex items-center justify-center overflow-hidden ' +
   'h-[var(--tile-size)] w-[var(--tile-size)] ' +
+  // Frosted blur over the page so the light translucent surface still reads
+  // as glass without needing a dark backing fill.
+  'backdrop-blur-md backdrop-saturate-150 ' +
   // Resting: subtle 13% white border + soft ambient drop shadow with a hairline
   // top inner highlight for the glassy edge.
   'border border-white/[0.13] ' +
@@ -115,7 +118,9 @@ const TileChipGloss = () => (
       className="pointer-events-none absolute inset-0 rounded-lg transition-opacity duration-200 ease-out group-hover:opacity-0 group-focus-visible:opacity-0"
       style={{
         background:
-          'linear-gradient(145deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 60%, rgba(0,0,0,0.10) 100%)',
+          // Pure light gloss — no dark terminal stop, so the chip never reads
+          // as a dark tile.
+          'linear-gradient(145deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.06) 60%, rgba(255,255,255,0.00) 100%)',
       }}
     />
     <span
@@ -123,21 +128,35 @@ const TileChipGloss = () => (
       className="pointer-events-none absolute inset-0 rounded-lg opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-visible:opacity-100"
       style={{
         background:
-          'linear-gradient(145deg, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.08) 55%, rgba(0,0,0,0.06) 100%)',
+          'linear-gradient(145deg, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0.12) 55%, rgba(255,255,255,0.00) 100%)',
       }}
     />
   </>
 );
 
-/** Per-category deep gradients mirroring the reference palette. */
+/**
+ * Per-category surfaces. Previously deep dark gradients; now pure light
+ * frosted-glass surfaces with only a whisper of category-tinted highlight.
+ * No dark fill, no dark backing — the chip reads as clear glass at rest.
+ * Each value is a layered background: (1) faint diagonal category tint,
+ * (2) translucent white base. The white base dominates so the tile feels
+ * airy and light regardless of category.
+ */
 const TILE_CHIP_GRADIENTS: Record<string, string> = {
-  calendar: 'linear-gradient(145deg, #2a3a8c, #1a2466)',
-  email: 'linear-gradient(145deg, #6b2fa0, #4a1d7a)',
-  newDeal: 'linear-gradient(145deg, #1e3a6e, #142a55)',
-  dealRundown: 'linear-gradient(145deg, #1e3a6e, #142a55)',
-  briefing: 'linear-gradient(145deg, #8a5c10, #6b4208)',
-  niki: 'linear-gradient(145deg, #0d5c52, #0a4540)',
-  deals: 'linear-gradient(145deg, #0d5c52, #0a4540)',
+  calendar:
+    'linear-gradient(145deg, rgba(123,159,245,0.18), rgba(123,159,245,0.06)), rgba(255,255,255,0.08)',
+  email:
+    'linear-gradient(145deg, rgba(192,132,245,0.18), rgba(192,132,245,0.06)), rgba(255,255,255,0.08)',
+  newDeal:
+    'linear-gradient(145deg, rgba(107,156,245,0.18), rgba(107,156,245,0.06)), rgba(255,255,255,0.08)',
+  dealRundown:
+    'linear-gradient(145deg, rgba(107,156,245,0.18), rgba(107,156,245,0.06)), rgba(255,255,255,0.08)',
+  briefing:
+    'linear-gradient(145deg, rgba(245,166,35,0.18), rgba(245,166,35,0.06)), rgba(255,255,255,0.08)',
+  niki:
+    'linear-gradient(145deg, rgba(45,212,184,0.18), rgba(45,212,184,0.06)), rgba(255,255,255,0.08)',
+  deals:
+    'linear-gradient(145deg, rgba(45,212,184,0.18), rgba(45,212,184,0.06)), rgba(255,255,255,0.08)',
 };
 
 /** Tile label styling — centered under the chip, like the reference. */
