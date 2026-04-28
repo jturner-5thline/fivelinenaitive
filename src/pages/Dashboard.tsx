@@ -513,7 +513,14 @@ export default function Dashboard() {
           </div>
 
           <div
-            className={`grid items-stretch gap-3 md:gap-4 ${skeletonGridColsClass}`}
+            className={`grid items-stretch ${skeletonGridColsClass}`}
+            style={{
+              // Tile size scales fluidly with viewport width and the gap
+              // scales proportionally with tile size so the grid feels
+              // designed at every breakpoint.
+              ['--tile-size' as any]: 'clamp(64px, 11vw, 112px)',
+              gap: 'calc(var(--tile-size) * 0.18)',
+            }}
             aria-busy="true"
             aria-label="Loading dashboard widgets"
           >
@@ -575,7 +582,15 @@ export default function Dashboard() {
               : 'grid-cols-3';
             return (
           <>
-          <div className={`grid items-stretch gap-3 md:gap-4 ${gridColsClass}`}>
+          <div
+            className={`grid items-stretch ${gridColsClass}`}
+            style={{
+              // See skeleton block above — single source of truth for the
+              // responsive tile-size + proportional gap.
+              ['--tile-size' as any]: 'clamp(64px, 11vw, 112px)',
+              gap: 'calc(var(--tile-size) * 0.18)',
+            }}
+          >
             <Card
               className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-1')}
               onClick={(e) => openCarouselWidget('calendar', e.currentTarget as HTMLElement)}
