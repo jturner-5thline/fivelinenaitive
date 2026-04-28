@@ -804,6 +804,24 @@ export default function Tasks() {
             </SelectContent>
           </Select>
 
+          <Select value={filterRecurring} onValueChange={v => setFilterRecurring(v as FilterRecurring)}>
+            <SelectTrigger
+              className="h-7 w-[140px] text-[11px]"
+              style={{
+                backgroundColor: filterRecurring !== 'all' ? 'rgba(59,126,255,0.15)' : 'rgba(20,24,32,0.65)',
+                borderColor: filterRecurring !== 'all' ? 'rgba(59,126,255,0.4)' : 'rgba(255,255,255,0.06)',
+                color: filterRecurring !== 'all' ? '#cfe3ff' : '#9aa3b6',
+              }}
+            >
+              <Repeat className="h-3 w-3 mr-1.5" /><SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">All tasks</SelectItem>
+              <SelectItem value="recurring" className="text-xs">Recurring only</SelectItem>
+              <SelectItem value="paused" className="text-xs">Paused only</SelectItem>
+            </SelectContent>
+          </Select>
+
           {/* Deal filter */}
           {uniqueDeals.length > 0 && (
             <Popover>
