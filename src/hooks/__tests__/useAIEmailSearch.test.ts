@@ -1,6 +1,8 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as React from 'react';
 import * as ReactDOMClient from 'react-dom/client';
+import { act as reactAct } from 'react';
 
 // Mock the supabase client's `functions.invoke` before importing the hook so
 // the mocked module is what the hook closes over.
@@ -23,22 +25,9 @@ type HookHarness<T> = {
   unmount: () => void;
 };
 
-function ensureDom() {
-  // vitest's default env is node — minimally polyfill what react-dom needs.
-  const g = globalThis as any;
-  if (!g.document) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { JSDOM } = require('jsdom');
-    const dom = new JSDOM('<!doctype html><html><body><div id="r"></div></body></html>');
-    g.window = dom.window;
-    g.document = dom.window.document;
-    g.navigator = dom.window.navigator;
-    g.HTMLElement = dom.window.HTMLElement;
-  }
-}
-
 function renderHook<T>(hook: () => T): HookHarness<T> {
-  ensureDom();
+  // jsdom env (see directive at top of file) provides document/window.
+  (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   const container = document.createElement('div');
   document.body.appendChild(container);
   const ref: { current: T | null } = { current: null };
@@ -47,7 +36,9 @@ function renderHook<T>(hook: () => T): HookHarness<T> {
     return null;
   };
   const root = ReactDOMClient.createRoot(container);
-  root.render(React.createElement(Wrapper));
+  reactAct(() => {
+    root.render(React.createElement(Wrapper));
+  });
   const harness: HookHarness<T> = {
     get current(): T { return ref.current as T; },
     rerender: () => root.render(React.createElement(Wrapper)),
@@ -57,9 +48,9 @@ function renderHook<T>(hook: () => T): HookHarness<T> {
 }
 
 async function act(fn: () => unknown | Promise<unknown>) {
-  await fn();
-  // Flush microtasks + a macrotask for React's commit phase.
-  await new Promise((r) => setTimeout(r, 0));
+  await reactAct(async () => {
+    await fn();
+  });
 }
 
 function makeEmail(id: string, overrides: Partial<MockEmail> = {}): MockEmail {
