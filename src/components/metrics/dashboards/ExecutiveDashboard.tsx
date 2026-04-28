@@ -1,7 +1,7 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Lock, TrendingUp, TrendingDown } from 'lucide-react';
+import { Lock, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Line, ComposedChart, Area, PieChart, Pie, Cell, Legend } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { PieGlassDefs, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
@@ -182,6 +182,13 @@ function DealsByStatusPieChart() {
   );
 }
 
+/**
+ * Executive KPI tile — uses the exact GlassCard header / value / meta
+ * typography hierarchy as Weekly Rundown:
+ *   • Header: uppercase tracked title + muted subtitle (in header slot, not body)
+ *   • Body  : dominant numeric value (GLASS_TOKENS.valueClass / valueColor)
+ *   • Meta  : small pill-style trend badge (matches KPISummaryCard.TrendBadge)
+ */
 function StatCard({
   title,
   value,
@@ -195,32 +202,34 @@ function StatCard({
   trend?: 'up' | 'down';
   trendValue?: string;
 }) {
-  const trendColor = trend === 'up' ? 'hsl(152, 58%, 52%)' : 'hsl(354, 62%, 56%)';
+  const isUp = trend === 'up';
   return (
     <GlassCard interactive>
-      <GlassCardHeader title={title} />
-      <GlassCardBody className="pt-0 pb-5">
+      <GlassCardHeader title={title} subtitle={subtitle} />
+      <GlassCardBody className="pt-0 pb-5 space-y-2">
         <p
           className={GLASS_TOKENS.valueClass}
           style={{ color: GLASS_TOKENS.valueColor }}
         >
           {value}
         </p>
-        {subtitle && (
-          <p
-            className={GLASS_TOKENS.metaClass}
-            style={{ color: GLASS_TOKENS.metaColor }}
-          >
-            {subtitle}
-          </p>
-        )}
         {trend && trendValue && (
-          <div
-            className="flex items-center gap-1 text-[11px] mt-2 tabular-nums"
-            style={{ color: trendColor }}
-          >
-            {trend === 'up' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            <span>{trendValue}</span>
+          <div className="flex items-center gap-1.5">
+            <span
+              className={
+                'inline-flex items-center gap-0.5 text-[10px] font-semibold rounded px-1 py-0.5 ' +
+                (isUp
+                  ? 'text-success bg-success/10'
+                  : 'text-destructive bg-destructive/10')
+              }
+            >
+              {isUp ? (
+                <ArrowUpRight className="h-2.5 w-2.5" />
+              ) : (
+                <ArrowDownRight className="h-2.5 w-2.5" />
+              )}
+              {trendValue}
+            </span>
           </div>
         )}
       </GlassCardBody>
