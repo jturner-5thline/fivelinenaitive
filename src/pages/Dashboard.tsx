@@ -833,48 +833,47 @@ export default function Dashboard() {
               </button>
               <NewPresetButton onCreate={handleCreatePreset} className="ml-1" />
             </div>
-            {isSaving && (
-              <span className="text-[11px] text-muted-foreground animate-pulse shrink-0">Saving…</span>
-            )}
+            <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap justify-end">
+              {isSaving && (
+                <span className="text-[11px] text-muted-foreground animate-pulse shrink-0">Saving…</span>
+              )}
+              {dashboardTab !== 'news-feed' && (
+                <>
+                  <DashboardTemplatesDialog
+                    mode="replace"
+                    onSelectTemplate={handleCreateFromTemplate}
+                    onApplyToCurrentDashboard={handleApplyTemplateToCurrentDashboard}
+                  />
+                  {isEditing && activePreset && (
+                    <AddWidgetDialog
+                      existingWidgetIds={activePreset.widgets_config.map(w => w.id)}
+                      onAddBuiltIn={handleAddBuiltIn}
+                      onAddCustom={handleAddCustom}
+                    />
+                  )}
+                  <HintTooltip
+                    hint="Click 'Edit' to customize your dashboard — add, remove, or rearrange widgets to match your workflow."
+                    visible={isHintVisible('dashboard-edit')}
+                    onDismiss={() => dismissHint('dashboard-edit')}
+                    side="left"
+                  >
+                    <Button
+                      variant={isEditing ? 'default' : 'outline'}
+                      size="sm"
+                      className="gap-1.5 text-xs"
+                      onClick={() => setIsEditing(!isEditing)}
+                    >
+                      {isEditing ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+                      {isEditing ? 'Done' : 'Edit'}
+                    </Button>
+                  </HintTooltip>
+                </>
+              )}
+            </div>
           </div>
 
           {dashboardTab !== 'news-feed' ? (
             <>
-              {/* Action row — Templates + Add Widget (when editing) + Edit.
-                  Visually separated from the navigation row above by the
-                  border-b on that row, and uses a right-aligned button
-                  cluster so actions read distinctly from tabs. */}
-              <div className="flex items-center justify-end gap-2 mt-3">
-                <DashboardTemplatesDialog
-                  mode="replace"
-                  onSelectTemplate={handleCreateFromTemplate}
-                  onApplyToCurrentDashboard={handleApplyTemplateToCurrentDashboard}
-                />
-                {isEditing && activePreset && (
-                  <AddWidgetDialog
-                    existingWidgetIds={activePreset.widgets_config.map(w => w.id)}
-                    onAddBuiltIn={handleAddBuiltIn}
-                    onAddCustom={handleAddCustom}
-                  />
-                )}
-                <HintTooltip
-                  hint="Click 'Edit' to customize your dashboard — add, remove, or rearrange widgets to match your workflow."
-                  visible={isHintVisible('dashboard-edit')}
-                  onDismiss={() => dismissHint('dashboard-edit')}
-                  side="left"
-                >
-                  <Button
-                    variant={isEditing ? 'default' : 'outline'}
-                    size="sm"
-                    className="gap-1.5 text-xs"
-                    onClick={() => setIsEditing(!isEditing)}
-                  >
-                    {isEditing ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
-                    {isEditing ? 'Done' : 'Edit'}
-                  </Button>
-                </HintTooltip>
-              </div>
-
               {/* Grid */}
               {activePreset && activePreset.widgets_config.length > 0 && (
                 <div className="mt-4">
