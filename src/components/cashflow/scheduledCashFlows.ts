@@ -34,24 +34,26 @@ export const ACCOUNT_OPTIONS = [
   'M&T Acc.',
 ] as const;
 
-// Sub-categories nested under "Debt Advisory Revenue"
+// Sub-categories nested under "Advisors Revenue" (the parent row in the
+// historical-seed weekly grid).
 export const DEBT_ADVISORY_SUBCATEGORIES = [
-  'Retainers',
-  'Milestones',
+  'Retainer',
+  'Milestone',
   'Closing Fees',
-  'Referral Fees',
 ] as const;
 
 // Default fallback when a legacy entry is on the parent without a sub-category
-export const DEBT_ADVISORY_DEFAULT_SUBCATEGORY = 'Retainers';
+export const DEBT_ADVISORY_DEFAULT_SUBCATEGORY = 'Retainer';
 
-// Flat selectable Cash-In categories (sub-categories replace the parent for storage)
+// Flat selectable Cash-In categories — these MUST match the row titles in
+// `weeklyHistoricalSeed.ts` (CASH_IN_ROWS) so Configure entries roll into
+// the correct weekly row.
 export const CASH_IN_CATEGORIES = [
   ...DEBT_ADVISORY_SUBCATEGORIES,
   'FinServ Revenue',
-  'Technology Revenue',
+  'Tech Revenue',
   'Loan Proceeds',
-  'Other Receipts',
+  'Other Cash In',
 ] as const;
 
 // Grouped Cash-In options for the Configure modal Select
@@ -59,32 +61,64 @@ export const CASH_IN_GROUPED_OPTIONS: ReadonlyArray<{
   group?: string;
   options: ReadonlyArray<string>;
 }> = [
-  { group: 'Debt Advisory Revenue', options: DEBT_ADVISORY_SUBCATEGORIES },
-  { options: ['FinServ Revenue', 'Technology Revenue', 'Loan Proceeds', 'Other Receipts'] },
+  { group: 'Advisors Revenue', options: DEBT_ADVISORY_SUBCATEGORIES },
+  { options: ['FinServ Revenue', 'Tech Revenue', 'Loan Proceeds', 'Other Cash In'] },
 ];
 
-// Map child category -> parent for weekly grid roll-up
+// Map child category -> parent for weekly grid roll-up.
 export const CASH_IN_PARENT_MAP: Record<string, string> = {
-  Retainers: 'Debt Advisory Revenue',
-  Milestones: 'Debt Advisory Revenue',
-  'Closing Fees': 'Debt Advisory Revenue',
-  'Referral Fees': 'Debt Advisory Revenue',
+  Retainer: 'Advisors Revenue',
+  Milestone: 'Advisors Revenue',
+  'Closing Fees': 'Advisors Revenue',
 };
 
+// Cash-Out categories — MUST match the row titles in `weeklyHistoricalSeed.ts`
+// (CASH_OUT_ROWS) so Configure entries roll into the correct weekly row.
 export const CASH_OUT_CATEGORIES = [
-  'Advertising & Marketing',
-  'Insurance',
-  'Payroll - Salaries',
-  'Payroll - Taxes & Benefits',
-  'Contractors & Consultants',
-  'Rent & Occupancy',
-  'Software & Technology',
-  'Legal & Professional',
-  'Travel & Entertainment',
-  'Office & Admin',
+  'Payroll Expense',
+  'Contractor Expense',
+  'Advertising Bank Fees',
   'Loan Payments',
-  'Other Disbursements',
+  'Distribution',
+  'Credit Card Payments',
+  'Professional Services',
+  'Software',
+  'Healthcare',
+  '401k',
+  'Ramp',
+  'Other Cash Out',
 ] as const;
+
+// Aliases that map legacy / human-friendly category labels to the canonical
+// row keys above. This protects entries created before the schema change and
+// also accepts the friendlier names users may type ("Other", etc.).
+export const CATEGORY_ALIASES: Record<string, string> = {
+  // Cash-In aliases
+  Retainers: 'Retainer',
+  Milestones: 'Milestone',
+  'Referral Fees': 'Closing Fees',
+  'Technology Revenue': 'Tech Revenue',
+  'Other Receipts': 'Other Cash In',
+  'Debt Advisory Revenue': 'Retainer',
+  // Cash-Out aliases
+  'Advertising & Marketing': 'Advertising Bank Fees',
+  'Payroll - Salaries': 'Payroll Expense',
+  'Payroll - Taxes & Benefits': 'Payroll Expense',
+  'Contractors & Consultants': 'Contractor Expense',
+  'Software & Technology': 'Software',
+  'Legal & Professional': 'Professional Services',
+  'Office & Admin': 'Other Cash Out',
+  'Travel & Entertainment': 'Other Cash Out',
+  'Rent & Occupancy': 'Other Cash Out',
+  Insurance: 'Other Cash Out',
+  'Other Disbursements': 'Other Cash Out',
+  Other: 'Other Cash Out',
+};
+
+/** Resolve any incoming category label to its canonical weekly row key. */
+export function resolveCategoryAlias(category: string): string {
+  return CATEGORY_ALIASES[category] || category;
+}
 
 export const DAY_OF_WEEK_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
