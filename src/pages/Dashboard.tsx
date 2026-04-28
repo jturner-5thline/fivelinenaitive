@@ -207,7 +207,7 @@ function EmailTileWithIntelligence({
             style={{ background: TILE_CHIP_GRADIENTS.email }}
           >
             <TileChipGloss />
-            <Mail className="relative z-10 h-10 w-10" style={{ color: '#c084f5' }} />
+            <Mail className="relative z-10 h-12 w-12" style={{ color: '#c084f5' }} />
           </div>
           <span className={TILE_LABEL_CLASSES}>Email</span>
         </div>
@@ -590,7 +590,7 @@ export default function Dashboard() {
                   style={{ background: TILE_CHIP_GRADIENTS.calendar }}
                 >
                   <TileChipGloss />
-                  <CalendarIcon className="relative z-10 h-10 w-10" style={{ color: '#7b9ff5' }} />
+                  <CalendarIcon className="relative z-10 h-12 w-12" style={{ color: '#7b9ff5' }} />
                 </div>
                 <span className={TILE_LABEL_CLASSES}>Calendar</span>
               </div>
@@ -621,7 +621,7 @@ export default function Dashboard() {
                   style={{ background: TILE_CHIP_GRADIENTS.newDeal }}
                 >
                   <TileChipGloss />
-                  <Briefcase className="relative z-10 h-10 w-10" style={{ color: '#6b9cf5' }} />
+                  <Briefcase className="relative z-10 h-12 w-12" style={{ color: '#6b9cf5' }} />
                 </div>
                 <span className={TILE_LABEL_CLASSES}>New Deal</span>
               </div>
@@ -644,7 +644,7 @@ export default function Dashboard() {
                     style={{ background: TILE_CHIP_GRADIENTS.briefing }}
                   >
                     <TileChipGloss />
-                    <Newspaper className="relative z-10 h-10 w-10" style={{ color: '#f5a623' }} />
+                    <Newspaper className="relative z-10 h-12 w-12" style={{ color: '#f5a623' }} />
                   </div>
                   <span className={TILE_LABEL_CLASSES}>Daily Briefing</span>
                 </div>
@@ -668,7 +668,7 @@ export default function Dashboard() {
                     style={{ background: TILE_CHIP_GRADIENTS.niki }}
                   >
                     <TileChipGloss />
-                    <Newspaper className="relative z-10 h-10 w-10" style={{ color: '#2dd4b8' }} />
+                    <Newspaper className="relative z-10 h-12 w-12" style={{ color: '#2dd4b8' }} />
                   </div>
                   <span className={TILE_LABEL_CLASSES}>
                     {isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
@@ -692,7 +692,7 @@ export default function Dashboard() {
                   style={{ background: TILE_CHIP_GRADIENTS.deals }}
                 >
                   <TileChipGloss />
-                  <Handshake className="relative z-10 h-10 w-10" style={{ color: '#2dd4b8' }} />
+                  <Handshake className="relative z-10 h-12 w-12" style={{ color: '#2dd4b8' }} />
                 </div>
                 <span className={TILE_LABEL_CLASSES}>Deals</span>
               </div>
@@ -715,7 +715,7 @@ export default function Dashboard() {
                     style={{ background: TILE_CHIP_GRADIENTS.dealRundown }}
                   >
                     <TileChipGloss />
-                    <Briefcase className="relative z-10 h-10 w-10" style={{ color: '#6b9cf5' }} />
+                    <Briefcase className="relative z-10 h-12 w-12" style={{ color: '#6b9cf5' }} />
                   </div>
                   <span className={TILE_LABEL_CLASSES}>Deal Rundown</span>
                 </div>
