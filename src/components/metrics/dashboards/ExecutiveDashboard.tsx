@@ -1,4 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Lock, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line, ComposedChart, Area, PieChart, Pie, Cell, Legend } from 'recharts';
@@ -10,6 +14,148 @@ const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1000) return `$${(value / 1000).toFixed(0)}k`;
   return `$${value.toFixed(0)}`;
 };
+
+const formatCurrencyFull = (value: number) =>
+  `$${Math.round(value).toLocaleString()}`;
+
+// ── Deals by Status (fee-weighted) ───────────────────────────────────────────
+// Mirrors the Outstanding A/R pie chart styling exactly. Allocation is based
+// on the share of Total Fee per status bucket. Deals with a missing/blank
+// Total Fee are excluded from both numerator and denominator.
+//
+// Status colors are pinned to the same semantic tags shown on the Deals page:
+//   On Track  → green-500
+//   At Risk   → yellow-500
+//   Off Track → red-500
+const STATUS_BUCKETS = [
+  { key: 'on-track' as const,  label: 'On Track',  color: 'hsl(142 71% 45%)' }, // tailwind green-500
+  { key: 'at-risk' as const,   label: 'At Risk',   color: 'hsl(48 96% 53%)' },  // tailwind yellow-500
+  { key: 'off-track' as const, label: 'Off Track', color: 'hsl(0 84% 60%)' },   // tailwind red-500
+];
+const STATUS_COLORS = STATUS_BUCKETS.map(b => b.color);
+
+function useDealsByStatusFee() {
+  return useQuery({
+    queryKey: ['executive-dashboard', 'deals-by-status-fee'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('deals')
+        .select('status, total_fee, company')
+        .not('total_fee', 'is', null);
+      if (error) throw error;
+
+      // Apply the global test-deal exclusion (Test-Niki's Store, Example Deal,
+      // anything starting with "test ").
+      const excluded = new Set(["Test-Niki's Store", 'Example Deal']);
+      const rows = (data ?? []).filter(d => {
+        const name = (d.company ?? '').trim();
+        if (excluded.has(name)) return false;
+        if (name.toLowerCase().startsWith('test ')) return false;
+        const fee = Number(d.total_fee);
+        return Number.isFinite(fee) && fee > 0;
+      });
+
+      const totals = { 'on-track': 0, 'at-risk': 0, 'off-track': 0 } as Record<
+        'on-track' | 'at-risk' | 'off-track',
+        number
+      >;
+      for (const r of rows) {
+        const s = r.status as keyof typeof totals;
+        if (s in totals) totals[s] += Number(r.total_fee);
+      }
+      const total = totals['on-track'] + totals['at-risk'] + totals['off-track'];
+      return { totals, total };
+    },
+    staleTime: 60_000,
+  });
+}
+
+function DealsByStatusPieChart() {
+  const { data, isLoading } = useDealsByStatusFee();
+
+  if (isLoading) {
+    return (
+      <Card className="bg-card/50 backdrop-blur border-border/50">
+        <CardHeader className="pb-2"><Skeleton className="h-5 w-32" /><Skeleton className="h-3 w-48 mt-1" /></CardHeader>
+        <CardContent><Skeleton className="h-[220px] w-full" /></CardContent>
+      </Card>
+    );
+  }
+
+  const total = data?.total ?? 0;
+  const totals = data?.totals ?? { 'on-track': 0, 'at-risk': 0, 'off-track': 0 };
+
+  const pieData = STATUS_BUCKETS.map(b => ({ name: b.label, value: totals[b.key] }));
+  const legendItems = STATUS_BUCKETS.map(b => ({
+    label: b.label,
+    value: formatCurrency(totals[b.key]),
+    color: b.color,
+  }));
+
+  return (
+    <Card className="bg-card/50 backdrop-blur border-border/50 hover:border-border transition-colors">
+      <CardHeader className="pb-2 flex flex-row items-start justify-between">
+        <div>
+          <CardTitle className="text-sm font-medium text-foreground">Deals by Status</CardTitle>
+          <p className="text-xs text-muted-foreground mt-0.5">By total fee · current pipeline</p>
+        </div>
+        <div className="text-right">
+          <p className="text-lg font-bold text-foreground">{formatCurrency(total)}</p>
+          <p className="text-[10px] text-muted-foreground">Total Fee</p>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div style={{ height: 170 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <PieGlassDefs colors={STATUS_COLORS} />
+              <Pie
+                data={pieData}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={65}
+                innerRadius={30}
+                paddingAngle={3}
+                activeShape={GlassActiveShape}
+              >
+                {pieData.map((_, i) => (
+                  <Cell key={i} fill={STATUS_COLORS[i]} fillOpacity={0.75} stroke={STATUS_COLORS[i]} strokeWidth={1} />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(value: number, name: string) => {
+                  const pct = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
+                  return [`${formatCurrencyFull(value)} (${pct}%)`, name];
+                }}
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--popover) / 0.96)',
+                  border: '1px solid hsl(0 0% 100% / 0.14)',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  color: 'hsl(0 0% 100%)',
+                  boxShadow: 'var(--shadow-xl)',
+                  backdropFilter: 'blur(16px)',
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        {/* Below-chart legend — matches Outstanding A/R formatting */}
+        <div className="mt-2 space-y-1.5">
+          {legendItems.map((item, i) => (
+            <div key={i} className="flex items-center gap-2 text-xs">
+              <span className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color, opacity: 0.75 }} />
+              <span className="text-muted-foreground truncate flex-1" title={item.label}>{item.label}</span>
+              <span className="font-medium text-foreground flex-shrink-0">{item.value}</span>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 const COLORS = [
   "hsl(var(--primary))",
