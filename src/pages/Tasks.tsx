@@ -1124,6 +1124,7 @@ export default function Tasks() {
               status: input.status,
               assigned_to: input.assigned_to,
               recurrence_rule: input.recurrence_rule,
+              recurrence_end_date: input.recurrence_end_date,
             });
             toast.success(`Task created: "${input.title}"`);
             // After the list re-renders with the new row, scroll it into view
