@@ -376,9 +376,32 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
 
           {/* Recurrence */}
           <div className="space-y-1.5">
-            <label className="text-[10px] uppercase tracking-wide font-medium flex items-center gap-1" style={{ color: '#7a8194' }}>
-              <Repeat className="h-3 w-3" /> Repeat
-            </label>
+            <div className="flex items-center justify-between gap-2">
+              <label className="text-[10px] uppercase tracking-wide font-medium flex items-center gap-1" style={{ color: '#7a8194' }}>
+                <Repeat className="h-3 w-3" /> Repeat
+              </label>
+              {recurrence && (() => {
+                const anchor = dueDate ?? new Date();
+                const next = previewNextOccurrence(anchor, recurrence);
+                if (!next) return null;
+                return (
+                  <span
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border"
+                    style={{
+                      color: '#cfe3ff',
+                      borderColor: 'rgba(126,184,247,0.35)',
+                      backgroundColor: 'rgba(126,184,247,0.10)',
+                    }}
+                    title={`After completion, the next task will be due ${format(next, 'EEE, MMM d, yyyy')}${dueDate ? '' : ' (anchored to today since no due date is set)'}`}
+                  >
+                    Next: {format(next, 'EEE, MMM d')}
+                    {!dueDate && (
+                      <span style={{ color: '#7a8194' }}>· from today</span>
+                    )}
+                  </span>
+                );
+              })()}
+            </div>
             <div className="flex flex-wrap gap-1">
               {[
                 { value: null, label: 'None' },
