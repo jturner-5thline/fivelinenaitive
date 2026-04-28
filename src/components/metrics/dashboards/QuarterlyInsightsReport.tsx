@@ -947,12 +947,28 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
               placeholder={derived.quarterLabel}
               value={activeOverride?.quarterLabel ?? ''}
               onChange={e => {
-                const nextOverride = { ...(activeOverride || {}), quarterLabel: e.target.value || undefined };
+                const raw = e.target.value;
+                const trimmed = raw.trim();
+                // Block clearing when the derived fallback is also blank — this would
+                // leave the report with no quarter label at all. Show inline warning
+                // and skip persistence instead of silently saving an empty override.
+                if (!trimmed && !derived.quarterLabel.trim()) {
+                  // Preserve any prior value rather than clearing it.
+                  return;
+                }
+                const nextOverride = { ...(activeOverride || {}), quarterLabel: trimmed || undefined };
                 set(prev => ({ ...prev, asanaGoalOverride: nextOverride }));
                 void prefs.save({ override: nextOverride });
               }}
               style={inp}
+              aria-invalid={!derived.quarterLabel.trim() && !(activeOverride?.quarterLabel ?? '').trim()}
             />
+            {!derived.quarterLabel.trim() && !(activeOverride?.quarterLabel ?? '').trim() && (
+              <div style={{ marginTop: 4, fontSize: 10, color: '#f0a96a', lineHeight: 1.35 }}>
+                Cannot leave blank — the derived quarter label is empty for this period.
+                Enter a value (e.g. <code style={{ color: '#f0a96a' }}>Q1 2026</code>) or fix the Q-mapping above.
+              </div>
+            )}
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
@@ -980,12 +996,24 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
               placeholder={derived.halfLabel}
               value={activeOverride?.halfLabel ?? ''}
               onChange={e => {
-                const nextOverride = { ...(activeOverride || {}), halfLabel: e.target.value || undefined };
+                const raw = e.target.value;
+                const trimmed = raw.trim();
+                if (!trimmed && !derived.halfLabel.trim()) {
+                  return;
+                }
+                const nextOverride = { ...(activeOverride || {}), halfLabel: trimmed || undefined };
                 set(prev => ({ ...prev, asanaGoalOverride: nextOverride }));
                 void prefs.save({ override: nextOverride });
               }}
               style={inp}
+              aria-invalid={!derived.halfLabel.trim() && !(activeOverride?.halfLabel ?? '').trim()}
             />
+            {!derived.halfLabel.trim() && !(activeOverride?.halfLabel ?? '').trim() && (
+              <div style={{ marginTop: 4, fontSize: 10, color: '#f0a96a', lineHeight: 1.35 }}>
+                Cannot leave blank — the derived half label is empty for this period.
+                Enter a value (e.g. <code style={{ color: '#f0a96a' }}>H1 2026</code>) or fix the H-mapping above.
+              </div>
+            )}
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
