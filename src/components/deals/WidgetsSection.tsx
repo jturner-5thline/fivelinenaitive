@@ -552,7 +552,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
         onDragEnd={handleDragEnd}
       >
         <SortableContext items={widgets.map(w => w.id)} strategy={rectSortingStrategy}>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {widgets.map((widget) => (
               <WidgetCard
                 key={widget.id}
