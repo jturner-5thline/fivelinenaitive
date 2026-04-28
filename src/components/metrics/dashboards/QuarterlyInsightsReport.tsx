@@ -26,6 +26,17 @@ const PEOPLE = [
 ];
 const PRIMARY_AUTHORS = ['James Turner', 'Scott Williams', 'John Moffitt'];
 const QUARTERS = ['Q1 2026', 'Q2 2026', 'Q3 2026', 'Q4 2026', 'Q1 2027', 'Q2 2027', 'Q3 2027', 'Q4 2027'];
+const QUARTER_MONTHS: Record<string, string[]> = {
+  Q1: ['January', 'February', 'March'],
+  Q2: ['April', 'May', 'June'],
+  Q3: ['July', 'August', 'September'],
+  Q4: ['October', 'November', 'December'],
+};
+function monthsForQuarter(quarter: string): string[] {
+  const [q, year] = quarter.split(' ');
+  const names = QUARTER_MONTHS[q] || [];
+  return names.map(m => `${m} ${year}`);
+}
 
 function Card({ children, style, className }: { children: React.ReactNode; style?: React.CSSProperties; className?: string }) {
   return (
@@ -281,7 +292,9 @@ function ReportHeaderSection({ s, set, reset, print }: { s: ReportState; set: Re
               5th Line Capital Advisors
             </div>
             <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: TEXT_PRIMARY, letterSpacing: '-.2px' }}>
-              Quarterly Insights Report — {s.quarter}
+              {s.period === 'monthly'
+                ? `Monthly Insights Report — ${s.month || s.quarter}`
+                : `Quarterly Insights Report — ${s.quarter}`}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -312,11 +325,37 @@ function ReportHeaderSection({ s, set, reset, print }: { s: ReportState; set: Re
             ))}
           </div>
 
-          {s.period === 'quarterly' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: TEXT_LABEL }}>Quarter</span>
+            <select
+              value={s.quarter}
+              onChange={e => {
+                const newQuarter = e.target.value;
+                set(prev => {
+                  const validMonths = monthsForQuarter(newQuarter);
+                  const monthStillValid = validMonths.includes(prev.month);
+                  return {
+                    ...prev,
+                    quarter: newQuarter,
+                    month: monthStillValid ? prev.month : (validMonths[0] || ''),
+                  };
+                });
+              }}
+              style={{ ...selectStyle, width: 130 }}
+            >
+              {QUARTERS.map(q => <option key={q} value={q}>{q}</option>)}
+            </select>
+          </div>
+
+          {s.period === 'monthly' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: TEXT_LABEL }}>Quarter</span>
-              <select value={s.quarter} onChange={e => set(prev => ({ ...prev, quarter: e.target.value }))} style={{ ...selectStyle, width: 130 }}>
-                {QUARTERS.map(q => <option key={q} value={q}>{q}</option>)}
+              <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: TEXT_LABEL }}>Month</span>
+              <select
+                value={monthsForQuarter(s.quarter).includes(s.month) ? s.month : (monthsForQuarter(s.quarter)[0] || '')}
+                onChange={e => set(prev => ({ ...prev, month: e.target.value }))}
+                style={{ ...selectStyle, width: 150 }}
+              >
+                {monthsForQuarter(s.quarter).map(m => <option key={m} value={m}>{m}</option>)}
               </select>
             </div>
           )}
