@@ -266,19 +266,25 @@ export function mergeScheduledIntoWeekly(
       const wk = findWeekKey(occ);
       if (!wk) continue;
       const target = out[wk] as any;
-      // Migrate legacy entries stored on parent "Debt Advisory Revenue" to the default sub-category
-      let cat = entry.category;
-      if (cat === 'Debt Advisory Revenue') cat = DEBT_ADVISORY_DEFAULT_SUBCATEGORY;
+      // Resolve legacy / aliased category labels to the canonical weekly row
+      // key (e.g. "Software & Technology" -> "Software", "Retainers" -> "Retainer").
+      const cat = resolveCategoryAlias(entry.category);
       const amt = Number(entry.amount) || 0;
       target[cat] = (Number(target[cat]) || 0) + amt;
-      // Note: parent "Debt Advisory Revenue" value is computed in the weekly view as
+      // Note: parent "Advisors Revenue" value is computed in the weekly view as
       // the sum of its sub-categories, so we do NOT write to the parent key here.
       if (entry.flow_type === 'cash_in') {
+        // Maintain both legacy (TOTAL RECEIPTS / NET CHANGE) and current
+        // (CASH IN / TOTAL NET CASH CHANGE) totals so all consumers stay in sync.
         target['TOTAL RECEIPTS'] = (Number(target['TOTAL RECEIPTS']) || 0) + amt;
+        target['CASH IN'] = (Number(target['CASH IN']) || 0) + amt;
         target['NET CHANGE'] = (Number(target['NET CHANGE']) || 0) + amt;
+        target['TOTAL NET CASH CHANGE'] = (Number(target['TOTAL NET CASH CHANGE']) || 0) + amt;
       } else {
         target['TOTAL DISBURSEMENTS'] = (Number(target['TOTAL DISBURSEMENTS']) || 0) + amt;
+        target['CASH OUT'] = (Number(target['CASH OUT']) || 0) + amt;
         target['NET CHANGE'] = (Number(target['NET CHANGE']) || 0) - amt;
+        target['TOTAL NET CASH CHANGE'] = (Number(target['TOTAL NET CASH CHANGE']) || 0) - amt;
       }
     }
   }
