@@ -1051,7 +1051,28 @@ export default function Tasks() {
               <DialogTitle className="text-sm">Save Filter Preset</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
-              <Input value={newViewName} onChange={e => setNewViewName(e.target.value)} placeholder="e.g. My overdue deal tasks" className="text-sm" onKeyDown={e => { if (e.key === 'Enter') handleSaveView(); }} autoFocus />
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Preset name</label>
+                  <button
+                    type="button"
+                    onClick={() => setNewViewName(suggestPresetName())}
+                    className="text-[10px] font-medium text-primary hover:underline"
+                    title="Generate a name from the current filters"
+                  >
+                    Suggest from filters
+                  </button>
+                </div>
+                <Input
+                  value={newViewName}
+                  onChange={e => setNewViewName(e.target.value)}
+                  placeholder="e.g. My overdue deal tasks"
+                  className="text-sm"
+                  onKeyDown={e => { if (e.key === 'Enter') handleSaveView(); }}
+                  autoFocus
+                  onFocus={(e) => e.currentTarget.select()}
+                />
+              </div>
               <div className="text-[11px] text-muted-foreground space-y-0.5 rounded-md p-2.5" style={{ backgroundColor: 'rgba(20,24,32,0.6)' }}>
                 <p className="font-medium text-foreground mb-1">This preset will remember:</p>
                 <p>• Search: {search ? `"${search}"` : '—'}</p>
