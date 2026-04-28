@@ -42,36 +42,68 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
  *   - Hover: subtle surface brighten + tiny lift, no glow.
  */
 /**
- * Frosted-glass shortcut tile.
+ * Frosted-glass shortcut tile container.
  *
- * Restrained financial-SaaS take on glassmorphism, themed via semantic
- * tokens so the surface remains readable in both light and dark modes:
- *   - Translucent surface tinted with `--card` + backdrop blur.
- *   - Low-contrast `--border` outline with a soft inner highlight.
- *   - Gentle ambient shadow (no glow, no heavy elevation).
- *   - Hover: tiny lift + slight surface brighten.
+ * Mirrors the reference glassy icon-tile composition: the visible "tile" is
+ * the icon chip itself, with the label centered below it. The surrounding
+ * `<Card>` is intentionally stripped of its dashboard-card chrome
+ * (no background, no border, no shadow) so the chip reads as a standalone
+ * frosted shortcut, identical in spirit to the attached reference.
+ *
+ * The `group` class lets the inner chip respond to hover/focus on the tile.
+ * `!` important overrides neutralize the base `<Card>` dark-mode glass styles.
  */
 const TILE_INTERACTIVE_CLASSES =
-  'group relative p-4 rounded-2xl cursor-pointer outline-none ' +
-  'border border-border/50 bg-card/40 backdrop-blur-xl ' +
-  'shadow-[inset_0_1px_0_0_hsl(var(--foreground)/0.04),0_4px_14px_-8px_hsl(var(--background)/0.6)] ' +
-  'transition-[background-color,border-color,transform,box-shadow] duration-200 ease-out ' +
-  // Hover: very slight lift + brighter glass surface
-  'hover:bg-card/60 hover:border-border/70 hover:-translate-y-[1px] ' +
-  'hover:shadow-[inset_0_1px_0_0_hsl(var(--foreground)/0.06),0_8px_22px_-10px_hsl(var(--background)/0.7)] ' +
-  // Keyboard focus: same brightening + soft ring
-  'focus-visible:bg-card/70 focus-visible:border-border/80 ' +
+  'group relative cursor-pointer outline-none p-2 ' +
+  '!border-0 !bg-transparent !shadow-none !backdrop-blur-none !backdrop-saturate-100 ' +
+  'dark:!bg-transparent dark:!border-0 dark:!shadow-none ' +
+  'dark:hover:!border-0 dark:hover:!shadow-none ' +
+  'rounded-2xl transition-transform duration-200 ease-out ' +
   'focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-0';
 
 /**
- * Neutral frosted icon chip used inside each shortcut tile.
- * Replaces per-tile saturated color chips so the grid reads calm and uniform,
- * while the original colored icon glyphs remain untouched.
+ * Reference-styled glassy icon chip. The chip is the tile.
+ *
+ *   - Deep tinted gradient background (per category, 145°).
+ *   - Inner highlight overlay: white 18% → white 4% → black 10%.
+ *   - 1px white/13% border + subtle ambient shadow.
+ *   - Rounded-2xl corners matching the reference's 16px radius feel.
+ *   - Group-hover lift to mimic the reference's tappable feel.
  */
-const TILE_ICON_CHIP_CLASSES =
-  'relative h-12 w-12 rounded-2xl flex items-center justify-center overflow-hidden ' +
-  'border border-border/60 bg-foreground/[0.04] backdrop-blur-md ' +
-  'shadow-[inset_0_1px_0_0_hsl(var(--foreground)/0.06),0_2px_6px_-3px_hsl(var(--background)/0.5)]';
+const TILE_CHIP_BASE =
+  'relative h-16 w-16 rounded-2xl flex items-center justify-center overflow-hidden ' +
+  'border border-white/[0.13] ' +
+  'shadow-[0_4px_14px_-6px_rgba(0,0,0,0.55),inset_0_1px_0_0_rgba(255,255,255,0.08)] ' +
+  'transition-transform duration-200 ease-out ' +
+  'group-hover:-translate-y-[2px] group-focus-visible:-translate-y-[2px]';
+
+/** Inner glassy highlight overlay (matches reference `.wg-icon::before`). */
+const TileChipGloss = () => (
+  <span
+    aria-hidden
+    className="pointer-events-none absolute inset-0 rounded-2xl"
+    style={{
+      background:
+        'linear-gradient(145deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 60%, rgba(0,0,0,0.10) 100%)',
+    }}
+  />
+);
+
+/** Per-category deep gradients mirroring the reference palette. */
+const TILE_CHIP_GRADIENTS: Record<string, string> = {
+  calendar: 'linear-gradient(145deg, #2a3a8c, #1a2466)',
+  email: 'linear-gradient(145deg, #6b2fa0, #4a1d7a)',
+  newDeal: 'linear-gradient(145deg, #1e3a6e, #142a55)',
+  dealRundown: 'linear-gradient(145deg, #1e3a6e, #142a55)',
+  briefing: 'linear-gradient(145deg, #8a5c10, #6b4208)',
+  niki: 'linear-gradient(145deg, #0d5c52, #0a4540)',
+  deals: 'linear-gradient(145deg, #0d5c52, #0a4540)',
+};
+
+/** Tile label styling — centered under the chip, like the reference. */
+const TILE_LABEL_CLASSES =
+  'text-[11px] font-medium text-center leading-tight tracking-[0.01em] ' +
+  'text-muted-foreground group-hover:text-foreground transition-colors';
 
 const handleTileKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, action: () => void) => {
   if (e.key === 'Enter' || e.key === ' ') {
