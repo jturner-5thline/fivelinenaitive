@@ -283,6 +283,46 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const [selectedThread, setSelectedThread] = useState<EmailThread | null>(null);
   const [readingPaneExpanded, setReadingPaneExpanded] = useState(false);
 
+  // ─── Deep-link support for priority signal notifications ──────────
+  // Notifications dispatched by `useEmailPrioritySignals` link to:
+  //   /deals/<id>?tab=communication&thread=<threadId>&message=<msgId>&signal=<type>
+  // When those params land on this tab, auto-select the thread and pass
+  // the message + signal into the reading pane via state so it can scroll
+  // to the matched message and briefly highlight the detected signal.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [deepLinkTarget, setDeepLinkTarget] = useState<{
+    threadId: string;
+    messageId: string | null;
+    signal: string | null;
+  } | null>(null);
+  // Re-run whenever query params or the loaded email set changes — the
+  // thread may not exist on first mount if emails are still streaming in.
+  const consumedDeepLinkRef = useRef<string | null>(null);
+  useEffect(() => {
+    const threadId = searchParams.get('thread');
+    if (!threadId) return;
+    const messageId = searchParams.get('message');
+    const signal = searchParams.get('signal');
+    const sig = `${threadId}::${messageId || ''}::${signal || ''}`;
+    if (consumedDeepLinkRef.current === sig) return;
+    const threads = groupEmailsByThread(emails);
+    const target = threads.find((t) => t.threadId === threadId);
+    if (!target) return; // wait for emails to load
+    setSelectedThread(target);
+    setDeepLinkTarget({ threadId, messageId, signal });
+    consumedDeepLinkRef.current = sig;
+    // Clean the URL so a manual refresh doesn't keep re-opening the
+    // thread; preserve the `tab` param so the user stays on this tab.
+    const next = new URLSearchParams(searchParams);
+    next.delete('thread');
+    next.delete('message');
+    next.delete('signal');
+    setSearchParams(next, { replace: true });
+    // Auto-clear the highlight after 6s so it doesn't linger.
+    const t = setTimeout(() => setDeepLinkTarget(null), 6000);
+    return () => clearTimeout(t);
+  }, [searchParams, emails, setSearchParams]);
+
   // Ref to the inbox column's scroll container so the pagination IO can use
   // it as `root` instead of the document viewport (see PaginationFooter).
   const inboxScrollRef = useRef<HTMLDivElement | null>(null);
