@@ -1,6 +1,7 @@
 import { useEffect, useRef, memo, useMemo } from 'react';
 import { Chart, registerables } from 'chart.js';
 import type { WeeklyData, ThemeMode } from './types';
+import { LAST_HISTORICAL_WEEK_ENDING } from './weeklyHistoricalSeed';
 
 Chart.register(...registerables);
 
@@ -12,12 +13,47 @@ interface WeeklyChartsProps {
 export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: WeeklyChartsProps) {
   const chart1Ref = useRef<HTMLCanvasElement>(null);
   const chart2Ref = useRef<HTMLCanvasElement>(null);
+  const chart3Ref = useRef<HTMLCanvasElement>(null);
   const chart1Instance = useRef<Chart | null>(null);
   const chart2Instance = useRef<Chart | null>(null);
+  const chart3Instance = useRef<Chart | null>(null);
 
   // Memoize chart data to avoid recalculation
   const chartData = useMemo(() => {
     const entries = Object.entries(weeklyData || {}).sort(([a], [b]) => a.localeCompare(b));
+    // Find split index between historical actuals and forward projection.
+    // The first week with week_ending strictly AFTER LAST_HISTORICAL_WEEK_ENDING is projected.
+    const firstProjectedIdx = entries.findIndex(
+      ([, v]) => String(v.week_ending || '') > LAST_HISTORICAL_WEEK_ENDING,
+    );
+
+    // Roll-forward projected ending cash from the last actual ending cash
+    // using NET CHANGE (TOTAL RECEIPTS - TOTAL DISBURSEMENTS) from the
+    // configured rows for each forward week.
+    const projectedEndingCash: Array<number | null> = entries.map(() => null);
+    if (firstProjectedIdx > 0) {
+      const lastActual = Number(entries[firstProjectedIdx - 1][1]['ENDING CASH']) || 0;
+      // Anchor the projection line at the last actual point so it joins visually.
+      projectedEndingCash[firstProjectedIdx - 1] = lastActual / 1000;
+      let running = lastActual;
+      for (let i = firstProjectedIdx; i < entries.length; i++) {
+        const v = entries[i][1] as any;
+        const receipts = Number(v['TOTAL RECEIPTS']) || 0;
+        const disb = Number(v['TOTAL DISBURSEMENTS']) || 0;
+        running = running + receipts - disb;
+        projectedEndingCash[i] = running / 1000;
+      }
+    }
+
+    // Actual ending cash only through the historical cutoff (null afterwards
+    // so the two lines visually segment at the cutoff).
+    const actualEndingCash: Array<number | null> = entries.map(([, v], idx) => {
+      if (firstProjectedIdx === -1 || idx < firstProjectedIdx) {
+        return (Number(v['ENDING CASH']) || 0) / 1000;
+      }
+      return null;
+    });
+
     return {
       labels: entries.map(([, v]) => {
         const d = new Date(v.week_ending);
@@ -27,18 +63,23 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
       totalLiquidity: entries.map(([, v]) => (v["TOTAL CASH ON HAND"] as number) / 1000),
       cashIn: entries.map(([, v]) => ((v["TOTAL RECEIPTS"] as number) || 0) / 1000),
       cashOut: entries.map(([, v]) => ((v["TOTAL DISBURSEMENTS"] as number) || 0) / 1000),
+      actualEndingCash,
+      projectedEndingCash,
+      firstProjectedIdx,
     };
   }, [weeklyData]);
 
   useEffect(() => {
     const canvas1 = chart1Ref.current;
     const canvas2 = chart2Ref.current;
-    if (!canvas1 || !canvas2) return;
+    const canvas3 = chart3Ref.current;
+    if (!canvas1 || !canvas2 || !canvas3) return;
 
     chart1Instance.current?.destroy();
     chart2Instance.current?.destroy();
+    chart3Instance.current?.destroy();
 
-    const { labels, endingCash, totalLiquidity, cashIn, cashOut } = chartData;
+    const { labels, endingCash, totalLiquidity, cashIn, cashOut, actualEndingCash, projectedEndingCash } = chartData;
 
     const isDark = theme === 'dark';
     const gridColor = isDark ? 'rgba(42,51,72,0.5)' : 'rgba(209,213,219,0.5)';
@@ -163,26 +204,103 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
       },
     });
 
+    // Chart 3 — Projected Ending Cash (roll-forward from configured rows)
+    chart3Instance.current = new Chart(canvas3, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Actual Ending Cash',
+            data: actualEndingCash,
+            borderColor: isDark ? '#22c55e' : '#16a34a',
+            backgroundColor: isDark ? 'rgba(34,197,94,0.1)' : 'rgba(22,163,74,0.1)',
+            fill: true,
+            tension: 0.25,
+            spanGaps: false,
+            pointRadius: labels.length > 50 ? 0 : 2,
+          },
+          {
+            label: 'Projected Ending Cash',
+            data: projectedEndingCash,
+            borderColor: isDark ? '#a78bfa' : '#7c3aed',
+            backgroundColor: isDark ? 'rgba(167,139,250,0.12)' : 'rgba(124,58,237,0.10)',
+            borderDash: [6, 4],
+            fill: true,
+            tension: 0.25,
+            spanGaps: false,
+            pointRadius: labels.length > 50 ? 0 : 2,
+          },
+          {
+            label: 'Min Liquidity $250K',
+            data: new Array(labels.length).fill(250),
+            borderColor: isDark ? '#f59e0b' : '#d97706',
+            borderDash: [5, 5],
+            pointRadius: 0,
+            fill: false,
+          },
+          {
+            label: 'Caution $100K',
+            data: new Array(labels.length).fill(100),
+            borderColor: isDark ? '#5a6580' : '#9ca3af',
+            borderDash: [3, 3],
+            pointRadius: 0,
+            fill: false,
+          },
+        ],
+      },
+      options: {
+        ...commonOptions,
+        plugins: {
+          ...commonOptions.plugins,
+          tooltip: {
+            callbacks: {
+              label: (ctx) =>
+                ctx.parsed.y == null
+                  ? ''
+                  : `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(0)}K`,
+            },
+          },
+        },
+      },
+    });
+
     return () => {
       chart1Instance.current?.destroy();
       chart2Instance.current?.destroy();
+      chart3Instance.current?.destroy();
     };
   }, [chartData, theme]);
 
   return (
-    <div className="cf-charts-row">
-      <div className="cf-chart-card">
-        <div className="cf-chart-title">Cash Balance & Liquidity</div>
-        <div style={{ height: 200 }}>
-          <canvas ref={chart1Ref} />
+    <>
+      <div className="cf-charts-row">
+        <div className="cf-chart-card">
+          <div className="cf-chart-title">Cash Balance & Liquidity</div>
+          <div style={{ height: 200 }}>
+            <canvas ref={chart1Ref} />
+          </div>
+        </div>
+        <div className="cf-chart-card">
+          <div className="cf-chart-title">Cash In vs Cash Out</div>
+          <div style={{ height: 200 }}>
+            <canvas ref={chart2Ref} />
+          </div>
         </div>
       </div>
-      <div className="cf-chart-card">
-        <div className="cf-chart-title">Cash In vs Cash Out</div>
-        <div style={{ height: 200 }}>
-          <canvas ref={chart2Ref} />
+      <div className="cf-charts-row">
+        <div className="cf-chart-card" style={{ flex: 1 }}>
+          <div className="cf-chart-title">
+            Projected Ending Cash
+            <span style={{ fontSize: 11, fontWeight: 400, opacity: 0.7, marginLeft: 8 }}>
+              Roll-forward from beginning cash using configured weekly net cash
+            </span>
+          </div>
+          <div style={{ height: 220 }}>
+            <canvas ref={chart3Ref} />
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 });
