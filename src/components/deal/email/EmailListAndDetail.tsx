@@ -253,6 +253,18 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
       {isSelected && (
         <div className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-[hsl(var(--outlook-blue))]" />
       )}
+      {/* Priority signal accent bar — red for urgent, yellow for action.
+          Hidden when the row is selected so the blue selection bar wins. */}
+      {priorityFlag && !isSelected && (
+        <div
+          className={cn(
+            'absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full',
+            PRIORITY_EDGE_BAR[getSignalSeverity(priorityFlag.type)],
+          )}
+          aria-label={`Priority signal: ${priorityFlag.label}`}
+          title={`Priority signal: ${priorityFlag.label} — "${priorityFlag.quote}"`}
+        />
+      )}
       <div className="flex items-start gap-2.5 px-3 py-2 min-w-0">
         {/* Checkbox or avatar area */}
         <div className="relative flex items-center justify-center shrink-0 mt-0.5" style={{ width: 24, height: 24 }}>
