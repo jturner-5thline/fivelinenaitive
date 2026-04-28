@@ -27,11 +27,24 @@ export interface AIEmailSearchResult {
   /** Inferred structured filters (informational) */
   filters: {
     sender?: string | null;
+    senderRole?: 'lender' | 'client' | 'internal' | 'prospect' | null;
     dateRange?: string | null;
+    dateRangeStart?: string | null;
+    dateRangeEnd?: string | null;
     category?: string | null;
     topics?: string[];
+    hasAttachments?: boolean | null;
   };
 }
+
+/** Keys of `filters` that the user can drop via a chip. */
+export type AIEmailFilterKey =
+  | 'sender'
+  | 'senderRole'
+  | 'dateRange'
+  | 'category'
+  | 'hasAttachments'
+  | `topic:${string}`;
 
 interface CandidateEmail {
   id: string;
@@ -226,9 +239,16 @@ export function useAIEmailSearch() {
           reasons,
           filters: {
             sender: parsed.filters?.sender ?? null,
+            senderRole: parsed.filters?.senderRole ?? null,
             dateRange: parsed.filters?.dateRange ?? null,
+            dateRangeStart: parsed.filters?.dateRangeStart ?? null,
+            dateRangeEnd: parsed.filters?.dateRangeEnd ?? null,
             category: parsed.filters?.category ?? null,
             topics: Array.isArray(parsed.filters?.topics) ? parsed.filters.topics : [],
+            hasAttachments:
+              typeof parsed.filters?.hasAttachments === 'boolean'
+                ? parsed.filters.hasAttachments
+                : null,
           },
         };
 
@@ -266,5 +286,32 @@ export function useAIEmailSearch() {
     setIsSearching(false);
   }, []);
 
-  return { search, clear, result, isSearching, error };
+  /**
+   * Drop a single filter chip and update `result` in place. We do NOT re-run
+   * the AI call — instead we just clear the corresponding filter so the parent
+   * can relax its post-filter step. The `rankedIds` stay intact (they are the
+   * AI's superset); the parent UI is responsible for re-applying the remaining
+   * filters against `rankedIds` if it wants stricter constraints.
+   */
+  const removeFilter = useCallback((key: AIEmailFilterKey) => {
+    setResult((prev) => {
+      if (!prev) return prev;
+      const f = { ...prev.filters };
+      if (key === 'sender') f.sender = null;
+      else if (key === 'senderRole') f.senderRole = null;
+      else if (key === 'dateRange') {
+        f.dateRange = null;
+        f.dateRangeStart = null;
+        f.dateRangeEnd = null;
+      } else if (key === 'category') f.category = null;
+      else if (key === 'hasAttachments') f.hasAttachments = null;
+      else if (key.startsWith('topic:')) {
+        const topic = key.slice('topic:'.length);
+        f.topics = (f.topics || []).filter((t) => t !== topic);
+      }
+      return { ...prev, filters: f };
+    });
+  }, []);
+
+  return { search, clear, removeFilter, result, isSearching, error };
 }
