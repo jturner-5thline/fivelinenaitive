@@ -1,0 +1,2 @@
+ALTER TABLE public.task_saved_views ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMPTZ NULL;
+CREATE INDEX IF NOT EXISTS idx_task_saved_views_user_pinned ON public.task_saved_views(user_id, pinned_at DESC NULLS LAST, position);

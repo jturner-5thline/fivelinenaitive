@@ -16070,6 +16070,7 @@ export type Database = {
           id: string
           is_default: boolean
           name: string
+          pinned_at: string | null
           position: number
           updated_at: string
           user_id: string
@@ -16080,6 +16081,7 @@ export type Database = {
           id?: string
           is_default?: boolean
           name: string
+          pinned_at?: string | null
           position?: number
           updated_at?: string
           user_id: string
@@ -16090,6 +16092,7 @@ export type Database = {
           id?: string
           is_default?: boolean
           name?: string
+          pinned_at?: string | null
           position?: number
           updated_at?: string
           user_id?: string
