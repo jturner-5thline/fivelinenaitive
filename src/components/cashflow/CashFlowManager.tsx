@@ -571,7 +571,7 @@ export function CashFlowManager() {
     if (!isConfigureFilterActive) return scheduledItems;
     return (scheduledItems || []).filter((e) => {
       // Migrate legacy parent storage so filtering is consistent with the grid.
-      const cat = e.category === 'Debt Advisory Revenue' ? DEBT_ADVISORY_DEFAULT_SUBCATEGORY : e.category;
+      const cat = resolveCategoryAlias(e.category);
       const entityOk = filterEntities.length === 0 || filterEntities.includes(e.account);
       const categoryOk = filterCategories.length === 0 || filterCategories.includes(cat);
       return entityOk && categoryOk;
@@ -641,7 +641,7 @@ export function CashFlowManager() {
   const availableCategories = useMemo(() => {
     const set = new Set<string>();
     for (const e of scheduledItems || []) {
-      const cat = e.category === 'Debt Advisory Revenue' ? DEBT_ADVISORY_DEFAULT_SUBCATEGORY : e.category;
+      const cat = resolveCategoryAlias(e.category);
       set.add(cat);
     }
     return Array.from(set).sort();
