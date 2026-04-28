@@ -236,6 +236,10 @@ export interface ReportState {
   initiatives: Initiative[];
   initiativeOwnerFilter: string;
   risks: Risk[];
+  /** Configurable mapping from report period → Asana Goals time-period labels. */
+  asanaGoalFilters?: AsanaGoalFilterTemplates;
+  /** Optional manual override for the active report (resets when period changes). */
+  asanaGoalOverride?: { quarterLabel?: string; halfLabel?: string } | null;
 }
 
 const SEED: ReportState = {
@@ -287,6 +291,8 @@ Looking forward, our Q2 focus is sustaining pipeline velocity, hardening the age
     },
     { id: 'r4', description: '', mitigation: '' },
   ],
+  asanaGoalFilters: DEFAULT_ASANA_GOAL_FILTERS,
+  asanaGoalOverride: null,
 };
 
 const cloneSeed = (): ReportState => JSON.parse(JSON.stringify(SEED));
