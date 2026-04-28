@@ -1798,24 +1798,33 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
               {/* Messages */}
               {thread.emails.slice(0, shouldAutoCollapse && !olderExpanded ? VISIBLE_RECENT : undefined).map((email, idx) => (
-                <ThreadMessage
+                <div
                   key={email.id}
-                  email={email}
-                  isLatest={idx === 0}
-                  defaultExpanded={idx === 0 || userExpandedMessages.has(email.id)}
-                  threadId={thread.threadId}
-                  threadSubject={thread.subject}
-                  threadEmails={thread.emails}
-                  dealId={effectiveDealId}
-                  dealName={effectiveDealName}
-                  onExpandChange={(exp) => {
-                    setUserExpandedMessages(prev => {
-                      const next = new Set(prev);
-                      if (exp) next.add(email.id); else next.delete(email.id);
-                      return next;
-                    });
-                  }}
-                />
+                  data-deeplink-msg-id={email.gmail_message_id || email.id}
+                  className="transition-shadow"
+                >
+                  <ThreadMessage
+                    email={email}
+                    isLatest={idx === 0}
+                    defaultExpanded={
+                      idx === 0
+                      || userExpandedMessages.has(email.id)
+                      || (!!deepLinkMessageId && (email.gmail_message_id === deepLinkMessageId || email.id === deepLinkMessageId))
+                    }
+                    threadId={thread.threadId}
+                    threadSubject={thread.subject}
+                    threadEmails={thread.emails}
+                    dealId={effectiveDealId}
+                    dealName={effectiveDealName}
+                    onExpandChange={(exp) => {
+                      setUserExpandedMessages(prev => {
+                        const next = new Set(prev);
+                        if (exp) next.add(email.id); else next.delete(email.id);
+                        return next;
+                      });
+                    }}
+                  />
+                </div>
               ))}
 
               {/* Collapsed older messages bar */}
@@ -1825,24 +1834,32 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
               {/* Older messages */}
               {olderExpanded && shouldAutoCollapse && thread.emails.slice(VISIBLE_RECENT).map((email) => (
-                <ThreadMessage
+                <div
                   key={email.id}
-                  email={email}
-                  isLatest={false}
-                  defaultExpanded={userExpandedMessages.has(email.id)}
-                  threadId={thread.threadId}
-                  threadSubject={thread.subject}
-                  threadEmails={thread.emails}
-                  dealId={effectiveDealId}
-                  dealName={effectiveDealName}
-                  onExpandChange={(exp) => {
-                    setUserExpandedMessages(prev => {
-                      const next = new Set(prev);
-                      if (exp) next.add(email.id); else next.delete(email.id);
-                      return next;
-                    });
-                  }}
-                />
+                  data-deeplink-msg-id={email.gmail_message_id || email.id}
+                  className="transition-shadow"
+                >
+                  <ThreadMessage
+                    email={email}
+                    isLatest={false}
+                    defaultExpanded={
+                      userExpandedMessages.has(email.id)
+                      || (!!deepLinkMessageId && (email.gmail_message_id === deepLinkMessageId || email.id === deepLinkMessageId))
+                    }
+                    threadId={thread.threadId}
+                    threadSubject={thread.subject}
+                    threadEmails={thread.emails}
+                    dealId={effectiveDealId}
+                    dealName={effectiveDealName}
+                    onExpandChange={(exp) => {
+                      setUserExpandedMessages(prev => {
+                        const next = new Set(prev);
+                        if (exp) next.add(email.id); else next.delete(email.id);
+                        return next;
+                      });
+                    }}
+                  />
+                </div>
               ))}
 
               {/* Resume draft banner */}
