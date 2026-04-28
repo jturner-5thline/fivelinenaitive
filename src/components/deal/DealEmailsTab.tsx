@@ -583,7 +583,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const labelFolders: SidebarItem[] = useMemo(() => {
     return userLabels.map(l => {
       const threadIds = threadIdsForLabel(l.id, labelAssignments);
-      const count = emails.filter(e => threadIds.has(e.thread_id)).length;
+      const count = emails.filter(e => threadIds.has(e.threadId)).length;
       return {
         id: `label:${l.id}`,
         label: l.name,
@@ -592,7 +592,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         count: count || undefined,
         // Stash the swatch hex on the item so the renderer can color the dot.
         emoji: labelSwatch(l.color),
-        filterFn: (e: MockEmail) => threadIds.has(e.thread_id),
+        filterFn: (e: MockEmail) => threadIds.has(e.threadId),
       };
     });
   }, [userLabels, labelAssignments, emails]);
