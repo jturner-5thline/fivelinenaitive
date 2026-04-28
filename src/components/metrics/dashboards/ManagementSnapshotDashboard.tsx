@@ -588,7 +588,10 @@ export function ManagementSnapshotDashboard({
         onLayoutChange={onGridLayoutChange}
         isEditMode={isEditMode}
         rowHeight={60}
-        className={cn(isEditMode && 'p-2 rounded-xl border-2 border-dashed border-primary/20 bg-primary/[0.02]')}
+        // Edit-mode frame: keep the dashed outline so the editable region is
+        // clearly delimited, but drop the tinted fill so the section reads as
+        // an open transparent area rather than a boxed-in surface.
+        className={cn(isEditMode && 'p-2 rounded-xl border-2 border-dashed border-primary/20')}
       >
         {visibleCards.map(({ cardId, props }) => (
           <div key={cardId} className="relative group">

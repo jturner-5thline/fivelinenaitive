@@ -125,7 +125,10 @@ export function DashboardGrid({ gridConfig, widgetsConfig, isEditing, onLayoutCh
   return (
     <div ref={gridRef} className={cn(
       "grid grid-cols-12 gap-4 auto-rows-[60px]",
-      isEditing && "p-2 rounded-xl border-2 border-dashed border-primary/20 bg-primary/[0.02]"
+      // Edit-mode frame: keep the dashed outline so the editable widgets
+      // section is clearly defined, but drop the tinted fill so the area
+      // feels open and the widget tiles remain the dominant surfaces.
+      isEditing && "p-2 rounded-xl border-2 border-dashed border-primary/20"
     )}>
       {orderedWidgets.map(({ grid, widget }, index) => {
         const def = WIDGET_REGISTRY[widget.type];
