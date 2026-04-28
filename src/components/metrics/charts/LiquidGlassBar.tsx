@@ -16,6 +16,8 @@ export interface LiquidGlassBarProps {
   isTopSegment?: boolean;
   /** Corner radius for exposed top corners */
   radius?: number;
+  /** Explicit sign override (used when Recharts hands us a positive height for negative values) */
+  valueSign?: 'positive' | 'negative';
   /** Recharts passes payload, index, etc. */
   [key: string]: unknown;
 }
@@ -29,13 +31,18 @@ export function LiquidGlassBar(props: LiquidGlassBarProps) {
     fill = 'hsl(var(--primary))',
     isTopSegment = true,
     radius = 3,
+    valueSign,
   } = props;
 
   const uid = useId().replace(/:/g, '');
 
   if (width <= 0 || height === 0) return null;
 
-  const isNegative = height < 0;
+  // Recharts emits a *positive* height for negative-value bars when the y-axis
+  // crosses zero (the bar is positioned at the zero baseline and extends down).
+  // Trust an explicit `valueSign` override when provided, otherwise fall back to
+  // the height sign (which only catches inverted-axis cases).
+  const isNegative = valueSign ? valueSign === 'negative' : height < 0;
   const absHeight = Math.abs(height);
   const r = isTopSegment ? Math.min(radius, width / 2, absHeight / 2) : 0;
 
@@ -71,6 +78,8 @@ export function LiquidGlassBar(props: LiquidGlassBarProps) {
   const gradId = `glass-grad-${uid}`;
   const highlightId = `glass-hi-${uid}`;
 
+  // Flip the gradient + highlight so the "lit" edge is always on the *exposed*
+  // end of the bar (top for positives, bottom for negatives).
   const gradY1 = isNegative ? '1' : '0';
   const gradY2 = isNegative ? '0' : '1';
 
