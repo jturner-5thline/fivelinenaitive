@@ -133,6 +133,20 @@ function sortAndDedupeTasks(tasks: Task[]) {
 function calculateNextDueDate(currentDueDate: string | null, rule: string): string | null {
   if (!currentDueDate) return null;
   const date = new Date(currentDueDate + 'T00:00:00');
+  // Custom interval format: "every:<N>:<days|weeks>"
+  if (rule.startsWith('every:')) {
+    const [, nStr, unit] = rule.split(':');
+    const n = Math.max(1, Math.min(365, parseInt(nStr, 10) || 1));
+    if (unit === 'days') {
+      date.setDate(date.getDate() + n);
+      return date.toISOString().split('T')[0];
+    }
+    if (unit === 'weeks') {
+      date.setDate(date.getDate() + n * 7);
+      return date.toISOString().split('T')[0];
+    }
+    return null;
+  }
   switch (rule) {
     case 'daily':
       date.setDate(date.getDate() + 1);
