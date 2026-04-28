@@ -70,6 +70,17 @@ their intent into ONE of:
 Then produce a short title (max ~80 chars), a body (1-4 sentences for ask/note/draft,
 or the suggested task title for task), and a 1-sentence rationale.
 
+When intent is "note", ALSO inspect the thread + prompt for any specific
+lender/firm being discussed. If you can identify one, populate the optional
+"lender" field with:
+  - name   : the lender / firm name as written in the thread
+  - status : one of "in-review" | "terms-issued" | "in-diligence" | "closed-funded"
+             (omit if the email gives no signal)
+  - note   : a one-sentence summary of the lender's current position that
+             should be saved on the lender record (different from the deal-level
+             note body — this one is lender-specific)
+If no specific lender is being discussed, omit "lender" entirely.
+
 Respond ONLY by calling the route_action tool.`;
 
     const userPrompt = `User request: "${cleanPrompt}"
@@ -107,6 +118,20 @@ ${threadStr}`;
                   title: { type: "string" },
                   body: { type: "string" },
                   rationale: { type: "string" },
+                  lender: {
+                    type: "object",
+                    description: "Optional. Only set when intent='note' and a specific lender is being discussed.",
+                    properties: {
+                      name:   { type: "string" },
+                      status: {
+                        type: "string",
+                        enum: ["in-review", "terms-issued", "in-diligence", "closed-funded"],
+                      },
+                      note:   { type: "string" },
+                    },
+                    required: ["name"],
+                    additionalProperties: false,
+                  },
                 },
                 required: ["intent", "title", "body", "rationale"],
                 additionalProperties: false,
