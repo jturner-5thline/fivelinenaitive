@@ -141,16 +141,13 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
       if (created?.id) {
         // Best-effort Asana sync — non-fatal.
         try {
-          const ctx = await getAsanaSyncContext(created.assigned_to);
+          const ctx = await getAsanaSyncContext(company?.id || null);
           if (ctx) {
-            await syncTaskToAsana({
-              taskId: created.id,
+            await syncTaskToAsana(ctx, {
+              id: created.id,
               title: draft.title,
               description: draft.description,
               due_date: draft.due_date,
-              priority: draft.priority,
-              assigned_to: created.assigned_to,
-              ctx,
             });
           }
         } catch (e) {
