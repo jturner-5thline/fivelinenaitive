@@ -16,6 +16,8 @@ export interface LiquidGlassBarProps {
   isTopSegment?: boolean;
   /** Corner radius for exposed top corners */
   radius?: number;
+  /** Explicit sign override (used when Recharts hands us a positive height for negative values) */
+  valueSign?: 'positive' | 'negative';
   /** Recharts passes payload, index, etc. */
   [key: string]: unknown;
 }
@@ -29,13 +31,18 @@ export function LiquidGlassBar(props: LiquidGlassBarProps) {
     fill = 'hsl(var(--primary))',
     isTopSegment = true,
     radius = 3,
+    valueSign,
   } = props;
 
   const uid = useId().replace(/:/g, '');
 
   if (width <= 0 || height === 0) return null;
 
-  const isNegative = height < 0;
+  // Recharts emits a *positive* height for negative-value bars when the y-axis
+  // crosses zero (the bar is positioned at the zero baseline and extends down).
+  // Trust an explicit `valueSign` override when provided, otherwise fall back to
+  // the height sign (which only catches inverted-axis cases).
+  const isNegative = valueSign ? valueSign === 'negative' : height < 0;
   const absHeight = Math.abs(height);
   const r = isTopSegment ? Math.min(radius, width / 2, absHeight / 2) : 0;
 
@@ -71,6 +78,8 @@ export function LiquidGlassBar(props: LiquidGlassBarProps) {
   const gradId = `glass-grad-${uid}`;
   const highlightId = `glass-hi-${uid}`;
 
+  // Flip the gradient + highlight so the "lit" edge is always on the *exposed*
+  // end of the bar (top for positives, bottom for negatives).
   const gradY1 = isNegative ? '1' : '0';
   const gradY2 = isNegative ? '0' : '1';
 
@@ -112,13 +121,36 @@ export function createGlassBarShape(options?: {
   topSegmentKey?: string;
   /** current bar's dataKey */
   dataKey?: string;
+  /** Field on the data payload to inspect for sign (defaults to props.value / dataKey) */
+  valueKey?: string;
 }) {
-  const { radius = 3, topSegmentKey, dataKey } = options || {};
+  const { radius = 3, topSegmentKey, dataKey, valueKey } = options || {};
 
   return (props: Record<string, unknown>) => {
     const isTop = topSegmentKey
       ? dataKey === topSegmentKey
       : true;
-    return <LiquidGlassBar {...props} radius={radius} isTopSegment={isTop} />;
+
+    // Resolve the underlying datum value so we can detect negatives even when
+    // Recharts hands us a positive `height` (its standard behaviour for bars
+    // crossing a zero baseline).
+    const payload = (props.payload ?? {}) as Record<string, unknown>;
+    const rechartsValue = props.value as number | undefined;
+    const lookupKey = valueKey ?? dataKey;
+    const datumValue =
+      typeof rechartsValue === 'number'
+        ? rechartsValue
+        : (lookupKey ? Number(payload[lookupKey]) : NaN);
+    const valueSign: 'positive' | 'negative' | undefined =
+      Number.isFinite(datumValue) ? (datumValue < 0 ? 'negative' : 'positive') : undefined;
+
+    return (
+      <LiquidGlassBar
+        {...props}
+        radius={radius}
+        isTopSegment={isTop}
+        valueSign={valueSign}
+      />
+    );
   };
 }
