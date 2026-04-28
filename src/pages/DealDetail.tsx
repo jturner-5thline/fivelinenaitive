@@ -3555,6 +3555,14 @@ export default function DealDetail() {
                                 )}
                                 
                                 {isDealInfoFieldVisible('hoursAndFees') && renderDealInfoField('hoursAndFees')}
+
+                                {/* Pipeline-specific fields (e.g. FinServ Details).
+                                    Driven by src/config/pipelineFieldSchemas.ts so the
+                                    create-deal form and detail view stay in sync. */}
+                                <PipelineSpecificFields
+                                  deal={deal}
+                                  onUpdate={(field, value) => updateDeal(field as any, value)}
+                                />
                               </CardContent>
                             </Card>
                           );
