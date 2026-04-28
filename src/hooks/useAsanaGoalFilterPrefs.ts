@@ -109,8 +109,8 @@ export function useAsanaGoalFilterPrefs(): UseAsanaGoalFilterPrefsResult {
               {
                 user_id: userId,
                 company_id: companyId,
-                filters: merged.filters as unknown as Record<string, unknown>,
-                override: merged.override as unknown as Record<string, unknown> | null,
+                filters: JSON.parse(JSON.stringify(merged.filters)),
+                override: merged.override ? JSON.parse(JSON.stringify(merged.override)) : null,
                 exact_match: merged.exactMatch,
               },
             ],
