@@ -935,9 +935,36 @@ interface EmailDetailProps {
   onToggleExpand?: () => void;
   onDelete?: (email: MockEmail) => void;
   onArchive?: (email: MockEmail) => void;
+  /**
+   * Optional deep-link target — when set, the matching message is
+   * scrolled into view and briefly highlighted with a ring so the user
+   * can see exactly where the priority signal was detected.
+   */
+  deepLinkMessageId?: string | null;
+  /** Detected signal label/type, surfaced as a small badge in the header. */
+  deepLinkSignal?: string | null;
 }
 
-export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar, onSendReply, isExpanded, onToggleExpand, onDelete, onArchive }: EmailDetailProps) {
+export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar, onSendReply, isExpanded, onToggleExpand, onDelete, onArchive, deepLinkMessageId, deepLinkSignal }: EmailDetailProps) {
+  // Scroll-and-highlight the deep-linked message when present. Re-runs if
+  // the user navigates between threads with consecutive priority signals.
+  useEffect(() => {
+    if (!deepLinkMessageId) return;
+    // Defer to allow ThreadMessage children to mount + expand.
+    const t = setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(
+        `[data-deeplink-msg-id="${CSS.escape(deepLinkMessageId)}"]`,
+      );
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('ring-2', 'ring-amber-400/70', 'rounded-md');
+      setTimeout(() => {
+        el.classList.remove('ring-2', 'ring-amber-400/70', 'rounded-md');
+      }, 4000);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [deepLinkMessageId, thread.threadId]);
+
   const [showSmartPanel, setShowSmartPanel] = useState(false);
   const [smartPopoverOpen, setSmartPopoverOpen] = useState(false);
   // AI Assist sidebar is always-on by default. On desktop it's persistently rendered;
