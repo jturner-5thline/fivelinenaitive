@@ -15,6 +15,8 @@ import type { WorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
 import { useCreateContact } from '@/hooks/useContacts';
 import { useLinkContactToDeal } from '@/hooks/useCrmLinks';
 import { STATUS_CONFIG } from '@/types/deal';
+import { useIsTeamMemberEmail } from '@/hooks/useIsTeamMemberEmail';
+import { domainOf, isInternalEmail } from '@/lib/internalDomains';
 
 interface Props {
   /** Inbound email to enrich. */
@@ -24,6 +26,12 @@ interface Props {
     subject?: string;
     body_preview?: string;
     body_text?: string;
+    /**
+     * Mailbox folder of the latest message — used to detect outbound
+     * messages (sent by an internal user) so we can suppress the
+     * "New contact" prompt entirely.
+     */
+    folder?: 'inbox' | 'sent' | 'drafts' | 'junk' | 'trash' | 'outbox';
   };
   /** Persists the link selection on the parent thread (deal_emails write). */
   onLinkDeal: (dealId: string, dealName: string) => void | Promise<void>;
@@ -94,6 +102,11 @@ export function UnmatchedEmailContextCard({
   const createContact = useCreateContact();
   const linkContactDeal = useLinkContactToDeal();
   const [contactAdded, setContactAdded] = useState<{ id: string; name: string } | null>(null);
+
+  // Hoisted so React's hook order is preserved across the early
+  // contactLoading return below.
+  const senderIsInternalDomain = isInternalEmail(senderEmail);
+  const { isTeamMember: senderIsTeamMember } = useIsTeamMemberEmail(senderEmail);
 
   const linkSuggestion = async (id: string, name: string) => {
     setLinkingTarget(id);
@@ -201,8 +214,60 @@ export function UnmatchedEmailContextCard({
   const senderDomain = senderEmail.includes('@') ? senderEmail.split('@')[1] : '';
   const inferredCompany =
     highMatch?.deal.company || highMatch?.deal.name || senderDomain || '';
+
+  // Outbound = the latest message in the thread was sent by us (internal
+  // user). In that case the "sender" is one of our own teammates and the
+  // recipient is the external party — surfacing "New contact" for either
+  // side here would be wrong.
+  const isOutbound =
+    email.folder === 'sent' ||
+    email.folder === 'drafts' ||
+    email.folder === 'outbox' ||
+    (email.from_name || '').trim() === 'You';
+
+  // Tighter deal attribution: only prompt to add to a specific deal when
+  // the sender's external domain actually matches that deal's company /
+  // lender domain (or the sender already appears on that deal's roster
+  // as an external party — covered separately by the contact lookup).
+  const matchedDealDomain = (() => {
+    const deal = highMatch?.deal;
+    if (!deal) return false;
+    const sd = domainOf(senderEmail);
+    if (!sd || senderIsInternalDomain) return false;
+    // Deal's own client/company domain
+    const dealUrlDomain = (() => {
+      if (!deal.companyUrl) return '';
+      try {
+        const u = deal.companyUrl.startsWith('http')
+          ? deal.companyUrl
+          : `https://${deal.companyUrl}`;
+        return domainOf('x@' + new URL(u).hostname);
+      } catch {
+        return domainOf('x@' + deal.companyUrl);
+      }
+    })();
+    if (dealUrlDomain && (sd === dealUrlDomain || sd.endsWith('.' + dealUrlDomain) || dealUrlDomain.endsWith('.' + sd))) {
+      return true;
+    }
+    // Or any lender contact on the deal sharing the same domain
+    return (deal.lenders || []).some((l: any) => {
+      const ld = domainOf(l?.email || l?.contactEmail);
+      return !!ld && (ld === sd || ld.endsWith('.' + sd) || sd.endsWith('.' + ld));
+    });
+  })();
+
   const canShowNewContactPrompt =
-    !contact && !!senderEmail && senderEmail.includes('@') && !!senderName;
+    !contact &&
+    !!senderEmail &&
+    senderEmail.includes('@') &&
+    !!senderName &&
+    !senderIsInternalDomain &&
+    !senderIsTeamMember &&
+    !isOutbound &&
+    // When we have a matched deal, require domain alignment before
+    // offering "Add to {Deal} contacts". When there's no matched deal
+    // we still allow a generic "Add to contacts" prompt.
+    (!highMatch || matchedDealDomain);
 
   const handleAddContact = async () => {
     if (!senderEmail || !senderName) return;
