@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Plus, Settings2, PieChartIcon, BarChart3, TrendingUp, Download, Image, FileText } from 'lucide-react';
 import {
   DndContext,
@@ -28,6 +28,7 @@ import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { Deal } from '@/types/deal';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { useDealTypes } from '@/contexts/DealTypesContext';
 import {
   Dialog,
   DialogContent,
@@ -45,6 +46,16 @@ import { toast } from '@/hooks/use-toast';
 interface WidgetsSectionProps {
   deals: Deal[];
 }
+
+type GroupByKey = 'stage' | 'status' | 'manager' | 'owner' | 'fund-type';
+
+const GROUP_BY_LABELS: Record<GroupByKey, string> = {
+  stage: 'Stage',
+  status: 'Status',
+  manager: 'Manager',
+  owner: 'Deal Owner',
+  'fund-type': 'Fund Type',
+};
 
 /**
  * Stage IDs that count as "Active Deals" — Final Credit Items through
@@ -101,6 +112,12 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const { widgets, addWidget, updateWidget, deleteWidget, reorderWidgets, specialWidgets, toggleSpecialWidget } = useWidgets();
   const { formatCurrencyValue } = usePreferences();
   const { isHintVisible, dismissHint } = useFirstTimeHints();
+  const { dealTypes: dealTypeOptions } = useDealTypes();
+  const dealTypeLabelById = useMemo(() => {
+    const map: Record<string, string> = {};
+    dealTypeOptions.forEach(dt => { map[dt.id] = dt.label; });
+    return map;
+  }, [dealTypeOptions]);
   const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
@@ -113,7 +130,8 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const [chartDialogOpen, setChartDialogOpen] = useState(false);
   const [chartDialogType, setChartDialogType] = useState<'count' | 'value' | null>(null);
   const [chartDialogTitle, setChartDialogTitle] = useState('');
-  const [chartGroupBy, setChartGroupBy] = useState<'stage' | 'status' | 'manager'>('stage');
+  const [chartGroupBy, setChartGroupBy] = useState<GroupByKey>('stage');
+  const [allowedGroupBys, setAllowedGroupBys] = useState<GroupByKey[]>(['stage']);
   const [chartFilterFn, setChartFilterFn] = useState<((d: Deal) => boolean) | null>(null);
   const [chartViewType, setChartViewType] = useState<'pie' | 'bar' | 'line'>('pie');
 
@@ -136,31 +154,42 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
       .join(' ');
   };
 
+  // For a given deal + groupBy, return one or more bucket keys.
+  // Fund Type is multi-bucket (a deal in multiple types contributes to each).
+  const getGroupKeys = (deal: Deal, groupBy: GroupByKey): string[] => {
+    if (groupBy === 'status') return [deal.status || 'Unknown'];
+    if (groupBy === 'manager') return [deal.manager || 'Unassigned'];
+    if (groupBy === 'owner') return [deal.dealOwner || deal.manager || 'Unassigned'];
+    if (groupBy === 'fund-type') {
+      const types = deal.dealTypes ?? [];
+      if (!types.length) return ['Unassigned'];
+      return types.map(id => dealTypeLabelById[id] || id);
+    }
+    return [deal.stage || 'Unknown'];
+  };
+
+  // Some bucket keys are already display-ready (owner/fund-type/manager).
+  // Stage/status slugs still need formatStageName.
+  const formatBucketName = (raw: string, groupBy: GroupByKey) =>
+    groupBy === 'stage' || groupBy === 'status' ? formatStageName(raw) : raw;
+
   const getChartData = () => {
     if (!chartDialogType || !chartFilterFn) return [];
 
     const sourceDeals = deals.filter(chartFilterFn);
     const groups: Record<string, { count: number; value: number }> = {};
-    
+
     sourceDeals.forEach(deal => {
-      let groupKey: string;
-      if (chartGroupBy === 'status') {
-        groupKey = deal.status || 'Unknown';
-      } else if (chartGroupBy === 'manager') {
-        groupKey = deal.manager || 'Unassigned';
-      } else {
-        groupKey = deal.stage || 'Unknown';
-      }
-      
-      if (!groups[groupKey]) {
-        groups[groupKey] = { count: 0, value: 0 };
-      }
-      groups[groupKey].count += 1;
-      groups[groupKey].value += deal.value || 0;
+      const keys = getGroupKeys(deal, chartGroupBy);
+      keys.forEach(groupKey => {
+        if (!groups[groupKey]) groups[groupKey] = { count: 0, value: 0 };
+        groups[groupKey].count += 1;
+        groups[groupKey].value += deal.value || 0;
+      });
     });
 
     return Object.entries(groups).map(([name, data]) => ({
-      name: formatStageName(name),
+      name: formatBucketName(name, chartGroupBy),
       value: chartDialogType === 'count' ? data.count : data.value,
     }));
   };
@@ -212,12 +241,14 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const openChartDialog = (
     type: 'count' | 'value',
     title: string,
-    groupBy: 'stage' | 'status' | 'manager',
-    filterFn: (d: Deal) => boolean
+    groupBy: GroupByKey,
+    filterFn: (d: Deal) => boolean,
+    allowed: GroupByKey[] = [groupBy],
   ) => {
     setChartDialogType(type);
     setChartDialogTitle(title);
     setChartGroupBy(groupBy);
+    setAllowedGroupBys(allowed);
     setChartFilterFn(() => filterFn);
     setChartViewType('pie');
     setDrilldownStage(null);
@@ -228,16 +259,16 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const handleWidgetClick = (metric: WidgetMetric) => {
     switch (metric) {
       case 'active-deals':
-        openChartDialog('count', 'Active Deals by Stage', 'stage', d => d.status !== 'archived' && isActiveDealStage(d.stage));
+        openChartDialog('count', 'Active Deals', 'stage', d => d.status !== 'archived' && isActiveDealStage(d.stage), ['stage', 'owner', 'fund-type']);
         break;
       case 'active-deal-volume':
-        openChartDialog('value', 'Active Deal Volume by Stage', 'stage', d => d.status !== 'archived' && isActiveDealStage(d.stage));
+        openChartDialog('value', 'Active Deal Volume', 'stage', d => d.status !== 'archived' && isActiveDealStage(d.stage), ['stage', 'owner', 'fund-type']);
         break;
       case 'sales-pipeline-deals':
-        openChartDialog('count', 'Sales Pipeline by Stage', 'stage', d => d.status !== 'archived' && isSalesPipelineStage(d.stage));
+        openChartDialog('count', 'Sales Pipeline', 'stage', d => d.status !== 'archived' && isSalesPipelineStage(d.stage), ['stage', 'owner', 'fund-type']);
         break;
       case 'sales-pipeline-volume':
-        openChartDialog('value', 'Sales Pipeline Volume by Stage', 'stage', d => d.status !== 'archived' && isSalesPipelineStage(d.stage));
+        openChartDialog('value', 'Sales Pipeline Volume', 'stage', d => d.status !== 'archived' && isSalesPipelineStage(d.stage), ['stage', 'owner', 'fund-type']);
         break;
       case 'deals-in-diligence':
         openChartDialog('count', 'Deals in Diligence by Status', 'status', d => d.stage === 'in-due-diligence');
@@ -362,17 +393,9 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const getDrilldownDeals = (): { name: string; company: string; manager: string; dollarVolume: number; revenue: number }[] => {
     if (!drilldownStage || !chartFilterFn) return [];
     const sourceDeals = deals.filter(chartFilterFn);
-    // Use the same groupBy key as the top-level chart
     const matchingDeals = sourceDeals.filter(d => {
-      let groupKey: string;
-      if (chartGroupBy === 'status') {
-        groupKey = d.status || 'Unknown';
-      } else if (chartGroupBy === 'manager') {
-        groupKey = d.manager || 'Unassigned';
-      } else {
-        groupKey = d.stage || 'Unknown';
-      }
-      return formatStageName(groupKey) === drilldownStage;
+      const keys = getGroupKeys(d, chartGroupBy).map(k => formatBucketName(k, chartGroupBy));
+      return keys.includes(drilldownStage);
     });
     return matchingDeals
       .map(d => ({
@@ -595,6 +618,23 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
             <div className="flex items-center justify-between gap-2">
               <DialogTitle className="text-base">{chartDialogTitle}</DialogTitle>
               <div className="flex items-center gap-2">
+                {allowedGroupBys.length > 1 && (
+                  <div className="flex items-center gap-0.5 border border-border rounded-lg p-0.5">
+                    {allowedGroupBys.map((g) => (
+                      <button
+                        key={g}
+                        onClick={() => { setChartGroupBy(g); setDrilldownStage(null); }}
+                        className={`px-2 py-1 text-[11px] rounded transition-colors ${
+                          chartGroupBy === g
+                            ? 'bg-primary/10 text-primary font-medium'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        {GROUP_BY_LABELS[g]}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div className="flex items-center gap-1 border border-border rounded-lg p-1">
                   <Button
                     variant={chartViewType === 'pie' ? 'default' : 'ghost'}
