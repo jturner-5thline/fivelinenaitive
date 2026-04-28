@@ -62,6 +62,7 @@ const Database = lazy(lazyRetry(() => import("./pages/Database")));
 const Workflows = lazy(lazyRetry(() => import("./pages/Workflows")));
 const Tasks = lazy(lazyRetry(() => import("./pages/Tasks")));
 const TaskDetail = lazy(lazyRetry(() => import("./pages/TaskDetail")));
+const SuggestedTaskPreview = lazy(lazyRetry(() => import("./pages/SuggestedTaskPreview")));
 const Company = lazy(lazyRetry(() => import("./pages/Company")));
 const AcceptInvite = lazy(lazyRetry(() => import("./pages/AcceptInvite")));
 const Notifications = lazy(lazyRetry(() => import("./pages/Notifications")));
@@ -171,6 +172,9 @@ const App = () => (
                           } />
                           <Route path="/tasks/:taskId" element={
                             <ProtectedRoute><AppLayout><TaskDetail /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/tasks/preview/suggested" element={
+                            <ProtectedRoute><AppLayout><SuggestedTaskPreview /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/deals" element={
                             <ProtectedRoute><AppLayout><Deals /></AppLayout></ProtectedRoute>
