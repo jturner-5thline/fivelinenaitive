@@ -970,6 +970,60 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
           </Btn>
           <Btn variant="ghost" onClick={() => setFilterEditorOpen(false)}>Done</Btn>
         </div>
+        {/* Live match preview — reflects toggle in real time */}
+        <div style={{
+          marginTop: 10,
+          padding: '8px 10px',
+          borderRadius: 8,
+          border: '1px solid rgba(120,170,255,0.18)',
+          background: 'rgba(255,255,255,0.02)',
+          fontSize: 11,
+          color: TEXT_PRIMARY,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: TEXT_LABEL }}>
+              Match preview
+            </span>
+            <span style={{ color: TEXT_MUTED, fontSize: 10 }}>for {preparedBy}</span>
+            <span style={{ marginLeft: 'auto', fontSize: 10, color: TEXT_MUTED }}>
+              <span style={{ color: activeExactMatch ? '#7cc8f0' : TEXT_MUTED, fontWeight: activeExactMatch ? 700 : 400 }}>
+                Exact: {matchPreview.exact.length}
+              </span>
+              {' · '}
+              <span style={{ color: !activeExactMatch ? '#7cc8f0' : TEXT_MUTED, fontWeight: !activeExactMatch ? 700 : 400 }}>
+                Substring: {matchPreview.substring.length}
+              </span>
+              {' · of '}{ownerGoals.length} owner goals
+            </span>
+          </div>
+          {visibleGoals.length === 0 ? (
+            <div style={{ color: '#ff9b9b', fontSize: 11 }}>
+              No goals match in <strong>{activeExactMatch ? 'exact' : 'substring'}</strong> mode.
+              {!activeExactMatch && matchPreview.exact.length > 0 && (
+                <> Try enabling exact match — {matchPreview.exact.length} would match.</>
+              )}
+              {activeExactMatch && matchPreview.substring.length > 0 && (
+                <> Try disabling exact match — {matchPreview.substring.length} would match.</>
+              )}
+            </div>
+          ) : (
+            <ul style={{ margin: 0, paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 120, overflowY: 'auto' }}>
+              {visibleGoals.slice(0, 8).map(g => (
+                <li key={g.id} style={{ fontSize: 11, color: TEXT_PRIMARY }}>
+                  <span>{g.name}</span>
+                  {g.timePeriod && (
+                    <span style={{ color: TEXT_MUTED }}> — <code style={{ color: '#7cc8f0' }}>{g.timePeriod}</code></span>
+                  )}
+                </li>
+              ))}
+              {visibleGoals.length > 8 && (
+                <li style={{ fontSize: 10, color: TEXT_MUTED, listStyle: 'none', marginLeft: -16 }}>
+                  …and {visibleGoals.length - 8} more
+                </li>
+              )}
+            </ul>
+          )}
+        </div>
       </div>
     );
   };
