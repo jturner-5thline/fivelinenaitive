@@ -232,6 +232,9 @@ const FINSERV_PIPELINE_ID = 'eb9db15a-62cc-4b99-adcf-24e57a2a46ce';
 const NDA_NEEDS_LIST_STAGE = 'ndaneeds-list-sent';
 const FINAL_CREDIT_ITEMS_STAGE = 'final-credit-items';
 const FS_ACTIVE_CLIENT_STAGE = 'fs-active-client';
+const PROPOSAL_ISSUED_STAGE = 'proposal-issued';
+const TERMS_ISSUED_STAGE = 'terms-issued';
+const IN_DUE_DILIGENCE_STAGE = 'in-due-diligence';
 
 export interface PipelineMetrics {
   dealsOnBoard: StageMetricResult;
@@ -258,5 +261,39 @@ export function usePipelineStageMetrics(quarter: QuarterOption): PipelineMetrics
     debtDollarSigned: debtDealsSigned,
     finservDealsOnBoard,
     finservClientsSigned,
+  };
+}
+
+/**
+ * Consolidated Debt Pipeline Board metrics.
+ *
+ * All metrics use stage-entry logic via `activity_logs` (stage_change → metadata.to)
+ * scoped to the Active Pipeline. Each metric exposes both count and dollarVolume,
+ * so the dashboard can surface them as paired cards (count + $).
+ *
+ * Stage mapping (per product spec):
+ *  - "Deals on the Board" / "Debt $ on the Board"  → entered "NDA/Needs List Sent"
+ *  - "Proposals Issued"   / "Dollars Proposed"     → entered "Proposal Issued"
+ *  - "Debt Deals Signed"  / "Debt $ Signed"        → entered "Final Credit Items"
+ *  - "Terms Issued"       / "Terms Issued $"       → entered "Terms Issued"
+ *  - "Terms Signed"       / "Terms Signed $"       → entered "In Due Diligence"
+ */
+export interface ConsolidatedDebtPipelineMetrics {
+  ndaNeedsList: StageMetricResult;
+  proposalsIssued: StageMetricResult;
+  finalCreditItems: StageMetricResult;
+  termsIssued: StageMetricResult;
+  inDueDiligence: StageMetricResult;
+}
+
+export function useConsolidatedDebtPipelineMetrics(
+  quarter: QuarterOption,
+): ConsolidatedDebtPipelineMetrics {
+  return {
+    ndaNeedsList:    useStageEntryMetric(NDA_NEEDS_LIST_STAGE,    quarter, ACTIVE_PIPELINE_ID),
+    proposalsIssued: useStageEntryMetric(PROPOSAL_ISSUED_STAGE,   quarter, ACTIVE_PIPELINE_ID),
+    finalCreditItems:useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE,quarter, ACTIVE_PIPELINE_ID),
+    termsIssued:     useStageEntryMetric(TERMS_ISSUED_STAGE,      quarter, ACTIVE_PIPELINE_ID),
+    inDueDiligence:  useStageEntryMetric(IN_DUE_DILIGENCE_STAGE,  quarter, ACTIVE_PIPELINE_ID),
   };
 }
