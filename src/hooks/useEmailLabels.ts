@@ -43,6 +43,158 @@ export interface EmailLabelAssignment {
 }
 
 // ─────────────────────────────────────────────────────────────────
+// Legacy compatibility surface
+// ─────────────────────────────────────────────────────────────────
+// The project previously shipped an auto-labelling rules engine with a
+// richer `EmailLabel` shape (scope/is_default) and rule helpers. Those
+// consumers (ThreadLabelsBar, EmailLabelsSettings, autoEmailLabels,
+// useAutoEmailLabelEvaluator) are kept compiling via the shims below so
+// this Foundation slice can land without touching unrelated UI. The
+// shims are best-effort: they return empty rule sets and treat every
+// label as a personal/non-default label.
+
+/** Color preset palette used by the legacy settings UI. */
+export const DEFAULT_LABEL_COLORS = [
+  "#94a3b8", // slate
+  "#f59e0b", // amber
+  "#10b981", // emerald
+  "#0ea5e9", // sky
+  "#8b5cf6", // violet
+  "#f43f5e", // rose
+  "#fb923c", // orange
+  "#14b8a6", // teal
+  "#d946ef", // fuchsia
+] as const;
+
+export type EmailLabelRuleField =
+  | "from"
+  | "to"
+  | "subject"
+  | "body"
+  | "any";
+export type EmailLabelRuleOperator =
+  | "contains"
+  | "equals"
+  | "starts_with"
+  | "ends_with"
+  | "regex";
+
+export const LABEL_FIELD_OPTIONS: { value: EmailLabelRuleField; label: string }[] = [
+  { value: "from", label: "From" },
+  { value: "to", label: "To" },
+  { value: "subject", label: "Subject" },
+  { value: "body", label: "Body" },
+  { value: "any", label: "Any field" },
+];
+
+export const LABEL_OPERATOR_OPTIONS: { value: EmailLabelRuleOperator; label: string }[] = [
+  { value: "contains", label: "contains" },
+  { value: "equals", label: "equals" },
+  { value: "starts_with", label: "starts with" },
+  { value: "ends_with", label: "ends with" },
+  { value: "regex", label: "matches regex" },
+];
+
+export interface EmailLabelRule {
+  id: string;
+  label_id: string;
+  field: EmailLabelRuleField;
+  operator: EmailLabelRuleOperator;
+  value: string;
+  case_sensitive?: boolean;
+}
+
+/**
+ * Augmented label shape used by legacy consumers. Maps directly to the
+ * canonical `EmailLabel` and adds `scope`/`is_default` derived fields.
+ */
+export interface LegacyEmailLabel extends EmailLabel {
+  scope: "personal" | "team";
+  is_default: boolean;
+}
+
+function toLegacyLabel(l: EmailLabel): LegacyEmailLabel {
+  return {
+    ...l,
+    scope: l.is_shared ? "team" : "personal",
+    is_default: false,
+  };
+}
+
+/**
+ * Legacy facade used by the old settings + thread bar. Returns labels in
+ * the augmented shape and an empty rules list (the rules engine is not
+ * part of this Foundation slice).
+ */
+export function useEmailLabels(): {
+  labels: LegacyEmailLabel[];
+  rules: EmailLabelRule[];
+  isLoading: boolean;
+  addLabel: (input: { name: string; color?: LabelColor; description?: string | null }) => Promise<LegacyEmailLabel>;
+  updateLabel: (id: string, patch: Partial<Pick<EmailLabel, "name" | "color" | "icon" | "description">>) => Promise<LegacyEmailLabel>;
+  deleteLabel: (id: string) => Promise<string>;
+  addRule: (_rule: Omit<EmailLabelRule, "id">) => Promise<EmailLabelRule>;
+  updateRule: (_id: string, _patch: Partial<EmailLabelRule>) => Promise<EmailLabelRule>;
+  deleteRule: (_id: string) => Promise<string>;
+} {
+  const { data: labels = [], isLoading } = useLabels();
+  const create = useCreateLabel();
+  const update = useUpdateLabel();
+  const del = useDeleteLabel();
+  return {
+    labels: labels.map(toLegacyLabel),
+    rules: [],
+    isLoading,
+    addLabel: async (input) => toLegacyLabel(await create.mutateAsync(input)),
+    updateLabel: async (id, patch) => toLegacyLabel(await update.mutateAsync({ id, patch })),
+    deleteLabel: async (id) => del.mutateAsync(id),
+    addRule: async () => {
+      throw new Error("Auto-label rules are not available in this build");
+    },
+    updateRule: async () => {
+      throw new Error("Auto-label rules are not available in this build");
+    },
+    deleteRule: async () => {
+      throw new Error("Auto-label rules are not available in this build");
+    },
+  };
+}
+
+/**
+ * Legacy facade for the thread-labels bar. Returns the labels currently
+ * applied to `threadId` and exposes add/remove helpers.
+ */
+export function useThreadLabels(threadId: string): {
+  threadLabels: { label: LegacyEmailLabel; appliedVia: "manual" | "rule" }[];
+  isLoading: boolean;
+  addLabel: (labelId: string) => Promise<void>;
+  removeLabel: (labelId: string) => Promise<void>;
+} {
+  const { data: labels = [] } = useLabels();
+  const { data: assignments = [], isLoading } = useAllLabelAssignments();
+  const apply = useApplyLabel();
+  const remove = useRemoveLabel();
+
+  const byId = new Map(labels.map((l) => [l.id, l] as const));
+  const threadLabels = assignments
+    .filter((a) => a.thread_id === threadId)
+    .map((a) => byId.get(a.label_id))
+    .filter((l): l is EmailLabel => !!l)
+    .map((l) => ({ label: toLegacyLabel(l), appliedVia: "manual" as const }));
+
+  return {
+    threadLabels,
+    isLoading,
+    addLabel: async (labelId: string) => {
+      await apply.mutateAsync({ threadId, labelId });
+    },
+    removeLabel: async (labelId: string) => {
+      await remove.mutateAsync({ threadId, labelId });
+    },
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────
 // Auth helper
 // ─────────────────────────────────────────────────────────────────
 
