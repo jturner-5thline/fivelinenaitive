@@ -21,9 +21,11 @@ export interface TaskSavedView {
   is_default: boolean;
   position: number;
   created_at: string;
+  pinned_at?: string | null;
 }
 
 const KEY = ['task-saved-views'];
+export const MAX_PINNED_VIEWS = 3;
 
 export function useTaskSavedViews() {
   const { user } = useAuth();
@@ -38,6 +40,8 @@ export function useTaskSavedViews() {
         .from('task_saved_views')
         .select('*')
         .eq('user_id', user.id)
+        // Pinned first (newest pin first), then position
+        .order('pinned_at', { ascending: false, nullsFirst: false })
         .order('position');
       if (error) throw error;
       return (data || []) as TaskSavedView[];
@@ -89,6 +93,29 @@ export function useTaskSavedViews() {
     onError: (e: any) => toast.error(e?.message || 'Failed to rename preset'),
   });
 
+  const togglePinView = useMutation({
+    mutationFn: async (view: TaskSavedView) => {
+      const isPinned = !!view.pinned_at;
+      if (!isPinned) {
+        const pinnedCount = savedViews.filter(v => !!v.pinned_at).length;
+        if (pinnedCount >= MAX_PINNED_VIEWS) {
+          throw new Error(`You can pin up to ${MAX_PINNED_VIEWS} presets. Unpin one first.`);
+        }
+      }
+      const { error } = await supabase
+        .from('task_saved_views')
+        .update({ pinned_at: isPinned ? null : new Date().toISOString() } as any)
+        .eq('id', view.id);
+      if (error) throw error;
+      return !isPinned;
+    },
+    onSuccess: (nowPinned) => {
+      queryClient.invalidateQueries({ queryKey: KEY });
+      toast.success(nowPinned ? 'Preset pinned' : 'Preset unpinned');
+    },
+    onError: (e: any) => toast.error(e?.message || 'Failed to update pin'),
+  });
+
   const duplicateView = useMutation({
     mutationFn: async (view: TaskSavedView) => {
       if (!user) throw new Error('Not authenticated');
@@ -120,5 +147,5 @@ export function useTaskSavedViews() {
     onError: () => toast.error('Failed to duplicate preset'),
   });
 
-  return { savedViews, isLoading, saveView, deleteView, renameView, duplicateView };
+  return { savedViews, isLoading, saveView, deleteView, renameView, duplicateView, togglePinView };
 }
