@@ -17,6 +17,7 @@ import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { PresetManager } from '@/components/dashboard/PresetManager';
+import { NewPresetButton } from '@/components/dashboard/NewPresetButton';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { AddWidgetDialog } from '@/components/dashboard/AddWidgetDialog';
 import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
@@ -814,6 +815,7 @@ export default function Dashboard() {
                 onDuplicate={duplicatePreset}
                 onDelete={deletePreset}
                 onRename={handleRenamePreset}
+                hideNewButton
               />
               <button
                 type="button"
@@ -829,6 +831,7 @@ export default function Dashboard() {
                 <Newspaper className="h-3 w-3" />
                 News Feed
               </button>
+              <NewPresetButton onCreate={handleCreatePreset} className="ml-1" />
             </div>
             {isSaving && (
               <span className="text-[11px] text-muted-foreground animate-pulse shrink-0">Saving…</span>
