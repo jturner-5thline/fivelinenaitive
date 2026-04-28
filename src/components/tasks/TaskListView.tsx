@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/popover';
 import {
   Plus, MoreHorizontal, Trash2, ChevronDown, ChevronRight, GripVertical,
-  Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star, AlertTriangle, Building2, User,
+  Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star, AlertTriangle, Building2, User, Repeat,
 } from 'lucide-react';
 import { ExpandedTaskDetails } from '@/components/tasks/ExpandedTaskDetails';
 import { cn } from '@/lib/utils';
@@ -619,6 +619,43 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
             >
               {task.title}
             </span>
+            {(task.recurrence_rule || (task as any).is_recurring) && (() => {
+              const rule: string | null = task.recurrence_rule;
+              const seriesEnd = (task as any).recurrence_end_date as string | null | undefined;
+              const isPaused = !!seriesEnd && seriesEnd <= todayStr;
+              const label = (() => {
+                if (!rule) return 'Recurring';
+                if (rule.startsWith('every:')) {
+                  const [, n, unit] = rule.split(':');
+                  const num = parseInt(n, 10);
+                  if (!num || !unit) return rule;
+                  return `Every ${num} ${num === 1 ? unit.replace(/s$/, '') : unit}`;
+                }
+                switch (rule) {
+                  case 'daily': return 'Daily';
+                  case 'weekdays': return 'Weekdays';
+                  case 'weekly': return 'Weekly';
+                  case 'biweekly': return 'Every 2 weeks';
+                  case 'monthly': return 'Monthly';
+                  case 'yearly': return 'Yearly';
+                  default: return rule;
+                }
+              })();
+              return (
+                <span
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ml-1 align-middle"
+                  style={{
+                    backgroundColor: isPaused ? 'rgba(245,158,11,0.12)' : 'rgba(59,126,255,0.12)',
+                    color: isPaused ? '#f59e0b' : '#7eb8f7',
+                  }}
+                  title={isPaused ? `${label} · Paused` : `Recurring: ${label}`}
+                  onClick={e => e.stopPropagation()}
+                >
+                  <Repeat className="h-2.5 w-2.5" />
+                  {label}{isPaused ? ' · Paused' : ''}
+                </span>
+              );
+            })()}
             {task.deal_id && task.deal?.company && (
               <Link to={`/deal/${task.deal_id}`} className="inline-flex items-center gap-1 px-1 py-0.5 rounded text-[10px] font-normal mt-0.5 -mx-0.5 hover:text-[#cfe3ff] transition-colors" style={{ color: '#7a8194' }} onClick={e => e.stopPropagation()}>
                 <Building2 className="h-2.5 w-2.5" />
