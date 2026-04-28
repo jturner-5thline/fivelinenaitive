@@ -105,13 +105,15 @@ export function useAsanaGoalFilterPrefs(): UseAsanaGoalFilterPrefsResult {
         const { error } = await supabase
           .from('asana_goal_filter_prefs')
           .upsert(
-            {
-              user_id: userId,
-              company_id: companyId,
-              filters: merged.filters as unknown as Record<string, unknown>,
-              override: merged.override as unknown as Record<string, unknown> | null,
-              exact_match: merged.exactMatch,
-            },
+            [
+              {
+                user_id: userId,
+                company_id: companyId,
+                filters: merged.filters as unknown as Record<string, unknown>,
+                override: merged.override as unknown as Record<string, unknown> | null,
+                exact_match: merged.exactMatch,
+              },
+            ],
             { onConflict: 'user_id,company_id' }
           );
         if (error) console.error('[AsanaGoalFilterPrefs] save failed:', error);
