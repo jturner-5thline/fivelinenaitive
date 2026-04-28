@@ -1011,6 +1011,29 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
           }}>
             Reset mapping
           </Btn>
+          <Btn
+            variant="ghost"
+            onClick={() => {
+              const current = templates;
+              const filled: AsanaGoalFilterTemplates = {
+                quarters: {
+                  Q1: current.quarters.Q1?.trim() || DEFAULT_ASANA_GOAL_FILTERS.quarters.Q1,
+                  Q2: current.quarters.Q2?.trim() || DEFAULT_ASANA_GOAL_FILTERS.quarters.Q2,
+                  Q3: current.quarters.Q3?.trim() || DEFAULT_ASANA_GOAL_FILTERS.quarters.Q3,
+                  Q4: current.quarters.Q4?.trim() || DEFAULT_ASANA_GOAL_FILTERS.quarters.Q4,
+                },
+                halves: {
+                  H1: current.halves.H1?.trim() || DEFAULT_ASANA_GOAL_FILTERS.halves.H1,
+                  H2: current.halves.H2?.trim() || DEFAULT_ASANA_GOAL_FILTERS.halves.H2,
+                },
+              };
+              set(prev => ({ ...prev, asanaGoalFilters: filled }));
+              void prefs.save({ filters: filled });
+            }}
+            ariaLabel="Fill blank Q1-Q4 and H1-H2 fields with default Asana label patterns"
+          >
+            Auto-fill defaults
+          </Btn>
           <Btn variant="ghost" onClick={() => setFilterEditorOpen(false)}>Done</Btn>
         </div>
         {/* Live match preview — reflects toggle in real time */}
