@@ -618,6 +618,23 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
             <div className="flex items-center justify-between gap-2">
               <DialogTitle className="text-base">{chartDialogTitle}</DialogTitle>
               <div className="flex items-center gap-2">
+                {allowedGroupBys.length > 1 && (
+                  <div className="flex items-center gap-0.5 border border-border rounded-lg p-0.5">
+                    {allowedGroupBys.map((g) => (
+                      <button
+                        key={g}
+                        onClick={() => { setChartGroupBy(g); setDrilldownStage(null); }}
+                        className={`px-2 py-1 text-[11px] rounded transition-colors ${
+                          chartGroupBy === g
+                            ? 'bg-primary/10 text-primary font-medium'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        {GROUP_BY_LABELS[g]}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div className="flex items-center gap-1 border border-border rounded-lg p-1">
                   <Button
                     variant={chartViewType === 'pie' ? 'default' : 'ghost'}
