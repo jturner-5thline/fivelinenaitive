@@ -8,7 +8,8 @@ import { cn } from '@/lib/utils';
 import { useContactBySenderEmail } from '@/hooks/useContactBySenderEmail';
 import { useBodyMentionDealMatch } from '@/hooks/useBodyMentionDealMatch';
 import { LinkToDealPopover } from './LinkToDealPopover';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { Eye } from 'lucide-react';
 import { SuggestedTaskCards } from './SuggestedTaskCards';
 import type { WorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
 
@@ -83,6 +84,7 @@ export function UnmatchedEmailContextCard({
     { dealId: string; dealName: string } | null
   >(null);
   const [followUpDismissed, setFollowUpDismissed] = useState(false);
+  const location = useLocation();
 
   const linkSuggestion = async (id: string, name: string) => {
     setLinkingTarget(id);
@@ -121,6 +123,20 @@ export function UnmatchedEmailContextCard({
           >
             “{primarySuggestion.title}”
           </p>
+          <RouterLink
+            to="/tasks/preview/suggested"
+            state={{
+              suggestion: primarySuggestion,
+              dealId: linkedConfirmation.dealId,
+              dealName: linkedConfirmation.dealName,
+              threadId: threadId || null,
+              returnTo: location.pathname + location.search,
+            }}
+            className="inline-flex items-center gap-1 mt-1.5 text-[10px] text-primary hover:underline"
+          >
+            <Eye className="h-2.5 w-2.5" />
+            Preview before creating
+          </RouterLink>
         </div>
         <Button
           size="sm"
