@@ -610,6 +610,7 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
           onDelete={onDelete}
           evaluateAutoLabels={evaluateAutoLabels}
           priorityFlag={flagsByThread[thread.threadId]}
+          userLabels={threadLabelMap.get(thread.threadId)}
         />
       ))}
     </div>
