@@ -21,7 +21,7 @@ export const HomepageScrollingTags = () => {
         width: "100vw",
         marginLeft: "calc(50% - 50vw)",
         height: "72px",
-        backgroundColor: "hsl(265 35% 5%)",
+        backgroundColor: "transparent",
         WebkitMaskImage:
           "linear-gradient(90deg, transparent 0%, black 6%, black 94%, transparent 100%)",
         maskImage:
