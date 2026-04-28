@@ -628,17 +628,38 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.period, s.quarter, s.month]);
 
+  /**
+   * Normalize a time period label for exact comparison:
+   * - lowercased + trimmed + collapsed whitespace
+   * - "FY24" / "FY 24" / "FY 2024" / "FY2024" / "fy '24" → "fy<4-digit-year>"
+   * - bare 2-digit year tokens after Q1–Q4 / H1–H2 are expanded ("q2 24" → "q2 2024")
+   */
+  const normalizePeriodLabel = (raw: string): string => {
+    let s = raw.toLowerCase().replace(/\s+/g, ' ').trim();
+    // FY normalization (handles "fy24", "fy 24", "fy '24", "fy 2024")
+    s = s.replace(/fy\s*'?\s*(\d{2,4})/g, (_m, y) => {
+      const n = String(y).length === 2 ? `20${y}` : String(y);
+      return `fy${n}`;
+    });
+    // Bare year after Q/H token: "q2 24" → "q2 2024"
+    s = s.replace(/\b([qh][1-4])\s+'?(\d{2})\b/g, (_m, p, y) => `${p} 20${y}`);
+    return s.trim();
+  };
+
   const matchesPeriod = (tp: string | null): boolean => {
     if (!tp) return false;
-    const norm = tp.trim().toLowerCase();
-    const q = activeQuarterLabel.trim().toLowerCase();
-    const h = activeHalfLabel.trim().toLowerCase();
     const exact = activeExactMatch;
     if (exact) {
+      const norm = normalizePeriodLabel(tp);
+      const q = normalizePeriodLabel(activeQuarterLabel);
+      const h = normalizePeriodLabel(activeHalfLabel);
       if (q && norm === q) return true;
       if (h && norm === h) return true;
       return false;
     }
+    const norm = tp.trim().toLowerCase();
+    const q = activeQuarterLabel.trim().toLowerCase();
+    const h = activeHalfLabel.trim().toLowerCase();
     if (q && norm.includes(q)) return true;
     if (h && norm.includes(h)) return true;
     return false;
@@ -656,15 +677,19 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
 
   // Preview counts for both modes — used in the filter editor next to the toggle.
   const matchPreview = useMemo(() => {
-    const q = activeQuarterLabel.trim().toLowerCase();
-    const h = activeHalfLabel.trim().toLowerCase();
+    const qSub = activeQuarterLabel.trim().toLowerCase();
+    const hSub = activeHalfLabel.trim().toLowerCase();
+    const qEx = normalizePeriodLabel(activeQuarterLabel);
+    const hEx = normalizePeriodLabel(activeHalfLabel);
     const exactMatches: typeof ownerGoals = [];
     const substringMatches: typeof ownerGoals = [];
     for (const g of ownerGoals) {
-      const tp = (g.timePeriod || '').trim().toLowerCase();
-      if (!tp) continue;
-      if ((q && tp === q) || (h && tp === h)) exactMatches.push(g);
-      if ((q && tp.includes(q)) || (h && tp.includes(h))) substringMatches.push(g);
+      const raw = g.timePeriod || '';
+      if (!raw.trim()) continue;
+      const tpSub = raw.trim().toLowerCase();
+      const tpEx = normalizePeriodLabel(raw);
+      if ((qEx && tpEx === qEx) || (hEx && tpEx === hEx)) exactMatches.push(g);
+      if ((qSub && tpSub.includes(qSub)) || (hSub && tpSub.includes(hSub))) substringMatches.push(g);
     }
     return { exact: exactMatches, substring: substringMatches };
   }, [ownerGoals, activeQuarterLabel, activeHalfLabel]);
