@@ -313,7 +313,28 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
   useEffect(() => {
     if (externalEmails) {
-      setEmails(externalEmails.map(e => isAutoReplyOrNewsletter(e) ? { ...e, needs_response: false } : e));
+      // Reconcile: drop overrides whose upstream value already matches what
+      // the user requested locally — that means the provider has caught up
+      // and no replay is needed. Then apply remaining overrides on top so
+      // optimistic UI changes survive an external refresh.
+      const overrides = localOverridesRef.current;
+      if (overrides.size) {
+        for (const e of externalEmails) {
+          const ov = overrides.get(e.id);
+          if (!ov) continue;
+          const stillDifferent = (Object.keys(ov) as (keyof MockEmail)[]).some(
+            (k) => (e as any)[k] !== (ov as any)[k]
+          );
+          if (!stillDifferent) overrides.delete(e.id);
+        }
+      }
+      setEmails(
+        externalEmails.map((e) => {
+          const base = isAutoReplyOrNewsletter(e) ? { ...e, needs_response: false } : e;
+          const ov = overrides.get(e.id);
+          return ov ? { ...base, ...ov } : base;
+        })
+      );
     }
   }, [externalEmails]);
 
