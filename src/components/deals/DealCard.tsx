@@ -203,14 +203,14 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                 {notificationCount > 1 ? (
                   <div
                     aria-label={`${notificationCount} notifications`}
-                    className="absolute -top-1.5 -right-1.5 z-30 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-destructive-foreground tabular-nums ring-2 ring-background shadow-[0_0_0_1px_rgba(0,0,0,0.25),0_2px_8px_hsl(var(--destructive)/0.55)]"
+                    className="absolute -top-1.5 -right-1.5 z-30 flex h-[27px] min-w-[27px] items-center justify-center rounded-full bg-destructive px-1.5 text-[15px] font-semibold leading-none text-destructive-foreground tabular-nums ring-[3px] ring-background shadow-[0_0_0_1px_rgba(0,0,0,0.25),0_3px_12px_hsl(var(--destructive)/0.55)]"
                   >
                     {notificationCount > 99 ? '99+' : notificationCount}
                   </div>
                 ) : (
                   <div
                     aria-label="1 notification"
-                    className="absolute -top-1.5 -right-1.5 z-30 h-3 w-3 rounded-full bg-destructive ring-2 ring-background shadow-[0_0_0_1px_rgba(0,0,0,0.25),0_2px_8px_hsl(var(--destructive)/0.55)]"
+                    className="absolute -top-1.5 -right-1.5 z-30 h-[18px] w-[18px] rounded-full bg-destructive ring-[3px] ring-background shadow-[0_0_0_1px_rgba(0,0,0,0.25),0_3px_12px_hsl(var(--destructive)/0.55)]"
                   />
                 )}
               </TooltipTrigger>
