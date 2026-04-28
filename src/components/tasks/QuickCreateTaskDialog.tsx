@@ -502,7 +502,7 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
                   }}
                 />
                 <div className="flex gap-1">
-                  {(['days', 'weeks'] as const).map(u => {
+                  {(['days', 'weeks', 'months', 'years'] as const).map(u => {
                     const uActive = customUnit === u;
                     return (
                       <button
@@ -519,7 +519,7 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
                           backgroundColor: uActive ? 'rgba(126,184,247,0.14)' : 'rgba(20,24,32,0.65)',
                         }}
                       >
-                        {u === 'days' ? 'days' : 'weeks'}
+                        {u}
                       </button>
                     );
                   })}
