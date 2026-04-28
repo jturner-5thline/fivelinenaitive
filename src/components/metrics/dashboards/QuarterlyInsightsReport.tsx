@@ -240,6 +240,8 @@ export interface ReportState {
   asanaGoalFilters?: AsanaGoalFilterTemplates;
   /** Optional manual override for the active report (resets when period changes). */
   asanaGoalOverride?: { quarterLabel?: string; halfLabel?: string } | null;
+  /** When true, match Asana time_period by exact label (case-insensitive) instead of substring. */
+  asanaGoalExactMatch?: boolean;
 }
 
 const SEED: ReportState = {
@@ -293,6 +295,7 @@ Looking forward, our Q2 focus is sustaining pipeline velocity, hardening the age
   ],
   asanaGoalFilters: DEFAULT_ASANA_GOAL_FILTERS,
   asanaGoalOverride: null,
+  asanaGoalExactMatch: false,
 };
 
 const cloneSeed = (): ReportState => JSON.parse(JSON.stringify(SEED));
@@ -610,6 +613,12 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
     const norm = tp.trim().toLowerCase();
     const q = activeQuarterLabel.trim().toLowerCase();
     const h = activeHalfLabel.trim().toLowerCase();
+    const exact = !!s.asanaGoalExactMatch;
+    if (exact) {
+      if (q && norm === q) return true;
+      if (h && norm === h) return true;
+      return false;
+    }
     if (q && norm.includes(q)) return true;
     if (h && norm.includes(h)) return true;
     return false;
@@ -622,7 +631,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
   const visibleGoals = useMemo(
     () => ownerGoals.filter(g => matchesPeriod(g.timePeriod)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [ownerGoals, activeQuarterLabel, activeHalfLabel]
+    [ownerGoals, activeQuarterLabel, activeHalfLabel, s.asanaGoalExactMatch]
   );
 
   const [filterEditorOpen, setFilterEditorOpen] = useState(false);
@@ -802,6 +811,18 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginRight: 'auto', fontSize: 11, color: TEXT_PRIMARY, cursor: 'pointer', userSelect: 'none' }}>
+            <input
+              type="checkbox"
+              checked={!!s.asanaGoalExactMatch}
+              onChange={e => set(prev => ({ ...prev, asanaGoalExactMatch: e.target.checked }))}
+              style={{ accentColor: '#5ba3d0' }}
+            />
+            Exact match (case-insensitive)
+            <span style={{ fontSize: 10, color: TEXT_MUTED }}>
+              — when off, matches by substring so different FY formats still match
+            </span>
+          </label>
           <Btn variant="ghost" onClick={() => set(prev => ({ ...prev, asanaGoalFilters: DEFAULT_ASANA_GOAL_FILTERS, asanaGoalOverride: null }))}>
             Reset mapping
           </Btn>
@@ -821,6 +842,9 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
           <span style={{ color: TEXT_PRIMARY }}>{activeQuarterLabel || '—'}</span>
           {' · '}
           <span style={{ color: TEXT_PRIMARY }}>{activeHalfLabel || '—'}</span>
+          <span style={{ marginLeft: 8, fontSize: 9, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: TEXT_LABEL }}>
+            · {s.asanaGoalExactMatch ? 'exact' : 'substring'}
+          </span>
           {s.asanaGoalOverride && (s.asanaGoalOverride.quarterLabel || s.asanaGoalOverride.halfLabel) && (
             <span style={{ marginLeft: 8, fontSize: 9, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#f0a45a' }}>
               · manual override
