@@ -492,9 +492,10 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                             key={weekKey}
                             ref={(el) => registerCellRef(ccKey, el)}
                             className={`${net > 0 ? 'cf-val-pos' : net < 0 ? 'cf-val-neg' : ''}${cellCommentsHere.length > 0 ? ' cf-cell-has-comment' : ''}`}
-                            style={{ fontWeight: 700 }}
+                            style={{ fontWeight: 700, cursor: 'pointer' }}
                             onContextMenu={(e) => handleCellContextMenu(e, cellCtx)}
-                            title={cellCommentsHere.length > 0 ? `${cellCommentsHere.length} comment${cellCommentsHere.length > 1 ? 's' : ''}` : undefined}
+                            onClick={() => openDrilldown('NET CHANGE', 'Net Change', weekKey, (entry?.week_ending as string) ?? null, net)}
+                            title={cellCommentsHere.length > 0 ? `${cellCommentsHere.length} comment${cellCommentsHere.length > 1 ? 's' : ''} • Click to view source entries` : 'Click to view source entries'}
                           >
                             <div>{fmtAbbrev(net)}</div>
                             {cellCommentsHere.length > 0 && (
