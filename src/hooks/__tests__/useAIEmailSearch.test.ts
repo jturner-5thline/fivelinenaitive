@@ -1,0 +1,209 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { renderHook, act, waitFor } from '@testing-library/react';
+
+// Mock the Claude service before importing the hook so the mocked module
+// is what the hook closes over.
+vi.mock('@/services/claude', () => ({
+  sendClaudeMessage: vi.fn(),
+}));
+
+import { sendClaudeMessage } from '@/services/claude';
+import { useAIEmailSearch } from '@/hooks/useAIEmailSearch';
+import type { MockEmail } from '@/components/deal/email/mockEmailData';
+
+const mockedSend = sendClaudeMessage as unknown as ReturnType<typeof vi.fn>;
+
+function makeEmail(id: string, overrides: Partial<MockEmail> = {}): MockEmail {
+  return {
+    id,
+    thread_id: id,
+    from_name: 'Acme Capital',
+    from_email: 'deals@acme-capital.com',
+    to: ['me@example.com'],
+    cc: [],
+    bcc: [],
+    subject: `Subject ${id}`,
+    body_html: '',
+    body_preview: 'preview',
+    snippet: 'snippet text',
+    received_at: '2026-04-25T10:00:00.000Z',
+    folder: 'inbox',
+    labels: [],
+    is_read: false,
+    is_starred: false,
+    is_follow_up: false,
+    needs_response: false,
+    has_attachments: false,
+    attachments: [],
+    ...overrides,
+  } as unknown as MockEmail;
+}
+
+function aiResponse(payload: unknown) {
+  return {
+    success: true,
+    response: '```json\n' + JSON.stringify(payload) + '\n```',
+  };
+}
+
+beforeEach(() => {
+  mockedSend.mockReset();
+});
+
+describe('useAIEmailSearch', () => {
+  it('returns ranked results and parsed filters from the AI response', async () => {
+    mockedSend.mockResolvedValueOnce(
+      aiResponse({
+        interpretation: 'Signed NDAs from lenders last week',
+        filters: {
+          sender: null,
+          senderRole: 'lender',
+          dateRange: 'last_week',
+          dateRangeStart: '2026-04-18',
+          dateRangeEnd: '2026-04-25',
+          category: null,
+          topics: ['NDA', 'signed'],
+          hasAttachments: true,
+        },
+        results: [{ id: 'b', reason: 'matches' }, { id: 'a', reason: 'matches' }],
+      }),
+    );
+
+    const { result } = renderHook(() => useAIEmailSearch());
+
+    await act(async () => {
+      await result.current.search('signed NDAs from lenders last week', [
+        makeEmail('a'),
+        makeEmail('b'),
+      ]);
+    });
+
+    expect(result.current.result?.rankedIds).toEqual(['b', 'a']);
+    expect(result.current.result?.filters.senderRole).toBe('lender');
+    expect(result.current.result?.filters.topics).toEqual(['NDA', 'signed']);
+    expect(result.current.result?.filters.hasAttachments).toBe(true);
+    expect(result.current.isSearching).toBe(false);
+  });
+
+  it('removeFilter drops a single chip without mutating ranked ids', async () => {
+    mockedSend.mockResolvedValueOnce(
+      aiResponse({
+        interpretation: 'x',
+        filters: {
+          sender: 'acme',
+          dateRange: 'last_week',
+          dateRangeStart: '2026-04-18',
+          dateRangeEnd: '2026-04-25',
+          topics: ['NDA', 'signed'],
+          hasAttachments: true,
+        },
+        results: [{ id: 'a', reason: 'r' }],
+      }),
+    );
+
+    const { result } = renderHook(() => useAIEmailSearch());
+    await act(async () => {
+      await result.current.search('q', [makeEmail('a')]);
+    });
+
+    act(() => result.current.removeFilter('dateRange'));
+    expect(result.current.result?.filters.dateRange).toBeNull();
+    expect(result.current.result?.filters.dateRangeStart).toBeNull();
+    expect(result.current.result?.filters.dateRangeEnd).toBeNull();
+
+    act(() => result.current.removeFilter('topic:NDA'));
+    expect(result.current.result?.filters.topics).toEqual(['signed']);
+
+    act(() => result.current.removeFilter('hasAttachments'));
+    expect(result.current.result?.filters.hasAttachments).toBeNull();
+
+    // rankedIds preserved
+    expect(result.current.result?.rankedIds).toEqual(['a']);
+  });
+
+  it('discards stale responses when a newer search starts', async () => {
+    let resolveFirst: (v: unknown) => void = () => {};
+    const firstPromise = new Promise((res) => { resolveFirst = res; });
+    mockedSend.mockImplementationOnce(() => firstPromise as any);
+    mockedSend.mockResolvedValueOnce(
+      aiResponse({
+        interpretation: 'newer',
+        filters: {},
+        results: [{ id: 'b', reason: 'r' }],
+      }),
+    );
+
+    const { result } = renderHook(() => useAIEmailSearch());
+    const firstCall = act(async () => {
+      await result.current.search('first', [makeEmail('a'), makeEmail('b')]);
+    });
+    // Kick off a second search before the first resolves.
+    await act(async () => {
+      await result.current.search('second', [makeEmail('a'), makeEmail('b')]);
+    });
+    // Now resolve the stale first call — it should be discarded.
+    resolveFirst(
+      aiResponse({ interpretation: 'stale', filters: {}, results: [{ id: 'a', reason: 'x' }] }),
+    );
+    await firstCall;
+
+    expect(result.current.result?.interpretation).toBe('newer');
+    expect(result.current.result?.rankedIds).toEqual(['b']);
+  });
+
+  it('caches identical queries within the TTL window', async () => {
+    mockedSend.mockResolvedValueOnce(
+      aiResponse({
+        interpretation: 'cached',
+        filters: {},
+        results: [{ id: 'a', reason: 'r' }],
+      }),
+    );
+
+    const candidates = [makeEmail('a'), makeEmail('b')];
+    const { result } = renderHook(() => useAIEmailSearch());
+    await act(async () => {
+      await result.current.search('hello world', candidates);
+    });
+    expect(mockedSend).toHaveBeenCalledTimes(1);
+
+    // Second identical call — should hit the cache, not the network.
+    await act(async () => {
+      await result.current.search('hello world', candidates);
+    });
+    expect(mockedSend).toHaveBeenCalledTimes(1);
+    expect(result.current.result?.interpretation).toBe('cached');
+  });
+
+  it('cancel() flips isSearching off without clearing the existing result', async () => {
+    mockedSend.mockResolvedValueOnce(
+      aiResponse({
+        interpretation: 'done',
+        filters: {},
+        results: [{ id: 'a', reason: 'r' }],
+      }),
+    );
+
+    const { result } = renderHook(() => useAIEmailSearch());
+    await act(async () => {
+      await result.current.search('q', [makeEmail('a')]);
+    });
+    expect(result.current.result).not.toBeNull();
+
+    act(() => result.current.cancel());
+    expect(result.current.isSearching).toBe(false);
+    // Cancel keeps the prior result around (chips stay visible).
+    expect(result.current.result?.rankedIds).toEqual(['a']);
+  });
+
+  it('surfaces an error when the AI service fails', async () => {
+    mockedSend.mockResolvedValueOnce({ success: false, error: 'rate limit' });
+
+    const { result } = renderHook(() => useAIEmailSearch());
+    await act(async () => {
+      await result.current.search('q', [makeEmail('a')]);
+    });
+    await waitFor(() => expect(result.current.error).toBe('rate limit'));
+    expect(result.current.result).toBeNull();
+  });
+});
