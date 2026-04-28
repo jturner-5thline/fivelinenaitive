@@ -601,6 +601,32 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       filtered = filtered
         .filter(e => order.has(e.id))
         .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+
+      // Apply (still-active) AI parsed filters as a post-filter pass so
+      // chip removal in the banner actually relaxes constraints.
+      const f = aiSearch.result.filters;
+      if (f.sender) {
+        const s = f.sender.toLowerCase();
+        filtered = filtered.filter(
+          e =>
+            e.from_name.toLowerCase().includes(s) ||
+            e.from_email.toLowerCase().includes(s)
+        );
+      }
+      if (f.dateRangeStart || f.dateRangeEnd) {
+        const start = f.dateRangeStart ? new Date(f.dateRangeStart).getTime() : -Infinity;
+        const endDate = f.dateRangeEnd ? new Date(f.dateRangeEnd) : null;
+        // Treat end as inclusive end-of-day.
+        const end = endDate
+          ? new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999).getTime()
+          : Infinity;
+        filtered = filtered.filter(e => {
+          const t = new Date(e.received_at).getTime();
+          return t >= start && t <= end;
+        });
+      }
+      if (f.hasAttachments === true) filtered = filtered.filter(e => e.has_attachments);
+      if (f.hasAttachments === false) filtered = filtered.filter(e => !e.has_attachments);
     } else if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -1366,26 +1392,72 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                     </button>
                   </div>
                 ) : aiSearch.result ? (
-                  <div className="flex items-center justify-between gap-2 text-[11px]">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <Sparkles className="h-3 w-3 text-primary shrink-0" />
-                      <span className="text-muted-foreground shrink-0">AI Search:</span>
-                      <span className="text-foreground truncate" title={aiSearch.result.interpretation}>
-                        {aiSearch.result.interpretation}
-                      </span>
-                      <span className="text-muted-foreground shrink-0">
-                        · {aiSearch.result.rankedIds.length} {aiSearch.result.rankedIds.length === 1 ? 'result' : 'results'}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => { clearAISearch(); setSearchQuery(''); }}
-                      className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground shrink-0 transition-colors"
-                      title="Return to inbox (Esc)"
-                    >
-                      <X className="h-3 w-3" />
-                      Clear
-                    </button>
-                  </div>
+                  (() => {
+                    const f = aiSearch.result.filters;
+                    const chips: { key: import('@/hooks/useAIEmailSearch').AIEmailFilterKey; label: string }[] = [];
+                    if (f.sender) chips.push({ key: 'sender', label: `From: ${f.sender}` });
+                    if (f.senderRole) chips.push({ key: 'senderRole', label: `Role: ${f.senderRole}` });
+                    if (f.dateRange && f.dateRange !== 'all') {
+                      const pretty = String(f.dateRange).replace(/_/g, ' ');
+                      chips.push({ key: 'dateRange', label: `Date: ${pretty}` });
+                    } else if (f.dateRangeStart || f.dateRangeEnd) {
+                      chips.push({
+                        key: 'dateRange',
+                        label: `Date: ${f.dateRangeStart || '…'} → ${f.dateRangeEnd || '…'}`,
+                      });
+                    }
+                    if (f.category) chips.push({ key: 'category', label: `Category: ${f.category}` });
+                    if (f.hasAttachments === true) chips.push({ key: 'hasAttachments', label: 'Has attachments' });
+                    if (f.hasAttachments === false) chips.push({ key: 'hasAttachments', label: 'No attachments' });
+                    (f.topics || []).forEach((t) => {
+                      if (t && typeof t === 'string') chips.push({ key: `topic:${t}` as const, label: t });
+                    });
+                    return (
+                      <div className="flex flex-col gap-1.5 text-[11px]">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <Sparkles className="h-3 w-3 text-primary shrink-0" />
+                            <span className="text-muted-foreground shrink-0">AI Search:</span>
+                            <span className="text-foreground truncate" title={aiSearch.result.interpretation}>
+                              {aiSearch.result.interpretation}
+                            </span>
+                            <span className="text-muted-foreground shrink-0">
+                              · {filteredEmails.length} {filteredEmails.length === 1 ? 'result' : 'results'}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => { clearAISearch(); setSearchQuery(''); }}
+                            className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground shrink-0 transition-colors"
+                            title="Return to inbox (Esc)"
+                          >
+                            <X className="h-3 w-3" />
+                            Clear
+                          </button>
+                        </div>
+                        {chips.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1">
+                            {chips.map((chip) => (
+                              <span
+                                key={chip.key}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20"
+                              >
+                                <span className="truncate max-w-[180px]">{chip.label}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => aiSearch.removeFilter(chip.key)}
+                                  className="hover:text-foreground/80"
+                                  aria-label={`Remove filter ${chip.label}`}
+                                  title="Drop this constraint"
+                                >
+                                  <X className="h-2.5 w-2.5" />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()
                 ) : null}
               </div>
             )}
