@@ -55,6 +55,8 @@ function previewNextOccurrence(anchor: Date, rule: string): Date | null {
     const n = Math.max(1, Math.min(365, parseInt(nStr, 10) || 1));
     if (unit === 'days') { d.setDate(d.getDate() + n); return d; }
     if (unit === 'weeks') { d.setDate(d.getDate() + n * 7); return d; }
+    if (unit === 'months') { d.setMonth(d.getMonth() + n); return d; }
+    if (unit === 'years') { d.setFullYear(d.getFullYear() + n); return d; }
     return null;
   }
   switch (rule) {
@@ -79,7 +81,7 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
   const [recurrence, setRecurrence] = useState<string | null>(null);
   // Custom "Every N days/weeks" — only applies when the Custom chip is active.
   const [customN, setCustomN] = useState<number>(3);
-  const [customUnit, setCustomUnit] = useState<'days' | 'weeks'>('days');
+  const [customUnit, setCustomUnit] = useState<'days' | 'weeks' | 'months' | 'years'>('days');
   // When true, day-based recurrences (daily/weekdays/weekly) anchor to the
   // selected due date. If no due date is set when this is enabled, today is
   // used as the anchor.
@@ -500,7 +502,7 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
                   }}
                 />
                 <div className="flex gap-1">
-                  {(['days', 'weeks'] as const).map(u => {
+                  {(['days', 'weeks', 'months', 'years'] as const).map(u => {
                     const uActive = customUnit === u;
                     return (
                       <button
@@ -517,7 +519,7 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
                           backgroundColor: uActive ? 'rgba(126,184,247,0.14)' : 'rgba(20,24,32,0.65)',
                         }}
                       >
-                        {u === 'days' ? 'days' : 'weeks'}
+                        {u}
                       </button>
                     );
                   })}

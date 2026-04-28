@@ -145,6 +145,14 @@ function calculateNextDueDate(currentDueDate: string | null, rule: string): stri
       date.setDate(date.getDate() + n * 7);
       return date.toISOString().split('T')[0];
     }
+    if (unit === 'months') {
+      date.setMonth(date.getMonth() + n);
+      return date.toISOString().split('T')[0];
+    }
+    if (unit === 'years') {
+      date.setFullYear(date.getFullYear() + n);
+      return date.toISOString().split('T')[0];
+    }
     return null;
   }
   switch (rule) {
