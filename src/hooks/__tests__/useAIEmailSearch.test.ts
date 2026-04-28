@@ -114,7 +114,7 @@ beforeEach(() => {
 
 describe('useAIEmailSearch', () => {
   it('returns ranked results and parsed filters from the AI response', async () => {
-    mockedSend.mockResolvedValueOnce(
+    mockedInvoke.mockResolvedValueOnce(
       aiResponse({
         interpretation: 'Signed NDAs from lenders last week',
         filters: {
@@ -148,7 +148,7 @@ describe('useAIEmailSearch', () => {
   });
 
   it('removeFilter drops a single chip without mutating ranked ids', async () => {
-    mockedSend.mockResolvedValueOnce(
+    mockedInvoke.mockResolvedValueOnce(
       aiResponse({
         interpretation: 'x',
         filters: {
@@ -186,8 +186,8 @@ describe('useAIEmailSearch', () => {
   it('discards stale responses when a newer search starts', async () => {
     let resolveFirst: (v: unknown) => void = () => {};
     const firstPromise = new Promise((res) => { resolveFirst = res; });
-    mockedSend.mockImplementationOnce(() => firstPromise as any);
-    mockedSend.mockResolvedValueOnce(
+    mockedInvoke.mockImplementationOnce(() => firstPromise as any);
+    mockedInvoke.mockResolvedValueOnce(
       aiResponse({
         interpretation: 'newer',
         filters: {},
@@ -214,7 +214,7 @@ describe('useAIEmailSearch', () => {
   });
 
   it('caches identical queries within the TTL window', async () => {
-    mockedSend.mockResolvedValueOnce(
+    mockedInvoke.mockResolvedValueOnce(
       aiResponse({
         interpretation: 'cached',
         filters: {},
@@ -227,18 +227,18 @@ describe('useAIEmailSearch', () => {
     await act(async () => {
       await harness.current.search('hello world', candidates);
     });
-    expect(mockedSend).toHaveBeenCalledTimes(1);
+    expect(mockedInvoke).toHaveBeenCalledTimes(1);
 
     // Second identical call — should hit the cache, not the network.
     await act(async () => {
       await harness.current.search('hello world', candidates);
     });
-    expect(mockedSend).toHaveBeenCalledTimes(1);
+    expect(mockedInvoke).toHaveBeenCalledTimes(1);
     expect(harness.current.result?.interpretation).toBe('cached');
   });
 
   it('cancel() flips isSearching off without clearing the existing result', async () => {
-    mockedSend.mockResolvedValueOnce(
+    mockedInvoke.mockResolvedValueOnce(
       aiResponse({
         interpretation: 'done',
         filters: {},
@@ -259,7 +259,7 @@ describe('useAIEmailSearch', () => {
   });
 
   it('surfaces an error when the AI service fails', async () => {
-    mockedSend.mockResolvedValueOnce({ success: false, error: 'rate limit' });
+    mockedInvoke.mockResolvedValueOnce({ success: false, error: 'rate limit' });
 
     const harness = renderHook(() => useAIEmailSearch());
     await act(async () => {
