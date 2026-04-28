@@ -1644,9 +1644,12 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
+                  ref={aiAssistButtonRef}
                   onClick={() => setShowAiAssist(!showAiAssist)}
+                  aria-pressed={showAiAssist}
+                  aria-label="Toggle AI Assist"
                   className={cn(
-                    'flex flex-col items-center gap-0.5 px-3 py-1 rounded transition-colors border min-[1100px]:hidden',
+                    'flex flex-col items-center gap-0.5 px-3 py-1 rounded transition-colors border',
                     showAiAssist
                       ? 'bg-[hsl(var(--outlook-blue)/0.1)] border-[hsl(var(--outlook-blue)/0.3)] text-[hsl(var(--outlook-blue))]'
                       : 'border-transparent hover:bg-muted/40'
@@ -1656,7 +1659,9 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                   <span className={cn('text-[10px]', showAiAssist ? 'text-[hsl(var(--outlook-blue))]' : 'text-foreground/60')}>AI Assist</span>
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">Show AI suggestions</TooltipContent>
+              <TooltipContent side="bottom" className="text-xs">
+                {showAiAssist ? 'Hide AI Assist (A)' : 'Show AI Assist (A)'}
+              </TooltipContent>
             </Tooltip>
 
             {hasUploadableAttachments && (
