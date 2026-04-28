@@ -378,7 +378,7 @@ export function EmailDetailModal({ email, open, onOpenChange }: EmailDetailModal
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-2xl w-[95vw] max-h-[85vh] p-0 flex flex-col overflow-hidden gap-0 glass-border-soft bg-background/95 backdrop-blur-xl shadow-2xl shadow-black/40"
+        className="w-[94vw] h-[92vh] max-w-none sm:max-w-none max-h-none p-0 flex flex-col overflow-hidden gap-0 glass-border-soft bg-background/95 backdrop-blur-xl shadow-2xl shadow-black/40"
       >
         <EmailDetailHeader email={email} onClose={() => onOpenChange(false)} />
 
