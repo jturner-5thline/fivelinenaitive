@@ -44,10 +44,10 @@ export function DealsHeader() {
         Active tabs use a fully-rounded pill (no top-only / bottom-only
         radius) so corners match the rest of the platform's card system.
       */}
-      <div className="relative flex h-14 items-center justify-between pl-3 pr-3 sm:pr-6 gap-2 min-w-0">
+      <div className="relative flex h-[68px] items-center justify-between pl-3 pr-3 sm:pr-6 gap-2 min-w-0">
         <div className="flex items-center gap-2 shrink-0 min-w-0">
           <Link to="/deals" className="flex items-center gap-2 shrink-0">
-            <Logo className="h-10" />
+            <Logo className="h-[60px]" />
           </Link>
           <DemoModeBadge />
           <div className="shrink min-w-0">
