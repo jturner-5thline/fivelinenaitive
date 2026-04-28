@@ -23,6 +23,13 @@ export interface EmailAttachment {
 export interface MockEmail {
   id: string;
   threadId: string;
+  /**
+   * Canonical provider (Gmail/Nylas) thread id. Use this — not `threadId` —
+   * as the persistence key for cross-deal artifacts like label assignments
+   * so they survive navigation between deal scopes and provider re-fetches
+   * where the local `threadId` may differ.
+   */
+  provider_thread_id?: string | null;
   subject: string;
   from_name: string;
   from_email: string;
