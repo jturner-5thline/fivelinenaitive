@@ -33,7 +33,7 @@ export default function Homepage() {
         style={{
           colorScheme: 'dark',
           background:
-            'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)',
+            'linear-gradient(135deg, #0a0a1a 0%, #0d1b3e 20%, #0a1628 40%, #061020 60%, #1a0a2e 80%, #0a0014 100%)',
           backgroundAttachment: 'fixed',
         }}
       >
