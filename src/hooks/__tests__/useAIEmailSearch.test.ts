@@ -2,17 +2,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as React from 'react';
 import * as ReactDOMClient from 'react-dom/client';
 
-// Mock the Claude service before importing the hook so the mocked module
-// is what the hook closes over.
-vi.mock('@/services/claude', () => ({
-  sendClaudeMessage: vi.fn(),
+// Mock the supabase client's `functions.invoke` before importing the hook so
+// the mocked module is what the hook closes over.
+const mockedInvoke = vi.fn();
+vi.mock('@/integrations/supabase/client', () => ({
+  supabase: {
+    functions: { invoke: (...args: any[]) => mockedInvoke(...args) },
+  },
 }));
 
-import { sendClaudeMessage } from '@/services/claude';
 import { useAIEmailSearch } from '@/hooks/useAIEmailSearch';
 import type { MockEmail } from '@/components/deal/email/mockEmailData';
-
-const mockedSend = sendClaudeMessage as unknown as ReturnType<typeof vi.fn>;
 
 // ── Tiny renderHook shim ───────────────────────────────────────
 // We avoid @testing-library/react (not in this project) and drive the hook
@@ -88,15 +88,28 @@ function makeEmail(id: string, overrides: Partial<MockEmail> = {}): MockEmail {
   } as unknown as MockEmail;
 }
 
-function aiResponse(payload: unknown) {
+/**
+ * Build a successful `functions.invoke` response from the legacy payload shape
+ * the tests use (`{ interpretation, filters, results }`). The edge function
+ * returns `{ interpretation, parsedFilters, results, latencyMs, model }`, so we
+ * normalize here to keep the test cases readable.
+ */
+function aiResponse(payload: any) {
   return {
-    success: true,
-    response: '```json\n' + JSON.stringify(payload) + '\n```',
+    data: {
+      interpretation: payload.interpretation ?? null,
+      parsedFilters: payload.filters ?? {},
+      results: payload.results ?? [],
+      executedQuery: '',
+      latencyMs: 0,
+      model: 'test-model',
+    },
+    error: null,
   };
 }
 
 beforeEach(() => {
-  mockedSend.mockReset();
+  mockedInvoke.mockReset();
 });
 
 describe('useAIEmailSearch', () => {
