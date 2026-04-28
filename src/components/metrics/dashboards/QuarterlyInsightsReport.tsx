@@ -1030,7 +1030,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
               set(prev => ({ ...prev, asanaGoalFilters: filled }));
               void prefs.save({ filters: filled });
             }}
-            title="Fill any blank Q1–Q4 / H1–H2 fields with standard Asana label defaults (e.g. 'Q1 {year}')"
+            ariaLabel="Fill blank Q1-Q4 and H1-H2 fields with default Asana label patterns"
           >
             Auto-fill defaults
           </Btn>
