@@ -445,6 +445,15 @@ async function sendEmail(
       return { actionId, type: 'send_email', success: false, message: 'No recipient email specified' };
     }
 
+    // Suppress workflow follow-up reminder emails for jturner@5thline.co.
+    // These reminders are surfaced in the in-app Daily Briefing
+    // ("Today's Follow-Ups") instead. Underlying scheduled actions and
+    // task records remain intact — only email delivery is suppressed.
+    if (typeof toEmail === 'string' && toEmail.toLowerCase() === 'jturner@5thline.co') {
+      console.log(`[Delayed Email] Suppressed jturner@5thline.co reminder (subject="${subject}") — surfaced in Daily Briefing instead`);
+      return { actionId, type: 'send_email', success: true, message: `Suppressed jturner reminder email (in-app Daily Briefing)` };
+    }
+
     console.log(`[Delayed Email] Sending to ${toEmail}, Subject: ${subject}`);
 
     // Use Resend to send email
