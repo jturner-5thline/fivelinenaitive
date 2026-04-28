@@ -311,6 +311,46 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
             </div>
           </div>
 
+          {/* Recurrence */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase tracking-wide font-medium flex items-center gap-1" style={{ color: '#7a8194' }}>
+              <Repeat className="h-3 w-3" /> Repeat
+            </label>
+            <div className="flex flex-wrap gap-1">
+              {[
+                { value: null, label: 'None' },
+                { value: 'daily', label: 'Daily' },
+                { value: 'weekdays', label: 'Weekdays' },
+                { value: 'weekly', label: 'Weekly' },
+                { value: 'biweekly', label: 'Biweekly' },
+                { value: 'monthly', label: 'Monthly' },
+                { value: 'quarterly', label: 'Quarterly' },
+              ].map(opt => {
+                const active = recurrence === opt.value;
+                return (
+                  <button
+                    key={opt.label}
+                    type="button"
+                    onClick={() => setRecurrence(opt.value)}
+                    className="px-2 py-1 rounded-md text-[11px] font-medium border transition-colors"
+                    style={{
+                      color: active ? '#cfe3ff' : '#9aa3b6',
+                      borderColor: active ? 'rgba(126,184,247,0.45)' : 'rgba(255,255,255,0.08)',
+                      backgroundColor: active ? 'rgba(126,184,247,0.14)' : 'rgba(20,24,32,0.65)',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+            {recurrence && !dueDate && (
+              <p className="text-[10px]" style={{ color: '#e89b6c' }}>
+                Tip: set a due date — the next task is generated when this one is completed.
+              </p>
+            )}
+          </div>
+
           {/* Assignee */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
