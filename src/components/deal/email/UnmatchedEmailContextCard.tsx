@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { User, Building2, Briefcase, Link2, Loader2, Sparkles, ExternalLink, ListTodo, Check, X } from 'lucide-react';
+import { User, Building2, Briefcase, Link2, Loader2, Sparkles, ExternalLink, ListTodo, Check, X, UserPlus, Plus } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useContactBySenderEmail } from '@/hooks/useContactBySenderEmail';
@@ -12,6 +12,9 @@ import { Link as RouterLink, useLocation } from 'react-router-dom';
 import { Eye } from 'lucide-react';
 import { SuggestedTaskCards } from './SuggestedTaskCards';
 import type { WorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
+import { useCreateContact } from '@/hooks/useContacts';
+import { useLinkContactToDeal } from '@/hooks/useCrmLinks';
+import { STATUS_CONFIG } from '@/types/deal';
 
 interface Props {
   /** Inbound email to enrich. */
@@ -86,6 +89,12 @@ export function UnmatchedEmailContextCard({
   const [followUpDismissed, setFollowUpDismissed] = useState(false);
   const location = useLocation();
 
+  // Mutations for the "New contact: ... Add to contacts?" prompt rendered
+  // when the sender email is not yet in the CRM.
+  const createContact = useCreateContact();
+  const linkContactDeal = useLinkContactToDeal();
+  const [contactAdded, setContactAdded] = useState<{ id: string; name: string } | null>(null);
+
   const linkSuggestion = async (id: string, name: string) => {
     setLinkingTarget(id);
     try {
@@ -96,6 +105,13 @@ export function UnmatchedEmailContextCard({
       setLinkingTarget(null);
     }
   };
+
+  // Treat a strong body-mention as "matched" — the parent thread isn't yet
+  // linked, but we have high confidence. The UI surfaces a clean deal
+  // header with a single "Link" chip (persists via onLinkDeal) instead of
+  // the verbose "Possible deal mention" suggestion card.
+  const highMatch = bodyMatch && bodyMatch.confidence === 'high' ? bodyMatch : null;
+  const lowOrMediumMatch = bodyMatch && bodyMatch.confidence !== 'high' ? bodyMatch : null;
 
   // The first non-empty suggestion drives the post-link follow-up prompt.
   // Keeping this scoped to one card avoids overwhelming the user with a
@@ -167,10 +183,114 @@ export function UnmatchedEmailContextCard({
     );
   }
 
+  // ── High-confidence body-mention: render clean deal header ─────────
+  // Replaces the "Possible deal mention — link it?" card with a compact
+  // "[Deal] • [Stage] • [Status]" header and a small Link chip.
+  const matchedDealHeader = highMatch && (
+    <MatchedDealHeader
+      match={highMatch}
+      linkingTarget={linkingTarget}
+      linking={!!linking}
+      onLink={linkSuggestion}
+      isLinked={!!linkedConfirmation && linkedConfirmation.dealId === highMatch.deal.id}
+    />
+  );
+
+  // ── New-contact CTA when sender isn't yet in the CRM ───────────────
+  const senderName = (email.from_name || '').trim();
+  const senderDomain = senderEmail.includes('@') ? senderEmail.split('@')[1] : '';
+  const inferredCompany =
+    highMatch?.deal.company || highMatch?.deal.name || senderDomain || '';
+  const canShowNewContactPrompt =
+    !contact && !!senderEmail && senderEmail.includes('@') && !!senderName;
+
+  const handleAddContact = async () => {
+    if (!senderEmail || !senderName) return;
+    const parts = senderName.split(/\s+/);
+    const firstName = parts[0] || senderName;
+    const lastName = parts.slice(1).join(' ') || null;
+    try {
+      const created: any = await createContact.mutateAsync({
+        first_name: firstName,
+        last_name: lastName ?? undefined,
+        full_name: senderName,
+        email: senderEmail,
+      } as any);
+      const newId = created?.id;
+      const newName = created?.full_name || senderName;
+      if (newId && highMatch?.deal.id) {
+        try {
+          await linkContactDeal.mutateAsync({
+            contactId: newId,
+            dealId: highMatch.deal.id,
+          });
+        } catch {
+          // best effort — contact creation succeeds even if link fails
+        }
+      }
+      if (newId) setContactAdded({ id: newId, name: newName });
+    } catch {
+      // toast handled in the mutation hook
+    }
+  };
+
+  const newContactPrompt = canShowNewContactPrompt && !contactAdded && (
+    <div className="rounded-md border border-white/[0.06] bg-card/40 p-3 space-y-2.5">
+      <div className="flex items-center gap-1.5">
+        <UserPlus className="h-3 w-3 text-primary" />
+        <span className="text-[11px] font-semibold tracking-wide text-foreground">
+          New contact
+        </span>
+      </div>
+      <p className="text-[11px] text-muted-foreground leading-relaxed">
+        <span className="text-foreground font-medium">{senderName}</span>
+        {inferredCompany ? (
+          <>
+            {' '}@ <span className="text-foreground font-medium">{inferredCompany}</span>
+          </>
+        ) : null}
+        {' '}— Add to contacts?
+      </p>
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-7 text-[11px] gap-1.5 w-full"
+        disabled={createContact.isPending || linkContactDeal.isPending}
+        onClick={handleAddContact}
+      >
+        {createContact.isPending ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : (
+          <Plus className="h-3 w-3" />
+        )}
+        Add to contacts
+      </Button>
+    </div>
+  );
+
+  const contactAddedConfirm = contactAdded && (
+    <div className="rounded-md border border-emerald-500/20 bg-emerald-500/[0.04] p-2.5 flex items-start gap-1.5">
+      <Check className="h-3 w-3 text-emerald-400 shrink-0 mt-0.5" />
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-semibold text-foreground leading-snug">
+          Added <span className="text-emerald-400">{contactAdded.name}</span> to contacts
+        </p>
+        <RouterLink
+          to={`/crm/contacts/${contactAdded.id}`}
+          className="inline-flex items-center gap-1 mt-1 text-[10px] text-primary hover:underline"
+        >
+          <ExternalLink className="h-2.5 w-2.5" />
+          Open contact
+        </RouterLink>
+      </div>
+    </div>
+  );
+
   // ── Case 1: contact-card match ───────────────────────────────────────
   if (contact) {
     return (
       <div className="rounded-md border border-white/[0.06] bg-card/40 p-3 space-y-3">
+        {matchedDealHeader}
         <div className="flex items-center gap-1.5">
           <Sparkles className="h-3 w-3 text-primary" />
           <span className="text-[11px] font-semibold tracking-wide text-foreground">
@@ -258,10 +378,11 @@ export function UnmatchedEmailContextCard({
           </div>
         ) : null}
 
-        {/* Body-mention deal suggestion can stack under the contact card. */}
-        {bodyMatch && (
+        {/* Medium/low body-mention deal suggestion can stack under the contact card.
+            High-confidence is rendered as the clean header above instead. */}
+        {lowOrMediumMatch && (
           <BodyMentionSuggestion
-            match={bodyMatch}
+            match={lowOrMediumMatch}
             linkingTarget={linkingTarget}
             linking={!!linking}
             onLink={linkSuggestion}
@@ -272,8 +393,20 @@ export function UnmatchedEmailContextCard({
     );
   }
 
-  // ── Case 2: body-mention deal suggestion ─────────────────────────────
-  if (bodyMatch) {
+  // ── Case 2: high-confidence body-mention → clean deal header ─────────
+  if (highMatch) {
+    return (
+      <div className="space-y-3">
+        {matchedDealHeader}
+        {newContactPrompt}
+        {contactAddedConfirm}
+        {followUpPanel}
+      </div>
+    );
+  }
+
+  // ── Case 3: medium/low body-mention → "Possible deal mention" ────────
+  if (lowOrMediumMatch) {
     return (
       <div className="rounded-md border border-white/[0.06] bg-card/40 p-3 space-y-2">
         <div className="flex items-center gap-1.5">
@@ -283,42 +416,137 @@ export function UnmatchedEmailContextCard({
           </span>
         </div>
         <BodyMentionSuggestion
-          match={bodyMatch}
+          match={lowOrMediumMatch}
           linkingTarget={linkingTarget}
           linking={!!linking}
           onLink={linkSuggestion}
         />
+        {newContactPrompt}
+        {contactAddedConfirm}
         {followUpPanel}
       </div>
     );
   }
 
-  // ── Case 3: nothing matched ─────────────────────────────────────────
+  // ── Case 4: nothing matched ─────────────────────────────────────────
   return (
-    <div className="rounded-md border border-white/[0.06] bg-card/40 p-3 space-y-2.5">
-      <div className="flex items-center gap-1.5">
-        <Sparkles className="h-3 w-3 text-primary" />
-        <span className="text-[11px] font-semibold tracking-wide text-foreground">
-          No deal match found
-        </span>
+    <div className="space-y-3">
+      <div className="rounded-md border border-white/[0.06] bg-card/40 p-3 space-y-2.5">
+        <div className="flex items-center gap-1.5">
+          <Sparkles className="h-3 w-3 text-primary" />
+          <span className="text-[11px] font-semibold tracking-wide text-foreground">
+            No deal match found
+          </span>
+        </div>
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          We couldn’t auto-link this email to a deal or contact. Link it
+          manually so AI Assist can use full deal context.
+        </p>
+        <LinkToDealPopover
+          trigger={
+            <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1.5 w-full">
+              <Link2 className="h-3 w-3" />
+              Link Deal
+            </Button>
+          }
+          currentDealName={undefined}
+          isLinked={false}
+          onLinkDeal={(id, name) => linkSuggestion(id, name)}
+          onUnlink={() => undefined}
+        />
       </div>
-      <p className="text-[11px] text-muted-foreground leading-relaxed">
-        We couldn’t auto-link this email to a deal or contact. Link it
-        manually so AI Assist can use full deal context.
-      </p>
-      <LinkToDealPopover
-        trigger={
-          <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1.5 w-full">
-            <Link2 className="h-3 w-3" />
-            Link Deal
-          </Button>
-        }
-        currentDealName={undefined}
-        isLinked={false}
-        onLinkDeal={(id, name) => linkSuggestion(id, name)}
-        onUnlink={() => undefined}
-      />
+      {newContactPrompt}
+      {contactAddedConfirm}
       {followUpPanel}
+    </div>
+  );
+}
+
+/**
+ * MatchedDealHeader
+ * -----------------
+ * Clean "[Deal Name] • [Stage] • [Status]" header rendered when the
+ * email body has a HIGH-confidence mention of a workspace deal. Replaces
+ * the older "Possible deal mention — link it?" card so confidently
+ * matched threads feel pre-linked. A single compact "Link" chip on the
+ * right persists the deal_emails relation; once clicked it flips to a
+ * "Linked" indicator.
+ */
+function MatchedDealHeader({
+  match,
+  linkingTarget,
+  linking,
+  onLink,
+  isLinked,
+}: {
+  match: NonNullable<ReturnType<typeof useBodyMentionDealMatch>>;
+  linkingTarget: string | null;
+  linking: boolean;
+  onLink: (id: string, name: string) => void | Promise<void>;
+  isLinked: boolean;
+}) {
+  const dealName = match.deal.company || match.deal.name || 'Deal';
+  const stageLabel = (match.deal.stage || '').toString().replace(/[-_]/g, ' ').trim();
+  const statusKey = ((match.deal.status || 'on-track') as string).toLowerCase();
+  const statusMeta = STATUS_CONFIG[statusKey as keyof typeof STATUS_CONFIG];
+  const statusLabel = statusMeta?.label || statusKey.replace(/[-_]/g, ' ');
+  const isLinkingThis = linkingTarget === match.deal.id;
+
+  return (
+    <div className="rounded-md border border-emerald-500/20 bg-emerald-500/[0.04] px-3 py-2 flex items-center gap-2">
+      <Briefcase className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+      <div className="min-w-0 flex-1 flex items-center gap-1.5 flex-wrap">
+        <RouterLink
+          to={`/deals/${match.deal.id}`}
+          className="text-[12px] font-semibold text-foreground hover:text-primary truncate max-w-[180px]"
+          title={dealName}
+        >
+          {dealName}
+        </RouterLink>
+        {stageLabel && (
+          <>
+            <span className="text-[10px] text-muted-foreground">•</span>
+            <span className="text-[11px] text-muted-foreground capitalize truncate">
+              {stageLabel}
+            </span>
+          </>
+        )}
+        {statusLabel && (
+          <>
+            <span className="text-[10px] text-muted-foreground">•</span>
+            <Badge
+              variant="outline"
+              className="text-[10px] h-4 px-1.5 capitalize border-white/[0.08] text-muted-foreground"
+            >
+              {statusLabel}
+            </Badge>
+          </>
+        )}
+      </div>
+      {isLinked ? (
+        <Badge
+          variant="outline"
+          className="text-[10px] h-5 px-1.5 gap-1 bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shrink-0"
+        >
+          <Check className="h-2.5 w-2.5" />
+          Linked
+        </Badge>
+      ) : (
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-6 text-[10px] gap-1 px-2 shrink-0"
+          disabled={!!linkingTarget || linking}
+          onClick={() => onLink(match.deal.id, dealName)}
+        >
+          {isLinkingThis ? (
+            <Loader2 className="h-2.5 w-2.5 animate-spin" />
+          ) : (
+            <Link2 className="h-2.5 w-2.5" />
+          )}
+          Link
+        </Button>
+      )}
     </div>
   );
 }
