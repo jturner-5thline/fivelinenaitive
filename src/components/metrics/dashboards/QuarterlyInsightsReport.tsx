@@ -334,7 +334,18 @@ function ReportHeaderSection({ s, set, reset, print }: { s: ReportState; set: Re
             {(['monthly', 'quarterly'] as const).map(period => (
               <button
                 key={period}
-                onClick={() => set(prev => ({ ...prev, period }))}
+                onClick={() => set(prev => {
+                  if (period === 'monthly') {
+                    const validMonths = monthsForQuarter(prev.quarter);
+                    const monthStillValid = validMonths.includes(prev.month);
+                    return {
+                      ...prev,
+                      period,
+                      month: monthStillValid ? prev.month : (validMonths[0] || ''),
+                    };
+                  }
+                  return { ...prev, period };
+                })}
                 style={{
                   padding: '6px 12px',
                   fontSize: 11,
