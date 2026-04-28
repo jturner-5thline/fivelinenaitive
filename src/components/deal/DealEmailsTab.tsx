@@ -1680,6 +1680,16 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                     {filteredUnread > 0 && (
                       <span className="text-[10px] text-[hsl(var(--outlook-blue))] font-semibold">{filteredUnread}</span>
                     )}
+                    {activeItemId.startsWith('label:') && (
+                      <button
+                        onClick={() => setActiveItemId('all_inbox')}
+                        className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
+                        title="Clear label filter"
+                      >
+                        <X className="h-3 w-3" />
+                        Clear
+                      </button>
+                    )}
                   </div>
                   <div className="flex gap-0.5">
                     {(['all', 'unread', 'needs_response'] as ViewFilter[]).map(vf => (
