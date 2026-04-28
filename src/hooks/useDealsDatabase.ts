@@ -725,6 +725,20 @@ export function useDealsDatabase() {
       if (updates.pipelineId !== undefined) dbUpdates.pipeline_id = updates.pipelineId;
       if (updates.sourcedVia !== undefined) dbUpdates.sourced_via = updates.sourcedVia;
 
+      // Pipeline-specific (FinServ) fields — see src/config/pipelineFieldSchemas.ts
+      if ((updates as any).onHold !== undefined) (dbUpdates as any).on_hold = (updates as any).onHold;
+      if ((updates as any).contactEmail !== undefined) (dbUpdates as any).contact_email = (updates as any).contactEmail || null;
+      if ((updates as any).leadSource !== undefined) (dbUpdates as any).lead_source = (updates as any).leadSource || null;
+      if ((updates as any).referralSource !== undefined) (dbUpdates as any).referral_source = (updates as any).referralSource || null;
+      if ((updates as any).opportunityType !== undefined) (dbUpdates as any).opportunity_type = (updates as any).opportunityType || null;
+      if ((updates as any).servicesOffered !== undefined) (dbUpdates as any).services_offered = (updates as any).servicesOffered ?? [];
+      if ((updates as any).feeType !== undefined) (dbUpdates as any).fee_type = (updates as any).feeType || null;
+      if ((updates as any).mrr !== undefined) (dbUpdates as any).mrr = (updates as any).mrr;
+      if ((updates as any).oneTimeRevenue !== undefined) (dbUpdates as any).one_time_revenue = (updates as any).oneTimeRevenue;
+      if ((updates as any).projectedCloseDate !== undefined) (dbUpdates as any).projected_close_date = (updates as any).projectedCloseDate;
+      if ((updates as any).contractStartDate !== undefined) (dbUpdates as any).contract_start_date = (updates as any).contractStartDate;
+      if ((updates as any).contractEndDate !== undefined) (dbUpdates as any).contract_end_date = (updates as any).contractEndDate;
+
       const { error } = await supabase
         .from('deals')
         .update(dbUpdates)
