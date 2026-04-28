@@ -172,6 +172,12 @@ type TrendChartMode = 'monthly' | 'quarterly';
 
 type TrendMetricKey = 'deals-closed' | 'dollars-funded';
 
+interface PendingTrendReopen {
+  metric: TrendMetricKey;
+  mode: TrendChartMode;
+  bucketKey: string;
+}
+
 function CompactFundedBarChart({
   title,
   subtitle,
@@ -312,6 +318,7 @@ export function ConsolidatedDebtPipelineDashboard({
 }) {
   const m = useConsolidatedDebtPipelineMetrics(selectedQuarter as QuarterOption);
   const [trendMode, setTrendMode] = useState<TrendChartMode>('monthly');
+  const [pendingTrendReopen, setPendingTrendReopen] = useState<PendingTrendReopen | null>(null);
   const [drilldown, setDrilldown] = useState<{ title: string; deals: StageEntryDeal[]; periodNote?: string } | null>(null);
 
   const fundedTrendBuckets = trendMode === 'monthly' ? m.fundedInvoicedTrend.monthly : m.fundedInvoicedTrend.quarterly;
@@ -327,6 +334,7 @@ export function ConsolidatedDebtPipelineDashboard({
     if (!reopen) return;
     const [metric, mode, bucketKey] = reopen.bucketKey.split('|') as [TrendMetricKey, TrendChartMode, string];
     if (mode !== trendMode) {
+      setPendingTrendReopen({ metric, mode, bucketKey });
       setTrendMode(mode);
       return;
     }
@@ -338,6 +346,20 @@ export function ConsolidatedDebtPipelineDashboard({
       periodNote: buildTrendPeriodNote(bucket, metric === 'deals-closed' ? 'Deal count' : 'Dollar volume'),
     });
   }, [m.fundedInvoicedTrend.isLoading, m.fundedInvoicedTrend.monthly, m.fundedInvoicedTrend.quarterly, selectedQuarter, trendMode]);
+
+  useEffect(() => {
+    if (!pendingTrendReopen || pendingTrendReopen.mode !== trendMode) return;
+    const bucket = (trendMode === 'monthly' ? m.fundedInvoicedTrend.monthly : m.fundedInvoicedTrend.quarterly).find(
+      (entry) => entry.key === pendingTrendReopen.bucketKey,
+    );
+    if (!bucket) return;
+    setDrilldown({
+      title: `${pendingTrendReopen.metric === 'deals-closed' ? 'Deals Closed' : 'Dollars Funded'} — ${bucket.label}`,
+      deals: bucket.deals,
+      periodNote: buildTrendPeriodNote(bucket, pendingTrendReopen.metric === 'deals-closed' ? 'Deal count' : 'Dollar volume'),
+    });
+    setPendingTrendReopen(null);
+  }, [m.fundedInvoicedTrend.monthly, m.fundedInvoicedTrend.quarterly, pendingTrendReopen, trendMode]);
 
   const formatMetricCurrency = (value: number | null) => (value == null ? 'N/A' : formatCurrency(value));
 
