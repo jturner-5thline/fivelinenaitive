@@ -435,8 +435,18 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
                           className="h-6 text-[10px] px-2 rounded-full border-[#2a2f3e] gap-1"
                           style={{ color: '#f59e0b' }}
                           onClick={() => {
+                            const prevEnd = (task as any).recurrence_end_date ?? null;
                             onUpdate({ recurrence_end_date: todayStr } as any);
-                            toast.success('Recurrence paused — no further occurrences will be generated');
+                            toast.success('Recurrence paused — no further occurrences will be generated', {
+                              duration: 8000,
+                              action: {
+                                label: 'Undo',
+                                onClick: () => {
+                                  onUpdate({ recurrence_end_date: prevEnd } as any);
+                                  toast.success('Pause undone');
+                                },
+                              },
+                            });
                           }}
                           title="Stop generating new occurrences but keep the rule so you can resume later"
                         >
