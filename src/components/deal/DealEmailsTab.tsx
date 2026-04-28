@@ -70,6 +70,18 @@ import { InlineComposePanel } from './email/InlineComposePanel';
 import { useAIEmailSearch, AI_SEARCH_MIN_LENGTH } from '@/hooks/useAIEmailSearch';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { useGmail } from '@/hooks/useGmail';
+import { logSentReplyToDeal } from '@/lib/logSentReplyToDeal';
+import { createTaskFromDraft, type TaskDraft } from '@/hooks/useNaitiveTaskParse';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
+
+/** Compute next business day in local TZ as 'YYYY-MM-DD'. Skips weekends. */
+function nextBusinessDayISO(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 // A message id is a real provider (Nylas/Gmail/Outlook) id only when the
 // inbox is hydrated from `externalEmails`. Mock fixtures use the `mock-`
@@ -223,6 +235,8 @@ function PaginationFooter({
 }
 
 export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingExternal, onGmailSend, onLoadMore, hasMore, isLoadingMore, isAutoPaginating }: DealEmailsTabProps) {
+  const { user } = useAuth();
+  const { company } = useCompany();
   // Routes read-state writes through Nylas → Gmail/Outlook so the change
   // is reflected in the user's actual mailbox. We only call this for
   // real (externally hydrated) emails — never mock fixtures.
@@ -1441,6 +1455,99 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                     }),
                     onSent: () => {
                       setEmails(prev => [{ ...emailData, id: `mock-sent-${Date.now()}`, threadId }, ...prev]);
+                      // ─── Activity log + lender last-contact + next-step prompt ───
+                      // Resolve the linked deal id: explicit prop wins, then any
+                      // thread-level link the user already established. If still
+                      // unlinked, surface a non-blocking prompt so the user can
+                      // link the deal and retry without losing the sent email.
+                      const thread = currentThread;
+                      const resolvedDealId = dealId || null;
+                      const resolvedDealName = thread?.dealName || null;
+
+                      if (!resolvedDealId) {
+                        toast.message('Reply sent — not logged to a deal', {
+                          description: 'Link this thread to a deal to keep its activity timeline up to date.',
+                          action: thread
+                            ? {
+                                label: 'Link deal',
+                                onClick: () => setSelectedThread(thread),
+                              }
+                            : undefined,
+                        });
+                        return;
+                      }
+
+                      // Fire-and-forget — never block the send pipeline on logging.
+                      (async () => {
+                        const logResult = await logSentReplyToDeal({
+                          dealId: resolvedDealId,
+                          threadId,
+                          subject: emailData.subject,
+                          body: emailData.body_preview || '',
+                          toName: emailData.to_name || emailData.to_email,
+                          toEmail: emailData.to_email,
+                          fromDisplayName: emailData.from_name,
+                          dealName: resolvedDealName,
+                        });
+
+                        const dealLabel = logResult.dealName || resolvedDealName || 'deal';
+                        if (!logResult.ok) {
+                          toast.error(`Reply sent, but couldn't log to ${dealLabel} activity`);
+                          return;
+                        }
+
+                        // Success toast — show the matched lender if we bumped one.
+                        const lenderSuffix = logResult.matchedLenderName
+                          ? ` • ${logResult.matchedLenderName} last-contact updated`
+                          : '';
+
+                        // If the reply commits to a next step, offer one-click
+                        // follow-up task creation right from the toast.
+                        if (logResult.nextStep.hasNextStep && user?.id) {
+                          toast.success(`Reply logged to ${dealLabel} activity${lenderSuffix}`, {
+                            description: `Next step detected: "${logResult.nextStep.trigger}". Create a follow-up task?`,
+                            duration: 12000,
+                            action: {
+                              label: 'Create task',
+                              onClick: async () => {
+                                try {
+                                  const draft: TaskDraft = {
+                                    title: logResult.nextStep.suggestedTaskTitle || 'Follow up on email reply',
+                                    description: `Auto-created from sent reply: "${emailData.subject}"\nDetected: ${logResult.nextStep.trigger}`,
+                                    due_date: nextBusinessDayISO(),
+                                    due_time: null,
+                                    priority: 'normal',
+                                    type: 'follow_up',
+                                    is_recurring: false,
+                                    recurrence_rule: null,
+                                    confidence: 1,
+                                    owner_id: user.id,
+                                    owner_label: 'You',
+                                    owner_ambiguous: null,
+                                    deal_id: resolvedDealId,
+                                    deal_label: dealLabel,
+                                    lender_id: null,
+                                    lender_label: null,
+                                    contact_id: null,
+                                    contact_label: null,
+                                    source_thread_id: threadId,
+                                    hints: { owner: null, deal: null, lender: null, contact: null },
+                                  };
+                                  await createTaskFromDraft(draft, user.id, company?.id || null, {
+                                    syncSource: 'naitive_email_next_step',
+                                    sourceThreadId: threadId,
+                                  });
+                                  toast.success('Follow-up task created');
+                                } catch (err: any) {
+                                  toast.error(err?.message || 'Failed to create follow-up task');
+                                }
+                              },
+                            },
+                          });
+                        } else {
+                          toast.success(`Reply logged to ${dealLabel} activity${lenderSuffix}`);
+                        }
+                      })();
                     },
                     onUndo: () => {
                       // Re-open the thread + composer for editing.

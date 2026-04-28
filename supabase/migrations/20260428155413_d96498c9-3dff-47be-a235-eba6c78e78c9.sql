@@ -1,0 +1,2 @@
+ALTER TABLE public.deal_lenders ADD COLUMN IF NOT EXISTS last_contact_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS idx_deal_lenders_last_contact_at ON public.deal_lenders(last_contact_at DESC NULLS LAST);
