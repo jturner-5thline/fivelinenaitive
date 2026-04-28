@@ -223,6 +223,7 @@ export function TaskListView({
         <div className={`grid ${TASK_GRID_COLS} gap-2 items-center px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide sticky top-0 z-10`}
           style={{ backgroundColor: 'rgba(18,21,27,0.92)', backdropFilter: 'blur(8px)', color: '#7a8194', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
           <div />
+          <div />
           <div className="cursor-pointer" onClick={onSelectAll} title="Select all (Ctrl+A)">
             <Checkbox checked={selectedTaskIds && selectedTaskIds.size > 0 && selectedTaskIds.size === tasks.length} onCheckedChange={() => onSelectAll?.()} className="h-3.5 w-3.5" />
           </div>
