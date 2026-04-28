@@ -53,6 +53,19 @@ export function DashboardFlyoutMenu() {
 
   useEffect(() => () => clearTimers(), []);
 
+  // Ensure the flyout never lingers across route transitions. The instant the
+  // pathname (or the ?widget= search param) changes — i.e. navigation has
+  // started/committed — collapse the panel so it doesn't sit on top of the
+  // next page while it loads.
+  useEffect(() => {
+    if (open) {
+      clearTimers();
+      openedViaKeyboardRef.current = false;
+      setOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, searchParams]);
+
   // Keep the item ref array sized to the current widget list.
   useEffect(() => {
     itemRefs.current = itemRefs.current.slice(0, widgets.length);
@@ -128,6 +141,9 @@ export function DashboardFlyoutMenu() {
   };
 
   const handleSubItemClick = (id: string) => {
+    // Dismiss the panel synchronously BEFORE navigation kicks off so it
+    // never hangs on screen during the route transition.
+    clearTimers();
     openedViaKeyboardRef.current = false;
     setOpen(false);
     navigate(`/dashboard?widget=${encodeURIComponent(id)}`);
@@ -242,7 +258,17 @@ export function DashboardFlyoutMenu() {
             side="right"
             align="start"
             sideOffset={8}
-            className="w-56 p-1"
+            className={cn(
+              // Match the platform's glass surface treatment used by deal
+              // tiles, dashboard modules, and other updated panels: subtle
+              // translucent fill, soft border, blur + saturation, layered
+              // shadow with an inner top highlight, and a unified radius on
+              // all four corners (no top-only rounding).
+              'w-56 p-1.5 rounded-xl border text-popover-foreground',
+              'bg-[rgba(28,44,74,0.86)] border-[rgba(120,170,240,0.28)]',
+              'backdrop-blur-xl backdrop-saturate-150',
+              'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06),0_1px_0_0_rgba(0,0,0,0.25),0_12px_28px_-12px_rgba(0,0,0,0.65)]',
+            )}
             onMouseEnter={() => clearTimers()}
             onMouseLeave={scheduleClose}
             onEscapeKeyDown={(e) => {
@@ -265,7 +291,7 @@ export function DashboardFlyoutMenu() {
             }}
           >
             <div role="menu" aria-label="Dashboard widgets">
-              <div className="px-2 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="px-2 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
                 Quick widgets
               </div>
               {widgets.map((w, index) => {
@@ -281,10 +307,10 @@ export function DashboardFlyoutMenu() {
                     onKeyDown={(e) => handleSubItemKeyDown(e, index)}
                     onMouseEnter={() => setFocusedIndex(index)}
                     className={cn(
-                      'flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors',
-                      'hover:bg-accent hover:text-accent-foreground',
-                      'focus:bg-accent focus:text-accent-foreground',
-                      isActive && 'bg-accent text-accent-foreground font-medium',
+                      'flex w-full items-center rounded-lg px-2.5 py-1.5 text-sm text-popover-foreground/90 outline-none transition-colors',
+                      'hover:bg-white/10 hover:text-popover-foreground',
+                      'focus:bg-white/10 focus:text-popover-foreground',
+                      isActive && 'bg-white/15 text-popover-foreground font-medium',
                     )}
                   >
                     {w.label}
