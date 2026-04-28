@@ -618,28 +618,15 @@ export default function Tasks() {
           {savedViews.map(v => {
             const isActive = activePresetId === v.id;
             return (
-              <div key={v.id} className="group flex items-center">
-                <button
-                  onClick={() => handleLoadView(v)}
-                  className="flex items-center gap-1 h-6 pl-2.5 pr-1.5 text-[11px] font-medium rounded-md transition-all"
-                  style={{
-                    color: isActive ? '#cfe3ff' : '#9aa3b6',
-                    backgroundColor: isActive ? 'rgba(126,184,247,0.12)' : 'rgba(20,24,32,0.65)',
-                    border: `1px solid ${isActive ? 'rgba(126,184,247,0.28)' : 'rgba(255,255,255,0.06)'}`,
-                  }}
-                  title="Load preset"
-                >
-                  <Bookmark className="h-3 w-3" />
-                  <span className="max-w-[160px] truncate">{v.name}</span>
-                  <button
-                    onClick={e => { e.stopPropagation(); if (confirm(`Delete preset "${v.name}"?`)) deleteView.mutate(v.id); }}
-                    className="ml-1 h-4 w-4 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-[rgba(255,255,255,0.06)]"
-                    title="Delete preset"
-                  >
-                    <X className="h-2.5 w-2.5" />
-                  </button>
-                </button>
-              </div>
+              <PresetChip
+                key={v.id}
+                view={v}
+                isActive={isActive}
+                onLoad={() => handleLoadView(v)}
+                onRename={(name) => renameView.mutate({ id: v.id, name })}
+                onDuplicate={() => duplicateView.mutate(v)}
+                onDelete={() => deleteView.mutate(v.id)}
+              />
             );
           })}
           <button
