@@ -41,7 +41,13 @@ import {
   type DueBoundaries,
 } from '@/lib/taskDateGrouping';
 
-const TASK_GRID_COLS = 'grid-cols-[20px_16px_20px_auto_16px_1fr_100px_60px_100px_140px_100px_100px_40px]';
+// Stable column template — every column has a deterministic width so content
+// can never push a neighboring column off-axis. The title column uses
+// `minmax(0,1fr)` so its inner truncation can actually shrink (a bare `1fr`
+// in CSS Grid resolves to `minmax(auto, 1fr)`, which lets long unbroken
+// strings expand the track and overlap the next column).
+const TASK_GRID_COLS =
+  'grid-cols-[20px_16px_20px_16px_16px_minmax(0,1fr)_100px_60px_100px_140px_100px_100px_40px]';
 
 const STATUS_COLORS: Record<string, { label: string; bg: string; dot: string }> = {
   not_started: { label: 'Not Started', bg: '#7a8194', dot: '#7a8194' },
@@ -566,7 +572,10 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
         'focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(126,184,247,0.45)]',
         isDragging && 'z-50',
       )}
-      style={{ ...style, minHeight: 44 }}
+      // Stable row height so dense rows never visually compress on top of
+      // each other. py-1.5 adds the breathing room without making the list
+      // feel airy.
+      style={{ ...style, minHeight: 52 }}
       onClick={onSelect}
     >
       {/* Drag handle */}
@@ -689,7 +698,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       </div>
 
       {/* Owner */}
-      <div className="flex items-center gap-1.5 min-w-0">
+      <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
         {task.assignee_profile ? (
           <>
             <Avatar className="h-4 w-4">
