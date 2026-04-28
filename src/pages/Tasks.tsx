@@ -50,6 +50,7 @@ import {
   Bookmark, BookmarkPlus, FileDown, Star, MoreVertical,
   Tag, ClipboardList, Users, Briefcase, Building2, CalendarDays, X,
   Pencil, Copy as CopyIcon, Check,
+  Link2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDueBoundaries } from '@/hooks/useDueBoundaries';
@@ -407,6 +408,64 @@ export default function Tasks() {
     toast.success(`Loaded view: ${view.name}`);
   };
 
+  // ── Shareable preset links ────────────────────────────────────────────
+  // Encode a preset's full config (plus name) into a URL-safe base64 token so
+  // teammates can open the same filtered view directly via link, even if they
+  // don't have it saved on their account.
+  const encodePreset = useCallback((view: TaskSavedView): string => {
+    const payload = { n: view.name, c: view.view_config };
+    const json = JSON.stringify(payload);
+    // base64url
+    const b64 = btoa(unescape(encodeURIComponent(json)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const url = new URL(window.location.origin + '/tasks');
+    url.searchParams.set('preset', b64);
+    return url.toString();
+  }, []);
+
+  const handleCopyPresetLink = useCallback(async (view: TaskSavedView) => {
+    try {
+      const link = encodePreset(view);
+      await navigator.clipboard.writeText(link);
+      toast.success('Preset link copied — share it with teammates');
+    } catch {
+      toast.error('Could not copy link');
+    }
+  }, [encodePreset]);
+
+  // Auto-load shared preset from URL on mount
+  const presetParamLoaded = useRef(false);
+  useEffect(() => {
+    if (presetParamLoaded.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('preset');
+    if (!token) return;
+    presetParamLoaded.current = true;
+    try {
+      const b64 = token.replace(/-/g, '+').replace(/_/g, '/');
+      const json = decodeURIComponent(escape(atob(b64)));
+      const payload = JSON.parse(json) as { n?: string; c?: TaskSavedView['view_config'] };
+      if (payload?.c) {
+        handleLoadView({
+          id: 'shared-link',
+          user_id: '',
+          name: payload.n || 'Shared preset',
+          view_config: payload.c,
+          is_default: false,
+          position: 0,
+          created_at: '',
+        });
+      }
+      // Clean the param from the URL (keep history clean, avoid re-triggering)
+      params.delete('preset');
+      const next = window.location.pathname + (params.toString() ? `?${params}` : '');
+      window.history.replaceState({}, '', next);
+    } catch {
+      toast.error('That preset link looked invalid');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Determine which preset (if any) is currently active for highlight
   const activePresetId = useMemo(() => {
     for (const v of savedViews) {
@@ -626,6 +685,7 @@ export default function Tasks() {
                 onRename={(name) => renameView.mutate({ id: v.id, name })}
                 onDuplicate={() => duplicateView.mutate(v)}
                 onDelete={() => deleteView.mutate(v.id)}
+                onCopyLink={() => handleCopyPresetLink(v)}
               />
             );
           })}
@@ -1230,7 +1290,7 @@ function SortableBoardCard({ task, priorityPill, todayStr, selectedTaskId, onSel
 
 // ── Saved-preset chip with inline rename + duplicate + delete ───────────────
 function PresetChip({
-  view, isActive, onLoad, onRename, onDuplicate, onDelete,
+  view, isActive, onLoad, onRename, onDuplicate, onDelete, onCopyLink,
 }: {
   view: TaskSavedView;
   isActive: boolean;
@@ -1238,6 +1298,7 @@ function PresetChip({
   onRename: (name: string) => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onCopyLink: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -1327,6 +1388,13 @@ function PresetChip({
                 style={{ color: '#eef1f6' }}
               >
                 <CopyIcon className="h-3 w-3" /> Duplicate
+              </button>
+              <button
+                onClick={() => { onCopyLink(); setMenuOpen(false); }}
+                className="flex items-center gap-2 px-2 py-1.5 rounded text-[12px] hover:bg-[rgba(255,255,255,0.04)]"
+                style={{ color: '#eef1f6' }}
+              >
+                <Link2 className="h-3 w-3" /> Copy preset link
               </button>
               <div className="my-1 h-px" style={{ backgroundColor: 'rgba(255,255,255,0.05)' }} />
               <button
