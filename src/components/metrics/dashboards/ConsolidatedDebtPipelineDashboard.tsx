@@ -320,24 +320,23 @@ export function ConsolidatedDebtPipelineDashboard({
     `${metricLabel} · Active Pipeline → Funded / Invoiced · ${bucket.label}`;
 
   useEffect(() => {
-    if (m.fundedInvoicedTrend.isLoading || !selectedQuarter) return null;
+    if (m.fundedInvoicedTrend.isLoading || !selectedQuarter) return;
     const reopen = consumePendingReopen(
       (entry) => entry.source === 'insights.consolidated-debt-pipeline' && entry.quarterId === selectedQuarter.value,
     );
-    if (!reopen) return null;
+    if (!reopen) return;
     const [metric, mode, bucketKey] = reopen.bucketKey.split('|') as [TrendMetricKey, TrendChartMode, string];
     if (mode !== trendMode) {
       setTrendMode(mode);
-      return null;
+      return;
     }
     const bucket = (mode === 'monthly' ? m.fundedInvoicedTrend.monthly : m.fundedInvoicedTrend.quarterly).find((entry) => entry.key === bucketKey);
-    if (!bucket) return null;
+    if (!bucket) return;
     setDrilldown({
       title: `${metric === 'deals-closed' ? 'Deals Closed' : 'Dollars Funded'} — ${bucket.label}`,
       deals: bucket.deals,
       periodNote: buildTrendPeriodNote(bucket, metric === 'deals-closed' ? 'Deal count' : 'Dollar volume'),
     });
-    return null;
   }, [m.fundedInvoicedTrend.isLoading, m.fundedInvoicedTrend.monthly, m.fundedInvoicedTrend.quarterly, selectedQuarter, trendMode]);
 
   const formatMetricCurrency = (value: number | null) => (value == null ? 'N/A' : formatCurrency(value));
