@@ -1461,14 +1461,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                       // unlinked, surface a non-blocking prompt so the user can
                       // link the deal and retry without losing the sent email.
                       const thread = currentThread;
-                      const resolvedDealId =
-                        dealId
-                        || thread?.linkedDealId
-                        || (thread?.dealName ? null : null);
-                      const resolvedDealName =
-                        thread?.dealName
-                        || thread?.linkedDealName
-                        || null;
+                      const resolvedDealId = dealId || null;
+                      const resolvedDealName = thread?.dealName || null;
 
                       if (!resolvedDealId) {
                         toast.message('Reply sent — not logged to a deal', {
