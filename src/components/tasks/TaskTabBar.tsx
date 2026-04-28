@@ -81,7 +81,7 @@ export function TaskTabBar({
 
   return (
     <>
-      <div className="flex items-center gap-1 px-6 py-2 border-b overflow-x-auto" style={{ borderColor: '#2a2f3e' }}>
+      <div className="flex items-center gap-1 px-6 py-1.5 overflow-x-auto" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
         {tabs.map(tab => {
           const Icon = getTabIcon(tab.icon);
           const isActive = tab.id === activeTabId;
@@ -93,21 +93,22 @@ export function TaskTabBar({
               <button
                 onClick={() => onSelectTab(tab.id)}
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all whitespace-nowrap',
-                  isActive ? 'shadow-sm' : 'hover:bg-[#1a1f2e]'
+                  'flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-md transition-all whitespace-nowrap',
+                  isActive ? '' : 'hover:bg-[rgba(255,255,255,0.03)]'
                 )}
                 style={{
-                  backgroundColor: isActive ? '#3b7eff' : 'transparent',
-                  color: isActive ? 'white' : '#8b92a5',
+                  backgroundColor: isActive ? 'rgba(126,184,247,0.1)' : 'transparent',
+                  color: isActive ? '#cfe3ff' : '#7a8194',
+                  border: `1px solid ${isActive ? 'rgba(126,184,247,0.22)' : 'transparent'}`,
                 }}
               >
-                <Icon className="h-3.5 w-3.5" />
+                <Icon className="h-3 w-3" />
                 {tab.name}
                 <Badge
                   variant="secondary"
                   className={cn(
-                    'h-4 min-w-[16px] px-1 text-[10px] font-semibold',
-                    isActive ? 'bg-white/20 text-white' : 'bg-[#1a1f2e] text-[#8b92a5]'
+                    'h-4 min-w-[16px] px-1 text-[10px] font-medium rounded',
+                    isActive ? 'bg-[rgba(126,184,247,0.18)] text-[#cfe3ff]' : 'bg-[rgba(255,255,255,0.04)] text-[#7a8194]'
                   )}
                 >
                   {count}
@@ -120,9 +121,9 @@ export function TaskTabBar({
                   <button
                     className={cn(
                       'h-5 w-5 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 transition-opacity ml-[-4px]',
-                      'hover:bg-[#2a2f3e]'
+                      'hover:bg-[rgba(255,255,255,0.05)]'
                     )}
-                    style={{ color: '#8b92a5' }}
+                    style={{ color: '#7a8194' }}
                     onClick={e => e.stopPropagation()}
                   >
                     <MoreHorizontal className="h-3 w-3" />
@@ -154,10 +155,10 @@ export function TaskTabBar({
 
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1 px-2 py-1.5 text-xs rounded-md transition-colors hover:bg-[#1a1f2e]"
-          style={{ color: '#8b92a5' }}
+          className="flex items-center gap-1 px-2 py-1 text-[11px] rounded-md transition-colors hover:bg-[rgba(255,255,255,0.04)]"
+          style={{ color: '#7a8194' }}
         >
-          <Plus className="h-3.5 w-3.5" />
+          <Plus className="h-3 w-3" />
         </button>
       </div>
 
