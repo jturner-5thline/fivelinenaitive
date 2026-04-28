@@ -695,12 +695,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
   }, [ownerGoals, activeQuarterLabel, activeHalfLabel]);
 
   // Persist editor open/closed state in localStorage so it survives reloads.
-  const editorOpenLsKey = `asanaGoalFilterEditorOpen:v1:${prefs && (prefs as any) ? '' : ''}`;
-  const editorOpenStorageKey = useMemo(() => {
-    // Scope per-company when available, otherwise global.
-    // We re-read from prefs object captured by closure isn't ideal, so use companyId via window.
-    return 'asanaGoalFilterEditorOpen:v1';
-  }, []);
+  const editorOpenStorageKey = 'asanaGoalFilterEditorOpen:v1';
   const [filterEditorOpen, setFilterEditorOpenRaw] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     try {
