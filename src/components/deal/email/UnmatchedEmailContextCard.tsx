@@ -15,6 +15,8 @@ import type { WorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
 import { useCreateContact } from '@/hooks/useContacts';
 import { useLinkContactToDeal } from '@/hooks/useCrmLinks';
 import { STATUS_CONFIG } from '@/types/deal';
+import { useIsTeamMemberEmail } from '@/hooks/useIsTeamMemberEmail';
+import { domainOf, isInternalEmail } from '@/lib/internalDomains';
 
 interface Props {
   /** Inbound email to enrich. */
@@ -24,6 +26,12 @@ interface Props {
     subject?: string;
     body_preview?: string;
     body_text?: string;
+    /**
+     * Mailbox folder of the latest message — used to detect outbound
+     * messages (sent by an internal user) so we can suppress the
+     * "New contact" prompt entirely.
+     */
+    folder?: 'inbox' | 'sent' | 'drafts' | 'junk' | 'trash' | 'outbox';
   };
   /** Persists the link selection on the parent thread (deal_emails write). */
   onLinkDeal: (dealId: string, dealName: string) => void | Promise<void>;
