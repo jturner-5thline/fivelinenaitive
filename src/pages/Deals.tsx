@@ -421,34 +421,13 @@ export default function Dashboard() {
             family as the rest of the platform.
           */}
           <div className="space-y-5">
-            {/* 1. Page header */}
+            {/* 1. Page header (title + subtitle removed; actions row only) */}
             <div
-              className="flex items-end justify-between gap-4 flex-wrap opacity-0"
+              className="flex items-center justify-between gap-4 flex-wrap opacity-0"
               style={{ animation: 'fadeInUp 0.4s ease-out forwards' }}
             >
-              <div className="min-w-0 flex items-end gap-3">
-                <div className="min-w-0">
-                  <h1
-                    className="text-[20px] font-semibold tracking-tight leading-none truncate"
-                    style={{ color: '#f3f4f6' }}
-                  >
-                    {company?.name ? `${company.name} · Deals` : 'Deals'}
-                  </h1>
-                  <p className="mt-1.5 text-[12px]" style={{ color: '#7a8194' }}>
-                    <span>{deals.filter(d => d.status !== 'archived').length} active</span>
-                    <span className="mx-1.5 opacity-60">·</span>
-                    <span>{deals.length} total</span>
-                    {staleDealCount > 0 && (
-                      <>
-                        <span className="mx-1.5 opacity-60">·</span>
-                        <span style={{ color: '#e5a663' }}>{staleDealCount} stale</span>
-                      </>
-                    )}
-                  </p>
-                </div>
-                <div className="pb-[2px]">
-                  <PipelineSelector />
-                </div>
+              <div className="min-w-0 flex items-center gap-3">
+                <PipelineSelector />
               </div>
 
               <div className="flex items-center gap-1.5 flex-wrap shrink-0">
