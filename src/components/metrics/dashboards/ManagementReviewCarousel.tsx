@@ -54,12 +54,12 @@ export function ManagementReviewCarousel() {
 
   return (
     <div
-      style={{ background: '#0f1923', minHeight: '100vh', position: 'relative' }}
+      style={{ position: 'relative' }}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      {/* Floating side navigation arrows + page content */}
-      <div style={{ position: 'relative', padding: '0 48px' }}>
+      {/* Floating side navigation arrows + page content (no extra background wrapper) */}
+      <div style={{ position: 'relative' }}>
         <button
           onClick={() => goTo(-1)}
           aria-label="Previous page"
