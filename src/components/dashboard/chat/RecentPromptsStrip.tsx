@@ -40,6 +40,7 @@ export function RecentPromptsStrip({
           <button
             key={prompt}
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => onSelect(prompt)}
             disabled={isLoading}
             title={prompt}
