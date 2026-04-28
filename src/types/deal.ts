@@ -106,6 +106,20 @@ export interface Deal {
   dealClass?: DealClass;
   /** FinServ-only: paused without changing stage. */
   onHold?: boolean;
+  /* ─── Pipeline-specific fields (FinServ) ─────────────────────────────
+   * Mirrors the columns captured by FinServCreateDealDialog. Centralized
+   * schema lives in src/config/pipelineFieldSchemas.ts. */
+  contactEmail?: string;
+  leadSource?: string;
+  referralSource?: string;
+  opportunityType?: string;
+  servicesOffered?: string[];
+  feeType?: string;
+  mrr?: number | null;
+  oneTimeRevenue?: number | null;
+  projectedCloseDate?: string | null;
+  contractStartDate?: string | null;
+  contractEndDate?: string | null;
 }
 
 export const LENDER_STATUS_CONFIG: Record<LenderStatus, { label: string }> = {
