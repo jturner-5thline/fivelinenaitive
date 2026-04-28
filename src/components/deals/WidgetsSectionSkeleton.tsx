@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 export function WidgetsSectionSkeleton() {
   return (
     <div className="relative border border-border rounded-lg p-4 pb-12">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {[...Array(4)].map((_, i) => (
           <Card key={i}>
             <CardContent className="flex items-center gap-4 p-4">
