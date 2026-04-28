@@ -69,6 +69,12 @@ import { EmailIntelligenceDialog } from './email/EmailIntelligenceDialog';
 import { InlineComposePanel } from './email/InlineComposePanel';
 import { useAIEmailSearch, AI_SEARCH_MIN_LENGTH } from '@/hooks/useAIEmailSearch';
 import { Sparkles, Loader2 } from 'lucide-react';
+import { useGmail } from '@/hooks/useGmail';
+
+// A message id is a real provider (Nylas/Gmail/Outlook) id only when the
+// inbox is hydrated from `externalEmails`. Mock fixtures use the `mock-`
+// prefix and must NEVER be sent to the provider sync endpoint.
+const isProviderMessageId = (id: string) => !!id && !id.startsWith('mock-');
 
 interface DealEmailsTabProps {
   dealId: string;
@@ -217,6 +223,35 @@ function PaginationFooter({
 }
 
 export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingExternal, onGmailSend, onLoadMore, hasMore, isLoadingMore, isAutoPaginating }: DealEmailsTabProps) {
+  // Routes read-state writes through Nylas → Gmail/Outlook so the change
+  // is reflected in the user's actual mailbox. We only call this for
+  // real (externally hydrated) emails — never mock fixtures.
+  const { markRead: providerMarkRead } = useGmail();
+
+  // Sync a batch of provider-backed messages to the real mailbox.
+  // Optimistic UI is already applied by the caller; on failure we
+  // revert via `onRevert` and surface a single toast.
+  const syncReadStateToProvider = useCallback(
+    async (messageIds: string[], read: boolean, onRevert: () => void) => {
+      const providerIds = messageIds.filter(isProviderMessageId);
+      if (!externalEmails || providerIds.length === 0) return;
+
+      const results = await Promise.all(
+        providerIds.map((id) => providerMarkRead(id, read).catch(() => false))
+      );
+      const anyFailed = results.some((ok) => !ok);
+      if (anyFailed) {
+        onRevert();
+        toast.error(
+          read
+            ? "Couldn't sync read state to Gmail/Outlook"
+            : "Couldn't sync unread state to Gmail/Outlook",
+          { description: 'Reconnect your mailbox in Settings if this keeps happening.' }
+        );
+      }
+    },
+    [externalEmails, providerMarkRead]
+  );
   const navigate = useNavigate();
   const { queueSend } = useUndoSend();
   const { entities: classifierEntities, orgCtx } = useEmailClassifierData();
@@ -542,24 +577,37 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   };
 
   const handleBulkMarkRead = useCallback(() => {
+    // Capture pre-change snapshot for rollback if provider sync fails.
+    const prevSnapshot = emails;
+    const affectedIds: string[] = [];
     setEmails(prev => prev.map(e => {
       const threads = groupEmailsByThread([e]);
-      if (threads.some(t => selectedIds.has(t.threadId))) return { ...e, is_read: true };
+      if (threads.some(t => selectedIds.has(t.threadId))) {
+        affectedIds.push(e.id);
+        return { ...e, is_read: true };
+      }
       return e;
     }));
     toast.success(`${selectedIds.size} marked as read`);
     setSelectedIds(new Set());
-  }, [selectedIds]);
+    void syncReadStateToProvider(affectedIds, true, () => setEmails(prevSnapshot));
+  }, [selectedIds, emails, syncReadStateToProvider]);
 
   const handleBulkMarkUnread = useCallback(() => {
+    const prevSnapshot = emails;
+    const affectedIds: string[] = [];
     setEmails(prev => prev.map(e => {
       const threads = groupEmailsByThread([e]);
-      if (threads.some(t => selectedIds.has(t.threadId))) return { ...e, is_read: false };
+      if (threads.some(t => selectedIds.has(t.threadId))) {
+        affectedIds.push(e.id);
+        return { ...e, is_read: false };
+      }
       return e;
     }));
     toast.success(`${selectedIds.size} marked as unread`);
     setSelectedIds(new Set());
-  }, [selectedIds]);
+    void syncReadStateToProvider(affectedIds, false, () => setEmails(prevSnapshot));
+  }, [selectedIds, emails, syncReadStateToProvider]);
 
   const handleBulkArchive = useCallback(() => {
     const idsToArchive = new Set<string>();
@@ -584,12 +632,16 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   }, [selectedIds, emails]);
 
   const handleMarkRead = useCallback((email: MockEmail) => {
+    const prevSnapshot = emails;
     setEmails(prev => prev.map(e => e.id === email.id ? { ...e, is_read: true } : e));
-  }, []);
+    void syncReadStateToProvider([email.id], true, () => setEmails(prevSnapshot));
+  }, [emails, syncReadStateToProvider]);
 
   const handleMarkUnread = useCallback((email: MockEmail) => {
+    const prevSnapshot = emails;
     setEmails(prev => prev.map(e => e.id === email.id ? { ...e, is_read: false } : e));
-  }, []);
+    void syncReadStateToProvider([email.id], false, () => setEmails(prevSnapshot));
+  }, [emails, syncReadStateToProvider]);
 
   const handleArchiveEmail = useCallback((email: MockEmail) => {
     setEmails(prev => prev.filter(e => e.id !== email.id));
@@ -606,9 +658,17 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     setComposeOpen(false);
     if (thread.hasUnread) {
       const unreadIds = new Set(thread.emails.filter(e => !e.is_read).map(e => e.id));
+      const prevSnapshot = emails;
       setEmails(prev => prev.map(e => unreadIds.has(e.id) ? { ...e, is_read: true } : e));
+      // Auto-mark-as-read when opening a thread must also propagate to the
+      // user's actual mailbox so it doesn't show as unread in Gmail/Outlook.
+      void syncReadStateToProvider(
+        Array.from(unreadIds),
+        true,
+        () => setEmails(prevSnapshot)
+      );
     }
-  }, []);
+  }, [emails, syncReadStateToProvider]);
 
   const isSectionOpen = (section: SidebarSection) => {
     if (collapsedSections[section.title] !== undefined) return !collapsedSections[section.title];
