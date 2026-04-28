@@ -559,8 +559,12 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
 
   if (threads.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full py-16 text-center">
-        <MessageSquare className="h-8 w-8 text-muted-foreground/30 mb-2" />
+      <div
+        className="flex flex-col items-center justify-center h-full py-16 text-center"
+        role="status"
+        aria-live="polite"
+      >
+        <MessageSquare className="h-8 w-8 text-muted-foreground/30 mb-2" aria-hidden="true" />
         <p className="text-sm text-muted-foreground">No emails in this folder</p>
       </div>
     );
