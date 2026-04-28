@@ -124,6 +124,7 @@ export default function Tasks() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showFocusMode, setShowFocusMode] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
+  const quickCreateTriggerRef = useRef<HTMLElement | null>(null);
 
   // Fetch label assignments for all tasks for filtering
   const { data: allLabelAssignments = [] } = useQuery({
