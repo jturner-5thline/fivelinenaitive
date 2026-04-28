@@ -20,6 +20,7 @@ import { useCashFlowImport } from './useCashFlowImport';
 import { useCashInItems } from './useCashInItems';
 import { useScheduledCashFlows } from './useScheduledCashFlows';
 import { mergeScheduledIntoWeekly, ACCOUNT_OPTIONS, DEBT_ADVISORY_DEFAULT_SUBCATEGORY } from './scheduledCashFlows';
+import { WEEKLY_HISTORICAL_SEED, LAST_HISTORICAL_WEEK_ENDING } from './weeklyHistoricalSeed';
 import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
