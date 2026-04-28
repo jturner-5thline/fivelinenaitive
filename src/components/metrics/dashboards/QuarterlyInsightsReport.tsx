@@ -324,9 +324,25 @@ function ReportHeaderSection({ s, set, reset, print }: { s: ReportState; set: Re
             <input value={s.preparedDate} onChange={e => set(prev => ({ ...prev, preparedDate: e.target.value }))} style={{ ...inputStyle, width: 120 }} />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: TEXT_LABEL, marginRight: 4 }}>Prepared By</span>
-            {s.authors.map(author => <Chip key={author}>{author}</Chip>)}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: TEXT_LABEL }}>Prepared By</span>
+            {(() => {
+              const PREPARED_BY_OPTIONS = ['James Turner', 'John Moffitt', 'Scott Williams', 'McKenzie Clark'];
+              const current = s.authors[0] && PREPARED_BY_OPTIONS.includes(s.authors[0])
+                ? s.authors[0]
+                : 'James Turner';
+              return (
+                <select
+                  value={current}
+                  onChange={e => set(prev => ({ ...prev, authors: [e.target.value] }))}
+                  style={{ ...selectStyle, width: 160 }}
+                >
+                  {PREPARED_BY_OPTIONS.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              );
+            })()}
           </div>
         </div>
       </div>
