@@ -526,7 +526,7 @@ export default function Dashboard() {
               }
             >
               <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                <div className="relative h-12 w-12 rounded-xl border border-primary/30 bg-primary/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                <div className={TILE_ICON_CHIP_CLASSES}>
                   <CalendarIcon className="relative z-10 h-7 w-7 text-primary" />
                 </div>
                 <span className="text-sm font-medium text-foreground">Calendar</span>
@@ -553,7 +553,7 @@ export default function Dashboard() {
               }
             >
               <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                <div className="relative h-12 w-12 rounded-xl border border-accent/30 bg-accent/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                <div className={TILE_ICON_CHIP_CLASSES}>
                   <Briefcase className="relative z-10 h-7 w-7 text-accent-foreground" />
                 </div>
                 <span className="text-sm font-medium text-foreground">New Deal</span>
@@ -572,7 +572,7 @@ export default function Dashboard() {
                 }
               >
                 <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                  <div className="relative h-12 w-12 rounded-xl border border-warning/30 bg-warning/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                  <div className={TILE_ICON_CHIP_CLASSES}>
                     <Newspaper className="relative z-10 h-7 w-7 text-warning" />
                   </div>
                   <span className="text-sm font-medium text-foreground">Daily Briefing</span>
@@ -592,7 +592,7 @@ export default function Dashboard() {
                 }
               >
                 <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                  <div className="relative h-12 w-12 rounded-xl border border-[hsl(190,90%,55%,0.4)] bg-[hsl(190,90%,45%,0.18)] backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                  <div className={TILE_ICON_CHIP_CLASSES}>
                     <Newspaper className="relative z-10 h-7 w-7 text-[hsl(190,90%,70%)]" />
                   </div>
                   <span className="text-sm font-medium text-foreground">
@@ -612,7 +612,7 @@ export default function Dashboard() {
               aria-label="Open Deals insights"
             >
               <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                <div className="relative h-12 w-12 rounded-xl border border-emerald-500/30 bg-emerald-500/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                <div className={TILE_ICON_CHIP_CLASSES}>
                   <Handshake className="relative z-10 h-7 w-7 text-emerald-400" />
                 </div>
                 <span className="text-sm font-medium text-foreground">Deals</span>
@@ -631,7 +631,7 @@ export default function Dashboard() {
                 }
               >
                 <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-                  <div className="relative h-12 w-12 rounded-xl border border-primary/30 bg-primary/15 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                  <div className={TILE_ICON_CHIP_CLASSES}>
                     <Briefcase className="relative z-10 h-7 w-7 text-primary" />
                   </div>
                   <span className="text-sm font-medium text-foreground">Deal Rundown</span>
