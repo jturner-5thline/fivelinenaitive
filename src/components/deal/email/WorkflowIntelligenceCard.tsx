@@ -9,12 +9,15 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import type { WorkflowAnalysis, WorkflowConfidence } from '@/hooks/useThreadWorkflowAnalysis';
 import { useLenderStages } from '@/contexts/LenderStagesContext';
+import { SuggestedTaskCards } from './SuggestedTaskCards';
 
 interface Props {
   analysis: WorkflowAnalysis;
   loading?: boolean;
   committing: boolean;
   hasLinkedDeal: boolean;
+  /** Source thread id used to attach the email reference to created tasks. */
+  threadId?: string | null;
   /**
    * Source-of-truth association flags resolved from the database by
    * useThreadWorkflowAnalysis. When `null`, resolution hasn't completed
@@ -122,6 +125,7 @@ export function WorkflowIntelligenceCard({
   onDismiss,
   onMaybeLater,
   attachmentFallback,
+  threadId = null,
 }: Props) {
   // Source of truth for pass-reason options — same list shown in the
   // deal-detail Lenders tab "Confirm Pass" dialog so the two stay in sync.
@@ -516,6 +520,21 @@ export function WorkflowIntelligenceCard({
               <p className="text-[11px] text-muted-foreground italic">
                 No workflow update suggested for this thread.
               </p>
+            )}
+
+            {/* Suggested next-action tasks detected from the email body. Render
+                as confirm-first cards inline within the Suggested Update list
+                so the user sees deal-level updates and task suggestions
+                together. No modal, no form. */}
+            {analysis.suggested_tasks && analysis.suggested_tasks.length > 0 && (
+              <div className="pt-2 border-t border-primary/10">
+                <SuggestedTaskCards
+                  suggestions={analysis.suggested_tasks}
+                  dealId={analysis.recommended_update.deal_id || analysis.likely_deal.id || null}
+                  dealName={analysis.recommended_update.deal_name || analysis.likely_deal.name || null}
+                  threadId={threadId}
+                />
+              </div>
             )}
 
             {analysis.secondary_action.kind !== 'none' && analysis.secondary_action.title && (
