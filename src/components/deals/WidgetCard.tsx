@@ -53,6 +53,9 @@ export function WidgetCard({ widget, value, isEditMode, isClickable, onEdit, onD
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    background: 'rgba(16, 28, 52, 0.75)',
+    border: '0.5px solid rgba(80, 140, 255, 0.18)',
+    borderRadius: '12px',
   };
 
   const handleClick = () => {
@@ -65,7 +68,7 @@ export function WidgetCard({ widget, value, isEditMode, isClickable, onEdit, onD
     <Card
       ref={setNodeRef}
       style={style}
-      className={`relative group border border-[hsl(272,100%,80%,0.35)] bg-[linear-gradient(145deg,hsl(222,30%,18%)_0%,hsl(230,25%,14%)_50%,hsl(238,22%,11%)_100%)] backdrop-blur-xl shadow-[inset_0_1px_2px_hsl(272,100%,80%,0.15),inset_0_-1px_1px_hsl(0,0%,0%,0.2),0_0_12px_hsl(272,100%,70%,0.1),0_6px_28px_hsl(0,0%,0%,0.5)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(272,80%,75%,0.08)_0%,transparent_40%,hsl(268,60%,50%,0.04)_100%)] transition-all duration-200 hover:border-[hsl(272,100%,80%,0.55)] hover:shadow-[inset_0_1px_2px_hsl(272,100%,85%,0.2),inset_0_-1px_1px_hsl(0,0%,0%,0.25),0_0_20px_hsl(272,100%,70%,0.18),0_10px_40px_hsl(0,0%,0%,0.6)] ${isDragging ? 'z-50 opacity-50' : ''} ${isClickable && !isEditMode ? 'cursor-pointer hover:-translate-y-0.5' : ''}`}
+      className={`relative group overflow-hidden backdrop-blur-xl before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(255,255,255,0.07)_0%,rgba(255,255,255,0.00)_55%)] transition-all duration-200 ${isDragging ? 'z-50 opacity-50' : ''} ${isClickable && !isEditMode ? 'cursor-pointer hover:-translate-y-0.5' : ''}`}
       onClick={handleClick}
     >
       {isEditMode && (
@@ -102,8 +105,8 @@ export function WidgetCard({ widget, value, isEditMode, isClickable, onEdit, onD
           <Icon className={`relative z-10 h-6 w-6 ${colors.text}`} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm text-white/60 truncate">{widget.label}</p>
-          <p className="text-2xl font-semibold text-white">{value}</p>
+          <p className="text-sm truncate" style={{ color: 'rgba(160, 200, 255, 0.50)' }}>{widget.label}</p>
+          <p className="text-2xl font-semibold" style={{ color: '#dde8f8' }}>{value}</p>
         </div>
       </CardContent>
     </Card>
