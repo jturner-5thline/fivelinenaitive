@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CalendarIcon, Loader2 } from 'lucide-react';
+import { CalendarIcon, Loader2, UserCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { type TeamMember } from '@/hooks/useTeamMembers';
@@ -181,7 +181,21 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
               </Popover>
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase tracking-wide font-medium" style={{ color: '#7a8194' }}>Assignee</label>
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] uppercase tracking-wide font-medium" style={{ color: '#7a8194' }}>Assignee</label>
+                {assignedTo !== currentUserId && (
+                  <button
+                    type="button"
+                    onClick={() => setAssignedTo(currentUserId)}
+                    className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded hover:bg-[rgba(126,184,247,0.1)] transition-colors"
+                    style={{ color: '#7eb8f7' }}
+                    title="Assign this task to me"
+                  >
+                    <UserCheck className="h-2.5 w-2.5" />
+                    Assign to me
+                  </button>
+                )}
+              </div>
               <Select value={assignedTo} onValueChange={setAssignedTo}>
                 <SelectTrigger className="h-9 text-sm text-white" style={{ backgroundColor: 'rgba(20,24,32,0.65)', borderColor: 'rgba(255,255,255,0.07)' }}>
                   <div className="flex items-center gap-2 truncate">
