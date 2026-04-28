@@ -1845,7 +1845,7 @@ export default function Metrics() {
         <title>Insights | 5thLine</title>
       </Helmet>
       <div className="bg-transparent">
-        <div className="container mx-auto py-6 px-4 space-y-6">
+        <div className="insights-glass-skin container mx-auto py-6 px-4 space-y-6">
           {/* Header (sticky to top of scrollable <main>) */}
           <StickyDashboardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
