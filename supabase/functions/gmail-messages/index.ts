@@ -11,6 +11,48 @@ const NYLAS_API_URI = "https://api.us.nylas.com";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+/**
+ * Normalize a failed Nylas response into a JSON error the client can reason about.
+ * - Safely reads the body even if it's not JSON (e.g. an HTML 503 page).
+ * - Maps transient upstream errors (429 rate-limit, 502/503/504) to a 503 with
+ *   `retryable: true` so the client doesn't surface them as hard 4xx failures.
+ */
+async function forwardNylasError(resp: Response, fallbackMessage: string): Promise<Response> {
+  const upstreamStatus = resp.status;
+  let providerMessage: string | undefined;
+  try {
+    const ct = resp.headers.get("content-type") || "";
+    if (ct.includes("application/json")) {
+      const j = await resp.json();
+      providerMessage = j?.error?.message || j?.message || j?.error?.provider_error?.error?.message;
+    } else {
+      const t = await resp.text();
+      providerMessage = t?.slice(0, 200);
+    }
+  } catch {
+    /* body already consumed or invalid — ignore */
+  }
+
+  const isTransient = upstreamStatus === 429 || (upstreamStatus >= 500 && upstreamStatus <= 599);
+  const retryAfter = resp.headers.get("retry-after");
+  const status = isTransient ? 503 : upstreamStatus;
+  const body = {
+    error: providerMessage || fallbackMessage,
+    upstream_status: upstreamStatus,
+    retryable: isTransient,
+    ...(retryAfter ? { retry_after: retryAfter } : {}),
+  };
+  console.error(`[gmail-messages] upstream error ${upstreamStatus}: ${body.error}`);
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+      ...(retryAfter ? { "Retry-After": retryAfter } : {}),
+    },
+  });
+}
+
 interface MessageRequest {
   action: "list" | "get" | "get_thread" | "send" | "mark_read" | "mark_unread" | "star" | "unstar" | "trash" | "delete" | "sync_state" | "get_attachment";
   message_id?: string;
