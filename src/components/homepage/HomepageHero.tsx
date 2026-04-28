@@ -2,57 +2,19 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { SpinningGlobe } from "@/components/SpinningGlobe";
 import naitiveLogoDark from "@/assets/naitive-logo-dark.png";
-import heroGlassBg from "@/assets/hero-glass-bg.jpg";
 
 export const HomepageHero = () => {
   return (
-    <section
-      className="relative min-h-screen flex items-center justify-center overflow-hidden"
-      style={{
-        background:
-          'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)',
-      }}
-    >
-      {/* Tint overlay — darkens left side for wordmark legibility, keeps globe crisp */}
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-transparent">
+      {/* Globe — scaled down, pushed right. Screen blend so any internal dark fill disappears into the page gradient. */}
       <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            "linear-gradient(90deg, rgba(10,13,25,0.57) 0%, rgba(10,13,25,0.37) 55%, rgba(10,13,25,0.25) 100%)",
-          zIndex: 1,
-        }}
-      />
-
-      {/* Globe-area vignette — darkens center behind the sphere so internal activity reads;
-          pushes brand color outward into atmospheric framing. */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(ellipse 38% 48% at 71% 50%, rgba(4,4,8,0.78) 0%, rgba(4,4,8,0.55) 35%, rgba(4,4,8,0.18) 65%, rgba(4,4,8,0) 100%)",
-          zIndex: 1,
-        }}
-      />
-
-      {/* Globe — scaled down, pushed right */}
-      <div className="absolute inset-0 flex items-center justify-end overflow-hidden">
+        className="absolute inset-0 flex items-center justify-end overflow-hidden pointer-events-none"
+        style={{ mixBlendMode: 'screen' }}
+      >
         <div className="w-[65%] h-full relative right-[-8%]">
           <SpinningGlobe />
         </div>
       </div>
-
-      {/* Bottom fade — long, multi-stop blend into next section's exact background color */}
-      <div
-        className="absolute inset-x-0 bottom-0 pointer-events-none border-0 shadow-none outline-none"
-        style={{
-          height: "60%",
-          minHeight: "380px",
-          maxHeight: "560px",
-          background:
-            "linear-gradient(180deg, rgba(18,13,27,0) 0%, rgba(18,13,27,0.05) 25%, rgba(18,13,27,0.18) 45%, rgba(18,13,27,0.45) 65%, rgba(18,13,27,0.78) 82%, hsl(265 35% 5%) 100%)",
-          zIndex: 2,
-        }}
-      />
 
       {/* Left-aligned, vertically centered content */}
       <div className="relative z-10 container mx-auto px-6 md:px-[8%] lg:px-[10%]">
