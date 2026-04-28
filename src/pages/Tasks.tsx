@@ -612,7 +612,15 @@ export default function Tasks() {
   return (
     <>
       <Helmet><title>Tasks | 5thLine</title></Helmet>
-      <div className="flex flex-col h-full" style={{ backgroundColor: '#0f1216' }}>
+      {/*
+        Page surface — matches the Dashboard and Deals glass language:
+        transparent base so the AppLayout's ambient backdrop shows through.
+        Previously this used a hardcoded solid #0f1216 slab which made the
+        Tasks page read as a flat, visually separate module from the rest
+        of the platform. Keeping `flex flex-col h-full` preserves the
+        existing internal layout/scroll behavior unchanged.
+      */}
+      <div className="flex flex-col h-full bg-transparent">
         {/* Header — title + muted summary + segmented view control */}
         <div className="flex items-end justify-between px-6 pt-5 pb-3 min-w-0 gap-4 flex-nowrap">
           <div className="min-w-0">
