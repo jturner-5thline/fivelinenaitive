@@ -213,9 +213,10 @@ interface ThreadListItemProps {
   onDelete?: (email: MockEmail) => void;
   autoLabels?: EmailLabel[];
   priorityFlag?: DetectedSignal;
+  userLabels?: EmailLabel[];
 }
 
-function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels, priorityFlag }: ThreadListItemProps) {
+function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels, priorityFlag, userLabels }: ThreadListItemProps) {
   const [hovered, setHovered] = useState(false);
   const latest = thread.latestEmail;
   const displayName = latest.folder === 'sent' ? `To: ${latest.to_name || latest.to_email}` : latest.from_name;
