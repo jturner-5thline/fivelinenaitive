@@ -565,11 +565,7 @@ serve(async (req: Request): Promise<Response> => {
         );
 
         if (!updateResponse.ok) {
-          const errData = await updateResponse.json();
-          return new Response(JSON.stringify({ error: errData.message || "Failed to update" }), {
-            status: updateResponse.status,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+          return await forwardNylasError(updateResponse, "Failed to mark read/unread");
         }
         await updateResponse.text();
 
@@ -599,11 +595,7 @@ serve(async (req: Request): Promise<Response> => {
         );
 
         if (!updateResponse.ok) {
-          const errData = await updateResponse.json();
-          return new Response(JSON.stringify({ error: errData.message || "Failed to update" }), {
-            status: updateResponse.status,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+          return await forwardNylasError(updateResponse, "Failed to star/unstar");
         }
         await updateResponse.text();
 
