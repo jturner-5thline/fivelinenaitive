@@ -46,6 +46,63 @@ function generateFollowUps(content: string): string[] {
   return followUps.slice(0, 3);
 }
 
+/**
+ * Render-time dedupe guard for the AI chat panel.
+ *
+ * Two failure modes the chat assembly can produce that this guards against:
+ *   1. Two consecutive assistant messages with identical (normalized) content
+ *      — e.g. an optimistic streaming bubble and the persisted tool-result
+ *      message both landing in `messages`. We keep the first.
+ *   2. A single assistant message whose tail repeats the same paragraph
+ *      verbatim (most often the "What would you like to do next?" / "Let me
+ *      know what you'd like to do next." follow-up emitted twice when a
+ *      structured action card and a prose summary collide). We collapse to
+ *      one occurrence in-place.
+ */
+function normalizeForCompare(s: string): string {
+  return (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function collapseRepeatedTrailingParagraphs(content: string): string {
+  if (!content) return content;
+  // Split on blank lines (paragraph boundaries). Walk from the end and drop
+  // a trailing paragraph if it duplicates the one before it.
+  const paragraphs = content.split(/\n{2,}/);
+  if (paragraphs.length < 2) return content;
+  let changed = false;
+  for (let i = paragraphs.length - 1; i > 0; i--) {
+    const a = normalizeForCompare(paragraphs[i]);
+    const b = normalizeForCompare(paragraphs[i - 1]);
+    if (a && a === b) {
+      paragraphs.splice(i, 1);
+      changed = true;
+    }
+  }
+  return changed ? paragraphs.join('\n\n') : content;
+}
+
+function dedupeMessages(messages: ChatMessage[]): ChatMessage[] {
+  const out: ChatMessage[] = [];
+  for (const msg of messages) {
+    const cleaned: ChatMessage =
+      msg.role === 'assistant'
+        ? { ...msg, content: collapseRepeatedTrailingParagraphs(msg.content) }
+        : msg;
+    const prev = out[out.length - 1];
+    if (
+      prev &&
+      prev.role === 'assistant' &&
+      cleaned.role === 'assistant' &&
+      normalizeForCompare(prev.content) === normalizeForCompare(cleaned.content)
+    ) {
+      // Drop the duplicate consecutive assistant message.
+      continue;
+    }
+    out.push(cleaned);
+  }
+  return out;
+}
+
 /** Extract [n] citation references and match them to URLs in the content */
 function extractCitations(content: string): string[] {
   // Look for citation URLs in the content — patterns like [1] https://... or **Sources:** blocks
@@ -91,9 +148,13 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
     return new Set(getPinnedInsights().map(i => i.content.slice(0, 100)));
   });
 
+  // Apply render-time dedupe so the panel never shows the same assistant
+  // follow-up twice, even if upstream message assembly pushed duplicates.
+  const renderedMessages = dedupeMessages(messages);
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [renderedMessages]);
 
   const handleCopy = (content: string, idx: number) => {
     navigator.clipboard.writeText(content);
@@ -121,13 +182,13 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
     if (href.startsWith('/')) navigate(href);
   };
 
-  const lastMsg = messages[messages.length - 1];
+  const lastMsg = renderedMessages[renderedMessages.length - 1];
   const showFollowUps = !isLoading && lastMsg?.role === 'assistant';
 
   return (
     <ScrollArea className="max-h-[400px] mb-3">
       <div className="space-y-3 px-1">
-        {messages.map((msg, i) => {
+        {renderedMessages.map((msg, i) => {
           const tasks = msg.role === 'assistant' ? parseTaskSuggestions(msg.content) : [];
           const isUser = msg.role === 'user';
           const isPinned = pinnedContents.has(msg.content.slice(0, 100));
@@ -139,7 +200,10 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
             : undefined;
 
           return (
-            <div key={i} className={cn('flex gap-2.5 group', isUser ? 'justify-end' : 'justify-start')}>
+            <div
+              key={msg.id || `${msg.role}-${i}-${normalizeForCompare(msg.content).slice(0, 32)}`}
+              className={cn('flex gap-2.5 group', isUser ? 'justify-end' : 'justify-start')}
+            >
               {/* AI Avatar */}
               {!isUser && (
                 <Avatar className="h-6 w-6 shrink-0 mt-0.5 border border-primary/30 bg-primary/10">
@@ -285,7 +349,7 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
         })}
 
         {/* Typing indicator */}
-        {isLoading && messages[messages.length - 1]?.role === 'user' && <TypingIndicator />}
+        {isLoading && renderedMessages[renderedMessages.length - 1]?.role === 'user' && <TypingIndicator />}
 
         {/* Follow-up suggestions */}
         {showFollowUps && onFollowUp && (
