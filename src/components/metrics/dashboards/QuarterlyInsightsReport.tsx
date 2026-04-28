@@ -694,7 +694,27 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
     return { exact: exactMatches, substring: substringMatches };
   }, [ownerGoals, activeQuarterLabel, activeHalfLabel]);
 
-  const [filterEditorOpen, setFilterEditorOpen] = useState(false);
+  // Persist editor open/closed state in localStorage so it survives reloads.
+  const editorOpenLsKey = `asanaGoalFilterEditorOpen:v1:${prefs && (prefs as any) ? '' : ''}`;
+  const editorOpenStorageKey = useMemo(() => {
+    // Scope per-company when available, otherwise global.
+    // We re-read from prefs object captured by closure isn't ideal, so use companyId via window.
+    return 'asanaGoalFilterEditorOpen:v1';
+  }, []);
+  const [filterEditorOpen, setFilterEditorOpenRaw] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem(editorOpenStorageKey) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const setFilterEditorOpen = (next: boolean) => {
+    setFilterEditorOpenRaw(next);
+    if (typeof window !== 'undefined') {
+      try { window.localStorage.setItem(editorOpenStorageKey, next ? '1' : '0'); } catch { /* ignore */ }
+    }
+  };
 
   const thStyle: React.CSSProperties = { textAlign: 'left', fontSize: 9, fontWeight: 700, color: 'rgba(140,175,200,0.5)', letterSpacing: '.08em', textTransform: 'uppercase', padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)' };
   const tdStyle: React.CSSProperties = { padding: '8px 10px', fontSize: 12, color: TEXT_PRIMARY, verticalAlign: 'middle', borderBottom: '1px solid rgba(255,255,255,0.04)' };
