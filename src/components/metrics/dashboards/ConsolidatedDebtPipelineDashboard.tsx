@@ -1,5 +1,4 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -21,7 +20,6 @@ import {
   type StageEntryDeal,
 } from '@/hooks/usePipelineStageMetrics';
 import { cn } from '@/lib/utils';
-import type { DealOrigin, DealOriginLocationState } from '@/lib/dealOriginContext';
 import { consumePendingReopen } from '@/lib/dealOriginContext';
 
 const formatCurrency = (value: number) => {
@@ -177,27 +175,25 @@ type TrendMetricKey = 'deals-closed' | 'dollars-funded';
 function CompactFundedBarChart({
   title,
   subtitle,
-  mode,
   buckets,
   isLoading,
   color,
+  dataKey,
   valueFormatter,
   totalFormatter,
   onBarClick,
 }: {
   title: string;
   subtitle: string;
-  mode: TrendChartMode;
   buckets: StageTrendBucket[];
   isLoading: boolean;
   color: string;
+  dataKey: 'count' | 'dollarVolume';
   valueFormatter: (value: number) => string;
   totalFormatter: (value: number) => string;
   onBarClick: (bucket: StageTrendBucket) => void;
 }) {
-  const metricKey = mode === 'monthly' ? 'count' : undefined;
-  const total = buckets.reduce((sum, bucket) => sum + (valueFormatter === formatCurrency ? bucket.dollarVolume : bucket.count), 0);
-  const dataKey = valueFormatter === formatCurrency ? 'dollarVolume' : 'count';
+  const total = buckets.reduce((sum, bucket) => sum + bucket[dataKey], 0);
 
   if (isLoading) {
     return (
@@ -323,18 +319,7 @@ export function ConsolidatedDebtPipelineDashboard({
   const buildTrendPeriodNote = (bucket: StageTrendBucket, metricLabel: string) =>
     `${metricLabel} · Active Pipeline → Funded / Invoiced · ${bucket.label}`;
 
-  const buildTrendOrigin = (metric: TrendMetricKey, bucket: StageTrendBucket): DealOrigin => ({
-    label: `Back to ${metric === 'deals-closed' ? 'Deals Closed' : 'Dollars Funded'} (${bucket.label})`,
-    returnTo: '/insights',
-    reopen: {
-      source: 'insights.consolidated-debt-pipeline',
-      bucketKey: `${metric}|${trendMode}|${bucket.key}`,
-      bucketLabel: bucket.label,
-      quarterId: selectedQuarter?.value,
-    },
-  });
-
-  useMemo(() => {
+  useEffect(() => {
     if (m.fundedInvoicedTrend.isLoading || !selectedQuarter) return null;
     const reopen = consumePendingReopen(
       (entry) => entry.source === 'insights.consolidated-debt-pipeline' && entry.quarterId === selectedQuarter.value,
@@ -607,10 +592,10 @@ export function ConsolidatedDebtPipelineDashboard({
           <CompactFundedBarChart
             title="Deals Closed"
             subtitle={`Active Pipeline → Funded / Invoiced · ${trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters'}`}
-            mode={trendMode}
             buckets={fundedTrendBuckets}
             isLoading={m.fundedInvoicedTrend.isLoading}
             color="hsl(var(--chart-3))"
+            dataKey="count"
             valueFormatter={(value) => `${Math.round(value)}`}
             totalFormatter={(value) => `${Math.round(value)}`}
             onBarClick={(bucket) =>
@@ -624,10 +609,10 @@ export function ConsolidatedDebtPipelineDashboard({
           <CompactFundedBarChart
             title="Dollars Funded"
             subtitle={`Active Pipeline → Funded / Invoiced · ${trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters'}`}
-            mode={trendMode}
             buckets={fundedTrendBuckets}
             isLoading={m.fundedInvoicedTrend.isLoading}
             color="hsl(var(--success))"
+            dataKey="dollarVolume"
             valueFormatter={formatCurrency}
             totalFormatter={formatCurrency}
             onBarClick={(bucket) =>
