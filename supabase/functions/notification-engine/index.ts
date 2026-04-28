@@ -576,24 +576,141 @@ serve(async (req) => {
               });
             }
           } else if (channel.channel_type === "slack") {
-            // Slack dispatch via existing slack gateway pattern
+            // Slack DM dispatch — resolve the recipient's Slack user by their
+            // profile email (users.lookupByEmail), then post a DM via
+            // chat.postMessage. The Slack API auto-opens an IM channel when
+            // the channel parameter is a user ID.
             const slackKey = Deno.env.get("SLACK_API_KEY");
-            if (slackKey) {
-              // For now, log as pending - Slack delivery would use the slack gateway
+            const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+            if (!slackKey || !lovableKey) {
+              await writeAudit(supabase, {
+                trigger_key: triggerKey,
+                recipient_user_id: recipientId,
+                deal_id: (enrichedContext.deal_id as string) || null,
+                channel: "slack",
+                status: "skipped",
+                title: renderedTitle,
+                body: renderedBody,
+                error_message: !slackKey ? "SLACK_API_KEY not configured" : "LOVABLE_API_KEY not configured",
+                metadata: { ...auditMeta },
+              });
+              results.push({ recipient: recipientId, channel: "slack", status: "skipped" });
+              continue;
+            }
+
+            // Look up recipient's email from profiles.
+            const { data: recipientProfile } = await supabase
+              .from("profiles")
+              .select("email, display_name")
+              .eq("user_id", recipientId)
+              .maybeSingle();
+            const recipientEmail = (recipientProfile as any)?.email as string | undefined;
+            if (!recipientEmail) {
+              await writeAudit(supabase, {
+                trigger_key: triggerKey,
+                recipient_user_id: recipientId,
+                deal_id: (enrichedContext.deal_id as string) || null,
+                channel: "slack",
+                status: "skipped",
+                title: renderedTitle,
+                body: renderedBody,
+                error_message: "Recipient has no email on profile",
+                metadata: { ...auditMeta },
+              });
+              results.push({ recipient: recipientId, channel: "slack", status: "skipped" });
+              continue;
+            }
+
+            try {
+              // 1. Resolve Slack user ID via email
+              const lookupResp = await fetch(
+                `https://connector-gateway.lovable.dev/slack/api/users.lookupByEmail?email=${encodeURIComponent(recipientEmail)}`,
+                {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${lovableKey}`,
+                    "X-Connection-Api-Key": slackKey,
+                  },
+                }
+              );
+              const lookupData = await lookupResp.json();
+              if (!lookupResp.ok || !lookupData.ok || !lookupData.user?.id) {
+                throw new Error(`users.lookupByEmail failed [${lookupResp.status}]: ${JSON.stringify(lookupData)}`);
+              }
+              const slackUserId = lookupData.user.id as string;
+
+              // 2. Post the DM. Slack opens an IM channel automatically when
+              // the `channel` parameter is a user ID.
+              const postResp = await fetch(
+                `https://connector-gateway.lovable.dev/slack/api/chat.postMessage`,
+                {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${lovableKey}`,
+                    "X-Connection-Api-Key": slackKey,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    channel: slackUserId,
+                    text: renderedBody,
+                    unfurl_links: false,
+                  }),
+                }
+              );
+              const postData = await postResp.json();
+              if (!postResp.ok || !postData.ok) {
+                throw new Error(`chat.postMessage failed [${postResp.status}]: ${JSON.stringify(postData)}`);
+              }
+
               await supabase.from("notification_instances").insert({
                 rule_id: rule.id,
                 trigger_key: triggerKey,
                 recipient_user_id: recipientId,
                 channel_type: "slack",
-                status: "pending",
+                status: "sent",
                 title: renderedTitle,
                 body: renderedBody,
                 context: enrichedContext,
                 actor_user_id: actorUserId || null,
               });
-              results.push({ recipient: recipientId, channel: "slack", status: "pending" });
-            } else {
-              results.push({ recipient: recipientId, channel: "slack", status: "skipped" });
+              await writeAudit(supabase, {
+                trigger_key: triggerKey,
+                recipient_user_id: recipientId,
+                deal_id: (enrichedContext.deal_id as string) || null,
+                channel: "slack",
+                status: "sent",
+                title: renderedTitle,
+                body: renderedBody,
+                metadata: { ...auditMeta, slack_ts: postData.ts, slack_channel: postData.channel },
+              });
+              results.push({ recipient: recipientId, channel: "slack", status: "sent" });
+            } catch (slackErr) {
+              const msg = slackErr instanceof Error ? slackErr.message : String(slackErr);
+              console.error(`Slack DM dispatch failed for ${recipientId}:`, msg);
+              await supabase.from("notification_instances").insert({
+                rule_id: rule.id,
+                trigger_key: triggerKey,
+                recipient_user_id: recipientId,
+                channel_type: "slack",
+                status: "failed",
+                title: renderedTitle,
+                body: renderedBody,
+                context: enrichedContext,
+                actor_user_id: actorUserId || null,
+                error_message: msg,
+              });
+              await writeAudit(supabase, {
+                trigger_key: triggerKey,
+                recipient_user_id: recipientId,
+                deal_id: (enrichedContext.deal_id as string) || null,
+                channel: "slack",
+                status: "failed",
+                title: renderedTitle,
+                body: renderedBody,
+                error_message: msg,
+                metadata: { ...auditMeta },
+              });
+              results.push({ recipient: recipientId, channel: "slack", status: "failed", error: msg });
             }
           } else {
             // SMS, push, etc. - log as pending for future implementation
