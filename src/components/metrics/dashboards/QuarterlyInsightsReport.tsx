@@ -769,6 +769,12 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
   const renderFilterEditor = () => {
     const inp: React.CSSProperties = { ...inputStyle, width: '100%' };
     const lbl: React.CSSProperties = { fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: TEXT_LABEL, marginBottom: 4 };
+    const warnInp: React.CSSProperties = { ...inp, borderColor: 'rgba(255,140,140,0.55)', boxShadow: '0 0 0 1px rgba(255,140,140,0.25) inset' };
+    const warnText: React.CSSProperties = { fontSize: 10, color: '#ff9b9b', marginTop: 4 };
+    const isBlank = (v: string | undefined) => !v || !v.trim();
+    const blankQs = (['Q1','Q2','Q3','Q4'] as QKey[]).filter(q => isBlank(templates.quarters[q]));
+    const blankHs = (['H1','H2'] as HKey[]).filter(h => isBlank(templates.halves[h]));
+    const hasBlanks = blankQs.length > 0 || blankHs.length > 0;
     return (
       <div style={{
         marginBottom: 12,
@@ -783,6 +789,49 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
             Use <code style={{ color: '#7cc8f0' }}>{'{year}'}</code> to template the year. Matches Asana <em>time period</em> by substring.
           </div>
         </div>
+        {/* Live preview for currently selected period */}
+        <div style={{
+          marginBottom: 10,
+          padding: '8px 10px',
+          borderRadius: 8,
+          border: '1px solid rgba(120,170,255,0.18)',
+          background: 'rgba(120,170,255,0.06)',
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: 8,
+          fontSize: 11,
+          color: TEXT_PRIMARY,
+        }}>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: TEXT_LABEL }}>
+            Preview ({s.period === 'monthly' ? s.month : s.quarter})
+          </span>
+          <span style={{ color: TEXT_MUTED }}>Quarter →</span>
+          <code style={{ color: activeQuarterLabel ? '#7cc8f0' : '#ff9b9b' }}>
+            {activeQuarterLabel || '(blank)'}
+          </code>
+          <span style={{ color: TEXT_MUTED }}>· Half →</span>
+          <code style={{ color: activeHalfLabel ? '#7cc8f0' : '#ff9b9b' }}>
+            {activeHalfLabel || '(blank)'}
+          </code>
+          <span style={{ marginLeft: 'auto', color: TEXT_MUTED, fontSize: 10 }}>
+            Mode: {activeExactMatch ? 'exact' : 'substring'}
+          </span>
+        </div>
+        {hasBlanks && (
+          <div style={{
+            marginBottom: 10,
+            padding: '6px 10px',
+            borderRadius: 8,
+            border: '1px solid rgba(255,140,140,0.35)',
+            background: 'rgba(255,140,140,0.08)',
+            fontSize: 11,
+            color: '#ffb3b3',
+          }}>
+            ⚠ Blank template{(blankQs.length + blankHs.length) > 1 ? 's' : ''}:{' '}
+            {[...blankQs, ...blankHs].join(', ')} — goals for these periods will not match.
+          </div>
+        )}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 10 }}>
           {(['Q1','Q2','Q3','Q4'] as QKey[]).map(q => (
             <div key={q}>
@@ -790,8 +839,11 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
               <input
                 value={templates.quarters[q]}
                 onChange={e => updateTemplate('quarters', q, e.target.value)}
-                style={inp}
+                style={isBlank(templates.quarters[q]) ? warnInp : inp}
               />
+              {isBlank(templates.quarters[q]) && (
+                <div style={warnText}>Required — leaving blank disables matching for {q}.</div>
+              )}
             </div>
           ))}
         </div>
@@ -802,8 +854,11 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
               <input
                 value={templates.halves[h]}
                 onChange={e => updateTemplate('halves', h, e.target.value)}
-                style={inp}
+                style={isBlank(templates.halves[h]) ? warnInp : inp}
               />
+              {isBlank(templates.halves[h]) && (
+                <div style={warnText}>Required — leaving blank disables matching for {h}.</div>
+              )}
             </div>
           ))}
         </div>
