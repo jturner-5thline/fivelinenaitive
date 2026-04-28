@@ -38,7 +38,7 @@ export function DealsHeader() {
   const isNikiViewingHerself = user?.email?.toLowerCase() === NIKI_EMAIL;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/55">
+    <header className="sticky top-0 z-50 rounded-b-xl bg-background/92 backdrop-blur supports-[backdrop-filter]:bg-background/75">
       {/*
         Global app shell header — minimal, calm, and consistent.
         Active tabs use a fully-rounded pill (no top-only / bottom-only
