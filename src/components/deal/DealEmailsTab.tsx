@@ -1548,7 +1548,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 onToggleStar={handleToggleStar}
                 onDelete={handleDeleteEmail}
                 onArchive={handleArchiveEmail}
-                onSendReply={async (emailData, threadId) => {
+                onSendReply={async (emailData, threadId, linkContext) => {
                   if (!onGmailSend) {
                     setEmails(prev => [{ ...emailData, id: `mock-sent-${Date.now()}`, threadId }, ...prev]);
                     return;
@@ -1569,13 +1569,16 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                     onSent: () => {
                       setEmails(prev => [{ ...emailData, id: `mock-sent-${Date.now()}`, threadId }, ...prev]);
                       // ─── Activity log + lender last-contact + next-step prompt ───
-                      // Resolve the linked deal id: explicit prop wins, then any
-                      // thread-level link the user already established. If still
-                      // unlinked, surface a non-blocking prompt so the user can
-                      // link the deal and retry without losing the sent email.
+                      // Resolve the linked deal id: an explicit per-thread link
+                      // from the email pane wins (covers the global naitive
+                      // Inbox where the page-level dealId is empty), then the
+                      // page-level dealId. If still unlinked the user already
+                      // chose "Send without logging" in the pre-send prompt —
+                      // surface a soft confirmation rather than blocking.
                       const thread = currentThread;
-                      const resolvedDealId = dealId || null;
-                      const resolvedDealName = thread?.dealName || null;
+                      const resolvedDealId = linkContext?.dealId || dealId || null;
+                      const resolvedDealName =
+                        linkContext?.dealName || thread?.dealName || null;
 
                       if (!resolvedDealId) {
                         toast.message('Reply sent — not logged to a deal', {
@@ -1614,11 +1617,13 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                           ? ` • ${logResult.matchedLenderName} last-contact updated`
                           : '';
 
+                        const baseToast = `Reply logged to ${dealLabel} activity.`;
+
                         // If the reply commits to a next step, offer one-click
                         // follow-up task creation right from the toast.
                         if (logResult.nextStep.hasNextStep && user?.id) {
-                          toast.success(`Reply logged to ${dealLabel} activity${lenderSuffix}`, {
-                            description: `Next step detected: "${logResult.nextStep.trigger}". Create a follow-up task?`,
+                          toast.success(baseToast, {
+                            description: `${lenderSuffix ? lenderSuffix.replace(/^ • /, '') + '. ' : ''}Next step detected: "${logResult.nextStep.trigger}". Create a follow-up task?`,
                             duration: 12000,
                             action: {
                               label: 'Create task',
@@ -1658,7 +1663,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                             },
                           });
                         } else {
-                          toast.success(`Reply logged to ${dealLabel} activity${lenderSuffix}`);
+                          toast.success(baseToast, {
+                            description: lenderSuffix ? lenderSuffix.replace(/^ • /, '') : undefined,
+                          });
                         }
                       })();
                     },
