@@ -1800,7 +1800,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               {thread.emails.slice(0, shouldAutoCollapse && !olderExpanded ? VISIBLE_RECENT : undefined).map((email, idx) => (
                 <div
                   key={email.id}
-                  data-deeplink-msg-id={email.gmail_message_id || email.id}
+                  data-deeplink-msg-id={email.id}
                   className="transition-shadow"
                 >
                   <ThreadMessage
@@ -1809,7 +1809,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                     defaultExpanded={
                       idx === 0
                       || userExpandedMessages.has(email.id)
-                      || (!!deepLinkMessageId && (email.gmail_message_id === deepLinkMessageId || email.id === deepLinkMessageId))
+                      || (!!deepLinkMessageId && (email.id === deepLinkMessageId))
                     }
                     threadId={thread.threadId}
                     threadSubject={thread.subject}
@@ -1836,7 +1836,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               {olderExpanded && shouldAutoCollapse && thread.emails.slice(VISIBLE_RECENT).map((email) => (
                 <div
                   key={email.id}
-                  data-deeplink-msg-id={email.gmail_message_id || email.id}
+                  data-deeplink-msg-id={email.id}
                   className="transition-shadow"
                 >
                   <ThreadMessage
@@ -1844,7 +1844,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                     isLatest={false}
                     defaultExpanded={
                       userExpandedMessages.has(email.id)
-                      || (!!deepLinkMessageId && (email.gmail_message_id === deepLinkMessageId || email.id === deepLinkMessageId))
+                      || (!!deepLinkMessageId && (email.id === deepLinkMessageId))
                     }
                     threadId={thread.threadId}
                     threadSubject={thread.subject}
