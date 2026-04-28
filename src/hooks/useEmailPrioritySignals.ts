@@ -147,9 +147,19 @@ async function dispatchNotifications(
       continue;
     }
 
-    const dealUrl = dealId
-      ? `${window.location.origin}/deals/${dealId}`
-      : `${window.location.origin}/notifications`;
+    // Build a deep link that lands the user directly on the email tab,
+    // auto-selects the thread, and scrolls/highlights the matched message.
+    // Falls back to the notifications page when no deal is linked yet.
+    let dealUrl: string;
+    if (dealId) {
+      const params = new URLSearchParams({ tab: 'communication' });
+      if (email.threadId) params.set('thread', email.threadId);
+      if (email.id) params.set('message', email.id);
+      if (signal.type) params.set('signal', signal.type);
+      dealUrl = `${window.location.origin}/deals/${dealId}?${params.toString()}`;
+    } else {
+      dealUrl = `${window.location.origin}/notifications`;
+    }
 
     try {
       await supabase.functions.invoke('notification-engine', {
