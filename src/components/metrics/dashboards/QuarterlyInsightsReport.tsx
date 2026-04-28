@@ -643,7 +643,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
                         letterSpacing: '.06em',
                         textTransform: 'uppercase',
                         padding: '2px 7px',
-                        borderRadius: 20,
+                        borderRadius: RADIUS_PILL,
                         color: '#f0a45a',
                         background: 'rgba(240,140,40,0.10)',
                         border: '1px solid rgba(240,140,40,0.22)',
