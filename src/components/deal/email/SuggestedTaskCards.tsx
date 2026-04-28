@@ -55,6 +55,29 @@ function formatDue(iso: string): string {
 }
 
 /**
+ * Normalize a suggested task into a stable dedup signature so the same
+ * next-action sentence (e.g. "Send the due diligence list to Steven")
+ * collapses to one card even when the AI re-emits it across multiple
+ * messages in the same thread, or with trivial punctuation/casing
+ * variations. We normalize the title + verb-ish task_type and treat the
+ * due-date hint as part of the signature only when it's an explicit
+ * date — otherwise "next_business_day" / empty all collapse together.
+ */
+function dedupSignature(s: Suggestion): string {
+  const title = (s.title || '')
+    .toLowerCase()
+    .replace(/[\u2018\u2019\u201c\u201d`'"]/g, '')
+    .replace(/[^a-z0-9\s@.]/g, ' ')
+    .replace(/\b(the|a|an|please|kindly|to|for|with|by|on|of|and)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const explicitDate = /^\d{4}-\d{2}-\d{2}$/.test(s.due_date_hint || '')
+    ? s.due_date_hint
+    : '';
+  return `${s.task_type || 'general'}::${title}::${explicitDate}`;
+}
+
+/**
  * Resolve a deal-manager name string (e.g. deals.manager) into a profile
  * user_id by case-insensitive match against display_name / first_name.
  * Mirrors the resolution used by `receive-flex-activity`.
@@ -86,7 +109,16 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
   const [dismissedKeys, setDismissedKeys] = useState<Record<string, true>>({});
 
   const items = useMemo(() => {
-    return (suggestions || []).filter((s) => s && s.title && s.title.trim().length > 0);
+    const seen = new Set<string>();
+    const out: Suggestion[] = [];
+    for (const s of suggestions || []) {
+      if (!s || !s.title || s.title.trim().length === 0) continue;
+      const sig = dedupSignature(s);
+      if (seen.has(sig)) continue;
+      seen.add(sig);
+      out.push(s);
+    }
+    return out;
   }, [suggestions]);
 
   if (items.length === 0) return null;
@@ -175,7 +207,7 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
   return (
     <div className="space-y-2">
       {items.map((s, idx) => {
-        const key = `${s.title}::${idx}`;
+        const key = dedupSignature(s) || `${s.title}::${idx}`;
         if (dismissedKeys[key]) return null;
         const created = createdKeys[key];
         const previewDue = created
