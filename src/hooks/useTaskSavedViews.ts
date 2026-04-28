@@ -13,6 +13,10 @@ export interface TaskSavedView {
     sortBy?: string;
     groupBy?: string;
     search?: string;
+    ownerFilter?: string;
+    filterDealIds?: string[];
+    filterLabelIds?: string[];
+    filterDueDate?: string; // 'all' | 'overdue' | 'today' | 'this_week' | 'no_date'
   };
   is_default: boolean;
   position: number;
