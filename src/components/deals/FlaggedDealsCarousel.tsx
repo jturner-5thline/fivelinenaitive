@@ -221,7 +221,7 @@ function CarouselInner({ deals, onClose, initialIndex = 0 }: {
               }}
             >
               <Card
-                className={`cursor-pointer transition-all duration-500 ease-out ${
+                className={`deal-glass cursor-pointer transition-all duration-500 ease-out ${
                   isActive
                     ? 'w-[380px] md:w-[480px] min-h-[420px] md:min-h-[480px] shadow-2xl z-10'
                     : 'w-[280px] md:w-[320px] min-h-[320px] md:min-h-[360px] shadow-md'
