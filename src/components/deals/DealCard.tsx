@@ -187,27 +187,27 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
       <Card
         className={`deal-glass group cursor-pointer h-full flex flex-col transition-all duration-200 hover:-translate-y-0.5 min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
 
-        {/* Notification indicator — glassy navy circular bell anchored to top-right corner */}
+        {/*
+          Notification indicator — solid semantic-red alert badge anchored
+          to the top-right corner. Intentionally NOT glassy: no blur, no
+          gradient, no sheen — reads as a functional status marker rather
+          than another decorative translucent layer. Uses the platform's
+          `destructive` token so it stays consistent with other red alert
+          tags (stale-30d badge, destructive buttons, etc.).
+        */}
         {notificationCount > 0 && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="absolute top-2 right-2 z-10">
                   <div
-                    className="flex items-center justify-center h-8 w-8 rounded-full"
-                    style={{
-                      background:
-                        'linear-gradient(135deg, rgba(60, 30, 40, 0.85) 0%, rgba(30, 18, 28, 0.85) 100%)',
-                      border: '0.5px solid rgba(227, 93, 106, 0.45)',
-                      boxShadow:
-                        'inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 0 2px rgba(16, 28, 52, 0.55), 0 0 10px rgba(227, 93, 106, 0.25)',
-                      backdropFilter: 'blur(8px)',
-                    }}
+                    className="flex items-center justify-center gap-1 h-6 min-w-[24px] px-1.5 rounded-full bg-destructive text-destructive-foreground shadow-sm ring-1 ring-black/20"
+                    aria-label={`${notificationCount} notification${notificationCount !== 1 ? 's' : ''}`}
                   >
-                    <Bell
-                      className="h-[18px] w-[18px]"
-                      style={{ color: 'rgba(227, 93, 106, 0.95)' }}
-                    />
+                    <Bell className="h-3 w-3" strokeWidth={2.5} />
+                    <span className="text-[10px] font-semibold leading-none tabular-nums">
+                      {notificationCount > 99 ? '99+' : notificationCount}
+                    </span>
                   </div>
                 </div>
               </TooltipTrigger>
