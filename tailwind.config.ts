@@ -125,6 +125,10 @@ export default {
 				'60%': { transform: 'translate(100%, 100%)' },
 				'100%': { transform: 'translate(100%, 100%)' }
 			},
+			'shimmer-sweep': {
+				'0%': { transform: 'translateX(-100%)' },
+				'100%': { transform: 'translateX(100%)' }
+			},
 			'pulse-highlight': {
 				'0%, 100%': { boxShadow: '0 0 0 0 transparent' },
 				'50%': { boxShadow: '0 0 0 4px hsl(var(--warning) / 0.3)' }
@@ -174,6 +178,8 @@ export default {
 			'task-complete-pop': 'task-complete-pop 300ms ease-out',
 			'task-check-draw': 'task-check-draw 250ms ease-out forwards',
 			'task-row-settle': 'task-row-settle 400ms ease-out forwards'
+			,
+			'shimmer-sweep': 'shimmer-sweep 1.8s ease-in-out infinite'
   		},
   		boxShadow: {
   			'2xs': 'var(--shadow-2xs)',
