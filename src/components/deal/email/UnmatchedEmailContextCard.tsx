@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { User, Building2, Briefcase, Link2, Loader2, Sparkles, ExternalLink } from 'lucide-react';
+import { User, Building2, Briefcase, Link2, Loader2, Sparkles, ExternalLink, ListTodo, Check, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useContactBySenderEmail } from '@/hooks/useContactBySenderEmail';
 import { useBodyMentionDealMatch } from '@/hooks/useBodyMentionDealMatch';
 import { LinkToDealPopover } from './LinkToDealPopover';
 import { Link as RouterLink } from 'react-router-dom';
+import { SuggestedTaskCards } from './SuggestedTaskCards';
+import type { WorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
 
 interface Props {
   /** Inbound email to enrich. */
@@ -23,6 +25,16 @@ interface Props {
   onLinkDeal: (dealId: string, dealName: string) => void | Promise<void>;
   /** True while a parent-side link write is pending. */
   linking?: boolean;
+  /**
+   * AI-detected next-action tasks for the open thread (from
+   * useThreadWorkflowAnalysis). When present, the card surfaces the first
+   * suggestion as a follow-up confirmation immediately after the user
+   * links the email to a deal — so a task can be created in one extra
+   * click without leaving the unmatched card.
+   */
+   suggestedTasks?: NonNullable<WorkflowAnalysis['suggested_tasks']>;
+   /** Open thread id, forwarded to SuggestedTaskCards for activity logging. */
+   threadId?: string | null;
 }
 
 const CONFIDENCE_BADGE: Record<'high' | 'medium' | 'low', string> = {
@@ -43,7 +55,13 @@ const CONFIDENCE_BADGE: Record<'high' | 'medium' | 'low', string> = {
  *      confidence indicator + one-click Link.
  *   3. Neither → "No deal match found" with a Link Deal button.
  */
-export function UnmatchedEmailContextCard({ email, onLinkDeal, linking }: Props) {
+export function UnmatchedEmailContextCard({
+  email,
+  onLinkDeal,
+  linking,
+  suggestedTasks,
+  threadId,
+}: Props) {
   const senderEmail = email.from_email || '';
   const { data: contact, isLoading: contactLoading } =
     useContactBySenderEmail(senderEmail);
@@ -58,14 +76,64 @@ export function UnmatchedEmailContextCard({ email, onLinkDeal, linking }: Props)
   });
 
   const [linkingTarget, setLinkingTarget] = useState<string | null>(null);
+  // After a successful link, capture the deal so we can render an inline
+  // follow-up confirmation ("Create suggested task from this email?")
+  // without waiting for the parent to re-render with a real `dealId`.
+  const [linkedConfirmation, setLinkedConfirmation] = useState<
+    { dealId: string; dealName: string } | null
+  >(null);
+  const [followUpDismissed, setFollowUpDismissed] = useState(false);
+
   const linkSuggestion = async (id: string, name: string) => {
     setLinkingTarget(id);
     try {
       await onLinkDeal(id, name);
+      setLinkedConfirmation({ dealId: id, dealName: name });
+      setFollowUpDismissed(false);
     } finally {
       setLinkingTarget(null);
     }
   };
+
+  // The first non-empty suggestion drives the post-link follow-up prompt.
+  // Keeping this scoped to one card avoids overwhelming the user with a
+  // full task list immediately after linking.
+  const primarySuggestion = (suggestedTasks || []).find(
+    (t) => t && t.title && t.title.trim().length > 0,
+  );
+
+  const followUpPanel = linkedConfirmation && primarySuggestion && !followUpDismissed && (
+    <div className="rounded-md border border-emerald-500/20 bg-emerald-500/[0.04] p-2.5 space-y-2">
+      <div className="flex items-start gap-1.5">
+        <Check className="h-3 w-3 text-emerald-400 shrink-0 mt-0.5" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold text-foreground leading-snug">
+            Linked to{' '}
+            <span className="text-emerald-400">{linkedConfirmation.dealName}</span>
+          </p>
+          <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug inline-flex items-center gap-1">
+            <ListTodo className="h-2.5 w-2.5" />
+            We detected a next action — create a follow-up task?
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-5 w-5 p-0 text-muted-foreground shrink-0"
+          title="Dismiss follow-up suggestion"
+          onClick={() => setFollowUpDismissed(true)}
+        >
+          <X className="h-3 w-3" />
+        </Button>
+      </div>
+      <SuggestedTaskCards
+        suggestions={[primarySuggestion]}
+        dealId={linkedConfirmation.dealId}
+        dealName={linkedConfirmation.dealName}
+        threadId={threadId || null}
+      />
+    </div>
+  );
 
   if (contactLoading) {
     return (
@@ -177,6 +245,7 @@ export function UnmatchedEmailContextCard({ email, onLinkDeal, linking }: Props)
             onLink={linkSuggestion}
           />
         )}
+        {followUpPanel}
       </div>
     );
   }
@@ -197,6 +266,7 @@ export function UnmatchedEmailContextCard({ email, onLinkDeal, linking }: Props)
           linking={!!linking}
           onLink={linkSuggestion}
         />
+        {followUpPanel}
       </div>
     );
   }
@@ -223,9 +293,10 @@ export function UnmatchedEmailContextCard({ email, onLinkDeal, linking }: Props)
         }
         currentDealName={undefined}
         isLinked={false}
-        onLinkDeal={(id, name) => onLinkDeal(id, name)}
+        onLinkDeal={(id, name) => linkSuggestion(id, name)}
         onUnlink={() => undefined}
       />
+      {followUpPanel}
     </div>
   );
 }
