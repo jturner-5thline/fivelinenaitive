@@ -559,6 +559,105 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
                 Tip: set a due date — the next task is generated when this one is completed.
               </p>
             )}
+            {recurrence && (
+              <div className="mt-1 space-y-1">
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="text-[10px] uppercase tracking-wide font-medium mr-1" style={{ color: '#7a8194' }}>
+                    Ends
+                  </span>
+                  {([
+                    { v: 'never',    l: 'Never' },
+                    { v: 'on_date',  l: 'On date' },
+                    { v: 'after_n',  l: 'After…' },
+                  ] as const).map(opt => {
+                    const active = endMode === opt.v;
+                    return (
+                      <button
+                        key={opt.v}
+                        type="button"
+                        onClick={() => {
+                          setEndMode(opt.v);
+                          if (opt.v === 'on_date' && !endDate) {
+                            // Sensible default: 90 days out from anchor
+                            setEndDate(addDays(dueDate ?? new Date(), 90));
+                          }
+                        }}
+                        className="px-2 py-0.5 rounded text-[11px] font-medium border transition-colors"
+                        style={{
+                          color: active ? '#cfe3ff' : '#9aa3b6',
+                          borderColor: active ? 'rgba(126,184,247,0.45)' : 'rgba(255,255,255,0.08)',
+                          backgroundColor: active ? 'rgba(126,184,247,0.14)' : 'rgba(20,24,32,0.65)',
+                        }}
+                      >
+                        {opt.l}
+                      </button>
+                    );
+                  })}
+                  {endMode === 'on_date' && (
+                    <input
+                      type="date"
+                      value={endDate ? format(endDate, 'yyyy-MM-dd') : ''}
+                      min={dueDate ? format(dueDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setEndDate(v ? new Date(v + 'T00:00:00') : undefined);
+                      }}
+                      className="h-7 px-2 rounded border text-[11px]"
+                      style={{
+                        backgroundColor: 'rgba(20,24,32,0.85)',
+                        borderColor: 'rgba(255,255,255,0.08)',
+                        color: '#cfe3ff',
+                        colorScheme: 'dark',
+                      }}
+                    />
+                  )}
+                  {endMode === 'after_n' && (
+                    <div className="inline-flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={1}
+                        max={365}
+                        value={endAfterN}
+                        onChange={(e) => {
+                          const n = Math.max(1, Math.min(365, parseInt(e.target.value, 10) || 1));
+                          setEndAfterN(n);
+                        }}
+                        className="w-14 h-7 px-1.5 rounded border text-[12px] text-center"
+                        style={{
+                          backgroundColor: 'rgba(20,24,32,0.85)',
+                          borderColor: 'rgba(255,255,255,0.08)',
+                          color: '#cfe3ff',
+                        }}
+                      />
+                      <span className="text-[11px]" style={{ color: '#9aa3b6' }}>occurrences</span>
+                    </div>
+                  )}
+                </div>
+                {(() => {
+                  if (endMode === 'never' || !recurrence) return null;
+                  const anchor = dueDate ?? new Date();
+                  let resolved: Date | null = null;
+                  if (endMode === 'on_date' && endDate) resolved = endDate;
+                  if (endMode === 'after_n') {
+                    let cursor: Date | null = new Date(anchor);
+                    const safeN = Math.max(1, Math.min(365, Math.floor(endAfterN)));
+                    for (let i = 1; i < safeN; i++) {
+                      const next = previewNextOccurrence(cursor!, recurrence);
+                      if (!next) { cursor = null; break; }
+                      cursor = next;
+                    }
+                    resolved = cursor;
+                  }
+                  if (!resolved) return null;
+                  return (
+                    <p className="text-[10px]" style={{ color: '#7a8194' }}>
+                      Series ends on <span style={{ color: '#cfe3ff' }}>{format(resolved, 'EEE, MMM d, yyyy')}</span>
+                      {endMode === 'after_n' && <> · {endAfterN} occurrence{endAfterN === 1 ? '' : 's'}</>}
+                    </p>
+                  );
+                })()}
+              </div>
+            )}
           </div>
 
           {/* Assignee */}
