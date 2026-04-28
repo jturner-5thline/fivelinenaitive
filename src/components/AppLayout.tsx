@@ -97,6 +97,9 @@ function BodyScrollLock() {
 export function AppLayout({ children, mainClassName }: AppLayoutProps) {
   const location = useLocation();
   const isTasksPage = location.pathname === '/tasks' || location.pathname.startsWith('/tasks/');
+  // The dashboard already exposes the primary assistant composer inline,
+  // so suppress the floating AI Copilot panel + toggle on that route only.
+  const isDashboardPage = location.pathname === '/dashboard';
   return (
     <SidebarProvider defaultOpen={true} className="h-svh" style={{ isolation: 'auto' } as React.CSSProperties}>
       <BodyScrollLock />
@@ -118,8 +121,12 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
       <FeedbackWidget />
       <TaskAssignmentBanner />
       <PlatformTour />
-      <CopilotToggleButton />
-      <AICopilotPanel />
+      {!isDashboardPage && (
+        <>
+          <CopilotToggleButton />
+          <AICopilotPanel />
+        </>
+      )}
       <CommandBar />
     </SidebarProvider>
   );
