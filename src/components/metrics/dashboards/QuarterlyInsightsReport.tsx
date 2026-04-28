@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2, SlidersHorizontal } from 'lucide-react';
 import { useAsanaGoals, type AsanaGoalRow } from '@/hooks/useAsanaGoals';
+import { useAsanaGoalFilterPrefs } from '@/hooks/useAsanaGoalFilterPrefs';
 
 /* ─────────────────────────────────────────────────────────────────────────
    Quarterly Insights Report — reusable full report page for the existing
@@ -590,20 +591,39 @@ function ReportNarrativeSection({ s, set }: { s: ReportState; set: ReportSetStat
 
 function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState }) {
   const { goals: asanaGoals, loading, error, lastSyncedAt, configured, refresh } = useAsanaGoals();
+  const prefs = useAsanaGoalFilterPrefs();
+
+  // When server prefs finish loading, hydrate the per-report state once so
+  // downstream code (and persisted localStorage snapshot) stays in sync.
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (!prefs.isLoaded || hydratedRef.current) return;
+    hydratedRef.current = true;
+    set(prev => ({
+      ...prev,
+      asanaGoalFilters: prefs.filters,
+      asanaGoalOverride: prefs.override,
+      asanaGoalExactMatch: prefs.exactMatch,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefs.isLoaded]);
 
   const preparedBy = s.authors[0] || 'James Turner';
   const normalize = (v: string) => v.trim().toLowerCase().replace(/\s+/g, ' ');
   const preparedByKey = normalize(preparedBy);
 
-  const templates = s.asanaGoalFilters || DEFAULT_ASANA_GOAL_FILTERS;
+  const templates = (prefs.isLoaded ? prefs.filters : (s.asanaGoalFilters || DEFAULT_ASANA_GOAL_FILTERS));
   const derived = useMemo(() => deriveAsanaGoalPeriod(s, templates), [s, templates]);
-  const activeQuarterLabel = s.asanaGoalOverride?.quarterLabel ?? derived.quarterLabel;
-  const activeHalfLabel = s.asanaGoalOverride?.halfLabel ?? derived.halfLabel;
+  const activeOverride = prefs.isLoaded ? prefs.override : s.asanaGoalOverride;
+  const activeExactMatch = prefs.isLoaded ? prefs.exactMatch : !!s.asanaGoalExactMatch;
+  const activeQuarterLabel = activeOverride?.quarterLabel ?? derived.quarterLabel;
+  const activeHalfLabel = activeOverride?.halfLabel ?? derived.halfLabel;
 
   // Reset manual override whenever the underlying period changes.
   useEffect(() => {
-    if (s.asanaGoalOverride) {
+    if (activeOverride) {
       set(prev => ({ ...prev, asanaGoalOverride: null }));
+      if (prefs.isLoaded) void prefs.save({ override: null });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.period, s.quarter, s.month]);
@@ -613,7 +633,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
     const norm = tp.trim().toLowerCase();
     const q = activeQuarterLabel.trim().toLowerCase();
     const h = activeHalfLabel.trim().toLowerCase();
-    const exact = !!s.asanaGoalExactMatch;
+    const exact = activeExactMatch;
     if (exact) {
       if (q && norm === q) return true;
       if (h && norm === h) return true;
@@ -631,7 +651,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
   const visibleGoals = useMemo(
     () => ownerGoals.filter(g => matchesPeriod(g.timePeriod)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [ownerGoals, activeQuarterLabel, activeHalfLabel, s.asanaGoalExactMatch]
+    [ownerGoals, activeQuarterLabel, activeHalfLabel, activeExactMatch]
   );
 
   const [filterEditorOpen, setFilterEditorOpen] = useState(false);
@@ -739,14 +759,11 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
   );
 
   const updateTemplate = (kind: 'quarters' | 'halves', key: string, val: string) => {
-    set(prev => {
-      const base = prev.asanaGoalFilters || DEFAULT_ASANA_GOAL_FILTERS;
-      const nextSection = { ...base[kind], [key]: val } as Record<string, string>;
-      return {
-        ...prev,
-        asanaGoalFilters: { ...base, [kind]: nextSection } as AsanaGoalFilterTemplates,
-      };
-    });
+    const base = templates;
+    const nextSection = { ...base[kind], [key]: val } as Record<string, string>;
+    const nextFilters = { ...base, [kind]: nextSection } as AsanaGoalFilterTemplates;
+    set(prev => ({ ...prev, asanaGoalFilters: nextFilters }));
+    void prefs.save({ filters: nextFilters });
   };
 
   const renderFilterEditor = () => {
