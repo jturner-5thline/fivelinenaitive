@@ -615,6 +615,7 @@ export function CashFlowManager() {
     () => mergeScheduledIntoWeekly(
       isConfigureFilterActive ? zeroedWeeklyShell : rawWeekly,
       filteredScheduledItems,
+      { lockHistoricalThrough: LAST_HISTORICAL_WEEK_ENDING },
     ),
     [rawWeekly, zeroedWeeklyShell, filteredScheduledItems, isConfigureFilterActive],
   );
