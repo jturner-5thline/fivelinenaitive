@@ -54,7 +54,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
  * `!` important overrides neutralize the base `<Card>` dark-mode glass styles.
  */
 const TILE_INTERACTIVE_CLASSES =
-  'group relative cursor-pointer outline-none p-2 ' +
+  'group relative cursor-pointer outline-none p-[calc(var(--tile-size)*0.08)] ' +
   '!border-0 !bg-transparent !shadow-none !backdrop-blur-none !backdrop-saturate-100 ' +
   'dark:!bg-transparent dark:!border-0 dark:!shadow-none ' +
   'dark:hover:!border-0 dark:hover:!shadow-none ' +
@@ -71,10 +71,11 @@ const TILE_INTERACTIVE_CLASSES =
  *   - Group-hover lift to mimic the reference's tappable feel.
  */
 const TILE_CHIP_BASE =
-  // 96×96 chip (~+20% over the previous 80px) with the platform-standard 8px
-  // radius (rounded-lg) so tiles feel native to the rest of the Naitive UI
-  // while preserving the glassy reference treatment.
-  'relative h-24 w-24 rounded-lg flex items-center justify-center overflow-hidden ' +
+  // Fully responsive chip — its width/height track the `--tile-size` CSS var
+  // defined on the dashboard grid, so every tile scales proportionally with
+  // the available viewport width while keeping a 1:1 aspect ratio.
+  'relative rounded-lg flex items-center justify-center overflow-hidden ' +
+  'h-[var(--tile-size)] w-[var(--tile-size)] ' +
   'border border-white/[0.13] ' +
   'shadow-[0_8px_22px_-8px_rgba(0,0,0,0.6),inset_0_1px_0_0_rgba(255,255,255,0.08)] ' +
   'transition-transform duration-200 ease-out ' +
@@ -114,9 +115,11 @@ const TILE_CHIP_GRADIENTS: Record<string, string> = {
 
 /** Tile label styling — centered under the chip, like the reference. */
 const TILE_LABEL_CLASSES =
-  // White, single-line label scaled with the larger tile. `whitespace-nowrap`
+  // White, single-line label whose font-size scales with `--tile-size` so the
+  // label always feels balanced relative to the chip. `whitespace-nowrap`
   // guarantees titles never wrap; the parent flex column keeps it centered.
-  'text-[14px] font-medium text-center leading-tight tracking-[0.01em] whitespace-nowrap ' +
+  'font-medium text-center leading-tight tracking-[0.01em] whitespace-nowrap ' +
+  'text-[calc(var(--tile-size)*0.16)] ' +
   'text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)]';
 
 const handleTileKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, action: () => void) => {
@@ -133,10 +136,13 @@ const handleTileKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, action: () =>
  */
 function WidgetTileSkeleton() {
   return (
-    <Card className="p-4 h-full" aria-hidden="true">
-      <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-        <Skeleton className="h-12 w-12 rounded-xl" />
-        <Skeleton className="h-3.5 w-20" />
+    <Card
+      className="!border-0 !bg-transparent !shadow-none p-[calc(var(--tile-size)*0.08)] h-full"
+      aria-hidden="true"
+    >
+      <div className="flex flex-col items-center justify-center text-center gap-[calc(var(--tile-size)*0.12)] h-full">
+        <Skeleton className="h-[var(--tile-size)] w-[var(--tile-size)] rounded-lg" />
+        <Skeleton className="h-[calc(var(--tile-size)*0.18)] w-[calc(var(--tile-size)*0.6)]" />
       </div>
     </Card>
   );
@@ -201,13 +207,13 @@ function EmailTileWithIntelligence({
         tabIndex={0}
         onKeyDown={onKeyDown}
       >
-        <div className="flex flex-col items-center justify-center text-center gap-2.5 h-full">
+        <div className="flex flex-col items-center justify-center text-center gap-[calc(var(--tile-size)*0.12)] h-full">
           <div
             className={TILE_CHIP_BASE}
             style={{ background: TILE_CHIP_GRADIENTS.email }}
           >
             <TileChipGloss />
-            <Mail className="relative z-10 h-12 w-12" style={{ color: '#c084f5' }} />
+            <Mail className="relative z-10 h-[calc(var(--tile-size)*0.5)] w-[calc(var(--tile-size)*0.5)]" style={{ color: '#c084f5' }} />
           </div>
           <span className={TILE_LABEL_CLASSES}>Email</span>
         </div>
@@ -510,7 +516,14 @@ export default function Dashboard() {
           </div>
 
           <div
-            className={`grid items-stretch gap-3 md:gap-4 ${skeletonGridColsClass}`}
+            className={`grid items-stretch ${skeletonGridColsClass}`}
+            style={{
+              // Tile size scales fluidly with viewport width and the gap
+              // scales proportionally with tile size so the grid feels
+              // designed at every breakpoint.
+              ['--tile-size' as any]: 'clamp(64px, 11vw, 112px)',
+              gap: 'calc(var(--tile-size) * 0.18)',
+            }}
             aria-busy="true"
             aria-label="Loading dashboard widgets"
           >
@@ -572,7 +585,15 @@ export default function Dashboard() {
               : 'grid-cols-3';
             return (
           <>
-          <div className={`grid items-stretch gap-3 md:gap-4 ${gridColsClass}`}>
+          <div
+            className={`grid items-stretch ${gridColsClass}`}
+            style={{
+              // See skeleton block above — single source of truth for the
+              // responsive tile-size + proportional gap.
+              ['--tile-size' as any]: 'clamp(64px, 11vw, 112px)',
+              gap: 'calc(var(--tile-size) * 0.18)',
+            }}
+          >
             <Card
               className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-1')}
               onClick={(e) => openCarouselWidget('calendar', e.currentTarget as HTMLElement)}
@@ -584,13 +605,13 @@ export default function Dashboard() {
                 )
               }
             >
-              <div className="flex flex-col items-center justify-center text-center gap-2.5 h-full">
+              <div className="flex flex-col items-center justify-center text-center gap-[calc(var(--tile-size)*0.12)] h-full">
                 <div
                   className={TILE_CHIP_BASE}
                   style={{ background: TILE_CHIP_GRADIENTS.calendar }}
                 >
                   <TileChipGloss />
-                  <CalendarIcon className="relative z-10 h-12 w-12" style={{ color: '#7b9ff5' }} />
+                  <CalendarIcon className="relative z-10 h-[calc(var(--tile-size)*0.5)] w-[calc(var(--tile-size)*0.5)]" style={{ color: '#7b9ff5' }} />
                 </div>
                 <span className={TILE_LABEL_CLASSES}>Calendar</span>
               </div>
@@ -615,13 +636,13 @@ export default function Dashboard() {
                 )
               }
             >
-              <div className="flex flex-col items-center justify-center text-center gap-2.5 h-full">
+              <div className="flex flex-col items-center justify-center text-center gap-[calc(var(--tile-size)*0.12)] h-full">
                 <div
                   className={TILE_CHIP_BASE}
                   style={{ background: TILE_CHIP_GRADIENTS.newDeal }}
                 >
                   <TileChipGloss />
-                  <Briefcase className="relative z-10 h-12 w-12" style={{ color: '#6b9cf5' }} />
+                  <Briefcase className="relative z-10 h-[calc(var(--tile-size)*0.5)] w-[calc(var(--tile-size)*0.5)]" style={{ color: '#6b9cf5' }} />
                 </div>
                 <span className={TILE_LABEL_CLASSES}>New Deal</span>
               </div>
@@ -638,13 +659,13 @@ export default function Dashboard() {
                   )
                 }
               >
-                <div className="flex flex-col items-center justify-center text-center gap-2.5 h-full">
+                <div className="flex flex-col items-center justify-center text-center gap-[calc(var(--tile-size)*0.12)] h-full">
                   <div
                     className={TILE_CHIP_BASE}
                     style={{ background: TILE_CHIP_GRADIENTS.briefing }}
                   >
                     <TileChipGloss />
-                    <Newspaper className="relative z-10 h-12 w-12" style={{ color: '#f5a623' }} />
+                    <Newspaper className="relative z-10 h-[calc(var(--tile-size)*0.5)] w-[calc(var(--tile-size)*0.5)]" style={{ color: '#f5a623' }} />
                   </div>
                   <span className={TILE_LABEL_CLASSES}>Daily Briefing</span>
                 </div>
@@ -662,13 +683,13 @@ export default function Dashboard() {
                   )
                 }
               >
-                <div className="flex flex-col items-center justify-center text-center gap-2.5 h-full">
+                <div className="flex flex-col items-center justify-center text-center gap-[calc(var(--tile-size)*0.12)] h-full">
                   <div
                     className={TILE_CHIP_BASE}
                     style={{ background: TILE_CHIP_GRADIENTS.niki }}
                   >
                     <TileChipGloss />
-                    <Newspaper className="relative z-10 h-12 w-12" style={{ color: '#2dd4b8' }} />
+                    <Newspaper className="relative z-10 h-[calc(var(--tile-size)*0.5)] w-[calc(var(--tile-size)*0.5)]" style={{ color: '#2dd4b8' }} />
                   </div>
                   <span className={TILE_LABEL_CLASSES}>
                     {isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
@@ -686,13 +707,13 @@ export default function Dashboard() {
               onKeyDown={(e) => handleTileKeyDown(e, () => setDealsDialogOpen(true))}
               aria-label="Open Deals insights"
             >
-              <div className="flex flex-col items-center justify-center text-center gap-2.5 h-full">
+              <div className="flex flex-col items-center justify-center text-center gap-[calc(var(--tile-size)*0.12)] h-full">
                 <div
                   className={TILE_CHIP_BASE}
                   style={{ background: TILE_CHIP_GRADIENTS.deals }}
                 >
                   <TileChipGloss />
-                  <Handshake className="relative z-10 h-12 w-12" style={{ color: '#2dd4b8' }} />
+                  <Handshake className="relative z-10 h-[calc(var(--tile-size)*0.5)] w-[calc(var(--tile-size)*0.5)]" style={{ color: '#2dd4b8' }} />
                 </div>
                 <span className={TILE_LABEL_CLASSES}>Deals</span>
               </div>
@@ -709,13 +730,13 @@ export default function Dashboard() {
                   )
                 }
               >
-                <div className="flex flex-col items-center justify-center text-center gap-2.5 h-full">
+                <div className="flex flex-col items-center justify-center text-center gap-[calc(var(--tile-size)*0.12)] h-full">
                   <div
                     className={TILE_CHIP_BASE}
                     style={{ background: TILE_CHIP_GRADIENTS.dealRundown }}
                   >
                     <TileChipGloss />
-                    <Briefcase className="relative z-10 h-12 w-12" style={{ color: '#6b9cf5' }} />
+                    <Briefcase className="relative z-10 h-[calc(var(--tile-size)*0.5)] w-[calc(var(--tile-size)*0.5)]" style={{ color: '#6b9cf5' }} />
                   </div>
                   <span className={TILE_LABEL_CLASSES}>Deal Rundown</span>
                 </div>
