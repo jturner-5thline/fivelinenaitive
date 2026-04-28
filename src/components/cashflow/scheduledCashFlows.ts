@@ -258,7 +258,8 @@ export function mergeScheduledIntoWeekly(
     // TOTAL CASH ON HAND untouched. Just carry forward their ending cash so
     // the first forward week starts from the correct balance.
     if (lockThrough && weekEnding <= lockThrough) {
-      prevEnd = Number(target['ENDING CASH']) || prevEnd;
+      const ec = Number(target['ENDING CASH']);
+      prevEnd = Number.isFinite(ec) ? ec : prevEnd;
       continue;
     }
     const begin = prevEnd !== null ? prevEnd : (Number(target['BEGINNING CASH']) || 0);
