@@ -317,28 +317,30 @@ function StackedDebtRevenueChart({
                   return (
                     <div
                       style={{
-                        backgroundColor: 'hsl(var(--popover))',
-                        border: '1px solid hsl(var(--border))',
+                        backgroundColor: 'hsl(var(--popover) / 0.96)',
+                        border: '1px solid hsl(0 0% 100% / 0.14)',
                         borderRadius: '8px',
                         padding: '8px 12px',
                         fontSize: '12px',
-                        color: 'hsl(var(--popover-foreground))',
+                        color: 'hsl(0 0% 100%)',
+                        boxShadow: 'var(--shadow-xl)',
+                        backdropFilter: 'blur(16px)',
                       }}
                     >
-                      <p style={{ fontWeight: 600, marginBottom: 4, color: 'hsl(var(--muted-foreground))' }}>{label}</p>
+                      <p style={{ fontWeight: 600, marginBottom: 4, color: 'hsl(0 0% 100%)' }}>{label}</p>
                       {payload.filter(p => (Number(p.value) || 0) !== 0).map((p, i) => (
                         <div key={i} className="flex items-center gap-2 py-0.5">
                           <span
                             className="inline-block w-2 h-2 rounded-full"
                             style={{ backgroundColor: p.color }}
                           />
-                          <span className="text-xs">{STACKED_CATEGORIES.find(c => c.key === p.dataKey)?.label ?? p.dataKey}</span>
-                          <span className="ml-auto font-mono text-xs">{formatCurrencyFull(Number(p.value))}</span>
+                          <span className="text-xs text-white/88">{STACKED_CATEGORIES.find(c => c.key === p.dataKey)?.label ?? p.dataKey}</span>
+                          <span className="ml-auto font-mono text-xs font-semibold text-white">{formatCurrencyFull(Number(p.value))}</span>
                         </div>
                       ))}
-                      <div className="border-t mt-1 pt-1 flex justify-between text-xs font-semibold" style={{ borderColor: 'hsl(var(--border))' }}>
+                      <div className="border-t mt-1 pt-1 flex justify-between text-xs font-semibold text-white" style={{ borderColor: 'hsl(0 0% 100% / 0.12)' }}>
                         <span>Total</span>
-                        <span className="font-mono">{formatCurrencyFull(monthTotal)}</span>
+                        <span className="font-mono text-white">{formatCurrencyFull(monthTotal)}</span>
                       </div>
                     </div>
                   );
@@ -429,18 +431,18 @@ function StackedGenericRevenueChart({
                   if (!active || !payload?.length) return null;
                   const monthTotal = payload.reduce((s, p) => s + (Number(p.value) || 0), 0);
                   return (
-                    <div style={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', color: 'hsl(var(--popover-foreground))' }}>
-                      <p style={{ fontWeight: 600, marginBottom: 4, color: 'hsl(var(--muted-foreground))' }}>{label}</p>
+                    <div style={{ backgroundColor: 'hsl(var(--popover) / 0.96)', border: '1px solid hsl(0 0% 100% / 0.14)', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', color: 'hsl(0 0% 100%)', boxShadow: 'var(--shadow-xl)', backdropFilter: 'blur(16px)' }}>
+                      <p style={{ fontWeight: 600, marginBottom: 4, color: 'hsl(0 0% 100%)' }}>{label}</p>
                       {payload.filter(p => (Number(p.value) || 0) !== 0).map((p, i) => (
                         <div key={i} className="flex items-center gap-2 py-0.5">
                           <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
-                          <span className="text-xs">{categories.find(c => c.key === p.dataKey)?.label ?? p.dataKey}</span>
-                          <span className="ml-auto font-mono text-xs">{formatCurrencyFull(Number(p.value))}</span>
+                          <span className="text-xs text-white/88">{categories.find(c => c.key === p.dataKey)?.label ?? p.dataKey}</span>
+                          <span className="ml-auto font-mono text-xs font-semibold text-white">{formatCurrencyFull(Number(p.value))}</span>
                         </div>
                       ))}
-                      <div className="border-t mt-1 pt-1 flex justify-between text-xs font-semibold" style={{ borderColor: 'hsl(var(--border))' }}>
+                      <div className="border-t mt-1 pt-1 flex justify-between text-xs font-semibold text-white" style={{ borderColor: 'hsl(0 0% 100% / 0.12)' }}>
                         <span>Total</span>
-                        <span className="font-mono">{formatCurrencyFull(monthTotal)}</span>
+                        <span className="font-mono text-white">{formatCurrencyFull(monthTotal)}</span>
                       </div>
                     </div>
                   );
