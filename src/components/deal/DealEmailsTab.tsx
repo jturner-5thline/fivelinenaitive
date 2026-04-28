@@ -235,6 +235,8 @@ function PaginationFooter({
 }
 
 export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingExternal, onGmailSend, onLoadMore, hasMore, isLoadingMore, isAutoPaginating }: DealEmailsTabProps) {
+  const { user } = useAuth();
+  const { company } = useCompany();
   // Routes read-state writes through Nylas → Gmail/Outlook so the change
   // is reflected in the user's actual mailbox. We only call this for
   // real (externally hydrated) emails — never mock fixtures.
