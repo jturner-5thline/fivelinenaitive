@@ -381,12 +381,13 @@ function ReportHeaderSection({ s, set, reset, print }: { s: ReportState; set: Re
                 const newQuarter = e.target.value;
                 set(prev => {
                   const validMonths = monthsForQuarter(newQuarter);
-                  const monthStillValid = validMonths.includes(prev.month);
-                  return {
-                    ...prev,
-                    quarter: newQuarter,
-                    month: monthStillValid ? prev.month : (validMonths[0] || ''),
-                  };
+                  // In Monthly mode, always reset Month to the first month of the new Quarter
+                  // so the report title and Month selection update immediately on Quarter change.
+                  // In Quarterly mode, preserve Month if still valid (no visible impact).
+                  const nextMonth = prev.period === 'monthly'
+                    ? (validMonths[0] || '')
+                    : (validMonths.includes(prev.month) ? prev.month : (validMonths[0] || ''));
+                  return { ...prev, quarter: newQuarter, month: nextMonth };
                 });
               }}
               style={{ ...selectStyle, width: 130 }}
