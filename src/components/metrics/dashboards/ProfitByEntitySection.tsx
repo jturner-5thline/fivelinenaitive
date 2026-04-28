@@ -53,7 +53,7 @@ function ProfitBarChart({
 }) {
   if (isLoading) {
     return (
-      <Card style={GLASS_CARD_STYLE} className="relative overflow-hidden backdrop-blur-xl">
+      <Card className="glass-module">
         <div style={GLASS_SHEEN_STYLE} />
         <CardHeader className="pb-2 relative"><Skeleton className="h-5 w-32" /><Skeleton className="h-3 w-48 mt-1" /></CardHeader>
         <CardContent className="relative"><Skeleton className="h-[260px] w-full" /></CardContent>
@@ -88,7 +88,7 @@ function ProfitBarChart({
   return (
     <Card
       style={GLASS_CARD_STYLE}
-      className="relative overflow-hidden backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5"
+      className="glass-module glass-module-interactive"
     >
       <div style={GLASS_SHEEN_STYLE} />
       <CardHeader className="pb-3 pt-5 relative">
