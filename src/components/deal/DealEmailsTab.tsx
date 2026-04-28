@@ -242,6 +242,40 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   // real (externally hydrated) emails — never mock fixtures.
   const { markRead: providerMarkRead } = useGmail();
 
+  // Tracks locally-mutated fields (is_read / is_starred / is_linked_to_deal /
+  // needs_response) that have not yet been confirmed by the upstream provider
+  // hydration. Without this, every refresh of `externalEmails` would clobber
+  // optimistic UI updates and visually flip read items back to unread until
+  // the next provider round-trip lands.
+  const localOverridesRef = useRef<Map<string, Partial<MockEmail>>>(new Map());
+
+  const applyLocalOverride = useCallback(
+    (id: string, patch: Partial<MockEmail>) => {
+      const prev = localOverridesRef.current.get(id) || {};
+      localOverridesRef.current.set(id, { ...prev, ...patch });
+    },
+    []
+  );
+
+  const clearLocalOverride = useCallback(
+    (id: string, keys?: (keyof MockEmail)[]) => {
+      const cur = localOverridesRef.current.get(id);
+      if (!cur) return;
+      if (!keys) {
+        localOverridesRef.current.delete(id);
+        return;
+      }
+      const next = { ...cur };
+      keys.forEach((k) => delete (next as any)[k]);
+      if (Object.keys(next).length === 0) {
+        localOverridesRef.current.delete(id);
+      } else {
+        localOverridesRef.current.set(id, next);
+      }
+    },
+    []
+  );
+
   // Sync a batch of provider-backed messages to the real mailbox.
   // Optimistic UI is already applied by the caller; on failure we
   // revert via `onRevert` and surface a single toast.
@@ -256,6 +290,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       const anyFailed = results.some((ok) => !ok);
       if (anyFailed) {
         onRevert();
+        // Roll back the override so a subsequent external refresh can take
+        // hold again. Successful ids stay overridden until upstream catches up.
+        messageIds.forEach((id) => clearLocalOverride(id, ['is_read']));
         toast.error(
           read
             ? "Couldn't sync read state to Gmail/Outlook"
@@ -264,7 +301,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         );
       }
     },
-    [externalEmails, providerMarkRead]
+    [externalEmails, providerMarkRead, clearLocalOverride]
   );
   const navigate = useNavigate();
   const { queueSend } = useUndoSend();
