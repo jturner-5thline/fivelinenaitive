@@ -43,11 +43,8 @@ export default function Finance() {
       <DashboardPage
         padding="md"
         container={false}
-        header={
-          <div>
-            <h1 className="text-2xl font-bold">Finance</h1>
-          </div>
-        }
+        bodySpacing="space-y-4"
+        header={<h1 className="text-2xl font-bold leading-none">Finance</h1>}
       >
         <FPAWorkspace />
       </DashboardPage>
