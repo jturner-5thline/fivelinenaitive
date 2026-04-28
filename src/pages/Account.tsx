@@ -9,6 +9,7 @@ import { NotificationSettings } from '@/components/settings/NotificationSettings
 import { SecuritySettings } from '@/components/settings/SecuritySettings';
 import { DealSummarySettings } from '@/components/settings/DealSummarySettings';
 import { TaskDefaultsSettings } from '@/components/settings/TaskDefaultsSettings';
+import { NotificationLinkSettings } from '@/components/settings/NotificationLinkSettings';
 
 export default function Account() {
   return (
@@ -44,6 +45,8 @@ export default function Account() {
             <DealSummarySettings />
 
             <TaskDefaultsSettings />
+
+            <NotificationLinkSettings />
 
             <NotificationSettings />
           </div>
