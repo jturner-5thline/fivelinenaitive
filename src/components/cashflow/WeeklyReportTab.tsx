@@ -602,8 +602,10 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                           key={weekKey}
                           ref={(el) => registerCellRef(ccKey, el)}
                           className={`${displayVal > 0 ? 'cf-val-pos' : displayVal < 0 ? 'cf-val-neg' : ''}${isOverridden ? ' cf-cell-override' : ''}${cellCommentsHere.length > 0 ? ' cf-cell-has-comment' : ''}`}
-                          title={isOverridden ? 'Manually overridden — double-click to clear' : (editable ? 'Click to edit' : (cellCommentsHere.length > 0 ? `${cellCommentsHere.length} comment${cellCommentsHere.length > 1 ? 's' : ''}` : undefined))}
+                          title={isOverridden ? 'Manually overridden — double-click to clear' : (editable ? 'Click to edit' : 'Click to view source entries')}
+                          style={!editable ? { cursor: 'pointer' } : undefined}
                           onContextMenu={(e) => handleCellContextMenu(e, cellCtx)}
+                          onClick={!editable ? () => openDrilldown(rowDef.key, labelText, weekKey, (entry?.week_ending as string) ?? null, displayVal) : undefined}
                           onDoubleClick={isOverridden && editable && overrideField
                             ? () => onCashOverride!(weekKey, overrideField, null)
                             : undefined}
