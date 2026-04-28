@@ -341,5 +341,5 @@ export function useAIEmailSearch() {
     });
   }, []);
 
-  return { search, clear, removeFilter, result, isSearching, error };
+  return { search, clear, cancel, removeFilter, result, isSearching, error };
 }
