@@ -435,7 +435,8 @@ const ThreadListItem = memo(ThreadListItemImpl, (prev, next) => {
     prev.onMarkUnread === next.onMarkUnread &&
     prev.onArchive === next.onArchive &&
     prev.onDelete === next.onDelete &&
-    autoLabelsEqual(prev.autoLabels, next.autoLabels)
+    autoLabelsEqual(prev.autoLabels, next.autoLabels) &&
+    autoLabelsEqual(prev.userLabels, next.userLabels)
   );
 });
 
