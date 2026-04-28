@@ -43,6 +43,31 @@ const readLastAssignee = (fallback: string): string => {
   }
 };
 
+// Mirrors calculateNextDueDate() in useTasks.ts so the modal can preview
+// the next occurrence without round-tripping through the hook layer.
+function previewNextOccurrence(anchor: Date, rule: string): Date | null {
+  const d = new Date(anchor);
+  d.setHours(0, 0, 0, 0);
+  if (rule.startsWith('every:')) {
+    const [, nStr, unit] = rule.split(':');
+    const n = Math.max(1, Math.min(365, parseInt(nStr, 10) || 1));
+    if (unit === 'days') { d.setDate(d.getDate() + n); return d; }
+    if (unit === 'weeks') { d.setDate(d.getDate() + n * 7); return d; }
+    return null;
+  }
+  switch (rule) {
+    case 'daily':     d.setDate(d.getDate() + 1); return d;
+    case 'weekdays':
+      do { d.setDate(d.getDate() + 1); } while (d.getDay() === 0 || d.getDay() === 6);
+      return d;
+    case 'weekly':    d.setDate(d.getDate() + 7); return d;
+    case 'biweekly':  d.setDate(d.getDate() + 14); return d;
+    case 'monthly':   d.setMonth(d.getMonth() + 1); return d;
+    case 'quarterly': d.setMonth(d.getMonth() + 3); return d;
+    default: return null;
+  }
+}
+
 export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, currentUserId }: Props) {
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<QuickTaskInput['priority']>('medium');
@@ -351,9 +376,32 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
 
           {/* Recurrence */}
           <div className="space-y-1.5">
-            <label className="text-[10px] uppercase tracking-wide font-medium flex items-center gap-1" style={{ color: '#7a8194' }}>
-              <Repeat className="h-3 w-3" /> Repeat
-            </label>
+            <div className="flex items-center justify-between gap-2">
+              <label className="text-[10px] uppercase tracking-wide font-medium flex items-center gap-1" style={{ color: '#7a8194' }}>
+                <Repeat className="h-3 w-3" /> Repeat
+              </label>
+              {recurrence && (() => {
+                const anchor = dueDate ?? new Date();
+                const next = previewNextOccurrence(anchor, recurrence);
+                if (!next) return null;
+                return (
+                  <span
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border"
+                    style={{
+                      color: '#cfe3ff',
+                      borderColor: 'rgba(126,184,247,0.35)',
+                      backgroundColor: 'rgba(126,184,247,0.10)',
+                    }}
+                    title={`After completion, the next task will be due ${format(next, 'EEE, MMM d, yyyy')}${dueDate ? '' : ' (anchored to today since no due date is set)'}`}
+                  >
+                    Next: {format(next, 'EEE, MMM d')}
+                    {!dueDate && (
+                      <span style={{ color: '#7a8194' }}>· from today</span>
+                    )}
+                  </span>
+                );
+              })()}
+            </div>
             <div className="flex flex-wrap gap-1">
               {[
                 { value: null, label: 'None' },
