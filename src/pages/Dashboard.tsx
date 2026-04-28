@@ -136,10 +136,13 @@ const handleTileKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, action: () =>
  */
 function WidgetTileSkeleton() {
   return (
-    <Card className="p-4 h-full" aria-hidden="true">
-      <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-        <Skeleton className="h-12 w-12 rounded-xl" />
-        <Skeleton className="h-3.5 w-20" />
+    <Card
+      className="!border-0 !bg-transparent !shadow-none p-[calc(var(--tile-size)*0.08)] h-full"
+      aria-hidden="true"
+    >
+      <div className="flex flex-col items-center justify-center text-center gap-[calc(var(--tile-size)*0.12)] h-full">
+        <Skeleton className="h-[var(--tile-size)] w-[var(--tile-size)] rounded-lg" />
+        <Skeleton className="h-[calc(var(--tile-size)*0.18)] w-[calc(var(--tile-size)*0.6)]" />
       </div>
     </Card>
   );
