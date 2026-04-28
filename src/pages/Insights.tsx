@@ -122,7 +122,6 @@ const DASHBOARD_OPTIONS = [
   { id: 'sales-team-board', name: 'Sales Team Board', isFavorite: false, folder: 'sales-bd' as const },
   { id: 'finserv-financial-metrics', name: 'FinServ Financial Metrics', isFavorite: false, folder: null },
   { id: 'consolidated-debt-pipeline', name: 'Consolidated Debt Pipeline Board', isFavorite: false, folder: 'sales-bd' as const },
-  { id: 'executive-dashboard', name: 'Executive Dashboard', isFavorite: false, folder: 'management-insights' as const },
   { id: 'sales-bd-roi', name: 'Sales & BD ROI', isFavorite: false, folder: 'sales-bd' as const },
   { id: 'quickbooks-financial', name: 'QuickBooks Financial', isFavorite: false, folder: 'financial' as const },
   { id: 'management-review', name: 'Insights Dashboard', isFavorite: false, folder: 'management-insights' as const },
@@ -138,7 +137,7 @@ const DEFAULT_FOLDER_GROUPS: { id: string; name: string; dashboardIds: string[] 
   {
     id: 'management-insights',
     name: 'Management Insights',
-    dashboardIds: ['management-snapshot', 'management-review', 'executive-dashboard'],
+    dashboardIds: ['management-snapshot', 'management-review'],
   },
   {
     id: 'financial',
