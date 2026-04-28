@@ -709,11 +709,14 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
       return false;
     }
   });
-  const setFilterEditorOpen = (next: boolean) => {
-    setFilterEditorOpenRaw(next);
-    if (typeof window !== 'undefined') {
-      try { window.localStorage.setItem(editorOpenStorageKey, next ? '1' : '0'); } catch { /* ignore */ }
-    }
+  const setFilterEditorOpen: React.Dispatch<React.SetStateAction<boolean>> = (value) => {
+    setFilterEditorOpenRaw(prev => {
+      const next = typeof value === 'function' ? (value as (p: boolean) => boolean)(prev) : value;
+      if (typeof window !== 'undefined') {
+        try { window.localStorage.setItem(editorOpenStorageKey, next ? '1' : '0'); } catch { /* ignore */ }
+      }
+      return next;
+    });
   };
 
   const thStyle: React.CSSProperties = { textAlign: 'left', fontSize: 9, fontWeight: 700, color: 'rgba(140,175,200,0.5)', letterSpacing: '.08em', textTransform: 'uppercase', padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)' };
