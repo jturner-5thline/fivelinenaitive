@@ -151,9 +151,9 @@ function ProfitBarChart({
         </div>
       </CardHeader>
       <CardContent className="relative pt-1">
-        <div style={{ height: 220 }}>
+        <div style={{ height: 236 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={months} margin={{ top: 12, right: 8, left: -10, bottom: 0 }} barCategoryGap="28%">
+            <BarChart data={months} margin={{ top: 12, right: 8, left: -10, bottom: 28 }} barCategoryGap="28%">
               <CartesianGrid
                 strokeDasharray="2 4"
                 stroke="rgba(160, 200, 255, 0.10)"
@@ -164,10 +164,12 @@ function ProfitBarChart({
                 tick={{ fontSize: 10, fill: 'rgba(160, 200, 255, 0.50)' }}
                 axisLine={false}
                 tickLine={false}
-                dy={4}
+                height={28}
+                dy={8}
               />
               <YAxis
                 domain={[domainMin, domainMax]}
+                allowDataOverflow
                 tickFormatter={formatCurrency}
                 tick={{ fontSize: 10, fill: 'rgba(160, 200, 255, 0.40)' }}
                 axisLine={false}
