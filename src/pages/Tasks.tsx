@@ -51,7 +51,8 @@ import {
   Tag, ClipboardList, Users, Briefcase, Building2, CalendarDays, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { isToday, isPast, addDays, startOfDay } from 'date-fns';
+import { useDueBoundaries } from '@/hooks/useDueBoundaries';
+import { bucketDueDate, isOverdue as isOverdueFn } from '@/lib/taskDateGrouping';
 import { cn } from '@/lib/utils';
 import {
   DndContext, closestCenter, DragOverlay, PointerSensor, TouchSensor,
@@ -159,17 +160,15 @@ export default function Tasks() {
 
   const selectedTask = tasks.find(t => t.id === selectedTaskId) || null;
 
-  // Focus view: today's tasks + overdue + high priority
+  // Single source of truth for "today" / "this week" boundaries — auto-rolls
+  // at local midnight so overdue/today/upcoming stay correct without reload.
+  const dueBoundaries = useDueBoundaries();
+
+  // Focus view: today's tasks + overdue + this-week + high priority
   const focusTasks = tasks.filter(t => {
     if (t.status === 'complete') return false;
-    if (t.due_date && isPast(new Date(t.due_date + 'T23:59:59')) && !isToday(new Date(t.due_date + 'T00:00:00'))) return true;
-    if (t.due_date && isToday(new Date(t.due_date + 'T00:00:00'))) return true;
-    if (t.due_date) {
-      const d = new Date(t.due_date + 'T00:00:00');
-      const todayDate = startOfDay(new Date());
-      const weekOut = addDays(todayDate, 7);
-      if (d > todayDate && d <= weekOut) return true;
-    }
+    const bucket = bucketDueDate(t.due_date, dueBoundaries);
+    if (bucket === 'overdue' || bucket === 'today' || bucket === 'tomorrow' || bucket === 'this_week') return true;
     if ((t.priority === 'urgent' || t.priority === 'high') && t.status === 'not_started') return true;
     return false;
   });
@@ -193,21 +192,17 @@ export default function Tasks() {
         if (!taskLabels || ![...filterLabelIds].some(lid => taskLabels.has(lid))) return false;
       }
       if (filterDueDate !== 'all') {
-        const today = startOfDay(new Date());
+        const bucket = bucketDueDate(t.due_date, dueBoundaries);
         if (filterDueDate === 'no_date') {
-          if (t.due_date) return false;
-        } else if (!t.due_date) {
+          if (bucket !== 'no_date') return false;
+        } else if (bucket === 'no_date') {
           return false;
-        } else {
-          const d = new Date(t.due_date + 'T00:00:00');
-          if (filterDueDate === 'overdue') {
-            if (!(isPast(d) && !isToday(d)) || t.status === 'complete') return false;
-          } else if (filterDueDate === 'today') {
-            if (!isToday(d)) return false;
-          } else if (filterDueDate === 'this_week') {
-            const weekOut = addDays(today, 7);
-            if (!(d >= today && d <= weekOut)) return false;
-          }
+        } else if (filterDueDate === 'overdue') {
+          if (bucket !== 'overdue' || t.status === 'complete') return false;
+        } else if (filterDueDate === 'today') {
+          if (bucket !== 'today') return false;
+        } else if (filterDueDate === 'this_week') {
+          if (bucket !== 'today' && bucket !== 'tomorrow' && bucket !== 'this_week') return false;
         }
       }
       return true;
@@ -466,14 +461,11 @@ export default function Tasks() {
     setCustomSections(prev => prev.filter(s => s.key !== key));
   };
 
-  // Overdue count for badge
+  // Overdue count for badge — shares the same boundaries as the grouped views
+  // so the header summary always matches what's rendered below.
   const overdueCount = useMemo(() => {
-    return tasks.filter(t =>
-      t.due_date && t.status !== 'complete' &&
-      isPast(new Date(t.due_date + 'T23:59:59')) &&
-      !isToday(new Date(t.due_date + 'T00:00:00'))
-    ).length;
-  }, [tasks]);
+    return tasks.filter(t => isOverdueFn(t.due_date, t.status, dueBoundaries)).length;
+  }, [tasks, dueBoundaries]);
 
   // Focus mode
   if (showFocusMode) {
