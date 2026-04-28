@@ -1,17 +1,26 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Loader2, Users, DollarSign, FileCheck, FileSignature, FileText, ClipboardCheck,
   Coins, ScrollText, Handshake, Banknote,
 } from 'lucide-react';
+import {
+  ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Cell,
+} from 'recharts';
+import { Skeleton } from '@/components/ui/skeleton';
+import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { type QuarterOption } from '@/hooks/useQBQuarterlyRevenue';
 import {
   useConsolidatedDebtPipelineMetrics,
+  type StageTrendBucket,
   type StageEntryDeal,
 } from '@/hooks/usePipelineStageMetrics';
 import { cn } from '@/lib/utils';
+import { consumePendingReopen } from '@/lib/dealOriginContext';
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
@@ -159,13 +168,198 @@ interface SectionDef {
   cards: MetricCardConfig[];
 }
 
+type TrendChartMode = 'monthly' | 'quarterly';
+
+type TrendMetricKey = 'deals-closed' | 'dollars-funded';
+
+interface PendingTrendReopen {
+  metric: TrendMetricKey;
+  mode: TrendChartMode;
+  bucketKey: string;
+}
+
+function CompactFundedBarChart({
+  title,
+  subtitle,
+  buckets,
+  isLoading,
+  color,
+  dataKey,
+  valueFormatter,
+  totalFormatter,
+  onBarClick,
+}: {
+  title: string;
+  subtitle: string;
+  buckets: StageTrendBucket[];
+  isLoading: boolean;
+  color: string;
+  dataKey: 'count' | 'dollarVolume';
+  valueFormatter: (value: number) => string;
+  totalFormatter: (value: number) => string;
+  onBarClick: (bucket: StageTrendBucket) => void;
+}) {
+  const total = buckets.reduce((sum, bucket) => sum + bucket[dataKey], 0);
+
+  if (isLoading) {
+    return (
+      <Card className="bg-card/50 backdrop-blur border-border/50">
+        <CardHeader className="pb-2">
+          <Skeleton className="h-5 w-36" />
+          <Skeleton className="mt-1 h-3 w-40" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-[220px] w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="bg-card/50 backdrop-blur border-border/50 hover:border-border transition-colors">
+      <CardHeader className="pb-2 flex flex-row items-start justify-between">
+        <div>
+          <CardTitle className="text-sm font-medium text-foreground">{title}</CardTitle>
+          <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-lg font-bold text-foreground">{totalFormatter(total)}</p>
+          <p className="text-[10px] text-muted-foreground">{buckets.length} {buckets.length === 6 ? 'Months' : 'Quarters'}</p>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div style={{ height: 220 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={buckets} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} vertical={false} />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={{ stroke: 'hsl(var(--border))' }}
+                tickLine={false}
+              />
+              <YAxis
+                allowDecimals={dataKey === 'dollarVolume'}
+                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(value: number) => valueFormatter(value)}
+                width={54}
+              />
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload || !payload.length) return null;
+                  const bucket = payload[0].payload as StageTrendBucket;
+                  const value = dataKey === 'dollarVolume' ? bucket.dollarVolume : bucket.count;
+                  return (
+                    <div
+                      style={{
+                        backgroundColor: 'hsl(var(--popover) / 0.96)',
+                        border: '1px solid hsl(0 0% 100% / 0.14)',
+                        borderRadius: 8,
+                        padding: '8px 10px',
+                        fontSize: 12,
+                        color: 'hsl(0 0% 100%)',
+                        maxWidth: 280,
+                        boxShadow: 'var(--shadow-xl)',
+                        backdropFilter: 'blur(16px)',
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, marginBottom: 4, color: 'hsl(0 0% 100%)' }}>
+                        {bucket.label} · {valueFormatter(value)}
+                      </div>
+                      <div style={{ color: 'hsl(0 0% 100% / 0.82)', marginBottom: bucket.deals.length ? 6 : 0 }}>
+                        {bucket.count} deal{bucket.count !== 1 ? 's' : ''} · {formatCurrency(bucket.dollarVolume)}
+                      </div>
+                      {bucket.deals.length > 0 ? (
+                        <ul style={{ margin: 0, paddingLeft: 14, lineHeight: 1.4 }}>
+                          {bucket.deals.slice(0, 8).map((deal) => (
+                            <li key={deal.deal_id} style={{ color: 'hsl(0 0% 100% / 0.88)' }}>
+                              {deal.company}
+                            </li>
+                          ))}
+                          {bucket.deals.length > 8 ? (
+                            <li style={{ color: 'hsl(0 0% 100% / 0.78)' }}>+{bucket.deals.length - 8} more</li>
+                          ) : null}
+                        </ul>
+                      ) : (
+                        <div style={{ color: 'hsl(0 0% 100% / 0.78)' }}>No deals</div>
+                      )}
+                    </div>
+                  );
+                }}
+                wrapperStyle={{ outline: 'none' }}
+                cursor={{ fill: 'hsl(var(--accent))', fillOpacity: 0.15 }}
+              />
+              <Bar dataKey={dataKey} shape={createGlassBarShape({ radius: 3, dataKey })} cursor="pointer" onClick={(bucket: StageTrendBucket) => onBarClick(bucket)}>
+                {buckets.map((bucket, index) => {
+                  const rawValue = dataKey === 'dollarVolume' ? bucket.dollarVolume : bucket.count;
+                  return (
+                    <Cell
+                      key={`${bucket.key}-${index}`}
+                      fill={rawValue > 0 ? color : 'hsl(var(--muted))'}
+                      fillOpacity={rawValue > 0 ? 0.85 : 0.3}
+                    />
+                  );
+                })}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function ConsolidatedDebtPipelineDashboard({
   selectedQuarter,
 }: {
   selectedQuarter?: QuarterOption;
 }) {
   const m = useConsolidatedDebtPipelineMetrics(selectedQuarter as QuarterOption);
+  const [trendMode, setTrendMode] = useState<TrendChartMode>('monthly');
+  const [pendingTrendReopen, setPendingTrendReopen] = useState<PendingTrendReopen | null>(null);
   const [drilldown, setDrilldown] = useState<{ title: string; deals: StageEntryDeal[]; periodNote?: string } | null>(null);
+
+  const fundedTrendBuckets = trendMode === 'monthly' ? m.fundedInvoicedTrend.monthly : m.fundedInvoicedTrend.quarterly;
+
+  const buildTrendPeriodNote = (bucket: StageTrendBucket, metricLabel: string) =>
+    `${metricLabel} · Active Pipeline → Funded / Invoiced · ${bucket.label}`;
+
+  useEffect(() => {
+    if (m.fundedInvoicedTrend.isLoading || !selectedQuarter) return;
+    const reopen = consumePendingReopen(
+      (entry) => entry.source === 'insights.consolidated-debt-pipeline' && entry.quarterId === selectedQuarter.value,
+    );
+    if (!reopen) return;
+    const [metric, mode, bucketKey] = reopen.bucketKey.split('|') as [TrendMetricKey, TrendChartMode, string];
+    if (mode !== trendMode) {
+      setPendingTrendReopen({ metric, mode, bucketKey });
+      setTrendMode(mode);
+      return;
+    }
+    const bucket = (mode === 'monthly' ? m.fundedInvoicedTrend.monthly : m.fundedInvoicedTrend.quarterly).find((entry) => entry.key === bucketKey);
+    if (!bucket) return;
+    setDrilldown({
+      title: `${metric === 'deals-closed' ? 'Deals Closed' : 'Dollars Funded'} — ${bucket.label}`,
+      deals: bucket.deals,
+      periodNote: buildTrendPeriodNote(bucket, metric === 'deals-closed' ? 'Deal count' : 'Dollar volume'),
+    });
+  }, [m.fundedInvoicedTrend.isLoading, m.fundedInvoicedTrend.monthly, m.fundedInvoicedTrend.quarterly, selectedQuarter, trendMode]);
+
+  useEffect(() => {
+    if (!pendingTrendReopen || pendingTrendReopen.mode !== trendMode) return;
+    const bucket = (trendMode === 'monthly' ? m.fundedInvoicedTrend.monthly : m.fundedInvoicedTrend.quarterly).find(
+      (entry) => entry.key === pendingTrendReopen.bucketKey,
+    );
+    if (!bucket) return;
+    setDrilldown({
+      title: `${pendingTrendReopen.metric === 'deals-closed' ? 'Deals Closed' : 'Dollars Funded'} — ${bucket.label}`,
+      deals: bucket.deals,
+      periodNote: buildTrendPeriodNote(bucket, pendingTrendReopen.metric === 'deals-closed' ? 'Deal count' : 'Dollar volume'),
+    });
+    setPendingTrendReopen(null);
+  }, [m.fundedInvoicedTrend.monthly, m.fundedInvoicedTrend.quarterly, pendingTrendReopen, trendMode]);
 
   const formatMetricCurrency = (value: number | null) => (value == null ? 'N/A' : formatCurrency(value));
 
@@ -398,6 +592,60 @@ export function ConsolidatedDebtPipelineDashboard({
           </div>
         </div>
       ))}
+
+      <div className="space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Closed Trend</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Active Pipeline stage-entry activity into Funded / Invoiced with zero-filled periods
+            </p>
+          </div>
+          <Tabs value={trendMode} onValueChange={(value) => setTrendMode(value as TrendChartMode)}>
+            <TabsList className="bg-muted/40 border border-border/40">
+              <TabsTrigger value="monthly">Monthly</TabsTrigger>
+              <TabsTrigger value="quarterly">Quarterly</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <CompactFundedBarChart
+            title="Deals Closed"
+            subtitle={`Active Pipeline → Funded / Invoiced · ${trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters'}`}
+            buckets={fundedTrendBuckets}
+            isLoading={m.fundedInvoicedTrend.isLoading}
+            color="hsl(var(--chart-3))"
+            dataKey="count"
+            valueFormatter={(value) => `${Math.round(value)}`}
+            totalFormatter={(value) => `${Math.round(value)}`}
+            onBarClick={(bucket) =>
+              setDrilldown({
+                title: `Deals Closed — ${bucket.label}`,
+                deals: bucket.deals,
+                periodNote: buildTrendPeriodNote(bucket, 'Deal count'),
+              })
+            }
+          />
+          <CompactFundedBarChart
+            title="Dollars Funded"
+            subtitle={`Active Pipeline → Funded / Invoiced · ${trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters'}`}
+            buckets={fundedTrendBuckets}
+            isLoading={m.fundedInvoicedTrend.isLoading}
+            color="hsl(var(--success))"
+            dataKey="dollarVolume"
+            valueFormatter={formatCurrency}
+            totalFormatter={formatCurrency}
+            onBarClick={(bucket) =>
+              setDrilldown({
+                title: `Dollars Funded — ${bucket.label}`,
+                deals: bucket.deals,
+                periodNote: buildTrendPeriodNote(bucket, 'Dollar volume'),
+              })
+            }
+          />
+        </div>
+      </div>
 
       <DrilldownModal
         open={!!drilldown}
