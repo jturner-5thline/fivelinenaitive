@@ -725,11 +725,15 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     // If we already ran AI for this exact query, do nothing.
     if (aiSearchActive && trimmed === lastAiQueryRef.current) return;
 
-    // Auto-mode only escalates when the query is long enough.
+    // Routing:
+    //   • ai   → always interpret with AI (any non-empty query)
+    //   • auto → escalate only for natural-language queries
+    //            (≥ AI_SEARCH_MIN_LENGTH chars AND ≥ 2 whitespace-separated tokens)
+    const wordCount = trimmed.split(/\s+/).filter(Boolean).length;
     const shouldRunAI =
       searchMode === 'ai'
-        ? trimmed.length >= AI_SEARCH_MIN_LENGTH
-        : trimmed.length >= AI_SEARCH_MIN_LENGTH;
+        ? true
+        : trimmed.length >= AI_SEARCH_MIN_LENGTH && wordCount >= 2;
 
     // Cancel any in-flight request before scheduling a new one.
     aiSearch.cancel();
