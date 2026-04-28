@@ -1678,6 +1678,21 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 onDelete={handleDeleteEmail}
                 isLoading={aiSearch.isSearching}
               />
+              {/*
+                Screen-reader-only announcer for search progress + result counts.
+                The visible AI status banner above already announces interpretation
+                (role=status). This region adds a count summary so SR users hear
+                "12 results for 'signed NDAs'" or "No matching emails" once the
+                search settles. We render it OUTSIDE the EmailList so swapping
+                between skeleton/empty/list does not blow away the live region.
+              */}
+              <SearchResultAnnouncer
+                isSearching={aiSearch.isSearching}
+                aiSearchActive={aiSearchActive}
+                aiError={aiSearch.error}
+                searchQuery={searchQuery}
+                resultCount={filteredEmails.length}
+              />
               {/* Pagination footer: shows Load more, loading, or end-of-inbox */}
               {(onLoadMore || hasMore || isLoadingMore || isAutoPaginating) && (
                 <PaginationFooter
