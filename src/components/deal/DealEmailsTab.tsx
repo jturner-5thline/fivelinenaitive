@@ -1471,6 +1471,16 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 onBack={() => { setSelectedThread(null); setReadingPaneExpanded(false); }}
                 isExpanded={readingPaneExpanded}
                 onToggleExpand={() => setReadingPaneExpanded(prev => !prev)}
+                deepLinkMessageId={
+                  deepLinkTarget && deepLinkTarget.threadId === currentThread.threadId
+                    ? deepLinkTarget.messageId
+                    : null
+                }
+                deepLinkSignal={
+                  deepLinkTarget && deepLinkTarget.threadId === currentThread.threadId
+                    ? deepLinkTarget.signal
+                    : null
+                }
                 onToggleLink={handleToggleLink}
                 onToggleStar={handleToggleStar}
                 onDelete={handleDeleteEmail}
