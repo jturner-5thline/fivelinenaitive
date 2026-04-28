@@ -685,6 +685,7 @@ export default function Tasks() {
                 onRename={(name) => renameView.mutate({ id: v.id, name })}
                 onDuplicate={() => duplicateView.mutate(v)}
                 onDelete={() => deleteView.mutate(v.id)}
+                onCopyLink={() => handleCopyPresetLink(v)}
               />
             );
           })}
