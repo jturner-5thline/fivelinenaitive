@@ -1291,7 +1291,7 @@ function SortableBoardCard({ task, priorityPill, todayStr, selectedTaskId, onSel
 
 // ── Saved-preset chip with inline rename + duplicate + delete ───────────────
 function PresetChip({
-  view, isActive, onLoad, onRename, onDuplicate, onDelete, onCopyLink,
+  view, isActive, onLoad, onRename, onDuplicate, onDelete, onCopyLink, onTogglePin,
 }: {
   view: TaskSavedView;
   isActive: boolean;
@@ -1300,6 +1300,7 @@ function PresetChip({
   onDuplicate: () => void;
   onDelete: () => void;
   onCopyLink: () => void;
+  onTogglePin: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -1322,6 +1323,15 @@ function PresetChip({
         border: `1px solid ${isActive ? 'rgba(126,184,247,0.28)' : 'rgba(255,255,255,0.06)'}`,
       }}
     >
+      {view.pinned_at && (
+        <span
+          className="flex items-center justify-center pl-1.5"
+          style={{ color: '#e8c46c' }}
+          title="Pinned preset"
+        >
+          <Pin className="h-2.5 w-2.5" />
+        </span>
+      )}
       <button
         onClick={onLoad}
         onDoubleClick={() => { setMenuOpen(true); setRenaming(true); }}
@@ -1376,6 +1386,15 @@ function PresetChip({
             </div>
           ) : (
             <div className="flex flex-col gap-0.5">
+              <button
+                onClick={() => { onTogglePin(); setMenuOpen(false); }}
+                className="flex items-center gap-2 px-2 py-1.5 rounded text-[12px] hover:bg-[rgba(255,255,255,0.04)]"
+                style={{ color: '#eef1f6' }}
+              >
+                {view.pinned_at
+                  ? (<><PinOff className="h-3 w-3" /> Unpin from bar</>)
+                  : (<><Pin className="h-3 w-3" /> Pin to bar</>)}
+              </button>
               <button
                 onClick={() => setRenaming(true)}
                 className="flex items-center gap-2 px-2 py-1.5 rounded text-[12px] hover:bg-[rgba(255,255,255,0.04)]"
