@@ -30,7 +30,15 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import confetti from 'canvas-confetti';
-import { addDays, isToday, isTomorrow, isThisWeek, isPast, format, startOfDay, nextMonday, differenceInDays } from 'date-fns';
+import { addDays, format, nextMonday } from 'date-fns';
+import { useDueBoundaries } from '@/hooks/useDueBoundaries';
+import {
+  bucketDueDate,
+  daysFromToday,
+  isOverdue as isOverdueFn,
+  normalizeDueDate,
+  type DueBoundaries,
+} from '@/lib/taskDateGrouping';
 
 const TASK_GRID_COLS = 'grid-cols-[20px_20px_auto_16px_1fr_100px_60px_100px_140px_100px_100px_40px]';
 
@@ -74,7 +82,7 @@ interface TaskListViewProps {
   taskNameWarning?: string;
 }
 
-function getTimeGroups(tasks: Task[]) {
+function getTimeGroups(tasks: Task[], boundaries: DueBoundaries) {
   const groups = [
     { key: 'overdue', label: '🔴 Overdue', tasks: [] as Task[] },
     { key: 'today', label: '📌 Today', tasks: [] as Task[] },
@@ -84,14 +92,17 @@ function getTimeGroups(tasks: Task[]) {
     { key: 'no_date', label: 'No Due Date', tasks: [] as Task[] },
   ];
   tasks.forEach(t => {
+    // Completed tasks should never count as overdue regardless of due date.
     if (t.status === 'complete') { groups[4].tasks.push(t); return; }
-    if (!t.due_date) { groups[5].tasks.push(t); return; }
-    const d = new Date(t.due_date + 'T00:00:00');
-    if (isPast(d) && !isToday(d)) groups[0].tasks.push(t);
-    else if (isToday(d)) groups[1].tasks.push(t);
-    else if (isTomorrow(d)) groups[2].tasks.push(t);
-    else if (isThisWeek(d, { weekStartsOn: 1 })) groups[3].tasks.push(t);
-    else groups[4].tasks.push(t);
+    const bucket = bucketDueDate(t.due_date, boundaries);
+    switch (bucket) {
+      case 'overdue':   groups[0].tasks.push(t); break;
+      case 'today':     groups[1].tasks.push(t); break;
+      case 'tomorrow':  groups[2].tasks.push(t); break;
+      case 'this_week': groups[3].tasks.push(t); break;
+      case 'upcoming':  groups[4].tasks.push(t); break;
+      case 'no_date':   groups[5].tasks.push(t); break;
+    }
   });
   return groups.filter(g => g.tasks.length > 0);
 }
@@ -105,9 +116,7 @@ function getPriorityGroups(tasks: Task[]) {
   })).filter(g => g.tasks.length > 0);
 }
 
-function getFocusGroups(tasks: Task[]) {
-  const today = startOfDay(new Date());
-  const weekOut = addDays(today, 7);
+function getFocusGroups(tasks: Task[], boundaries: DueBoundaries) {
   const groups = [
     { key: 'overdue', label: '🔴 Overdue', tasks: [] as Task[] },
     { key: 'due_today', label: '🟠 Due Today', tasks: [] as Task[] },
@@ -116,14 +125,14 @@ function getFocusGroups(tasks: Task[]) {
   ];
   tasks.forEach(t => {
     if (t.status === 'complete') return;
-    const assigned = new Set<string>();
-    if (t.due_date) {
-      const d = new Date(t.due_date + 'T00:00:00');
-      if (isPast(d) && !isToday(d)) { groups[0].tasks.push(t); assigned.add('overdue'); }
-      else if (isToday(d)) { groups[1].tasks.push(t); assigned.add('due_today'); }
-      else if (d > today && d <= weekOut) { groups[2].tasks.push(t); assigned.add('due_this_week'); }
+    const bucket = bucketDueDate(t.due_date, boundaries);
+    let placed = false;
+    if (bucket === 'overdue')        { groups[0].tasks.push(t); placed = true; }
+    else if (bucket === 'today')     { groups[1].tasks.push(t); placed = true; }
+    else if (bucket === 'tomorrow' || bucket === 'this_week') {
+      groups[2].tasks.push(t); placed = true;
     }
-    if ((t.priority === 'urgent' || t.priority === 'high') && t.status === 'not_started' && !assigned.has('overdue') && !assigned.has('due_today')) {
+    if ((t.priority === 'urgent' || t.priority === 'high') && t.status === 'not_started' && !placed) {
       groups[3].tasks.push(t);
     }
   });
@@ -182,17 +191,20 @@ export function TaskListView({
     return <div className="p-4 space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>;
   }
 
-  // Build overdue section
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
-  const overdueTasks = tasks.filter(t =>
-    t.due_date && t.due_date < todayStr && t.status !== 'complete'
-  );
+  // Shared, timezone-aware day boundaries — single source of truth for
+  // overdue / today / tomorrow / this week. Auto-rolls at local midnight.
+  const boundaries = useDueBoundaries();
+  const todayStr = boundaries.today;
+
+  // Pinned overdue section uses the same bucket logic as the groupings so
+  // a task can never appear simultaneously as Overdue and within its status group.
+  const overdueTasks = tasks.filter(t => isOverdueFn(t.due_date, t.status, boundaries));
   const overdueTaskIds = new Set(overdueTasks.map(task => task.id));
 
   // Build groups based on groupBy mode
   let groups: { key: string; label: string; tasks: Task[] }[];
-  if (groupBy === 'focus') groups = getFocusGroups(tasks);
-  else if (groupBy === 'time') groups = getTimeGroups(tasks);
+  if (groupBy === 'focus') groups = getFocusGroups(tasks, boundaries);
+  else if (groupBy === 'time') groups = getTimeGroups(tasks, boundaries);
   else if (groupBy === 'priority') groups = getPriorityGroups(tasks);
   else groups = statusGroups.map(g => ({
     key: g.key,
@@ -420,14 +432,13 @@ function QuickDatePicker({ value, onChange, todayStr }: { value: string | null; 
   const nextMon = format(nextMonday(new Date()), 'yyyy-MM-dd');
 
   const getRelativeLabel = () => {
-    if (!value) return null;
-    if (value < todayStr) {
-      const days = differenceInDays(new Date(todayStr), new Date(value + 'T00:00:00'));
-      return { text: `${days}d overdue`, color: '#ff4d4d', bold: true };
-    }
-    if (value === todayStr) return { text: 'Due today', color: '#f59e0b', bold: true };
-    const days = differenceInDays(new Date(value + 'T00:00:00'), new Date(todayStr));
-    return { text: `Due in ${days}d`, color: '#8b92a5', bold: false };
+    const due = normalizeDueDate(value);
+    if (!due) return null;
+    const diff = daysFromToday(due, { today: todayStr, tomorrow: todayStr, weekEnd: todayStr });
+    if (diff === null) return null;
+    if (diff < 0) return { text: `${Math.abs(diff)}d overdue`, color: '#ff4d4d', bold: true };
+    if (diff === 0) return { text: 'Due today', color: '#f59e0b', bold: true };
+    return { text: `Due in ${diff}d`, color: '#8b92a5', bold: false };
   };
 
   const rel = getRelativeLabel();
