@@ -67,10 +67,11 @@ async function resolveManagerUserId(dealId: string): Promise<{ userId: string | 
     .maybeSingle();
   const name = (deal?.manager || deal?.deal_owner || '').trim();
   if (!name) return { userId: null, label: null };
+  const safe = name.replace(/[,()]/g, ' ').trim();
   const { data: profile } = await supabase
     .from('profiles')
     .select('id, display_name, first_name')
-    .or(`display_name.ilike.${name},first_name.ilike.${name}`)
+    .or(`display_name.ilike.%${safe}%,first_name.ilike.%${safe}%`)
     .limit(1)
     .maybeSingle();
   return { userId: profile?.id || null, label: name };
