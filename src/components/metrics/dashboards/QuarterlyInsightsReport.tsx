@@ -319,7 +319,7 @@ function ReportHeaderSection({ s, set, reset, print }: { s: ReportState; set: Re
             </div>
             <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: TEXT_PRIMARY, letterSpacing: '-.2px' }}>
               {s.period === 'monthly'
-                ? `Monthly Insights Report — ${s.month || s.quarter}`
+                ? `Monthly Insights Report — ${monthsForQuarter(s.quarter).includes(s.month) ? s.month : (monthsForQuarter(s.quarter)[0] || s.quarter)}`
                 : `Quarterly Insights Report — ${s.quarter}`}
             </div>
           </div>
