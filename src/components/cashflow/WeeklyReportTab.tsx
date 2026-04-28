@@ -11,6 +11,8 @@ import { CellCommentMenu } from './cellComments/CellCommentMenu';
 import { CellCommentPopover } from './cellComments/CellCommentPopover';
 import type { CellComment } from './cellComments/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { CashFlowDrilldownModal, type DrilldownContext } from './CashFlowDrilldownModal';
+import type { ScheduledCashFlow } from './scheduledCashFlows';
 
 interface SidebarItem {
   id?: string;
@@ -34,6 +36,7 @@ interface WeeklyReportTabProps {
   onSavePlan: (name: string) => void;
   onExport: () => void;
   onConfigureScheduled?: () => void;
+  scheduledItems?: ScheduledCashFlow[];
   onSidebarEditItem: (index: number, field: string, value: string | number) => void;
   onSidebarRemoveItem: (index: number) => void;
   onSidebarAddItem: () => void;
