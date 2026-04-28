@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/popover';
 import {
   Plus, MoreHorizontal, Trash2, ChevronDown, ChevronRight, GripVertical,
-  Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star, AlertTriangle, Building2, User,
+  Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star, AlertTriangle, Building2, User, Repeat,
 } from 'lucide-react';
 import { ExpandedTaskDetails } from '@/components/tasks/ExpandedTaskDetails';
 import { cn } from '@/lib/utils';
