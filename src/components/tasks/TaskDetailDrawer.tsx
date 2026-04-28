@@ -395,6 +395,83 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
             {/* Deal link */}
             {task.deal_id && <DealLinkField dealId={task.deal_id} />}
 
+            {/* Recurrence controls */}
+            {(task.recurrence_rule || (task as any).is_recurring) && (() => {
+              const todayStr = format(new Date(), 'yyyy-MM-dd');
+              const seriesEnd = (task as any).recurrence_end_date as string | null | undefined;
+              const isPaused = !!seriesEnd && seriesEnd <= todayStr;
+              return (
+                <div className="flex items-start gap-3">
+                  <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0 mt-1" style={{ color: '#8b92a5' }}>
+                    <Repeat className="h-3 w-3" /> Recurrence
+                  </div>
+                  <div className="flex-1 space-y-1.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className="px-2 py-0.5 rounded-full text-[10px] font-medium"
+                        style={{
+                          backgroundColor: isPaused ? '#f59e0b25' : '#3b7eff25',
+                          color: isPaused ? '#f59e0b' : '#3b7eff',
+                        }}
+                      >
+                        {describeRecurrence(task.recurrence_rule)}{isPaused ? ' · Paused' : ''}
+                      </span>
+                      {seriesEnd && !isPaused && (
+                        <span className="text-[10px]" style={{ color: '#8b92a5' }}>
+                          Ends {format(new Date(seriesEnd + 'T00:00:00'), 'MMM d, yyyy')}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {!isPaused ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-[10px] px-2 rounded-full border-[#2a2f3e] gap-1"
+                          style={{ color: '#f59e0b' }}
+                          onClick={() => {
+                            onUpdate({ recurrence_end_date: todayStr } as any);
+                            toast.success('Recurrence paused — no further occurrences will be generated');
+                          }}
+                          title="Stop generating new occurrences but keep the rule so you can resume later"
+                        >
+                          <Pause className="h-3 w-3" /> Pause
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-[10px] px-2 rounded-full border-[#2a2f3e] gap-1"
+                          style={{ color: '#22c55e' }}
+                          onClick={() => {
+                            onUpdate({ recurrence_end_date: null } as any);
+                            toast.success('Recurrence resumed');
+                          }}
+                          title="Resume generating occurrences from this rule"
+                        >
+                          <Play className="h-3 w-3" /> Resume
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 text-[10px] px-2 rounded-full border-[#2a2f3e] gap-1"
+                        style={{ color: '#ff4d4d' }}
+                        onClick={() => {
+                          if (!confirm('Stop this recurring series? No more tasks will be generated.')) return;
+                          onUpdate({ recurrence_rule: null, recurrence_end_date: null, is_recurring: false } as any);
+                          toast.success('Recurrence stopped');
+                        }}
+                        title="Permanently stop the recurring series"
+                      >
+                        <Square className="h-3 w-3" /> Stop
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Dependencies */}
             {(blockedBy.length > 0 || blocking.length > 0) && (
               <div className="flex items-start gap-3">
