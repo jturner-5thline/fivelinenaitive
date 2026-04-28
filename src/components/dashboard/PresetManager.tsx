@@ -21,9 +21,15 @@ interface PresetManagerProps {
   onDuplicate: (presetId: string) => void;
   onDelete: (presetId: string) => void;
   onRename: (presetId: string, name: string) => void;
+  /**
+   * When true, suppress the inline "+ New" button so the parent can
+   * render the create affordance elsewhere in the navigation row
+   * (e.g. after the News Feed tab).
+   */
+  hideNewButton?: boolean;
 }
 
-export function PresetManager({ presets, activePreset, onSwitch, onCreate, onDuplicate, onDelete, onRename }: PresetManagerProps) {
+export function PresetManager({ presets, activePreset, onSwitch, onCreate, onDuplicate, onDelete, onRename, hideNewButton = false }: PresetManagerProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [showNew, setShowNew] = useState(false);
@@ -120,7 +126,7 @@ export function PresetManager({ presets, activePreset, onSwitch, onCreate, onDup
 
       {/* Fix #22: Removed Separator that created stray pipe character */}
 
-      {showNew ? (
+      {hideNewButton ? null : showNew ? (
         <div className="flex items-center gap-1 shrink-0 ml-1">
           <Input
             value={newName}
