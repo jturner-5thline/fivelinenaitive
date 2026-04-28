@@ -156,6 +156,7 @@ export interface Risk { id: string; description: string; mitigation: string; }
 export interface ReportState {
   period: 'monthly' | 'quarterly';
   quarter: string;
+  month: string;
   preparedDate: string;
   authors: string[];
   kpis: KPI[];
@@ -169,6 +170,7 @@ export interface ReportState {
 const SEED: ReportState = {
   period: 'quarterly',
   quarter: 'Q1 2026',
+  month: 'January 2026',
   preparedDate: '04/28/2026',
   authors: PRIMARY_AUTHORS,
   kpis: [
