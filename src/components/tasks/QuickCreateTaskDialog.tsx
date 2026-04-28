@@ -50,6 +50,9 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
   const [status, setStatus] = useState<QuickTaskInput['status']>('not_started');
   const [assignedTo, setAssignedTo] = useState<string>(() => readLastAssignee(currentUserId));
   const [recurrence, setRecurrence] = useState<string | null>(null);
+  // Custom "Every N days/weeks" — only applies when the Custom chip is active.
+  const [customN, setCustomN] = useState<number>(3);
+  const [customUnit, setCustomUnit] = useState<'days' | 'weeks'>('days');
   // When true, day-based recurrences (daily/weekdays/weekly) anchor to the
   // selected due date. If no due date is set when this is enabled, today is
   // used as the anchor.
@@ -68,6 +71,8 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
       const isValid = remembered === currentUserId || teamMembers.some(m => m.id === remembered);
       setAssignedTo(isValid ? remembered : currentUserId);
       setRecurrence(null);
+      setCustomN(3);
+      setCustomUnit('days');
       setStartFromDueDate(false);
       setWarning('');
       setConfirmedJunk(false);
