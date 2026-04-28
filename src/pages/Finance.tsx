@@ -16,7 +16,7 @@ const SECTION_LINKS = [
   { key: "automations", label: "Automations", icon: Zap },
 ] as const;
 
-function FinanceHeader() {
+function FinanceHeader({ workspaceName }: { workspaceName?: string }) {
   const [active, setActive] = useState<string>(() =>
     (typeof window !== "undefined" && window.location.hash.replace("#", "")) || "dashboards"
   );
@@ -35,6 +35,15 @@ function FinanceHeader() {
   return (
     <div className="flex items-center gap-3 flex-wrap">
       <h1 className="text-2xl font-bold leading-none">Finance</h1>
+      {workspaceName && (
+        <span
+          className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-0.5 text-xs font-medium text-muted-foreground max-w-[220px]"
+          title={workspaceName}
+        >
+          <Building2 className="h-3 w-3 shrink-0" />
+          <span className="truncate">{workspaceName}</span>
+        </span>
+      )}
       <ChevronRight className="h-4 w-4 text-muted-foreground/60 shrink-0" />
       <nav className="flex items-center gap-1 flex-wrap" aria-label="Finance sections">
         {SECTION_LINKS.map((s) => {
@@ -101,7 +110,7 @@ export default function Finance() {
         padding="md"
         container={false}
         bodySpacing="space-y-4"
-        header={<FinanceHeader />}
+        header={<FinanceHeader workspaceName={company.name} />}
       >
         <FPAWorkspace />
       </DashboardPage>
