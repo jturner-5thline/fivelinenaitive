@@ -26,6 +26,100 @@ interface StageMetricResult {
   isLoading: boolean;
 }
 
+export interface AverageMetricResult {
+  value: number | null;
+  numerator: number;
+  denominator: number;
+  deals: StageEntryDeal[];
+  isLoading: boolean;
+}
+
+interface RevenuePeriodTotalResult {
+  total: number;
+  isLoading: boolean;
+}
+
+function buildRollingMonthsPeriod(anchorEndDate: string, monthCount: number): QuarterOption {
+  const [year, month, day] = anchorEndDate.split('-').map(Number);
+  const end = new Date(year, month - 1, day);
+  const start = new Date(end.getFullYear(), end.getMonth() - (monthCount - 1), 1);
+
+  const months: QuarterOption['months'] = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const y = cursor.getFullYear();
+    const m = cursor.getMonth();
+    const monthEnd = new Date(y, m + 1, 0);
+    months.push({
+      key: `${y}-${String(m + 1).padStart(2, '0')}`,
+      label: cursor.toLocaleDateString('en-US', { month: 'short' }),
+      start: `${y}-${String(m + 1).padStart(2, '0')}-01`,
+      end: `${y}-${String(m + 1).padStart(2, '0')}-${monthEnd.getDate()}`,
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  const fmt = (d: Date) =>
+    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  return {
+    label: `${fmt(start)} – ${fmt(end)}`,
+    value: `rolling-${monthCount}-${months[0]?.start ?? ''}_${anchorEndDate}`,
+    startDate: months[0]?.start ?? '',
+    endDate: anchorEndDate,
+    months,
+  };
+}
+
+function useRevenueTotalForPeriod(realmId: string, period: QuarterOption): RevenuePeriodTotalResult {
+  const { user } = useAuth();
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['qb-revenue-total-for-period', realmId, period.value],
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from('quickbooks_invoices')
+        .select('total_amt')
+        .eq('realm_id', realmId)
+        .gte('txn_date', period.startDate)
+        .lte('txn_date', period.endDate);
+
+      if (error) throw error;
+      return (rows ?? []).reduce((sum, row) => sum + (Number(row.total_amt) || 0), 0);
+    },
+    enabled: !!user && !!realmId && !!period.startDate && !!period.endDate,
+    staleTime: 30_000,
+  });
+
+  return {
+    total: data ?? 0,
+    isLoading: isLoading || isFetching,
+  };
+}
+
+function useAverageDealMetric(stageMetric: StageMetricResult): AverageMetricResult {
+  return useMemo(() => ({
+    value: stageMetric.count > 0 ? stageMetric.dollarVolume / stageMetric.count : null,
+    numerator: stageMetric.dollarVolume,
+    denominator: stageMetric.count,
+    deals: stageMetric.deals,
+    isLoading: stageMetric.isLoading,
+  }), [stageMetric.count, stageMetric.dollarVolume, stageMetric.deals, stageMetric.isLoading]);
+}
+
+function useRevenuePerDealMetric(
+  revenueTotal: RevenuePeriodTotalResult,
+  stageMetric: StageMetricResult,
+): AverageMetricResult {
+  return useMemo(() => ({
+    value: stageMetric.count > 0 ? revenueTotal.total / stageMetric.count : null,
+    numerator: revenueTotal.total,
+    denominator: stageMetric.count,
+    deals: stageMetric.deals,
+    isLoading: revenueTotal.isLoading || stageMetric.isLoading,
+  }), [revenueTotal.total, revenueTotal.isLoading, stageMetric.count, stageMetric.deals, stageMetric.isLoading]);
+}
+
 /**
  * Returns deals that entered a specific stage within a quarter,
  * using activity_logs (stage_change) as the source of truth.
@@ -41,8 +135,8 @@ function useStageEntryMetric(
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['stage-entry-metric', targetStage, quarter.value, pipelineId],
     queryFn: async () => {
-      const startDate = quarter.months[0].start;
-      const endDate = quarter.months[quarter.months.length - 1].end;
+      const startDate = quarter.startDate;
+      const endDate = quarter.endDate;
 
       // Get all stage_change events to the target stage in this period
       let query = supabase
@@ -123,8 +217,8 @@ function usePipelineAddedMetric(
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['pipeline-added-metric', pipelineId, quarter.value],
     queryFn: async () => {
-      const startDate = quarter.months[0].start;
-      const endDate = quarter.months[quarter.months.length - 1].end;
+      const startDate = quarter.startDate;
+      const endDate = quarter.endDate;
 
       const { data: rows, error } = await supabase
         .from('deals')
@@ -175,8 +269,8 @@ function usePipelineDealsInPeriod(pipelineId: string, quarter: QuarterOption): S
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['pipeline-deals-in-period', pipelineId, quarter.value],
     queryFn: async () => {
-      const startDate = quarter.months[0].start;
-      const endDate = quarter.months[quarter.months.length - 1].end;
+      const startDate = quarter.startDate;
+      const endDate = quarter.endDate;
 
       const { data: rows, error } = await supabase
         .from('deals')
@@ -227,10 +321,12 @@ function usePipelineDealsInPeriod(pipelineId: string, quarter: QuarterOption): S
 // 5th Line company's pipeline IDs
 const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
 const FINSERV_PIPELINE_ID = 'eb9db15a-62cc-4b99-adcf-24e57a2a46ce';
+const DEBT_REALM_ID = '193514877331929';
 
 // Stage IDs
 const NDA_NEEDS_LIST_STAGE = 'ndaneeds-list-sent';
 const FINAL_CREDIT_ITEMS_STAGE = 'final-credit-items';
+const FUNDED_INVOICED_STAGE = 'funded-invoiced';
 const FS_ACTIVE_CLIENT_STAGE = 'fs-active-client';
 const PROPOSAL_ISSUED_STAGE = 'proposal-issued';
 const TERMS_ISSUED_STAGE = 'terms-issued';
@@ -282,18 +378,53 @@ export interface ConsolidatedDebtPipelineMetrics {
   ndaNeedsList: StageMetricResult;
   proposalsIssued: StageMetricResult;
   finalCreditItems: StageMetricResult;
+  fundedInvoiced: StageMetricResult;
   termsIssued: StageMetricResult;
   inDueDiligence: StageMetricResult;
+  averageDealOnBoard: AverageMetricResult;
+  averageDealSigned: AverageMetricResult;
+  averageDealClosed: AverageMetricResult;
+  averageRevenuePerDealSigned: AverageMetricResult;
+  averageRevenuePerDealClosed: AverageMetricResult;
 }
 
 export function useConsolidatedDebtPipelineMetrics(
   quarter: QuarterOption,
 ): ConsolidatedDebtPipelineMetrics {
+  const sixMonthPeriod = useMemo(
+    () => buildRollingMonthsPeriod(quarter.endDate, 6),
+    [quarter.endDate],
+  );
+  const twelveMonthPeriod = useMemo(
+    () => buildRollingMonthsPeriod(quarter.endDate, 12),
+    [quarter.endDate],
+  );
+
+  const ndaNeedsList = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, quarter, ACTIVE_PIPELINE_ID);
+  const proposalsIssued = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
+  const finalCreditItems = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, quarter, ACTIVE_PIPELINE_ID);
+  const fundedInvoiced = useStageEntryMetric(FUNDED_INVOICED_STAGE, quarter, ACTIVE_PIPELINE_ID);
+  const termsIssued = useStageEntryMetric(TERMS_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
+  const inDueDiligence = useStageEntryMetric(IN_DUE_DILIGENCE_STAGE, quarter, ACTIVE_PIPELINE_ID);
+
+  const ndaNeedsListRolling6 = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, sixMonthPeriod, ACTIVE_PIPELINE_ID);
+  const finalCreditItemsRolling6 = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, sixMonthPeriod, ACTIVE_PIPELINE_ID);
+  const fundedInvoicedRolling6 = useStageEntryMetric(FUNDED_INVOICED_STAGE, sixMonthPeriod, ACTIVE_PIPELINE_ID);
+  const finalCreditItemsRolling12 = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
+  const fundedInvoicedRolling12 = useStageEntryMetric(FUNDED_INVOICED_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
+  const debtRevenueRolling12 = useRevenueTotalForPeriod(DEBT_REALM_ID, twelveMonthPeriod);
+
   return {
-    ndaNeedsList:    useStageEntryMetric(NDA_NEEDS_LIST_STAGE,    quarter, ACTIVE_PIPELINE_ID),
-    proposalsIssued: useStageEntryMetric(PROPOSAL_ISSUED_STAGE,   quarter, ACTIVE_PIPELINE_ID),
-    finalCreditItems:useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE,quarter, ACTIVE_PIPELINE_ID),
-    termsIssued:     useStageEntryMetric(TERMS_ISSUED_STAGE,      quarter, ACTIVE_PIPELINE_ID),
-    inDueDiligence:  useStageEntryMetric(IN_DUE_DILIGENCE_STAGE,  quarter, ACTIVE_PIPELINE_ID),
+    ndaNeedsList,
+    proposalsIssued,
+    finalCreditItems,
+    fundedInvoiced,
+    termsIssued,
+    inDueDiligence,
+    averageDealOnBoard: useAverageDealMetric(ndaNeedsListRolling6),
+    averageDealSigned: useAverageDealMetric(finalCreditItemsRolling6),
+    averageDealClosed: useAverageDealMetric(fundedInvoicedRolling6),
+    averageRevenuePerDealSigned: useRevenuePerDealMetric(debtRevenueRolling12, finalCreditItemsRolling12),
+    averageRevenuePerDealClosed: useRevenuePerDealMetric(debtRevenueRolling12, fundedInvoicedRolling12),
   };
 }

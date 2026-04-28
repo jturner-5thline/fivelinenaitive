@@ -31,6 +31,7 @@ interface MetricCardConfig {
   deals: StageEntryDeal[];
   color: string;
   drilldownTitle: string;
+  drilldownPeriodNote?: string;
 }
 
 function MetricKPICard({
@@ -80,12 +81,13 @@ function MetricKPICard({
 }
 
 function DrilldownModal({
-  open, onClose, title, deals,
+  open, onClose, title, deals, periodNote,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   deals: StageEntryDeal[];
+  periodNote?: string;
 }) {
   const total = deals.reduce((s, d) => s + d.value, 0);
   return (
@@ -104,7 +106,7 @@ function DrilldownModal({
           <Badge variant="secondary" className="text-xs font-mono">
             {formatCurrencyFull(total)}
           </Badge>
-          <span className="text-xs text-muted-foreground">Filtered by selected period</span>
+          <span className="text-xs text-muted-foreground">{periodNote ?? 'Filtered by selected period'}</span>
         </div>
         {deals.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">No deals found for this period.</p>
@@ -163,7 +165,9 @@ export function ConsolidatedDebtPipelineDashboard({
   selectedQuarter?: QuarterOption;
 }) {
   const m = useConsolidatedDebtPipelineMetrics(selectedQuarter as QuarterOption);
-  const [drilldown, setDrilldown] = useState<{ title: string; deals: StageEntryDeal[] } | null>(null);
+  const [drilldown, setDrilldown] = useState<{ title: string; deals: StageEntryDeal[]; periodNote?: string } | null>(null);
+
+  const formatMetricCurrency = (value: number | null) => (value == null ? 'N/A' : formatCurrency(value));
 
   if (!selectedQuarter) {
     return (
@@ -198,6 +202,17 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.ndaNeedsList.deals,
           color: 'hsl(var(--chart-2))',
           drilldownTitle: 'Debt $ on the Board — entered NDA/Needs List Sent',
+        },
+        {
+          id: 'average-deal-on-board',
+          title: 'Average Deal on the Board',
+          icon: DollarSign,
+          value: formatMetricCurrency(m.averageDealOnBoard.value),
+          isLoading: m.averageDealOnBoard.isLoading,
+          deals: m.averageDealOnBoard.deals,
+          color: 'hsl(var(--chart-4))',
+          drilldownTitle: 'Average Deal on the Board — entered NDA / Needs List Sent',
+          drilldownPeriodNote: 'Trailing 6 months · based on stage-entry deal volume ÷ deal count',
         },
       ],
     },
@@ -252,6 +267,57 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.finalCreditItems.deals,
           color: 'hsl(var(--success))',
           drilldownTitle: 'Debt $ Signed — entered Final Credit Items',
+        },
+        {
+          id: 'average-deal-signed',
+          title: 'Average Deal Signed',
+          icon: DollarSign,
+          value: formatMetricCurrency(m.averageDealSigned.value),
+          isLoading: m.averageDealSigned.isLoading,
+          deals: m.averageDealSigned.deals,
+          color: 'hsl(var(--chart-1))',
+          drilldownTitle: 'Average Deal Signed — entered Final Credit Items',
+          drilldownPeriodNote: 'Trailing 6 months · based on stage-entry deal volume ÷ deal count',
+        },
+        {
+          id: 'average-revenue-per-deal-signed',
+          title: 'Average Revenue per Deal Signed',
+          icon: Coins,
+          value: formatMetricCurrency(m.averageRevenuePerDealSigned.value),
+          isLoading: m.averageRevenuePerDealSigned.isLoading,
+          deals: m.averageRevenuePerDealSigned.deals,
+          color: 'hsl(var(--chart-3))',
+          drilldownTitle: 'Average Revenue per Deal Signed — Final Credit Items',
+          drilldownPeriodNote: 'Trailing 12 months revenue ÷ trailing 12 months signed-deal count',
+        },
+      ],
+    },
+    {
+      id: 'closed',
+      title: 'Closed',
+      description: 'Deals entering Funded / Invoiced in the Active Pipeline',
+      cards: [
+        {
+          id: 'average-deal-closed',
+          title: 'Average Deal Closed',
+          icon: Banknote,
+          value: formatMetricCurrency(m.averageDealClosed.value),
+          isLoading: m.averageDealClosed.isLoading,
+          deals: m.averageDealClosed.deals,
+          color: 'hsl(var(--chart-2))',
+          drilldownTitle: 'Average Deal Closed — entered Funded / Invoiced',
+          drilldownPeriodNote: 'Trailing 6 months · based on stage-entry deal volume ÷ deal count',
+        },
+        {
+          id: 'average-revenue-per-deal-closed',
+          title: 'Average Revenue per Deal Closed',
+          icon: Handshake,
+          value: formatMetricCurrency(m.averageRevenuePerDealClosed.value),
+          isLoading: m.averageRevenuePerDealClosed.isLoading,
+          deals: m.averageRevenuePerDealClosed.deals,
+          color: 'hsl(var(--chart-5))',
+          drilldownTitle: 'Average Revenue per Deal Closed — Funded / Invoiced',
+          drilldownPeriodNote: 'Trailing 12 months revenue ÷ trailing 12 months funded-deal count',
         },
       ],
     },
@@ -326,7 +392,7 @@ export function ConsolidatedDebtPipelineDashboard({
               <MetricKPICard
                 key={card.id}
                 config={card}
-                onClick={() => setDrilldown({ title: card.drilldownTitle, deals: card.deals })}
+                onClick={() => setDrilldown({ title: card.drilldownTitle, deals: card.deals, periodNote: card.drilldownPeriodNote })}
               />
             ))}
           </div>
@@ -338,6 +404,7 @@ export function ConsolidatedDebtPipelineDashboard({
         onClose={() => setDrilldown(null)}
         title={drilldown?.title ?? ''}
         deals={drilldown?.deals ?? []}
+        periodNote={drilldown?.periodNote}
       />
     </div>
   );
