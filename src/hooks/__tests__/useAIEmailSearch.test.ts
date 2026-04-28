@@ -117,20 +117,20 @@ describe('useAIEmailSearch', () => {
       }),
     );
 
-    const { result } = renderHook(() => useAIEmailSearch());
+    const harness = renderHook(() => useAIEmailSearch());
 
     await act(async () => {
-      await result.current.search('signed NDAs from lenders last week', [
+      await harness.current.search('signed NDAs from lenders last week', [
         makeEmail('a'),
         makeEmail('b'),
       ]);
     });
 
-    expect(result.current.result?.rankedIds).toEqual(['b', 'a']);
-    expect(result.current.result?.filters.senderRole).toBe('lender');
-    expect(result.current.result?.filters.topics).toEqual(['NDA', 'signed']);
-    expect(result.current.result?.filters.hasAttachments).toBe(true);
-    expect(result.current.isSearching).toBe(false);
+    expect(harness.current.result?.rankedIds).toEqual(['b', 'a']);
+    expect(harness.current.result?.filters.senderRole).toBe('lender');
+    expect(harness.current.result?.filters.topics).toEqual(['NDA', 'signed']);
+    expect(harness.current.result?.filters.hasAttachments).toBe(true);
+    expect(harness.current.isSearching).toBe(false);
   });
 
   it('removeFilter drops a single chip without mutating ranked ids', async () => {
@@ -149,24 +149,24 @@ describe('useAIEmailSearch', () => {
       }),
     );
 
-    const { result } = renderHook(() => useAIEmailSearch());
+    const harness = renderHook(() => useAIEmailSearch());
     await act(async () => {
-      await result.current.search('q', [makeEmail('a')]);
+      await harness.current.search('q', [makeEmail('a')]);
     });
 
-    act(() => result.current.removeFilter('dateRange'));
-    expect(result.current.result?.filters.dateRange).toBeNull();
-    expect(result.current.result?.filters.dateRangeStart).toBeNull();
-    expect(result.current.result?.filters.dateRangeEnd).toBeNull();
+    act(() => harness.current.removeFilter('dateRange'));
+    expect(harness.current.result?.filters.dateRange).toBeNull();
+    expect(harness.current.result?.filters.dateRangeStart).toBeNull();
+    expect(harness.current.result?.filters.dateRangeEnd).toBeNull();
 
-    act(() => result.current.removeFilter('topic:NDA'));
-    expect(result.current.result?.filters.topics).toEqual(['signed']);
+    act(() => harness.current.removeFilter('topic:NDA'));
+    expect(harness.current.result?.filters.topics).toEqual(['signed']);
 
-    act(() => result.current.removeFilter('hasAttachments'));
-    expect(result.current.result?.filters.hasAttachments).toBeNull();
+    act(() => harness.current.removeFilter('hasAttachments'));
+    expect(harness.current.result?.filters.hasAttachments).toBeNull();
 
     // rankedIds preserved
-    expect(result.current.result?.rankedIds).toEqual(['a']);
+    expect(harness.current.result?.rankedIds).toEqual(['a']);
   });
 
   it('discards stale responses when a newer search starts', async () => {
@@ -209,18 +209,18 @@ describe('useAIEmailSearch', () => {
     );
 
     const candidates = [makeEmail('a'), makeEmail('b')];
-    const { result } = renderHook(() => useAIEmailSearch());
+    const harness = renderHook(() => useAIEmailSearch());
     await act(async () => {
-      await result.current.search('hello world', candidates);
+      await harness.current.search('hello world', candidates);
     });
     expect(mockedSend).toHaveBeenCalledTimes(1);
 
     // Second identical call — should hit the cache, not the network.
     await act(async () => {
-      await result.current.search('hello world', candidates);
+      await harness.current.search('hello world', candidates);
     });
     expect(mockedSend).toHaveBeenCalledTimes(1);
-    expect(result.current.result?.interpretation).toBe('cached');
+    expect(harness.current.result?.interpretation).toBe('cached');
   });
 
   it('cancel() flips isSearching off without clearing the existing result', async () => {
@@ -232,16 +232,16 @@ describe('useAIEmailSearch', () => {
       }),
     );
 
-    const { result } = renderHook(() => useAIEmailSearch());
+    const harness = renderHook(() => useAIEmailSearch());
     await act(async () => {
-      await result.current.search('q', [makeEmail('a')]);
+      await harness.current.search('q', [makeEmail('a')]);
     });
-    expect(result.current.result).not.toBeNull();
+    expect(harness.current.result).not.toBeNull();
 
-    act(() => result.current.cancel());
-    expect(result.current.isSearching).toBe(false);
+    act(() => harness.current.cancel());
+    expect(harness.current.isSearching).toBe(false);
     // Cancel keeps the prior result around (chips stay visible).
-    expect(result.current.result?.rankedIds).toEqual(['a']);
+    expect(harness.current.result?.rankedIds).toEqual(['a']);
   });
 
   it('surfaces an error when the AI service fails', async () => {
