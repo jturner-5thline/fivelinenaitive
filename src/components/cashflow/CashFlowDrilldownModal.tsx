@@ -1,5 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Search, X } from 'lucide-react';
 import {
   generateOccurrences,
   resolveCategoryAlias,
@@ -74,11 +77,35 @@ interface DrilldownRow {
 }
 
 export function CashFlowDrilldownModal({ open, onClose, context, items }: Props) {
-  const rows = useMemo<DrilldownRow[]>(() => {
+  const [search, setSearch] = useState('');
+  const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set());
+  const [dateRange, setDateRange] = useState<'week' | 'before' | 'after' | 'all'>('week');
+
+  // Reset filters when context changes
+  useEffect(() => {
+    setSearch('');
+    setActiveCategories(new Set());
+    setDateRange('week');
+  }, [context?.rowKey, context?.weekKey]);
+
+  const allRows = useMemo<DrilldownRow[]>(() => {
     if (!context) return [];
     const { rowKey, weekKey, weekEnding } = context;
-    const rangeStart = parseDate(weekKey);
-    const rangeEnd = parseDate(weekEnding);
+    const weekStart = parseDate(weekKey);
+    const weekEnd = parseDate(weekEnding);
+    // Widen scan range when user picks before/after/all
+    let rangeStart = weekStart;
+    let rangeEnd = weekEnd;
+    if (dateRange === 'before') {
+      rangeStart = new Date(2024, 0, 1);
+      rangeEnd = weekEnd;
+    } else if (dateRange === 'after') {
+      rangeStart = weekStart;
+      rangeEnd = new Date(2030, 11, 31);
+    } else if (dateRange === 'all') {
+      rangeStart = new Date(2024, 0, 1);
+      rangeEnd = new Date(2030, 11, 31);
+    }
     const { categories, flowFilter } = categoriesForRow(rowKey);
 
     const out: DrilldownRow[] = [];
@@ -105,12 +132,49 @@ export function CashFlowDrilldownModal({ open, onClose, context, items }: Props)
     }
     out.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
     return out;
-  }, [context, items]);
+  }, [context, items, dateRange]);
+
+  // Distinct categories present in the unfiltered result, for chips.
+  const availableCategories = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of allRows) s.add(r.category);
+    return Array.from(s).sort();
+  }, [allRows]);
+
+  const rows = useMemo<DrilldownRow[]>(() => {
+    const q = search.trim().toLowerCase();
+    return allRows.filter((r) => {
+      if (activeCategories.size > 0 && !activeCategories.has(r.category)) return false;
+      if (q) {
+        const hay = `${r.account} ${r.category} ${r.notes ?? ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [allRows, search, activeCategories]);
 
   const total = useMemo(() => rows.reduce((s, r) => s + r.signedAmount, 0), [rows]);
 
+  const toggleCategory = (cat: string) => {
+    setActiveCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
+  };
+
+  const hasActiveFilter = search.trim() !== '' || activeCategories.size > 0 || dateRange !== 'week';
+
   if (!context) return null;
   const weekRangeLabel = `${formatNiceDate(context.weekKey)} – ${formatNiceDate(context.weekEnding)}`;
+
+  const dateRangeOptions: Array<{ key: typeof dateRange; label: string }> = [
+    { key: 'week', label: 'This week' },
+    { key: 'before', label: 'Up to week end' },
+    { key: 'after', label: 'From week start' },
+    { key: 'all', label: 'All dates' },
+  ];
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -122,12 +186,90 @@ export function CashFlowDrilldownModal({ open, onClose, context, items }: Props)
           </div>
         </DialogHeader>
 
+        {/* Filter controls */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search entity, category, or description…"
+                className="pl-8 h-9"
+              />
+            </div>
+            {hasActiveFilter && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearch('');
+                  setActiveCategories(new Set());
+                  setDateRange('week');
+                }}
+              >
+                <X className="h-3.5 w-3.5 mr-1" /> Clear
+              </Button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-muted-foreground mr-1">Range:</span>
+            {dateRangeOptions.map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => setDateRange(opt.key)}
+                className={`text-xs px-2 py-1 rounded-full border transition-colors ${
+                  dateRange === opt.key
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background border-border hover:bg-muted'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {availableCategories.length > 1 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-muted-foreground mr-1">Category:</span>
+              {availableCategories.map((cat) => {
+                const active = activeCategories.has(cat);
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => toggleCategory(cat)}
+                    className={`text-xs px-2 py-1 rounded-full border transition-colors ${
+                      active
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background border-border hover:bg-muted'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {rows.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
-            No Configure Payments &amp; Revenue entries roll into this cell.
-            <div className="mt-1 text-xs">
-              The value may come from historical seed data or daily-source imports.
-            </div>
+            {hasActiveFilter ? (
+              <>
+                No entries match the current filters.
+                <div className="mt-1 text-xs">Try clearing the search or category chips.</div>
+              </>
+            ) : (
+              <>
+                No Configure Payments &amp; Revenue entries roll into this cell.
+                <div className="mt-1 text-xs">
+                  The value may come from historical seed data or daily-source imports.
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <div className="max-h-[60vh] overflow-auto rounded-md border border-border">
