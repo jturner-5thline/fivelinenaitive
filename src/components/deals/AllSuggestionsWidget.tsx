@@ -93,7 +93,7 @@ export function AllSuggestionsWidget({ deals }: AllSuggestionsWidgetProps) {
   }
 
   return (
-    <Card>
+    <Card className="deal-glass">
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
