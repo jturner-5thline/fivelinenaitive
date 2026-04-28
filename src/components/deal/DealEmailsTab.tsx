@@ -495,6 +495,11 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     dealAssociation: 'all',
   });
 
+  // ── Custom user labels (Foundation slice) ───────────────────
+  const { data: userLabels = [] } = useLabels();
+  const { data: labelAssignments = [] } = useAllLabelAssignments();
+  const [manageLabelsOpen, setManageLabelsOpen] = useState(false);
+
   // ── AI Search state ─────────────────────────────────────────
   const aiSearch = useAIEmailSearch();
   // True once the user has explicitly run an AI search for the current query.
@@ -573,7 +578,29 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       : []),
   ];
 
-  const allSections: SidebarSection[] = [{ title: 'Mailbox', items: systemFolders, defaultOpen: true }];
+  // Build label folder items. Each label is a "folder" that filters emails
+  // whose thread_id is assigned that label.
+  const labelFolders: SidebarItem[] = useMemo(() => {
+    return userLabels.map(l => {
+      const threadIds = threadIdsForLabel(l.id, labelAssignments);
+      const count = emails.filter(e => threadIds.has(e.thread_id)).length;
+      return {
+        id: `label:${l.id}`,
+        label: l.name,
+        icon: Tag,
+        indicatorColor: undefined,
+        count: count || undefined,
+        // Stash the swatch hex on the item so the renderer can color the dot.
+        emoji: labelSwatch(l.color),
+        filterFn: (e: MockEmail) => threadIds.has(e.thread_id),
+      };
+    });
+  }, [userLabels, labelAssignments, emails]);
+
+  const allSections: SidebarSection[] = [
+    { title: 'Mailbox', items: systemFolders, defaultOpen: true },
+    { title: 'Labels', items: labelFolders, defaultOpen: true },
+  ];
 
   const activeItem = useMemo(() => {
     for (const section of allSections) {
