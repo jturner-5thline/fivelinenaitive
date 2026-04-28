@@ -41,17 +41,26 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
  *   - Low-contrast border, gentle (not heavy) shadow.
  *   - Hover: subtle surface brighten + tiny lift, no glow.
  */
+/**
+ * Frosted-glass shortcut tile.
+ *
+ * Restrained financial-SaaS take on glassmorphism, themed via semantic
+ * tokens so the surface remains readable in both light and dark modes:
+ *   - Translucent surface tinted with `--card` + backdrop blur.
+ *   - Low-contrast `--border` outline with a soft inner highlight.
+ *   - Gentle ambient shadow (no glow, no heavy elevation).
+ *   - Hover: tiny lift + slight surface brighten.
+ */
 const TILE_INTERACTIVE_CLASSES =
   'group relative p-4 rounded-2xl cursor-pointer outline-none ' +
-  'border border-white/[0.06] bg-white/[0.03] backdrop-blur-xl ' +
-  'shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_4px_14px_-8px_rgba(0,0,0,0.5)] ' +
+  'border border-border/50 bg-card/40 backdrop-blur-xl ' +
+  'shadow-[inset_0_1px_0_0_hsl(var(--foreground)/0.04),0_4px_14px_-8px_hsl(var(--background)/0.6)] ' +
   'transition-[background-color,border-color,transform,box-shadow] duration-200 ease-out ' +
   // Hover: very slight lift + brighter glass surface
-  'hover:bg-white/[0.06] hover:border-white/[0.12] hover:-translate-y-[1px] ' +
-  'hover:shadow-[0_1px_0_0_rgba(255,255,255,0.06)_inset,0_8px_22px_-10px_rgba(0,0,0,0.55)] ' +
-  'dark:hover:shadow-[0_1px_0_0_rgba(255,255,255,0.06)_inset,0_8px_22px_-10px_rgba(0,0,0,0.6)] ' +
+  'hover:bg-card/60 hover:border-border/70 hover:-translate-y-[1px] ' +
+  'hover:shadow-[inset_0_1px_0_0_hsl(var(--foreground)/0.06),0_8px_22px_-10px_hsl(var(--background)/0.7)] ' +
   // Keyboard focus: same brightening + soft ring
-  'focus-visible:bg-white/[0.07] focus-visible:border-white/[0.14] ' +
+  'focus-visible:bg-card/70 focus-visible:border-border/80 ' +
   'focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-0';
 
 /**
@@ -61,8 +70,8 @@ const TILE_INTERACTIVE_CLASSES =
  */
 const TILE_ICON_CHIP_CLASSES =
   'relative h-12 w-12 rounded-2xl flex items-center justify-center overflow-hidden ' +
-  'border border-white/[0.08] bg-white/[0.04] backdrop-blur-md ' +
-  'shadow-[0_1px_0_0_rgba(255,255,255,0.06)_inset,0_2px_6px_-3px_rgba(0,0,0,0.4)]';
+  'border border-border/60 bg-foreground/[0.04] backdrop-blur-md ' +
+  'shadow-[inset_0_1px_0_0_hsl(var(--foreground)/0.06),0_2px_6px_-3px_hsl(var(--background)/0.5)]';
 
 const handleTileKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, action: () => void) => {
   if (e.key === 'Enter' || e.key === ' ') {
