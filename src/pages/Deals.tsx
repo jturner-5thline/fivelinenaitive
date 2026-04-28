@@ -393,7 +393,7 @@ export default function Dashboard() {
         />
       </Helmet>
 
-      <div className="bg-transparent">
+      <div style={{ backgroundColor: '#0d1117' }}>
         <DealsHeader />
 
         <main className="w-full px-4 pt-4 pb-3 sm:px-6">
