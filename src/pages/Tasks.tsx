@@ -402,17 +402,15 @@ export default function Tasks() {
     const parts: string[] = [];
     // Scope
     if (ownerFilter === 'mine') parts.push('My');
-    else if (ownerFilter === 'assigned_by_me') parts.push('Delegated');
-    else if (ownerFilter === 'team' || ownerFilter === 'all') parts.push('Team');
+    else if (ownerFilter === 'others') parts.push('Delegated');
+    else if (ownerFilter === 'all') parts.push('Team');
     // Due / status
     if (filterDueDate === 'overdue') parts.push('overdue');
     else if (filterDueDate === 'today') parts.push('due today');
     else if (filterDueDate === 'this_week') parts.push('this week');
     else if (filterDueDate === 'no_date') parts.push('undated');
-    if (filterStatus && filterStatus !== 'all' && filterStatus !== 'open') {
+    if (filterStatus && filterStatus !== 'incomplete') {
       parts.push(filterStatus.replace(/_/g, ' '));
-    } else if (filterStatus === 'open') {
-      parts.push('open');
     }
     parts.push('tasks');
     // Refinements
