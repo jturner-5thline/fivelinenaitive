@@ -1335,7 +1335,7 @@ function PresetChip({
       <button
         onClick={onLoad}
         onDoubleClick={() => { setMenuOpen(true); setRenaming(true); }}
-        className="flex items-center gap-1 h-6 pl-2.5 pr-1.5 text-[11px] font-medium transition-colors"
+        className={`flex items-center gap-1 h-6 ${view.pinned_at ? 'pl-1' : 'pl-2.5'} pr-1.5 text-[11px] font-medium transition-colors`}
         style={{ color: isActive ? '#cfe3ff' : '#9aa3b6' }}
         title="Load preset · double-click to rename"
       >
