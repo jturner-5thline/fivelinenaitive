@@ -159,15 +159,15 @@ describe('useAIEmailSearch', () => {
       await harness.current.search('q', [makeEmail('a')]);
     });
 
-    act(() => harness.current.removeFilter('dateRange'));
+    await act(() => harness.current.removeFilter('dateRange'));
     expect(harness.current.result?.filters.dateRange).toBeNull();
     expect(harness.current.result?.filters.dateRangeStart).toBeNull();
     expect(harness.current.result?.filters.dateRangeEnd).toBeNull();
 
-    act(() => harness.current.removeFilter('topic:NDA'));
+    await act(() => harness.current.removeFilter('topic:NDA'));
     expect(harness.current.result?.filters.topics).toEqual(['signed']);
 
-    act(() => harness.current.removeFilter('hasAttachments'));
+    await act(() => harness.current.removeFilter('hasAttachments'));
     expect(harness.current.result?.filters.hasAttachments).toBeNull();
 
     // rankedIds preserved
@@ -243,7 +243,7 @@ describe('useAIEmailSearch', () => {
     });
     expect(harness.current.result).not.toBeNull();
 
-    act(() => harness.current.cancel());
+    await act(() => harness.current.cancel());
     expect(harness.current.isSearching).toBe(false);
     // Cancel keeps the prior result around (chips stay visible).
     expect(harness.current.result?.rankedIds).toEqual(['a']);
