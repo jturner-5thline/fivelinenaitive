@@ -2,14 +2,14 @@ import { useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   generateOccurrences,
-  DEBT_ADVISORY_DEFAULT_SUBCATEGORY,
+  resolveCategoryAlias,
   CASH_IN_CATEGORIES,
   CASH_OUT_CATEGORIES,
   type ScheduledCashFlow,
 } from './scheduledCashFlows';
 import { fmt } from './formatters';
 
-const DEBT_ADV_SUBKEYS = ['Retainers', 'Milestones', 'Closing Fees', 'Referral Fees'] as const;
+const DEBT_ADV_SUBKEYS = ['Retainer', 'Milestone', 'Closing Fees'] as const;
 
 export interface DrilldownContext {
   /** Logical row key in the weekly grid (e.g. category name, "TOTAL RECEIPTS", "NET CHANGE") */
@@ -48,7 +48,7 @@ function categoriesForRow(rowKey: string): { categories: Set<string>; flowFilter
   if (rowKey === 'TOTAL DISBURSEMENTS' || rowKey === 'CASH OUT') {
     return { categories: new Set(CASH_OUT_CATEGORIES as readonly string[]), flowFilter: 'out' };
   }
-  if (rowKey === 'NET CHANGE') {
+  if (rowKey === 'NET CHANGE' || rowKey === 'TOTAL NET CASH CHANGE') {
     return {
       categories: new Set([
         ...(CASH_IN_CATEGORIES as readonly string[]),
@@ -57,7 +57,7 @@ function categoriesForRow(rowKey: string): { categories: Set<string>; flowFilter
       flowFilter: 'all',
     };
   }
-  if (rowKey === 'Debt Advisory Revenue') {
+  if (rowKey === 'Advisors Revenue' || rowKey === 'Debt Advisory Revenue') {
     return { categories: new Set(DEBT_ADV_SUBKEYS), flowFilter: 'in' };
   }
   return { categories: new Set([rowKey]), flowFilter: 'all' };
@@ -83,9 +83,8 @@ export function CashFlowDrilldownModal({ open, onClose, context, items }: Props)
 
     const out: DrilldownRow[] = [];
     for (const entry of items) {
-      // Migrate legacy parent storage to default sub
-      let cat = entry.category;
-      if (cat === 'Debt Advisory Revenue') cat = DEBT_ADVISORY_DEFAULT_SUBCATEGORY;
+      // Resolve aliased / legacy category labels to canonical row keys.
+      const cat = resolveCategoryAlias(entry.category);
       if (!categories.has(cat)) continue;
       if (flowFilter === 'in' && entry.flow_type !== 'cash_in') continue;
       if (flowFilter === 'out' && entry.flow_type !== 'cash_out') continue;
