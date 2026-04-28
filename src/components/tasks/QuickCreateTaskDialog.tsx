@@ -43,6 +43,31 @@ const readLastAssignee = (fallback: string): string => {
   }
 };
 
+// Mirrors calculateNextDueDate() in useTasks.ts so the modal can preview
+// the next occurrence without round-tripping through the hook layer.
+function previewNextOccurrence(anchor: Date, rule: string): Date | null {
+  const d = new Date(anchor);
+  d.setHours(0, 0, 0, 0);
+  if (rule.startsWith('every:')) {
+    const [, nStr, unit] = rule.split(':');
+    const n = Math.max(1, Math.min(365, parseInt(nStr, 10) || 1));
+    if (unit === 'days') { d.setDate(d.getDate() + n); return d; }
+    if (unit === 'weeks') { d.setDate(d.getDate() + n * 7); return d; }
+    return null;
+  }
+  switch (rule) {
+    case 'daily':     d.setDate(d.getDate() + 1); return d;
+    case 'weekdays':
+      do { d.setDate(d.getDate() + 1); } while (d.getDay() === 0 || d.getDay() === 6);
+      return d;
+    case 'weekly':    d.setDate(d.getDate() + 7); return d;
+    case 'biweekly':  d.setDate(d.getDate() + 14); return d;
+    case 'monthly':   d.setMonth(d.getMonth() + 1); return d;
+    case 'quarterly': d.setMonth(d.getMonth() + 3); return d;
+    default: return null;
+  }
+}
+
 export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, currentUserId }: Props) {
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<QuickTaskInput['priority']>('medium');
