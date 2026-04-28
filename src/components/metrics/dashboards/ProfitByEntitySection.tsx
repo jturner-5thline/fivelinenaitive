@@ -29,19 +29,12 @@ const LOSS_COLOR_SOFT = 'hsl(354, 62%, 56%, 0.65)';
 const PROFIT_COLOR = 'hsl(152, 58%, 52%)';   // restrained green
 const ZERO_LINE_COLOR = 'rgba(220, 232, 255, 0.85)';
 
-const GLASS_CARD_STYLE: React.CSSProperties = {
-  background: 'rgba(16, 28, 52, 0.75)',
-  border: '0.5px solid rgba(80, 140, 255, 0.18)',
-  borderRadius: '12px',
-};
-const GLASS_SHEEN_STYLE: React.CSSProperties = {
-  position: 'absolute',
-  inset: 0,
-  borderRadius: 'inherit',
-  pointerEvents: 'none',
-  background:
-    'linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.00) 55%)',
-};
+// Visual surface tokens are now centralized in the shared `.glass-module`
+// utility (see src/index.css) and the <GlassCard> primitive. We keep the
+// sheen no-op here so legacy `<div style={GLASS_SHEEN_STYLE} />` overlays
+// remain harmless (the unified surface already paints its own sheen).
+const GLASS_CARD_STYLE: React.CSSProperties = {};
+const GLASS_SHEEN_STYLE: React.CSSProperties = { display: 'none' };
 
 function ProfitBarChart({
   title,
