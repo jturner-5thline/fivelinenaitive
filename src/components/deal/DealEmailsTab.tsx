@@ -74,6 +74,13 @@ import { logSentReplyToDeal } from '@/lib/logSentReplyToDeal';
 import { createTaskFromDraft, type TaskDraft } from '@/hooks/useNaitiveTaskParse';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
+import {
+  useLabels,
+  useAllLabelAssignments,
+  threadIdsForLabel,
+} from '@/hooks/useEmailLabels';
+import { EmailLabelsManageDialog, labelSwatch } from './email/EmailLabelsManageDialog';
+import { Tag, Plus as PlusIcon } from 'lucide-react';
 
 /** Compute next business day in local TZ as 'YYYY-MM-DD'. Skips weekends. */
 function nextBusinessDayISO(): string {
