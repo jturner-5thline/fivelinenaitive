@@ -104,7 +104,7 @@ export function KPISummaryCard({
 
   return (
     <Card
-      className={cn('h-full flex flex-col bg-card border-border overflow-hidden', onClick && 'cursor-pointer', className)}
+      className={cn('h-full flex flex-col glass-module overflow-hidden', onClick && 'cursor-pointer glass-module-interactive', className)}
       onClick={onClick}
     >
       <div className="widget-drag-handle cursor-grab" />

@@ -67,7 +67,7 @@ function RevenueBarChart({
 }) {
   if (isLoading) {
     return (
-      <Card className="bg-card/50 backdrop-blur border-border/50">
+      <Card className="glass-module">
         <CardHeader className="pb-2">
           <Skeleton className="h-5 w-32" />
           <Skeleton className="h-3 w-48 mt-1" />
@@ -80,7 +80,7 @@ function RevenueBarChart({
   }
 
   return (
-    <Card className="bg-card/50 backdrop-blur border-border/50 hover:border-border transition-colors">
+    <Card className="glass-module glass-module-interactive">
       <CardHeader className="pb-2 flex flex-row items-start justify-between">
         <div>
           <CardTitle className="text-sm font-medium text-foreground">{title}</CardTitle>
@@ -261,7 +261,7 @@ function StackedDebtRevenueChart({
 }) {
   if (isLoading) {
     return (
-      <Card className="bg-card/50 backdrop-blur border-border/50">
+      <Card className="glass-module">
         <CardHeader className="pb-2">
           <Skeleton className="h-5 w-32" />
           <Skeleton className="h-3 w-48 mt-1" />
@@ -274,7 +274,7 @@ function StackedDebtRevenueChart({
   }
 
   return (
-    <Card className="bg-card/50 backdrop-blur border-border/50 hover:border-border transition-colors">
+    <Card className="glass-module glass-module-interactive">
       <CardHeader className="pb-2 flex flex-row items-start justify-between">
         <div>
           <CardTitle className="text-sm font-medium text-foreground">Debt Revenue</CardTitle>
@@ -395,7 +395,7 @@ function StackedGenericRevenueChart({
 }) {
   if (isLoading) {
     return (
-      <Card className="bg-card/50 backdrop-blur border-border/50">
+      <Card className="glass-module">
         <CardHeader className="pb-2">
           <Skeleton className="h-5 w-32" />
           <Skeleton className="h-3 w-48 mt-1" />
@@ -408,7 +408,7 @@ function StackedGenericRevenueChart({
   }
 
   return (
-    <Card className="bg-card/50 backdrop-blur border-border/50 hover:border-border transition-colors">
+    <Card className="glass-module glass-module-interactive">
       <CardHeader className="pb-2 flex flex-row items-start justify-between">
         <div>
           <CardTitle className="text-sm font-medium text-foreground">{title}</CardTitle>

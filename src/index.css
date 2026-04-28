@@ -465,6 +465,42 @@
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-md);
   }
+  /*
+   * Unified dashboard module surface — used by every KPI card, chart card,
+   * widget, summary module and insight panel across all dashboards
+   * (Weekly Rundown, Executive, Pipeline, Revenue Overview, Signed Deals & A/R,
+   * Profit by Entity, Consolidated Debt Pipeline, etc.). One radius, one
+   * border, one fill, one sheen — do not introduce variants.
+   */
+  .glass-module {
+    position: relative;
+    background: rgba(16, 28, 52, 0.75) !important;
+    border: 0.5px solid rgba(80, 140, 255, 0.18) !important;
+    border-radius: 12px !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    overflow: hidden;
+  }
+  .glass-module::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.00) 55%);
+    z-index: 0;
+  }
+  .glass-module > * {
+    position: relative;
+    z-index: 1;
+  }
+  .glass-module-interactive {
+    transition: transform .2s ease, border-color .2s ease;
+  }
+  .glass-module-interactive:hover {
+    transform: translateY(-2px);
+    border-color: rgba(80, 140, 255, 0.32) !important;
+  }
   .glass-card-accent {
     background: var(--glass-surface);
     backdrop-filter: var(--glass-blur);

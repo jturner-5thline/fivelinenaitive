@@ -49,7 +49,7 @@ function MetricKPICard({ config, onClick }: { config: MetricCardConfig; onClick:
       onClick={onClick}
       className={cn(
         'relative group cursor-pointer overflow-hidden transition-all duration-200',
-        'border border-border/30 bg-card/50 backdrop-blur-xl',
+        'glass-module',
         'hover:border-primary/40 hover:-translate-y-0.5',
         'hover:shadow-[0_0_20px_hsl(var(--primary)/0.1),0_8px_32px_hsl(0,0%,0%,0.4)]',
       )}

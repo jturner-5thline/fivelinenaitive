@@ -56,7 +56,7 @@ function MetricKPICard({
       onClick={onClick}
       className={cn(
         'relative group cursor-pointer overflow-hidden transition-all duration-200',
-        'border border-border/30 bg-card/50 backdrop-blur-xl',
+        'glass-module',
         'hover:border-primary/40 hover:-translate-y-0.5',
         'hover:shadow-[0_0_20px_hsl(var(--primary)/0.1),0_8px_32px_hsl(0,0%,0%,0.4)]',
       )}
@@ -203,7 +203,7 @@ function CompactFundedBarChart({
 
   if (isLoading) {
     return (
-      <Card className="bg-card/50 backdrop-blur border-border/50">
+      <Card className="glass-module">
         <CardHeader className="pb-2">
           <Skeleton className="h-5 w-36" />
           <Skeleton className="mt-1 h-3 w-40" />
@@ -216,7 +216,7 @@ function CompactFundedBarChart({
   }
 
   return (
-    <Card className="bg-card/50 backdrop-blur border-border/50 hover:border-border transition-colors">
+    <Card className="glass-module glass-module-interactive">
       <CardHeader className="pb-2 flex flex-row items-start justify-between">
         <div>
           <CardTitle className="text-sm font-medium text-foreground">{title}</CardTitle>
