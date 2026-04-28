@@ -334,39 +334,7 @@ export function ExecutiveDashboard() {
 
       {/* Row 3: Deal Types & Cash Flow */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Deals by Type</CardTitle>
-            <Badge variant="outline" className="w-fit text-xs">Current Pipeline</Badge>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[220px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <PieGlassDefs colors={COLORS} />
-                  <Pie
-                    data={dealsByTypeData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    paddingAngle={2}
-                    dataKey="value"
-                    nameKey="type"
-                    label={({ type, percent }) => `${type} (${percent}%)`}
-                    labelLine={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
-                    activeShape={GlassActiveShape}
-                  >
-                    {dealsByTypeData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={pieGlassFill(index)} stroke={COLORS[index % COLORS.length]} strokeWidth={0.5} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+        <DealsByStatusPieChart />
 
         <Card>
           <CardHeader className="pb-2">
