@@ -473,6 +473,8 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
       if (updates.task_type !== undefined) updateData.task_type = updates.task_type;
       if (updates.is_starred !== undefined) updateData.is_starred = updates.is_starred;
       if (updates.recurrence_rule !== undefined) updateData.recurrence_rule = updates.recurrence_rule;
+      if ((updates as any).recurrence_end_date !== undefined) updateData.recurrence_end_date = (updates as any).recurrence_end_date;
+      if ((updates as any).is_recurring !== undefined) updateData.is_recurring = (updates as any).is_recurring;
 
       const { error } = await supabase.from('tasks').update(updateData).eq('id', id);
       if (error) throw error;
