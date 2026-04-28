@@ -812,8 +812,12 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
             <div style={lbl}>Override quarter (this report)</div>
             <input
               placeholder={derived.quarterLabel}
-              value={s.asanaGoalOverride?.quarterLabel ?? ''}
-              onChange={e => set(prev => ({ ...prev, asanaGoalOverride: { ...(prev.asanaGoalOverride || {}), quarterLabel: e.target.value || undefined } }))}
+              value={activeOverride?.quarterLabel ?? ''}
+              onChange={e => {
+                const nextOverride = { ...(activeOverride || {}), quarterLabel: e.target.value || undefined };
+                set(prev => ({ ...prev, asanaGoalOverride: nextOverride }));
+                void prefs.save({ override: nextOverride });
+              }}
               style={inp}
             />
           </div>
@@ -821,8 +825,12 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
             <div style={lbl}>Override half (this report)</div>
             <input
               placeholder={derived.halfLabel}
-              value={s.asanaGoalOverride?.halfLabel ?? ''}
-              onChange={e => set(prev => ({ ...prev, asanaGoalOverride: { ...(prev.asanaGoalOverride || {}), halfLabel: e.target.value || undefined } }))}
+              value={activeOverride?.halfLabel ?? ''}
+              onChange={e => {
+                const nextOverride = { ...(activeOverride || {}), halfLabel: e.target.value || undefined };
+                set(prev => ({ ...prev, asanaGoalOverride: nextOverride }));
+                void prefs.save({ override: nextOverride });
+              }}
               style={inp}
             />
           </div>
@@ -831,8 +839,12 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginRight: 'auto', fontSize: 11, color: TEXT_PRIMARY, cursor: 'pointer', userSelect: 'none' }}>
             <input
               type="checkbox"
-              checked={!!s.asanaGoalExactMatch}
-              onChange={e => set(prev => ({ ...prev, asanaGoalExactMatch: e.target.checked }))}
+              checked={activeExactMatch}
+              onChange={e => {
+                const next = e.target.checked;
+                set(prev => ({ ...prev, asanaGoalExactMatch: next }));
+                void prefs.save({ exactMatch: next });
+              }}
               style={{ accentColor: '#5ba3d0' }}
             />
             Exact match (case-insensitive)
@@ -840,7 +852,10 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
               — when off, matches by substring so different FY formats still match
             </span>
           </label>
-          <Btn variant="ghost" onClick={() => set(prev => ({ ...prev, asanaGoalFilters: DEFAULT_ASANA_GOAL_FILTERS, asanaGoalOverride: null }))}>
+          <Btn variant="ghost" onClick={() => {
+            set(prev => ({ ...prev, asanaGoalFilters: DEFAULT_ASANA_GOAL_FILTERS, asanaGoalOverride: null }));
+            void prefs.reset();
+          }}>
             Reset mapping
           </Btn>
           <Btn variant="ghost" onClick={() => setFilterEditorOpen(false)}>Done</Btn>
