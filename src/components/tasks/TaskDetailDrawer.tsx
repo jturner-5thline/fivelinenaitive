@@ -462,11 +462,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
                         size="sm"
                         className="h-6 text-[10px] px-2 rounded-full border-[#2a2f3e] gap-1"
                         style={{ color: '#ff4d4d' }}
-                        onClick={() => {
-                          if (!confirm('Stop this recurring series? No more tasks will be generated.')) return;
-                          onUpdate({ recurrence_rule: null, recurrence_end_date: null, is_recurring: false } as any);
-                          toast.success('Recurrence stopped');
-                        }}
+                        onClick={() => setStopRecurrenceOpen(true)}
                         title="Permanently stop the recurring series"
                       >
                         <Square className="h-3 w-3" /> Stop
