@@ -50,6 +50,7 @@ import {
   Bookmark, BookmarkPlus, FileDown, Star, MoreVertical,
   Tag, ClipboardList, Users, Briefcase, Building2, CalendarDays, X,
   Pencil, Copy as CopyIcon, Check,
+  Link2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDueBoundaries } from '@/hooks/useDueBoundaries';
