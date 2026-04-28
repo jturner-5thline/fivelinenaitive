@@ -187,11 +187,15 @@ function EmailTileWithIntelligence({
         tabIndex={0}
         onKeyDown={onKeyDown}
       >
-        <div className="flex flex-col items-center justify-center text-center space-y-3 h-full">
-          <div className={TILE_ICON_CHIP_CLASSES}>
-            <Mail className="relative z-10 h-7 w-7 text-foreground" />
+        <div className="flex flex-col items-center justify-center text-center gap-2 h-full">
+          <div
+            className={TILE_CHIP_BASE}
+            style={{ background: TILE_CHIP_GRADIENTS.email }}
+          >
+            <TileChipGloss />
+            <Mail className="relative z-10 h-8 w-8" style={{ color: '#c084f5' }} />
           </div>
-          <span className="text-sm font-medium text-foreground">Email</span>
+          <span className={TILE_LABEL_CLASSES}>Email</span>
         </div>
       </Card>
 
