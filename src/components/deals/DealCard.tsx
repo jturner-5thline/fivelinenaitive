@@ -264,21 +264,34 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
 
         {/* ═══ CARD BODY ═══ */}
         {/*
-          NOTE: pt is bumped slightly (pt-5) and the TOP ROW gets a stable
-          min-height so the deal title sits at the same vertical baseline on
-          every tile, regardless of whether status+stage pills, FLEx badges or
-          notification overlays are present. The notification bell and stale
-          icon are absolutely positioned and intentionally do NOT participate
-          in the flex stack — they must never push the title down.
+          ALIGNMENT CONTRACT — every deal title MUST start at the exact same
+          top inset and baseline as the EverFi tile, regardless of:
+            • presence/absence of status+stage pills, FLEx badges, alert chips
+            • whether the inline Flag/Search action buttons are visible
+            • notification bell / stale icon overlays (absolute, not in flow)
+            • currency value width or company name length
+
+          Mechanism:
+            1. Fixed `pt-5` top padding on the body.
+            2. Title sub-row is a HARD fixed height (h-6) with items-start so
+               the h3's first line is anchored to the top of the row — inline
+               buttons (also h-6) cannot shift it.
+            3. The whole TOP ROW uses items-start (not center) so the left
+               column is top-aligned to the row regardless of right column.
+            4. The right column is also self-start with a fixed visual height
+               so a missing stage pill does not cause baseline drift.
         */}
         <div className="px-6 pt-5 pb-6 flex flex-col flex-1 gap-3.5">
 
           {/* ── TOP ROW: Name + Value (left) | Status + Stage pills (right) ── */}
-          <div className="flex items-start justify-between gap-4 min-w-0 min-h-[60px]">
-            {/* Left: Name + Value — anchored to the top of the card */}
-            <div className="flex-1 min-w-0 space-y-1 self-start">
-              <div className="flex items-center gap-2 min-w-0 min-h-[24px]">
-                <h3 className="text-lg font-bold leading-tight truncate" style={{ color: '#f1f6fc' }}>{deal.company}</h3>
+          <div className="flex items-start justify-between gap-4 min-w-0">
+            {/* Left: Name + Value — anchored to top of the card body */}
+            <div className="flex-1 min-w-0 self-start">
+              {/* Title sub-row — FIXED 24px height, items-start pins the
+                  text glyphs to the top so the h3 baseline is identical
+                  on every tile (EverFi reference). */}
+              <div className="flex items-start gap-2 min-w-0 h-6">
+                <h3 className="text-lg font-bold leading-6 truncate flex-1 min-w-0" style={{ color: '#f1f6fc' }}>{deal.company}</h3>
                 {/* Action buttons inline with name */}
                 {onToggleFlag && (
                   <>
@@ -333,7 +346,14 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                   />
                 )}
               </div>
-              <p className="text-xl font-semibold tracking-tight tabular-nums" style={{ color: '#f1f6fc' }}>{formatCurrencyValue(deal.value)}</p>
+              {/* Currency value — fixed mt and leading so it sits the same
+                  exact distance below the title on every tile. */}
+              <p
+                className="text-xl font-semibold tracking-tight tabular-nums leading-7 mt-1"
+                style={{ color: '#f1f6fc' }}
+              >
+                {formatCurrencyValue(deal.value)}
+              </p>
             </div>
 
             {/* Right: Status + Stage pills */}
