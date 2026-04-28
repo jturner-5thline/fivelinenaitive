@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Lock, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line, ComposedChart, Area, PieChart, Pie, Cell, Legend } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
-import { PieGlassDefs, pieGlassFill, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
+import { PieGlassDefs, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
@@ -229,14 +229,6 @@ export function ExecutiveDashboard() {
     { stage: 'Due Diligence', value: 12000000 },
     { stage: 'Agreement', value: 5000000 },
     { stage: 'Closed Won', value: 3000000 },
-  ];
-
-  const dealsByTypeData = [
-    { type: 'Term Loan', value: 45, percent: 45 },
-    { type: 'Revolver', value: 25, percent: 25 },
-    { type: 'Equipment', value: 15, percent: 15 },
-    { type: 'Real Estate', value: 10, percent: 10 },
-    { type: 'Other', value: 5, percent: 5 },
   ];
 
   const cashFlowData = [
