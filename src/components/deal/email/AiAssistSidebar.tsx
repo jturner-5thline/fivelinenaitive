@@ -27,6 +27,8 @@ import { DataRoomUploadSuggestionCard } from './DataRoomUploadSuggestionCard';
 import { ThreadSummaryCard } from './ThreadSummaryCard';
 import { DealContextCard } from './DealContextCard';
 import { EmailQuickTaskSection } from './EmailQuickTaskSection';
+import { UnmatchedEmailContextCard } from './UnmatchedEmailContextCard';
+import { EmailAskAiBox } from './EmailAskAiBox';
 import type { DealContextSummary } from '@/hooks/useDealContextSummary';
 import { toast } from 'sonner';
 import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
@@ -143,9 +145,11 @@ interface Props {
   dealName?: string;
   onClose: () => void;
   onInsertDraft: (body: string) => void;
+  /** Persists a deal link from the unmatched-email context card. */
+  onLinkDeal?: (dealId: string, dealName: string) => void | Promise<void>;
 }
 
-export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDraft }: Props) {
+export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDraft, onLinkDeal }: Props) {
   // `loadingTones` tracks per-tone in-flight requests (so the panel can render
   // skeletons selectively). The shell never blocks on either.
   const [loadingTones, setLoadingTones] = useState<Record<ToneKey, boolean>>({ concise: false, balanced: false });
