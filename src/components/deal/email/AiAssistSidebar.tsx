@@ -27,6 +27,8 @@ import { DataRoomUploadSuggestionCard } from './DataRoomUploadSuggestionCard';
 import { ThreadSummaryCard } from './ThreadSummaryCard';
 import { DealContextCard } from './DealContextCard';
 import { EmailQuickTaskSection } from './EmailQuickTaskSection';
+import { UnmatchedEmailContextCard } from './UnmatchedEmailContextCard';
+import { EmailAskAiBox } from './EmailAskAiBox';
 import type { DealContextSummary } from '@/hooks/useDealContextSummary';
 import { toast } from 'sonner';
 import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
@@ -143,9 +145,11 @@ interface Props {
   dealName?: string;
   onClose: () => void;
   onInsertDraft: (body: string) => void;
+  /** Persists a deal link from the unmatched-email context card. */
+  onLinkDeal?: (dealId: string, dealName: string) => void | Promise<void>;
 }
 
-export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDraft }: Props) {
+export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDraft, onLinkDeal }: Props) {
   // `loadingTones` tracks per-tone in-flight requests (so the panel can render
   // skeletons selectively). The shell never blocks on either.
   const [loadingTones, setLoadingTones] = useState<Record<ToneKey, boolean>>({ concise: false, balanced: false });
@@ -603,6 +607,28 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             dealName={dealName}
             onSummaryChange={setDealContextSummary}
           />
+
+          {/* Unmatched-email context: contact card / body-mention deal
+              suggestion / Link Deal fallback. Only renders when no deal is
+              linked to the thread. */}
+          {!dealId && (
+            <UnmatchedEmailContextCard
+              email={{
+                from_email: thread.latestEmail.from_email,
+                from_name: thread.latestEmail.from_name,
+                subject: thread.subject,
+                body_preview: thread.latestEmail.body_preview,
+                body_text: thread.latestEmail.body_text,
+              }}
+              onLinkDeal={async (id, name) => {
+                if (onLinkDeal) await onLinkDeal(id, name);
+              }}
+            />
+          )}
+
+          {/* Always-on Ask AI prompt — works for matched and unmatched
+              emails alike. */}
+          <EmailAskAiBox thread={thread} dealId={dealId} />
 
           {/* Thread Summary — auto-generated for multi-message threads, collapsed by default */}
           <ThreadSummaryCard thread={thread} dealId={dealId} />
