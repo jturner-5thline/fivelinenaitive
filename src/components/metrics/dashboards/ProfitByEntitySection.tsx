@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, LabelList,
 } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { useMonthlyEntityProfit, type ProfitMonthBucket } from '@/hooks/useMonthlyEntityProfit';
@@ -27,6 +27,7 @@ const formatCurrencyFull = (value: number) => {
 const LOSS_COLOR = 'hsl(354, 62%, 56%)';     // muted rose, not neon
 const LOSS_COLOR_SOFT = 'hsl(354, 62%, 56%, 0.65)';
 const PROFIT_COLOR = 'hsl(152, 58%, 52%)';   // restrained green
+const ZERO_LINE_COLOR = 'rgba(220, 232, 255, 0.85)';
 
 const GLASS_CARD_STYLE: React.CSSProperties = {
   background: 'rgba(16, 28, 52, 0.75)',
@@ -71,12 +72,25 @@ function ProfitBarChart({
   const hasPositive = months.some(m => m.profit > 0);
   const isLossQuarter = total < 0;
 
-  // Auto-scale: include 0 in range, pad so bars don't touch edges
+  // Auto-scale: include 0 in range, pad so bars don't touch edges. When the
+  // chart contains both losses and profits, force a *symmetric* domain around
+  // zero so that negative bars are visually as tall as positive bars of the
+  // same magnitude — this makes "below zero" instantly readable.
   const minVal = Math.min(...months.map(m => m.profit), 0);
   const maxVal = Math.max(...months.map(m => m.profit), 0);
-  const range = Math.max(maxVal - minVal, 1000);
-  const domainMin = minVal - range * 0.15;
-  const domainMax = maxVal + range * 0.2;
+  const mixed = hasNegative && hasPositive;
+  let domainMin: number;
+  let domainMax: number;
+  if (mixed) {
+    const absMax = Math.max(Math.abs(minVal), Math.abs(maxVal), 1000);
+    const pad = absMax * 0.18;
+    domainMin = -(absMax + pad);
+    domainMax = absMax + pad;
+  } else {
+    const range = Math.max(maxVal - minVal, 1000);
+    domainMin = minVal - range * 0.15;
+    domainMax = maxVal + range * 0.2;
+  }
 
   return (
     <Card
@@ -162,7 +176,10 @@ function ProfitBarChart({
                 tickCount={4}
               />
               <Tooltip
-                formatter={(v: number) => [formatCurrencyFull(v), v < 0 ? 'Loss' : 'Profit']}
+                formatter={(v: number) => [
+                  `${v < 0 ? '−' : ''}${formatCurrencyFull(Math.abs(v)).replace(/^\(|\)$/g, '')}`,
+                  v < 0 ? 'Loss' : 'Profit',
+                ]}
                 labelFormatter={(label) => `${label} · ${entityName.split(',')[0]}`}
                 contentStyle={{
                   backgroundColor: 'rgba(16, 28, 52, 0.95)',
@@ -175,27 +192,65 @@ function ProfitBarChart({
                 }}
                 cursor={{ fill: 'rgba(160, 200, 255, 0.06)' }}
               />
-              {/* Zero baseline – more prominent than gridlines */}
-              {(hasNegative || hasPositive) && (
-                <ReferenceLine
-                  y={0}
-                  stroke="rgba(200, 220, 255, 0.55)"
-                  strokeWidth={1.25}
-                  ifOverflow="extendDomain"
-                />
-              )}
+              {/* Zero baseline — strong, solid, full-width so the
+                  positive/negative split is unmistakable. */}
+              <ReferenceLine
+                y={0}
+                stroke={ZERO_LINE_COLOR}
+                strokeWidth={1.5}
+                ifOverflow="extendDomain"
+                label={{
+                  value: '0',
+                  position: 'insideLeft',
+                  fill: 'rgba(220, 232, 255, 0.7)',
+                  fontSize: 9,
+                  offset: 4,
+                }}
+              />
               <Bar
                 dataKey="profit"
-                shape={createGlassBarShape({ radius: 4 })}
+                shape={createGlassBarShape({ radius: 4, dataKey: 'profit' })}
                 maxBarSize={44}
               >
                 {months.map((m, i) => (
                   <Cell
                     key={i}
                     fill={m.profit >= 0 ? PROFIT_COLOR : LOSS_COLOR}
-                    fillOpacity={m.profit >= 0 ? 0.9 : 0.82}
+                    fillOpacity={m.profit >= 0 ? 0.95 : 0.92}
+                    stroke={m.profit >= 0 ? PROFIT_COLOR : LOSS_COLOR}
+                    strokeOpacity={0.6}
+                    strokeWidth={0.75}
                   />
                 ))}
+                <LabelList
+                  dataKey="profit"
+                  position="top"
+                  formatter={(v: number) =>
+                    v === 0 ? '' : `${v < 0 ? '−' : '+'}${formatCurrency(Math.abs(v))}`
+                  }
+                  content={(props: any) => {
+                    const { x, y, width, value, height } = props;
+                    if (value === 0 || value == null) return null;
+                    const isNeg = value < 0;
+                    const cx = (x ?? 0) + (width ?? 0) / 2;
+                    // Anchor the label *outside* the exposed end of the bar:
+                    // above the top for positives, below the bottom for negatives.
+                    const cy = isNeg ? (y ?? 0) + (height ?? 0) + 12 : (y ?? 0) - 6;
+                    return (
+                      <text
+                        x={cx}
+                        y={cy}
+                        textAnchor="middle"
+                        fontSize={10}
+                        fontWeight={600}
+                        fill={isNeg ? LOSS_COLOR : PROFIT_COLOR}
+                      >
+                        {isNeg ? '−' : '+'}
+                        {formatCurrency(Math.abs(value))}
+                      </text>
+                    );
+                  }}
+                />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
