@@ -210,6 +210,16 @@ export default function Tasks() {
           if (bucket !== 'today' && bucket !== 'tomorrow' && bucket !== 'this_week') return false;
         }
       }
+      if (filterRecurring !== 'all') {
+        const isRec = !!t.recurrence_rule || !!(t as any).is_recurring;
+        if (!isRec) return false;
+        if (filterRecurring === 'paused') {
+          const seriesEnd = (t as any).recurrence_end_date as string | null | undefined;
+          const todayStr = dueBoundaries.today;
+          const isPaused = !!seriesEnd && seriesEnd <= todayStr;
+          if (!isPaused) return false;
+        }
+      }
       return true;
     })
     .sort((a, b) => {
