@@ -382,7 +382,7 @@ export function TaskListView({
 }
 
 // Pinned Overdue Section
-function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focusedTaskIndex, allTasks, onSelectTask, onUpdateTask, onDeleteTask, onToggleComplete, onToggleSelect, onToggleStar }: {
+function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focusedTaskIndex, allTasks, onSelectTask, onUpdateTask, onDeleteTask, onToggleComplete, onToggleSelect, onToggleStar, expandedTaskIds, onToggleExpanded }: {
   tasks: Task[];
   todayStr: string;
   selectedTaskId: string | null;
@@ -395,6 +395,8 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
   onToggleComplete: (id: string, status: string) => void;
   onToggleSelect?: (id: string) => void;
   onToggleStar?: (id: string, current: boolean) => void;
+  expandedTaskIds?: Set<string>;
+  onToggleExpanded?: (taskId: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -435,6 +437,9 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
             onToggleSelect={onToggleSelect ? () => onToggleSelect(task.id) : undefined}
             onToggleStar={onToggleStar ? () => onToggleStar(task.id, task.is_starred) : undefined}
             showSelectCheckbox={(selectedTaskIds?.size || 0) > 0}
+            isExpanded={expandedTaskIds?.has(task.id)}
+            onToggleExpanded={onToggleExpanded ? () => onToggleExpanded(task.id) : undefined}
+            onOpenFullDetail={() => onSelectTask(task.id)}
           />
         );
       })}
