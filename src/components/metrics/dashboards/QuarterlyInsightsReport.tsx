@@ -309,6 +309,17 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 type ReportSetState = React.Dispatch<React.SetStateAction<ReportState>>;
 
 function ReportHeaderSection({ s, set, reset, print }: { s: ReportState; set: ReportSetState; reset: () => void; print: () => void }) {
+  // Validation: ensure Month always has a valid selection while in Monthly mode.
+  // Covers stale persisted state, programmatic state changes, and quarter switches.
+  useEffect(() => {
+    if (s.period !== 'monthly') return;
+    const validMonths = monthsForQuarter(s.quarter);
+    if (validMonths.length === 0) return;
+    if (!s.month || !validMonths.includes(s.month)) {
+      set(prev => ({ ...prev, month: validMonths[0] }));
+    }
+  }, [s.period, s.quarter, s.month, set]);
+
   return (
     <Card>
       <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
