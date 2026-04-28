@@ -393,7 +393,14 @@ export default function Dashboard() {
         />
       </Helmet>
 
-      <div style={{ backgroundColor: '#0d1117' }}>
+      {/*
+        Page surface — matches the dashboard glass language:
+        transparent base so the app's ambient backdrop shows through, with
+        a fine low-contrast border, soft inner highlight, and gentle
+        elevation so the Deals workspace reads as the same component family
+        as the dashboard widgets/modules instead of a flat dark slab.
+      */}
+      <div className="bg-transparent">
         <DealsHeader />
 
         <main className="w-full px-4 pt-4 pb-3 sm:px-6">
@@ -402,7 +409,18 @@ export default function Dashboard() {
           <EmailVerificationBanner />
           <DemoBanner onDataCleared={refreshDeals} />
           <CreateCompanyBanner />
-          <div className="space-y-6">
+          <div
+            className={
+              // Frosted-glass module wrapper, identical tonal system to the
+              // dashboard: translucent white surface, hairline white/10 border,
+              // backdrop-blur + saturate for the glass quality, and a soft
+              // ambient shadow with an inner top highlight for elevation.
+              'space-y-6 rounded-xl border border-white/10 ' +
+              'bg-white/[0.04] backdrop-blur-md backdrop-saturate-150 ' +
+              'shadow-[0_8px_22px_-12px_rgba(0,0,0,0.55),inset_0_1px_0_0_rgba(255,255,255,0.06)] ' +
+              'p-4 sm:p-6'
+            }
+          >
             {/* Page Header & Widgets */}
             <div className="space-y-2">
               <div 
