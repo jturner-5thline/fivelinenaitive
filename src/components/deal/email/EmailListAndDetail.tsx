@@ -439,7 +439,10 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
     <EmailContextMenu
       isRead={!isUnread}
       isStarred={thread.isStarred}
-      threadId={thread.threadId}
+      // Persist label assignments against the canonical provider thread id
+      // so they carry across deals / sessions / refetches. Falls back to the
+      // local UI threadId when the provider id is unknown (mock data).
+      threadId={thread.provider_thread_id || thread.threadId}
       onMarkRead={() => onMarkRead?.(latest)}
       onMarkUnread={() => onMarkUnread?.(latest)}
       onToggleStar={() => onToggleStar(latest)}
