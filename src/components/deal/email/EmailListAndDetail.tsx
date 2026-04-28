@@ -402,6 +402,7 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
     <EmailContextMenu
       isRead={!isUnread}
       isStarred={thread.isStarred}
+      threadId={thread.threadId}
       onMarkRead={() => onMarkRead?.(latest)}
       onMarkUnread={() => onMarkUnread?.(latest)}
       onToggleStar={() => onToggleStar(latest)}
