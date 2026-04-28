@@ -76,10 +76,22 @@ const TILE_CHIP_BASE =
   // the available viewport width while keeping a 1:1 aspect ratio.
   'relative rounded-lg flex items-center justify-center overflow-hidden ' +
   'h-[var(--tile-size)] w-[var(--tile-size)] ' +
+  // Resting: subtle 13% white border + soft ambient drop shadow with a hairline
+  // top inner highlight for the glassy edge.
   'border border-white/[0.13] ' +
   'shadow-[0_8px_22px_-8px_rgba(0,0,0,0.6),inset_0_1px_0_0_rgba(255,255,255,0.08)] ' +
-  'transition-transform duration-200 ease-out ' +
-  'group-hover:-translate-y-[2px] group-focus-visible:-translate-y-[2px]';
+  // Smoothly animate every visual on hover/focus, not just the lift.
+  'transition-[transform,border-color,box-shadow,filter] duration-200 ease-out ' +
+  // Stronger lift + brighter rim + deeper, longer shadow on hover/focus to
+  // mirror the reference. The inner highlight intensifies in tandem so the
+  // gloss reads as light reacting to the lift.
+  'group-hover:-translate-y-[3px] group-focus-visible:-translate-y-[3px] ' +
+  'group-hover:border-white/30 group-focus-visible:border-white/30 ' +
+  'group-hover:shadow-[0_14px_30px_-10px_rgba(0,0,0,0.7),0_0_0_1px_rgba(255,255,255,0.08),inset_0_1px_0_0_rgba(255,255,255,0.22)] ' +
+  'group-focus-visible:shadow-[0_14px_30px_-10px_rgba(0,0,0,0.7),0_0_0_1px_rgba(255,255,255,0.08),inset_0_1px_0_0_rgba(255,255,255,0.22)] ' +
+  'group-hover:brightness-[1.06] group-focus-visible:brightness-[1.06] ' +
+  // Slight press-down on active for tactile feedback.
+  'group-active:translate-y-0 group-active:shadow-[0_6px_16px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_0_rgba(255,255,255,0.10)]';
 
 /**
  * Backwards-compat alias for the prior constant name. Some HMR sessions
@@ -90,16 +102,31 @@ const TILE_CHIP_BASE =
 const TILE_ICON_CHIP_CLASSES = TILE_CHIP_BASE;
 void TILE_ICON_CHIP_CLASSES;
 
-/** Inner glassy highlight overlay (matches reference `.wg-icon::before`). */
+/**
+ * Inner glassy highlight overlay (matches reference `.wg-icon::before`).
+ * The base layer holds the resting gloss; a second, brighter layer is
+ * cross-faded in on parent `group` hover/focus to intensify the highlight
+ * in lockstep with the lift and border-rim brightening.
+ */
 const TileChipGloss = () => (
-  <span
-    aria-hidden
-    className="pointer-events-none absolute inset-0 rounded-lg"
-    style={{
-      background:
-        'linear-gradient(145deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 60%, rgba(0,0,0,0.10) 100%)',
-    }}
-  />
+  <>
+    <span
+      aria-hidden
+      className="pointer-events-none absolute inset-0 rounded-lg transition-opacity duration-200 ease-out group-hover:opacity-0 group-focus-visible:opacity-0"
+      style={{
+        background:
+          'linear-gradient(145deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 60%, rgba(0,0,0,0.10) 100%)',
+      }}
+    />
+    <span
+      aria-hidden
+      className="pointer-events-none absolute inset-0 rounded-lg opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-visible:opacity-100"
+      style={{
+        background:
+          'linear-gradient(145deg, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.08) 55%, rgba(0,0,0,0.06) 100%)',
+      }}
+    />
+  </>
 );
 
 /** Per-category deep gradients mirroring the reference palette. */
