@@ -400,6 +400,7 @@ export default function Tasks() {
         filterDealIds: Array.from(filterDealIds),
         filterLabelIds: Array.from(filterLabelIds),
         filterDueDate,
+        filterRecurring,
       },
     });
     setNewViewName('');
@@ -465,6 +466,7 @@ export default function Tasks() {
     if (Array.isArray(c.filterDealIds)) setFilterDealIds(new Set(c.filterDealIds));
     if (Array.isArray(c.filterLabelIds)) setFilterLabelIds(new Set(c.filterLabelIds));
     if (c.filterDueDate) setFilterDueDate(c.filterDueDate as FilterDueDate);
+    if (c.filterRecurring) setFilterRecurring(c.filterRecurring as FilterRecurring);
     toast.success(`Loaded view: ${view.name}`);
   };
 
