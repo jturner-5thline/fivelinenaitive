@@ -321,10 +321,12 @@ function usePipelineDealsInPeriod(pipelineId: string, quarter: QuarterOption): S
 // 5th Line company's pipeline IDs
 const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
 const FINSERV_PIPELINE_ID = 'eb9db15a-62cc-4b99-adcf-24e57a2a46ce';
+const DEBT_REALM_ID = '193514877331929';
 
 // Stage IDs
 const NDA_NEEDS_LIST_STAGE = 'ndaneeds-list-sent';
 const FINAL_CREDIT_ITEMS_STAGE = 'final-credit-items';
+const FUNDED_INVOICED_STAGE = 'funded-invoiced';
 const FS_ACTIVE_CLIENT_STAGE = 'fs-active-client';
 const PROPOSAL_ISSUED_STAGE = 'proposal-issued';
 const TERMS_ISSUED_STAGE = 'terms-issued';
@@ -376,18 +378,53 @@ export interface ConsolidatedDebtPipelineMetrics {
   ndaNeedsList: StageMetricResult;
   proposalsIssued: StageMetricResult;
   finalCreditItems: StageMetricResult;
+  fundedInvoiced: StageMetricResult;
   termsIssued: StageMetricResult;
   inDueDiligence: StageMetricResult;
+  averageDealOnBoard: AverageMetricResult;
+  averageDealSigned: AverageMetricResult;
+  averageDealClosed: AverageMetricResult;
+  averageRevenuePerDealSigned: AverageMetricResult;
+  averageRevenuePerDealClosed: AverageMetricResult;
 }
 
 export function useConsolidatedDebtPipelineMetrics(
   quarter: QuarterOption,
 ): ConsolidatedDebtPipelineMetrics {
+  const sixMonthPeriod = useMemo(
+    () => buildRollingMonthsPeriod(quarter.endDate, 6),
+    [quarter.endDate],
+  );
+  const twelveMonthPeriod = useMemo(
+    () => buildRollingMonthsPeriod(quarter.endDate, 12),
+    [quarter.endDate],
+  );
+
+  const ndaNeedsList = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, quarter, ACTIVE_PIPELINE_ID);
+  const proposalsIssued = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
+  const finalCreditItems = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, quarter, ACTIVE_PIPELINE_ID);
+  const fundedInvoiced = useStageEntryMetric(FUNDED_INVOICED_STAGE, quarter, ACTIVE_PIPELINE_ID);
+  const termsIssued = useStageEntryMetric(TERMS_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
+  const inDueDiligence = useStageEntryMetric(IN_DUE_DILIGENCE_STAGE, quarter, ACTIVE_PIPELINE_ID);
+
+  const ndaNeedsListRolling6 = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, sixMonthPeriod, ACTIVE_PIPELINE_ID);
+  const finalCreditItemsRolling6 = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, sixMonthPeriod, ACTIVE_PIPELINE_ID);
+  const fundedInvoicedRolling6 = useStageEntryMetric(FUNDED_INVOICED_STAGE, sixMonthPeriod, ACTIVE_PIPELINE_ID);
+  const finalCreditItemsRolling12 = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
+  const fundedInvoicedRolling12 = useStageEntryMetric(FUNDED_INVOICED_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
+  const debtRevenueRolling12 = useRevenueTotalForPeriod(DEBT_REALM_ID, twelveMonthPeriod);
+
   return {
-    ndaNeedsList:    useStageEntryMetric(NDA_NEEDS_LIST_STAGE,    quarter, ACTIVE_PIPELINE_ID),
-    proposalsIssued: useStageEntryMetric(PROPOSAL_ISSUED_STAGE,   quarter, ACTIVE_PIPELINE_ID),
-    finalCreditItems:useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE,quarter, ACTIVE_PIPELINE_ID),
-    termsIssued:     useStageEntryMetric(TERMS_ISSUED_STAGE,      quarter, ACTIVE_PIPELINE_ID),
-    inDueDiligence:  useStageEntryMetric(IN_DUE_DILIGENCE_STAGE,  quarter, ACTIVE_PIPELINE_ID),
+    ndaNeedsList,
+    proposalsIssued,
+    finalCreditItems,
+    fundedInvoiced,
+    termsIssued,
+    inDueDiligence,
+    averageDealOnBoard: useAverageDealMetric(ndaNeedsListRolling6),
+    averageDealSigned: useAverageDealMetric(finalCreditItemsRolling6),
+    averageDealClosed: useAverageDealMetric(fundedInvoicedRolling6),
+    averageRevenuePerDealSigned: useRevenuePerDealMetric(debtRevenueRolling12, finalCreditItemsRolling12),
+    averageRevenuePerDealClosed: useRevenuePerDealMetric(debtRevenueRolling12, fundedInvoicedRolling12),
   };
 }
