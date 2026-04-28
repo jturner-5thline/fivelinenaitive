@@ -738,5 +738,13 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
         </DropdownMenu>
       </div>
     </div>
+    {isExpanded && (
+      <ExpandedTaskDetails
+        task={task}
+        onUpdate={onUpdate}
+        onOpenFullDetail={onOpenFullDetail || onSelect}
+      />
+    )}
+    </>
   );
 }
