@@ -973,11 +973,60 @@ export function CashFlowManager() {
             })}
           </div>
         </div>
-        {(filterYears.length > 0 || filterQuarters.length > 0) && (
+        {availableEntities.length > 0 && (
+          <div className="cf-filter-group">
+            <label className="cf-filter-label">Entity</label>
+            <div className="cf-toggle-group">
+              {availableEntities.map(ent => {
+                const active = filterEntities.includes(ent);
+                return (
+                  <button
+                    key={ent}
+                    className={`cf-toggle-btn ${active ? 'active' : ''}`}
+                    onClick={() => setFilterEntities(prev =>
+                      active ? prev.filter(v => v !== ent) : [...prev, ent]
+                    )}
+                    title={`Show only entries for ${ent}`}
+                  >
+                    {ent}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {availableCategories.length > 0 && (
+          <div className="cf-filter-group">
+            <label className="cf-filter-label">Category</label>
+            <div className="cf-toggle-group">
+              {availableCategories.map(cat => {
+                const active = filterCategories.includes(cat);
+                return (
+                  <button
+                    key={cat}
+                    className={`cf-toggle-btn ${active ? 'active' : ''}`}
+                    onClick={() => setFilterCategories(prev =>
+                      active ? prev.filter(v => v !== cat) : [...prev, cat]
+                    )}
+                    title={`Show only ${cat} entries`}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {(filterYears.length > 0 || filterQuarters.length > 0 || filterEntities.length > 0 || filterCategories.length > 0) && (
           <button
             className="cf-btn cf-btn-ghost"
             style={{ fontSize: 11, marginLeft: 4 }}
-            onClick={() => { setFilterYears([]); setFilterQuarters([]); }}
+            onClick={() => {
+              setFilterYears([]);
+              setFilterQuarters([]);
+              setFilterEntities([]);
+              setFilterCategories([]);
+            }}
           >
             Clear
           </button>
@@ -986,6 +1035,11 @@ export function CashFlowManager() {
           {activeTab === 'daily'
             ? `${filteredDaily.dates.length} days`
             : `${Object.keys(filteredWeekly).length} weeks`}
+          {isConfigureFilterActive && (
+            <span style={{ marginLeft: 8, opacity: 0.75 }}>
+              · Configure-only: {filteredScheduledItems.length} entr{filteredScheduledItems.length === 1 ? 'y' : 'ies'}
+            </span>
+          )}
         </span>
       </div>
 
