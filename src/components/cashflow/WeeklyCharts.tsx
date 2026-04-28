@@ -79,7 +79,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
     chart2Instance.current?.destroy();
     chart3Instance.current?.destroy();
 
-    const { labels, endingCash, totalLiquidity, cashIn, cashOut, actualEndingCash, projectedEndingCash, firstProjectedIdx } = chartData;
+    const { labels, endingCash, totalLiquidity, cashIn, cashOut, actualEndingCash, projectedEndingCash } = chartData;
 
     const isDark = theme === 'dark';
     const gridColor = isDark ? 'rgba(42,51,72,0.5)' : 'rgba(209,213,219,0.5)';
