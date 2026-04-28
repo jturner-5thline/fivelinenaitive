@@ -263,14 +263,22 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
         )}
 
         {/* ═══ CARD BODY ═══ */}
-        <div className="p-6 flex flex-col flex-1 gap-4">
+        {/*
+          NOTE: pt is bumped slightly (pt-5) and the TOP ROW gets a stable
+          min-height so the deal title sits at the same vertical baseline on
+          every tile, regardless of whether status+stage pills, FLEx badges or
+          notification overlays are present. The notification bell and stale
+          icon are absolutely positioned and intentionally do NOT participate
+          in the flex stack — they must never push the title down.
+        */}
+        <div className="px-6 pt-5 pb-6 flex flex-col flex-1 gap-3.5">
 
           {/* ── TOP ROW: Name + Value (left) | Status + Stage pills (right) ── */}
-          <div className="flex items-start justify-between gap-4 min-w-0">
-            {/* Left: Name + Value */}
-            <div className="flex-1 min-w-0 space-y-1">
-              <div className="flex items-center gap-2 min-w-0">
-                <h3 className="text-lg font-bold leading-tight truncate" style={{ color: '#dde8f8' }}>{deal.company}</h3>
+          <div className="flex items-start justify-between gap-4 min-w-0 min-h-[60px]">
+            {/* Left: Name + Value — anchored to the top of the card */}
+            <div className="flex-1 min-w-0 space-y-1 self-start">
+              <div className="flex items-center gap-2 min-w-0 min-h-[24px]">
+                <h3 className="text-lg font-bold leading-tight truncate" style={{ color: '#f1f6fc' }}>{deal.company}</h3>
                 {/* Action buttons inline with name */}
                 {onToggleFlag && (
                   <>
@@ -325,12 +333,12 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                   />
                 )}
               </div>
-              <p className="text-xl font-semibold tracking-tight" style={{ color: '#dde8f8' }}>{formatCurrencyValue(deal.value)}</p>
+              <p className="text-xl font-semibold tracking-tight tabular-nums" style={{ color: '#f1f6fc' }}>{formatCurrencyValue(deal.value)}</p>
             </div>
 
             {/* Right: Status + Stage pills */}
             {!hideStatus && (
-            <div className="flex flex-col items-end gap-1.5 shrink-0">
+            <div className="flex flex-col items-end gap-1.5 shrink-0 self-start">
               <InlineStatusDropdown
                 dealId={deal.id}
                 status={deal.status}
@@ -439,7 +447,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                 <div className="relative group/status">
                   <HoverCard openDelay={300}>
                     <HoverCardTrigger asChild>
-                      <p className="text-sm leading-relaxed line-clamp-2 cursor-pointer pr-6" style={{ color: 'rgba(160, 200, 255, 0.55)' }}>
+                      <p className="text-sm leading-relaxed line-clamp-2 cursor-pointer pr-6" style={{ color: 'rgba(210, 225, 245, 0.82)' }}>
                         {notesPlainText}
                       </p>
                     </HoverCardTrigger>
@@ -459,7 +467,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                 </div>
               ) : (
                 <div className="relative group/status">
-                  <p className="text-sm leading-relaxed line-clamp-2 italic pr-6" style={{ color: 'rgba(160, 200, 255, 0.55)' }}>
+                  <p className="text-sm leading-relaxed line-clamp-2 italic pr-6" style={{ color: 'rgba(180, 205, 235, 0.60)' }}>
                     No Status
                   </p>
                   <button
@@ -479,11 +487,11 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
           {/* ── ROW: Manager (left) | Time ago (right) ── */}
           {!compact && (
             <div className="flex items-center justify-between gap-4 min-w-0">
-              <div className="flex items-center gap-1.5 text-sm" style={{ color: 'rgba(120, 170, 255, 0.35)' }}>
+              <div className="flex items-center gap-1.5 text-sm" style={{ color: 'rgba(195, 215, 240, 0.78)' }}>
                 <User className="h-3.5 w-3.5" />
                 <span className="truncate">{deal.manager || 'No manager'}</span>
               </div>
-              <div className={`flex items-center gap-1.5 text-xs shrink-0 ${timeAgoData.highlightClass}`} style={timeAgoData.highlightClass ? undefined : { color: 'rgba(120, 170, 255, 0.35)' }}>
+              <div className={`flex items-center gap-1.5 text-xs shrink-0 ${timeAgoData.highlightClass}`} style={timeAgoData.highlightClass ? undefined : { color: 'rgba(195, 215, 240, 0.75)' }}>
                 <Clock className="h-3 w-3" />
                 <span>{timeAgoData.text}</span>
               </div>
@@ -493,7 +501,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
           {/* ── ROW: Engagement + Deal Type pills ── */}
           {!compact && (
             <div className="flex items-center gap-3 flex-wrap min-w-0">
-              <span className="text-xs font-medium" style={{ color: 'rgba(160, 200, 255, 0.50)' }}>
+              <span className="text-xs font-medium" style={{ color: 'rgba(205, 222, 245, 0.82)' }}>
                 {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
               </span>
               {deal.exclusivity && EXCLUSIVITY_CONFIG[deal.exclusivity] && (
@@ -502,7 +510,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                 </Badge>
               )}
               {dealTypeLabels.map((label, index) => (
-                <span key={index} className="text-xs font-medium" style={{ color: 'rgba(160, 200, 255, 0.50)' }}>
+                <span key={index} className="text-xs font-medium" style={{ color: 'rgba(205, 222, 245, 0.82)' }}>
                   {label}
                 </span>
               ))}
