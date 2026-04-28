@@ -29,11 +29,11 @@ export default function Homepage() {
       </Helmet>
 
       <div
-        className="dark min-h-screen bg-[hsl(265,35%,5%)] relative"
+        className="dark min-h-screen relative"
         style={{
           colorScheme: 'dark',
-          backgroundImage:
-            'radial-gradient(ellipse 90% 70% at 100% 0%, hsl(270, 50%, 14%) 0%, transparent 60%), radial-gradient(ellipse 80% 60% at 0% 100%, hsl(260, 45%, 11%) 0%, transparent 65%), linear-gradient(180deg, hsl(268, 40%, 7%) 0%, hsl(262, 38%, 5%) 100%)',
+          background:
+            'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)',
           backgroundAttachment: 'fixed',
         }}
       >

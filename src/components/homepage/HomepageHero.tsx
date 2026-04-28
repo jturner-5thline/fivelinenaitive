@@ -7,12 +7,10 @@ import heroGlassBg from "@/assets/hero-glass-bg.jpg";
 export const HomepageHero = () => {
   return (
     <section
-      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[hsl(270,80%,4%)]"
+      className="relative min-h-screen flex items-center justify-center overflow-hidden"
       style={{
-        backgroundImage: `url(${heroGlassBg})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
+        background:
+          'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)',
       }}
     >
       {/* Tint overlay — darkens left side for wordmark legibility, keeps globe crisp */}
