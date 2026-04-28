@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserNotificationPreferences } from './useUserNotificationPreferences';
+import { useUiPreference } from './useUiPreference';
 import {
   detectPrioritySignals,
   DEFAULT_ENABLED_SIGNALS,
@@ -44,6 +45,21 @@ function readEnabledSignalTypes(prefRow: any): Set<EmailPrioritySignalType> {
 export function useEmailPrioritySignals(emails: MockEmail[] | undefined) {
   const { user } = useAuth();
   const { data: userPrefs } = useUserNotificationPreferences();
+  // User-controlled deep-link mode for priority notifications.
+  // - 'message' (default): include message id + signal so the deal page
+  //   auto-scrolls to and highlights the detected message.
+  // - 'thread': only include the thread id so the user lands in the
+  //   inbox at the thread without auto-jumping inside it.
+  const [linkMode] = useUiPreference<'message' | 'thread'>(
+    'notif_link_mode',
+    'message',
+  );
+  // Capture in a ref so the async dispatch loop always reads the
+  // latest value without re-creating the effect on every change.
+  const linkModeRef = useRef(linkMode);
+  useEffect(() => {
+    linkModeRef.current = linkMode;
+  }, [linkMode]);
   const [flagsByThread, setFlagsByThread] = useState<Record<string, DetectedSignal>>({});
   // In-process guard so a single render burst doesn't double-fire before the
   // DB unique constraint kicks in.
@@ -91,7 +107,7 @@ export function useEmailPrioritySignals(emails: MockEmail[] | undefined) {
     });
 
     // Fire notifications (best-effort, fire-and-forget per item).
-    void dispatchNotifications(toNotify, inFlight, user.id);
+    void dispatchNotifications(toNotify, inFlight, user.id, linkModeRef);
   }, [emails, enabledTypes, user]);
 
   return { flagsByThread };
@@ -100,7 +116,8 @@ export function useEmailPrioritySignals(emails: MockEmail[] | undefined) {
 async function dispatchNotifications(
   items: Array<{ email: MockEmail; signal: DetectedSignal }>,
   inFlight: { current: Set<string> },
-  userId: string
+  userId: string,
+  linkModeRef: { current: 'message' | 'thread' }
 ) {
   for (const { email, signal } of items) {
     const key = `${email.id}::${signal.type}`;
@@ -154,8 +171,13 @@ async function dispatchNotifications(
     if (dealId) {
       const params = new URLSearchParams({ tab: 'communication' });
       if (email.threadId) params.set('thread', email.threadId);
-      if (email.id) params.set('message', email.id);
-      if (signal.type) params.set('signal', signal.type);
+      // Honor the user's deep-link preference. In 'thread' mode we omit
+      // the message + signal params so the reading pane simply opens
+      // the thread without auto-scrolling/highlighting.
+      if (linkModeRef.current === 'message') {
+        if (email.id) params.set('message', email.id);
+        if (signal.type) params.set('signal', signal.type);
+      }
       dealUrl = `${window.location.origin}/deals/${dealId}?${params.toString()}`;
     } else {
       dealUrl = `${window.location.origin}/notifications`;
