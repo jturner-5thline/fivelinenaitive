@@ -363,17 +363,26 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
                 { value: 'biweekly', label: 'Biweekly' },
                 { value: 'monthly', label: 'Monthly' },
                 { value: 'quarterly', label: 'Quarterly' },
+                { value: 'custom', label: 'Custom…' },
               ].map(opt => {
-                const active = recurrence === opt.value;
+                const isCustomChip = opt.value === 'custom';
+                const isCustomRule = !!recurrence && recurrence.startsWith('every:');
+                const active = isCustomChip
+                  ? isCustomRule
+                  : recurrence === opt.value;
                 return (
                   <button
                     key={opt.label}
                     type="button"
                     onClick={() => {
-                      setRecurrence(opt.value);
-                      // Clearing recurrence also disables the anchor toggle
-                      // so it can't apply when there's nothing to anchor.
-                      if (!opt.value) setStartFromDueDate(false);
+                      if (isCustomChip) {
+                        setRecurrence(`every:${customN}:${customUnit}`);
+                      } else {
+                        setRecurrence(opt.value);
+                        // Clearing recurrence also disables the anchor toggle
+                        // so it can't apply when there's nothing to anchor.
+                        if (!opt.value) setStartFromDueDate(false);
+                      }
                     }}
                     className="px-2 py-1 rounded-md text-[11px] font-medium border transition-colors"
                     style={{
@@ -387,7 +396,58 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
                 );
               })}
             </div>
-            {recurrence && (recurrence === 'daily' || recurrence === 'weekdays' || recurrence === 'weekly') && (
+            {recurrence && recurrence.startsWith('every:') && (
+              <div
+                className="flex items-center gap-2 mt-1 px-2 py-1.5 rounded-md border"
+                style={{ borderColor: 'rgba(126,184,247,0.25)', backgroundColor: 'rgba(126,184,247,0.06)' }}
+              >
+                <span className="text-[11px]" style={{ color: '#9aa3b6' }}>Every</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={customN}
+                  onChange={(e) => {
+                    const n = Math.max(1, Math.min(365, parseInt(e.target.value, 10) || 1));
+                    setCustomN(n);
+                    setRecurrence(`every:${n}:${customUnit}`);
+                  }}
+                  className="w-14 h-7 px-1.5 rounded border text-[12px] text-center"
+                  style={{
+                    backgroundColor: 'rgba(20,24,32,0.85)',
+                    borderColor: 'rgba(255,255,255,0.08)',
+                    color: '#cfe3ff',
+                  }}
+                />
+                <div className="flex gap-1">
+                  {(['days', 'weeks'] as const).map(u => {
+                    const uActive = customUnit === u;
+                    return (
+                      <button
+                        key={u}
+                        type="button"
+                        onClick={() => {
+                          setCustomUnit(u);
+                          setRecurrence(`every:${customN}:${u}`);
+                        }}
+                        className="px-2 py-1 rounded text-[11px] font-medium border transition-colors"
+                        style={{
+                          color: uActive ? '#cfe3ff' : '#9aa3b6',
+                          borderColor: uActive ? 'rgba(126,184,247,0.45)' : 'rgba(255,255,255,0.08)',
+                          backgroundColor: uActive ? 'rgba(126,184,247,0.14)' : 'rgba(20,24,32,0.65)',
+                        }}
+                      >
+                        {u === 'days' ? 'days' : 'weeks'}
+                      </button>
+                    );
+                  })}
+                </div>
+                <span className="text-[10px] ml-auto" style={{ color: '#7a8194' }}>
+                  Next task generated on completion
+                </span>
+              </div>
+            )}
+            {recurrence && (recurrence === 'daily' || recurrence === 'weekdays' || recurrence === 'weekly' || recurrence.startsWith('every:')) && (
               <label
                 className="flex items-center gap-2 text-[11px] cursor-pointer select-none mt-1"
                 style={{ color: startFromDueDate ? '#cfe3ff' : '#9aa3b6' }}
