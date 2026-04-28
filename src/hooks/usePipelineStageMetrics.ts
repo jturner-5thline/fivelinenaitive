@@ -26,6 +26,100 @@ interface StageMetricResult {
   isLoading: boolean;
 }
 
+export interface AverageMetricResult {
+  value: number | null;
+  numerator: number;
+  denominator: number;
+  deals: StageEntryDeal[];
+  isLoading: boolean;
+}
+
+interface RevenuePeriodTotalResult {
+  total: number;
+  isLoading: boolean;
+}
+
+function buildRollingMonthsPeriod(anchorEndDate: string, monthCount: number): QuarterOption {
+  const [year, month, day] = anchorEndDate.split('-').map(Number);
+  const end = new Date(year, month - 1, day);
+  const start = new Date(end.getFullYear(), end.getMonth() - (monthCount - 1), 1);
+
+  const months: QuarterOption['months'] = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const y = cursor.getFullYear();
+    const m = cursor.getMonth();
+    const monthEnd = new Date(y, m + 1, 0);
+    months.push({
+      key: `${y}-${String(m + 1).padStart(2, '0')}`,
+      label: cursor.toLocaleDateString('en-US', { month: 'short' }),
+      start: `${y}-${String(m + 1).padStart(2, '0')}-01`,
+      end: `${y}-${String(m + 1).padStart(2, '0')}-${monthEnd.getDate()}`,
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  const fmt = (d: Date) =>
+    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  return {
+    label: `${fmt(start)} – ${fmt(end)}`,
+    value: `rolling-${monthCount}-${months[0]?.start ?? ''}_${anchorEndDate}`,
+    startDate: months[0]?.start ?? '',
+    endDate: anchorEndDate,
+    months,
+  };
+}
+
+function useRevenueTotalForPeriod(realmId: string, period: QuarterOption): RevenuePeriodTotalResult {
+  const { user } = useAuth();
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['qb-revenue-total-for-period', realmId, period.value],
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from('quickbooks_invoices')
+        .select('total_amt')
+        .eq('realm_id', realmId)
+        .gte('txn_date', period.startDate)
+        .lte('txn_date', period.endDate);
+
+      if (error) throw error;
+      return (rows ?? []).reduce((sum, row) => sum + (Number(row.total_amt) || 0), 0);
+    },
+    enabled: !!user && !!realmId && !!period.startDate && !!period.endDate,
+    staleTime: 30_000,
+  });
+
+  return {
+    total: data ?? 0,
+    isLoading: isLoading || isFetching,
+  };
+}
+
+function useAverageDealMetric(stageMetric: StageMetricResult): AverageMetricResult {
+  return useMemo(() => ({
+    value: stageMetric.count > 0 ? stageMetric.dollarVolume / stageMetric.count : null,
+    numerator: stageMetric.dollarVolume,
+    denominator: stageMetric.count,
+    deals: stageMetric.deals,
+    isLoading: stageMetric.isLoading,
+  }), [stageMetric.count, stageMetric.dollarVolume, stageMetric.deals, stageMetric.isLoading]);
+}
+
+function useRevenuePerDealMetric(
+  revenueTotal: RevenuePeriodTotalResult,
+  stageMetric: StageMetricResult,
+): AverageMetricResult {
+  return useMemo(() => ({
+    value: stageMetric.count > 0 ? revenueTotal.total / stageMetric.count : null,
+    numerator: revenueTotal.total,
+    denominator: stageMetric.count,
+    deals: stageMetric.deals,
+    isLoading: revenueTotal.isLoading || stageMetric.isLoading,
+  }), [revenueTotal.total, revenueTotal.isLoading, stageMetric.count, stageMetric.deals, stageMetric.isLoading]);
+}
+
 /**
  * Returns deals that entered a specific stage within a quarter,
  * using activity_logs (stage_change) as the source of truth.
@@ -41,8 +135,8 @@ function useStageEntryMetric(
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['stage-entry-metric', targetStage, quarter.value, pipelineId],
     queryFn: async () => {
-      const startDate = quarter.months[0].start;
-      const endDate = quarter.months[quarter.months.length - 1].end;
+      const startDate = quarter.startDate;
+      const endDate = quarter.endDate;
 
       // Get all stage_change events to the target stage in this period
       let query = supabase
@@ -123,8 +217,8 @@ function usePipelineAddedMetric(
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['pipeline-added-metric', pipelineId, quarter.value],
     queryFn: async () => {
-      const startDate = quarter.months[0].start;
-      const endDate = quarter.months[quarter.months.length - 1].end;
+      const startDate = quarter.startDate;
+      const endDate = quarter.endDate;
 
       const { data: rows, error } = await supabase
         .from('deals')
@@ -175,8 +269,8 @@ function usePipelineDealsInPeriod(pipelineId: string, quarter: QuarterOption): S
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['pipeline-deals-in-period', pipelineId, quarter.value],
     queryFn: async () => {
-      const startDate = quarter.months[0].start;
-      const endDate = quarter.months[quarter.months.length - 1].end;
+      const startDate = quarter.startDate;
+      const endDate = quarter.endDate;
 
       const { data: rows, error } = await supabase
         .from('deals')
