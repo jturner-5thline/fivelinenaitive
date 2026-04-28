@@ -1290,7 +1290,7 @@ function SortableBoardCard({ task, priorityPill, todayStr, selectedTaskId, onSel
 
 // ── Saved-preset chip with inline rename + duplicate + delete ───────────────
 function PresetChip({
-  view, isActive, onLoad, onRename, onDuplicate, onDelete,
+  view, isActive, onLoad, onRename, onDuplicate, onDelete, onCopyLink,
 }: {
   view: TaskSavedView;
   isActive: boolean;
@@ -1298,6 +1298,7 @@ function PresetChip({
   onRename: (name: string) => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onCopyLink: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -1387,6 +1388,13 @@ function PresetChip({
                 style={{ color: '#eef1f6' }}
               >
                 <CopyIcon className="h-3 w-3" /> Duplicate
+              </button>
+              <button
+                onClick={() => { onCopyLink(); setMenuOpen(false); }}
+                className="flex items-center gap-2 px-2 py-1.5 rounded text-[12px] hover:bg-[rgba(255,255,255,0.04)]"
+                style={{ color: '#eef1f6' }}
+              >
+                <Link2 className="h-3 w-3" /> Copy preset link
               </button>
               <div className="my-1 h-px" style={{ backgroundColor: 'rgba(255,255,255,0.05)' }} />
               <button
