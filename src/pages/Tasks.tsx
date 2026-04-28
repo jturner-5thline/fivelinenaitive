@@ -124,6 +124,7 @@ export default function Tasks() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showFocusMode, setShowFocusMode] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
+  const quickCreateTriggerRef = useRef<HTMLElement | null>(null);
 
   // Fetch label assignments for all tasks for filtering
   const { data: allLabelAssignments = [] } = useQuery({
@@ -866,7 +867,10 @@ export default function Tasks() {
                 borderColor: 'rgba(126,184,247,0.35)',
                 boxShadow: '0 1px 0 rgba(255,255,255,0.05) inset, 0 4px 14px -8px rgba(80,135,210,0.55)',
               }}
-              onClick={() => setShowQuickCreate(true)}
+              onClick={(e) => {
+                quickCreateTriggerRef.current = e.currentTarget as HTMLElement;
+                setShowQuickCreate(true);
+              }}
             >
               <Plus className="h-3.5 w-3.5" />
               Add Task
@@ -987,11 +991,15 @@ export default function Tasks() {
         {/* Quick-create task dialog */}
         <QuickCreateTaskDialog
           open={showQuickCreate}
-          onClose={() => setShowQuickCreate(false)}
+          onClose={() => {
+            setShowQuickCreate(false);
+            // Restore keyboard focus to the trigger that opened the dialog
+            requestAnimationFrame(() => quickCreateTriggerRef.current?.focus());
+          }}
           teamMembers={teamMembers}
           currentUserId={user?.id || ''}
           onCreate={async (input) => {
-            await createTask.mutateAsync({
+            const created = await createTask.mutateAsync({
               title: input.title,
               priority: input.priority,
               due_date: input.due_date || undefined,
@@ -999,6 +1007,24 @@ export default function Tasks() {
               assigned_to: input.assigned_to,
             });
             toast.success(`Task created: "${input.title}"`);
+            // After the list re-renders with the new row, scroll it into view
+            // and move keyboard focus to it so users can act on it immediately.
+            const newId = (created as any)?.id as string | undefined;
+            if (newId) {
+              const tryFocus = (attempt = 0) => {
+                const el = document.querySelector<HTMLElement>(`[data-task-id="${newId}"]`);
+                if (el) {
+                  el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                  el.focus({ preventScroll: true });
+                } else if (attempt < 10) {
+                  setTimeout(() => tryFocus(attempt + 1), 60);
+                } else {
+                  // Fallback: restore focus to the trigger
+                  quickCreateTriggerRef.current?.focus();
+                }
+              };
+              requestAnimationFrame(() => tryFocus());
+            }
           }}
         />
       </div>
