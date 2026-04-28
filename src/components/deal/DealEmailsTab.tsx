@@ -223,6 +223,35 @@ function PaginationFooter({
 }
 
 export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingExternal, onGmailSend, onLoadMore, hasMore, isLoadingMore, isAutoPaginating }: DealEmailsTabProps) {
+  // Routes read-state writes through Nylas → Gmail/Outlook so the change
+  // is reflected in the user's actual mailbox. We only call this for
+  // real (externally hydrated) emails — never mock fixtures.
+  const { markRead: providerMarkRead } = useGmail();
+
+  // Sync a batch of provider-backed messages to the real mailbox.
+  // Optimistic UI is already applied by the caller; on failure we
+  // revert via `onRevert` and surface a single toast.
+  const syncReadStateToProvider = useCallback(
+    async (messageIds: string[], read: boolean, onRevert: () => void) => {
+      const providerIds = messageIds.filter(isProviderMessageId);
+      if (!externalEmails || providerIds.length === 0) return;
+
+      const results = await Promise.all(
+        providerIds.map((id) => providerMarkRead(id, read).catch(() => false))
+      );
+      const anyFailed = results.some((ok) => !ok);
+      if (anyFailed) {
+        onRevert();
+        toast.error(
+          read
+            ? "Couldn't sync read state to Gmail/Outlook"
+            : "Couldn't sync unread state to Gmail/Outlook",
+          { description: 'Reconnect your mailbox in Settings if this keeps happening.' }
+        );
+      }
+    },
+    [externalEmails, providerMarkRead]
+  );
   const navigate = useNavigate();
   const { queueSend } = useUndoSend();
   const { entities: classifierEntities, orgCtx } = useEmailClassifierData();
