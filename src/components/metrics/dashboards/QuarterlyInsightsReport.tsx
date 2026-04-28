@@ -335,7 +335,7 @@ function ReportHeaderSection({ s, set, reset, print }: { s: ReportState; set: Re
                 <select
                   value={current}
                   onChange={e => set(prev => ({ ...prev, authors: [e.target.value] }))}
-                  style={{ ...selectStyle, width: 160 }}
+                  style={{ ...selectStyle, width: 140 }}
                 >
                   {PREPARED_BY_OPTIONS.map(opt => (
                     <option key={opt} value={opt}>{opt}</option>
