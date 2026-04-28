@@ -10,6 +10,7 @@ import { CalendarIcon, Loader2, UserCheck, Zap, Sun, Sunrise, CalendarDays, Flam
 import { addDays, format, isSameDay, nextMonday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { type TeamMember } from '@/hooks/useTeamMembers';
+import { useAssigneeOpenTaskCounts } from '@/hooks/useAssigneeOpenTaskCounts';
 
 export interface QuickTaskInput {
   title: string;
@@ -134,6 +135,10 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
   };
 
   const assignee = teamMembers.find(m => m.id === assignedTo);
+  const { data: openCounts = {} } = useAssigneeOpenTaskCounts(open);
+  const assigneeCount = openCounts[assignedTo] ?? 0;
+  const workloadTone = (n: number) =>
+    n >= 15 ? '#e57373' : n >= 8 ? '#e89b6c' : n >= 3 ? '#d4a45a' : '#7fc89a';
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -321,7 +326,7 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
             </div>
             <Select value={assignedTo} onValueChange={setAssignedTo}>
               <SelectTrigger className="h-9 text-sm text-white" style={{ backgroundColor: 'rgba(20,24,32,0.65)', borderColor: 'rgba(255,255,255,0.07)' }}>
-                <div className="flex items-center gap-2 truncate">
+                <div className="flex items-center gap-2 truncate w-full">
                   {assignee && (
                     <Avatar className="h-5 w-5">
                       {assignee.avatar_url && <AvatarImage src={assignee.avatar_url} />}
@@ -331,14 +336,48 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
                     </Avatar>
                   )}
                   <span className="truncate">{assignee?.display_name || 'Select…'}</span>
+                  {assignee && (
+                    <span
+                      className="ml-auto inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium"
+                      style={{
+                        color: workloadTone(assigneeCount),
+                        backgroundColor: `${workloadTone(assigneeCount)}1a`,
+                        border: `1px solid ${workloadTone(assigneeCount)}33`,
+                      }}
+                      title={`${assigneeCount} open task${assigneeCount === 1 ? '' : 's'}`}
+                    >
+                      {assigneeCount}
+                    </span>
+                  )}
                 </div>
               </SelectTrigger>
               <SelectContent>
-                {teamMembers.map(m => (
-                  <SelectItem key={m.id} value={m.id} className="text-xs">
-                    {m.display_name}{m.id === currentUserId ? ' (me)' : ''}
-                  </SelectItem>
-                ))}
+                {[...teamMembers]
+                  .sort((a, b) => (openCounts[a.id] ?? 0) - (openCounts[b.id] ?? 0))
+                  .map(m => {
+                    const n = openCounts[m.id] ?? 0;
+                    const tone = workloadTone(n);
+                    return (
+                      <SelectItem key={m.id} value={m.id} className="text-xs">
+                        <span className="inline-flex items-center gap-2 w-full">
+                          <span className="truncate">
+                            {m.display_name}{m.id === currentUserId ? ' (me)' : ''}
+                          </span>
+                          <span
+                            className="ml-auto inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium"
+                            style={{
+                              color: tone,
+                              backgroundColor: `${tone}1a`,
+                              border: `1px solid ${tone}33`,
+                            }}
+                            title={`${n} open task${n === 1 ? '' : 's'}`}
+                          >
+                            {n} open
+                          </span>
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
               </SelectContent>
             </Select>
           </div>
