@@ -635,6 +635,7 @@ interface ThreadListRowProps {
   onDelete?: (email: MockEmail) => void;
   evaluateAutoLabels: (email: MockEmail) => EmailLabel[];
   priorityFlag?: DetectedSignal;
+  userLabels?: EmailLabel[];
 }
 
 const ThreadListRow = memo(function ThreadListRow({
@@ -651,6 +652,7 @@ const ThreadListRow = memo(function ThreadListRow({
   onDelete,
   evaluateAutoLabels,
   priorityFlag,
+  userLabels,
 }: ThreadListRowProps) {
   const onSelect = useCallback(() => onSelectThread(thread), [onSelectThread, thread]);
   const onCheckChange = useCallback(
@@ -677,6 +679,7 @@ const ThreadListRow = memo(function ThreadListRow({
       onDelete={onDelete}
       autoLabels={autoLabels}
       priorityFlag={priorityFlag}
+      userLabels={userLabels}
     />
   );
 });
