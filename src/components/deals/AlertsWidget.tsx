@@ -106,7 +106,7 @@ export function AlertsWidget({ deals }: AlertsWidgetProps) {
   const hasDestructive = alerts.some(a => a.severity === 'destructive');
 
   return (
-    <Card className={cn(cardClass, hasDestructive && 'border-destructive/30 bg-destructive/5')}>
+    <Card className={cn('deal-glass', cardClass, hasDestructive && 'border-destructive/30 bg-destructive/5')}>
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <CardHeader className={cn("pb-2", !isExpanded && "pb-4")}>
           <CollapsibleTrigger asChild>

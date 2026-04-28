@@ -49,7 +49,7 @@ export function MilestonesWidget() {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="deal-glass">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Target className="h-5 w-5" />
@@ -66,7 +66,7 @@ export function MilestonesWidget() {
   const totalActive = overdue.length + upcoming.length;
 
   return (
-    <Card>
+    <Card className="deal-glass">
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <CardHeader className={cn("pb-3", !isExpanded && "pb-4")}>
           <CollapsibleTrigger asChild>

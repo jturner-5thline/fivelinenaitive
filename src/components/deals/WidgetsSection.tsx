@@ -473,7 +473,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   };
 
   return (
-    <div className="relative border border-border rounded-lg py-1.5 px-4">
+    <div className="deal-glass relative py-1.5 px-4">
 
       <DndContext
         sensors={sensors}

@@ -79,7 +79,7 @@ export function FlexLeaderboardWidget({ deals }: FlexLeaderboardWidgetProps) {
 
   if (isLoading) {
     return (
-      <Card className="border-orange-500/30 bg-orange-500/5">
+      <Card className="deal-glass border-orange-500/30 bg-orange-500/5">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Flame className="h-4 w-4 text-orange-500" />
@@ -99,7 +99,7 @@ export function FlexLeaderboardWidget({ deals }: FlexLeaderboardWidgetProps) {
   const cardClass = isEmpty ? 'border-muted' : 'border-orange-500/30 bg-orange-500/5';
 
   return (
-    <Card className={cardClass}>
+    <Card className={`deal-glass ${cardClass}`}>
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <CardHeader className={cn("pb-2", !isExpanded && "pb-4")}>
           <CollapsibleTrigger asChild>

@@ -130,7 +130,7 @@ export function StatsCards({ stats, deals }: StatsCardsProps) {
         {statItems.map((stat) => (
           <Card 
             key={stat.label}
-            className={`border border-[hsl(270,70%,55%,0.3)] bg-[hsl(270,50%,40%,0.12)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(270,80%,80%,0.15),0_4px_24px_hsl(270,70%,35%,0.2)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(270,80%,80%,0.1)_0%,transparent_50%,hsl(270,70%,55%,0.05)_100%)] relative overflow-hidden ${stat.clickable ? 'cursor-pointer hover:border-[hsl(292,46%,72%)]/60 hover:bg-[hsl(270,55%,40%,0.2)] hover:shadow-[inset_0_1px_1px_hsl(270,80%,85%,0.25),0_6px_32px_hsl(270,70%,40%,0.3)] transition-all duration-200' : ''}`}
+            className={`deal-glass ${stat.clickable ? 'cursor-pointer transition-all duration-200 hover:-translate-y-0.5' : ''}`}
             onClick={() => stat.clickable && stat.clickType && handleCardClick(stat.clickType)}
           >
             <CardContent className="flex items-center gap-4 p-4">
@@ -138,8 +138,8 @@ export function StatsCards({ stats, deals }: StatsCardsProps) {
                 <stat.icon className={`h-6 w-6 ${stat.color}`} />
               </div>
               <div className="min-w-0">
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-                <p className="text-lg font-semibold text-foreground truncate">{stat.value}</p>
+                <p className="text-sm" style={{ color: 'rgba(160, 200, 255, 0.50)' }}>{stat.label}</p>
+                <p className="text-lg font-semibold truncate" style={{ color: '#dde8f8' }}>{stat.value}</p>
               </div>
             </CardContent>
           </Card>

@@ -50,7 +50,7 @@ export function StaleDealsWidget({ deals }: StaleDealsWidgetProps) {
   const cardClass = isEmpty ? 'border-success/30 bg-success/5' : 'border-warning/30 bg-warning/5';
 
   return (
-    <Card className={cardClass}>
+    <Card className={`deal-glass ${cardClass}`}>
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <CardHeader className={cn("pb-2", !isExpanded && "pb-4")}>
           <CollapsibleTrigger asChild>

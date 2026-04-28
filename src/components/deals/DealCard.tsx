@@ -185,12 +185,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
     <>
     <Link to={`/deal/${deal.id}`} className="block w-full min-w-0 h-full" onClick={(e) => { if (isEditingStatus) { e.preventDefault(); } }}>
       <Card
-        style={{
-          background: 'rgba(16, 28, 52, 0.75)',
-          border: '0.5px solid rgba(80, 140, 255, 0.18)',
-          borderRadius: '12px',
-        }}
-        className={`group cursor-pointer h-full flex flex-col relative overflow-hidden backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5 before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(255,255,255,0.07)_0%,rgba(255,255,255,0.00)_55%)] min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
+        className={`deal-glass group cursor-pointer h-full flex flex-col transition-all duration-200 hover:-translate-y-0.5 min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
 
         {/* Notification badge */}
         {notificationCount > 0 && (
