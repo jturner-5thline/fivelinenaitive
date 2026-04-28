@@ -1000,6 +1000,13 @@ function PipelineTab({
     'memo',
   );
 
+  // Today's Follow-Ups (replaces the old "Your follow-ups for today" email
+  // for jturner@5thline.co — same source data, surfaced in-app instead).
+  const { user } = useAuth();
+  const isJTurner = (user?.email || '').toLowerCase() === 'jturner@5thline.co';
+  const { data: followups = [] } = useMorningFollowups(enabled && isJTurner);
+  const showFollowups = isJTurner && followups.length > 0;
+
   if ((isLoading && !data) || (catchUpLoading && !catchUpData)) return <TabSkeleton />;
 
   const { newDeals, riskDeals, stageChanges, recentActivity, scopedDeals } = data || {
@@ -1061,6 +1068,21 @@ function PipelineTab({
     return (
       <div className="relative h-full">
         {ViewToggle}
+        {showFollowups && (
+          <Section title="Today's Follow-Ups">
+            {followups.map((f) => (
+              <BriefingRow
+                key={f.key}
+                icon={ListChecks}
+                title={`${f.company} — ${f.title}`}
+                subtitle={f.stage ? `Stage: ${f.stage}` : undefined}
+                badge={f.source === 'scheduled' ? '3-day' : 'Task'}
+                badgeVariant="default"
+                onClick={f.dealId ? () => onNavigate(`/deal/${f.dealId}`) : undefined}
+              />
+            ))}
+          </Section>
+        )}
         <Suspense
           fallback={
             <div className="pipeline-memo-page rounded-xl py-12 px-4 text-center">
@@ -1085,6 +1107,21 @@ function PipelineTab({
   return (
     <div className="relative h-full">
       {ViewToggle}
+      {showFollowups && (
+        <Section title="Today's Follow-Ups">
+          {followups.map((f) => (
+            <BriefingRow
+              key={f.key}
+              icon={ListChecks}
+              title={`${f.company} — ${f.title}`}
+              subtitle={f.stage ? `Stage: ${f.stage}` : undefined}
+              badge={f.source === 'scheduled' ? '3-day' : 'Task'}
+              badgeVariant="default"
+              onClick={f.dealId ? () => onNavigate(`/deal/${f.dealId}`) : undefined}
+            />
+          ))}
+        </Section>
+      )}
       {detail && (
         <DetailPopup title={detail.title} onClose={() => setDetail(null)}>
           <div className="space-y-3">
