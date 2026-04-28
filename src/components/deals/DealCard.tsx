@@ -187,16 +187,22 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
       <Card
         className={`deal-glass group cursor-pointer h-full flex flex-col transition-all duration-200 hover:-translate-y-0.5 min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
 
-        {/* Notification badge */}
+        {/* Notification indicator — minimal circular dot keyed to top-right corner */}
         {notificationCount > 0 && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="absolute -top-1 -right-1 z-10">
-                  <div className="flex items-center justify-center h-7 min-w-7 px-1.5 rounded-full bg-destructive shadow-lg shadow-destructive/40 ring-2 ring-background animate-pulse">
-                    <Bell className="h-3.5 w-3.5 text-destructive-foreground" />
-                    <span className="text-[11px] font-bold text-destructive-foreground ml-0.5">{notificationCount}</span>
-                  </div>
+                <div className="absolute top-2 right-2 z-10">
+                  <div
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{
+                      background:
+                        'radial-gradient(circle at 30% 30%, rgba(180, 210, 255, 0.95), rgba(80, 140, 255, 0.75) 60%, rgba(40, 90, 200, 0.85) 100%)',
+                      border: '0.5px solid rgba(160, 200, 255, 0.45)',
+                      boxShadow:
+                        '0 0 0 2px rgba(16, 28, 52, 0.6), 0 0 8px rgba(80, 140, 255, 0.35)',
+                    }}
+                  />
                 </div>
               </TooltipTrigger>
               <TooltipContent>
