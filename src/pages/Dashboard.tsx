@@ -801,7 +801,7 @@ export default function Dashboard() {
               Manager, Daily Operations, …) followed by a sibling
               "News Feed" tab. The Edit / Templates / New buttons live
               in a separate, visually distinct action row below. */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 border-b border-border/60 pb-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 pb-2">
             <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide min-w-0">
               <PresetManager
                 presets={presets}
