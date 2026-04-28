@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { sendClaudeMessage } from '@/services/claude';
+import { supabase } from '@/integrations/supabase/client';
 import type { MockEmail } from '@/components/deal/email/mockEmailData';
 
 /**
