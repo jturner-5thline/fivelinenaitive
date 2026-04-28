@@ -10,7 +10,9 @@ export type WidgetMetric =
   | 'on-track-deals'
   | 'at-risk-deals'
   | 'total-pipeline-value'
-  | 'average-deal-size';
+  | 'average-deal-size'
+  | 'sales-pipeline-deals'
+  | 'sales-pipeline-volume';
 
 export interface Widget {
   id: string;
@@ -26,8 +28,10 @@ export const SPECIAL_WIDGET_OPTIONS: { value: SpecialWidget; label: string; desc
 ];
 
 export const METRIC_OPTIONS: { value: WidgetMetric; label: string }[] = [
-  { value: 'active-deals', label: 'Active Deals' },
-  { value: 'active-deal-volume', label: 'Active Deal Volume' },
+  { value: 'active-deals', label: 'Active Deals (Final Credit → Terms Issued)' },
+  { value: 'active-deal-volume', label: 'Active Deal Volume (Final Credit → Terms Issued)' },
+  { value: 'sales-pipeline-deals', label: 'Sales Pipeline (NDA/Needs List → Proposal Issued)' },
+  { value: 'sales-pipeline-volume', label: 'Sales Pipeline Volume (NDA/Needs List → Proposal Issued)' },
   { value: 'deals-in-diligence', label: 'Deals in Diligence' },
   { value: 'dollars-in-diligence', label: 'Dollars in Diligence' },
   { value: 'total-deals', label: 'Total Deals' },
@@ -49,15 +53,15 @@ export const COLOR_OPTIONS: { value: Widget['color']; label: string; className: 
 const DEFAULT_WIDGETS: Widget[] = [
   { id: 'w1', label: 'Active Deals', metric: 'active-deals', color: 'primary' },
   { id: 'w2', label: 'Active Deal Volume', metric: 'active-deal-volume', color: 'accent' },
-  { id: 'w3', label: 'Deals in Diligence', metric: 'deals-in-diligence', color: 'success' },
-  { id: 'w4', label: 'Dollars in Diligence', metric: 'dollars-in-diligence', color: 'warning' },
+  { id: 'w3', label: 'Sales Pipeline', metric: 'sales-pipeline-deals', color: 'success' },
+  { id: 'w4', label: 'Sales Pipeline Volume', metric: 'sales-pipeline-volume', color: 'warning' },
 ];
 
 const DEFAULT_SPECIAL_WIDGETS: Record<SpecialWidget, boolean> = {
   'stale-deals': false,
 };
 
-const STORAGE_KEY = 'dashboard-widgets';
+const STORAGE_KEY = 'dashboard-widgets-v2';
 const SPECIAL_WIDGETS_STORAGE_KEY = 'dashboard-special-widgets';
 
 const loadWidgets = (): Widget[] => {

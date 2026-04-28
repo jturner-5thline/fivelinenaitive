@@ -46,6 +46,36 @@ interface WidgetsSectionProps {
   deals: Deal[];
 }
 
+/**
+ * Stage IDs that count as "Active Deals" — Final Credit Items through
+ * Terms Issued (inclusive). Mirrors the canonical slug order in
+ * `STAGE_CONFIG` for the Active (default) pipeline.
+ */
+const ACTIVE_DEAL_STAGES = new Set<string>([
+  'final-credit-items',
+  'client-strategy-review',
+  'write-up-pending',
+  'submitted-to-lenders',
+  'lenders-in-review',
+  'terms-issued',
+]);
+
+/**
+ * Stage IDs that count as the "Sales Pipeline" — NDA/Needs List Sent
+ * through Proposal Issued (inclusive). Includes both observed slug
+ * variants for NDA/Needs List Sent.
+ */
+const SALES_PIPELINE_STAGES = new Set<string>([
+  'nda-needs-list-sent',
+  'ndaneeds-list-sent',
+  'proposal-issued',
+]);
+
+const isActiveDealStage = (stage?: string | null) =>
+  !!stage && ACTIVE_DEAL_STAGES.has(stage);
+const isSalesPipelineStage = (stage?: string | null) =>
+  !!stage && SALES_PIPELINE_STAGES.has(stage);
+
 const CHART_COLORS = [
   'hsl(var(--primary))',
   'hsl(var(--accent))',
@@ -198,10 +228,16 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const handleWidgetClick = (metric: WidgetMetric) => {
     switch (metric) {
       case 'active-deals':
-        openChartDialog('count', 'Active Deals by Stage', 'stage', d => d.status !== 'archived');
+        openChartDialog('count', 'Active Deals by Stage', 'stage', d => d.status !== 'archived' && isActiveDealStage(d.stage));
         break;
       case 'active-deal-volume':
-        openChartDialog('value', 'Active Deal Volume by Stage', 'stage', d => d.status !== 'archived');
+        openChartDialog('value', 'Active Deal Volume by Stage', 'stage', d => d.status !== 'archived' && isActiveDealStage(d.stage));
+        break;
+      case 'sales-pipeline-deals':
+        openChartDialog('count', 'Sales Pipeline by Stage', 'stage', d => d.status !== 'archived' && isSalesPipelineStage(d.stage));
+        break;
+      case 'sales-pipeline-volume':
+        openChartDialog('value', 'Sales Pipeline Volume by Stage', 'stage', d => d.status !== 'archived' && isSalesPipelineStage(d.stage));
         break;
       case 'deals-in-diligence':
         openChartDialog('count', 'Deals in Diligence by Status', 'status', d => d.stage === 'in-due-diligence');
@@ -418,9 +454,21 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const calculateMetric = (metric: WidgetMetric): string | number => {
     switch (metric) {
       case 'active-deals':
-        return deals.filter(d => d.status !== 'archived').length;
+        return deals.filter(d => d.status !== 'archived' && isActiveDealStage(d.stage)).length;
       case 'active-deal-volume':
-        return formatCurrencyValue(deals.filter(d => d.status !== 'archived').reduce((sum, d) => sum + d.value, 0));
+        return formatCurrencyValue(
+          deals
+            .filter(d => d.status !== 'archived' && isActiveDealStage(d.stage))
+            .reduce((sum, d) => sum + d.value, 0)
+        );
+      case 'sales-pipeline-deals':
+        return deals.filter(d => d.status !== 'archived' && isSalesPipelineStage(d.stage)).length;
+      case 'sales-pipeline-volume':
+        return formatCurrencyValue(
+          deals
+            .filter(d => d.status !== 'archived' && isSalesPipelineStage(d.stage))
+            .reduce((sum, d) => sum + d.value, 0)
+        );
       case 'deals-in-diligence':
         return deals.filter(d => d.stage === 'in-due-diligence').length;
       case 'dollars-in-diligence':
@@ -473,7 +521,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   };
 
   return (
-    <div className="deal-glass relative py-1.5 px-4">
+    <div className="relative py-1.5 px-4 bg-transparent">
 
       <DndContext
         sensors={sensors}

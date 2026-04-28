@@ -1,4 +1,4 @@
-import { Pencil, Trash2, GripVertical, TrendingUp, Briefcase, FileSearch, DollarSign, Target, CheckCircle, AlertTriangle, BarChart3 } from 'lucide-react';
+import { Pencil, Trash2, GripVertical, TrendingUp, Briefcase, FileSearch, DollarSign, Target, CheckCircle, AlertTriangle, BarChart3, Inbox, Banknote } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,6 +26,8 @@ const metricIcons: Record<WidgetMetric, typeof TrendingUp> = {
   'at-risk-deals': AlertTriangle,
   'total-pipeline-value': TrendingUp,
   'average-deal-size': DollarSign,
+  'sales-pipeline-deals': Inbox,
+  'sales-pipeline-volume': Banknote,
 };
 
 const colorClasses: Record<Widget['color'], { text: string; bg: string; glow: string }> = {
