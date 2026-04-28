@@ -1723,6 +1723,23 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               {thread.subject}
             </h2>
 
+            {/* Priority signal context badge — shown when this thread was opened
+                via a notification deep-link, so the user can instantly verify
+                which signal triggered the link. */}
+            {deepLinkSignal && (() => {
+              const def = getSignalDef(deepLinkSignal as EmailPrioritySignalType);
+              const label = def?.label ?? deepLinkSignal.replace(/_/g, ' ');
+              return (
+                <div
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 mb-3 rounded-full text-[11px] font-medium border border-[hsl(var(--outlook-blue)/0.35)] bg-[hsl(var(--outlook-blue)/0.08)] text-[hsl(var(--outlook-blue))]"
+                  title={def?.description ?? 'Signal that triggered this notification'}
+                >
+                  <Sparkles className="h-3 w-3" />
+                  <span>Signal: {label}</span>
+                </div>
+              );
+            })()}
+
             {/* Sender info block */}
             <div className="flex items-start gap-3 min-w-0">
               <EmailAvatar name={senderName} email={senderEmail} size="md" />
