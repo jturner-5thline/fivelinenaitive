@@ -892,6 +892,39 @@ export type Database = {
           },
         ]
       }
+      asana_goal_filter_prefs: {
+        Row: {
+          company_id: string
+          created_at: string
+          exact_match: boolean
+          filters: Json
+          id: string
+          override: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          exact_match?: boolean
+          filters?: Json
+          id?: string
+          override?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          exact_match?: boolean
+          filters?: Json
+          id?: string
+          override?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       asana_project_filters: {
         Row: {
           asana_project_gid: string
