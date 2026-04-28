@@ -562,7 +562,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
         // (translucent surface, soft border, subtle blur, lg radius).
         // Compact vertical spacing is provided by the parent group's
         // `space-y-1` so tiles read as a tight stack of distinct objects.
-        `grid ${TASK_GRID_COLS} gap-2 items-center px-3 cursor-pointer group rounded-lg border transition-all duration-150`,
+        `grid ${TASK_GRID_COLS} gap-2 items-center px-3 py-1.5 cursor-pointer group rounded-lg border transition-all duration-150`,
         'bg-white/[0.025] dark:bg-white/[0.025] border-white/[0.06] backdrop-blur-md',
         'hover:bg-white/[0.045] hover:border-white/[0.10]',
         'shadow-[0_1px_0_0_rgba(255,255,255,0.03)_inset]',
@@ -618,7 +618,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       </div>
 
       {/* Title + Deal subtitle */}
-      <div className="min-w-0" onClick={e => e.stopPropagation()}>
+      <div className="min-w-0 overflow-hidden" onClick={e => e.stopPropagation()}>
         {editingTitle ? (
           <Input value={titleValue} onChange={e => setTitleValue(e.target.value)} onBlur={handleSaveTitle}
             onKeyDown={e => { if (e.key === 'Enter') handleSaveTitle(); if (e.key === 'Escape') { setTitleValue(task.title); setEditingTitle(false); } }}
@@ -736,7 +736,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       </div>
 
 
-      <div className="min-w-0" onClick={e => e.stopPropagation()}>
+      <div className="min-w-0 overflow-hidden" onClick={e => e.stopPropagation()}>
         {task.deal_id && task.deal ? (
           <Link to={`/deal/${task.deal_id}`} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium hover:text-[#cfe3ff] transition-colors" style={{ color: '#9aa3b6' }} onClick={e => e.stopPropagation()}>
             <Building2 className="h-2.5 w-2.5 shrink-0" />
