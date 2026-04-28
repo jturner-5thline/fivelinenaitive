@@ -217,6 +217,21 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
     else cellRefs.current.delete(key);
   }, []);
 
+  // ===== Drilldown state =====
+  const [drilldown, setDrilldown] = useState<DrilldownContext | null>(null);
+  const openDrilldown = useCallback(
+    (rowKey: string, rowLabel: string, weekKey: string, weekEnding: string | null, cellValue: number) => {
+      setDrilldown({
+        rowKey,
+        rowLabel,
+        weekKey,
+        weekEnding: weekEnding || weekKey,
+        cellValue,
+      });
+    },
+    [],
+  );
+
   const handleCellContextMenu = useCallback((e: React.MouseEvent<HTMLTableCellElement>, ctx: CellCtx) => {
     e.preventDefault();
     setPopoverState(null);
