@@ -8,8 +8,13 @@ import { Skeleton } from '@/components/ui/skeleton';
  */
 export function DealCardSkeleton() {
   return (
-    <div className="deal-glass h-full flex flex-col min-w-0 max-w-full min-h-[200px]">
-      <div className="px-6 pt-5 pb-6 flex flex-col flex-1 gap-3.5">
+    <div className="deal-glass relative h-full flex flex-col min-w-0 max-w-full min-h-[200px] overflow-hidden">
+      {/* Subtle shimmer sweep — communicates loading without altering tile contrast */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -translate-x-full animate-shimmer-sweep bg-gradient-to-r from-transparent via-white/[0.04] to-transparent"
+      />
+      <div className="relative px-6 pt-5 pb-6 flex flex-col flex-1 gap-3.5">
         {/* Top row: title/value + status pills */}
         <div className="flex items-start justify-between gap-4 min-w-0 min-h-[60px]">
           <div className="flex-1 min-w-0 space-y-2 self-start">
