@@ -61,7 +61,7 @@ const DEFAULT_SPECIAL_WIDGETS: Record<SpecialWidget, boolean> = {
   'stale-deals': false,
 };
 
-const STORAGE_KEY = 'dashboard-widgets';
+const STORAGE_KEY = 'dashboard-widgets-v2';
 const SPECIAL_WIDGETS_STORAGE_KEY = 'dashboard-special-widgets';
 
 const loadWidgets = (): Widget[] => {
