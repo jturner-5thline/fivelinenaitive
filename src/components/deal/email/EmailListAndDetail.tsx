@@ -448,9 +448,20 @@ function autoLabelsEqual(a?: EmailLabel[], b?: EmailLabel[]) {
 // ─── Email List Skeleton ─────────────────────────────────────
 function EmailListSkeleton() {
   return (
-    <div className="space-y-0">
+    <div
+      className="space-y-0"
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+      aria-label="Searching emails"
+    >
+      <span className="sr-only">Searching emails…</span>
       {Array.from({ length: 10 }).map((_, i) => (
-        <div key={i} className="flex items-start gap-2.5 px-3 py-2 border-l-2 border-transparent">
+        <div
+          key={i}
+          aria-hidden="true"
+          className="flex items-start gap-2.5 px-3 py-2 border-l-2 border-transparent"
+        >
           <div className="h-6 w-6 rounded bg-muted/30 animate-pulse shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0 space-y-1.5">
             <div className="flex items-center justify-between">
