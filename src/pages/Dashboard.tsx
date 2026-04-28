@@ -76,6 +76,9 @@ const TILE_CHIP_BASE =
   // the available viewport width while keeping a 1:1 aspect ratio.
   'relative rounded-lg flex items-center justify-center overflow-hidden ' +
   'h-[var(--tile-size)] w-[var(--tile-size)] ' +
+  // Frosted blur over the page so the light translucent surface still reads
+  // as glass without needing a dark backing fill.
+  'backdrop-blur-md backdrop-saturate-150 ' +
   // Resting: subtle 13% white border + soft ambient drop shadow with a hairline
   // top inner highlight for the glassy edge.
   'border border-white/[0.13] ' +
