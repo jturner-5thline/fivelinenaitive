@@ -584,6 +584,13 @@ export function CashFlowManager() {
   const zeroedWeeklyShell = useMemo<WeeklyData>(() => {
     const out: WeeklyData = {};
     for (const [k, v] of Object.entries(rawWeekly)) {
+      const weekEnding = typeof (v as any).week_ending === 'string' ? (v as any).week_ending : k;
+      // Historical (locked) weeks remain untouched even when Configure
+      // filters are active.
+      if (weekEnding <= LAST_HISTORICAL_WEEK_ENDING) {
+        out[k] = { ...(v as any) };
+        continue;
+      }
       const begin = (v['BEGINNING CASH'] as number) || 0;
       out[k] = {
         ...v,
