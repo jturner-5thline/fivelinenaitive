@@ -22,7 +22,6 @@ import { AddWidgetDialog } from '@/components/dashboard/AddWidgetDialog';
 import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
 import { EmailIntelligenceWidget } from '@/components/dashboard/EmailIntelligenceWidget';
 import { cn } from '@/lib/utils';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 /**
  * Shared interaction styles for the dashboard widget tiles
@@ -796,30 +795,73 @@ export default function Dashboard() {
 
           <DashboardAIInput />
 
-          {/* Dashboard Tabs */}
-          <Tabs value={dashboardTab} onValueChange={handleDashboardTabChange}>
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="news-feed" className="gap-1.5">
-                <Newspaper className="h-3.5 w-3.5" />
+          {/* ─── Dashboard navigation ──────────────────────────────────
+              Single navigation row: preset tabs (My Dashboard, Deal
+              Manager, Daily Operations, …) followed by a sibling
+              "News Feed" tab. The Edit / Templates / New buttons live
+              in a separate, visually distinct action row below. */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 border-b border-border/60 pb-2">
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide min-w-0">
+              <PresetManager
+                presets={presets}
+                activePreset={dashboardTab === 'news-feed' ? null : activePreset}
+                onSwitch={(id) => {
+                  // Switching to a preset implicitly returns to overview.
+                  if (dashboardTab === 'news-feed') handleDashboardTabChange('overview');
+                  switchPreset(id);
+                }}
+                onCreate={handleCreatePreset}
+                onDuplicate={duplicatePreset}
+                onDelete={deletePreset}
+                onRename={handleRenamePreset}
+              />
+              <button
+                type="button"
+                onClick={() => handleDashboardTabChange(dashboardTab === 'news-feed' ? 'overview' : 'news-feed')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors shrink-0',
+                  dashboardTab === 'news-feed'
+                    ? 'bg-primary/10 text-primary border border-primary/20'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+                )}
+                aria-pressed={dashboardTab === 'news-feed'}
+              >
+                <Newspaper className="h-3 w-3" />
                 News Feed
-              </TabsTrigger>
-            </TabsList>
+              </button>
+            </div>
+            {isSaving && (
+              <span className="text-[11px] text-muted-foreground animate-pulse shrink-0">Saving…</span>
+            )}
+          </div>
 
-            <TabsContent value="overview">
-              {/* Header row: Edit button */}
-              <div className="flex items-center justify-between">
-                <div />
-                <div className="flex items-center gap-2">
-                  {isSaving && <span className="text-xs text-muted-foreground animate-pulse">Saving...</span>}
-                  <HintTooltip
-                    hint="Click 'Edit' to customize your dashboard — add, remove, or rearrange widgets to match your workflow."
-                    visible={isHintVisible('dashboard-edit')}
-                    onDismiss={() => dismissHint('dashboard-edit')}
-                    side="left"
-                  >
+          {dashboardTab !== 'news-feed' ? (
+            <>
+              {/* Action row — Templates + Add Widget (when editing) + Edit.
+                  Visually separated from the navigation row above by the
+                  border-b on that row, and uses a right-aligned button
+                  cluster so actions read distinctly from tabs. */}
+              <div className="flex items-center justify-end gap-2 mt-3">
+                <DashboardTemplatesDialog
+                  mode="replace"
+                  onSelectTemplate={handleCreateFromTemplate}
+                  onApplyToCurrentDashboard={handleApplyTemplateToCurrentDashboard}
+                />
+                {isEditing && activePreset && (
+                  <AddWidgetDialog
+                    existingWidgetIds={activePreset.widgets_config.map(w => w.id)}
+                    onAddBuiltIn={handleAddBuiltIn}
+                    onAddCustom={handleAddCustom}
+                  />
+                )}
+                <HintTooltip
+                  hint="Click 'Edit' to customize your dashboard — add, remove, or rearrange widgets to match your workflow."
+                  visible={isHintVisible('dashboard-edit')}
+                  onDismiss={() => dismissHint('dashboard-edit')}
+                  side="left"
+                >
                   <Button
-                    variant={isEditing ? "default" : "outline"}
+                    variant={isEditing ? 'default' : 'outline'}
                     size="sm"
                     className="gap-1.5 text-xs"
                     onClick={() => setIsEditing(!isEditing)}
@@ -827,35 +869,7 @@ export default function Dashboard() {
                     {isEditing ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
                     {isEditing ? 'Done' : 'Edit'}
                   </Button>
-                  </HintTooltip>
-                </div>
-              </div>
-
-              {/* Preset tabs + Add Widget */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mt-4">
-                <PresetManager
-                  presets={presets}
-                  activePreset={activePreset}
-                  onSwitch={switchPreset}
-                  onCreate={handleCreatePreset}
-                  onDuplicate={duplicatePreset}
-                  onDelete={deletePreset}
-                  onRename={handleRenamePreset}
-                />
-                <div className="flex items-center gap-2 shrink-0">
-                  <DashboardTemplatesDialog
-                    mode="replace"
-                    onSelectTemplate={handleCreateFromTemplate}
-                    onApplyToCurrentDashboard={handleApplyTemplateToCurrentDashboard}
-                  />
-                  {isEditing && activePreset && (
-                    <AddWidgetDialog
-                      existingWidgetIds={activePreset.widgets_config.map(w => w.id)}
-                      onAddBuiltIn={handleAddBuiltIn}
-                      onAddCustom={handleAddCustom}
-                    />
-                  )}
-                </div>
+                </HintTooltip>
               </div>
 
               {/* Grid */}
@@ -903,12 +917,12 @@ export default function Dashboard() {
                   </div>
                 </div>
               )}
-            </TabsContent>
-
-            <TabsContent value="news-feed">
+            </>
+          ) : (
+            <div className="mt-4">
               <NewsFeedPanel />
-            </TabsContent>
-          </Tabs>
+            </div>
+          )}
         </div>
       </div>
 
