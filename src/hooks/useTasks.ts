@@ -480,7 +480,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
             // Stop the series if the next occurrence falls past the end date
             // (or if no next date can be computed at all).
             if (!nextDueDate || (seriesEnd && nextDueDate > seriesEnd)) {
-              return id;
+              return;
             }
              const { data: newRecurringTask } = await supabase.from('tasks').insert({
                title: completedTask.title,
