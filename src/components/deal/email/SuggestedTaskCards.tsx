@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Check, X, Loader2, ListTodo, Calendar as CalendarIcon, User as UserIcon, Link2 } from 'lucide-react';
+import { Check, X, Loader2, ListTodo, Calendar as CalendarIcon, User as UserIcon, Link2, MinusCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -106,7 +106,10 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
   const { company } = useCompany();
   const queryClient = useQueryClient();
   const [busyKey, setBusyKey] = useState<string | null>(null);
-  const [createdKeys, setCreatedKeys] = useState<Record<string, { dueDate: string; assigneeLabel: string | null }>>({});
+  type AsanaStatus = 'synced' | 'skipped' | 'failed';
+  const [createdKeys, setCreatedKeys] = useState<
+    Record<string, { dueDate: string; assigneeLabel: string | null; asana: AsanaStatus }>
+  >({});
   const [dismissedKeys, setDismissedKeys] = useState<Record<string, true>>({});
   // Per-card "Sync to Asana" toggle. Defaults to ON for every suggested
   // task; users can flip individual cards off before clicking Create.
@@ -178,6 +181,9 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
 
       if (created?.id) {
         // Best-effort Asana sync — non-fatal. Gated by the per-card toggle.
+        // Track the outcome so the card can render an accurate indicator
+        // ("Synced to Asana" / "Asana skipped" / "Asana failed").
+        let asanaStatus: AsanaStatus = 'skipped';
         if (syncToAsana) {
           try {
             const ctx = await getAsanaSyncContext(company?.id || null);
@@ -188,15 +194,20 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
                 description: draft.description,
                 due_date: draft.due_date,
               });
+              asanaStatus = 'synced';
+            } else {
+              // Asana not configured for this workspace — treat as skipped.
+              asanaStatus = 'skipped';
             }
           } catch (e) {
-            console.warn('[SuggestedTaskCards] Asana sync skipped:', e);
+            console.warn('[SuggestedTaskCards] Asana sync failed:', e);
+            asanaStatus = 'failed';
           }
         }
 
         setCreatedKeys((prev) => ({
           ...prev,
-          [key]: { dueDate, assigneeLabel: ownerLabel },
+          [key]: { dueDate, assigneeLabel: ownerLabel, asana: asanaStatus },
         }));
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
         toast.success('Task created', {
@@ -249,12 +260,41 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
                 )}
               </div>
               {created && (
-                <Badge
-                  variant="outline"
-                  className="shrink-0 text-[9px] h-4 px-1.5 border bg-emerald-500/10 text-emerald-400 border-emerald-500/30 gap-1"
-                >
-                  <Check className="h-2.5 w-2.5" /> Created
-                </Badge>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <Badge
+                    variant="outline"
+                    className="text-[9px] h-4 px-1.5 border bg-emerald-500/10 text-emerald-400 border-emerald-500/30 gap-1"
+                  >
+                    <Check className="h-2.5 w-2.5" /> Created
+                  </Badge>
+                  {created.asana === 'synced' && (
+                    <Badge
+                      variant="outline"
+                      className="text-[9px] h-4 px-1.5 border bg-sky-500/10 text-sky-400 border-sky-500/30 gap-1"
+                      title="Also created in Asana"
+                    >
+                      <Link2 className="h-2.5 w-2.5" /> Asana synced
+                    </Badge>
+                  )}
+                  {created.asana === 'skipped' && (
+                    <Badge
+                      variant="outline"
+                      className="text-[9px] h-4 px-1.5 border bg-muted/40 text-muted-foreground border-muted-foreground/20 gap-1"
+                      title="Asana sync was turned off for this task"
+                    >
+                      <MinusCircle className="h-2.5 w-2.5" /> Asana skipped
+                    </Badge>
+                  )}
+                  {created.asana === 'failed' && (
+                    <Badge
+                      variant="outline"
+                      className="text-[9px] h-4 px-1.5 border bg-amber-500/10 text-amber-400 border-amber-500/30 gap-1"
+                      title="Task created in naitive but Asana sync failed"
+                    >
+                      <AlertTriangle className="h-2.5 w-2.5" /> Asana failed
+                    </Badge>
+                  )}
+                </div>
               )}
             </div>
 
