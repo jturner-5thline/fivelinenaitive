@@ -72,5 +72,53 @@ export function useTaskSavedViews() {
     },
   });
 
-  return { savedViews, isLoading, saveView, deleteView };
+  const renameView = useMutation({
+    mutationFn: async ({ id, name }: { id: string; name: string }) => {
+      const trimmed = name.trim();
+      if (!trimmed) throw new Error('Name required');
+      const { error } = await supabase
+        .from('task_saved_views')
+        .update({ name: trimmed })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: KEY });
+      toast.success('Preset renamed');
+    },
+    onError: (e: any) => toast.error(e?.message || 'Failed to rename preset'),
+  });
+
+  const duplicateView = useMutation({
+    mutationFn: async (view: TaskSavedView) => {
+      if (!user) throw new Error('Not authenticated');
+      // Choose a unique copy name
+      const base = view.name.replace(/\s*\(copy(?:\s+\d+)?\)\s*$/i, '');
+      const existing = new Set(savedViews.map(v => v.name.toLowerCase()));
+      let name = `${base} (copy)`;
+      let n = 2;
+      while (existing.has(name.toLowerCase())) {
+        name = `${base} (copy ${n++})`;
+      }
+      const { data, error } = await supabase
+        .from('task_saved_views')
+        .insert({
+          user_id: user.id,
+          name,
+          view_config: view.view_config,
+          position: (view.position ?? 0) + 1,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as TaskSavedView;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: KEY });
+      toast.success('Preset duplicated');
+    },
+    onError: () => toast.error('Failed to duplicate preset'),
+  });
+
+  return { savedViews, isLoading, saveView, deleteView, renameView, duplicateView };
 }
