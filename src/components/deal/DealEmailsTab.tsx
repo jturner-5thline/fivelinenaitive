@@ -74,6 +74,13 @@ import { logSentReplyToDeal } from '@/lib/logSentReplyToDeal';
 import { createTaskFromDraft, type TaskDraft } from '@/hooks/useNaitiveTaskParse';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
+import {
+  useLabels,
+  useAllLabelAssignments,
+  threadIdsForLabel,
+} from '@/hooks/useEmailLabels';
+import { EmailLabelsManageDialog, labelSwatch } from './email/EmailLabelsManageDialog';
+import { Tag, Plus as PlusIcon } from 'lucide-react';
 
 /** Compute next business day in local TZ as 'YYYY-MM-DD'. Skips weekends. */
 function nextBusinessDayISO(): string {
@@ -488,6 +495,11 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     dealAssociation: 'all',
   });
 
+  // ── Custom user labels (Foundation slice) ───────────────────
+  const { data: userLabels = [] } = useLabels();
+  const { data: labelAssignments = [] } = useAllLabelAssignments();
+  const [manageLabelsOpen, setManageLabelsOpen] = useState(false);
+
   // ── AI Search state ─────────────────────────────────────────
   const aiSearch = useAIEmailSearch();
   // True once the user has explicitly run an AI search for the current query.
@@ -566,7 +578,29 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       : []),
   ];
 
-  const allSections: SidebarSection[] = [{ title: 'Mailbox', items: systemFolders, defaultOpen: true }];
+  // Build label folder items. Each label is a "folder" that filters emails
+  // whose thread_id is assigned that label.
+  const labelFolders: SidebarItem[] = useMemo(() => {
+    return userLabels.map(l => {
+      const threadIds = threadIdsForLabel(l.id, labelAssignments);
+      const count = emails.filter(e => threadIds.has(e.threadId)).length;
+      return {
+        id: `label:${l.id}`,
+        label: l.name,
+        icon: Tag,
+        indicatorColor: undefined,
+        count: count || undefined,
+        // Stash the swatch hex on the item so the renderer can color the dot.
+        emoji: labelSwatch(l.color),
+        filterFn: (e: MockEmail) => threadIds.has(e.threadId),
+      };
+    });
+  }, [userLabels, labelAssignments, emails]);
+
+  const allSections: SidebarSection[] = [
+    { title: 'Mailbox', items: systemFolders, defaultOpen: true },
+    { title: 'Labels', items: labelFolders, defaultOpen: true },
+  ];
 
   const activeItem = useMemo(() => {
     for (const section of allSections) {
@@ -1053,6 +1087,11 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         <span className="w-[52px] flex items-center justify-center shrink-0">
           {item.indicatorColor ? (
             <span className={cn('w-2 h-2 rounded-full', item.indicatorColor)} />
+          ) : item.emoji && item.emoji.startsWith('#') ? (
+            <span
+              className="w-2.5 h-2.5 rounded-full ring-1 ring-foreground/10"
+              style={{ background: item.emoji }}
+            />
           ) : (
             <item.icon
               className={cn(
@@ -1186,6 +1225,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       </div>
 
       <EmailIntelligenceDialog open={intelligenceOpen} onOpenChange={setIntelligenceOpen} />
+      <EmailLabelsManageDialog open={manageLabelsOpen} onOpenChange={setManageLabelsOpen} />
 
       <CardContent className="p-0 flex-1 min-h-0">
         <div className="grid h-full min-w-0 max-w-full overflow-hidden" style={{ gridTemplateColumns: `${railExpanded ? 168 : 52}px minmax(0, ${currentThread || composeOpen ? `${Math.round(inboxWidth)}px` : '1fr'}) minmax(0, 1fr)` }}>
@@ -1230,6 +1270,43 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             <ScrollArea className="flex-1">
               <div className="py-1.5">
                 {systemFolders.map(item => renderSidebarItem(item))}
+                {/* ── Custom labels section ── */}
+                <div className="mt-2 pt-2 border-t border-white/[0.04]">
+                  <div
+                    className={cn(
+                      'flex items-center gap-1 px-3 pb-1 transition-opacity duration-150',
+                      railExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none h-0 pb-0'
+                    )}
+                    aria-hidden={!railExpanded}
+                  >
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 flex-1">
+                      Labels
+                    </span>
+                    <Tooltip delayDuration={150}>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => setManageLabelsOpen(true)}
+                          className="h-5 w-5 flex items-center justify-center rounded text-muted-foreground/70 hover:text-foreground hover:bg-foreground/10"
+                          aria-label="Manage labels"
+                        >
+                          <PlusIcon className="h-3 w-3" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="text-xs">Manage labels</TooltipContent>
+                    </Tooltip>
+                  </div>
+                  {labelFolders.length === 0 && railExpanded && (
+                    <button
+                      type="button"
+                      onClick={() => setManageLabelsOpen(true)}
+                      className="w-full text-left text-[11px] text-muted-foreground/70 hover:text-foreground px-3 py-1"
+                    >
+                      + Create label
+                    </button>
+                  )}
+                  {labelFolders.map(item => renderSidebarItem(item))}
+                </div>
               </div>
             </ScrollArea>
           </div>
