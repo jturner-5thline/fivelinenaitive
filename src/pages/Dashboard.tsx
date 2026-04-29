@@ -53,120 +53,43 @@ import { cn } from '@/lib/utils';
  * The `group` class lets the inner chip respond to hover/focus on the tile.
  * `!` important overrides neutralize the base `<Card>` dark-mode glass styles.
  */
-const TILE_INTERACTIVE_CLASSES =
-  'group relative cursor-pointer outline-none p-[calc(var(--tile-size)*0.08)] ' +
-  '!border-0 !bg-transparent !shadow-none !backdrop-blur-none !backdrop-saturate-100 ' +
-  'dark:!bg-transparent dark:!border-0 dark:!shadow-none ' +
-  'dark:hover:!border-0 dark:hover:!shadow-none ' +
-  'rounded-lg transition-transform duration-200 ease-out ' +
-  'focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-0';
-
 /**
- * Reference-styled glassy icon chip. The chip is the tile.
+ * Unified dashboard quick-action tile.
  *
- *   - Deep tinted gradient background (per category, 145°).
- *   - Inner highlight overlay: white 18% → white 4% → black 10%.
- *   - 1px white/13% border + subtle ambient shadow.
- *   - Rounded-2xl corners matching the reference's 16px radius feel.
- *   - Group-hover lift to mimic the reference's tappable feel.
+ * All tiles share a single surface (bg-card / border-border / rounded-2xl /
+ * shadow-sm) matching the My Tasks / My Deals cards directly below. Icons
+ * use the single brand accent (primary). Differentiation between tiles is
+ * carried by a low-saturation 2px top accent bar from one of three category
+ * tokens (inbox, pipeline, reports), paired with the label/icon — never
+ * color alone.
  */
-const TILE_CHIP_BASE =
-  // Fully responsive chip — its width/height track the `--tile-size` CSS var
-  // defined on the dashboard grid, so every tile scales proportionally with
-  // the available viewport width while keeping a 1:1 aspect ratio.
-  'relative rounded-lg flex items-center justify-center overflow-hidden ' +
-  'h-[var(--tile-size)] w-[var(--tile-size)] ' +
-  // Frosted blur over the page so the light translucent surface still reads
-  // as glass without needing a dark backing fill.
-  'backdrop-blur-md backdrop-saturate-150 ' +
-  // Resting: subtle 13% white border + soft ambient drop shadow with a hairline
-  // top inner highlight for the glassy edge.
-  'border border-white/[0.13] ' +
-  'shadow-[0_8px_22px_-8px_rgba(0,0,0,0.6),inset_0_1px_0_0_rgba(255,255,255,0.08)] ' +
-  // Smoothly animate every visual on hover/focus, not just the lift.
-  'transition-[transform,border-color,box-shadow,filter] duration-200 ease-out ' +
-  // Stronger lift + brighter rim + deeper, longer shadow on hover/focus to
-  // mirror the reference. The inner highlight intensifies in tandem so the
-  // gloss reads as light reacting to the lift.
-  'group-hover:-translate-y-[3px] group-focus-visible:-translate-y-[3px] ' +
-  'group-hover:border-white/30 group-focus-visible:border-white/30 ' +
-  'group-hover:shadow-[0_14px_30px_-10px_rgba(0,0,0,0.7),0_0_0_1px_rgba(255,255,255,0.08),inset_0_1px_0_0_rgba(255,255,255,0.22)] ' +
-  'group-focus-visible:shadow-[0_14px_30px_-10px_rgba(0,0,0,0.7),0_0_0_1px_rgba(255,255,255,0.08),inset_0_1px_0_0_rgba(255,255,255,0.22)] ' +
-  'group-hover:brightness-[1.06] group-focus-visible:brightness-[1.06] ' +
-  // Slight press-down on active for tactile feedback.
-  'group-active:translate-y-0 group-active:shadow-[0_6px_16px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_0_rgba(255,255,255,0.10)]';
+const TILE_INTERACTIVE_CLASSES =
+  'group relative cursor-pointer outline-none overflow-hidden ' +
+  'flex flex-col items-center justify-center text-center ' +
+  'h-full w-full ' +
+  'p-[calc(var(--tile-size)*0.14)] gap-[calc(var(--tile-size)*0.10)] ' +
+  'rounded-2xl border border-border bg-card shadow-sm ' +
+  'transition-[background-color,border-color,box-shadow] duration-200 ease-out ' +
+  'hover:bg-accent/30 hover:border-border/80 ' +
+  'active:ring-1 active:ring-primary/40 ' +
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
 
-/**
- * Backwards-compat alias for the prior constant name. Some HMR sessions
- * may still reference `TILE_ICON_CHIP_CLASSES`; aliasing it to the new
- * `TILE_CHIP_BASE` prevents a stale ReferenceError without changing the
- * intended frosted-glass visual treatment.
- */
-const TILE_ICON_CHIP_CLASSES = TILE_CHIP_BASE;
-void TILE_ICON_CHIP_CLASSES;
-
-/**
- * Inner glassy highlight overlay (matches reference `.wg-icon::before`).
- * The base layer holds the resting gloss; a second, brighter layer is
- * cross-faded in on parent `group` hover/focus to intensify the highlight
- * in lockstep with the lift and border-rim brightening.
- */
-const TileChipGloss = () => (
-  <>
-    <span
-      aria-hidden
-      className="pointer-events-none absolute inset-0 rounded-lg transition-opacity duration-200 ease-out group-hover:opacity-0 group-focus-visible:opacity-0"
-      style={{
-        background:
-          // Pure light gloss — no dark terminal stop, so the chip never reads
-          // as a dark tile.
-          'linear-gradient(145deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.06) 60%, rgba(255,255,255,0.00) 100%)',
-      }}
-    />
-    <span
-      aria-hidden
-      className="pointer-events-none absolute inset-0 rounded-lg opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-visible:opacity-100"
-      style={{
-        background:
-          'linear-gradient(145deg, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0.12) 55%, rgba(255,255,255,0.00) 100%)',
-      }}
-    />
-  </>
-);
-
-/**
- * Per-category surfaces. Previously deep dark gradients; now pure light
- * frosted-glass surfaces with only a whisper of category-tinted highlight.
- * No dark fill, no dark backing — the chip reads as clear glass at rest.
- * Each value is a layered background: (1) faint diagonal category tint,
- * (2) translucent white base. The white base dominates so the tile feels
- * airy and light regardless of category.
- */
-const TILE_CHIP_GRADIENTS: Record<string, string> = {
-  calendar:
-    'linear-gradient(145deg, rgba(123,159,245,0.18), rgba(123,159,245,0.06)), rgba(255,255,255,0.08)',
-  email:
-    'linear-gradient(145deg, rgba(192,132,245,0.18), rgba(192,132,245,0.06)), rgba(255,255,255,0.08)',
-  newDeal:
-    'linear-gradient(145deg, rgba(107,156,245,0.18), rgba(107,156,245,0.06)), rgba(255,255,255,0.08)',
-  dealRundown:
-    'linear-gradient(145deg, rgba(107,156,245,0.18), rgba(107,156,245,0.06)), rgba(255,255,255,0.08)',
-  briefing:
-    'linear-gradient(145deg, rgba(245,166,35,0.18), rgba(245,166,35,0.06)), rgba(255,255,255,0.08)',
-  niki:
-    'linear-gradient(145deg, rgba(45,212,184,0.18), rgba(45,212,184,0.06)), rgba(255,255,255,0.08)',
-  deals:
-    'linear-gradient(145deg, rgba(45,212,184,0.18), rgba(45,212,184,0.06)), rgba(255,255,255,0.08)',
+/** Three low-saturation category tokens. Surfaced as a 2px top accent bar. */
+type TileCategory = 'inbox' | 'pipeline' | 'reports';
+const CATEGORY_BAR_CLASS: Record<TileCategory, string> = {
+  inbox: 'bg-primary/40',
+  pipeline: 'bg-accent/50',
+  reports: 'bg-muted-foreground/40',
 };
 
-/** Tile label styling — centered under the chip, like the reference. */
+/** Tile label — matches dashboard section title typography. */
 const TILE_LABEL_CLASSES =
-  // White, single-line label whose font-size scales with `--tile-size` so the
-  // label always feels balanced relative to the chip. `whitespace-nowrap`
-  // guarantees titles never wrap; the parent flex column keeps it centered.
-  'font-medium text-center leading-tight tracking-[0.01em] whitespace-nowrap ' +
-  'text-[calc(var(--tile-size)*0.16)] ' +
-  'text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)]';
+  'text-sm font-semibold leading-tight tracking-[0.01em] ' +
+  'text-foreground text-center whitespace-nowrap';
+
+/** Standardized icon: 28px, single brand accent, 1.75 stroke. */
+const TILE_ICON_CLASSES =
+  'h-7 w-7 text-primary transition-colors duration-200 group-hover:text-primary';
 
 const handleTileKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, action: () => void) => {
   if (e.key === 'Enter' || e.key === ' ') {
