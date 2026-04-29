@@ -8383,6 +8383,60 @@ export type Database = {
           },
         ]
       }
+      email_drafts: {
+        Row: {
+          attachments: string[]
+          auto_link_deal: boolean
+          bcc_emails: string[]
+          body: string | null
+          cc_emails: string[]
+          created_at: string
+          deal_id: string | null
+          id: string
+          subject: string | null
+          thread_id: string
+          to_emails: string[]
+          to_name: string | null
+          track_opens: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attachments?: string[]
+          auto_link_deal?: boolean
+          bcc_emails?: string[]
+          body?: string | null
+          cc_emails?: string[]
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          subject?: string | null
+          thread_id: string
+          to_emails?: string[]
+          to_name?: string | null
+          track_opens?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attachments?: string[]
+          auto_link_deal?: boolean
+          bcc_emails?: string[]
+          body?: string | null
+          cc_emails?: string[]
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          subject?: string | null
+          thread_id?: string
+          to_emails?: string[]
+          to_name?: string | null
+          track_opens?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_intelligence_settings: {
         Row: {
           auto_extract: boolean | null

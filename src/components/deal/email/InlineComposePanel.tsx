@@ -8,7 +8,7 @@ import { PreSendAlertDialog } from './PreSendAlertDialog';
 import { EmailComposerCard, type ComposerRecipients, type ComposerSendOptions } from './EmailComposerCard';
 
 interface InlineComposePanelProps {
-  onSend: (email: Omit<MockEmail, 'id' | 'threadId'>) => void | Promise<void>;
+  onSend: (email: Omit<MockEmail, 'id' | 'threadId'>, opts?: ComposerSendOptions) => void | Promise<void>;
   onClose: () => void;
   replyTo?: { subject: string; to_email: string; to_name: string; threadId: string } | null;
   dealName?: string | null;
@@ -36,7 +36,7 @@ export function InlineComposePanel({ onSend, onClose, replyTo, dealName, dealId,
 
   const pendingSendOpts = useMemo<{ current: ComposerSendOptions }>(() => ({ current: {} }), []);
 
-  const executeSend = useCallback(async (_opts: ComposerSendOptions) => {
+  const executeSend = useCallback(async (opts: ComposerSendOptions) => {
     clearPreSendAlert();
     if (recipients.to.length === 0) { toast.error('Please add a recipient'); return; }
     const toEmail = recipients.to[0];
@@ -59,7 +59,7 @@ export function InlineComposePanel({ onSend, onClose, replyTo, dealName, dealId,
       is_follow_up: false,
       needs_response: false,
       category: 'deal',
-    });
+    }, opts);
     resetForm();
     onClose();
   }, [recipients.to, subject, body, attachments, onSend, resetForm, onClose, clearPreSendAlert]);
