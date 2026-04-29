@@ -211,16 +211,6 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   });
   const gridWrapRef = useGridWheelPassthrough<HTMLDivElement>();
 
-  // Sidebar drawer (off-canvas) state — keeps Weekly Report full-width
-  const SIDEBAR_OPEN_KEY = 'cf:sidebarDrawerOpen';
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    try { return window.localStorage.getItem(SIDEBAR_OPEN_KEY) === '1'; } catch { return false; }
-  });
-  useEffect(() => {
-    try { window.localStorage.setItem(SIDEBAR_OPEN_KEY, sidebarOpen ? '1' : '0'); } catch { /* ignore */ }
-  }, [sidebarOpen]);
-
   // Horizontal scroll edge-fade indicators
   const [edgeState, setEdgeState] = useState<{ left: boolean; right: boolean }>({ left: false, right: false });
   const handleGridScroll = useCallback((el: HTMLDivElement | null) => {
@@ -238,7 +228,16 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
     const ro = new ResizeObserver(() => handleGridScroll(el));
     ro.observe(el);
     return () => { el.removeEventListener('scroll', onScroll); ro.disconnect(); };
-  }, [handleGridScroll, visibleWeeks.length, sidebarOpen]);
+  }, [handleGridScroll, visibleWeeks.length]);
+
+  // Bubble cell-comment count up so the inline Notes badge can reflect it
+  const topLevelCellCommentCount = useMemo(
+    () => cellComments.filter(c => !c.parent_comment_id).length,
+    [cellComments],
+  );
+  useEffect(() => {
+    onCellCommentCountChange?.(topLevelCellCommentCount);
+  }, [topLevelCellCommentCount, onCellCommentCountChange]);
 
   useEffect(() => {
     try {
