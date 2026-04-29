@@ -773,7 +773,7 @@ export default function Tasks() {
         </div>
 
         {/* Unified filter toolbar */}
-        <div className="flex items-center gap-2 px-6 py-2.5 border-y" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'rgba(18,21,27,0.5)' }}>
+        <div className="flex items-center gap-1.5 px-6 py-2.5 border-y flex-wrap" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'rgba(18,21,27,0.5)' }}>
           <div className="relative flex-1 max-w-[280px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: '#7a8194' }} />
             <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tasks…" className="h-7 text-[11px] pl-8 text-white placeholder:text-[#7a8194]" style={{ backgroundColor: 'rgba(20,24,32,0.65)', border: '1px solid rgba(255,255,255,0.06)' }} />
@@ -936,7 +936,7 @@ export default function Tasks() {
           {savedViews.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(20,24,32,0.65)', color: '#9aa3b6' }}>
+                <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(20,24,32,0.65)', color: '#9aa3b6' }}>
                   <Bookmark className="h-3 w-3" /> Views
                 </Button>
               </DropdownMenuTrigger>
@@ -1000,10 +1000,9 @@ export default function Tasks() {
               size="sm"
               className="h-7 text-[11px] gap-1.5 rounded-md font-semibold border"
               style={{
-                background: 'linear-gradient(180deg, rgba(126,184,247,0.22) 0%, rgba(80,135,210,0.22) 100%)',
+                backgroundColor: 'rgba(59,126,255,0.18)',
                 color: '#eaf2ff',
                 borderColor: 'rgba(126,184,247,0.35)',
-                boxShadow: '0 1px 0 rgba(255,255,255,0.05) inset, 0 4px 14px -8px rgba(80,135,210,0.55)',
               }}
               onClick={(e) => {
                 quickCreateTriggerRef.current = e.currentTarget as HTMLElement;
