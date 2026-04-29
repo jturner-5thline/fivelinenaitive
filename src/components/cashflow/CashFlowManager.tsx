@@ -26,6 +26,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FilterMultiSelect } from './FilterMultiSelect';
 import './cashflow.css';
+import { computeCashInTotal } from './WeeklySidebar';
+import { fmtShort } from './formatters';
+import { MessageSquare } from 'lucide-react';
 
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
