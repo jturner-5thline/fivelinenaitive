@@ -1,8 +1,8 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Lock, Info } from 'lucide-react';
-import { useState } from 'react';
+import { Lock, Info, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Tooltip as UITooltip,
   TooltipContent as UITooltipContent,
@@ -13,6 +13,7 @@ import {
   useExecutiveTopRowKpis,
   type ExecKpiDrilldownDeal,
   type ExecRevenueLineItem,
+  type ExecKpiWindow,
 } from '@/hooks/useExecutiveTopRowKpis';
 import {
   Dialog,
@@ -23,6 +24,8 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { ExternalLink } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { startOfWeek, endOfWeek, addWeeks, format as fmtDateFn, isSameWeek } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Line, ComposedChart, Area, PieChart, Pie, Cell, Legend } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
