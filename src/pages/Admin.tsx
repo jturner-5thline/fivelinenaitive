@@ -39,7 +39,6 @@ import { DealsHeader } from "@/components/deals/DealsHeader";
 import { UXRecommendationsPanel } from "@/components/admin/ux-analytics/UXRecommendationsPanel";
 import { PendingApprovalsPanel } from "@/components/admin/PendingApprovalsPanel";
 import { CompanyJoinRequestsPanel } from "@/components/admin/CompanyJoinRequestsPanel";
-import { FeedbackWidgetToggle } from "@/components/admin/FeedbackWidgetToggle";
 import { ClientAccountViewer } from "@/components/admin/ClientAccountViewer";
 import { CompanyFeaturesPanel } from "@/components/admin/CompanyFeaturesPanel";
 import { AIRulesPanel } from "@/components/admin/AIRulesPanel";
@@ -218,7 +217,6 @@ const Admin = () => {
                   </CardTitle>
                   <CardDescription>View feedback submitted by users</CardDescription>
                 </div>
-                <FeedbackWidgetToggle />
               </div>
             </CardHeader>
             <CardContent><FeedbackTable /></CardContent>
