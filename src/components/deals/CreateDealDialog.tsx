@@ -616,7 +616,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
               {sortedMilestones.length > 0 && (
                 <Collapsible open={showMilestonesPreview} onOpenChange={setShowMilestonesPreview}>
                   <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
+                    <Button type="button" variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
                       <span className="flex items-center gap-2">
                         <Flag className="h-4 w-4" />
                         {sortedMilestones.length} default milestone{sortedMilestones.length !== 1 ? 's' : ''} will be added
