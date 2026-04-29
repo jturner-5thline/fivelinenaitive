@@ -18,6 +18,7 @@ import {
   Send, Paperclip, Loader2, X, Trash2, Maximize2, Check, AlertCircle, Cloud,
   Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Edit3, ChevronDown,
   MoreHorizontal, Calendar as CalendarIcon, Image as ImageIcon, Archive, MailX,
+  Link2,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { cn } from '@/lib/utils';
@@ -743,6 +744,35 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
             data-testid="signature-ghost"
           >
             {signature}
+          </div>
+        )}
+        {/* Deal-link preview — mirrors what the outgoing message will reference.
+            Updates live with dealName/dealId and the Auto-link toggle below. */}
+        {dealName && autoLink && (
+          <div
+            className="mt-2 pt-2 border-t border-border/30 flex items-center gap-2 text-[11px] text-muted-foreground select-none"
+            data-testid="deal-link-preview"
+            aria-label={`This message will be linked to ${dealName}`}
+          >
+            <Link2 className="h-3 w-3 text-[hsl(var(--outlook-blue))] shrink-0" aria-hidden />
+            <span className="truncate">
+              Linked to{' '}
+              <span className="text-foreground/80 font-medium">{dealName}</span>
+              {dealId && (
+                <span className="ml-1 text-muted-foreground/60 font-mono text-[10px]">
+                  · /deals/{String(dealId).slice(0, 8)}
+                </span>
+              )}
+            </span>
+          </div>
+        )}
+        {dealName && !autoLink && (
+          <div
+            className="mt-2 pt-2 border-t border-border/30 flex items-center gap-2 text-[11px] text-muted-foreground/60 italic select-none"
+            data-testid="deal-link-preview-off"
+          >
+            <Link2 className="h-3 w-3 shrink-0" aria-hidden />
+            <span>Auto-link to {dealName} is off — message will not be associated with the deal.</span>
           </div>
         )}
         {bodyError && (
