@@ -534,7 +534,8 @@ CONFIRMING-DETAILS RULE (use when the deal context is thin or specific facts you
 - Also reflect this in the JSON: when you include the line, set "requires_more_context": true and list the missing fields in "missing_context_items".
 
 ${generationRule}
-- Do NOT include email signatures — the app handles that.
+- Do NOT include any sign-off or signature block (no "Best,", "Thanks,", name, title, phone, etc.) — the app appends the user's configured signature automatically.
+- End the body with the final sentence of content only. No closing line. No name.
 - Return ONLY valid JSON matching the required schema. No markdown fences, no commentary.
 ${hasSchedulingIntent ? "\n- SCHEDULING DETECTED: Only reference specific availability times if they were provided in the context. If no calendar data is provided, suggest the recipient propose times rather than inventing availability." : ""}
 
