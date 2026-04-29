@@ -536,7 +536,7 @@ serve(async (req: Request): Promise<Response> => {
       }
 
       case "send": {
-        const { to, cc, bcc, subject, body, body_html } = requestData;
+        const { to, cc, bcc, subject, body, body_html, attachments, reply_to_message_id } = requestData;
 
         if (!to || to.length === 0 || !subject) {
           return new Response(JSON.stringify({ error: "To and subject are required" }), {
@@ -556,6 +556,43 @@ serve(async (req: Request): Promise<Response> => {
         }
         if (bcc && bcc.length > 0) {
           sendBody.bcc = bcc.map(email => ({ email, name: email }));
+        }
+
+        // Outbound attachments — Nylas v3 expects base64-encoded `content`.
+        if (Array.isArray(attachments) && attachments.length > 0) {
+          const TOTAL_CAP = 25 * 1024 * 1024; // 25MB raw, matches Gmail
+          let runningTotal = 0;
+          const normalizedAttachments = attachments
+            .filter((a) => a && a.filename && typeof a.content === "string" && a.content.length > 0)
+            .map((a) => {
+              // Approx raw size from base64 length when not provided.
+              const approxSize = typeof a.size === "number" && a.size > 0
+                ? a.size
+                : Math.floor((a.content.length * 3) / 4);
+              runningTotal += approxSize;
+              return {
+                filename: a.filename,
+                content_type: a.content_type || "application/octet-stream",
+                content: a.content,
+                size: approxSize,
+                is_inline: !!a.is_inline,
+                ...(a.content_id ? { content_id: a.content_id } : {}),
+              };
+            });
+          if (runningTotal > TOTAL_CAP) {
+            return new Response(
+              JSON.stringify({ error: `Attachments exceed 25MB (got ~${Math.round(runningTotal / (1024 * 1024))}MB).` }),
+              { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+            );
+          }
+          if (normalizedAttachments.length > 0) {
+            sendBody.attachments = normalizedAttachments;
+          }
+        }
+
+        // Threading — when replying, instruct Nylas to set proper headers.
+        if (typeof reply_to_message_id === "string" && reply_to_message_id.length > 0) {
+          sendBody.reply_to_message_id = reply_to_message_id;
         }
 
         const sendResponse = await fetch(
