@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useState, useCallback, useEffect } from 'react';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { FPAStatusBar } from './FPAStatusBar';
 import { DataModule } from './DataModule';
@@ -17,17 +17,12 @@ import { DataHealthIndicator } from './FPADataHealth';
 import { BookmarkableViews, type SavedView } from './FPABookmarkableViews';
 import { ExportPresetsButton } from './FPAExportPresets';
 import { useFPATabPermissions } from '@/hooks/useFPATabPermissions';
-import {
-  Database, FileSpreadsheet, BarChart3, Sparkles, Zap
-} from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-
 const MODULE_TAB_DEFS = [
-  { key: 'dashboards', label: 'Dashboards', icon: BarChart3 },
-  { key: 'data', label: 'Data', icon: Database },
-  { key: 'sheets', label: 'Sheets', icon: FileSpreadsheet },
-  { key: 'ai', label: 'AI', icon: Sparkles },
-  { key: 'automations', label: 'Automations', icon: Zap },
+  { key: 'dashboards' },
+  { key: 'data' },
+  { key: 'sheets' },
+  { key: 'ai' },
+  { key: 'automations' },
 ] as const;
 
 export function FPAWorkspace() {
@@ -56,11 +51,6 @@ export function FPAWorkspace() {
   }, []);
   const [uploadWizardOpen, setUploadWizardOpen] = useState(false);
   const { canViewModuleTab } = useFPATabPermissions();
-
-  const visibleModuleTabs = useMemo(
-    () => MODULE_TAB_DEFS.filter(t => canViewModuleTab(t.key)),
-    [canViewModuleTab]
-  );
 
   const handleNavigateToTab = useCallback((tab: string) => {
     if (canViewModuleTab(tab)) {
@@ -99,26 +89,6 @@ export function FPAWorkspace() {
 
           {/* Module Navigation */}
           <Tabs value={effectiveModule} onValueChange={handleModuleChange} className="space-y-4">
-            <div className="flex items-center justify-between overflow-x-auto gap-2">
-              <TabsList className="inline-flex w-auto">
-                {visibleModuleTabs.map(tab => (
-                  <TabsTrigger key={tab.key} value={tab.key} className="gap-1.5 px-4">
-                    <tab.icon className="h-3.5 w-3.5" />
-                    <span className="text-xs">{tab.label}</span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              <div className="flex items-center gap-2">
-                <BookmarkableViews
-                  currentModule={effectiveModule}
-                  currentState={{ module: effectiveModule }}
-                  onRestoreView={handleRestoreView}
-                />
-                
-                <FPATour onNavigateToTab={handleNavigateToTab} />
-              </div>
-            </div>
-
             <TabsContent value="data" className="mt-0">
               <DataModule />
             </TabsContent>
@@ -128,7 +98,18 @@ export function FPAWorkspace() {
             </TabsContent>
 
             <TabsContent value="dashboards" className="mt-0">
-              <DashboardModule />
+              <DashboardModule
+                headerExtras={
+                  <>
+                    <BookmarkableViews
+                      currentModule={effectiveModule}
+                      currentState={{ module: effectiveModule }}
+                      onRestoreView={handleRestoreView}
+                    />
+                    <FPATour onNavigateToTab={handleNavigateToTab} />
+                  </>
+                }
+              />
             </TabsContent>
 
             <TabsContent value="ai" className="mt-0">
