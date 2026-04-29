@@ -176,6 +176,79 @@ function EmailTileWithIntelligence({
 }) {
   const [isHovering, setIsHovering] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const tileRef = useRef<HTMLDivElement | null>(null);
+  type Placement = 'right' | 'left' | 'bottom';
+  const [placement, setPlacement] = useState<Placement>('right');
+  const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({});
+
+  const PANEL_WIDTH = 360;
+  const GAP = 12;
+  const VIEWPORT_PAD = 12;
+
+  const recompute = useCallback(() => {
+    const tile = tileRef.current;
+    const wrapper = wrapperRef.current;
+    if (!tile || !wrapper) return;
+
+    const tileRect = tile.getBoundingClientRect();
+    const wrapperRect = wrapper.getBoundingClientRect();
+    const vw = window.innerWidth;
+
+    const spaceRight = vw - tileRect.right - VIEWPORT_PAD;
+    const spaceLeft = tileRect.left - VIEWPORT_PAD;
+
+    let next: Placement = 'right';
+    if (spaceRight >= PANEL_WIDTH + GAP) next = 'right';
+    else if (spaceLeft >= PANEL_WIDTH + GAP) next = 'left';
+    else next = 'bottom';
+
+    // Position relative to wrapper (which is position: relative).
+    const tileTopInWrapper = tileRect.top - wrapperRect.top;
+    const tileLeftInWrapper = tileRect.left - wrapperRect.left;
+
+    if (next === 'right') {
+      setPanelStyle({
+        top: tileTopInWrapper,
+        left: tileLeftInWrapper + tileRect.width + GAP,
+        width: PANEL_WIDTH,
+      });
+    } else if (next === 'left') {
+      setPanelStyle({
+        top: tileTopInWrapper,
+        left: tileLeftInWrapper - PANEL_WIDTH - GAP,
+        width: PANEL_WIDTH,
+      });
+    } else {
+      // Bottom: center under tile but clamp inside viewport.
+      const desiredCenter = tileRect.left + tileRect.width / 2;
+      const halfPanel = PANEL_WIDTH / 2;
+      const clampedCenter = Math.min(
+        Math.max(desiredCenter, VIEWPORT_PAD + halfPanel),
+        vw - VIEWPORT_PAD - halfPanel,
+      );
+      const leftViewport = clampedCenter - halfPanel;
+      setPanelStyle({
+        top: tileTopInWrapper + tileRect.height + GAP,
+        left: leftViewport - wrapperRect.left,
+        width: PANEL_WIDTH,
+      });
+    }
+    setPlacement(next);
+  }, []);
+
+  useEffect(() => {
+    if (!isHovering) return;
+    recompute();
+    const onResize = () => recompute();
+    const onScroll = () => recompute();
+    window.addEventListener('resize', onResize);
+    window.addEventListener('scroll', onScroll, true);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('scroll', onScroll, true);
+    };
+  }, [isHovering, recompute]);
 
   const open = () => {
     if (closeTimer.current) {
@@ -183,6 +256,8 @@ function EmailTileWithIntelligence({
       closeTimer.current = null;
     }
     setIsHovering(true);
+    // Measure on next frame so layout is stable.
+    requestAnimationFrame(recompute);
   };
   const scheduleClose = () => {
     if (closeTimer.current) clearTimeout(closeTimer.current);
@@ -205,6 +280,7 @@ function EmailTileWithIntelligence({
 
   return (
     <div
+      ref={wrapperRef}
       className={cn('relative h-full', className)}
       onMouseEnter={open}
       onMouseLeave={scheduleClose}
@@ -221,13 +297,15 @@ function EmailTileWithIntelligence({
         }
       }}
     >
-      <QuickActionTile
-        label="Email"
-        icon={Mail}
-        category="inbox"
-        onClick={(e) => onOpen(e.currentTarget as HTMLElement)}
-        onKeyDown={onKeyDown}
-      />
+      <div ref={tileRef} className="h-full">
+        <QuickActionTile
+          label="Email"
+          icon={Mail}
+          category="inbox"
+          onClick={(e) => onOpen(e.currentTarget as HTMLElement)}
+          onKeyDown={onKeyDown}
+        />
+      </div>
 
       {/*
         Hover-anchored Email Intelligence panel.
@@ -237,18 +315,18 @@ function EmailTileWithIntelligence({
         - Suppressed on touch / no-hover devices via media query.
       */}
       <div
+        style={panelStyle}
         className={cn(
-          // Prefer opening to the right of the tile with a small gap.
-          // On narrower viewports (where there isn't room on the right),
-          // fall back to anchoring below the tile, centered.
-          'pointer-events-none absolute z-40 w-[360px] max-w-[92vw]',
-          'left-full top-0 ml-3',
-          'max-[1100px]:left-1/2 max-[1100px]:top-full max-[1100px]:ml-0 max-[1100px]:mt-2 max-[1100px]:-translate-x-1/2',
+          'pointer-events-none absolute z-40 max-w-[92vw]',
           'transition-all duration-200 ease-out',
           '[@media(hover:none)]:hidden',
           isHovering
-            ? 'translate-x-0 opacity-100 pointer-events-auto max-[1100px]:translate-y-0'
-            : '-translate-x-1 opacity-0 max-[1100px]:translate-x-0 max-[1100px]:-translate-y-1',
+            ? 'opacity-100 pointer-events-auto translate-x-0 translate-y-0'
+            : placement === 'right'
+              ? 'opacity-0 -translate-x-1'
+              : placement === 'left'
+                ? 'opacity-0 translate-x-1'
+                : 'opacity-0 -translate-y-1',
         )}
         role="region"
         aria-label="Email Intelligence"
