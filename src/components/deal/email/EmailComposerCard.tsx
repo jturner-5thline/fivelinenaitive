@@ -13,6 +13,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Send, Paperclip, Loader2, X, Trash2, Maximize2, Check, AlertCircle, Cloud,
   Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Edit3, ChevronDown,
@@ -424,13 +425,25 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
             <Archive className="h-3.5 w-3.5 mr-2" />Send & Archive
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem disabled className="opacity-60">
-            <CalendarIcon className="h-3.5 w-3.5 mr-2" />Schedule send…
-            <span className="ml-auto text-[9px] text-muted-foreground">Soon</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem disabled className="opacity-60">
+          <DropdownMenuItem
+            disabled={!canSend}
+            onSelect={() => {
+              const d = new Date();
+              d.setDate(d.getDate() + 1);
+              d.setHours(8, 0, 0, 0);
+              void runSend({ scheduledFor: d.toISOString() });
+            }}
+          >
             <CalendarIcon className="h-3.5 w-3.5 mr-2" />Send tomorrow 8am
-            <span className="ml-auto text-[9px] text-muted-foreground">Soon</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={!canSend}
+            onSelect={(e) => {
+              e.preventDefault();
+              setSchedulePickerOpen(true);
+            }}
+          >
+            <CalendarIcon className="h-3.5 w-3.5 mr-2" />Pick date &amp; time…
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
