@@ -503,11 +503,11 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
       signatureInjectedRef.current = true;
       return;
     }
-    const sigHtml = signature
-      .split(/\r?\n/)
-      .map((l) => l ? escapeHtml(l) : '<br/>')
-      .join('<br/>');
-    onBodyChange(`<p></p><p></p><p>${sigHtml}</p>`);
+    // Signatures may be plain-text (legacy) OR rich HTML (RTE). signatureToHtml
+    // sanitizes HTML and escapes/wraps plain text — so the editor renders the
+    // signature exactly the way the recipient will see it, never as raw markup.
+    const sigHtml = signatureToHtml(signature);
+    onBodyChange(`<p></p><p></p>${sigHtml}`);
     signatureInjectedRef.current = true;
     // We intentionally don't react to subsequent body/signature updates — this
     // is a one-shot prefill. Subsequent edits are owned by the user.
