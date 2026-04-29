@@ -312,7 +312,24 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
                     >
                       {getFileIcon(doc.content_type, doc.name)}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{doc.name}</p>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <p className="text-sm font-medium truncate">{doc.name}</p>
+                          {doc.category && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-1.5 py-0 shrink-0"
+                              title={
+                                doc.source === 'vdr_internal'
+                                  ? `From Data Room → Internal → ${doc.category}`
+                                  : doc.source === 'data_room'
+                                    ? `From Data Room → ${doc.category}`
+                                    : doc.category
+                              }
+                            >
+                              {doc.category}
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground">
                           {formatFileSize(doc.size_bytes)} • {format(new Date(doc.created_at), 'MMM d, yyyy')}
                         </p>
