@@ -42,17 +42,17 @@ export function QuickActionChips({ onSelect, isLoading, className }: QuickAction
           data-active={false}
           className={cn(
             'inline-flex items-center gap-1.5 shrink-0 rounded-full',
-            'bg-transparent border border-border/40',
-            'px-2.5 py-1 text-[11px] font-medium leading-none text-muted-foreground',
+            'bg-muted/70 border border-border',
+            'px-2.5 py-1 text-[11px] font-medium leading-none text-foreground',
             'transition-colors duration-150',
-            'hover:bg-muted/40 hover:text-foreground hover:border-border/60',
-            'active:bg-muted/60',
-            'data-[active=true]:bg-muted data-[active=true]:text-foreground data-[active=true]:border-border/70',
-            'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/60 focus-visible:ring-offset-0',
+            'hover:bg-accent hover:text-accent-foreground hover:border-border',
+            'active:bg-accent/80',
+            'data-[active=true]:bg-accent data-[active=true]:text-accent-foreground data-[active=true]:border-border',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0',
             'disabled:opacity-50 disabled:cursor-not-allowed',
           )}
         >
-          <Icon className="h-3 w-3 opacity-70" aria-hidden="true" />
+          <Icon className="h-3 w-3 text-foreground" aria-hidden="true" />
           <span className="truncate max-w-[180px]">{label}</span>
         </button>
       ))}
