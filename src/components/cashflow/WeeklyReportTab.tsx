@@ -138,8 +138,12 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   });
   const effectiveCurrentIndex = currentWeekIndex >= 0 ? currentWeekIndex : totalWeeks - 1;
 
-  const [weeksPast, setWeeksPast] = useState(() => Math.min(effectiveCurrentIndex, 4));
-  const [weeksFuture, setWeeksFuture] = useState(() => Math.min(totalWeeks - effectiveCurrentIndex - 1, 12));
+  // Clamp to >=0 so that edge cases (empty initial weeklyData, current week at edge)
+  // never produce negative state that silently collapses the visible window.
+  const [weeksPast, setWeeksPast] = useState(() => Math.max(0, Math.min(Math.max(0, effectiveCurrentIndex), 4)));
+  const [weeksFuture, setWeeksFuture] = useState(() =>
+    Math.max(0, Math.min(Math.max(0, totalWeeks - effectiveCurrentIndex - 1), 12)),
+  );
 
   const startIdx = Math.max(0, effectiveCurrentIndex - weeksPast);
   const endIdx = Math.min(totalWeeks, effectiveCurrentIndex + 1 + weeksFuture);
@@ -351,7 +355,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   };
 
   return (
-    <div className="cf-weekly-layout">
+    <div className={`cf-weekly-layout cf-has-drawer${sidebarOpen ? ' cf-drawer-open' : ''}`}>
       <div className="cf-weekly-main">
         <WeeklyCharts
           weeklyData={safeWeeklyData}
@@ -396,11 +400,24 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
               ))}
             </select>
             <button className="cf-btn cf-btn-primary" onClick={onExport}>Export PDF</button>
+            <button
+              className="cf-btn cf-btn-ghost"
+              onClick={() => setSidebarOpen(o => !o)}
+              title={sidebarOpen ? 'Hide notes & cash-in panel' : 'Show notes & cash-in panel'}
+              aria-label={sidebarOpen ? 'Hide notes panel' : 'Show notes panel'}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              {sidebarOpen ? <PanelRightClose size={14} /> : <PanelRightOpen size={14} />}
+              <span>{sidebarOpen ? 'Hide Notes' : 'Notes'}</span>
+            </button>
           </div>
         </div>
 
         {/* Weekly grid */}
-        <div className="cf-grid-wrap" style={{ borderRadius: '0 0 var(--radius-lg) var(--radius-lg)' }}>
+        <div
+          className={`cf-grid-wrap${edgeState.left ? ' cf-edge-left' : ''}${edgeState.right ? ' cf-edge-right' : ''}`}
+          style={{ borderRadius: '0 0 var(--radius-lg) var(--radius-lg)' }}
+        >
           <table className="cf-grid">
             <thead>
               <tr>
