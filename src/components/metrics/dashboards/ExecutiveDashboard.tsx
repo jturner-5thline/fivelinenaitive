@@ -277,14 +277,6 @@ export function ExecutiveDashboard() {
     { month: 'Jan-26', inflow: 180000, outflow: 200000 },
   ];
 
-  const teamPerformanceData = [
-    { name: 'James', closed: 5, value: 12000000 },
-    { name: 'Flor', closed: 3, value: 8000000 },
-    { name: 'Niki', closed: 4, value: 9500000 },
-    { name: 'Paz', closed: 2, value: 4500000 },
-    { name: 'Chandler', closed: 1, value: 3000000 },
-  ];
-
   return (
     <div className="space-y-6">
       {/* Row 1: Key Metrics */}
