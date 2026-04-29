@@ -306,6 +306,7 @@ export default function Dashboard() {
   const [pendingRemoval, setPendingRemoval] = useState<{ widgetId: string; widget: WidgetConfig; gridItem: GridItem } | null>(null);
   const [dealsDialogOpen, setDealsDialogOpen] = useState(false);
   const [dealsInitialView, setDealsInitialView] = useState<DealsCarouselView | undefined>(undefined);
+  const [newDealOpen, setNewDealOpen] = useState(false);
 
   // Sync tab from URL query params
   useEffect(() => {
@@ -569,8 +570,9 @@ export default function Dashboard() {
             // who is allowed to see it (jturner included). For jturner the
             // tiles are also reordered via Tailwind `order-*` classes.
             const nikiInTopRow = canSeeNiki;
-            // +1 for the always-on "Deals" tile that opens the AI insights carousel.
-            const tileCount = 4 + 1 + (isJTurner ? 1 : 0) + (nikiInTopRow ? 1 : 0) + (is5thLine ? 1 : 0);
+            // Base tiles: Calendar + Email + Deals (AI insights). New Deal
+            // moved to the dashboard action row next to Templates.
+            const tileCount = 3 + (isJTurner ? 1 : 0) + (nikiInTopRow ? 1 : 0) + (is5thLine ? 1 : 0);
             const gridColsClass =
               tileCount >= 8 ? 'grid-cols-4 sm:grid-cols-8'
               : tileCount === 7 ? 'grid-cols-4 sm:grid-cols-7'
@@ -607,18 +609,6 @@ export default function Dashboard() {
               onKeyDown={(e) =>
                 handleTileKeyDown(e, () =>
                   openCarouselWidget('email', e.currentTarget as HTMLElement),
-                )
-              }
-            />
-            <QuickActionTile
-              label="New Deal"
-              icon={Briefcase}
-              category="pipeline"
-              className={cn(isJTurner && 'order-4')}
-              onClick={(e) => openCarouselWidget('new-deal', e.currentTarget as HTMLElement)}
-              onKeyDown={(e) =>
-                handleTileKeyDown(e, () =>
-                  openCarouselWidget('new-deal', e.currentTarget as HTMLElement),
                 )
               }
             />
@@ -726,6 +716,15 @@ export default function Dashboard() {
               )}
               {dashboardTab !== 'news-feed' && (
                 <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-xs"
+                    onClick={() => setNewDealOpen(true)}
+                  >
+                    <Briefcase className="h-3.5 w-3.5" />
+                    New Deal
+                  </Button>
                   <DashboardTemplatesDialog
                     mode="replace"
                     onSelectTemplate={handleCreateFromTemplate}
@@ -847,9 +846,7 @@ export default function Dashboard() {
       {isWidgetActive('email') && (
         <InboxDialog open onOpenChange={handleCarouselDialogOpenChange} />
       )}
-      {isWidgetActive('new-deal') && (
-        <CreateDealDialog open onOpenChange={handleCarouselDialogOpenChange} />
-      )}
+      <CreateDealDialog open={newDealOpen} onOpenChange={setNewDealOpen} />
       {isJTurner && isWidgetActive('daily-briefing') && (
         <DailyBriefingModal open onOpenChange={handleCarouselDialogOpenChange} />
       )}
