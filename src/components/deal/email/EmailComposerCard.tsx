@@ -18,6 +18,7 @@ import {
   Send, Paperclip, Loader2, X, Trash2, Maximize2, Check, AlertCircle, Cloud,
   Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Edit3, ChevronDown,
   MoreHorizontal, Calendar as CalendarIcon, Image as ImageIcon, Archive, MailX,
+  Link2,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { cn } from '@/lib/utils';
