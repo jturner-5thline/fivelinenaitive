@@ -322,7 +322,11 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
         </div>
       )}
 
-      <div className="flex items-end gap-2 border border-border/40 bg-background/40 rounded-lg px-1 transition-all duration-200 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 focus-within:ring-offset-0">
+      {/* Refined glass input affordance — subtle neutral border at rest,
+          a slightly stronger but still understated focus state. No bright
+          white outline or chunky ring. Matches the dashboard's other
+          translucent surfaces. */}
+      <div className="flex items-end gap-2 rounded-lg px-1 border border-white/10 bg-white/[0.04] transition-colors duration-200 focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/15 focus-within:ring-offset-0 dark:border-white/10 dark:bg-white/[0.04] dark:focus-within:border-white/20 dark:focus-within:ring-white/15">
         <div className="relative flex-1">
           <Sparkles className="absolute left-3 top-2.5 h-4 w-4 text-primary" />
           <Textarea
