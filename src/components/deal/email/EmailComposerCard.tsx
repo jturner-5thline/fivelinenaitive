@@ -68,9 +68,21 @@ export interface EmailComposerCardProps {
   /** Body — controlled. */
   body: string;
   onBodyChange: (next: string) => void;
-  /** Attachments — controlled. */
+  /** Attachments — controlled (filename list, persisted in drafts). */
   attachments: string[];
   onAttachmentsChange: (next: string[]) => void;
+  /**
+   * Optional richer attachments callback. When provided, the composer will
+   * surface a real file picker (paperclip) and forward the selected `File`
+   * objects so the parent can attach them to the outgoing message.
+   * The `attachments` (string[]) prop continues to mirror filenames so existing
+   * draft-persistence stays intact.
+   */
+  onFilesChange?: (files: File[]) => void;
+  /** Maximum total attachment size in bytes. Defaults to 25 MB (Gmail limit). */
+  maxAttachmentBytes?: number;
+  /** Optional FLEx data-room URL. Surfaces a 'View Data Room' shortcut. */
+  dataRoomUrl?: string | null;
 
   /** Send handler. Returns a promise that resolves when send completes. */
   onSend: (opts: ComposerSendOptions) => Promise<void> | void;
