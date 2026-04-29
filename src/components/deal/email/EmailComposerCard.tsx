@@ -16,7 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import {
   Send, Paperclip, Loader2, X, Trash2, Maximize2, Check, AlertCircle, Cloud,
   Edit3, ChevronDown,
-  MoreHorizontal, Calendar as CalendarIcon, Image as ImageIcon, Archive, MailX,
+  MoreHorizontal, Calendar as CalendarIcon, Image as ImageIcon, Archive,
   Link2, Database,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
