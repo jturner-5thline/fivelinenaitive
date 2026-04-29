@@ -187,27 +187,15 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] p-0 border-none bg-transparent overflow-hidden"
+        className="max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] p-0 overflow-hidden glass-module"
         overlayClassName="bg-black/80"
+        aria-label="Deal Pipeline"
       >
         <div className="db-root" style={{ overflow: 'auto', height: '100%', borderRadius: 'inherit' }}>
           <style dangerouslySetInnerHTML={{ __html: DASHBOARD_CSS }} />
           <div className="db-r">
-            {/* HEADER */}
-            <div className="db-g db-p" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, background: '#1a2d42', borderColor: 'rgba(255,255,255,0.09)' }}>
-              <div>
-                <div style={{ fontSize: 17, fontWeight: 700, color: '#e8f4ff', letterSpacing: '-.3px' }}>5th<span style={{ color: '#5ba3d0' }}>Line</span> Capital Advisors — Deal Pipeline</div>
-                <div style={{ fontSize: 9, color: 'rgba(140,175,200,0.4)', marginTop: 2, fontStyle: 'italic' }}>Goals &amp; Targets 2025 &nbsp;·&nbsp; Current Pipeline Summary</div>
-              </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span className="db-pill db-pill-on">On Track</span>
-                <span className="db-pill db-pill-risk">At Risk</span>
-                <span className="db-pill db-pill-off">Off Track</span>
-              </div>
-            </div>
-
             {/* KPI STRIP */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,minmax(0,1fr))', gap: 8, marginBottom: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,minmax(0,1fr))', gap: 16, marginBottom: 16 }}>
               {[
                 { label: 'Deals Closed', value: String(metrics.dealCount), cls: 'db-bl', sub: 'Target: 2025 goal' },
                 { label: 'Dollars Funded', value: metrics.totalVolume, cls: 'db-up', sub: 'On Track' },
@@ -216,37 +204,39 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
                 { label: 'Deal Volume', value: metrics.totalVolume, cls: 'db-bl', sub: `${metrics.dealCount} active deals` },
                 { label: 'Avg Deal Size', value: metrics.avgDealSize, cls: 'db-bl', sub: `"Live" Rev: ${metrics.liveRevenue}` },
               ].map((k, i) => (
-                <div key={i} className="db-g db-p" style={{ padding: '12px 14px' }}>
-                  <div className="db-kl">{k.label}</div>
-                  <div className={`db-kv ${k.cls}`}>{k.value}</div>
-                  <div className="db-kd">{k.sub}</div>
+                <div key={i} className="glass-module p-4">
+                  <div className="text-sm text-muted-foreground">{k.label}</div>
+                  <div className={`text-2xl font-bold text-foreground mt-1 ${k.cls}`}>{k.value}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{k.sub}</div>
                 </div>
               ))}
             </div>
 
             {/* ROW 1 */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,2.2fr)', gap: 10, marginBottom: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,2.2fr)', gap: 16, marginBottom: 16 }}>
               {/* LEFT */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div className="db-g db-p">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div className="glass-module p-4">
                   <div className="db-ct">Pipeline Summary</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
                     {[
-                      { label: 'On Track', value: metrics.onTrack.volumeStr, color: '#4de8a0', borderColor: 'rgba(40,190,120,0.2)', labelColor: 'rgba(40,220,140,0.5)', sub: `${metrics.onTrack.count} deals · ${metrics.onTrack.pct}`, subColor: 'rgba(160,210,180,0.5)' },
-                      { label: 'At Risk', value: metrics.atRisk.volumeStr, color: '#f0c84a', borderColor: 'rgba(220,175,40,0.2)', labelColor: 'rgba(220,175,40,0.5)', sub: `${metrics.atRisk.count} deals · ${metrics.atRisk.pct}`, subColor: 'rgba(220,190,100,0.5)' },
-                      { label: 'Off Track', value: metrics.offTrack.volumeStr, color: '#ff8a96', borderColor: 'rgba(220,70,85,0.2)', labelColor: 'rgba(220,70,85,0.5)', sub: `${metrics.offTrack.count} deals · ${metrics.offTrack.pct}`, subColor: 'rgba(220,120,130,0.5)' },
+                      { label: 'On Track',  value: metrics.onTrack.volumeStr,  pillCls: 'db-pill db-pill-on',   valueCls: 'value-positive', sub: `${metrics.onTrack.count} deals · ${metrics.onTrack.pct}` },
+                      { label: 'At Risk',   value: metrics.atRisk.volumeStr,   pillCls: 'db-pill db-pill-risk', valueCls: 'value-warning',  sub: `${metrics.atRisk.count} deals · ${metrics.atRisk.pct}` },
+                      { label: 'Off Track', value: metrics.offTrack.volumeStr, pillCls: 'db-pill db-pill-off',  valueCls: 'value-negative', sub: `${metrics.offTrack.count} deals · ${metrics.offTrack.pct}` },
                     ].map((s, i) => (
-                      <div key={i} style={{ background: '#0f1923', border: `1px solid ${s.borderColor}`, borderRadius: 8, padding: 10, textAlign: 'center' }}>
-                        <div style={{ fontSize: 9, color: s.labelColor, fontWeight: 700, letterSpacing: '.8px', textTransform: 'uppercase', marginBottom: 4 }}>{s.label}</div>
-                        <div style={{ fontSize: 18, fontWeight: 700, color: s.color }}>{s.value}</div>
-                        <div style={{ fontSize: 10, color: s.subColor, marginTop: 2 }}>{s.sub}</div>
+                      <div key={i} className="glass-module p-3 text-center">
+                        <div className="mb-2 flex justify-center">
+                          <span className={s.pillCls}>{s.label}</span>
+                        </div>
+                        <div className={`text-lg font-bold ${s.valueCls}`}>{s.value}</div>
+                        <div className="text-xs text-muted-foreground mt-1">{s.sub}</div>
                       </div>
                     ))}
                   </div>
                   <div className="db-cw" style={{ height: 180 }}><canvas ref={donutRef} /></div>
                 </div>
 
-                <div className="db-g db-p">
+                <div className="glass-module p-4">
                   <div className="db-ct">Revenue Totals</div>
                   {[
                     ['Total Pipeline', metrics.totalPipeline, 'db-bl'],
@@ -260,16 +250,16 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
                   ))}
                 </div>
 
-                <div className="db-g db-p">
+                <div className="glass-module p-4">
                   <div className="db-ct">Fee Revenue by Status</div>
-                  <div className="db-stat-row"><span className="db-sn">On Track</span><span className="db-sv db-up">{metrics.onTrack.feeTotalStr} <span style={{ fontSize: 10, opacity: 0.6 }}>· {metrics.onTrack.count} deals</span></span></div>
-                  <div className="db-stat-row"><span className="db-sn">At Risk</span><span className="db-sv db-am">{metrics.atRisk.feeTotalStr} <span style={{ fontSize: 10, opacity: 0.6 }}>· {metrics.atRisk.count} deals</span></span></div>
-                  <div className="db-stat-row"><span className="db-sn">Off Track</span><span className="db-sv" style={{ color: 'rgba(160,190,210,0.35)' }}>{metrics.offTrack.feeTotalStr} <span style={{ fontSize: 10, opacity: 0.6 }}>· {metrics.offTrack.count} deals</span></span></div>
+                  <div className="db-stat-row"><span className="db-sn">On Track</span><span className="db-sv value-positive">{metrics.onTrack.feeTotalStr} <span className="text-muted-foreground" style={{ fontSize: 10 }}>· {metrics.onTrack.count} deals</span></span></div>
+                  <div className="db-stat-row"><span className="db-sn">At Risk</span><span className="db-sv value-warning">{metrics.atRisk.feeTotalStr} <span className="text-muted-foreground" style={{ fontSize: 10 }}>· {metrics.atRisk.count} deals</span></span></div>
+                  <div className="db-stat-row"><span className="db-sn">Off Track</span><span className="db-sv text-muted-foreground">{metrics.offTrack.feeTotalStr} <span style={{ fontSize: 10 }}>· {metrics.offTrack.count} deals</span></span></div>
                 </div>
               </div>
 
               {/* RIGHT: Deal Table */}
-              <div className="db-g db-p">
+              <div className="glass-module p-4">
                 <div className="db-ct">Deal Pipeline — Active Deals</div>
                 <div style={{ overflowX: 'auto' }}>
                   <table className="db-tbl">
@@ -363,7 +353,7 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
             </div>
 
             {/* ROW 2: Bar chart */}
-            <div className="db-g db-p">
+            <div className="glass-module p-4">
               <div className="db-ct">Revenue · Commissions · Profit — Monthly</div>
               <div style={{ display: 'flex', gap: 14, marginBottom: 6, fontSize: 9, color: 'rgba(140,175,200,0.55)' }}>
                 {[['rgba(80,155,210,0.8)', 'Revenue'], ['rgba(220,70,85,0.75)', 'Commissions'], ['rgba(40,200,130,0.8)', 'Profit']].map(([c, l]) => (
