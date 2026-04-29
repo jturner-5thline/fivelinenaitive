@@ -2094,6 +2094,9 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 onFieldBlur={handleFieldBlur}
                 saveStatus={saveStatus}
                 tokenContext={snippetTokenContext}
+                dealId={effectiveDealId ?? null}
+                dealName={effectiveDealName ?? null}
+                signature={composerSignature}
               />
             </div>
           )}
