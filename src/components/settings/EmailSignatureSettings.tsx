@@ -7,6 +7,7 @@ import { Loader2, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { shouldShowSignatureGhost } from '@/components/deal/email/signatureGhost';
 
 /**
  * Lets the signed-in user save a default email signature that the composer
@@ -72,6 +73,12 @@ export function EmailSignatureSettings() {
     return name ? `Best,\n${name}` : '';
   })();
 
+  // The composer uses the saved signature when set, otherwise the derived
+  // fallback. Mirror that here so the preview is accurate before saving.
+  const effectiveSignature = (value && value.trim()) ? value : derivedFallback;
+  const previewBody = 'Hi team,\n\nQuick note ahead of our call.';
+  const showGhost = shouldShowSignatureGhost(effectiveSignature, previewBody);
+
   return (
     <Card>
       <CardHeader>
@@ -97,6 +104,41 @@ export function EmailSignatureSettings() {
             Plain text. New lines are preserved. HTML is not rendered.
           </p>
         </div>
+
+        {/* Live preview — mirrors EmailComposerCard's body + ghost styling */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+              Preview
+            </Label>
+            {dirty && (
+              <span className="text-[10px] text-muted-foreground">Unsaved changes</span>
+            )}
+          </div>
+          <div className="rounded-md border bg-background px-4 py-3">
+            <div className="text-sm whitespace-pre-wrap text-foreground">
+              {previewBody}
+            </div>
+            {showGhost ? (
+              <div
+                className="text-[11px] text-muted-foreground/60 whitespace-pre-wrap pt-2 border-t border-border/30 mt-2 select-none"
+                aria-hidden
+              >
+                {effectiveSignature}
+              </div>
+            ) : (
+              <div className="text-[11px] italic text-muted-foreground/50 pt-2 border-t border-border/30 mt-2">
+                No signature will be shown.
+              </div>
+            )}
+          </div>
+          {!value.trim() && derivedFallback && (
+            <p className="text-[11px] text-muted-foreground">
+              Showing the default derived from your account. Type above to override.
+            </p>
+          )}
+        </div>
+
         <div className="flex items-center justify-end gap-2">
           {dirty && (
             <Button
