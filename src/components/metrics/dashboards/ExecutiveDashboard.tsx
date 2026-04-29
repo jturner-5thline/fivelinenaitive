@@ -576,42 +576,42 @@ export function ExecutiveDashboard() {
           }
         />
         <StatCard
-          title="Deals Closed (QTD)"
+          title="Deals Closed"
           value={fmtCount(kpis.dealsClosedQTD.value)}
-          subtitle="Entered Funded / Invoiced this quarter"
+          subtitle={`Entered Funded / Invoiced · ${selectedWindow.label}`}
           loading={kpis.dealsClosedQTD.loading}
           tooltip={
             <div className="space-y-1.5">
-              <p className="font-medium text-foreground">Deals Closed (QTD)</p>
-              <p>COUNT of distinct deals that <em>entered</em> the <em>Funded / Invoiced</em> stage during the current quarter (stage-entry events, not current snapshots).</p>
-              <p className="text-muted-foreground">Window (QTD): {qtdWindow}.</p>
+              <p className="font-medium text-foreground">Deals Closed</p>
+              <p>COUNT of distinct deals that <em>entered</em> the <em>Funded / Invoiced</em> stage during the selected window (stage-entry events, not current snapshots).</p>
+              <p className="text-muted-foreground">Window: {selectedWindow.label}.</p>
             </div>
           }
           onClick={() =>
             setDrilldown({
               kind: 'deals',
-              title: 'Deals Closed (QTD)',
-              subtitle: 'Stage-entry events into Funded / Invoiced this quarter',
+              title: `Deals Closed · ${selectedWindow.label}`,
+              subtitle: 'Stage-entry events into Funded / Invoiced for the selected window',
               rows: kpis.dealsClosedQTD.deals,
             })
           }
         />
         <StatCard
-          title="Revenue (QTD)"
+          title="Revenue"
           value={fmtMoney(kpis.revenueQTD.value)}
-          subtitle="5th Line Capital Advisors · QBO"
+          subtitle={`5th Line Capital Advisors · ${selectedWindow.label}`}
           loading={kpis.revenueQTD.loading}
           tooltip={
             <div className="space-y-1.5">
-              <p className="font-medium text-foreground">Revenue (QTD)</p>
+              <p className="font-medium text-foreground">Revenue</p>
               <p>QuickBooks <em>Profit &amp; Loss</em> Income total for <strong>5th Line Capital Advisors LLC</strong> (realm 193514877331929), accrual basis.</p>
-              <p className="text-muted-foreground">Window (QTD): {qtdWindow}.</p>
+              <p className="text-muted-foreground">Window: {selectedWindow.label}.</p>
             </div>
           }
           onClick={() =>
             setDrilldown({
               kind: 'revenue',
-              title: 'Revenue (QTD)',
+              title: `Revenue · ${selectedWindow.label}`,
               subtitle: '5th Line Capital Advisors · Income line items from QuickBooks P&L',
               rows: kpis.revenueQTD.lineItems,
             })
@@ -620,20 +620,20 @@ export function ExecutiveDashboard() {
         <StatCard
           title="Avg. Deal Size"
           value={fmtMoney(kpis.avgDealSize.value)}
-          subtitle="Entered Final Credit Items · Trailing 12 mo."
+          subtitle={`Entered Final Credit Items · ${selectedWindow.label}`}
           loading={kpis.avgDealSize.loading}
           tooltip={
             <div className="space-y-1.5">
               <p className="font-medium text-foreground">Avg. Deal Size</p>
-              <p>SUM of deal value ÷ COUNT of distinct deals that <em>entered</em> the <em>Final Credit Items</em> stage in the trailing 12 months. Re-entries deduped to one per deal.</p>
-              <p className="text-muted-foreground">Window (T12M): {t12mWindow}.</p>
+              <p>SUM of deal value ÷ COUNT of distinct deals that <em>entered</em> the <em>Final Credit Items</em> stage during the selected window. Re-entries deduped to one per deal.</p>
+              <p className="text-muted-foreground">Window: {selectedWindow.label}.</p>
             </div>
           }
           onClick={() =>
             setDrilldown({
               kind: 'deals',
-              title: 'Avg. Deal Size — Trailing 12 mo.',
-              subtitle: 'Deals that entered Final Credit Items in the last 12 months',
+              title: `Avg. Deal Size · ${selectedWindow.label}`,
+              subtitle: 'Deals that entered Final Credit Items during the selected window',
               rows: kpis.avgDealSize.deals,
             })
           }
