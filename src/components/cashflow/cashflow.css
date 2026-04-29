@@ -99,7 +99,7 @@
 .cf-kpi-label { font-size: var(--text-xs); text-transform: uppercase; color: var(--color-text-muted); font-weight: 500; }
 .cf-kpi-value { font-size: var(--text-lg); font-weight: 700; font-variant-numeric: tabular-nums; }
 
-.cf-actions { display: flex; gap: var(--space-2); align-items: center; }
+.cf-actions { display: flex; gap: var(--space-2); align-items: center; margin-left: auto; }
 
 /* Icon buttons */
 .cf-icon-btn {
