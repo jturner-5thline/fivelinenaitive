@@ -277,14 +277,6 @@ export function ExecutiveDashboard() {
     { month: 'Jan-26', inflow: 180000, outflow: 200000 },
   ];
 
-  const teamPerformanceData = [
-    { name: 'James', closed: 5, value: 12000000 },
-    { name: 'Flor', closed: 3, value: 8000000 },
-    { name: 'Niki', closed: 4, value: 9500000 },
-    { name: 'Paz', closed: 2, value: 4500000 },
-    { name: 'Chandler', closed: 1, value: 3000000 },
-  ];
-
   return (
     <div className="space-y-6">
       {/* Row 1: Key Metrics */}
@@ -376,34 +368,6 @@ export function ExecutiveDashboard() {
           </GlassCardBody>
         </GlassCard>
       </div>
-
-      {/* Row 4: Team Performance */}
-      <GlassCard interactive>
-        <ChartCardHeader title="Team Performance" subtitle="Quarter to date" />
-        <GlassCardBody>
-          <div className="h-[220px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={teamPerformanceData} margin={{ top: 8, right: 8, left: -10, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="2 4" stroke={GRID_STROKE} vertical={false} />
-                <XAxis dataKey="name" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
-                <YAxis yAxisId="left" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
-                <YAxis yAxisId="right" orientation="right" tickFormatter={formatCurrency} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
-                <Tooltip
-                  formatter={(value: number, name: string) => [
-                    name === 'Deal Value' ? formatCurrency(value) : value,
-                    name,
-                  ]}
-                  contentStyle={TOOLTIP_STYLE}
-                  cursor={{ fill: 'rgba(160,200,255,0.06)' }}
-                />
-                <Legend wrapperStyle={LEGEND_STYLE} iconType="circle" iconSize={8} />
-                <Bar yAxisId="left" dataKey="closed" fill="hsl(var(--primary))" name="Deals Closed" shape={createGlassBarShape({ radius: 4 })} />
-                <Bar yAxisId="right" dataKey="value" fill="hsl(var(--chart-2))" name="Deal Value" shape={createGlassBarShape({ radius: 4 })} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </GlassCardBody>
-      </GlassCard>
     </div>
   );
 }
