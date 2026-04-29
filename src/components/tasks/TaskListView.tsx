@@ -320,33 +320,52 @@ export function TaskListView({
 
             return (
               <div key={group.key}>
-                {/* Section header */}
+                {/* Section header — chevron and dot align with the data-row
+                    chevron/checkbox columns by reusing the row grid template. */}
                 <button
                   onClick={() => toggleSection(group.key)}
-                  className="w-full flex items-center gap-2.5 px-4 h-9 transition-colors text-left sticky z-[5]"
+                  className={cn(
+                    'w-full grid', TASK_GRID_COLS,
+                    'gap-2 items-center px-4 min-h-[34px] text-left sticky z-[5] transition-colors',
+                    'border-b border-border/30',
+                  )}
                   style={{
-                    top: 38,
+                    top: 36,
                     borderLeft: `2px solid ${accentColor}`,
                     backgroundColor: `${accentColor}10`,
                     backdropFilter: 'blur(6px)',
-                    borderBottom: '1px solid rgba(255,255,255,0.04)',
                   }}
                 >
-                  {isCollapsed ? (
-                    <ChevronRight className="h-3 w-3" style={{ color: '#7a8194' }} />
-                  ) : (
-                    <ChevronDown className="h-3 w-3" style={{ color: '#7a8194' }} />
-                  )}
-                  <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accentColor }} />
-                  <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: '#cfd5e0' }}>{group.label}</span>
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md" style={{ backgroundColor: `${accentColor}1f`, color: accentColor }}>
-                    {group.tasks.length}
-                  </span>
-                  {group.key === 'complete' && (
-                    <span className="text-[10px] ml-2" style={{ color: '#7a8194' }}>
-                      {isCollapsed ? 'Show completed' : 'Hide completed'}
+                  <div aria-hidden />
+                  <div className="flex items-center justify-center">
+                    {isCollapsed
+                      ? <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                      : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                  </div>
+                  <div className="flex items-center justify-center">
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accentColor }} />
+                  </div>
+                  <div aria-hidden />
+                  <div aria-hidden />
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[11px] font-semibold uppercase tracking-wide truncate" style={{ color: '#cfd5e0' }}>
+                      {group.label}
                     </span>
-                  )}
+                    <span
+                      className="text-[10px] font-medium px-1.5 py-0.5 rounded-md"
+                      style={{ backgroundColor: `${accentColor}1f`, color: accentColor }}
+                    >
+                      {group.tasks.length}
+                    </span>
+                    {group.key === 'complete' && (
+                      <span className="text-[10px] text-muted-foreground">
+                        {isCollapsed ? 'Show completed' : 'Hide completed'}
+                      </span>
+                    )}
+                  </div>
+                  {/* Spacer cells for remaining columns to keep grid aligned. */}
+                  <div aria-hidden /><div aria-hidden /><div aria-hidden />
+                  <div aria-hidden /><div aria-hidden /><div aria-hidden /><div aria-hidden />
                 </button>
 
                 {!isCollapsed && (
