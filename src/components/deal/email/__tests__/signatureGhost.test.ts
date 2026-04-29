@@ -36,9 +36,10 @@ describe('shouldShowSignatureGhost (runtime guard)', () => {
     expect(shouldShowSignatureGhost(SIG, body)).toBe(false);
   });
 
-  it('does not suppress when the first-line token is too short (avoids false positives)', () => {
-    // 2-char sign-off should not trigger tail suppression
-    expect(shouldShowSignatureGhost('JD', 'Some long body ending with JD letters somewhere')).toBe(true);
+  it('does not suppress when a short first-line token is absent from the body tail', () => {
+    // 2-char sign-off "JD" — full-string match path also clears (absent),
+    // and tail-token suppression must NOT trigger for tokens shorter than 3.
+    expect(shouldShowSignatureGhost('JD', 'Some long body without the token at the end.')).toBe(true);
   });
 
   it('is pure — never mutates inputs (referential body stays identical)', () => {
