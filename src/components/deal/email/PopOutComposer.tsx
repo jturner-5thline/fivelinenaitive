@@ -44,7 +44,7 @@ function DraftStatusIndicator({ status }: { status: DraftSaveStatus }) {
 
 interface PopOutComposerProps {
   draft: ReplyDraft;
-  onSend: (email: Omit<MockEmail, 'id' | 'threadId'>) => void;
+  onSend: (email: Omit<MockEmail, 'id' | 'threadId'>, opts?: ComposerSendOptions) => void;
   onDiscard: () => void;
   onPopIn: (draft: ReplyDraft) => void;
   onDraftChange?: (draft: ReplyDraft) => void;
@@ -139,7 +139,7 @@ export function PopOutComposer({
   const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
   const pendingSendOpts = useMemo<{ current: ComposerSendOptions }>(() => ({ current: {} }), []);
 
-  const executeSend = useCallback(async (_opts: ComposerSendOptions) => {
+  const executeSend = useCallback(async (opts: ComposerSendOptions) => {
     clearPreSendAlert();
     if (recipients.to.length === 0) { toast.error('Please add a recipient'); return; }
     await new Promise(r => setTimeout(r, 1200));
@@ -163,7 +163,7 @@ export function PopOutComposer({
       is_follow_up: false,
       needs_response: false,
       category: 'deal',
-    });
+    }, opts);
     toast.success('Email sent successfully', { description: `To: ${recipients.to.join(', ')}`, icon: '✉️' });
   }, [recipients.to, subject, body, attachments, onSend, clearPreSendAlert]);
 
