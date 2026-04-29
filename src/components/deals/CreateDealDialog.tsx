@@ -307,14 +307,8 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
     setDealTypesOpen(false);
   };
 
-  const handleDealTypeSelect = (
-    event: Event,
-    typeId: string,
-  ) => {
+  const handleDealTypeSelect = (typeId: string) => {
     console.log('[CreateDealDialog] Deal Type onSelect fired', typeId);
-    event.preventDefault();
-    event.stopPropagation();
-
     setSelectedDealTypes((prev) => (
       prev.includes(typeId)
         ? prev.filter((id) => id !== typeId)
@@ -323,7 +317,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   };
 
   const defaultTrigger = (
-    <Button variant="liquid-glass" size="sm" className="gap-2">
+    <Button type="button" variant="liquid-glass" size="sm" className="gap-2">
       <Plus className="h-4 w-4" />
       New Deal
     </Button>
@@ -424,10 +418,11 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                                   <CommandItem
                                     key={type.id}
                                     value={type.label}
-                                    onSelect={(value, event) => {
-                                      void value;
-                                      handleDealTypeSelect(event, type.id);
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
                                     }}
+                                    onSelect={() => handleDealTypeSelect(type.id)}
                                     className="gap-2"
                                   >
                                     <Checkbox checked={isSelected} className="pointer-events-none" />
