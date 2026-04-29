@@ -26,6 +26,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FilterMultiSelect } from './FilterMultiSelect';
 import './cashflow.css';
+import { computeCashInTotal } from './WeeklySidebar';
+import { fmtShort } from './formatters';
+import { MessageSquare } from 'lucide-react';
 
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
@@ -442,6 +445,9 @@ export function CashFlowManager() {
   const [filterQuarters, setFilterQuarters] = useState<string[]>([]);
   const [debouncedYears, setDebouncedYears] = useState<string[]>([]);
   const [debouncedQuarters, setDebouncedQuarters] = useState<string[]>([]);
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
+  const [cashInDialogOpen, setCashInDialogOpen] = useState(false);
+  const [cellCommentCount, setCellCommentCount] = useState(0);
 
   // Entity (account) and Category filters for Configure-driven KPIs/charts/grid
   const [filterEntities, setFilterEntities] = useState<string[]>([]);
@@ -1015,6 +1021,52 @@ export function CashFlowManager() {
             Clear
           </button>
         )}
+        {activeTab === 'weekly' && (
+          <>
+            <button
+              type="button"
+              className="cf-btn cf-btn-ghost"
+              style={{ fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              onClick={() => setCashInDialogOpen(true)}
+              title="Cash-In: Next 8 Weeks — click to view & edit"
+            >
+              <span style={{ color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, fontSize: 10 }}>
+                Cash-In Next 8W:
+              </span>
+              <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>
+                {fmtShort(computeCashInTotal(rawSidebar, sidebarDbItems))}
+              </span>
+            </button>
+            <button
+              type="button"
+              className="cf-btn cf-btn-ghost"
+              style={{ fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 6, position: 'relative' }}
+              onClick={() => setNotesDialogOpen(true)}
+              title="Notes & Cell Comments"
+            >
+              <MessageSquare size={12} />
+              <span>Notes</span>
+              {cellCommentCount > 0 && (
+                <span
+                  aria-label={`${cellCommentCount} cell comments`}
+                  style={{
+                    background: 'var(--color-primary)',
+                    color: 'white',
+                    borderRadius: 999,
+                    fontSize: 9,
+                    fontWeight: 700,
+                    padding: '1px 6px',
+                    minWidth: 16,
+                    textAlign: 'center',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {cellCommentCount}
+                </span>
+              )}
+            </button>
+          </>
+        )}
         <span className="cf-filter-summary">
           {activeTab === 'daily'
             ? `${filteredDaily.dates.length} days`
@@ -1074,6 +1126,11 @@ export function CashFlowManager() {
           onNoteEdit={handleNoteEdit}
           onNoteRemove={handleNoteRemove}
           onNoteAdd={handleNoteAdd}
+          notesDialogOpen={notesDialogOpen}
+          onNotesDialogOpenChange={setNotesDialogOpen}
+          cashInDialogOpen={cashInDialogOpen}
+          onCashInDialogOpenChange={setCashInDialogOpen}
+          onCellCommentCountChange={setCellCommentCount}
         />
       )}
 

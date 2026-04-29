@@ -1,9 +1,10 @@
 import { useState, useEffect, memo, useCallback, useRef, useMemo } from 'react';
-import { ChevronDown, ChevronRight, MessageSquare, PanelRightOpen, PanelRightClose, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, MessageSquare, X } from 'lucide-react';
 import type { WeeklyData, SidebarData, PlanSnapshot, ThemeMode, WeeklyOverrides } from './types';
 import { fmtAbbrev } from './formatters';
 import { WeeklyCharts } from './WeeklyCharts';
-import { WeeklySidebar } from './WeeklySidebar';
+import { CashInPanel, NotesPanel } from './WeeklySidebar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useGridWheelPassthrough } from './useGridWheelPassthrough';
 import { ACCOUNT_OPTIONS } from './scheduledCashFlows';
 import { useCellComments, cellCommentKey } from './cellComments/useCellComments';
@@ -44,6 +45,11 @@ interface WeeklyReportTabProps {
   onNoteEdit: (index: number, value: string) => void;
   onNoteRemove: (index: number) => void;
   onNoteAdd: () => void;
+  notesDialogOpen?: boolean;
+  onNotesDialogOpenChange?: (open: boolean) => void;
+  cashInDialogOpen?: boolean;
+  onCashInDialogOpenChange?: (open: boolean) => void;
+  onCellCommentCountChange?: (count: number) => void;
 }
 
 const DEBT_ADV_PARENT_KEY = 'Debt Advisory Revenue';
