@@ -267,7 +267,14 @@ CRITICAL RULES:
       if (drafts.length === 0) {
         throw new Error('No active lenders found to draft emails for.');
       }
-      setEmailDrafts(drafts);
+
+      // ── Resolve each lender's primary contact email from the lender directory.
+      // Match `master_lenders` by case-insensitive name (RLS scopes to the user's
+      // workspace). For each match, pull `lender_contacts` and pre-populate the
+      // To field with the primary contact (or first contact, or legacy
+      // master_lenders.email as a final fallback).
+      const enriched = await enrichDraftsWithLenderContacts(drafts);
+      setEmailDrafts(enriched);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to draft submission email';
       toast({ title: 'Draft failed', description: message, variant: 'destructive' });
