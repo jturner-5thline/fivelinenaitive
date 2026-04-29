@@ -663,15 +663,16 @@ export function ExecutiveDashboard() {
         <GlassCard interactive>
           <ChartCardHeader title="Revenue by Month" subtitle="Last 6 Months" />
           <GlassCardBody>
-            <div className="h-[220px]">
+            <div className="h-[240px]" role="img" aria-label="Revenue by month, last 6 months">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={revenueByMonthData} margin={{ top: 8, right: 8, left: -10, bottom: 4 }}>
+                <ComposedChart data={revenueByMonthData} margin={{ top: 8, right: 8, left: -6, bottom: 4 }}>
                   <CartesianGrid strokeDasharray="2 4" stroke={GRID_STROKE} vertical={false} />
                   <XAxis dataKey="month" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
                   <YAxis tickFormatter={formatCurrency} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={TOOLTIP_STYLE} />
-                  <Area type="monotone" dataKey="revenue" fill="hsl(var(--primary) / 0.18)" stroke="transparent" />
-                  <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={1} dot={{ r: 3, fill: 'hsl(var(--primary))', strokeWidth: 0 }} />
+                  <Tooltip formatter={(value: number) => [formatCurrency(value), 'Revenue']} contentStyle={TOOLTIP_STYLE} />
+                  <Legend wrapperStyle={LEGEND_STYLE} iconType="circle" iconSize={8} />
+                  <Area type="monotone" dataKey="revenue" name="Revenue" fill="hsl(var(--primary) / 0.22)" stroke="transparent" legendType="none" />
+                  <Line type="monotone" dataKey="revenue" name="Revenue" stroke="hsl(var(--primary))" strokeWidth={1.75} dot={{ r: 3, fill: 'hsl(var(--primary))', strokeWidth: 0 }} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -681,14 +682,15 @@ export function ExecutiveDashboard() {
         <GlassCard interactive>
           <ChartCardHeader title="Pipeline by Stage" subtitle="Current" />
           <GlassCardBody>
-            <div className="h-[220px]">
+            <div className="h-[240px]" role="img" aria-label="Pipeline value by stage">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={pipelineByStageData} layout="vertical" margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
                   <CartesianGrid strokeDasharray="2 4" stroke={GRID_STROKE} horizontal={false} />
                   <XAxis type="number" tickFormatter={formatCurrency} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
-                  <YAxis dataKey="stage" type="category" width={96} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(160,200,255,0.06)' }} />
-                  <Bar dataKey="value" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
+                  <YAxis dataKey="stage" type="category" width={108} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
+                  <Tooltip formatter={(value: number) => [formatCurrency(value), 'Pipeline Value']} contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(160,200,255,0.08)' }} />
+                  <Legend wrapperStyle={LEGEND_STYLE} iconType="circle" iconSize={8} />
+                  <Bar dataKey="value" name="Pipeline Value" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
