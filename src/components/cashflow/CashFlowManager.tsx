@@ -445,6 +445,9 @@ export function CashFlowManager() {
   const [filterQuarters, setFilterQuarters] = useState<string[]>([]);
   const [debouncedYears, setDebouncedYears] = useState<string[]>([]);
   const [debouncedQuarters, setDebouncedQuarters] = useState<string[]>([]);
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
+  const [cashInDialogOpen, setCashInDialogOpen] = useState(false);
+  const [cellCommentCount, setCellCommentCount] = useState(0);
 
   // Entity (account) and Category filters for Configure-driven KPIs/charts/grid
   const [filterEntities, setFilterEntities] = useState<string[]>([]);
