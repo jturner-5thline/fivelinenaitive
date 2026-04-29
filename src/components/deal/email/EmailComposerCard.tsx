@@ -975,7 +975,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
             aria-hidden
             data-testid="signature-ghost"
           >
-            {signature}
+            {signatureToPlainText(signature)}
           </div>
         )}
         {/* Deal-link preview — mirrors what the outgoing message will reference.
