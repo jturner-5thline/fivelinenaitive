@@ -1096,16 +1096,31 @@ export function CashFlowManager() {
             </button>
           </>
         )}
-        <span className="cf-filter-summary">
-          {activeTab === 'daily'
-            ? `${filteredDaily.dates.length} days`
-            : `${Object.keys(filteredWeekly).length} weeks`}
-          {isConfigureFilterActive && (
-            <span style={{ marginLeft: 8, opacity: 0.75 }}>
-              · Configure-only: {filteredScheduledItems.length} entr{filteredScheduledItems.length === 1 ? 'y' : 'ies'}
-            </span>
-          )}
-        </span>
+        {activeTab === 'daily' && (
+          <span className="cf-filter-summary">
+            {`${filteredDaily.dates.length} days`}
+            {isConfigureFilterActive && (
+              <span style={{ marginLeft: 8, opacity: 0.75 }}>
+                · Configure-only: {filteredScheduledItems.length} entr{filteredScheduledItems.length === 1 ? 'y' : 'ies'}
+              </span>
+            )}
+          </span>
+        )}
+        {activeTab === 'weekly' && isConfigureFilterActive && (
+          <span className="cf-filter-summary" style={{ opacity: 0.75 }}>
+            Configure-only: {filteredScheduledItems.length} entr{filteredScheduledItems.length === 1 ? 'y' : 'ies'}
+          </span>
+        )}
+        {activeTab === 'weekly' && (
+          <button
+            type="button"
+            className="cf-btn cf-btn-secondary"
+            style={{ marginLeft: activeTab === 'weekly' && !isConfigureFilterActive ? 'auto' : undefined }}
+            onClick={() => setScheduledModalOpen(true)}
+          >
+            Configure
+          </button>
+        )}
       </div>
 
       {/* Hidden file input for Excel import */}
