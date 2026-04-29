@@ -301,7 +301,7 @@ ${h.most_overdue_item && (h.most_overdue_item.days_overdue ?? 0) >= 3
     let userContext = "";
     const { data: profile } = await supabase
       .from("profiles")
-      .select("display_name, first_name, last_name, email")
+      .select("display_name, first_name, last_name, email, email_signature")
       .eq("user_id", user.id)
       .single();
 
@@ -311,6 +311,10 @@ ${h.most_overdue_item && (h.most_overdue_item.days_overdue ?? 0) >= 3
 - Email: ${profile.email || user.email}
 `;
     }
+
+    // User-level signature (configured in Settings → Email) takes precedence
+    // over the company-level style guide signature when appending to AI drafts.
+    const userSignature = ((profile as any)?.email_signature || "").trim();
 
     // ─── Load company Email Style Guide (admin-managed) ─────────
     // Resolves the user's company, then fetches the configured signature,
