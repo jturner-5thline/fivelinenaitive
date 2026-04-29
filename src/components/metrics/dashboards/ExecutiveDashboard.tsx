@@ -210,14 +210,20 @@ function StatCard({
   value,
   subtitle,
   loading,
+  onClick,
 }: {
   title: string;
   value: string | number;
   subtitle?: string;
   loading?: boolean;
+  onClick?: () => void;
 }) {
   return (
-    <GlassCard interactive>
+    <GlassCard
+      interactive
+      onClick={onClick}
+      className={onClick ? 'cursor-pointer' : undefined}
+    >
       <GlassCardHeader title={title} subtitle={subtitle} />
       <GlassCardBody className="pt-0 pb-5 space-y-2">
         {loading ? (
