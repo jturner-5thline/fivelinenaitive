@@ -268,15 +268,6 @@ export function ExecutiveDashboard() {
     { stage: 'Closed Won', value: 3000000 },
   ];
 
-  const cashFlowData = [
-    { month: 'Aug-25', inflow: 300000, outflow: 250000 },
-    { month: 'Sep-25', inflow: 280000, outflow: 260000 },
-    { month: 'Oct-25', inflow: 350000, outflow: 280000 },
-    { month: 'Nov-25', inflow: 400000, outflow: 300000 },
-    { month: 'Dec-25', inflow: 320000, outflow: 310000 },
-    { month: 'Jan-26', inflow: 180000, outflow: 200000 },
-  ];
-
   return (
     <div className="space-y-6">
       {/* Row 1: Key Metrics */}
@@ -345,28 +336,9 @@ export function ExecutiveDashboard() {
         </GlassCard>
       </div>
 
-      {/* Row 3: Deal Types & Cash Flow */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Row 3: Deal Types */}
+      <div className="grid grid-cols-1 gap-4">
         <DealsByStatusPieChart />
-
-        <GlassCard interactive>
-          <ChartCardHeader title="Cash Flow" subtitle="Last 6 Months" />
-          <GlassCardBody>
-            <div className="h-[220px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={cashFlowData} margin={{ top: 8, right: 8, left: -10, bottom: 4 }}>
-                  <CartesianGrid strokeDasharray="2 4" stroke={GRID_STROKE} vertical={false} />
-                  <XAxis dataKey="month" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
-                  <YAxis tickFormatter={formatCurrency} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(160,200,255,0.06)' }} />
-                  <Legend wrapperStyle={LEGEND_STYLE} iconType="circle" iconSize={8} />
-                  <Bar dataKey="inflow" fill="hsl(152, 58%, 52%)" name="Inflow" shape={createGlassBarShape({ radius: 4 })} />
-                  <Bar dataKey="outflow" fill="hsl(354, 62%, 56%)" name="Outflow" shape={createGlassBarShape({ radius: 4 })} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </GlassCardBody>
-        </GlassCard>
       </div>
     </div>
   );
