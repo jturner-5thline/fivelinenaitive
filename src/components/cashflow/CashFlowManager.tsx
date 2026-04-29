@@ -1160,6 +1160,8 @@ export function CashFlowManager() {
           cashInDialogOpen={cashInDialogOpen}
           onCashInDialogOpenChange={setCashInDialogOpen}
           onCellCommentCountChange={setCellCommentCount}
+          weeksFuture={weeksFuture}
+          onWeeksFutureChange={setWeeksFuture}
         />
       )}
 
