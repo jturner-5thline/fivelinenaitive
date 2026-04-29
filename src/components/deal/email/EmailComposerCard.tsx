@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -16,9 +15,9 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Send, Paperclip, Loader2, X, Trash2, Maximize2, Check, AlertCircle, Cloud,
-  Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Edit3, ChevronDown,
+  Edit3, ChevronDown,
   MoreHorizontal, Calendar as CalendarIcon, Image as ImageIcon, Archive, MailX,
-  Link2,
+  Link2, Database,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { cn } from '@/lib/utils';
@@ -30,6 +29,7 @@ import { SnippetPicker } from './SnippetPicker';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { shouldShowSignatureGhost } from './signatureGhost';
+import { EmailRichTextEditor } from './EmailRichTextEditor';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Public surface
