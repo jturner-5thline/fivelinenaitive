@@ -179,75 +179,9 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
       },
     });
 
-    // Chart 3 — Projected Ending Cash (roll-forward from configured rows)
-    chart3Instance.current = new Chart(canvas3, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [
-          {
-            label: 'Actual Ending Cash',
-            data: actualEndingCash,
-            borderColor: isDark ? '#22c55e' : '#16a34a',
-            backgroundColor: isDark ? 'rgba(34,197,94,0.1)' : 'rgba(22,163,74,0.1)',
-            fill: true,
-            tension: 0.25,
-            spanGaps: false,
-            borderWidth: 1.5,
-            pointRadius: labels.length > 50 ? 0 : 2,
-          },
-          {
-            label: 'Projected Ending Cash',
-            data: projectedEndingCash,
-            borderColor: isDark ? '#a78bfa' : '#7c3aed',
-            backgroundColor: isDark ? 'rgba(167,139,250,0.12)' : 'rgba(124,58,237,0.10)',
-            borderDash: [6, 4],
-            fill: true,
-            tension: 0.25,
-            spanGaps: false,
-            borderWidth: 1.5,
-            pointRadius: labels.length > 50 ? 0 : 2,
-          },
-          {
-            label: 'Min Liquidity $250K',
-            data: new Array(labels.length).fill(250),
-            borderColor: isDark ? '#f59e0b' : '#d97706',
-            borderDash: [5, 5],
-            borderWidth: 1.5,
-            pointRadius: 0,
-            fill: false,
-          },
-          {
-            label: 'Caution $100K',
-            data: new Array(labels.length).fill(100),
-            borderColor: isDark ? '#5a6580' : '#9ca3af',
-            borderDash: [3, 3],
-            borderWidth: 1.5,
-            pointRadius: 0,
-            fill: false,
-          },
-        ],
-      },
-      options: {
-        ...commonOptions,
-        plugins: {
-          ...commonOptions.plugins,
-          tooltip: {
-            callbacks: {
-              label: (ctx) =>
-                ctx.parsed.y == null
-                  ? ''
-                  : `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(0)}K`,
-            },
-          },
-        },
-      },
-    });
-
     return () => {
       chart1Instance.current?.destroy();
       chart2Instance.current?.destroy();
-      chart3Instance.current?.destroy();
     };
   }, [chartData, theme]);
 
@@ -264,19 +198,6 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
           <div className="cf-chart-title">Cash In vs Cash Out</div>
           <div style={{ height: 200 }}>
             <canvas ref={chart2Ref} />
-          </div>
-        </div>
-      </div>
-      <div className="cf-charts-row">
-        <div className="cf-chart-card" style={{ flex: 1 }}>
-          <div className="cf-chart-title">
-            Projected Ending Cash
-            <span style={{ fontSize: 11, fontWeight: 400, opacity: 0.7, marginLeft: 8 }}>
-              Roll-forward from beginning cash using configured weekly net cash
-            </span>
-          </div>
-          <div style={{ height: 220 }}>
-            <canvas ref={chart3Ref} />
           </div>
         </div>
       </div>
