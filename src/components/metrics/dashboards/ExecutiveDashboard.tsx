@@ -194,7 +194,7 @@ function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date }
                 activeShape={GlassActiveShape}
               >
                 {pieData.map((_, i) => (
-                  <Cell key={i} fill={STATUS_COLORS[i]} fillOpacity={0.75} stroke={STATUS_COLORS[i]} strokeWidth={0.5} />
+                  <Cell key={i} fill={STATUS_COLORS[i]} fillOpacity={0.92} stroke={STATUS_COLORS[i]} strokeWidth={0.75} />
                 ))}
               </Pie>
               <Tooltip
@@ -208,15 +208,39 @@ function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date }
           </ResponsiveContainer>
         </div>
         {/* Below-chart legend — matches Outstanding A/R formatting */}
-        <div className="mt-3 space-y-1.5">
-          {legendItems.map((item, i) => (
-            <div key={i} className="flex items-center gap-2 text-xs">
-              <span className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color, opacity: 0.75 }} />
-              <span className="truncate flex-1" style={{ color: 'rgba(180, 210, 245, 0.7)' }} title={item.label}>{item.label}</span>
-              <span className="font-medium tabular-nums flex-shrink-0" style={{ color: GLASS_TOKENS.valueColor }}>{item.value}</span>
-            </div>
-          ))}
-        </div>
+        <ul className="mt-3 space-y-1.5" aria-label="Deals by status legend">
+          {legendItems.map((item, i) => {
+            const pct = total > 0 ? ((totals[STATUS_BUCKETS[i].key] / total) * 100).toFixed(1) : '0.0';
+            return (
+              <li key={i} className="flex items-center gap-2 text-xs">
+                <span
+                  className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0"
+                  style={{ backgroundColor: item.color, opacity: 0.95 }}
+                  aria-hidden="true"
+                />
+                <span
+                  className="truncate flex-1"
+                  style={{ color: 'rgba(210, 225, 250, 0.88)' }}
+                  title={item.label}
+                >
+                  {item.label}
+                </span>
+                <span
+                  className="tabular-nums flex-shrink-0 text-[10px]"
+                  style={{ color: 'rgba(200, 220, 250, 0.65)' }}
+                >
+                  {pct}%
+                </span>
+                <span
+                  className="font-medium tabular-nums flex-shrink-0 min-w-[56px] text-right"
+                  style={{ color: GLASS_TOKENS.valueColor }}
+                >
+                  {item.value}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
       </GlassCardBody>
     </GlassCard>
   );
