@@ -434,25 +434,23 @@ export function ExecutiveDashboard() {
   // they were last reviewing.
   const STORAGE_KEY = 'executiveDashboard.weekAnchor';
   const [weekAnchor, setWeekAnchor] = useState<Date>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = window.localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const d = new Date(raw);
-          if (!Number.isNaN(d.getTime())) return startOfWeek(d, { weekStartsOn: 1 });
-        }
-      } catch { /* ignore */ }
-    }
+    try {
+      const raw = globalThis.localStorage?.getItem(STORAGE_KEY);
+      if (raw) {
+        const d = new Date(raw);
+        if (!Number.isNaN(d.getTime())) return startOfWeek(d, { weekStartsOn: 1 });
+      }
+    } catch { /* ignore */ }
     return startOfWeek(new Date(), { weekStartsOn: 1 });
   });
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, weekAnchor.toISOString());
+      globalThis.localStorage?.setItem(STORAGE_KEY, weekAnchor.toISOString());
     } catch { /* ignore */ }
   }, [weekAnchor]);
 
-  const window: ExecKpiWindow = useMemo(() => {
+  const selectedWindow: ExecKpiWindow = useMemo(() => {
     const start = startOfWeek(weekAnchor, { weekStartsOn: 1 });
     const end = endOfWeek(weekAnchor, { weekStartsOn: 1 });
     return {
@@ -471,7 +469,7 @@ export function ExecutiveDashboard() {
   const goNext = useCallback(() => setWeekAnchor(d => addWeeks(d, 1)), []);
   const goCurrent = useCallback(() => setWeekAnchor(startOfWeek(new Date(), { weekStartsOn: 1 })), []);
 
-  const kpis = useExecutiveTopRowKpis(window);
+  const kpis = useExecutiveTopRowKpis(selectedWindow);
   const [drilldown, setDrilldown] = useState<ExecKpiDrilldown | null>(null);
 
   // Date windows surfaced in tooltips so users can see the exact period
