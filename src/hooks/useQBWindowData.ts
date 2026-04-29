@@ -167,10 +167,14 @@ export function useQBRevenueByDateRange(
 }
 
 /**
- * Given an inclusive date range, return the immediately preceding range of
- * identical length. Used to compute "vs Previous Period" deltas that align
- * to whatever the user has selected (a quarter → prior quarter, a month →
- * prior month, a custom span → the prior span of the same length).
+ * Given an inclusive date range, return the "previous comparable period".
+ *
+ * If the range exactly matches a full calendar quarter, returns the
+ * preceding calendar quarter (Q2 2026 → Q1 2026, Q1 2026 → Q4 2025).
+ * If the range exactly matches a full calendar month, returns the
+ * preceding calendar month (Feb 2026 → Jan 2026, with correct day counts).
+ * Otherwise falls back to the immediately preceding span of identical
+ * length in days.
  */
 export function getPriorDateRange(
   startDate: string,
@@ -178,13 +182,47 @@ export function getPriorDateRange(
 ): { start: string; end: string } {
   const start = new Date(startDate + 'T00:00:00');
   const end = new Date(endDate + 'T00:00:00');
-  // Length in whole days, inclusive of both endpoints.
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  const sy = start.getFullYear();
+  const sm = start.getMonth();
+  const sd = start.getDate();
+  const ey = end.getFullYear();
+  const em = end.getMonth();
+  const ed = end.getDate();
+  const lastDayOfEndMonth = new Date(ey, em + 1, 0).getDate();
+
+  // Detect full calendar quarter: starts on month 0/3/6/9 day 1, ends on
+  // last day of (startMonth + 2) in the same year.
+  const isQuarterStart = sd === 1 && sm % 3 === 0;
+  const isQuarterEnd = ey === sy && em === sm + 2 && ed === lastDayOfEndMonth;
+  if (isQuarterStart && isQuarterEnd) {
+    const priorStartMonth = sm - 3;
+    const priorYear = priorStartMonth < 0 ? sy - 1 : sy;
+    const priorMonth = (priorStartMonth + 12) % 12;
+    const priorStart = new Date(priorYear, priorMonth, 1);
+    const priorEnd = new Date(priorYear, priorMonth + 3, 0); // last day of priorMonth+2
+    return { start: fmt(priorStart), end: fmt(priorEnd) };
+  }
+
+  // Detect full calendar month: starts day 1, ends last day of same month.
+  const isMonthStart = sd === 1;
+  const isMonthEnd = ey === sy && em === sm && ed === lastDayOfEndMonth;
+  if (isMonthStart && isMonthEnd) {
+    const priorMonthIdx = sm - 1;
+    const priorYear = priorMonthIdx < 0 ? sy - 1 : sy;
+    const priorMonth = (priorMonthIdx + 12) % 12;
+    const priorStart = new Date(priorYear, priorMonth, 1);
+    const priorEnd = new Date(priorYear, priorMonth + 1, 0);
+    return { start: fmt(priorStart), end: fmt(priorEnd) };
+  }
+
+  // Fallback: previous N days of identical length, ending the day before start.
   const lengthDays = Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
   const priorEnd = new Date(start);
   priorEnd.setDate(priorEnd.getDate() - 1);
   const priorStart = new Date(priorEnd);
   priorStart.setDate(priorStart.getDate() - (lengthDays - 1));
-  const fmt = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   return { start: fmt(priorStart), end: fmt(priorEnd) };
 }
