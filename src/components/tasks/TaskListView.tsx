@@ -257,24 +257,39 @@ export function TaskListView({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div>
-        {/* Column header */}
-        <div className={`grid ${TASK_GRID_COLS} gap-2 items-center px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide sticky top-0 z-10`}
-          style={{ backgroundColor: 'rgba(18,21,27,0.92)', backdropFilter: 'blur(8px)', color: '#7a8194', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-          <div />
-          <div />
-          <div className="cursor-pointer" onClick={onSelectAll} title="Select all (Ctrl+A)">
-            <Checkbox checked={selectedTaskIds && selectedTaskIds.size > 0 && selectedTaskIds.size === tasks.length} onCheckedChange={() => onSelectAll?.()} className="h-3.5 w-3.5" />
+        {/* Column header — uses the SAME grid template as data rows so
+            every header label sits directly above its column. */}
+        <div
+          className={cn(
+            'grid', TASK_GRID_COLS,
+            'gap-2 items-center px-4 min-h-[36px]',
+            'text-[11px] font-medium uppercase tracking-wide sticky top-0 z-10',
+            'bg-background/90 backdrop-blur-md border-b border-border/40 text-muted-foreground',
+          )}
+        >
+          <div aria-hidden />
+          <div aria-hidden />
+          <div
+            className="cursor-pointer flex items-center justify-center"
+            onClick={onSelectAll}
+            title="Select all (Ctrl+A)"
+          >
+            <Checkbox
+              checked={selectedTaskIds && selectedTaskIds.size > 0 && selectedTaskIds.size === tasks.length}
+              onCheckedChange={() => onSelectAll?.()}
+              className="h-3.5 w-3.5"
+            />
           </div>
-          <div className="w-5" />
-          <div />
-          <div>Task name</div>
-          <div>Owner</div>
-          <div></div>
-          <div>Deal</div>
-          <div>Due date</div>
-          <div>Priority</div>
-          <div>Status</div>
-          <div />
+          <div aria-hidden />
+          <div aria-hidden />
+          <div className="truncate">Task name</div>
+          <div className="truncate">Owner</div>
+          <div aria-hidden />
+          <div className="truncate">Deal</div>
+          <div className="text-right tabular-nums">Due date</div>
+          <div className="text-center">Priority</div>
+          <div className="text-center">Status</div>
+          <div aria-hidden />
         </div>
 
         {/* Pinned Overdue section */}
