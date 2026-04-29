@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Newspaper, Mail, DollarSign, GitBranch, ListChecks,
-  AlertCircle, ArrowRight, ExternalLink, Clock, TrendingUp,
+  AlertCircle, ExternalLink, TrendingUp,
   FileText, X, ChevronRight, ChevronLeft, RefreshCw,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -225,14 +225,6 @@ function GlassStatCard({ label, value, sub, color }: { label: string; value: str
 }
 
 // ── News item icon/badge helpers ────────────────────────────────
-const NEWS_CATEGORY_CONFIG: Record<string, { icon: React.ElementType; badge: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  pipeline: { icon: GitBranch, badge: 'Pipeline', variant: 'default' },
-  email: { icon: Mail, badge: 'Email', variant: 'secondary' },
-  risk: { icon: AlertCircle, badge: 'Risk', variant: 'destructive' },
-  milestone: { icon: ListChecks, badge: 'Milestone', variant: 'destructive' },
-  general: { icon: Newspaper, badge: 'Update', variant: 'outline' },
-};
-
 // ── Topic badge colors ─────────────────────────────────────────
 const TOPIC_COLORS: Record<string, string> = {
   'Venture Debt': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
