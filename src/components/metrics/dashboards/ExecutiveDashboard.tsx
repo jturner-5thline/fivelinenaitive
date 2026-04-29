@@ -123,8 +123,8 @@ function useDealsByStatusFee(window?: { start: Date; end: Date }) {
   });
 }
 
-function DealsByStatusPieChart() {
-  const { data, isLoading } = useDealsByStatusFee();
+function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date } }) {
+  const { data, isLoading } = useDealsByStatusFee(window);
 
   if (isLoading) {
     return (
