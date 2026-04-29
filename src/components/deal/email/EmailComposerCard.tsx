@@ -317,49 +317,78 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
     }
   }, [hasRecipient, hasContent, onSend, onDiscard, autoLink, trackOpens, recipients, subject, props.body, props.dealId]);
 
-  // ── Keyboard shortcuts: ⌘↵ send · ⌘J AI draft ───────────────────────────
-  const handleBodyKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault();
-      void runSend();
+  // Snippets / AI drafts append at end of body (rich text editor manages its
+  // own caret).
+  const insertAtCursor = useCallback((text: string) => {
+    onBodyChange((body || '') + text);
+  }, [body, onBodyChange]);
+
+  // ── Attachments — real File picker, capped at maxAttachmentBytes total ──
+  const totalBytes = useMemo(() => files.reduce((sum, f) => sum + f.size, 0), [files]);
+
+  const triggerFilePicker = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFilesSelected = useCallback((picked: FileList | null) => {
+    if (!picked || picked.length === 0) return;
+    const incoming = Array.from(picked);
+    const merged = [...files];
+    let runningTotal = totalBytes;
+    const skipped: string[] = [];
+    for (const f of incoming) {
+      if (merged.some((m) => m.name === f.name && m.size === f.size)) continue;
+      if (runningTotal + f.size > maxAttachmentBytes) {
+        skipped.push(f.name);
+        continue;
+      }
+      merged.push(f);
+      runningTotal += f.size;
+    }
+    if (skipped.length > 0) {
+      const cap = Math.round(maxAttachmentBytes / (1024 * 1024));
+      toast.error(
+        `Couldn't attach ${skipped.length} file${skipped.length === 1 ? '' : 's'} — total over ${cap}MB cap.`,
+      );
+    }
+    setFiles(merged);
+    onFilesChange?.(merged);
+    onAttachmentsChange(merged.map((f) => f.name));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [files, totalBytes, maxAttachmentBytes, onFilesChange, onAttachmentsChange]);
+
+  const removeAttachment = useCallback((name: string) => {
+    const next = files.filter((f) => f.name !== name);
+    setFiles(next);
+    onFilesChange?.(next);
+    // Mirror filename-only attachments (legacy drafts that pre-existed without
+    // a File object are removed by name too).
+    onAttachmentsChange(attachments.filter((a) => a !== name && next.find((f) => f.name === a) !== undefined ? true : a !== name));
+    // Simpler form (the line above is defensive — re-emit filename list):
+    onAttachmentsChange(next.map((f) => f.name));
+  }, [files, attachments, onFilesChange, onAttachmentsChange]);
+
+  // ── Signature auto-append on first mount when body is empty ─────────────
+  // Honors the long-standing rule of not splicing into in-progress drafts:
+  // we only inject the signature when the editor opens with no body content.
+  const signatureInjectedRef = useRef(false);
+  useEffect(() => {
+    if (signatureInjectedRef.current) return;
+    if (!signature || !signature.trim()) return;
+    if (body && body.trim().length > 0) {
+      signatureInjectedRef.current = true;
       return;
     }
-    if (e.key.toLowerCase() === 'j' && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault();
-      requestAiDraft();
-    }
-  };
-
-  // ── Formatting helpers ──────────────────────────────────────────────────
-  const wrapSelection = (prefix: string, suffix: string) => {
-    const ta = textareaRef.current; if (!ta) return;
-    const start = ta.selectionStart; const end = ta.selectionEnd;
-    const selected = body.slice(start, end);
-    onBodyChange(body.slice(0, start) + prefix + selected + suffix + body.slice(end));
-    setTimeout(() => { ta.focus(); ta.setSelectionRange(start + prefix.length, end + prefix.length); }, 0);
-  };
-  const insertAtCursor = (text: string) => {
-    const ta = textareaRef.current;
-    if (!ta) { onBodyChange(body + text); return; }
-    const start = ta.selectionStart; const end = ta.selectionEnd;
-    onBodyChange(body.slice(0, start) + text + body.slice(end));
-    setTimeout(() => { ta.focus(); ta.setSelectionRange(start + text.length, start + text.length); }, 0);
-  };
-  const handleBold = () => wrapSelection('**', '**');
-  const handleItalic = () => wrapSelection('*', '*');
-  const handleUnderline = () => wrapSelection('__', '__');
-  const handleLink = () => { const url = prompt('Enter URL:'); if (url) wrapSelection('[', `](${url})`); };
-  const handleBullet = () => insertAtCursor('\n- ');
-  const handleNumbered = () => insertAtCursor('\n1. ');
-
-  const handleAddAttachment = () => {
-    const samples = ['proposal.pdf', 'financials.xlsx', 'term_sheet.docx', 'deck.pptx', 'summary.pdf'];
-    const next = samples.find((s) => !attachments.includes(s));
-    if (next) onAttachmentsChange([...attachments, next]);
-  };
-
-  const removeAttachment = (name: string) =>
-    onAttachmentsChange(attachments.filter((a) => a !== name));
+    const sigHtml = signature
+      .split(/\r?\n/)
+      .map((l) => l ? escapeHtml(l) : '<br/>')
+      .join('<br/>');
+    onBodyChange(`<p></p><p></p><p>${sigHtml}</p>`);
+    signatureInjectedRef.current = true;
+    // We intentionally don't react to subsequent body/signature updates — this
+    // is a one-shot prefill. Subsequent edits are owned by the user.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature]);
 
   // ── Drag-to-resize on top edge ──────────────────────────────────────────
   const onResizeStart = (e: React.MouseEvent) => {
