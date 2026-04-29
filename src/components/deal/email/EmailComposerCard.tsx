@@ -43,6 +43,12 @@ export interface ComposerSendOptions {
   autoLinkDeal?: boolean;
   /** Track opens for this email. */
   trackOpens?: boolean;
+  /**
+   * If set, queue the email for delivery at this future time (ISO string)
+   * instead of sending immediately. Parents are responsible for persisting
+   * to `scheduled_emails`.
+   */
+  scheduledFor?: string;
 }
 
 export interface EmailComposerCardProps {
