@@ -124,6 +124,25 @@ export interface EmailComposerCardProps {
 export const AI_ASSIST_REQUEST_EVENT = 'naitive:ai-assist:request-draft';
 export const AI_ASSIST_READY_EVENT = 'naitive:ai-assist:draft-ready';
 
+// ────────────────────────────────────────────────────────────────────────────
+// Small helpers
+// ────────────────────────────────────────────────────────────────────────────
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export interface AiAssistDraftReadyDetail {
   body: string;
   source?: string;
