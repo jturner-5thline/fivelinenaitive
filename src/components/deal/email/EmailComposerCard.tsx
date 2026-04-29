@@ -412,6 +412,40 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
     }
   }, [files, attachments, onFilesChange, onAttachmentsChange]);
 
+  // ── Drag-and-drop attachments ──────────────────────────────────────────────
+  const [isDragOver, setIsDragOver] = useState(false);
+  const dragDepthRef = useRef(0);
+
+  const isFileDrag = (e: React.DragEvent) =>
+    Array.from(e.dataTransfer?.types || []).includes('Files');
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    if (!isFileDrag(e)) return;
+    e.preventDefault();
+    dragDepthRef.current += 1;
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (!isFileDrag(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (!isFileDrag(e)) return;
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    if (!isFileDrag(e)) return;
+    e.preventDefault();
+    dragDepthRef.current = 0;
+    setIsDragOver(false);
+    handleFilesSelected(e.dataTransfer.files);
+  }, [handleFilesSelected]);
+
   // ── Signature auto-append on first mount when body is empty ─────────────
   // Honors the long-standing rule of not splicing into in-progress drafts:
   // we only inject the signature when the editor opens with no body content.
