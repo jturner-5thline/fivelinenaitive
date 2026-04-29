@@ -400,10 +400,20 @@ export function TaskListView({
                       <>
                         {isCreating ? (
                           <>
-                            <div className={`grid ${TASK_GRID_COLS} gap-2 items-center px-4 py-1.5`}>
-                              <div /><div /><div className="w-5" /><div />
-                              <Input ref={newTaskRef as any} value={newTaskTitle} onChange={e => onNewTaskChange(e.target.value)} onKeyDown={onNewTaskKeyDown}
-                                placeholder="Task name... (Enter to create, Esc to cancel)" className="h-7 text-sm border-[#3b7eff] bg-[#13181f] text-white" autoFocus />
+                            <div className={cn('grid', TASK_GRID_COLS, TASK_ROW_MIN_H, 'gap-2 items-center px-4 py-1')}>
+                              {/* 5 leading utility columns */}
+                              <div /><div /><div /><div /><div />
+                              {/* Title input occupies the task-name column */}
+                              <Input
+                                ref={newTaskRef as any}
+                                value={newTaskTitle}
+                                onChange={e => onNewTaskChange(e.target.value)}
+                                onKeyDown={onNewTaskKeyDown}
+                                placeholder="Task name... (Enter to create, Esc to cancel)"
+                                className="h-7 text-sm border-[#3b7eff] bg-[#13181f] text-white"
+                                autoFocus
+                              />
+                              {/* 7 trailing columns */}
                               <div /><div /><div /><div /><div /><div /><div />
                             </div>
                             {taskNameWarning && <p className="text-[11px] px-4 py-1" style={{ color: '#ff4d4d' }}>{taskNameWarning}</p>}
