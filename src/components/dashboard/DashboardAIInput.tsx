@@ -575,9 +575,10 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
             // Active chat keeps the framed surface so the transcript reads as a panel
             ? 'p-4 shadow-lg sticky top-4 z-30'
             : !isDrawerMode
-              // Idle state: strip the outer card chrome so the input sits
-              // directly on the page rather than inside a padded module.
-              ? 'border-0 bg-transparent shadow-none p-0'
+              // Idle state: keep the same card surface as MyTasks/MyDeals
+              // widgets so the composer feels like a sibling module, with
+              // a softer border so it still reads as an input affordance.
+              ? 'p-3 border-border/40 hover:border-border/60'
               : ''
       )}>
         {/* Toolbar — always visible when there are messages or expanded */}
