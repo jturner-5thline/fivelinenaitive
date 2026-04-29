@@ -23,6 +23,7 @@ import { StaleAlertSettings } from '@/components/settings/StaleAlertSettings';
 import { PipelineSettings } from '@/components/settings/PipelineSettings';
 import { EmailSnippetsSettings } from '@/components/settings/EmailSnippetsSettings';
 import { EmailLabelsSettings } from '@/components/settings/EmailLabelsSettings';
+import { EmailSignatureSettings } from '@/components/settings/EmailSignatureSettings';
 import { DealInfoFieldsSettings } from '@/components/settings/DealInfoFieldsSettings';
 import { WriteUpFieldsSettings } from '@/components/settings/WriteUpFieldsSettings';
 import { GammaTemplatesSettings } from '@/components/settings/GammaTemplatesSettings';
@@ -67,6 +68,7 @@ const SETTINGS_SECTIONS = [
   { id: 'stale-alerts', keywords: ['stale', 'deal', 'alert', 'email', 'notification', 'manager', 'admin', 'attention'] },
   { id: 'email-snippets', keywords: ['email', 'snippets', 'snippet', 'template', 'templates', 'reusable', 'tokens', 'hubspot'] },
   { id: 'email-labels', keywords: ['email', 'labels', 'label', 'tags', 'rules', 'auto', 'smart', 'categorize'] },
+  { id: 'email-signature', keywords: ['email', 'signature', 'sign', 'off', 'closing', 'best', 'regards', 'name'] },
   { id: 'email-templates-outbound', keywords: ['email', 'templates', 'outbound', 'lender', 'submission', 'sequence', 'body', 'compose'] },
   { id: 'email-style-guide', keywords: ['email', 'style', 'guide', 'voice', 'tone', 'signature', 'greeting', 'closing', 'ai', 'draft', 'reply', '5th line'] },
   { id: 'distribution-stats', keywords: ['distribution', 'stats', 'tracking', 'internal', 'ip', 'bot', 'clean', 'filter', 'opens', 'clicks'] },
@@ -81,7 +83,7 @@ const TABS = [
   { id: 'deals', label: 'Deals', sectionIds: ['deal-types', 'pipelines', 'deal-info-fields', 'writeup-fields', 'deal-stages', 'default-milestones', 'referral-sources', 'data-room-checklist', 'gamma-templates', 'agreement-templates'] },
   { id: 'lenders', label: 'Lenders', sectionIds: ['lender-stages', 'lender-milestones', 'pass-reasons', 'lender-matching'] },
   { id: 'automation', label: 'Automation', sectionIds: ['workflows', 'suggestions', 'scheduled-reports', 'sla-rules', 'stale-alerts', 'zapier'] },
-  { id: 'email', label: 'Email', sectionIds: ['email-snippets', 'email-labels', 'email-templates-outbound', 'email-style-guide', 'distribution-stats'] },
+  { id: 'email', label: 'Email', sectionIds: ['email-snippets', 'email-labels', 'email-signature', 'email-templates-outbound', 'email-style-guide', 'distribution-stats'] },
   { id: 'metrics', label: 'Metrics', sectionIds: ['kpi-card-settings'] },
   { id: 'crm', label: 'CRM', sectionIds: ['field-layout'] },
   { id: 'ai', label: 'AI', sectionIds: ['ai-configuration'] },
@@ -283,6 +285,7 @@ export default function Settings() {
                 <TabsContent value="email" className="space-y-4 mt-4">
                   {isVisible('email-snippets') && <EmailSnippetsSettings />}
                   {isVisible('email-labels') && <EmailLabelsSettings />}
+                  {isVisible('email-signature') && <EmailSignatureSettings />}
                   {isVisible('email-templates-outbound') && <OutboundEmailTemplatesSettings isAdmin={isAdmin} />}
                   {isVisible('email-style-guide') && <EmailStyleGuideSettings isAdmin={isAdmin} />}
                   <EmailWorkflowsSettings isAdmin={isAdmin} />
