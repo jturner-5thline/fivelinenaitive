@@ -473,16 +473,6 @@ export function ExecutiveDashboard() {
   const [drilldown, setDrilldown] = useState<ExecKpiDrilldown | null>(null);
 
   // Date windows surfaced in tooltips so users can see the exact period
-  // each metric is computed over (recomputed on render — cheap and always
-  // reflects "now").
-  const now = new Date();
-  const qStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
-  const t12mStart = new Date(now.getFullYear(), now.getMonth() - 12, now.getDate());
-  const fmtDate = (d: Date) =>
-    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const qtdWindow = `${fmtDate(qStart)} → ${fmtDate(now)}`;
-  const t12mWindow = `${fmtDate(t12mStart)} → ${fmtDate(now)}`;
-
   const fmtMoney = (v: number | null) =>
     v === null || !Number.isFinite(v) ? '—' : formatCurrency(v);
   const fmtCount = (v: number | null) =>
