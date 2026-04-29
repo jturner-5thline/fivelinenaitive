@@ -110,8 +110,10 @@ export function CashFlowDrilldownModal({ open, onClose, context, items }: Props)
 
     const out: DrilldownRow[] = [];
     for (const entry of items) {
-      // Resolve aliased / legacy category labels to canonical row keys.
-      const cat = resolveCategoryAlias(entry.category);
+      // Resolve aliased / legacy category labels to the actual grid row keys
+      // (matches what the Weekly Report renders and what mergeScheduledIntoWeekly
+      // writes to the weekly grid).
+      const cat = resolveCategoryToGridRow(entry.category);
       if (!categories.has(cat)) continue;
       if (flowFilter === 'in' && entry.flow_type !== 'cash_in') continue;
       if (flowFilter === 'out' && entry.flow_type !== 'cash_out') continue;
