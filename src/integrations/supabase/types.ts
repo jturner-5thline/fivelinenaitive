@@ -16172,6 +16172,91 @@ export type Database = {
           },
         ]
       }
+      task_duplicate_candidates: {
+        Row: {
+          candidate_task_id: string
+          canonical_task_id: string | null
+          company_id: string
+          compared_task_ids: string[]
+          confidence: number
+          created_at: string
+          id: string
+          reasons: Json
+          result: string
+          review_action: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          risk_flags: Json
+          status: string
+          suggested_action: string | null
+          trigger_source: string
+          updated_at: string
+          user_explanation: string | null
+        }
+        Insert: {
+          candidate_task_id: string
+          canonical_task_id?: string | null
+          company_id: string
+          compared_task_ids?: string[]
+          confidence?: number
+          created_at?: string
+          id?: string
+          reasons?: Json
+          result: string
+          review_action?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          risk_flags?: Json
+          status?: string
+          suggested_action?: string | null
+          trigger_source?: string
+          updated_at?: string
+          user_explanation?: string | null
+        }
+        Update: {
+          candidate_task_id?: string
+          canonical_task_id?: string | null
+          company_id?: string
+          compared_task_ids?: string[]
+          confidence?: number
+          created_at?: string
+          id?: string
+          reasons?: Json
+          result?: string
+          review_action?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          risk_flags?: Json
+          status?: string
+          suggested_action?: string | null
+          trigger_source?: string
+          updated_at?: string
+          user_explanation?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_duplicate_candidates_candidate_task_id_fkey"
+            columns: ["candidate_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_duplicate_candidates_canonical_task_id_fkey"
+            columns: ["canonical_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_duplicate_candidates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_followers: {
         Row: {
           created_at: string
