@@ -54,7 +54,7 @@ function getFileIcon(name: string, className = 'h-3.5 w-3.5') {
   if (['doc', 'docx'].includes(ext || '')) return <FileText className={cn(className, 'text-blue-400')} />;
   if (['ppt', 'pptx'].includes(ext || '')) return <Presentation className={cn(className, 'text-orange-400')} />;
   if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext || '')) return <Eye className={cn(className, 'text-purple-400')} />;
-  return <FileText className={cn(className, 'text-muted-foreground')} />;
+  return <FileText className={cn(className, 'text-foreground/70')} />;
 }
 
 function getIngestionIcon(status: string | null | undefined) {
@@ -684,7 +684,8 @@ export function VdrThreeColumnWorkspace({
             }}
             className={cn(
               'group flex items-center gap-2 py-1.5 px-2 rounded-md text-xs cursor-pointer transition-colors',
-              isSelected ? 'bg-primary/10 ring-1 ring-primary/30' : 'hover:bg-secondary/40'
+              'text-foreground/90',
+              isSelected ? 'bg-primary/10 ring-1 ring-primary/30 text-foreground' : 'hover:bg-secondary/40 hover:text-foreground'
             )}
           >
             <Checkbox
@@ -695,7 +696,7 @@ export function VdrThreeColumnWorkspace({
             />
             {getIngestionIcon((doc as any).ingestion_status)}
             {getFileIcon(doc.filename)}
-            <span className="flex-1 min-w-0 truncate">{doc.filename}</span>
+            <span className="flex-1 min-w-0 truncate font-medium">{doc.filename}</span>
             <span className="text-[10px] text-muted-foreground tabular-nums flex-shrink-0 opacity-60 group-hover:opacity-100">
               {formatSize(doc.file_size)}
             </span>
@@ -788,7 +789,7 @@ export function VdrThreeColumnWorkspace({
                   'group/cat flex items-center gap-1.5 px-1.5 py-1 rounded-md text-[11px] font-medium uppercase tracking-wider transition-colors cursor-pointer',
                   isActive
                     ? 'bg-primary/10 text-foreground'
-                    : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground/90',
+                    : 'text-foreground/85 hover:bg-secondary/40 hover:text-foreground',
                   isDropFolder && 'bg-primary/15 ring-1 ring-primary/40 text-foreground',
                 )}
                 onClick={() => toggleCollapsed(column, cat)}
@@ -797,8 +798,8 @@ export function VdrThreeColumnWorkspace({
                   ? <ChevronRight className="h-3 w-3 flex-shrink-0" />
                   : <ChevronDown className="h-3 w-3 flex-shrink-0" />}
                 {isCollapsed
-                  ? <FolderClosed className="h-3 w-3 flex-shrink-0" />
-                  : <FolderOpen className="h-3 w-3 flex-shrink-0" />}
+                  ? <FolderClosed className="h-3 w-3 flex-shrink-0 text-foreground/80" />
+                  : <FolderOpen className="h-3 w-3 flex-shrink-0 text-foreground/80" />}
                 <span className="truncate">{label}</span>
                 <span className="ml-1 text-[10px] tabular-nums text-muted-foreground/70 normal-case font-normal">
                   {docs.length}
