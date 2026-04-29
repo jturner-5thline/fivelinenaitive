@@ -346,6 +346,9 @@ function useAvgDealSizeT12M() {
   const stages = useActivePipelineStageMap();
   const pipelineId = stages.data?.pipelineId ?? null;
   const finalCreditStageId = stages.data?.finalCreditItemsStageId ?? null;
+  const finalCreditLabel =
+    (finalCreditStageId && stages.data?.stageLabelById.get(finalCreditStageId)) ||
+    'Final Credit Items';
 
   return useQuery({
     queryKey: [
@@ -363,7 +366,7 @@ function useAvgDealSizeT12M() {
 
       const { data, error } = await supabase
         .from('deal_stage_history')
-        .select('deal_id, deals!inner(company, value)')
+        .select('deal_id, changed_at, deals!inner(company, value)')
         .eq('company_id', companyId)
         .eq('pipeline_id', pipelineId)
         .eq('to_stage', finalCreditStageId)
@@ -373,24 +376,37 @@ function useAvgDealSizeT12M() {
 
       // Dedupe by deal_id — a deal that re-entered the stage twice still
       // contributes one (sum of value, count of 1).
-      const seen = new Map<string, number>();
+      const seen = new Map<string, ExecKpiDrilldownDeal>();
       for (const row of (data ?? []) as Array<{
         deal_id: string;
+        changed_at: string;
         deals: { company: string | null; value: number | null } | null;
       }>) {
         if (isExcludedDealName(row.deals?.company ?? null)) continue;
         const v = Number(row.deals?.value);
         if (!Number.isFinite(v)) continue;
-        if (!seen.has(row.deal_id)) seen.set(row.deal_id, v);
+        const candidate: ExecKpiDrilldownDeal = {
+          deal_id: row.deal_id,
+          company: row.deals?.company ?? '—',
+          value: v,
+          stage_label: finalCreditLabel,
+          occurred_at: row.changed_at,
+        };
+        const prev = seen.get(row.deal_id);
+        if (!prev || (prev.occurred_at && candidate.occurred_at && candidate.occurred_at < prev.occurred_at)) {
+          seen.set(row.deal_id, candidate);
+        }
       }
 
-      const values = Array.from(seen.values());
-      const sum = values.reduce((a, b) => a + b, 0);
-      const count = values.length;
+      const deals = Array.from(seen.values());
+      const sum = deals.reduce((a, b) => a + b.value, 0);
+      const count = deals.length;
+      deals.sort((a, b) => b.value - a.value);
       return {
         avg: count > 0 ? sum / count : null,
         count,
         sum,
+        deals,
       };
     },
   });
