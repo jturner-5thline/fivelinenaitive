@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Flag, Calendar, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -83,10 +83,10 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const { createDeal } = useDealsContext();
   const { members, company } = useCompany();
   const { profile } = useProfile();
-  const { stages: dealStages, defaultStageId } = useDealStages();
-  const { dealTypes: availableDealTypes } = useDealTypes();
+  const { stages: dealStages, defaultStageId, isLoadingDefault: isLoadingStages } = useDealStages();
+  const { dealTypes: availableDealTypes, isLoading: isLoadingDealTypes } = useDealTypes();
   const { defaultMilestones } = useDefaultMilestones();
-  const { pipelines, activePipelineId, activePipeline } = usePipelineContext();
+  const { pipelines, activePipelineId, activePipeline, isLoading: isLoadingPipelines } = usePipelineContext();
   
   // Use active pipeline's stages if available, otherwise use global stages
   const effectiveStages = activePipeline?.stages && activePipeline.stages.length > 0 
@@ -116,6 +116,31 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
   const setOpen = isControlled ? onOpenChange! : setInternalOpen;
+
+  // Sync async-loaded defaults into form state once they resolve.
+  // Without this, the form captures `null`/`''` on first render and the
+  // submit blocks silently with "Please select a deal stage" on accounts
+  // whose company settings load after the dialog mounts.
+  useEffect(() => {
+    if (!selectedPipelineId && activePipelineId) {
+      setSelectedPipelineId(activePipelineId);
+    }
+  }, [activePipelineId, selectedPipelineId]);
+
+  useEffect(() => {
+    if (dealStage) return;
+    const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
+    const stages = selectedPipeline?.stages?.length
+      ? selectedPipeline.stages
+      : (dealStages.length ? dealStages : []);
+    if (defaultStageId && stages.some(s => s.id === defaultStageId)) {
+      setDealStage(defaultStageId);
+    } else if (stages.length > 0) {
+      setDealStage(stages[0].id);
+    }
+  }, [defaultStageId, pipelines, selectedPipelineId, dealStages, dealStage]);
+
+  const isLoadingFormData = isLoadingStages || isLoadingPipelines || isLoadingDealTypes;
 
   const sortedMilestones = [...defaultMilestones].sort((a, b) => a.position - b.position);
 
@@ -252,7 +277,9 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
         }
       }
     } catch (error) {
-      toast.error('Failed to create deal');
+      const message = error instanceof Error ? error.message : 'Failed to create deal';
+      console.error('[CreateDealDialog] createDeal failed:', error);
+      toast.error(message);
     } finally {
       setIsCreating(false);
     }
@@ -612,8 +639,8 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                   Dismiss task
                 </Button>
               ) : <div />}
-              <Button type="submit" variant="gradient" disabled={isCreating}>
-                {isCreating ? 'Creating...' : 'Create Deal'}
+              <Button type="submit" variant="gradient" disabled={isCreating || isLoadingFormData}>
+                {isCreating ? 'Creating...' : isLoadingFormData ? 'Loading…' : 'Create Deal'}
               </Button>
             </DialogFooter>
           </form>
