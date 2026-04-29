@@ -301,7 +301,11 @@ export function mergeScheduledIntoWeekly(
       const target = out[wk] as any;
       // Resolve legacy / aliased category labels to the canonical weekly row
       // key (e.g. "Software & Technology" -> "Software", "Retainers" -> "Retainer").
-      const cat = resolveCategoryAlias(entry.category);
+      // Then map canonical → actual grid row key (the long-form label the
+      // Weekly Report renders and the daily aggregator writes to). This is
+      // what makes a Configure "Retainer" entry land in the visible
+      // "Retainers" row, "Payroll Expense" in "Payroll - Salaries", etc.
+      const cat = resolveCategoryToGridRow(entry.category);
       const amt = Number(entry.amount) || 0;
       target[cat] = (Number(target[cat]) || 0) + amt;
       // Note: parent "Advisors Revenue" value is computed in the weekly view as
