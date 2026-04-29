@@ -4,10 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Lock, Info } from 'lucide-react';
 import { useState } from 'react';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+  Tooltip as UITooltip,
+  TooltipContent as UITooltipContent,
+  TooltipProvider as UITooltipProvider,
+  TooltipTrigger as UITooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
   useExecutiveTopRowKpis,
@@ -227,9 +227,9 @@ function StatCard({
   tooltip?: React.ReactNode;
 }) {
   const info = tooltip ? (
-    <TooltipProvider delayDuration={150}>
-      <Tooltip>
-        <TooltipTrigger asChild>
+    <UITooltipProvider delayDuration={150}>
+      <UITooltip>
+        <UITooltipTrigger asChild>
           <button
             type="button"
             onClick={(e) => e.stopPropagation()}
@@ -238,12 +238,12 @@ function StatCard({
           >
             <Info className="h-3.5 w-3.5" />
           </button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" align="end" className="max-w-xs text-xs leading-relaxed">
+        </UITooltipTrigger>
+        <UITooltipContent side="bottom" align="end" className="max-w-xs text-xs leading-relaxed">
           {tooltip}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+        </UITooltipContent>
+      </UITooltip>
+    </UITooltipProvider>
   ) : undefined;
 
   return (
