@@ -1011,3 +1011,23 @@
   border-radius: 12px;
 }
 
+/* ── react-day-picker layout guardrails ───────────────────────────────────
+   The DayPicker renders a real <table> for its day grid. The Insights /
+   Weekly Rundown skin previously applied broad styles to descendant tables
+   (font-variant, etc.) which, combined with user-agent `display: table-row`
+   on <tr>, could collapse the calendar into a vertical list of plain text.
+   These rules pin the structural display values RDP relies on so the
+   7-column grid always renders correctly, regardless of the surrounding
+   page styling. Scoped to `.rdp` so we never affect other tables. */
+.rdp {
+  --rdp-cell-size: 2.25rem;
+}
+.rdp-table { display: table !important; width: 100%; border-collapse: collapse; }
+.rdp-head_row,
+.rdp-row { display: flex !important; width: 100%; }
+.rdp-head_cell,
+.rdp-cell { display: flex !important; align-items: center; justify-content: center; }
+/* Reset font-variant-numeric inheritance from `.insights-glass-skin` so the
+   day numbers don't look squished in tabular columns smaller than the cell. */
+.rdp-day { font-variant-numeric: normal; }
+
