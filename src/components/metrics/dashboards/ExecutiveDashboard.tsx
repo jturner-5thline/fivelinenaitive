@@ -36,9 +36,13 @@ import { GlassCard, GlassCardHeader, GlassCardBody, GLASS_TOKENS } from '@/compo
 // Mirrors the Liquid Glass treatment used by Profit by Entity / Revenue
 // Overview so every Executive Dashboard chart sits inside the same visual
 // language as the rest of Weekly Rundown.
-const AXIS_TICK = { fontSize: 10, fill: 'rgba(180, 210, 245, 0.55)' } as const;
-const AXIS_LINE = { stroke: 'rgba(160, 200, 255, 0.12)' } as const;
-const GRID_STROKE = 'rgba(160, 200, 255, 0.10)';
+// Contrast-tuned for the dark Liquid Glass surfaces used across Weekly Rundown.
+// Tick / legend opacities meet a comfortable contrast threshold on the
+// translucent card background while preserving the muted aesthetic.
+const AXIS_TICK = { fontSize: 10, fill: 'rgba(200, 220, 250, 0.78)' } as const;
+const AXIS_LINE = { stroke: 'rgba(160, 200, 255, 0.20)' } as const;
+const GRID_STROKE = 'rgba(160, 200, 255, 0.14)';
+const AXIS_LABEL = { fontSize: 10, fill: 'rgba(200, 220, 250, 0.85)', fontWeight: 500 } as const;
 const TOOLTIP_STYLE: React.CSSProperties = {
   backgroundColor: 'hsl(var(--popover) / 0.96)',
   border: '1px solid hsl(0 0% 100% / 0.14)',
@@ -50,7 +54,7 @@ const TOOLTIP_STYLE: React.CSSProperties = {
 };
 const LEGEND_STYLE: React.CSSProperties = {
   fontSize: 11,
-  color: 'rgba(180, 210, 245, 0.7)',
+  color: 'rgba(200, 220, 250, 0.88)',
   paddingTop: 4,
 };
 
