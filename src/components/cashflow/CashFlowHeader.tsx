@@ -128,11 +128,6 @@ export const CashFlowHeader = memo(function CashFlowHeader({
         </div>
       </div>
 
-      <div className="cf-tab-bar">
-        <button className="cf-tab active" onClick={() => onTabChange('weekly')}>
-          Weekly Report
-        </button>
-      </div>
     </>
   );
 });
