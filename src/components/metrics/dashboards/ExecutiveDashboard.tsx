@@ -1,8 +1,8 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Lock, Info } from 'lucide-react';
-import { useState } from 'react';
+import { Lock, Info, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Tooltip as UITooltip,
   TooltipContent as UITooltipContent,
@@ -13,6 +13,7 @@ import {
   useExecutiveTopRowKpis,
   type ExecKpiDrilldownDeal,
   type ExecRevenueLineItem,
+  type ExecKpiWindow,
 } from '@/hooks/useExecutiveTopRowKpis';
 import {
   Dialog,
@@ -23,6 +24,8 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { ExternalLink } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { startOfWeek, endOfWeek, addWeeks, format as fmtDateFn, isSameWeek } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Line, ComposedChart, Area, PieChart, Pie, Cell, Legend } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
@@ -76,14 +79,25 @@ const STATUS_BUCKETS = [
 ];
 const STATUS_COLORS = STATUS_BUCKETS.map(b => b.color);
 
-function useDealsByStatusFee() {
+function useDealsByStatusFee(window?: { start: Date; end: Date }) {
   return useQuery({
-    queryKey: ['executive-dashboard', 'deals-by-status-fee'],
+    queryKey: [
+      'executive-dashboard',
+      'deals-by-status-fee',
+      window?.start.toISOString() ?? 'all',
+      window?.end.toISOString() ?? 'all',
+    ],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('deals')
-        .select('status, total_fee, company')
+        .select('status, total_fee, company, updated_at')
         .not('total_fee', 'is', null);
+      if (window) {
+        q = q
+          .gte('updated_at', window.start.toISOString())
+          .lte('updated_at', window.end.toISOString());
+      }
+      const { data, error } = await q;
       if (error) throw error;
 
       // Apply the global test-deal exclusion (Test-Niki's Store, Example Deal,
@@ -112,8 +126,8 @@ function useDealsByStatusFee() {
   });
 }
 
-function DealsByStatusPieChart() {
-  const { data, isLoading } = useDealsByStatusFee();
+function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date } }) {
+  const { data, isLoading } = useDealsByStatusFee(window);
 
   if (isLoading) {
     return (
@@ -414,20 +428,51 @@ function ExecKpiDrilldownModal({
 }
 
 export function ExecutiveDashboard() {
-  const kpis = useExecutiveTopRowKpis();
+  // ── Week stepper state (Mon → Sun) ─────────────────────────────
+  // Anchor is the Monday of the selected week. Persisted per-user via
+  // localStorage so a user who returns to the page sees the same week
+  // they were last reviewing.
+  const STORAGE_KEY = 'executiveDashboard.weekAnchor';
+  const [weekAnchor, setWeekAnchor] = useState<Date>(() => {
+    try {
+      const raw = globalThis.localStorage?.getItem(STORAGE_KEY);
+      if (raw) {
+        const d = new Date(raw);
+        if (!Number.isNaN(d.getTime())) return startOfWeek(d, { weekStartsOn: 1 });
+      }
+    } catch { /* ignore */ }
+    return startOfWeek(new Date(), { weekStartsOn: 1 });
+  });
+
+  useEffect(() => {
+    try {
+      globalThis.localStorage?.setItem(STORAGE_KEY, weekAnchor.toISOString());
+    } catch { /* ignore */ }
+  }, [weekAnchor]);
+
+  const selectedWindow: ExecKpiWindow = useMemo(() => {
+    const start = startOfWeek(weekAnchor, { weekStartsOn: 1 });
+    const end = endOfWeek(weekAnchor, { weekStartsOn: 1 });
+    return {
+      start,
+      end,
+      label: `${fmtDateFn(start, 'MMM d')} → ${fmtDateFn(end, 'MMM d, yyyy')}`,
+    };
+  }, [weekAnchor]);
+
+  const isCurrentWeek = useMemo(
+    () => isSameWeek(weekAnchor, new Date(), { weekStartsOn: 1 }),
+    [weekAnchor],
+  );
+
+  const goPrev = useCallback(() => setWeekAnchor(d => addWeeks(d, -1)), []);
+  const goNext = useCallback(() => setWeekAnchor(d => addWeeks(d, 1)), []);
+  const goCurrent = useCallback(() => setWeekAnchor(startOfWeek(new Date(), { weekStartsOn: 1 })), []);
+
+  const kpis = useExecutiveTopRowKpis(selectedWindow);
   const [drilldown, setDrilldown] = useState<ExecKpiDrilldown | null>(null);
 
   // Date windows surfaced in tooltips so users can see the exact period
-  // each metric is computed over (recomputed on render — cheap and always
-  // reflects "now").
-  const now = new Date();
-  const qStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
-  const t12mStart = new Date(now.getFullYear(), now.getMonth() - 12, now.getDate());
-  const fmtDate = (d: Date) =>
-    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const qtdWindow = `${fmtDate(qStart)} → ${fmtDate(now)}`;
-  const t12mWindow = `${fmtDate(t12mStart)} → ${fmtDate(now)}`;
-
   const fmtMoney = (v: number | null) =>
     v === null || !Number.isFinite(v) ? '—' : formatCurrency(v);
   const fmtCount = (v: number | null) =>
@@ -453,6 +498,50 @@ export function ExecutiveDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Week stepper — drives the time-bound metrics on this page */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={goPrev}
+            aria-label="Previous week"
+            className="h-8 w-8 p-0"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="min-w-[180px] text-center px-3 py-1.5 rounded-md bg-white/5 border border-white/10">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Week of
+            </p>
+            <p className="text-xs font-medium tabular-nums">{selectedWindow.label}</p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={goNext}
+            disabled={isCurrentWeek}
+            aria-label="Next week"
+            className="h-8 w-8 p-0"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          {!isCurrentWeek && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={goCurrent}
+              className="h-8 text-xs"
+            >
+              Current week
+            </Button>
+          )}
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Mon → Sun · Total Active Deal Volume is always live
+        </p>
+      </div>
+
       {/* Row 1: Key Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
@@ -477,42 +566,42 @@ export function ExecutiveDashboard() {
           }
         />
         <StatCard
-          title="Deals Closed (QTD)"
+          title="Deals Closed"
           value={fmtCount(kpis.dealsClosedQTD.value)}
-          subtitle="Entered Funded / Invoiced this quarter"
+          subtitle={`Entered Funded / Invoiced · ${selectedWindow.label}`}
           loading={kpis.dealsClosedQTD.loading}
           tooltip={
             <div className="space-y-1.5">
-              <p className="font-medium text-foreground">Deals Closed (QTD)</p>
-              <p>COUNT of distinct deals that <em>entered</em> the <em>Funded / Invoiced</em> stage during the current quarter (stage-entry events, not current snapshots).</p>
-              <p className="text-muted-foreground">Window (QTD): {qtdWindow}.</p>
+              <p className="font-medium text-foreground">Deals Closed</p>
+              <p>COUNT of distinct deals that <em>entered</em> the <em>Funded / Invoiced</em> stage during the selected window (stage-entry events, not current snapshots).</p>
+              <p className="text-muted-foreground">Window: {selectedWindow.label}.</p>
             </div>
           }
           onClick={() =>
             setDrilldown({
               kind: 'deals',
-              title: 'Deals Closed (QTD)',
-              subtitle: 'Stage-entry events into Funded / Invoiced this quarter',
+              title: `Deals Closed · ${selectedWindow.label}`,
+              subtitle: 'Stage-entry events into Funded / Invoiced for the selected window',
               rows: kpis.dealsClosedQTD.deals,
             })
           }
         />
         <StatCard
-          title="Revenue (QTD)"
+          title="Revenue"
           value={fmtMoney(kpis.revenueQTD.value)}
-          subtitle="5th Line Capital Advisors · QBO"
+          subtitle={`5th Line Capital Advisors · ${selectedWindow.label}`}
           loading={kpis.revenueQTD.loading}
           tooltip={
             <div className="space-y-1.5">
-              <p className="font-medium text-foreground">Revenue (QTD)</p>
+              <p className="font-medium text-foreground">Revenue</p>
               <p>QuickBooks <em>Profit &amp; Loss</em> Income total for <strong>5th Line Capital Advisors LLC</strong> (realm 193514877331929), accrual basis.</p>
-              <p className="text-muted-foreground">Window (QTD): {qtdWindow}.</p>
+              <p className="text-muted-foreground">Window: {selectedWindow.label}.</p>
             </div>
           }
           onClick={() =>
             setDrilldown({
               kind: 'revenue',
-              title: 'Revenue (QTD)',
+              title: `Revenue · ${selectedWindow.label}`,
               subtitle: '5th Line Capital Advisors · Income line items from QuickBooks P&L',
               rows: kpis.revenueQTD.lineItems,
             })
@@ -521,20 +610,20 @@ export function ExecutiveDashboard() {
         <StatCard
           title="Avg. Deal Size"
           value={fmtMoney(kpis.avgDealSize.value)}
-          subtitle="Entered Final Credit Items · Trailing 12 mo."
+          subtitle={`Entered Final Credit Items · ${selectedWindow.label}`}
           loading={kpis.avgDealSize.loading}
           tooltip={
             <div className="space-y-1.5">
               <p className="font-medium text-foreground">Avg. Deal Size</p>
-              <p>SUM of deal value ÷ COUNT of distinct deals that <em>entered</em> the <em>Final Credit Items</em> stage in the trailing 12 months. Re-entries deduped to one per deal.</p>
-              <p className="text-muted-foreground">Window (T12M): {t12mWindow}.</p>
+              <p>SUM of deal value ÷ COUNT of distinct deals that <em>entered</em> the <em>Final Credit Items</em> stage during the selected window. Re-entries deduped to one per deal.</p>
+              <p className="text-muted-foreground">Window: {selectedWindow.label}.</p>
             </div>
           }
           onClick={() =>
             setDrilldown({
               kind: 'deals',
-              title: 'Avg. Deal Size — Trailing 12 mo.',
-              subtitle: 'Deals that entered Final Credit Items in the last 12 months',
+              title: `Avg. Deal Size · ${selectedWindow.label}`,
+              subtitle: 'Deals that entered Final Credit Items during the selected window',
               rows: kpis.avgDealSize.deals,
             })
           }
@@ -581,7 +670,7 @@ export function ExecutiveDashboard() {
 
       {/* Row 3: Deal Types */}
       <div className="grid grid-cols-1 gap-4">
-        <DealsByStatusPieChart />
+        <DealsByStatusPieChart window={{ start: selectedWindow.start, end: selectedWindow.end }} />
       </div>
 
       <ExecKpiDrilldownModal drilldown={drilldown} onClose={() => setDrilldown(null)} />
