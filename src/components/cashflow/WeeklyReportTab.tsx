@@ -50,6 +50,8 @@ interface WeeklyReportTabProps {
   cashInDialogOpen?: boolean;
   onCashInDialogOpenChange?: (open: boolean) => void;
   onCellCommentCountChange?: (count: number) => void;
+  weeksFuture?: number;
+  onWeeksFutureChange?: (n: number) => void;
 }
 
 const DEBT_ADV_PARENT_KEY = 'Debt Advisory Revenue';
@@ -123,6 +125,11 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   planSnapshots, activePlanId, onActivePlanChange, onSavePlan,
   onExport, onConfigureScheduled, scheduledItems, onSidebarEditItem, onSidebarRemoveItem, onSidebarAddItem, onSidebarRemoveDbItem,
   onNoteEdit, onNoteRemove, onNoteAdd,
+  notesDialogOpen, onNotesDialogOpenChange,
+  cashInDialogOpen, onCashInDialogOpenChange,
+  onCellCommentCountChange,
+  weeksFuture: weeksFutureProp,
+  onWeeksFutureChange,
 }: WeeklyReportTabProps) {
   const { user } = useAuth();
   const { comments: cellComments, byCell: cellCommentsByCell, addComment: addCellComment, deleteComment: deleteCellComment } =
@@ -149,9 +156,15 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   // Clamp to >=0 so that edge cases (empty initial weeklyData, current week at edge)
   // never produce negative state that silently collapses the visible window.
   const [weeksPast, setWeeksPast] = useState(() => Math.max(0, Math.min(Math.max(0, effectiveCurrentIndex), 4)));
-  const [weeksFuture, setWeeksFuture] = useState(() =>
+  const [weeksFutureLocal, setWeeksFutureLocal] = useState(() =>
     Math.max(0, Math.min(Math.max(0, totalWeeks - effectiveCurrentIndex - 1), 12)),
   );
+  const weeksFuture = weeksFutureProp ?? weeksFutureLocal;
+  const setWeeksFuture = useCallback((n: number) => {
+    const clamped = Math.max(0, n);
+    if (onWeeksFutureChange) onWeeksFutureChange(clamped);
+    if (weeksFutureProp === undefined) setWeeksFutureLocal(clamped);
+  }, [onWeeksFutureChange, weeksFutureProp]);
 
   const startIdx = Math.max(0, effectiveCurrentIndex - weeksPast);
   const endIdx = Math.min(totalWeeks, effectiveCurrentIndex + 1 + weeksFuture);
@@ -198,16 +211,6 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   });
   const gridWrapRef = useGridWheelPassthrough<HTMLDivElement>();
 
-  // Sidebar drawer (off-canvas) state — keeps Weekly Report full-width
-  const SIDEBAR_OPEN_KEY = 'cf:sidebarDrawerOpen';
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    try { return window.localStorage.getItem(SIDEBAR_OPEN_KEY) === '1'; } catch { return false; }
-  });
-  useEffect(() => {
-    try { window.localStorage.setItem(SIDEBAR_OPEN_KEY, sidebarOpen ? '1' : '0'); } catch { /* ignore */ }
-  }, [sidebarOpen]);
-
   // Horizontal scroll edge-fade indicators
   const [edgeState, setEdgeState] = useState<{ left: boolean; right: boolean }>({ left: false, right: false });
   const handleGridScroll = useCallback((el: HTMLDivElement | null) => {
@@ -225,7 +228,16 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
     const ro = new ResizeObserver(() => handleGridScroll(el));
     ro.observe(el);
     return () => { el.removeEventListener('scroll', onScroll); ro.disconnect(); };
-  }, [handleGridScroll, visibleWeeks.length, sidebarOpen]);
+  }, [handleGridScroll, visibleWeeks.length]);
+
+  // Bubble cell-comment count up so the inline Notes badge can reflect it
+  const topLevelCellCommentCount = useMemo(
+    () => cellComments.filter(c => !c.parent_comment_id).length,
+    [cellComments],
+  );
+  useEffect(() => {
+    onCellCommentCountChange?.(topLevelCellCommentCount);
+  }, [topLevelCellCommentCount, onCellCommentCountChange]);
 
   useEffect(() => {
     try {
@@ -383,7 +395,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   };
 
   return (
-    <div className={`cf-weekly-layout cf-has-drawer${sidebarOpen ? ' cf-drawer-open' : ''}`}>
+    <div className="cf-weekly-layout">
       <div className="cf-weekly-main">
         <WeeklyCharts
           weeklyData={safeWeeklyData}
@@ -437,16 +449,6 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
               ))}
             </select>
             <button className="cf-btn cf-btn-primary" onClick={onExport}>Export PDF</button>
-            <button
-              className="cf-btn cf-btn-ghost"
-              onClick={() => setSidebarOpen(o => !o)}
-              title={sidebarOpen ? 'Hide notes & cash-in panel' : 'Show notes & cash-in panel'}
-              aria-label={sidebarOpen ? 'Hide notes panel' : 'Show notes panel'}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-            >
-              {sidebarOpen ? <PanelRightClose size={14} /> : <PanelRightOpen size={14} />}
-              <span>{sidebarOpen ? 'Hide Notes' : 'Notes'}</span>
-            </button>
           </div>
         </div>
 
@@ -767,22 +769,46 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
         </div>
       </div>
 
-      <WeeklySidebar
-        data={safeSidebarData}
-        dbItems={safeSidebarDbItems}
-        isAdmin={isAdmin}
-        onEditItem={onSidebarEditItem}
-        onRemoveItem={onSidebarRemoveItem}
-        onAddItem={onSidebarAddItem}
-        onRemoveDbItem={onSidebarRemoveDbItem}
-        onNoteEdit={onNoteEdit}
-        onNoteRemove={onNoteRemove}
-        onNoteAdd={onNoteAdd}
-        cellComments={cellComments}
-        currentUserId={user?.id ?? null}
-        onCellCommentClick={handleSidebarCommentClick}
-        onCellCommentDelete={(c) => deleteCellComment(c.id)}
-      />
+      {/* Cash-In: Next 8 Weeks dialog (triggered from filter bar) */}
+      <Dialog open={!!cashInDialogOpen} onOpenChange={(o) => onCashInDialogOpenChange?.(o)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Cash-In: Next 8 Weeks</DialogTitle>
+          </DialogHeader>
+          <CashInPanel
+            data={safeSidebarData}
+            dbItems={safeSidebarDbItems}
+            isAdmin={isAdmin}
+            onEditItem={onSidebarEditItem}
+            onRemoveItem={onSidebarRemoveItem}
+            onAddItem={onSidebarAddItem}
+            onRemoveDbItem={onSidebarRemoveDbItem}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Notes & Cell Comments dialog (triggered from filter bar) */}
+      <Dialog open={!!notesDialogOpen} onOpenChange={(o) => onNotesDialogOpenChange?.(o)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Notes & Key Items</DialogTitle>
+          </DialogHeader>
+          <NotesPanel
+            data={safeSidebarData}
+            isAdmin={isAdmin}
+            onNoteEdit={onNoteEdit}
+            onNoteRemove={onNoteRemove}
+            onNoteAdd={onNoteAdd}
+            cellComments={cellComments}
+            currentUserId={user?.id ?? null}
+            onCellCommentClick={(c) => {
+              onNotesDialogOpenChange?.(false);
+              handleSidebarCommentClick(c);
+            }}
+            onCellCommentDelete={(c) => deleteCellComment(c.id)}
+          />
+        </DialogContent>
+      </Dialog>
 
       {menuState && (
         <CellCommentMenu

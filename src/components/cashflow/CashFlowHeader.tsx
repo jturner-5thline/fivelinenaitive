@@ -10,6 +10,7 @@ interface HeaderProps {
   cashIn: number;
   cashOut: number;
   netChange: number;
+  kpiRangeLabel?: string;
   undoCount: number;
   activityCount: number;
   onRoleChange: (role: RoleMode) => void;
@@ -78,7 +79,7 @@ function EyeIcon() {
 }
 
 export const CashFlowHeader = memo(function CashFlowHeader({
-  role, theme, activeTab, cashIn, cashOut, netChange,
+  role, theme, activeTab, cashIn, cashOut, netChange, kpiRangeLabel,
   undoCount, activityCount, onRoleChange, onThemeToggle,
   onTabChange, onUndo, onOpenActivityLog, onConfigureScheduled,
 }: HeaderProps) {
@@ -96,17 +97,20 @@ export const CashFlowHeader = memo(function CashFlowHeader({
         <div className="cf-kpi-row">
           <div className="cf-kpi">
             <div className="cf-kpi-label">Cash In</div>
-            <div className="cf-kpi-value" style={{ color: 'var(--color-positive)' }}>{fmtShort(cashIn)}</div>
+            <div className="cf-kpi-value" style={{ color: 'var(--color-positive)' }} title={kpiRangeLabel}>{fmtShort(cashIn)}</div>
+            {kpiRangeLabel && <div style={{ fontSize: 10, color: 'var(--color-text-faint)', marginTop: 2 }}>{kpiRangeLabel}</div>}
           </div>
           <div className="cf-kpi">
             <div className="cf-kpi-label">Cash Out</div>
-            <div className="cf-kpi-value" style={{ color: 'var(--color-negative)' }}>-{fmtShort(Math.abs(cashOut))}</div>
+            <div className="cf-kpi-value" style={{ color: 'var(--color-negative)' }} title={kpiRangeLabel}>-{fmtShort(Math.abs(cashOut))}</div>
+            {kpiRangeLabel && <div style={{ fontSize: 10, color: 'var(--color-text-faint)', marginTop: 2 }}>{kpiRangeLabel}</div>}
           </div>
           <div className="cf-kpi">
             <div className="cf-kpi-label">Net Change</div>
-            <div className="cf-kpi-value" style={{ color: netChange >= 0 ? 'var(--color-positive)' : 'var(--color-negative)' }}>
+            <div className="cf-kpi-value" style={{ color: netChange >= 0 ? 'var(--color-positive)' : 'var(--color-negative)' }} title={kpiRangeLabel}>
               {fmtShort(netChange)}
             </div>
+            {kpiRangeLabel && <div style={{ fontSize: 10, color: 'var(--color-text-faint)', marginTop: 2 }}>{kpiRangeLabel}</div>}
           </div>
         </div>
 
