@@ -4608,7 +4608,10 @@ export default function DealDetail() {
                 </TabsContent>
 
                 <TabsContent value="data-room" className={cn("mt-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`data-room-${tabDirection}`}>
-                  <div className="rounded-lg overflow-hidden mt-3 bg-card" style={{ height: 'calc(100vh - 190px)' }}>
+                  <div
+                    className="rounded-lg overflow-hidden mt-3 bg-card border border-[hsl(272,100%,80%,0.45)] shadow-[0_0_16px_hsl(272,100%,70%,0.12),0_8px_32px_hsl(0,0%,0%,0.5)]"
+                    style={{ height: 'calc(100vh - 190px)' }}
+                  >
                     <VdrShell dealId={id!} embedded />
                   </div>
                 </TabsContent>
