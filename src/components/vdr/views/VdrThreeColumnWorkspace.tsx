@@ -902,7 +902,7 @@ export function VdrThreeColumnWorkspace({
       {/* ════════ COLUMN 1: CHECKLIST ════════ */}
       <ResizablePanel defaultSize={24} minSize={18} maxSize={35}>
         <div className="flex flex-col h-full">
-          <div className="flex items-center gap-2 px-3 h-10 min-h-[2.5rem] border-b border-white/5">
+          <div className="flex items-center gap-2 px-3 h-10 min-h-[2.5rem] border-b border-border/40 bg-card/40">
             <ClipboardList className="h-3.5 w-3.5 text-muted-foreground" />
             <h2 className="text-sm font-semibold">Checklist</h2>
             {dealTypeLabel && (
@@ -924,7 +924,7 @@ export function VdrThreeColumnWorkspace({
             ) : (
               <>
                 {renderChecklistRound(initialRound, 'Initial Items')}
-                <div className="border-t border-white/5 mx-2" />
+                <div className="border-t border-border/40 mx-2" />
                 {renderChecklistRound(kickOffRound, 'Kick Off Items')}
               </>
             )}
