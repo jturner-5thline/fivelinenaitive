@@ -248,11 +248,14 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
     (async () => {
       const { data } = await supabase
         .from('deal_writeups')
-        .select('data_room_url')
+        .select('data_room_url, updated_at')
         .eq('deal_id', dealId)
-        .maybeSingle();
+        .not('data_room_url', 'is', null)
+        .order('updated_at', { ascending: false })
+        .limit(1);
       if (cancelled) return;
-      setResolvedDataRoomUrl((data?.data_room_url as string | null) ?? null);
+      const url = data?.[0]?.data_room_url as string | null | undefined;
+      setResolvedDataRoomUrl(url ?? null);
     })();
     return () => { cancelled = true; };
   }, [dealId, dataRoomUrl]);
