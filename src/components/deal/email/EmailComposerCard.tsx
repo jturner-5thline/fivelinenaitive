@@ -32,6 +32,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { shouldShowSignatureGhost } from './signatureGhost';
 import { EmailRichTextEditor } from './EmailRichTextEditor';
+import {
+  signatureToHtml,
+  signatureToPlainText,
+  signatureFirstLine,
+  bodyContainsSignature,
+} from './signatureHtml';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Public surface
