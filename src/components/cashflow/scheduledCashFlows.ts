@@ -120,6 +120,39 @@ export function resolveCategoryAlias(category: string): string {
   return CATEGORY_ALIASES[category] || category;
 }
 
+/**
+ * Map canonical short category keys (used by the Configure modal) to the
+ * actual long-form row keys rendered in the Weekly Report grid AND written by
+ * the daily-to-weekly aggregator. Without this, Configure entries would write
+ * to a key the grid never reads (e.g. "Retainer" vs grid row "Retainers"),
+ * and the entry would silently disappear from the visible row.
+ */
+export const CANONICAL_TO_GRID_ROW: Record<string, string> = {
+  // Cash-In
+  Retainer: 'Retainers',
+  Milestone: 'Milestones',
+  // Closing Fees keeps the same key on both sides.
+  'Tech Revenue': 'Technology Revenue',
+  'Other Cash In': 'Other Receipts',
+  // Cash-Out
+  'Payroll Expense': 'Payroll - Salaries',
+  'Contractor Expense': 'Contractors & Consultants',
+  'Advertising Bank Fees': 'Advertising & Marketing',
+  Software: 'Software & Technology',
+  'Professional Services': 'Legal & Professional',
+  'Other Cash Out': 'Other Disbursements',
+};
+
+/**
+ * Resolve a Configure-modal category to the exact key used by the Weekly Report
+ * grid (and the daily aggregator). Two-step: alias → canonical, then canonical
+ * → grid row.
+ */
+export function resolveCategoryToGridRow(category: string): string {
+  const canonical = resolveCategoryAlias(category);
+  return CANONICAL_TO_GRID_ROW[canonical] || canonical;
+}
+
 export const DAY_OF_WEEK_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function parseDate(s: string): Date {
@@ -268,7 +301,11 @@ export function mergeScheduledIntoWeekly(
       const target = out[wk] as any;
       // Resolve legacy / aliased category labels to the canonical weekly row
       // key (e.g. "Software & Technology" -> "Software", "Retainers" -> "Retainer").
-      const cat = resolveCategoryAlias(entry.category);
+      // Then map canonical → actual grid row key (the long-form label the
+      // Weekly Report renders and the daily aggregator writes to). This is
+      // what makes a Configure "Retainer" entry land in the visible
+      // "Retainers" row, "Payroll Expense" in "Payroll - Salaries", etc.
+      const cat = resolveCategoryToGridRow(entry.category);
       const amt = Number(entry.amount) || 0;
       target[cat] = (Number(target[cat]) || 0) + amt;
       // Note: parent "Advisors Revenue" value is computed in the weekly view as

@@ -19,7 +19,7 @@ import { ScheduledCashFlowsModal } from './ScheduledCashFlowsModal';
 import { useCashFlowImport } from './useCashFlowImport';
 import { useCashInItems } from './useCashInItems';
 import { useScheduledCashFlows } from './useScheduledCashFlows';
-import { mergeScheduledIntoWeekly, ACCOUNT_OPTIONS, resolveCategoryAlias, DEBT_ADVISORY_DEFAULT_SUBCATEGORY } from './scheduledCashFlows';
+import { mergeScheduledIntoWeekly, ACCOUNT_OPTIONS, resolveCategoryToGridRow, DEBT_ADVISORY_DEFAULT_SUBCATEGORY } from './scheduledCashFlows';
 import { WEEKLY_HISTORICAL_SEED, LAST_HISTORICAL_WEEK_ENDING } from './weeklyHistoricalSeed';
 import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
@@ -572,7 +572,7 @@ export function CashFlowManager() {
     if (!isConfigureFilterActive) return scheduledItems;
     return (scheduledItems || []).filter((e) => {
       // Migrate legacy parent storage so filtering is consistent with the grid.
-      const cat = resolveCategoryAlias(e.category);
+      const cat = resolveCategoryToGridRow(e.category);
       const entityOk = filterEntities.length === 0 || filterEntities.includes(e.account);
       const categoryOk = filterCategories.length === 0 || filterCategories.includes(cat);
       return entityOk && categoryOk;
@@ -642,7 +642,7 @@ export function CashFlowManager() {
   const availableCategories = useMemo(() => {
     const set = new Set<string>();
     for (const e of scheduledItems || []) {
-      const cat = resolveCategoryAlias(e.category);
+      const cat = resolveCategoryToGridRow(e.category);
       set.add(cat);
     }
     return Array.from(set).sort();
