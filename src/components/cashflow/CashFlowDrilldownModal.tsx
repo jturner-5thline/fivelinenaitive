@@ -12,7 +12,10 @@ import {
 } from './scheduledCashFlows';
 import { fmt } from './formatters';
 
-const DEBT_ADV_SUBKEYS = ['Retainer', 'Milestone', 'Closing Fees'] as const;
+// Grid-row keys for Debt Advisory sub-rows. These must match the row keys
+// used by WeeklyReportTab AND the keys produced by resolveCategoryToGridRow,
+// otherwise drilldown shows zero rows.
+const DEBT_ADV_SUBKEYS = ['Retainers', 'Milestones', 'Closing Fees', 'Referral Fees'] as const;
 
 export interface DrilldownContext {
   /** Logical row key in the weekly grid (e.g. category name, "TOTAL RECEIPTS", "NET CHANGE") */
@@ -45,18 +48,23 @@ function formatNiceDate(s: string): string {
 
 /** Resolve which categories should be matched for a given row key. */
 function categoriesForRow(rowKey: string): { categories: Set<string>; flowFilter: 'in' | 'out' | 'all' } {
+  // Convert canonical short-key category lists into the grid-row keys used
+  // by mergeScheduledIntoWeekly (matches what entry rows resolve to).
+  const cashInGridRows = (CASH_IN_CATEGORIES as readonly string[]).map(
+    (c) => CANONICAL_TO_GRID_ROW[c] || c,
+  );
+  const cashOutGridRows = (CASH_OUT_CATEGORIES as readonly string[]).map(
+    (c) => CANONICAL_TO_GRID_ROW[c] || c,
+  );
   if (rowKey === 'TOTAL RECEIPTS' || rowKey === 'CASH IN') {
-    return { categories: new Set(CASH_IN_CATEGORIES as readonly string[]), flowFilter: 'in' };
+    return { categories: new Set(cashInGridRows), flowFilter: 'in' };
   }
   if (rowKey === 'TOTAL DISBURSEMENTS' || rowKey === 'CASH OUT') {
-    return { categories: new Set(CASH_OUT_CATEGORIES as readonly string[]), flowFilter: 'out' };
+    return { categories: new Set(cashOutGridRows), flowFilter: 'out' };
   }
   if (rowKey === 'NET CHANGE' || rowKey === 'TOTAL NET CASH CHANGE') {
     return {
-      categories: new Set([
-        ...(CASH_IN_CATEGORIES as readonly string[]),
-        ...(CASH_OUT_CATEGORIES as readonly string[]),
-      ]),
+      categories: new Set([...cashInGridRows, ...cashOutGridRows]),
       flowFilter: 'all',
     };
   }
