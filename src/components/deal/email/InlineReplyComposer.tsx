@@ -22,7 +22,7 @@ export interface ReplyDraft {
 
 interface InlineReplyComposerProps {
   replyTo: { subject: string; to_email: string; to_name: string; threadId: string };
-  onSend: (email: Omit<MockEmail, 'id' | 'threadId'>) => void;
+  onSend: (email: Omit<MockEmail, 'id' | 'threadId'>, opts?: ComposerSendOptions) => void;
   onDiscard: () => void;
   onPopOut: (draft: ReplyDraft) => void;
   initialDraft?: ReplyDraft | null;
@@ -83,7 +83,7 @@ export function InlineReplyComposer({
 
   const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
 
-  const executeSend = useCallback(async (_opts: ComposerSendOptions) => {
+  const executeSend = useCallback(async (opts: ComposerSendOptions) => {
     clearPreSendAlert();
     const toEmails = recipients.to;
     if (toEmails.length === 0) {
@@ -111,7 +111,7 @@ export function InlineReplyComposer({
       is_follow_up: false,
       needs_response: false,
       category: 'deal',
-    });
+    }, opts);
     toast.success('Email sent successfully', { description: `To: ${toEmails.join(', ')}`, icon: '✉️' });
   }, [recipients.to, subject, body, attachments, onSend, clearPreSendAlert]);
 
