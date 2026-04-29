@@ -7,7 +7,8 @@ import Color from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
 import Placeholder from '@tiptap/extension-placeholder';
 import FontSize from '@tiptap/extension-font-size';
-import { useEffect, useState } from 'react';
+import Image from '@tiptap/extension-image';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
 import { Separator } from '@/components/ui/separator';
@@ -15,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import {
   Bold, Italic, Underline as UnderlineIcon, List, ListOrdered,
   Link as LinkIcon, Palette, Highlighter, Indent, Outdent, Eraser,
-  ChevronDown, Strikethrough, Database,
+  ChevronDown, Strikethrough, Database, Image as ImageIcon, Minus, Upload,
 } from 'lucide-react';
 import {
   Popover, PopoverContent, PopoverTrigger,
@@ -24,6 +25,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface Props {
   content: string;
@@ -35,6 +38,12 @@ interface Props {
    * appears in the link popover that inserts an `View Data Room` link.
    */
   dataRoomUrl?: string | null;
+  /** Customize the placeholder shown when the editor is empty. */
+  placeholder?: string;
+  /** Enable image insertion (URL paste + upload). Defaults to true. */
+  enableImages?: boolean;
+  /** Storage bucket name for image uploads. Defaults to 'email-signatures'. */
+  uploadBucket?: string;
 }
 
 const FONT_COLORS = [
@@ -55,7 +64,16 @@ const FONT_SIZES = [
   { label: 'X-Large', value: '22px' },
 ];
 
-export function EmailRichTextEditor({ content, onChange, className, minHeight = 240, dataRoomUrl }: Props) {
+export function EmailRichTextEditor({
+  content,
+  onChange,
+  className,
+  minHeight = 240,
+  dataRoomUrl,
+  placeholder = 'Compose your email…',
+  enableImages = true,
+  uploadBucket = 'email-signatures',
+}: Props) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -70,7 +88,11 @@ export function EmailRichTextEditor({ content, onChange, className, minHeight = 
       Color,
       FontSize,
       Highlight.configure({ multicolor: true }),
-      Placeholder.configure({ placeholder: 'Compose your email…' }),
+      Placeholder.configure({ placeholder }),
+      Image.configure({
+        HTMLAttributes: { class: 'inline-block max-w-full h-auto rounded' },
+        allowBase64: false,
+      }),
     ],
     content: content || '',
     onUpdate: ({ editor }) => {
@@ -105,7 +127,7 @@ export function EmailRichTextEditor({ content, onChange, className, minHeight = 
 
   return (
     <div className={cn('border rounded-md overflow-hidden bg-background flex flex-col', className)}>
-      <Toolbar editor={editor} dataRoomUrl={dataRoomUrl} />
+      <Toolbar editor={editor} dataRoomUrl={dataRoomUrl} enableImages={enableImages} uploadBucket={uploadBucket} />
       <div className="flex-1 overflow-auto">
         <EditorContent editor={editor} />
       </div>
@@ -113,9 +135,64 @@ export function EmailRichTextEditor({ content, onChange, className, minHeight = 
   );
 }
 
-function Toolbar({ editor, dataRoomUrl }: { editor: any; dataRoomUrl?: string | null }) {
+function Toolbar({
+  editor,
+  dataRoomUrl,
+  enableImages,
+  uploadBucket,
+}: { editor: any; dataRoomUrl?: string | null; enableImages?: boolean; uploadBucket?: string }) {
   const [linkUrl, setLinkUrl] = useState('');
   const [linkOpen, setLinkOpen] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
+  const [imageOpen, setImageOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const insertImage = (src: string) => {
+    if (!src) return;
+    const safe = /^https?:\/\//i.test(src) ? src : `https://${src}`;
+    editor.chain().focus().setImage({ src: safe }).run();
+    setImageUrl('');
+    setImageOpen(false);
+  };
+
+  const handleUpload = async (file: File) => {
+    const ALLOWED = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+    if (!ALLOWED.includes(file.type)) {
+      toast.error('Unsupported image type. Use PNG, JPG, GIF, or WEBP.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image must be under 2 MB.');
+      return;
+    }
+    setUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('You must be signed in to upload images.');
+        return;
+      }
+      const ext = file.name.split('.').pop() || 'png';
+      const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from(uploadBucket || 'email-signatures')
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage
+        .from(uploadBucket || 'email-signatures')
+        .getPublicUrl(path);
+      if (pub?.publicUrl) {
+        insertImage(pub.publicUrl);
+        toast.success('Image uploaded');
+      }
+    } catch (e: any) {
+      toast.error(e?.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const setLink = () => {
     if (linkUrl) {
