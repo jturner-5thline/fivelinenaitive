@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -16,9 +15,9 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Send, Paperclip, Loader2, X, Trash2, Maximize2, Check, AlertCircle, Cloud,
-  Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Edit3, ChevronDown,
-  MoreHorizontal, Calendar as CalendarIcon, Image as ImageIcon, Archive, MailX,
-  Link2,
+  Edit3, ChevronDown,
+  MoreHorizontal, Calendar as CalendarIcon, Image as ImageIcon, Archive,
+  Link2, Database,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { cn } from '@/lib/utils';
@@ -30,6 +29,7 @@ import { SnippetPicker } from './SnippetPicker';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { shouldShowSignatureGhost } from './signatureGhost';
+import { EmailRichTextEditor } from './EmailRichTextEditor';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Public surface
@@ -68,9 +68,21 @@ export interface EmailComposerCardProps {
   /** Body — controlled. */
   body: string;
   onBodyChange: (next: string) => void;
-  /** Attachments — controlled. */
+  /** Attachments — controlled (filename list, persisted in drafts). */
   attachments: string[];
   onAttachmentsChange: (next: string[]) => void;
+  /**
+   * Optional richer attachments callback. When provided, the composer will
+   * surface a real file picker (paperclip) and forward the selected `File`
+   * objects so the parent can attach them to the outgoing message.
+   * The `attachments` (string[]) prop continues to mirror filenames so existing
+   * draft-persistence stays intact.
+   */
+  onFilesChange?: (files: File[]) => void;
+  /** Maximum total attachment size in bytes. Defaults to 25 MB (Gmail limit). */
+  maxAttachmentBytes?: number;
+  /** Optional FLEx data-room URL. Surfaces a 'View Data Room' shortcut. */
+  dataRoomUrl?: string | null;
 
   /** Send handler. Returns a promise that resolves when send completes. */
   onSend: (opts: ComposerSendOptions) => Promise<void> | void;
@@ -111,6 +123,25 @@ export interface EmailComposerCardProps {
 
 export const AI_ASSIST_REQUEST_EVENT = 'naitive:ai-assist:request-draft';
 export const AI_ASSIST_READY_EVENT = 'naitive:ai-assist:draft-ready';
+
+// ────────────────────────────────────────────────────────────────────────────
+// Small helpers
+// ────────────────────────────────────────────────────────────────────────────
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export interface AiAssistDraftReadyDetail {
   body: string;
@@ -185,6 +216,9 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
     subject, onSubjectChange,
     body, onBodyChange,
     attachments, onAttachmentsChange,
+    onFilesChange,
+    maxAttachmentBytes = 25 * 1024 * 1024,
+    dataRoomUrl,
     onSend, onDiscard, onPopOut, onFieldBlur,
     dealName, dealId,
     signature,
@@ -198,9 +232,33 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
   } = props;
 
   const { search } = useEmailContacts();
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const subjectInputRef = useRef<HTMLInputElement>(null);
   const liveRegionRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [files, setFiles] = useState<File[]>([]);
+
+  // Resolve the FLEx data-room URL for the linked deal (if any) so the
+  // editor's link popover and the toolbar can offer the "Data Room" shortcut.
+  // Falls back to an explicit `dataRoomUrl` prop when provided.
+  const [resolvedDataRoomUrl, setResolvedDataRoomUrl] = useState<string | null>(dataRoomUrl ?? null);
+  useEffect(() => {
+    if (dataRoomUrl) { setResolvedDataRoomUrl(dataRoomUrl); return; }
+    if (!dealId) { setResolvedDataRoomUrl(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('deal_writeups')
+        .select('data_room_url, updated_at')
+        .eq('deal_id', dealId)
+        .not('data_room_url', 'is', null)
+        .order('updated_at', { ascending: false })
+        .limit(1);
+      if (cancelled) return;
+      const url = data?.[0]?.data_room_url as string | null | undefined;
+      setResolvedDataRoomUrl(url ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [dealId, dataRoomUrl]);
 
   const [isSending, setIsSending] = useState(false);
   const [showCcBcc, setShowCcBcc] = useState(recipients.cc.length > 0 || recipients.bcc.length > 0);
@@ -301,49 +359,80 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
     }
   }, [hasRecipient, hasContent, onSend, onDiscard, autoLink, trackOpens, recipients, subject, props.body, props.dealId]);
 
-  // ── Keyboard shortcuts: ⌘↵ send · ⌘J AI draft ───────────────────────────
-  const handleBodyKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault();
-      void runSend();
+  // Snippets / AI drafts append at end of body (rich text editor manages its
+  // own caret).
+  const insertAtCursor = useCallback((text: string) => {
+    onBodyChange((body || '') + text);
+  }, [body, onBodyChange]);
+
+  // ── Attachments — real File picker, capped at maxAttachmentBytes total ──
+  const totalBytes = useMemo(() => files.reduce((sum, f) => sum + f.size, 0), [files]);
+
+  const triggerFilePicker = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFilesSelected = useCallback((picked: FileList | null) => {
+    if (!picked || picked.length === 0) return;
+    const incoming = Array.from(picked);
+    const merged = [...files];
+    let runningTotal = totalBytes;
+    const skipped: string[] = [];
+    for (const f of incoming) {
+      if (merged.some((m) => m.name === f.name && m.size === f.size)) continue;
+      if (runningTotal + f.size > maxAttachmentBytes) {
+        skipped.push(f.name);
+        continue;
+      }
+      merged.push(f);
+      runningTotal += f.size;
+    }
+    if (skipped.length > 0) {
+      const cap = Math.round(maxAttachmentBytes / (1024 * 1024));
+      toast.error(
+        `Couldn't attach ${skipped.length} file${skipped.length === 1 ? '' : 's'} — total over ${cap}MB cap.`,
+      );
+    }
+    setFiles(merged);
+    onFilesChange?.(merged);
+    onAttachmentsChange(merged.map((f) => f.name));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [files, totalBytes, maxAttachmentBytes, onFilesChange, onAttachmentsChange]);
+
+  const removeAttachment = useCallback((name: string) => {
+    const next = files.filter((f) => f.name !== name);
+    setFiles(next);
+    onFilesChange?.(next);
+    // Mirror the filename list. If the user is removing a legacy filename-only
+    // attachment (no backing File), drop it from the names list directly.
+    if (next.length === files.length) {
+      onAttachmentsChange(attachments.filter((a) => a !== name));
+    } else {
+      onAttachmentsChange(next.map((f) => f.name));
+    }
+  }, [files, attachments, onFilesChange, onAttachmentsChange]);
+
+  // ── Signature auto-append on first mount when body is empty ─────────────
+  // Honors the long-standing rule of not splicing into in-progress drafts:
+  // we only inject the signature when the editor opens with no body content.
+  const signatureInjectedRef = useRef(false);
+  useEffect(() => {
+    if (signatureInjectedRef.current) return;
+    if (!signature || !signature.trim()) return;
+    if (body && body.trim().length > 0) {
+      signatureInjectedRef.current = true;
       return;
     }
-    if (e.key.toLowerCase() === 'j' && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault();
-      requestAiDraft();
-    }
-  };
-
-  // ── Formatting helpers ──────────────────────────────────────────────────
-  const wrapSelection = (prefix: string, suffix: string) => {
-    const ta = textareaRef.current; if (!ta) return;
-    const start = ta.selectionStart; const end = ta.selectionEnd;
-    const selected = body.slice(start, end);
-    onBodyChange(body.slice(0, start) + prefix + selected + suffix + body.slice(end));
-    setTimeout(() => { ta.focus(); ta.setSelectionRange(start + prefix.length, end + prefix.length); }, 0);
-  };
-  const insertAtCursor = (text: string) => {
-    const ta = textareaRef.current;
-    if (!ta) { onBodyChange(body + text); return; }
-    const start = ta.selectionStart; const end = ta.selectionEnd;
-    onBodyChange(body.slice(0, start) + text + body.slice(end));
-    setTimeout(() => { ta.focus(); ta.setSelectionRange(start + text.length, start + text.length); }, 0);
-  };
-  const handleBold = () => wrapSelection('**', '**');
-  const handleItalic = () => wrapSelection('*', '*');
-  const handleUnderline = () => wrapSelection('__', '__');
-  const handleLink = () => { const url = prompt('Enter URL:'); if (url) wrapSelection('[', `](${url})`); };
-  const handleBullet = () => insertAtCursor('\n- ');
-  const handleNumbered = () => insertAtCursor('\n1. ');
-
-  const handleAddAttachment = () => {
-    const samples = ['proposal.pdf', 'financials.xlsx', 'term_sheet.docx', 'deck.pptx', 'summary.pdf'];
-    const next = samples.find((s) => !attachments.includes(s));
-    if (next) onAttachmentsChange([...attachments, next]);
-  };
-
-  const removeAttachment = (name: string) =>
-    onAttachmentsChange(attachments.filter((a) => a !== name));
+    const sigHtml = signature
+      .split(/\r?\n/)
+      .map((l) => l ? escapeHtml(l) : '<br/>')
+      .join('<br/>');
+    onBodyChange(`<p></p><p></p><p>${sigHtml}</p>`);
+    signatureInjectedRef.current = true;
+    // We intentionally don't react to subsequent body/signature updates — this
+    // is a one-shot prefill. Subsequent edits are owned by the user.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature]);
 
   // ── Drag-to-resize on top edge ──────────────────────────────────────────
   const onResizeStart = (e: React.MouseEvent) => {
@@ -703,7 +792,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
             <span>AI draft inserted</span>
             <button
               type="button"
-              onClick={() => { aiChipDismiss(); textareaRef.current?.focus(); }}
+              onClick={() => { aiChipDismiss(); }}
               className="hover:underline"
             >
               Edit
@@ -720,22 +809,28 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
         </div>
       )}
 
-      {/* Body + signature ghost */}
-      <div className="px-4 pt-3 pb-1 flex-1 min-h-0">
-        <Textarea
-          ref={textareaRef}
-          value={body}
-          onChange={(e) => onBodyChange(e.target.value)}
-          onKeyDown={handleBodyKeyDown}
-          onBlur={onFieldBlur}
-          placeholder="Write your reply… or press ⌘J to draft with AI."
-          className={cn(
-            'border-0 resize-none focus-visible:ring-0 p-0 text-sm bg-transparent w-full placeholder:text-muted-foreground/70',
-            'focus-visible:outline-none',
-          )}
-          style={{ minHeight: bodyMinHeight }}
-          aria-label="Email body"
-          aria-invalid={!!bodyError}
+      {/* Body — rich text editor */}
+      <div
+        className="px-4 pt-3 pb-1 flex-1 min-h-0"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            void runSend();
+            return;
+          }
+          if (e.key.toLowerCase() === 'j' && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            requestAiDraft();
+          }
+        }}
+        onBlur={onFieldBlur}
+      >
+        <EmailRichTextEditor
+          content={body}
+          onChange={onBodyChange}
+          dataRoomUrl={resolvedDataRoomUrl}
+          minHeight={bodyMinHeight}
+          className="border-0 shadow-none"
         />
         {shouldShowSignatureGhost(signature, body) && (
           <div
@@ -783,41 +878,81 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
       </div>
 
       {/* Attachments */}
-      {attachments.length > 0 && (
+      {(files.length > 0 || attachments.length > 0) && (
         <div className="px-4 pb-1.5">
           <div className="flex flex-wrap gap-1.5">
-            {attachments.map((name) => (
-              <Badge key={name} variant="secondary" className="text-[10px] gap-1 pr-1 py-0.5">
-                <Paperclip className="h-2.5 w-2.5" />{name}
+            {(files.length > 0 ? files.map((f) => ({ name: f.name, size: f.size })) : attachments.map((n) => ({ name: n, size: 0 }))).map((a) => (
+              <Badge key={a.name} variant="secondary" className="text-[10px] gap-1 pr-1 py-0.5">
+                <Paperclip className="h-2.5 w-2.5" />
+                <span className="max-w-[14rem] truncate">{a.name}</span>
+                {a.size > 0 && (
+                  <span className="text-muted-foreground/70">{formatBytes(a.size)}</span>
+                )}
                 <button
                   type="button"
-                  onClick={() => removeAttachment(name)}
+                  onClick={() => removeAttachment(a.name)}
                   className="ml-0.5 rounded-full hover:bg-muted p-0.5"
-                  aria-label={`Remove attachment ${name}`}
+                  aria-label={`Remove attachment ${a.name}`}
                 >
                   <X className="h-2.5 w-2.5" />
                 </button>
               </Badge>
             ))}
           </div>
+          {files.length > 0 && (
+            <div className="text-[10px] text-muted-foreground mt-1">
+              {files.length} file{files.length === 1 ? '' : 's'} · {formatBytes(totalBytes)} of {formatBytes(maxAttachmentBytes)}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Toolbar — Format · Insert · AI · Send */}
+      {/* Hidden file input wired to the paperclip */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={(e) => handleFilesSelected(e.target.files)}
+      />
+
+      {/* Toolbar — Insert · AI · Send (formatting lives in the editor toolbar) */}
       <div className="flex items-center flex-wrap gap-y-1 px-4 py-2 border-t border-border/50">
         <ToolbarZone>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleBold} aria-label="Bold"><Bold className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent side="top" className="text-xs">Bold (⌘B)</TooltipContent></Tooltip>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleItalic} aria-label="Italic"><Italic className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent side="top" className="text-xs">Italic (⌘I)</TooltipContent></Tooltip>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleUnderline} aria-label="Underline"><Underline className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent side="top" className="text-xs">Underline (⌘U)</TooltipContent></Tooltip>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleLink} aria-label="Insert link"><LinkIcon className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent side="top" className="text-xs">Link</TooltipContent></Tooltip>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleBullet} aria-label="Bulleted list"><List className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent side="top" className="text-xs">Bulleted list</TooltipContent></Tooltip>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleNumbered} aria-label="Numbered list"><ListOrdered className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent side="top" className="text-xs">Numbered list</TooltipContent></Tooltip>
-        </ToolbarZone>
-
-        <ToolbarDivider />
-
-        <ToolbarZone>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" className="gap-1 text-muted-foreground h-7 text-xs" onClick={handleAddAttachment} aria-label="Attach file"><Paperclip className="h-3 w-3" />Attach</Button></TooltipTrigger><TooltipContent side="top" className="text-xs">Attach a file</TooltipContent></Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1 text-muted-foreground h-7 text-xs"
+                onClick={triggerFilePicker}
+                aria-label="Attach file"
+              >
+                <Paperclip className="h-3 w-3" />Attach
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              Attach a file (max {Math.round(maxAttachmentBytes / (1024 * 1024))}MB total)
+            </TooltipContent>
+          </Tooltip>
+          {resolvedDataRoomUrl && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 text-muted-foreground h-7 text-xs"
+                  onClick={() => insertAtCursor(`<p><a href="${resolvedDataRoomUrl}" target="_blank" rel="noopener noreferrer">View Data Room</a></p>`)}
+                  aria-label="Insert Data Room link"
+                >
+                  <Database className="h-3 w-3" />Data Room
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                Insert FLEx data room link
+              </TooltipContent>
+            </Tooltip>
+          )}
           <SnippetPicker onInsert={insertAtCursor} tokenContext={tokenContext} />
           <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" disabled aria-label="Insert image"><ImageIcon className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent side="top" className="text-xs">Insert image (soon)</TooltipContent></Tooltip>
         </ToolbarZone>

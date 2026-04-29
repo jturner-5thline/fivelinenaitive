@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import {
   Bold, Italic, Underline as UnderlineIcon, List, ListOrdered,
   Link as LinkIcon, Palette, Highlighter, Indent, Outdent, Eraser,
-  ChevronDown,
+  ChevronDown, Strikethrough, Database,
 } from 'lucide-react';
 import {
   Popover, PopoverContent, PopoverTrigger,
@@ -30,6 +30,11 @@ interface Props {
   onChange: (html: string) => void;
   className?: string;
   minHeight?: number;
+  /**
+   * Optional FLEx data-room URL. When provided, a "Data Room" shortcut
+   * appears in the link popover that inserts an `View Data Room` link.
+   */
+  dataRoomUrl?: string | null;
 }
 
 const FONT_COLORS = [
@@ -50,7 +55,7 @@ const FONT_SIZES = [
   { label: 'X-Large', value: '22px' },
 ];
 
-export function EmailRichTextEditor({ content, onChange, className, minHeight = 240 }: Props) {
+export function EmailRichTextEditor({ content, onChange, className, minHeight = 240, dataRoomUrl }: Props) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -100,7 +105,7 @@ export function EmailRichTextEditor({ content, onChange, className, minHeight = 
 
   return (
     <div className={cn('border rounded-md overflow-hidden bg-background flex flex-col', className)}>
-      <Toolbar editor={editor} />
+      <Toolbar editor={editor} dataRoomUrl={dataRoomUrl} />
       <div className="flex-1 overflow-auto">
         <EditorContent editor={editor} />
       </div>
@@ -108,7 +113,7 @@ export function EmailRichTextEditor({ content, onChange, className, minHeight = 
   );
 }
 
-function Toolbar({ editor }: { editor: any }) {
+function Toolbar({ editor, dataRoomUrl }: { editor: any; dataRoomUrl?: string | null }) {
   const [linkUrl, setLinkUrl] = useState('');
   const [linkOpen, setLinkOpen] = useState(false);
 
@@ -121,6 +126,20 @@ function Toolbar({ editor }: { editor: any }) {
     }
     setLinkOpen(false);
     setLinkUrl('');
+  };
+
+  const insertDataRoomLink = () => {
+    if (!dataRoomUrl) return;
+    const href = /^https?:\/\//i.test(dataRoomUrl) ? dataRoomUrl : `https://${dataRoomUrl}`;
+    // Insert a fresh link with display text "View Data Room" at the caret.
+    editor
+      .chain()
+      .focus()
+      .insertContent(
+        `<a href="${href}" target="_blank" rel="noopener noreferrer">View Data Room</a>`,
+      )
+      .run();
+    setLinkOpen(false);
   };
 
   return (
@@ -178,6 +197,15 @@ function Toolbar({ editor }: { editor: any }) {
         aria-label="Underline"
       >
         <UnderlineIcon className="h-3.5 w-3.5" />
+      </Toggle>
+      <Toggle
+        size="sm"
+        pressed={editor.isActive('strike')}
+        onPressedChange={() => editor.chain().focus().toggleStrike().run()}
+        className="h-7 w-7 p-0"
+        aria-label="Strikethrough"
+      >
+        <Strikethrough className="h-3.5 w-3.5" />
       </Toggle>
 
       <Separator orientation="vertical" className="h-5 mx-0.5" />
@@ -315,6 +343,24 @@ function Toolbar({ editor }: { editor: any }) {
               Remove
             </Button>
           </div>
+          {dataRoomUrl && (
+            <>
+              <div className="border-t pt-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-7 w-full text-xs gap-1.5 justify-start"
+                  onClick={insertDataRoomLink}
+                >
+                  <Database className="h-3 w-3" />
+                  Insert Data Room link
+                </Button>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Inserts <span className="font-medium">View Data Room</span> at the cursor.
+                </p>
+              </div>
+            </>
+          )}
         </PopoverContent>
       </Popover>
 
