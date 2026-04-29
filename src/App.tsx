@@ -27,7 +27,6 @@ import { UndoSendProvider } from "@/contexts/UndoSendContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { InsightsAccessGuard } from "@/components/InsightsAccessGuard";
 import { WorkflowEmailModalListener } from "@/components/email/WorkflowEmailModalListener";
-import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { FloatingCopilotDrawer } from "@/components/FloatingCopilotDrawer";
 import { NewTaskViaNaitiveModal } from "@/components/dashboard/chat/NewTaskViaNaitiveModal";
 import { CookieConsent } from "@/components/CookieConsent";
