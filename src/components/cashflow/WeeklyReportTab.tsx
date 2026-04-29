@@ -138,8 +138,12 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   });
   const effectiveCurrentIndex = currentWeekIndex >= 0 ? currentWeekIndex : totalWeeks - 1;
 
-  const [weeksPast, setWeeksPast] = useState(() => Math.min(effectiveCurrentIndex, 4));
-  const [weeksFuture, setWeeksFuture] = useState(() => Math.min(totalWeeks - effectiveCurrentIndex - 1, 12));
+  // Clamp to >=0 so that edge cases (empty initial weeklyData, current week at edge)
+  // never produce negative state that silently collapses the visible window.
+  const [weeksPast, setWeeksPast] = useState(() => Math.max(0, Math.min(Math.max(0, effectiveCurrentIndex), 4)));
+  const [weeksFuture, setWeeksFuture] = useState(() =>
+    Math.max(0, Math.min(Math.max(0, totalWeeks - effectiveCurrentIndex - 1), 12)),
+  );
 
   const startIdx = Math.max(0, effectiveCurrentIndex - weeksPast);
   const endIdx = Math.min(totalWeeks, effectiveCurrentIndex + 1 + weeksFuture);
