@@ -6,17 +6,37 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import {
   Mail, Loader2, ChevronLeft, ChevronRight, Check, CheckCircle2,
-  AlertCircle, RotateCw, Send,
+  AlertCircle, RotateCw, Send, Users, ExternalLink, AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EmailRichTextEditor } from './EmailRichTextEditor';
 import { htmlToPlainText } from '@/lib/htmlToPlainText';
+import { Link } from 'react-router-dom';
 
 export type EmailDraftStatus = 'draft' | 'approved' | 'sending' | 'sent' | 'failed';
 
+/** Lender contact option surfaced in the recipient picker. */
+export type LenderContactOption = {
+  id: string;            // lender_contacts.id, or 'legacy' for master_lenders.email
+  name: string;          // contact display name (or "Primary contact" fallback)
+  title?: string | null;
+  email: string;
+  isPrimary?: boolean;
+};
+
 export type EmailDraft = {
   lenderName: string;
+  /** master_lenders.id when the draft is matched to a lender directory record. */
+  lenderId?: string | null;
+  /** All known contact emails for this lender (for the recipient dropdown). */
+  availableContacts?: LenderContactOption[];
+  /** Currently selected contact id from `availableContacts`. */
+  selectedContactId?: string | null;
   to: string;
   cc: string;
   bcc: string;
@@ -159,6 +179,51 @@ export function DraftSubmissionEmailsModal({
                     placeholder="recipient@example.com"
                     className="h-8 text-xs flex-1"
                   />
+                  {/* Multi-contact picker — only when ≥2 contact emails on file. */}
+                  {(draft.availableContacts?.length ?? 0) > 1 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-2 text-[11px] gap-1"
+                          aria-label="Choose lender contact"
+                        >
+                          <Users className="h-3 w-3" />
+                          {draft.availableContacts!.length} contacts
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-72">
+                        <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                          {draft.lenderName} contacts
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {draft.availableContacts!.map((c) => (
+                          <DropdownMenuItem
+                            key={c.id}
+                            onClick={() =>
+                              updateActiveDraft({ to: c.email, selectedContactId: c.id })
+                            }
+                            className="flex flex-col items-start gap-0.5 py-1.5"
+                          >
+                            <div className="flex items-center gap-1.5 w-full">
+                              <span className="text-xs font-medium">{c.name}</span>
+                              {c.isPrimary && (
+                                <Badge variant="outline" className="text-[9px] py-0 h-4 ml-auto">
+                                  Primary
+                                </Badge>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-muted-foreground">
+                              {c.email}
+                              {c.title ? ` · ${c.title}` : ''}
+                            </span>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                   <div className="flex items-center gap-1">
                     {!showCc && !draft.cc && (
                       <button
@@ -180,6 +245,27 @@ export function DraftSubmissionEmailsModal({
                     )}
                   </div>
                 </div>
+
+                {/* No-email warning when the lender directory record has no contacts. */}
+                {(draft.availableContacts?.length ?? 0) === 0 && !draft.to.trim() && (
+                  <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-2 py-1.5 text-[11px] text-amber-700 dark:text-amber-400 ml-[56px]">
+                    <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                    <span className="flex-1">
+                      No email on file for <strong>{draft.lenderName}</strong> — add one before sending.
+                    </span>
+                    <Link
+                      to={
+                        draft.lenderId
+                          ? `/lenders?lender=${encodeURIComponent(draft.lenderId)}`
+                          : `/lenders?search=${encodeURIComponent(draft.lenderName)}`
+                      }
+                      target="_blank"
+                      className="inline-flex items-center gap-1 font-medium hover:underline whitespace-nowrap"
+                    >
+                      Open lender <ExternalLink className="h-2.5 w-2.5" />
+                    </Link>
+                  </div>
+                )}
 
                 {/* Cc */}
                 {(showCc || draft.cc) && (
