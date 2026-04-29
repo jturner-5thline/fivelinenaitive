@@ -18,6 +18,15 @@ import {
   Loader2, X, RefreshCw, AlertTriangle, Briefcase, ChevronDown, Send, Paperclip,
   Clock, Save, PenLine, Undo2, Trash2,
 } from 'lucide-react';
+import {
+  Bold as BoldIcon,
+  Italic as ItalicIcon,
+  Underline as UnderlineIcon,
+  Strikethrough as StrikeIcon,
+  List as ListIcon,
+  ListOrdered as ListOrderedIcon,
+  Link as LinkIcon,
+} from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
