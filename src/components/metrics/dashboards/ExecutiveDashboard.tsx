@@ -680,7 +680,7 @@ export function ExecutiveDashboard() {
 
       {/* Row 3: Deal Types */}
       <div className="grid grid-cols-1 gap-4">
-        <DealsByStatusPieChart />
+        <DealsByStatusPieChart window={{ start: selectedWindow.start, end: selectedWindow.end }} />
       </div>
 
       <ExecKpiDrilldownModal drilldown={drilldown} onClose={() => setDrilldown(null)} />
