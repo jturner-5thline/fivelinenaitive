@@ -938,7 +938,7 @@ export function VdrThreeColumnWorkspace({
       <ResizablePanel defaultSize={38} minSize={25}>
         <div
           className={cn(
-            'flex flex-col h-full transition-colors',
+            'flex flex-col h-full transition-colors bg-muted/10',
             dropTarget === 'internal' && 'bg-primary/5 ring-2 ring-inset ring-primary/40'
           )}
           onDragOver={e => allowDrop(e, 'internal')}
@@ -946,7 +946,7 @@ export function VdrThreeColumnWorkspace({
           onDrop={e => handleColumnDrop(e, 'internal')}
         >
           {/* HEADER (h-10) */}
-          <div className="flex items-center gap-2 px-3 h-10 min-h-[2.5rem] border-b border-white/5">
+          <div className="flex items-center gap-2 px-3 h-10 min-h-[2.5rem] border-b border-border/40 bg-card/40">
             <Lock className="h-3.5 w-3.5 text-muted-foreground" />
             <h2 className="text-sm font-semibold">Internal</h2>
             <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{internalCount}</Badge>
@@ -968,14 +968,14 @@ export function VdrThreeColumnWorkspace({
           </div>
 
           {/* TOP UTILITY PANEL — fixed height, mirrored in Data Room */}
-          <div className="h-[72px] px-3 pt-2 pb-2 border-b border-white/5">
+          <div className="h-[72px] px-3 pt-2 pb-2 border-b border-border/40">
             <div
               onClick={() => internalFileInput.current?.click()}
               className={cn(
                 'flex items-center justify-center gap-2 h-full rounded-md border border-dashed cursor-pointer transition-colors',
                 dropTarget === 'internal'
                   ? 'border-primary/60 bg-primary/10 text-primary'
-                  : 'border-white/10 bg-secondary/20 text-muted-foreground hover:border-primary/30 hover:text-foreground/80 hover:bg-secondary/30'
+                  : 'border-border/50 bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-foreground/80 hover:bg-muted/50'
               )}
             >
               <Upload className="h-3.5 w-3.5" />
@@ -985,20 +985,20 @@ export function VdrThreeColumnWorkspace({
           </div>
 
           {/* SEARCH ROW (h-11) */}
-          <div className="h-11 px-3 py-2 border-b border-white/5">
+          <div className="h-11 px-3 py-2 border-b border-border/40">
             <div className="relative h-full">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Filter all files…"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="h-7 text-xs pl-7 bg-secondary/30 border-white/10"
+                className="h-7 text-xs pl-7 bg-muted/40 border-border/50 focus-visible:border-border/70"
               />
             </div>
           </div>
 
           {/* BULK ACTION SLOT — reserved-height (h-9) so selection in one column doesn't desync rows */}
-          <div className="h-9 border-b border-white/5 flex items-center px-3">
+          <div className="h-9 border-b border-border/40 flex items-center px-3">
             {internalSelected.size > 0 ? (
               <div className="flex items-center gap-2 w-full bg-primary/5 -mx-3 px-3 h-full">
               <Checkbox
@@ -1088,8 +1088,8 @@ export function VdrThreeColumnWorkspace({
             {documentsLoading || categoriesLoading ? (
               <div className="flex items-center justify-center h-24 text-xs text-muted-foreground">Loading…</div>
             ) : !shouldRenderInternalFolders ? (
-              <div className="flex flex-col items-center justify-center h-32 text-xs text-muted-foreground gap-1 px-4 text-center">
-                <Lock className="h-6 w-6 text-muted-foreground/30" />
+              <div className="flex flex-col items-center justify-center h-32 text-xs text-muted-foreground/80 gap-1.5 px-4 text-center">
+                <Lock className="h-6 w-6 text-muted-foreground/25" />
                 <p>{internalCount === 0 ? 'No internal files yet.' : 'No matches for current filter.'}</p>
                 {internalCount === 0 && (
                   <button onClick={() => internalFileInput.current?.click()} className="text-[10px] text-primary hover:underline mt-1">
