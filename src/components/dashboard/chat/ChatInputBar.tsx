@@ -326,7 +326,7 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
           a slightly stronger but still understated focus state. No bright
           white outline or chunky ring. Matches the dashboard's other
           translucent surfaces. */}
-      <div className="flex items-end gap-2 rounded-lg px-1 border border-white/10 bg-white/[0.04] transition-colors duration-200 focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/15 focus-within:ring-offset-0 dark:border-white/10 dark:bg-white/[0.04] dark:focus-within:border-white/20 dark:focus-within:ring-white/15">
+      <div className="flex items-center gap-2 rounded-lg pl-1 pr-2 border border-white/10 bg-white/[0.04] transition-colors duration-200 focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/15 focus-within:ring-offset-0 dark:border-white/10 dark:bg-white/[0.04] dark:focus-within:border-white/20 dark:focus-within:ring-white/15">
         <div className="relative flex-1">
           <Sparkles className="absolute left-3 top-2.5 h-4 w-4 text-primary" />
           <Textarea
@@ -349,7 +349,7 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
             disabled={isLoading}
           />
         </div>
-        <div className="flex items-center gap-1 pb-1.5">
+        <div className="flex items-center gap-1 shrink-0">
           {/* Clear button */}
           {hasInput && (
             <Tooltip>
@@ -394,7 +394,7 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
                 )}
                 onClick={toggleVoice}
               >
-                {isListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
               </Button>
             </TooltipTrigger>
             <TooltipContent>{isListening ? 'Stop listening' : 'Voice input'}</TooltipContent>
@@ -403,12 +403,13 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
             <TooltipTrigger asChild>
               <Button
                 type="button"
+                variant="ghost"
                 size="icon"
                 className={cn(
-                  "h-8 w-8 rounded-lg border border-primary/30 transition-all duration-150",
+                  "h-8 w-8 rounded-lg transition-all duration-150",
                   hasInput && !isLoading
-                    ? "bg-primary/20 hover:bg-primary/30 text-primary cursor-pointer opacity-100"
-                    : "bg-primary/10 text-primary/40 cursor-not-allowed opacity-30"
+                    ? "text-primary hover:bg-primary/15 hover:text-primary"
+                    : "text-muted-foreground/40 hover:bg-transparent cursor-not-allowed"
                 )}
                 onClick={handleSubmit}
                 disabled={!hasInput || isLoading}
