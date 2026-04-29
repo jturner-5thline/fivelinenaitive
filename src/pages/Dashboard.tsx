@@ -340,7 +340,6 @@ function EmailTileWithIntelligence({
   );
 }
 
-import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { DashboardTemplatesDialog } from '@/components/dashboard/DashboardTemplates';
 import { FullCalendarView } from '@/components/dashboard/FullCalendarView';
 import { NewsFeedPanel } from '@/components/dashboard/NewsFeedPanel';
@@ -404,7 +403,6 @@ export default function Dashboard() {
   const [pendingRemoval, setPendingRemoval] = useState<{ widgetId: string; widget: WidgetConfig; gridItem: GridItem } | null>(null);
   const [dealsDialogOpen, setDealsDialogOpen] = useState(false);
   const [dealsInitialView, setDealsInitialView] = useState<DealsCarouselView | undefined>(undefined);
-  const [newDealOpen, setNewDealOpen] = useState(false);
 
   // Sync tab from URL query params
   useEffect(() => {
