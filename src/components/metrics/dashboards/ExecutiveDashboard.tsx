@@ -36,9 +36,13 @@ import { GlassCard, GlassCardHeader, GlassCardBody, GLASS_TOKENS } from '@/compo
 // Mirrors the Liquid Glass treatment used by Profit by Entity / Revenue
 // Overview so every Executive Dashboard chart sits inside the same visual
 // language as the rest of Weekly Rundown.
-const AXIS_TICK = { fontSize: 10, fill: 'rgba(180, 210, 245, 0.55)' } as const;
-const AXIS_LINE = { stroke: 'rgba(160, 200, 255, 0.12)' } as const;
-const GRID_STROKE = 'rgba(160, 200, 255, 0.10)';
+// Contrast-tuned for the dark Liquid Glass surfaces used across Weekly Rundown.
+// Tick / legend opacities meet a comfortable contrast threshold on the
+// translucent card background while preserving the muted aesthetic.
+const AXIS_TICK = { fontSize: 10, fill: 'rgba(200, 220, 250, 0.78)' } as const;
+const AXIS_LINE = { stroke: 'rgba(160, 200, 255, 0.20)' } as const;
+const GRID_STROKE = 'rgba(160, 200, 255, 0.14)';
+const AXIS_LABEL = { fontSize: 10, fill: 'rgba(200, 220, 250, 0.85)', fontWeight: 500 } as const;
 const TOOLTIP_STYLE: React.CSSProperties = {
   backgroundColor: 'hsl(var(--popover) / 0.96)',
   border: '1px solid hsl(0 0% 100% / 0.14)',
@@ -50,7 +54,7 @@ const TOOLTIP_STYLE: React.CSSProperties = {
 };
 const LEGEND_STYLE: React.CSSProperties = {
   fontSize: 11,
-  color: 'rgba(180, 210, 245, 0.7)',
+  color: 'rgba(200, 220, 250, 0.88)',
   paddingTop: 4,
 };
 
@@ -190,7 +194,7 @@ function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date }
                 activeShape={GlassActiveShape}
               >
                 {pieData.map((_, i) => (
-                  <Cell key={i} fill={STATUS_COLORS[i]} fillOpacity={0.75} stroke={STATUS_COLORS[i]} strokeWidth={0.5} />
+                  <Cell key={i} fill={STATUS_COLORS[i]} fillOpacity={0.92} stroke={STATUS_COLORS[i]} strokeWidth={0.75} />
                 ))}
               </Pie>
               <Tooltip
@@ -204,15 +208,39 @@ function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date }
           </ResponsiveContainer>
         </div>
         {/* Below-chart legend — matches Outstanding A/R formatting */}
-        <div className="mt-3 space-y-1.5">
-          {legendItems.map((item, i) => (
-            <div key={i} className="flex items-center gap-2 text-xs">
-              <span className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color, opacity: 0.75 }} />
-              <span className="truncate flex-1" style={{ color: 'rgba(180, 210, 245, 0.7)' }} title={item.label}>{item.label}</span>
-              <span className="font-medium tabular-nums flex-shrink-0" style={{ color: GLASS_TOKENS.valueColor }}>{item.value}</span>
-            </div>
-          ))}
-        </div>
+        <ul className="mt-3 space-y-1.5" aria-label="Deals by status legend">
+          {legendItems.map((item, i) => {
+            const pct = total > 0 ? ((totals[STATUS_BUCKETS[i].key] / total) * 100).toFixed(1) : '0.0';
+            return (
+              <li key={i} className="flex items-center gap-2 text-xs">
+                <span
+                  className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0"
+                  style={{ backgroundColor: item.color, opacity: 0.95 }}
+                  aria-hidden="true"
+                />
+                <span
+                  className="truncate flex-1"
+                  style={{ color: 'rgba(210, 225, 250, 0.88)' }}
+                  title={item.label}
+                >
+                  {item.label}
+                </span>
+                <span
+                  className="tabular-nums flex-shrink-0 text-[10px]"
+                  style={{ color: 'rgba(200, 220, 250, 0.65)' }}
+                >
+                  {pct}%
+                </span>
+                <span
+                  className="font-medium tabular-nums flex-shrink-0 min-w-[56px] text-right"
+                  style={{ color: GLASS_TOKENS.valueColor }}
+                >
+                  {item.value}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
       </GlassCardBody>
     </GlassCard>
   );
@@ -635,15 +663,16 @@ export function ExecutiveDashboard() {
         <GlassCard interactive>
           <ChartCardHeader title="Revenue by Month" subtitle="Last 6 Months" />
           <GlassCardBody>
-            <div className="h-[220px]">
+            <div className="h-[240px]" role="img" aria-label="Revenue by month, last 6 months">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={revenueByMonthData} margin={{ top: 8, right: 8, left: -10, bottom: 4 }}>
+                <ComposedChart data={revenueByMonthData} margin={{ top: 8, right: 8, left: -6, bottom: 4 }}>
                   <CartesianGrid strokeDasharray="2 4" stroke={GRID_STROKE} vertical={false} />
                   <XAxis dataKey="month" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
                   <YAxis tickFormatter={formatCurrency} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={TOOLTIP_STYLE} />
-                  <Area type="monotone" dataKey="revenue" fill="hsl(var(--primary) / 0.18)" stroke="transparent" />
-                  <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={1} dot={{ r: 3, fill: 'hsl(var(--primary))', strokeWidth: 0 }} />
+                  <Tooltip formatter={(value: number) => [formatCurrency(value), 'Revenue']} contentStyle={TOOLTIP_STYLE} />
+                  <Legend wrapperStyle={LEGEND_STYLE} iconType="circle" iconSize={8} />
+                  <Area type="monotone" dataKey="revenue" name="Revenue" fill="hsl(var(--primary) / 0.22)" stroke="transparent" legendType="none" />
+                  <Line type="monotone" dataKey="revenue" name="Revenue" stroke="hsl(var(--primary))" strokeWidth={1.75} dot={{ r: 3, fill: 'hsl(var(--primary))', strokeWidth: 0 }} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -653,14 +682,15 @@ export function ExecutiveDashboard() {
         <GlassCard interactive>
           <ChartCardHeader title="Pipeline by Stage" subtitle="Current" />
           <GlassCardBody>
-            <div className="h-[220px]">
+            <div className="h-[240px]" role="img" aria-label="Pipeline value by stage">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={pipelineByStageData} layout="vertical" margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
                   <CartesianGrid strokeDasharray="2 4" stroke={GRID_STROKE} horizontal={false} />
                   <XAxis type="number" tickFormatter={formatCurrency} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
-                  <YAxis dataKey="stage" type="category" width={96} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(160,200,255,0.06)' }} />
-                  <Bar dataKey="value" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
+                  <YAxis dataKey="stage" type="category" width={108} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
+                  <Tooltip formatter={(value: number) => [formatCurrency(value), 'Pipeline Value']} contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(160,200,255,0.08)' }} />
+                  <Legend wrapperStyle={LEGEND_STYLE} iconType="circle" iconSize={8} />
+                  <Bar dataKey="value" name="Pipeline Value" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
