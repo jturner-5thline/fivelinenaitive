@@ -243,6 +243,13 @@ function ChartCardHeader({ title, subtitle }: { title: string; subtitle?: string
 }
 
 export function ExecutiveDashboard() {
+  const kpis = useExecutiveTopRowKpis();
+
+  const fmtMoney = (v: number | null) =>
+    v === null || !Number.isFinite(v) ? '—' : formatCurrency(v);
+  const fmtCount = (v: number | null) =>
+    v === null || !Number.isFinite(v) ? '—' : v.toLocaleString();
+
   // Sample data for executive metrics
   const revenueByMonthData = [
     { month: 'Aug-25', revenue: 250000 },
@@ -282,31 +289,29 @@ export function ExecutiveDashboard() {
     <div className="space-y-6">
       {/* Row 1: Key Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard 
-          title="Total Pipeline Value" 
-          value="$43M" 
-          subtitle="Active deals"
-          trend="up"
-          trendValue="+12% vs last month"
+        <StatCard
+          title="Total Active Deal Volume"
+          value={fmtMoney(kpis.totalActiveDealVolume.value)}
+          subtitle="Final Credit Items → In Due Diligence"
+          loading={kpis.totalActiveDealVolume.loading}
         />
-        <StatCard 
-          title="Deals Closed (QTD)" 
-          value="15" 
-          subtitle="Quarter to date"
-          trend="up"
-          trendValue="+3 vs prior quarter"
+        <StatCard
+          title="Deals Closed (QTD)"
+          value={fmtCount(kpis.dealsClosedQTD.value)}
+          subtitle="Entered Funded / Invoiced this quarter"
+          loading={kpis.dealsClosedQTD.loading}
         />
-        <StatCard 
-          title="Revenue (QTD)" 
-          value="$1.8M" 
-          subtitle="Quarter to date"
-          trend="down"
-          trendValue="-5% vs prior quarter"
+        <StatCard
+          title="Revenue (QTD)"
+          value={fmtMoney(kpis.revenueQTD.value)}
+          subtitle="5th Line Capital Advisors · QBO"
+          loading={kpis.revenueQTD.loading}
         />
-        <StatCard 
-          title="Avg Deal Size" 
-          value="$3.2M" 
-          subtitle="Last 12 months"
+        <StatCard
+          title="Avg. Deal Size"
+          value={fmtMoney(kpis.avgDealSize.value)}
+          subtitle="Entered Final Credit Items · Trailing 12 mo."
+          loading={kpis.avgDealSize.loading}
         />
       </div>
 
