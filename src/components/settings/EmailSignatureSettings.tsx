@@ -1,21 +1,26 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Loader2, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { shouldShowSignatureGhost } from '@/components/deal/email/signatureGhost';
+import { EmailRichTextEditor } from '@/components/deal/email/EmailRichTextEditor';
+import {
+  signatureToHtml,
+  sanitizeSignatureHtml,
+  isHtmlSignature,
+} from '@/components/deal/email/signatureHtml';
 
 /**
- * Lets the signed-in user save a default email signature that the composer
- * (via EmailListAndDetail) will use as ghost-text below the body. Falls back
- * to a derived "Best,\n<name>" when empty.
+ * Lets the signed-in user save a rich-text default email signature. The
+ * composer and AI draft pipeline read this value and render it as HTML below
+ * the message. Falls back to a derived "Best, <name>" when empty.
  */
 export function EmailSignatureSettings() {
   const { user } = useAuth();
+  // `value` is always HTML inside the editor; we migrate legacy plain-text on load.
   const [value, setValue] = useState('');
   const [initial, setInitial] = useState('');
   const [loading, setLoading] = useState(true);
@@ -35,9 +40,11 @@ export function EmailSignatureSettings() {
       if (error) {
         toast.error('Failed to load signature');
       } else {
-        const sig = (data?.email_signature ?? '') as string;
-        setValue(sig);
-        setInitial(sig);
+        const raw = (data?.email_signature ?? '') as string;
+        // Migrate legacy plain-text signatures into HTML so the RTE renders them.
+        const html = raw ? (isHtmlSignature(raw) ? sanitizeSignatureHtml(raw) : signatureToHtml(raw)) : '';
+        setValue(html);
+        setInitial(html);
       }
       setLoading(false);
     };
@@ -47,21 +54,29 @@ export function EmailSignatureSettings() {
     };
   }, [user?.id]);
 
+  const isEmptyHtml = (html: string) => {
+    if (!html) return true;
+    const stripped = html.replace(/<\/?[^>]+>/g, '').replace(/&nbsp;/g, '').trim();
+    return stripped.length === 0;
+  };
+
   const dirty = value !== initial;
 
   const handleSave = async () => {
     if (!user?.id) return;
     setSaving(true);
+    const toSave = isEmptyHtml(value) ? null : sanitizeSignatureHtml(value);
     const { error } = await supabase
       .from('profiles')
-      .update({ email_signature: value || null })
+      .update({ email_signature: toSave })
       .eq('user_id', user.id);
     setSaving(false);
     if (error) {
       toast.error('Failed to save signature');
       return;
     }
-    setInitial(value);
+    setInitial(toSave || '');
+    if (toSave) setValue(toSave);
     toast.success('Signature saved');
   };
 
@@ -75,33 +90,40 @@ export function EmailSignatureSettings() {
 
   // The composer uses the saved signature when set, otherwise the derived
   // fallback. Mirror that here so the preview is accurate before saving.
-  const effectiveSignature = (value && value.trim()) ? value : derivedFallback;
-  const previewBody = 'Hi team,\n\nQuick note ahead of our call.';
-  const showGhost = shouldShowSignatureGhost(effectiveSignature, previewBody);
+  const effectiveSignatureHtml = !isEmptyHtml(value)
+    ? sanitizeSignatureHtml(value)
+    : signatureToHtml(derivedFallback);
+  const previewBodyHtml = '<p>Hi team,</p><p><br/></p><p>Quick note ahead of our call.</p>';
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Email signature</CardTitle>
         <CardDescription>
-          Appended as ghost-text below your message in the email composer. Leave
-          blank to use the default ("Best, &lt;your name&gt;").
+          Appended below your message in every outgoing email. Supports rich
+          formatting, links, and inline images. Leave blank to use the default
+          ("Best, &lt;your name&gt;").
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email-signature">Signature</Label>
-          <Textarea
-            id="email-signature"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder={derivedFallback || 'Best,\nYour Name'}
-            rows={6}
-            disabled={loading}
-            className="font-mono text-sm"
-          />
+          {loading ? (
+            <div className="h-48 flex items-center justify-center text-sm text-muted-foreground border rounded-md">
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Loading…
+            </div>
+          ) : (
+            <EmailRichTextEditor
+              content={value}
+              onChange={setValue}
+              minHeight={200}
+              placeholder={'Type your signature… (e.g. Best,\nYour Name)'}
+              uploadBucket="email-signatures"
+            />
+          )}
           <p className="text-xs text-muted-foreground">
-            Plain text. New lines are preserved. HTML is not rendered.
+            Rich text. Use the toolbar to add formatting, links, dividers, or inline images (≤2MB).
           </p>
         </div>
 
@@ -116,15 +138,16 @@ export function EmailSignatureSettings() {
             )}
           </div>
           <div className="rounded-md border bg-background px-4 py-3">
-            <div className="text-sm whitespace-pre-wrap text-foreground">
-              {previewBody}
-            </div>
-            {showGhost ? (
-              <div
-                className="text-[11px] text-muted-foreground/60 whitespace-pre-wrap pt-2 border-t border-border/30 mt-2 select-none"
-                aria-hidden
-              >
-                {effectiveSignature}
+            <div
+              className="prose prose-sm max-w-none text-sm text-foreground"
+              dangerouslySetInnerHTML={{ __html: previewBodyHtml }}
+            />
+            {effectiveSignatureHtml ? (
+              <div className="pt-2 border-t border-border/30 mt-2">
+                <div
+                  className="prose prose-sm max-w-none text-sm text-foreground signature-preview"
+                  dangerouslySetInnerHTML={{ __html: effectiveSignatureHtml }}
+                />
               </div>
             ) : (
               <div className="text-[11px] italic text-muted-foreground/50 pt-2 border-t border-border/30 mt-2">
@@ -132,7 +155,7 @@ export function EmailSignatureSettings() {
               </div>
             )}
           </div>
-          {!value.trim() && derivedFallback && (
+          {isEmptyHtml(value) && derivedFallback && (
             <p className="text-[11px] text-muted-foreground">
               Showing the default derived from your account. Type above to override.
             </p>
