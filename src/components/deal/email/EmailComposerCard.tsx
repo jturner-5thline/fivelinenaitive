@@ -661,13 +661,34 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
       className={cn(
         'relative flex flex-col bg-card border border-border rounded-md shadow-sm overflow-hidden',
         isInline && 'mx-2 my-2',
+        isDragOver && 'ring-2 ring-[hsl(var(--outlook-blue))] ring-offset-0',
         className,
       )}
       role="region"
       aria-label="Email composer"
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       {/* Accent edge anchoring the composer visually */}
       <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[hsl(var(--outlook-blue))]" aria-hidden />
+
+      {/* Drag-over overlay */}
+      {isDragOver && (
+        <div
+          className="absolute inset-0 z-30 flex items-center justify-center bg-[hsl(var(--outlook-blue))]/10 backdrop-blur-[1px] pointer-events-none"
+          aria-hidden
+        >
+          <div className="flex flex-col items-center gap-1.5 px-4 py-3 rounded-md border border-dashed border-[hsl(var(--outlook-blue))]/60 bg-card/80">
+            <Paperclip className="h-4 w-4 text-[hsl(var(--outlook-blue))]" />
+            <span className="text-xs font-medium text-foreground">Drop files to attach</span>
+            <span className="text-[10px] text-muted-foreground">
+              Up to {Math.round(maxAttachmentBytes / (1024 * 1024))}MB total
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Drag handle on top edge (inline only) */}
       {resizable && isInline && (
