@@ -1,0 +1,1 @@
+DELETE FROM public.dashboard_layouts WHERE id IN ('165c5cef-2d84-486f-800d-8767845d5309','c41c750d-babb-4a08-b910-954376b2b27c');
