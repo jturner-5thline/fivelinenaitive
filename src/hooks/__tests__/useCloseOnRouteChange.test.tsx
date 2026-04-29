@@ -20,6 +20,9 @@ import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { useCloseOnRouteChange } from '../useCloseOnRouteChange';
 
+// React 18 act() wants this flag set so it doesn't print a warning per call.
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
 function PanelHarness({
   isOpen,
   close,
