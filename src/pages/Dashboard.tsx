@@ -846,9 +846,7 @@ export default function Dashboard() {
       {isWidgetActive('email') && (
         <InboxDialog open onOpenChange={handleCarouselDialogOpenChange} />
       )}
-      {isWidgetActive('new-deal') && (
-        <CreateDealDialog open onOpenChange={handleCarouselDialogOpenChange} />
-      )}
+      <CreateDealDialog open={newDealOpen} onOpenChange={setNewDealOpen} />
       {isJTurner && isWidgetActive('daily-briefing') && (
         <DailyBriefingModal open onOpenChange={handleCarouselDialogOpenChange} />
       )}
