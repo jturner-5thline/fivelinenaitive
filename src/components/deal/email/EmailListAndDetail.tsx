@@ -63,6 +63,7 @@ import { detectBareEmailsInDraft } from '@/lib/detectDraftEmails';
 import { detectThreadQAndA, buildQADedupKey, type ThreadMessageLite } from '@/lib/detectThreadQAndA';
 import { usePendingDealSuggestions } from '@/hooks/usePendingDealSuggestions';
 import { useResolveDealForEmail } from '@/hooks/useResolveDealForEmail';
+import { useAuth } from '@/contexts/AuthContext';
 import { isAutoDealNoteSuggestionEnabled } from '@/hooks/useAutoDealNoteSuggestionPref';
 import { usePendingDealResolutionsStore } from '@/stores/pendingDealResolutionsStore';
 import { EmailContextMenu } from './EmailContextMenu';
