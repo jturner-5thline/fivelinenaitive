@@ -612,18 +612,6 @@ export default function Dashboard() {
                 )
               }
             />
-            <QuickActionTile
-              label="New Deal"
-              icon={Briefcase}
-              category="pipeline"
-              className={cn(isJTurner && 'order-4')}
-              onClick={(e) => openCarouselWidget('new-deal', e.currentTarget as HTMLElement)}
-              onKeyDown={(e) =>
-                handleTileKeyDown(e, () =>
-                  openCarouselWidget('new-deal', e.currentTarget as HTMLElement),
-                )
-              }
-            />
             {isJTurner && (
               <QuickActionTile
                 label="Daily Briefing"
