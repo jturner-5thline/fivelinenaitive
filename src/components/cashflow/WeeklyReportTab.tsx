@@ -125,6 +125,11 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   planSnapshots, activePlanId, onActivePlanChange, onSavePlan,
   onExport, onConfigureScheduled, scheduledItems, onSidebarEditItem, onSidebarRemoveItem, onSidebarAddItem, onSidebarRemoveDbItem,
   onNoteEdit, onNoteRemove, onNoteAdd,
+  notesDialogOpen, onNotesDialogOpenChange,
+  cashInDialogOpen, onCashInDialogOpenChange,
+  onCellCommentCountChange,
+  weeksFuture: weeksFutureProp,
+  onWeeksFutureChange,
 }: WeeklyReportTabProps) {
   const { user } = useAuth();
   const { comments: cellComments, byCell: cellCommentsByCell, addComment: addCellComment, deleteComment: deleteCellComment } =
