@@ -107,6 +107,10 @@ interface DealEmailsTabProps {
     bodyHtml?: string;
     cc?: string[];
     bcc?: string[];
+    /** Real File objects to attach (Gmail 25MB total cap, enforced server-side). */
+    attachments?: File[];
+    /** Provider message id to thread the outbound reply under (Nylas). */
+    replyToMessageId?: string;
   }) => Promise<any>;
   /** Pagination — invoked when user clicks "Load more" or hits the auto-load sentinel */
   onLoadMore?: () => void | Promise<void>;
