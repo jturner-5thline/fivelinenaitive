@@ -589,28 +589,18 @@ export default function Dashboard() {
               gap: 'calc(var(--tile-size) * 0.18)',
             }}
           >
-            <Card
-              className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-1')}
+            <QuickActionTile
+              label="Calendar"
+              icon={CalendarIcon}
+              category="inbox"
+              className={cn(isJTurner && 'order-1')}
               onClick={(e) => openCarouselWidget('calendar', e.currentTarget as HTMLElement)}
-              role="button"
-              tabIndex={0}
               onKeyDown={(e) =>
                 handleTileKeyDown(e, () =>
                   openCarouselWidget('calendar', e.currentTarget as HTMLElement),
                 )
               }
-            >
-              <div className="flex flex-col items-center justify-center text-center gap-[calc(var(--tile-size)*0.12)] h-full">
-                <div
-                  className={TILE_CHIP_BASE}
-                  style={{ background: TILE_CHIP_GRADIENTS.calendar }}
-                >
-                  <TileChipGloss />
-                  <CalendarIcon className="relative z-10 h-[calc(var(--tile-size)*0.5)] w-[calc(var(--tile-size)*0.5)]" style={{ color: '#7b9ff5' }} />
-                </div>
-                <span className={TILE_LABEL_CLASSES}>Calendar</span>
-              </div>
-            </Card>
+            />
             <EmailTileWithIntelligence
               className={isJTurner ? 'order-2' : undefined}
               onOpen={(el) => openCarouselWidget('email', el)}
@@ -620,122 +610,70 @@ export default function Dashboard() {
                 )
               }
             />
-            <Card
-              className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-4')}
+            <QuickActionTile
+              label="New Deal"
+              icon={Briefcase}
+              category="pipeline"
+              className={cn(isJTurner && 'order-4')}
               onClick={(e) => openCarouselWidget('new-deal', e.currentTarget as HTMLElement)}
-              role="button"
-              tabIndex={0}
               onKeyDown={(e) =>
                 handleTileKeyDown(e, () =>
                   openCarouselWidget('new-deal', e.currentTarget as HTMLElement),
                 )
               }
-            >
-              <div className="flex flex-col items-center justify-center text-center gap-[calc(var(--tile-size)*0.12)] h-full">
-                <div
-                  className={TILE_CHIP_BASE}
-                  style={{ background: TILE_CHIP_GRADIENTS.newDeal }}
-                >
-                  <TileChipGloss />
-                  <Briefcase className="relative z-10 h-[calc(var(--tile-size)*0.5)] w-[calc(var(--tile-size)*0.5)]" style={{ color: '#6b9cf5' }} />
-                </div>
-                <span className={TILE_LABEL_CLASSES}>New Deal</span>
-              </div>
-            </Card>
+            />
             {isJTurner && (
-              <Card
-                className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', 'order-5')}
+              <QuickActionTile
+                label="Daily Briefing"
+                icon={Newspaper}
+                category="reports"
+                className="order-5"
                 onClick={(e) => openCarouselWidget('daily-briefing', e.currentTarget as HTMLElement)}
-                role="button"
-                tabIndex={0}
                 onKeyDown={(e) =>
                   handleTileKeyDown(e, () =>
                     openCarouselWidget('daily-briefing', e.currentTarget as HTMLElement),
                   )
                 }
-              >
-                <div className="flex flex-col items-center justify-center text-center gap-[calc(var(--tile-size)*0.12)] h-full">
-                  <div
-                    className={TILE_CHIP_BASE}
-                    style={{ background: TILE_CHIP_GRADIENTS.briefing }}
-                  >
-                    <TileChipGloss />
-                    <Newspaper className="relative z-10 h-[calc(var(--tile-size)*0.5)] w-[calc(var(--tile-size)*0.5)]" style={{ color: '#f5a623' }} />
-                  </div>
-                  <span className={TILE_LABEL_CLASSES}>Daily Briefing</span>
-                </div>
-              </Card>
+              />
             )}
             {nikiInTopRow && (
-              <Card
-                className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-6')}
+              <QuickActionTile
+                label={isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
+                icon={Newspaper}
+                category="reports"
+                className={cn(isJTurner && 'order-6')}
                 onClick={(e) => openCarouselWidget('niki-briefing', e.currentTarget as HTMLElement)}
-                role="button"
-                tabIndex={0}
                 onKeyDown={(e) =>
                   handleTileKeyDown(e, () =>
                     openCarouselWidget('niki-briefing', e.currentTarget as HTMLElement),
                   )
                 }
-              >
-                <div className="flex flex-col items-center justify-center text-center gap-[calc(var(--tile-size)*0.12)] h-full">
-                  <div
-                    className={TILE_CHIP_BASE}
-                    style={{ background: TILE_CHIP_GRADIENTS.niki }}
-                  >
-                    <TileChipGloss />
-                    <Newspaper className="relative z-10 h-[calc(var(--tile-size)*0.5)] w-[calc(var(--tile-size)*0.5)]" style={{ color: '#2dd4b8' }} />
-                  </div>
-                  <span className={TILE_LABEL_CLASSES}>
-                    {isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
-                  </span>
-                </div>
-              </Card>
+              />
             )}
             {/* Deals tile — opens the AI-powered Deals insights carousel.
                 Placed immediately to the right of Niki's Daily Briefing. */}
-            <Card
-              className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-7')}
+            <QuickActionTile
+              label="Deals"
+              icon={Handshake}
+              category="pipeline"
+              ariaLabel="Open Deals insights"
+              className={cn(isJTurner && 'order-7')}
               onClick={() => setDealsDialogOpen(true)}
-              role="button"
-              tabIndex={0}
               onKeyDown={(e) => handleTileKeyDown(e, () => setDealsDialogOpen(true))}
-              aria-label="Open Deals insights"
-            >
-              <div className="flex flex-col items-center justify-center text-center gap-[calc(var(--tile-size)*0.12)] h-full">
-                <div
-                  className={TILE_CHIP_BASE}
-                  style={{ background: TILE_CHIP_GRADIENTS.deals }}
-                >
-                  <TileChipGloss />
-                  <Handshake className="relative z-10 h-[calc(var(--tile-size)*0.5)] w-[calc(var(--tile-size)*0.5)]" style={{ color: '#2dd4b8' }} />
-                </div>
-                <span className={TILE_LABEL_CLASSES}>Deals</span>
-              </div>
-            </Card>
+            />
             {is5thLine && (
-              <Card
-                className={cn(TILE_INTERACTIVE_CLASSES, 'h-full', isJTurner && 'order-3')}
+              <QuickActionTile
+                label="Deal Rundown"
+                icon={Briefcase}
+                category="pipeline"
+                className={cn(isJTurner && 'order-3')}
                 onClick={(e) => openCarouselWidget('deal-rundown', e.currentTarget as HTMLElement)}
-                role="button"
-                tabIndex={0}
                 onKeyDown={(e) =>
                   handleTileKeyDown(e, () =>
                     openCarouselWidget('deal-rundown', e.currentTarget as HTMLElement),
                   )
                 }
-              >
-                <div className="flex flex-col items-center justify-center text-center gap-[calc(var(--tile-size)*0.12)] h-full">
-                  <div
-                    className={TILE_CHIP_BASE}
-                    style={{ background: TILE_CHIP_GRADIENTS.dealRundown }}
-                  >
-                    <TileChipGloss />
-                    <Briefcase className="relative z-10 h-[calc(var(--tile-size)*0.5)] w-[calc(var(--tile-size)*0.5)]" style={{ color: '#6b9cf5' }} />
-                  </div>
-                  <span className={TILE_LABEL_CLASSES}>Deal Rundown</span>
-                </div>
-              </Card>
+              />
             )}
           </div>
           </>
