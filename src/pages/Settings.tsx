@@ -283,9 +283,9 @@ export default function Settings() {
 
                 {/* Email Tab */}
                 <TabsContent value="email" className="space-y-4 mt-4">
+                  {isVisible('email-signature') && <EmailSignatureSettings />}
                   {isVisible('email-snippets') && <EmailSnippetsSettings />}
                   {isVisible('email-labels') && <EmailLabelsSettings />}
-                  {isVisible('email-signature') && <EmailSignatureSettings />}
                   {isVisible('email-templates-outbound') && <OutboundEmailTemplatesSettings isAdmin={isAdmin} />}
                   {isVisible('email-style-guide') && <EmailStyleGuideSettings isAdmin={isAdmin} />}
                   <EmailWorkflowsSettings isAdmin={isAdmin} />
