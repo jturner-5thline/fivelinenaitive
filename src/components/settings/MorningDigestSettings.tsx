@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sun, Loader2 } from 'lucide-react';
+import { Sun, Loader2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -49,7 +47,7 @@ export function MorningDigestSettings() {
       if (!user) return null;
       const { data, error } = await supabase
         .from('profiles')
-        .select('timezone, morning_digest_time, morning_digest_enabled')
+        .select('timezone')
         .eq('user_id', user.id)
         .maybeSingle();
       if (error) throw error;
@@ -58,17 +56,11 @@ export function MorningDigestSettings() {
   });
 
   const [timezone, setTimezone] = useState<string>('America/New_York');
-  const [digestTime, setDigestTime] = useState<string>('07:00');
-  const [enabled, setEnabled] = useState<boolean>(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
     setTimezone(profile.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York');
-    // morning_digest_time stored as time, e.g. '07:00:00' — trim to HH:MM
-    const t = (profile as any).morning_digest_time || '07:00';
-    setDigestTime(typeof t === 'string' ? t.slice(0, 5) : '07:00');
-    setEnabled((profile as any).morning_digest_enabled ?? true);
   }, [profile]);
 
   const detectTz = () => {
@@ -83,18 +75,17 @@ export function MorningDigestSettings() {
     if (!user) return;
     setSaving(true);
     try {
-      // Normalize digest time to HH:MM:00 for postgres TIME
-      const normalizedTime = digestTime.length === 5 ? `${digestTime}:00` : digestTime;
       const { error } = await supabase
         .from('profiles')
         .update({
           timezone,
-          morning_digest_time: normalizedTime,
-          morning_digest_enabled: enabled,
+          // Daily follow-up email is permanently disabled platform-wide;
+          // follow-ups are surfaced inside Daily Briefing → Pipeline & Clients.
+          morning_digest_enabled: false,
         } as any)
         .eq('user_id', user.id);
       if (error) throw error;
-      toast.success('Morning digest preferences saved');
+      toast.success('Timezone saved');
       queryClient.invalidateQueries({ queryKey: ['profile-digest', user.id] });
     } catch (err) {
       console.error(err);
@@ -113,36 +104,24 @@ export function MorningDigestSettings() {
         <div className="flex items-center gap-2">
           <Sun className="h-5 w-5" />
           <div>
-            <CardTitle className="text-lg">Morning Digest & Timezone</CardTitle>
+            <CardTitle className="text-lg">Timezone & Daily Briefing</CardTitle>
             <CardDescription>
-              Set when your daily follow-up digest arrives. Used for all timezone-aware reminders.
+              Today&rsquo;s follow-ups now live inside the Daily Briefing — no more morning email. Set your timezone for all timezone-aware reminders.
             </CardDescription>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label>Send morning digest</Label>
-            <p className="text-sm text-muted-foreground">
-              A daily summary of follow-up tasks due today, delivered via email and in-app. Skipped on days with no items.
-            </p>
+        <div className="flex gap-2 rounded-md border border-border/60 bg-muted/30 p-3 text-sm text-muted-foreground">
+          <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <div>
+            The “Your follow-ups for today” email has been retired. Open the Daily
+            Briefing (Pipeline &amp; Clients tab) to see today&rsquo;s follow-ups grouped
+            by deal, with quick actions to mark done, snooze, or open the deal.
           </div>
-          <Switch checked={enabled} onCheckedChange={setEnabled} disabled={isLoading} />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="digest-time">Delivery time</Label>
-            <Input
-              id="digest-time"
-              type="time"
-              value={digestTime}
-              onChange={(e) => setDigestTime(e.target.value)}
-              disabled={isLoading || !enabled}
-            />
-            <p className="text-xs text-muted-foreground">In your local timezone (default 7:00 AM)</p>
-          </div>
           <div className="space-y-1.5">
             <Label htmlFor="timezone">Timezone</Label>
             <div className="flex gap-2">
@@ -165,7 +144,7 @@ export function MorningDigestSettings() {
         <div className="flex justify-end">
           <Button onClick={save} disabled={saving || isLoading}>
             {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Save preferences
+            Save timezone
           </Button>
         </div>
       </CardContent>
