@@ -1,8 +1,14 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Lock } from 'lucide-react';
+import { Lock, Info } from 'lucide-react';
 import { useState } from 'react';
+import {
+  Tooltip as UITooltip,
+  TooltipContent as UITooltipContent,
+  TooltipProvider as UITooltipProvider,
+  TooltipTrigger as UITooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   useExecutiveTopRowKpis,
   type ExecKpiDrilldownDeal,
@@ -211,20 +217,42 @@ function StatCard({
   subtitle,
   loading,
   onClick,
+  tooltip,
 }: {
   title: string;
   value: string | number;
   subtitle?: string;
   loading?: boolean;
   onClick?: () => void;
+  tooltip?: React.ReactNode;
 }) {
+  const info = tooltip ? (
+    <UITooltipProvider delayDuration={150}>
+      <UITooltip>
+        <UITooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors"
+            aria-label="How this is calculated"
+          >
+            <Info className="h-3.5 w-3.5" />
+          </button>
+        </UITooltipTrigger>
+        <UITooltipContent side="bottom" align="end" className="max-w-xs text-xs leading-relaxed">
+          {tooltip}
+        </UITooltipContent>
+      </UITooltip>
+    </UITooltipProvider>
+  ) : undefined;
+
   return (
     <GlassCard
       interactive
       onClick={onClick}
       className={onClick ? 'cursor-pointer' : undefined}
     >
-      <GlassCardHeader title={title} subtitle={subtitle} />
+      <GlassCardHeader title={title} subtitle={subtitle} right={info} />
       <GlassCardBody className="pt-0 pb-5 space-y-2">
         {loading ? (
           <Skeleton className="h-8 w-24" />
@@ -389,6 +417,17 @@ export function ExecutiveDashboard() {
   const kpis = useExecutiveTopRowKpis();
   const [drilldown, setDrilldown] = useState<ExecKpiDrilldown | null>(null);
 
+  // Date windows surfaced in tooltips so users can see the exact period
+  // each metric is computed over (recomputed on render — cheap and always
+  // reflects "now").
+  const now = new Date();
+  const qStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+  const t12mStart = new Date(now.getFullYear(), now.getMonth() - 12, now.getDate());
+  const fmtDate = (d: Date) =>
+    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const qtdWindow = `${fmtDate(qStart)} → ${fmtDate(now)}`;
+  const t12mWindow = `${fmtDate(t12mStart)} → ${fmtDate(now)}`;
+
   const fmtMoney = (v: number | null) =>
     v === null || !Number.isFinite(v) ? '—' : formatCurrency(v);
   const fmtCount = (v: number | null) =>
@@ -421,6 +460,13 @@ export function ExecutiveDashboard() {
           value={fmtMoney(kpis.totalActiveDealVolume.value)}
           subtitle="Final Credit Items → In Due Diligence"
           loading={kpis.totalActiveDealVolume.loading}
+          tooltip={
+            <div className="space-y-1.5">
+              <p className="font-medium text-foreground">Total Active Deal Volume</p>
+              <p>SUM of <span className="font-mono">deal value</span> for every open deal whose current stage falls in the inclusive range <em>Final Credit Items → In Due Diligence</em>.</p>
+              <p className="text-muted-foreground">Pipeline: active (default). Window: live snapshot.</p>
+            </div>
+          }
           onClick={() =>
             setDrilldown({
               kind: 'deals',
@@ -435,6 +481,13 @@ export function ExecutiveDashboard() {
           value={fmtCount(kpis.dealsClosedQTD.value)}
           subtitle="Entered Funded / Invoiced this quarter"
           loading={kpis.dealsClosedQTD.loading}
+          tooltip={
+            <div className="space-y-1.5">
+              <p className="font-medium text-foreground">Deals Closed (QTD)</p>
+              <p>COUNT of distinct deals that <em>entered</em> the <em>Funded / Invoiced</em> stage during the current quarter (stage-entry events, not current snapshots).</p>
+              <p className="text-muted-foreground">Window (QTD): {qtdWindow}.</p>
+            </div>
+          }
           onClick={() =>
             setDrilldown({
               kind: 'deals',
@@ -449,6 +502,13 @@ export function ExecutiveDashboard() {
           value={fmtMoney(kpis.revenueQTD.value)}
           subtitle="5th Line Capital Advisors · QBO"
           loading={kpis.revenueQTD.loading}
+          tooltip={
+            <div className="space-y-1.5">
+              <p className="font-medium text-foreground">Revenue (QTD)</p>
+              <p>QuickBooks <em>Profit &amp; Loss</em> Income total for <strong>5th Line Capital Advisors LLC</strong> (realm 193514877331929), accrual basis.</p>
+              <p className="text-muted-foreground">Window (QTD): {qtdWindow}.</p>
+            </div>
+          }
           onClick={() =>
             setDrilldown({
               kind: 'revenue',
@@ -463,6 +523,13 @@ export function ExecutiveDashboard() {
           value={fmtMoney(kpis.avgDealSize.value)}
           subtitle="Entered Final Credit Items · Trailing 12 mo."
           loading={kpis.avgDealSize.loading}
+          tooltip={
+            <div className="space-y-1.5">
+              <p className="font-medium text-foreground">Avg. Deal Size</p>
+              <p>SUM of deal value ÷ COUNT of distinct deals that <em>entered</em> the <em>Final Credit Items</em> stage in the trailing 12 months. Re-entries deduped to one per deal.</p>
+              <p className="text-muted-foreground">Window (T12M): {t12mWindow}.</p>
+            </div>
+          }
           onClick={() =>
             setDrilldown({
               kind: 'deals',
