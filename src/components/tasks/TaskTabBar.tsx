@@ -81,7 +81,7 @@ export function TaskTabBar({
 
   return (
     <>
-      <div className="flex items-center gap-1 px-6 py-1.5 overflow-x-auto" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+      <div className="flex items-center gap-1 px-6 py-1.5 overflow-x-auto min-h-[36px]" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
         {tabs.map(tab => {
           const Icon = getTabIcon(tab.icon);
           const isActive = tab.id === activeTabId;
@@ -89,11 +89,11 @@ export function TaskTabBar({
           const isAllTasks = tab.name === 'All Tasks' && tab.is_default;
 
           return (
-            <div key={tab.id} className="flex items-center group relative">
+            <div key={tab.id} className="flex items-center group relative h-7">
               <button
                 onClick={() => onSelectTab(tab.id)}
                 className={cn(
-                  'flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-md transition-all whitespace-nowrap',
+                  'flex items-center gap-1.5 px-2.5 h-7 text-[11px] font-medium rounded-md transition-all whitespace-nowrap',
                   isActive ? '' : 'hover:bg-[rgba(255,255,255,0.03)]'
                 )}
                 style={{
@@ -107,7 +107,7 @@ export function TaskTabBar({
                 <Badge
                   variant="secondary"
                   className={cn(
-                    'h-4 min-w-[16px] px-1 text-[10px] font-medium rounded',
+                    'h-4 min-w-[20px] px-1 text-[10px] font-medium rounded tabular-nums justify-center',
                     isActive ? 'bg-[rgba(126,184,247,0.18)] text-[#cfe3ff]' : 'bg-[rgba(255,255,255,0.04)] text-[#7a8194]'
                   )}
                 >
@@ -120,7 +120,7 @@ export function TaskTabBar({
                 <DropdownMenuTrigger asChild>
                   <button
                     className={cn(
-                      'h-5 w-5 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 transition-opacity ml-[-4px]',
+                      'h-5 w-5 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity ml-0.5 self-center',
                       'hover:bg-[rgba(255,255,255,0.05)]'
                     )}
                     style={{ color: '#7a8194' }}
@@ -155,7 +155,7 @@ export function TaskTabBar({
 
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1 px-2 py-1 text-[11px] rounded-md transition-colors hover:bg-[rgba(255,255,255,0.04)]"
+          className="flex items-center justify-center gap-1 h-7 w-7 text-[11px] rounded-md transition-colors hover:bg-[rgba(255,255,255,0.04)] self-center"
           style={{ color: '#7a8194' }}
         >
           <Plus className="h-3 w-3" />
