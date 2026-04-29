@@ -4,7 +4,7 @@ import { useCompany } from '@/hooks/useCompany';
 import {
   DEFAULT_ASANA_GOAL_FILTERS,
   type AsanaGoalFilterTemplates,
-} from '@/components/metrics/dashboards/QuarterlyInsightsReport';
+} from '@/components/metrics/dashboards/asanaGoalFilterTypes';
 
 export interface AsanaGoalFilterOverride {
   quarterLabel?: string;
