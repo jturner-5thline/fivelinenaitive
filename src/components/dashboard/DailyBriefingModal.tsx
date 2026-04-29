@@ -11,6 +11,7 @@ import {
   Newspaper, Mail, DollarSign, GitBranch, ListChecks,
   AlertCircle, ExternalLink, TrendingUp,
   FileText, X, ChevronRight, ChevronLeft, RefreshCw,
+  Check, Clock, ArrowUpRight,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -38,7 +39,7 @@ const PipelineMemoView = lazy(() =>
   import('@/pages/pipeline/PipelineMemoView').then(m => ({ default: m.PipelineMemoView })),
 );
 import { useAuth } from '@/contexts/AuthContext';
-import { useMorningFollowups } from '@/hooks/useMorningFollowups';
+import { useMorningFollowups, useFollowupActions, type FollowupDealGroup, type FollowupItem } from '@/hooks/useMorningFollowups';
 
 interface DailyBriefingModalProps {
   open: boolean;
@@ -981,12 +982,14 @@ function PipelineTab({
 }) {
   const { data, isLoading } = usePipelineData(enabled, targetDealOwnerName);
 
-  // Today's Follow-Ups (replaces the old "Your follow-ups for today" email
-  // for jturner@5thline.co — same source data, surfaced in-app instead).
+  // Today's Follow-Ups — fully replaces the legacy "Your follow-ups for today"
+  // email (permanently disabled platform-wide on 2026-04-29). Same source
+  // data, now grouped by deal and surfaced in-app for every user.
   const { user } = useAuth();
-  const isJTurner = (user?.email || '').toLowerCase() === 'jturner@5thline.co';
-  const { data: followups = [] } = useMorningFollowups(enabled && isJTurner);
-  const showFollowups = isJTurner && followups.length > 0;
+  // Only show the current user's own follow-ups (not the delegated view).
+  const showOwnFollowups = enabled && !targetDealOwnerName;
+  const { data: followupGroups = [] } = useMorningFollowups(showOwnFollowups);
+  const showFollowups = showOwnFollowups && followupGroups.length > 0;
 
   // One-time cleanup of the legacy Grid/Memo view-mode preference.
   // The Grid view was removed; Memo is now the only render path.
@@ -1019,17 +1022,7 @@ function PipelineTab({
     <div className="relative h-full">
       {showFollowups && (
         <Section title="Today's Follow-Ups">
-          {followups.map((f) => (
-            <BriefingRow
-              key={f.key}
-              icon={ListChecks}
-              title={`${f.company} — ${f.title}`}
-              subtitle={f.stage ? `Stage: ${f.stage}` : undefined}
-              badge={f.source === 'scheduled' ? '3-day' : 'Task'}
-              badgeVariant="default"
-              onClick={f.dealId ? () => onNavigate(`/deal/${f.dealId}`) : undefined}
-            />
-          ))}
+          <FollowupsByDeal groups={followupGroups} onNavigate={onNavigate} />
         </Section>
       )}
       <Suspense
@@ -1050,6 +1043,121 @@ function PipelineTab({
         />
       </Suspense>
     </div>
+  );
+}
+
+// ── Today's Follow-Ups grouped by deal ─────────────────────────
+function FollowupsByDeal({
+  groups,
+  onNavigate,
+}: {
+  groups: FollowupDealGroup[];
+  onNavigate: (path: string) => void;
+}) {
+  const { markDone, snooze } = useFollowupActions();
+  return (
+    <div className="space-y-2.5">
+      {groups.map((g) => (
+        <div
+          key={g.dealId}
+          className="rounded-lg bg-white/[0.025] border glass-border-softer backdrop-blur-sm overflow-hidden"
+        >
+          <button
+            type="button"
+            onClick={() => onNavigate(`/deal/${g.dealId}`)}
+            className="w-full flex items-center justify-between gap-2 px-3 py-2 hover:bg-white/[0.04] transition-colors text-left"
+          >
+            <div className="min-w-0 flex items-center gap-2">
+              <GitBranch className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+              <span className="text-sm font-semibold text-foreground truncate">{g.company}</span>
+              {g.stage && (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-medium border bg-white/[0.05] text-muted-foreground glass-border-soft whitespace-nowrap">
+                  {g.stage}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground flex-shrink-0">
+              <span>{g.items.length} {g.items.length === 1 ? 'item' : 'items'}</span>
+              <ArrowUpRight className="h-3 w-3" />
+            </div>
+          </button>
+          <ul className="divide-y divide-white/[0.04]">
+            {g.items.map((it) => (
+              <FollowupRow
+                key={it.key}
+                item={it}
+                onOpenDeal={() => it.dealId && onNavigate(`/deal/${it.dealId}`)}
+                onMarkDone={() => markDone.mutate(it)}
+                onSnooze={() => snooze.mutate({ item: it })}
+                pending={markDone.isPending || snooze.isPending}
+              />
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FollowupRow({
+  item,
+  onOpenDeal,
+  onMarkDone,
+  onSnooze,
+  pending,
+}: {
+  item: FollowupItem;
+  onOpenDeal: () => void;
+  onMarkDone: () => void;
+  onSnooze: () => void;
+  pending: boolean;
+}) {
+  return (
+    <li className="flex items-center gap-2 px-3 py-2 group">
+      <ListChecks className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+      <div className="min-w-0 flex-1">
+        <div className="text-[13px] text-foreground truncate">{item.title}</div>
+        {item.dueAt && (
+          <div className="text-[10.5px] text-muted-foreground">
+            Due {format(new Date(item.dueAt), 'MMM d, h:mm a')}
+          </div>
+        )}
+      </div>
+      <span className="px-1.5 py-0.5 rounded text-[10px] font-medium border bg-white/[0.05] text-muted-foreground glass-border-soft whitespace-nowrap">
+        {item.source === 'scheduled' ? '3-day' : 'Task'}
+      </span>
+      <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-6 w-6"
+          title="Mark done"
+          disabled={pending}
+          onClick={(e) => { e.stopPropagation(); onMarkDone(); }}
+        >
+          <Check className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-6 w-6"
+          title="Snooze 24h"
+          disabled={pending}
+          onClick={(e) => { e.stopPropagation(); onSnooze(); }}
+        >
+          <Clock className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-6 w-6"
+          title="Open deal"
+          onClick={(e) => { e.stopPropagation(); onOpenDeal(); }}
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </li>
   );
 }
 
