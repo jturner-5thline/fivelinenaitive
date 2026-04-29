@@ -380,11 +380,13 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
     const next = files.filter((f) => f.name !== name);
     setFiles(next);
     onFilesChange?.(next);
-    // Mirror filename-only attachments (legacy drafts that pre-existed without
-    // a File object are removed by name too).
-    onAttachmentsChange(attachments.filter((a) => a !== name && next.find((f) => f.name === a) !== undefined ? true : a !== name));
-    // Simpler form (the line above is defensive — re-emit filename list):
-    onAttachmentsChange(next.map((f) => f.name));
+    // Mirror the filename list. If the user is removing a legacy filename-only
+    // attachment (no backing File), drop it from the names list directly.
+    if (next.length === files.length) {
+      onAttachmentsChange(attachments.filter((a) => a !== name));
+    } else {
+      onAttachmentsChange(next.map((f) => f.name));
+    }
   }, [files, attachments, onFilesChange, onAttachmentsChange]);
 
   // ── Signature auto-append on first mount when body is empty ─────────────
