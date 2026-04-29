@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Flag, Calendar, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
@@ -112,6 +113,8 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const [sourcedVia, setSourcedVia] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [showMilestonesPreview, setShowMilestonesPreview] = useState(false);
+  const [dealTypesOpen, setDealTypesOpen] = useState(false);
+  const dialogContentRef = useRef<HTMLDivElement | null>(null);
 
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
@@ -301,10 +304,20 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
     setReferralEmail('');
     setSourcedVia('');
     setBlankFields([]);
+    setDealTypesOpen(false);
+  };
+
+  const handleDealTypeSelect = (typeId: string) => {
+    console.log('[CreateDealDialog] Deal Type onSelect fired', typeId);
+    setSelectedDealTypes((prev) => (
+      prev.includes(typeId)
+        ? prev.filter((id) => id !== typeId)
+        : [...prev, typeId]
+    ));
   };
 
   const defaultTrigger = (
-    <Button variant="liquid-glass" size="sm" className="gap-2">
+    <Button type="button" variant="liquid-glass" size="sm" className="gap-2">
       <Plus className="h-4 w-4" />
       New Deal
     </Button>
@@ -316,7 +329,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
         <DialogTrigger asChild>
           {trigger || defaultTrigger}
         </DialogTrigger>
-        <DialogContent className={`${useCarouselSwipeClass()} sm:max-w-[680px] max-h-[90vh] overflow-y-auto border-transparent glass-border-soft shadow-2xl shadow-black/20`}>
+        <DialogContent ref={dialogContentRef} className={`${useCarouselSwipeClass()} sm:max-w-[680px] max-h-[90vh] overflow-y-auto border-transparent glass-border-soft shadow-2xl shadow-black/20`}>
           <DialogHeader>
             <DialogTitle>Create New Deal</DialogTitle>
             <DialogDescription>
@@ -357,7 +370,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-1.5">
                   <Label>Deal Type <span className="text-destructive">*</span></Label>
-                  <Popover>
+                  <Popover modal open={dealTypesOpen} onOpenChange={setDealTypesOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
@@ -381,37 +394,46 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                         <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-full p-2" align="start">
-                      <div className="space-y-1">
-                        {isLoadingDealTypes && availableDealTypes.length === 0 ? (
-                          <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                            Loading deal types…
-                          </div>
-                        ) : availableDealTypes.length === 0 ? (
-                          <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                            No deal types available — contact an admin.
-                          </div>
-                        ) : availableDealTypes.map((type) => {
-                          const isSelected = selectedDealTypes.includes(type.id);
-                          return (
-                            <button
-                              key={type.id}
-                              type="button"
-                              className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-muted/50 text-left"
-                              onClick={() => {
-                                setSelectedDealTypes(prev => 
-                                  isSelected
-                                    ? prev.filter(t => t !== type.id)
-                                    : [...prev, type.id]
+                    <PopoverContent
+                      container={dialogContentRef.current}
+                      className="z-[60] w-[var(--radix-popover-trigger-width)] p-0"
+                      align="start"
+                      onOpenAutoFocus={(e) => e.preventDefault()}
+                    >
+                      <Command>
+                        <CommandList>
+                          {isLoadingDealTypes && availableDealTypes.length === 0 ? (
+                            <div className="px-3 py-2 text-xs text-muted-foreground">
+                              Loading deal types…
+                            </div>
+                          ) : availableDealTypes.length === 0 ? (
+                            <CommandEmpty className="py-3 text-xs text-muted-foreground">
+                              No deal types available — contact an admin.
+                            </CommandEmpty>
+                          ) : (
+                            <CommandGroup>
+                              {availableDealTypes.map((type) => {
+                                const isSelected = selectedDealTypes.includes(type.id);
+                                return (
+                                  <CommandItem
+                                    key={type.id}
+                                    value={type.label}
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                    }}
+                                    onSelect={() => handleDealTypeSelect(type.id)}
+                                    className="gap-2"
+                                  >
+                                    <Checkbox checked={isSelected} className="pointer-events-none" />
+                                    <span>{type.label}</span>
+                                  </CommandItem>
                                 );
-                              }}
-                            >
-                              <Checkbox checked={isSelected} className="pointer-events-none" />
-                              {type.label}
-                            </button>
-                          );
-                        })}
-                      </div>
+                              })}
+                            </CommandGroup>
+                          )}
+                        </CommandList>
+                      </Command>
                     </PopoverContent>
                   </Popover>
                 </div>
@@ -575,7 +597,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
               {/* Row 6: Referral Source (popover) */}
               <div className="grid gap-1.5">
                 <Label>Referral Source</Label>
-                <Popover>
+                 <Popover modal>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -590,7 +612,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                       <ChevronDown className="h-4 w-4 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-3 space-y-3" align="start" side="bottom">
+                  <PopoverContent container={dialogContentRef.current} className="w-[var(--radix-popover-trigger-width)] p-3 space-y-3" align="start" side="bottom" onOpenAutoFocus={(e) => e.preventDefault()}>
                     <div className="grid gap-1.5">
                       <Label htmlFor="referralName" className="text-xs">Name</Label>
                       <Input
