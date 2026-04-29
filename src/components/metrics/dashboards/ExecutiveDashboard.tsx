@@ -428,7 +428,50 @@ function ExecKpiDrilldownModal({
 }
 
 export function ExecutiveDashboard() {
-  const kpis = useExecutiveTopRowKpis();
+  // ── Week stepper state (Mon → Sun) ─────────────────────────────
+  // Anchor is the Monday of the selected week. Persisted per-user via
+  // localStorage so a user who returns to the page sees the same week
+  // they were last reviewing.
+  const STORAGE_KEY = 'executiveDashboard.weekAnchor';
+  const [weekAnchor, setWeekAnchor] = useState<Date>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = window.localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const d = new Date(raw);
+          if (!Number.isNaN(d.getTime())) return startOfWeek(d, { weekStartsOn: 1 });
+        }
+      } catch { /* ignore */ }
+    }
+    return startOfWeek(new Date(), { weekStartsOn: 1 });
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, weekAnchor.toISOString());
+    } catch { /* ignore */ }
+  }, [weekAnchor]);
+
+  const window: ExecKpiWindow = useMemo(() => {
+    const start = startOfWeek(weekAnchor, { weekStartsOn: 1 });
+    const end = endOfWeek(weekAnchor, { weekStartsOn: 1 });
+    return {
+      start,
+      end,
+      label: `${fmtDateFn(start, 'MMM d')} → ${fmtDateFn(end, 'MMM d, yyyy')}`,
+    };
+  }, [weekAnchor]);
+
+  const isCurrentWeek = useMemo(
+    () => isSameWeek(weekAnchor, new Date(), { weekStartsOn: 1 }),
+    [weekAnchor],
+  );
+
+  const goPrev = useCallback(() => setWeekAnchor(d => addWeeks(d, -1)), []);
+  const goNext = useCallback(() => setWeekAnchor(d => addWeeks(d, 1)), []);
+  const goCurrent = useCallback(() => setWeekAnchor(startOfWeek(new Date(), { weekStartsOn: 1 })), []);
+
+  const kpis = useExecutiveTopRowKpis(window);
   const [drilldown, setDrilldown] = useState<ExecKpiDrilldown | null>(null);
 
   // Date windows surfaced in tooltips so users can see the exact period
