@@ -13,6 +13,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Send, Paperclip, Loader2, X, Trash2, Maximize2, Check, AlertCircle, Cloud,
   Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Edit3, ChevronDown,
@@ -25,6 +26,8 @@ import { useEmailContacts } from '@/hooks/useEmailContacts';
 import type { DraftSaveStatus } from '@/hooks/useEmailDraft';
 import type { TokenContext } from '@/hooks/useEmailSnippets';
 import { SnippetPicker } from './SnippetPicker';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Public surface
@@ -43,6 +46,12 @@ export interface ComposerSendOptions {
   autoLinkDeal?: boolean;
   /** Track opens for this email. */
   trackOpens?: boolean;
+  /**
+   * If set, queue the email for delivery at this future time (ISO string)
+   * instead of sending immediately. Parents are responsible for persisting
+   * to `scheduled_emails`.
+   */
+  scheduledFor?: string;
 }
 
 export interface EmailComposerCardProps {
@@ -200,6 +209,13 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
   const [recipientError, setRecipientError] = useState<string | null>(null);
   const [aiInsertedAt, setAiInsertedAt] = useState<number | null>(null);
   const [aiPending, setAiPending] = useState(false);
+  const [schedulePickerOpen, setSchedulePickerOpen] = useState(false);
+  const [scheduleValue, setScheduleValue] = useState<string>(() => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() + 60);
+    d.setSeconds(0, 0);
+    return d.toISOString().slice(0, 16); // yyyy-MM-ddTHH:mm
+  });
 
   // Drag-to-resize state (inline only)
   const [extraHeight, setExtraHeight] = useState(0);
@@ -245,11 +261,43 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
     if (!hasContent) { setBodyError('Write a reply before sending'); return; }
     setIsSending(true);
     try {
+      if (opts.scheduledFor) {
+        const { data: userRes } = await supabase.auth.getUser();
+        const uid = userRes?.user?.id;
+        if (!uid) {
+          toast.error('Not signed in — cannot schedule send');
+          return;
+        }
+        const { error } = await supabase.from('scheduled_emails').insert({
+          user_id: uid,
+          to_recipients: recipients.to,
+          cc_recipients: recipients.cc,
+          bcc_recipients: recipients.bcc,
+          subject,
+          body_html: props.body,
+          metadata: {
+            autoLinkDeal: autoLink,
+            trackOpens,
+            dealId: props.dealId ?? null,
+            archiveAfterSend: !!opts.archiveAfterSend,
+          },
+          scheduled_for: opts.scheduledFor,
+          status: 'pending',
+        });
+        if (error) {
+          toast.error(`Could not schedule send — ${error.message}`);
+          return;
+        }
+        const when = new Date(opts.scheduledFor).toLocaleString();
+        toast.success(`Scheduled for ${when}`);
+        onDiscard();
+        return;
+      }
       await onSend({ ...opts, autoLinkDeal: autoLink, trackOpens });
     } finally {
       setIsSending(false);
     }
-  }, [hasRecipient, hasContent, onSend, autoLink, trackOpens]);
+  }, [hasRecipient, hasContent, onSend, onDiscard, autoLink, trackOpens, recipients, subject, props.body, props.dealId]);
 
   // ── Keyboard shortcuts: ⌘↵ send · ⌘J AI draft ───────────────────────────
   const handleBodyKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -418,16 +466,66 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
             <Archive className="h-3.5 w-3.5 mr-2" />Send & Archive
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem disabled className="opacity-60">
-            <CalendarIcon className="h-3.5 w-3.5 mr-2" />Schedule send…
-            <span className="ml-auto text-[9px] text-muted-foreground">Soon</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem disabled className="opacity-60">
+          <DropdownMenuItem
+            disabled={!canSend}
+            onSelect={() => {
+              const d = new Date();
+              d.setDate(d.getDate() + 1);
+              d.setHours(8, 0, 0, 0);
+              void runSend({ scheduledFor: d.toISOString() });
+            }}
+          >
             <CalendarIcon className="h-3.5 w-3.5 mr-2" />Send tomorrow 8am
-            <span className="ml-auto text-[9px] text-muted-foreground">Soon</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={!canSend}
+            onSelect={(e) => {
+              e.preventDefault();
+              setSchedulePickerOpen(true);
+            }}
+          >
+            <CalendarIcon className="h-3.5 w-3.5 mr-2" />Pick date &amp; time…
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <Popover open={schedulePickerOpen} onOpenChange={setSchedulePickerOpen}>
+        <PopoverTrigger asChild>
+          {/* Anchor only; opens via dropdown item */}
+          <span className="sr-only" aria-hidden />
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-72 p-3 space-y-2">
+          <div className="text-xs font-medium">Schedule send</div>
+          <Input
+            type="datetime-local"
+            value={scheduleValue}
+            min={new Date(Date.now() + 60_000).toISOString().slice(0, 16)}
+            onChange={(e) => setScheduleValue(e.target.value)}
+            className="h-8 text-xs"
+          />
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setSchedulePickerOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="h-7 text-xs"
+              disabled={!canSend || !scheduleValue}
+              onClick={() => {
+                const iso = new Date(scheduleValue).toISOString();
+                setSchedulePickerOpen(false);
+                void runSend({ scheduledFor: iso });
+              }}
+            >
+              Schedule
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 

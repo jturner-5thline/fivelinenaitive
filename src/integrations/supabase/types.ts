@@ -15277,6 +15277,72 @@ export type Database = {
           },
         ]
       }
+      scheduled_emails: {
+        Row: {
+          attempts: number
+          bcc_recipients: Json
+          body_html: string
+          body_text: string | null
+          cc_recipients: Json
+          created_at: string
+          id: string
+          last_error: string | null
+          metadata: Json
+          nylas_message_id: string | null
+          reply_to_message_id: string | null
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+          subject: string
+          thread_id: string | null
+          to_recipients: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          bcc_recipients?: Json
+          body_html?: string
+          body_text?: string | null
+          cc_recipients?: Json
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          metadata?: Json
+          nylas_message_id?: string | null
+          reply_to_message_id?: string | null
+          scheduled_for: string
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          thread_id?: string | null
+          to_recipients?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          bcc_recipients?: Json
+          body_html?: string
+          body_text?: string | null
+          cc_recipients?: Json
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          metadata?: Json
+          nylas_message_id?: string | null
+          reply_to_message_id?: string | null
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          thread_id?: string | null
+          to_recipients?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       scheduled_followup_actions: {
         Row: {
           context: Json
