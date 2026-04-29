@@ -1,8 +1,14 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Lock } from 'lucide-react';
+import { Lock, Info } from 'lucide-react';
 import { useState } from 'react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   useExecutiveTopRowKpis,
   type ExecKpiDrilldownDeal,
@@ -211,20 +217,42 @@ function StatCard({
   subtitle,
   loading,
   onClick,
+  tooltip,
 }: {
   title: string;
   value: string | number;
   subtitle?: string;
   loading?: boolean;
   onClick?: () => void;
+  tooltip?: React.ReactNode;
 }) {
+  const info = tooltip ? (
+    <TooltipProvider delayDuration={150}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors"
+            aria-label="How this is calculated"
+          >
+            <Info className="h-3.5 w-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" align="end" className="max-w-xs text-xs leading-relaxed">
+          {tooltip}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  ) : undefined;
+
   return (
     <GlassCard
       interactive
       onClick={onClick}
       className={onClick ? 'cursor-pointer' : undefined}
     >
-      <GlassCardHeader title={title} subtitle={subtitle} />
+      <GlassCardHeader title={title} subtitle={subtitle} right={info} />
       <GlassCardBody className="pt-0 pb-5 space-y-2">
         {loading ? (
           <Skeleton className="h-8 w-24" />
