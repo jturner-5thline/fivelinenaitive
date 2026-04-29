@@ -148,6 +148,7 @@ function useTotalActiveDealVolume() {
   const stages = useActivePipelineStageMap();
   const pipelineId = stages.data?.pipelineId ?? null;
   const stageIds = stages.data?.stageIdsInRange ?? [];
+  const labelById = stages.data?.stageLabelById ?? new Map<string, string>();
 
   return useQuery({
     queryKey: [
@@ -162,21 +163,31 @@ function useTotalActiveDealVolume() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('deals')
-        .select('id, value, company, stage, pipeline_id')
+        .select('id, value, company, stage, pipeline_id, updated_at')
         .eq('company_id', companyId)
         .eq('pipeline_id', pipelineId)
         .in('stage', stageIds);
       if (error) throw error;
       let total = 0;
       let count = 0;
+      const deals: ExecKpiDrilldownDeal[] = [];
       for (const d of data ?? []) {
         if (isExcludedDealName(d.company)) continue;
         const v = Number(d.value);
         if (!Number.isFinite(v)) continue;
         total += v;
         count += 1;
+        deals.push({
+          deal_id: d.id,
+          company: d.company ?? '—',
+          value: v,
+          stage_label: labelById.get(d.stage) ?? d.stage ?? null,
+          occurred_at: (d as { updated_at?: string }).updated_at ?? null,
+        });
       }
-      return { total, count };
+      // Sort by value desc — most material deals first.
+      deals.sort((a, b) => b.value - a.value);
+      return { total, count, deals };
     },
   });
 }
@@ -188,6 +199,8 @@ function useDealsClosedQTD() {
   const stages = useActivePipelineStageMap();
   const pipelineId = stages.data?.pipelineId ?? null;
   const fundedStageId = stages.data?.fundedInvoicedStageId ?? null;
+  const fundedLabel =
+    (fundedStageId && stages.data?.stageLabelById.get(fundedStageId)) || 'Funded / Invoiced';
 
   return useQuery({
     queryKey: [
@@ -206,7 +219,7 @@ function useDealsClosedQTD() {
 
       const { data, error } = await supabase
         .from('deal_stage_history')
-        .select('deal_id, deals!inner(company)')
+        .select('deal_id, changed_at, deals!inner(company, value)')
         .eq('company_id', companyId)
         .eq('pipeline_id', pipelineId)
         .eq('to_stage', fundedStageId)
@@ -214,12 +227,32 @@ function useDealsClosedQTD() {
         .lte('changed_at', qEnd.toISOString());
       if (error) throw error;
 
-      const distinctDealIds = new Set<string>();
-      for (const row of (data ?? []) as Array<{ deal_id: string; deals: { company: string | null } | null }>) {
+      // Keep the EARLIEST entry per deal_id this quarter so the drilldown shows
+      // when each deal first crossed into Funded/Invoiced.
+      const seen = new Map<string, ExecKpiDrilldownDeal>();
+      for (const row of (data ?? []) as Array<{
+        deal_id: string;
+        changed_at: string;
+        deals: { company: string | null; value: number | null } | null;
+      }>) {
         if (isExcludedDealName(row.deals?.company ?? null)) continue;
-        distinctDealIds.add(row.deal_id);
+        const v = Number(row.deals?.value);
+        const candidate: ExecKpiDrilldownDeal = {
+          deal_id: row.deal_id,
+          company: row.deals?.company ?? '—',
+          value: Number.isFinite(v) ? v : 0,
+          stage_label: fundedLabel,
+          occurred_at: row.changed_at,
+        };
+        const prev = seen.get(row.deal_id);
+        if (!prev || (prev.occurred_at && candidate.occurred_at && candidate.occurred_at < prev.occurred_at)) {
+          seen.set(row.deal_id, candidate);
+        }
       }
-      return { count: distinctDealIds.size };
+      const deals = Array.from(seen.values()).sort((a, b) =>
+        (b.occurred_at ?? '').localeCompare(a.occurred_at ?? ''),
+      );
+      return { count: deals.length, deals };
     },
   });
 }
