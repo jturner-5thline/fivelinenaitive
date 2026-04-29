@@ -982,12 +982,14 @@ function PipelineTab({
 }) {
   const { data, isLoading } = usePipelineData(enabled, targetDealOwnerName);
 
-  // Today's Follow-Ups (replaces the old "Your follow-ups for today" email
-  // for jturner@5thline.co — same source data, surfaced in-app instead).
+  // Today's Follow-Ups — fully replaces the legacy "Your follow-ups for today"
+  // email (permanently disabled platform-wide on 2026-04-29). Same source
+  // data, now grouped by deal and surfaced in-app for every user.
   const { user } = useAuth();
-  const isJTurner = (user?.email || '').toLowerCase() === 'jturner@5thline.co';
-  const { data: followups = [] } = useMorningFollowups(enabled && isJTurner);
-  const showFollowups = isJTurner && followups.length > 0;
+  // Only show the current user's own follow-ups (not the delegated view).
+  const showOwnFollowups = enabled && !targetDealOwnerName;
+  const { data: followupGroups = [] } = useMorningFollowups(showOwnFollowups);
+  const showFollowups = showOwnFollowups && followupGroups.length > 0;
 
   // One-time cleanup of the legacy Grid/Memo view-mode preference.
   // The Grid view was removed; Memo is now the only render path.
@@ -1020,17 +1022,7 @@ function PipelineTab({
     <div className="relative h-full">
       {showFollowups && (
         <Section title="Today's Follow-Ups">
-          {followups.map((f) => (
-            <BriefingRow
-              key={f.key}
-              icon={ListChecks}
-              title={`${f.company} — ${f.title}`}
-              subtitle={f.stage ? `Stage: ${f.stage}` : undefined}
-              badge={f.source === 'scheduled' ? '3-day' : 'Task'}
-              badgeVariant="default"
-              onClick={f.dealId ? () => onNavigate(`/deal/${f.dealId}`) : undefined}
-            />
-          ))}
+          <FollowupsByDeal groups={followupGroups} onNavigate={onNavigate} />
         </Section>
       )}
       <Suspense
