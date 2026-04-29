@@ -674,8 +674,8 @@ export default function Dashboard() {
           <DashboardAIInput />
 
           {/* ─── Dashboard navigation ──────────────────────────────────
-              Single navigation row: preset tabs (My Dashboard, Deal
-              Manager, Daily Operations, …) followed by a sibling
+              Single navigation row: preset tabs (My Dashboard, …)
+              followed by a sibling
               "News Feed" tab. The Edit / Templates / New buttons live
               in a separate, visually distinct action row below. */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 pb-2">

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Briefcase, ListTodo, Bell, Calendar, Mail, Activity, Newspaper, Zap, Bot, LayoutTemplate, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ListTodo, Bell, Mail, Activity, Newspaper, Zap, Bot, LayoutTemplate, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import {
   Dialog,
@@ -37,25 +37,6 @@ export interface DashboardTemplate {
 
 const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
   {
-    id: 'deal-manager',
-    name: 'Deal Manager',
-    description: 'Focus on active deals, tasks, and alerts. Ideal for deal managers tracking their pipeline day-to-day.',
-    icon: Briefcase,
-    tags: ['Deals', 'Tasks', 'Alerts'],
-    widgets: [
-      { id: 'my-deals', type: 'my-deals', title: 'My Deals', config: { maxItems: 10, variant: 'expanded' } },
-      { id: 'expected-this-week', type: 'expected-this-week', title: 'Expected This Week', config: {} },
-      { id: 'my-tasks', type: 'my-tasks', title: 'My Tasks', config: { variant: 'expanded' } },
-      { id: 'email-intelligence', type: 'email-intelligence', title: 'Email Intelligence', config: {} },
-    ],
-    grid: [
-      { i: 'my-deals', x: 0, y: 0, w: 6, h: 6, minW: 3, minH: 3 },
-      { i: 'expected-this-week', x: 6, y: 0, w: 6, h: 5, minW: 3, minH: 3 },
-      { i: 'my-tasks', x: 0, y: 6, w: 6, h: 6, minW: 3, minH: 3 },
-      { i: 'email-intelligence', x: 6, y: 9, w: 6, h: 4, minW: 3, minH: 2 },
-    ],
-  },
-  {
     id: 'executive-overview',
     name: 'Executive Overview',
     description: 'High-level view with notifications, recent activity, and news. Great for leadership staying informed.',
@@ -91,21 +72,6 @@ const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
       { i: 'agent-suggestions', x: 6, y: 0, w: 6, h: 4, minW: 3, minH: 3 },
       { i: 'email-intelligence', x: 0, y: 4, w: 4, h: 4, minW: 3, minH: 2 },
       { i: 'my-deals', x: 4, y: 4, w: 8, h: 5, minW: 3, minH: 3 },
-    ],
-  },
-  {
-    id: 'daily-ops',
-    name: 'Daily Operations',
-    description: 'Calendar-centric layout with tasks and alerts. Perfect for staying on top of daily priorities.',
-    icon: Calendar,
-    tags: ['Calendar', 'Tasks', 'Daily'],
-    widgets: [
-      { id: 'my-tasks', type: 'my-tasks', title: 'My Tasks', config: { variant: 'expanded' } },
-      { id: 'email-intelligence', type: 'email-intelligence', title: 'Email Intelligence', config: {} },
-    ],
-    grid: [
-      { i: 'my-tasks', x: 0, y: 0, w: 6, h: 6, minW: 3, minH: 3 },
-      { i: 'email-intelligence', x: 0, y: 6, w: 12, h: 4, minW: 3, minH: 2 },
     ],
   },
   {
