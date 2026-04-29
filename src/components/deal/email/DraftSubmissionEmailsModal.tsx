@@ -6,17 +6,37 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import {
   Mail, Loader2, ChevronLeft, ChevronRight, Check, CheckCircle2,
-  AlertCircle, RotateCw, Send,
+  AlertCircle, RotateCw, Send, Users, ExternalLink, AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EmailRichTextEditor } from './EmailRichTextEditor';
 import { htmlToPlainText } from '@/lib/htmlToPlainText';
+import { Link } from 'react-router-dom';
 
 export type EmailDraftStatus = 'draft' | 'approved' | 'sending' | 'sent' | 'failed';
 
+/** Lender contact option surfaced in the recipient picker. */
+export type LenderContactOption = {
+  id: string;            // lender_contacts.id, or 'legacy' for master_lenders.email
+  name: string;          // contact display name (or "Primary contact" fallback)
+  title?: string | null;
+  email: string;
+  isPrimary?: boolean;
+};
+
 export type EmailDraft = {
   lenderName: string;
+  /** master_lenders.id when the draft is matched to a lender directory record. */
+  lenderId?: string | null;
+  /** All known contact emails for this lender (for the recipient dropdown). */
+  availableContacts?: LenderContactOption[];
+  /** Currently selected contact id from `availableContacts`. */
+  selectedContactId?: string | null;
   to: string;
   cc: string;
   bcc: string;
