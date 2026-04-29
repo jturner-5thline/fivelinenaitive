@@ -1,5 +1,5 @@
 import { useState, useEffect, memo, useCallback, useRef } from 'react';
-import { ChevronDown, ChevronRight, MessageSquare } from 'lucide-react';
+import { ChevronDown, ChevronRight, MessageSquare, PanelRightOpen, PanelRightClose, X } from 'lucide-react';
 import type { WeeklyData, SidebarData, PlanSnapshot, ThemeMode, WeeklyOverrides } from './types';
 import { fmtAbbrev } from './formatters';
 import { WeeklyCharts } from './WeeklyCharts';
@@ -165,6 +165,35 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
     }
   });
   const gridWrapRef = useGridWheelPassthrough<HTMLDivElement>();
+
+  // Sidebar drawer (off-canvas) state — keeps Weekly Report full-width
+  const SIDEBAR_OPEN_KEY = 'cf:sidebarDrawerOpen';
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try { return window.localStorage.getItem(SIDEBAR_OPEN_KEY) === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem(SIDEBAR_OPEN_KEY, sidebarOpen ? '1' : '0'); } catch { /* ignore */ }
+  }, [sidebarOpen]);
+
+  // Horizontal scroll edge-fade indicators
+  const [edgeState, setEdgeState] = useState<{ left: boolean; right: boolean }>({ left: false, right: false });
+  const handleGridScroll = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    const left = el.scrollLeft > 2;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+    setEdgeState((prev) => (prev.left === left && prev.right === right ? prev : { left, right }));
+  }, []);
+  useEffect(() => {
+    const el = gridWrapRef.current?.querySelector<HTMLDivElement>('.cf-grid-wrap');
+    if (!el) return;
+    handleGridScroll(el);
+    const onScroll = () => handleGridScroll(el);
+    el.addEventListener('scroll', onScroll, { passive: true });
+    const ro = new ResizeObserver(() => handleGridScroll(el));
+    ro.observe(el);
+    return () => { el.removeEventListener('scroll', onScroll); ro.disconnect(); };
+  }, [handleGridScroll, visibleWeeks.length, sidebarOpen]);
 
   useEffect(() => {
     try {
