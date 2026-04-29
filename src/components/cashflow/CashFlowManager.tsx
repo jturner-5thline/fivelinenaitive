@@ -984,6 +984,7 @@ export function CashFlowManager() {
         cashIn={cashIn}
         cashOut={cashOut}
         netChange={netChange}
+        kpiRangeLabel={kpiRangeLabel}
         undoCount={undoStack.length}
         activityCount={activityLog.length}
         onRoleChange={handleRoleChange}
