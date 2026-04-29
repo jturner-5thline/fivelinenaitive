@@ -417,6 +417,17 @@ export function ExecutiveDashboard() {
   const kpis = useExecutiveTopRowKpis();
   const [drilldown, setDrilldown] = useState<ExecKpiDrilldown | null>(null);
 
+  // Date windows surfaced in tooltips so users can see the exact period
+  // each metric is computed over (recomputed on render — cheap and always
+  // reflects "now").
+  const now = new Date();
+  const qStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+  const t12mStart = new Date(now.getFullYear(), now.getMonth() - 12, now.getDate());
+  const fmtDate = (d: Date) =>
+    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const qtdWindow = `${fmtDate(qStart)} → ${fmtDate(now)}`;
+  const t12mWindow = `${fmtDate(t12mStart)} → ${fmtDate(now)}`;
+
   const fmtMoney = (v: number | null) =>
     v === null || !Number.isFinite(v) ? '—' : formatCurrency(v);
   const fmtCount = (v: number | null) =>
@@ -449,6 +460,13 @@ export function ExecutiveDashboard() {
           value={fmtMoney(kpis.totalActiveDealVolume.value)}
           subtitle="Final Credit Items → In Due Diligence"
           loading={kpis.totalActiveDealVolume.loading}
+          tooltip={
+            <div className="space-y-1.5">
+              <p className="font-medium text-foreground">Total Active Deal Volume</p>
+              <p>SUM of <span className="font-mono">deal value</span> for every open deal whose current stage falls in the inclusive range <em>Final Credit Items → In Due Diligence</em>.</p>
+              <p className="text-muted-foreground">Pipeline: active (default). Window: live snapshot.</p>
+            </div>
+          }
           onClick={() =>
             setDrilldown({
               kind: 'deals',
@@ -463,6 +481,13 @@ export function ExecutiveDashboard() {
           value={fmtCount(kpis.dealsClosedQTD.value)}
           subtitle="Entered Funded / Invoiced this quarter"
           loading={kpis.dealsClosedQTD.loading}
+          tooltip={
+            <div className="space-y-1.5">
+              <p className="font-medium text-foreground">Deals Closed (QTD)</p>
+              <p>COUNT of distinct deals that <em>entered</em> the <em>Funded / Invoiced</em> stage during the current quarter (stage-entry events, not current snapshots).</p>
+              <p className="text-muted-foreground">Window (QTD): {qtdWindow}.</p>
+            </div>
+          }
           onClick={() =>
             setDrilldown({
               kind: 'deals',
@@ -477,6 +502,13 @@ export function ExecutiveDashboard() {
           value={fmtMoney(kpis.revenueQTD.value)}
           subtitle="5th Line Capital Advisors · QBO"
           loading={kpis.revenueQTD.loading}
+          tooltip={
+            <div className="space-y-1.5">
+              <p className="font-medium text-foreground">Revenue (QTD)</p>
+              <p>QuickBooks <em>Profit &amp; Loss</em> Income total for <strong>5th Line Capital Advisors LLC</strong> (realm 193514877331929), accrual basis.</p>
+              <p className="text-muted-foreground">Window (QTD): {qtdWindow}.</p>
+            </div>
+          }
           onClick={() =>
             setDrilldown({
               kind: 'revenue',
@@ -491,6 +523,13 @@ export function ExecutiveDashboard() {
           value={fmtMoney(kpis.avgDealSize.value)}
           subtitle="Entered Final Credit Items · Trailing 12 mo."
           loading={kpis.avgDealSize.loading}
+          tooltip={
+            <div className="space-y-1.5">
+              <p className="font-medium text-foreground">Avg. Deal Size</p>
+              <p>SUM of deal value ÷ COUNT of distinct deals that <em>entered</em> the <em>Final Credit Items</em> stage in the trailing 12 months. Re-entries deduped to one per deal.</p>
+              <p className="text-muted-foreground">Window (T12M): {t12mWindow}.</p>
+            </div>
+          }
           onClick={() =>
             setDrilldown({
               kind: 'deals',
