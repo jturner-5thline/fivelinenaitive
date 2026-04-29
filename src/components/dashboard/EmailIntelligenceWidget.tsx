@@ -253,7 +253,7 @@ export function EmailIntelligenceWidget() {
               Link your email in Integrations to see your inbox here.
             </p>
           </div>
-          <Button variant="outline" size="sm" className="mt-1 glass-border-soft bg-white/[0.04] hover:bg-white/[0.08]" onClick={() => navigate('/integrations')}>
+          <Button variant="outline" size="sm" className="mt-1 glass-border-soft bg-white/[0.04] hover:bg-white/[0.08]" onClick={() => goTo('/integrations')}>
             Go to Integrations
           </Button>
         </CardContent>
@@ -312,7 +312,7 @@ export function EmailIntelligenceWidget() {
                 variant="ghost"
                 size="sm"
                 className="h-7 text-xs gap-1 hover:bg-white/[0.06]"
-                onClick={() => navigate('/email-intelligence')}
+                onClick={() => goTo('/email-intelligence')}
               >
                 <Inbox className="h-3 w-3" />
                 Full Inbox
