@@ -450,16 +450,6 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
               ))}
             </select>
             <button className="cf-btn cf-btn-primary" onClick={onExport}>Export PDF</button>
-            <button
-              className="cf-btn cf-btn-ghost"
-              onClick={() => setSidebarOpen(o => !o)}
-              title={sidebarOpen ? 'Hide notes & cash-in panel' : 'Show notes & cash-in panel'}
-              aria-label={sidebarOpen ? 'Hide notes panel' : 'Show notes panel'}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-            >
-              {sidebarOpen ? <PanelRightClose size={14} /> : <PanelRightOpen size={14} />}
-              <span>{sidebarOpen ? 'Hide Notes' : 'Notes'}</span>
-            </button>
           </div>
         </div>
 
