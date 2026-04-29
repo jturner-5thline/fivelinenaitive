@@ -15,7 +15,6 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import {
   useBriefingWindow,
-  useCatchUpData,
   useEmailData,
   useFinancialData,
   usePipelineData,
@@ -39,8 +38,6 @@ import { EmailAttachmentsStrip, detectAttachmentFallbackReason } from '@/compone
 const PipelineMemoView = lazy(() =>
   import('@/pages/pipeline/PipelineMemoView').then(m => ({ default: m.PipelineMemoView })),
 );
-import { useUiPreference } from '@/hooks/useUiPreference';
-import { LayoutGrid } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMorningFollowups } from '@/hooks/useMorningFollowups';
 
