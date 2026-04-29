@@ -27,7 +27,6 @@ import { UndoSendProvider } from "@/contexts/UndoSendContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { InsightsAccessGuard } from "@/components/InsightsAccessGuard";
 import { WorkflowEmailModalListener } from "@/components/email/WorkflowEmailModalListener";
-import { FloatingCopilotDrawer } from "@/components/FloatingCopilotDrawer";
 import { NewTaskViaNaitiveModal } from "@/components/dashboard/chat/NewTaskViaNaitiveModal";
 import { CookieConsent } from "@/components/CookieConsent";
 import { CopyProtection } from "@/components/CopyProtection";
@@ -143,7 +142,6 @@ const App = () => (
                       <BrowserRouter>
                         <ScrollToTop />
                         <CookieConsent />
-                        <FloatingCopilotDrawer />
                         <NewTaskViaNaitiveModal />
                         <Suspense fallback={<PageLoader />}>
                         <Routes>
