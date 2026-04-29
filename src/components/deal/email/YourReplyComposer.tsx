@@ -344,11 +344,6 @@ function SentenceView({
   );
 }
 
-function FactPill({ pill, text }: { pill: PillFact; text: string }) {
-  // (component below)
-  return _FactPillImpl({ pill, text });
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Formatting toolbar — applies inline formatting via document.execCommand to
 // whatever sentence span currently holds the selection. Pure visual affordance:
@@ -412,7 +407,7 @@ function FormattingToolbar() {
   );
 }
 
-function _FactPillImpl({ pill, text }: { pill: PillFact; text: string }) {
+function FactPill({ pill, text }: { pill: PillFact; text: string }) {
   const meta = PILL_META[pill.key];
   const tooltip = meta ? `${pill.label} · ${meta.source}` : pill.label;
   return (
