@@ -795,6 +795,12 @@ export function YourReplyComposer({ thread, dealId, onClose, onSend, initialMode
           </div>
         )}
 
+        {/* Formatting toolbar — applies to current selection inside any sentence span.
+            Note: the sentence model commits innerText on blur, so formatting is a
+            session-level affordance and does not persist to the sent plain-text body.
+            This intentionally preserves the AI pill / provenance pipeline. */}
+        <FormattingToolbar />
+
         {/* Body — sentence renderer */}
         <div className="px-4 py-3 min-h-[140px]">
           {error ? (
