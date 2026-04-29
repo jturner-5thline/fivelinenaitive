@@ -5,7 +5,7 @@ import { useScrollReveal } from "@/hooks/useScrollReveal";
 const dataUsageItems = [
   {
     icon: Database,
-    title: "Deal & Lender Data",
+    title: "Client & Deal Data",
     description:
       "We store your deal pipeline and lender relationships to power AI-driven insights, matching, and workflow automation.",
   },
