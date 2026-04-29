@@ -237,6 +237,26 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
 
+  // Resolve the FLEx data-room URL for the linked deal (if any) so the
+  // editor's link popover and the toolbar can offer the "Data Room" shortcut.
+  // Falls back to an explicit `dataRoomUrl` prop when provided.
+  const [resolvedDataRoomUrl, setResolvedDataRoomUrl] = useState<string | null>(dataRoomUrl ?? null);
+  useEffect(() => {
+    if (dataRoomUrl) { setResolvedDataRoomUrl(dataRoomUrl); return; }
+    if (!dealId) { setResolvedDataRoomUrl(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('deal_writeups')
+        .select('data_room_url')
+        .eq('deal_id', dealId)
+        .maybeSingle();
+      if (cancelled) return;
+      setResolvedDataRoomUrl((data?.data_room_url as string | null) ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [dealId, dataRoomUrl]);
+
   const [isSending, setIsSending] = useState(false);
   const [showCcBcc, setShowCcBcc] = useState(recipients.cc.length > 0 || recipients.bcc.length > 0);
   const [subjectExpanded, setSubjectExpanded] = useState(showSubjectInitial);
