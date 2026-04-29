@@ -13,6 +13,7 @@ import { EmailDetailModal } from '@/components/dashboard/EmailDetailModal';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useWidgetCarouselStore } from '@/stores/widgetCarouselStore';
 
 const CATEGORY_COLORS: Record<string, string> = {
   deal_update: 'bg-primary/10 text-primary border-primary/20',
@@ -99,6 +100,7 @@ function EmailIntelligenceHoverLabel({
 
 function EmailRow({ email, onClick }: { email: EnrichedEmail; onClick: () => void }) {
   const navigate = useNavigate();
+  const closeCarousel = useWidgetCarouselStore((s) => s.close);
   const analysis = email.analysis;
   const sentimentInfo = SENTIMENT_ICONS[analysis?.sentiment || 'neutral'] || SENTIMENT_ICONS.neutral;
   const SentimentIcon = sentimentInfo.icon;
@@ -160,7 +162,13 @@ function EmailRow({ email, onClick }: { email: EnrichedEmail; onClick: () => voi
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (analysis.deal_id) navigate(`/deal/${analysis.deal_id}`);
+                if (analysis.deal_id) {
+                  // Close the dashboard carousel/widget panel synchronously
+                  // BEFORE navigating so it never lingers on screen during
+                  // the route transition.
+                  closeCarousel();
+                  navigate(`/deal/${analysis.deal_id}`);
+                }
               }}
               className="text-[10px] text-primary hover:underline truncate max-w-[120px]"
             >
@@ -192,6 +200,13 @@ export function EmailIntelligenceWidget() {
   const { status, isStatusLoading } = useGmail();
   const { emails, stats, isLoading, isAnalyzing, syncEmails } = useEmailIntelligence();
   const navigate = useNavigate();
+  const closeCarousel = useWidgetCarouselStore((s) => s.close);
+  // Quick-action launchers must dismiss the dashboard widget panel BEFORE
+  // route changes so the panel never lingers on top of the destination.
+  const goTo = (path: string) => {
+    closeCarousel();
+    navigate(path);
+  };
   const [selectedEmail, setSelectedEmail] = useState<EnrichedEmail | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -238,7 +253,7 @@ export function EmailIntelligenceWidget() {
               Link your email in Integrations to see your inbox here.
             </p>
           </div>
-          <Button variant="outline" size="sm" className="mt-1 glass-border-soft bg-white/[0.04] hover:bg-white/[0.08]" onClick={() => navigate('/integrations')}>
+          <Button variant="outline" size="sm" className="mt-1 glass-border-soft bg-white/[0.04] hover:bg-white/[0.08]" onClick={() => goTo('/integrations')}>
             Go to Integrations
           </Button>
         </CardContent>
@@ -297,7 +312,7 @@ export function EmailIntelligenceWidget() {
                 variant="ghost"
                 size="sm"
                 className="h-7 text-xs gap-1 hover:bg-white/[0.06]"
-                onClick={() => navigate('/email-intelligence')}
+                onClick={() => goTo('/email-intelligence')}
               >
                 <Inbox className="h-3 w-3" />
                 Full Inbox
