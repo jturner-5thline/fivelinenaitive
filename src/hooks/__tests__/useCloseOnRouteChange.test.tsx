@@ -13,7 +13,6 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as React from 'react';
-// @ts-expect-error — react-dom/test-utils ships its own typings via React 18
 import { act } from 'react-dom/test-utils';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter, Routes, Route, useNavigate } from 'react-router-dom';
