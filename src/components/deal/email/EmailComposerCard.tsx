@@ -28,6 +28,7 @@ import type { TokenContext } from '@/hooks/useEmailSnippets';
 import { SnippetPicker } from './SnippetPicker';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { shouldShowSignatureGhost } from './signatureGhost';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Public surface
