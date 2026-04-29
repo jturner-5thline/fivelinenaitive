@@ -1,10 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ReplyDraft } from '@/components/deal/email/InlineReplyComposer';
+import { supabase } from '@/integrations/supabase/client';
+import { emailStringToArray, emailArrayToString } from '@/components/deal/email/RecipientField';
 
 const DRAFT_STORAGE_PREFIX = 'email_draft_';
-const AUTOSAVE_INTERVAL_MS = 3000;
+
+// Debounce window for server-side persistence. The card was specced for 5s
+// debounced auto-save; localStorage is still written eagerly on every change
+// so we never lose offline edits.
+const SERVER_DEBOUNCE_MS = 5000;
 
 export type DraftSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
+// ────────────────────────────────────────────────────────────────────────────
+// LocalStorage layer (sync, fast, always available)
+// ────────────────────────────────────────────────────────────────────────────
 
 function getDraftKey(threadId: string): string {
   return `${DRAFT_STORAGE_PREFIX}${threadId}`;
@@ -24,8 +34,7 @@ function loadDraftFromStorage(threadId: string): ReplyDraft | null {
     const raw = localStorage.getItem(getDraftKey(threadId));
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    // Remove internal metadata before returning
-    const { savedAt, ...draft } = parsed;
+    const { savedAt: _savedAt, ...draft } = parsed;
     return draft as ReplyDraft;
   } catch {
     return null;
@@ -33,63 +42,197 @@ function loadDraftFromStorage(threadId: string): ReplyDraft | null {
 }
 
 function deleteDraftFromStorage(threadId: string): void {
-  try {
-    localStorage.removeItem(getDraftKey(threadId));
-  } catch {
-    // ignore
-  }
+  try { localStorage.removeItem(getDraftKey(threadId)); } catch { /* noop */ }
 }
 
-/** Check if draft has meaningful content worth saving */
 function isDraftNonEmpty(draft: ReplyDraft): boolean {
   return !!(draft.body.trim() || draft.attachments.length > 0);
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Server layer (Supabase email_drafts table)
+// ────────────────────────────────────────────────────────────────────────────
+
+interface ServerDraftRow {
+  to_emails: string[] | null;
+  cc_emails: string[] | null;
+  bcc_emails: string[] | null;
+  subject: string | null;
+  body: string | null;
+  attachments: string[] | null;
+  to_name: string | null;
+}
+
+function rowToDraft(row: ServerDraftRow, threadId: string): ReplyDraft {
+  return {
+    to: emailArrayToString(row.to_emails ?? []),
+    cc: emailArrayToString(row.cc_emails ?? []),
+    bcc: emailArrayToString(row.bcc_emails ?? []),
+    subject: row.subject ?? '',
+    body: row.body ?? '',
+    attachments: row.attachments ?? [],
+    threadId,
+    toName: row.to_name ?? '',
+  };
+}
+
+async function fetchServerDraft(userId: string, threadId: string): Promise<ReplyDraft | null> {
+  const { data, error } = await supabase
+    .from('email_drafts')
+    .select('to_emails,cc_emails,bcc_emails,subject,body,attachments,to_name')
+    .eq('user_id', userId)
+    .eq('thread_id', threadId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return rowToDraft(data as ServerDraftRow, threadId);
+}
+
+async function upsertServerDraft(userId: string, draft: ReplyDraft): Promise<boolean> {
+  const payload = {
+    user_id: userId,
+    thread_id: draft.threadId,
+    to_emails: emailStringToArray(draft.to),
+    cc_emails: emailStringToArray(draft.cc),
+    bcc_emails: emailStringToArray(draft.bcc),
+    subject: draft.subject ?? null,
+    body: draft.body ?? null,
+    attachments: draft.attachments ?? [],
+    to_name: draft.toName ?? null,
+  };
+  const { error } = await supabase
+    .from('email_drafts')
+    .upsert(payload, { onConflict: 'user_id,thread_id' });
+  return !error;
+}
+
+async function deleteServerDraft(userId: string, threadId: string): Promise<void> {
+  await supabase
+    .from('email_drafts')
+    .delete()
+    .eq('user_id', userId)
+    .eq('thread_id', threadId);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Hook
+// ────────────────────────────────────────────────────────────────────────────
 
 export function useEmailDraft(threadId: string) {
   const [saveStatus, setSaveStatus] = useState<DraftSaveStatus>('idle');
   const draftRef = useRef<ReplyDraft | null>(null);
   const lastSavedRef = useRef<string>('');
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const userIdRef = useRef<string | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load existing draft for this thread
+  // Resolve current user id once per thread mount.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!cancelled) userIdRef.current = data.user?.id ?? null;
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // ── Loads ───────────────────────────────────────────────────────────────
+  // Synchronous local fallback for callers that don't want to await.
   const loadDraft = useCallback((): ReplyDraft | null => {
     return loadDraftFromStorage(threadId);
   }, [threadId]);
 
-  // Persist current draft
-  const saveDraft = useCallback((draft: ReplyDraft) => {
-    const serialized = JSON.stringify(draft);
-    // Skip if nothing changed
+  // Async server-first loader. Falls back to localStorage if the server has
+  // nothing (e.g. older drafts written before this migration).
+  const loadServerDraft = useCallback(async (): Promise<ReplyDraft | null> => {
+    const uid = userIdRef.current;
+    if (!uid) return loadDraftFromStorage(threadId);
+    const remote = await fetchServerDraft(uid, threadId);
+    if (remote && isDraftNonEmpty(remote)) {
+      // Backfill localStorage so optimistic loads stay in sync.
+      saveDraftToStorage(threadId, remote);
+      return remote;
+    }
+    return loadDraftFromStorage(threadId);
+  }, [threadId]);
+
+  // ── Persistence ─────────────────────────────────────────────────────────
+
+  // Eager local write + debounced server upsert.
+  const persistDraft = useCallback((draft: ReplyDraft) => {
+    const serialized = JSON.stringify({
+      to: draft.to, cc: draft.cc, bcc: draft.bcc,
+      subject: draft.subject, body: draft.body,
+      attachments: draft.attachments, toName: draft.toName,
+    });
     if (serialized === lastSavedRef.current) return;
-    // Only save if there's meaningful content
-    if (!isDraftNonEmpty(draft)) return;
+    if (!isDraftNonEmpty(draft)) {
+      // If the draft has been emptied, delete both sides.
+      lastSavedRef.current = '';
+      deleteDraftFromStorage(threadId);
+      const uid = userIdRef.current;
+      if (uid) void deleteServerDraft(uid, threadId);
+      setSaveStatus('idle');
+      return;
+    }
 
     setSaveStatus('saving');
-    const success = saveDraftToStorage(threadId, draft);
-    if (success) {
-      lastSavedRef.current = serialized;
-      setSaveStatus('saved');
-    } else {
-      setSaveStatus('error');
+    const localOk = saveDraftToStorage(threadId, draft);
+    if (!localOk) setSaveStatus('error');
+
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(async () => {
+      const uid = userIdRef.current;
+      if (!uid) {
+        // Logged out: local-only is best we can do.
+        if (localOk) {
+          lastSavedRef.current = serialized;
+          setSaveStatus('saved');
+        }
+        return;
+      }
+      const ok = await upsertServerDraft(uid, draft);
+      if (ok) {
+        lastSavedRef.current = serialized;
+        setSaveStatus('saved');
+      } else {
+        setSaveStatus('error');
+      }
+    }, SERVER_DEBOUNCE_MS);
+  }, [threadId]);
+
+  // Stash latest draft for blur/unload handlers and trigger debounced persist.
+  const updateDraft = useCallback((draft: ReplyDraft) => {
+    draftRef.current = draft;
+    persistDraft(draft);
+  }, [persistDraft]);
+
+  // Flush whatever's pending immediately (used on field blur).
+  const flushSave = useCallback(async () => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+      debounceTimer.current = null;
+    }
+    const draft = draftRef.current;
+    if (!draft || !isDraftNonEmpty(draft)) return;
+    saveDraftToStorage(threadId, draft);
+    const uid = userIdRef.current;
+    if (uid) {
+      setSaveStatus('saving');
+      const ok = await upsertServerDraft(uid, draft);
+      setSaveStatus(ok ? 'saved' : 'error');
+      if (ok) {
+        lastSavedRef.current = JSON.stringify({
+          to: draft.to, cc: draft.cc, bcc: draft.bcc,
+          subject: draft.subject, body: draft.body,
+          attachments: draft.attachments, toName: draft.toName,
+        });
+      }
     }
   }, [threadId]);
 
-  // Update the ref and schedule autosave
-  const updateDraft = useCallback((draft: ReplyDraft) => {
-    draftRef.current = draft;
-  }, []);
+  // Legacy alias kept for callers that pre-existed the debounce model.
+  const saveDraft = useCallback((draft: ReplyDraft) => persistDraft(draft), [persistDraft]);
 
-  // Interval-based autosave
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (draftRef.current) {
-        saveDraft(draftRef.current);
-      }
-    }, AUTOSAVE_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [saveDraft]);
-
-  // Save on beforeunload
+  // beforeunload: best-effort sync local persistence.
   useEffect(() => {
     const handler = () => {
       if (draftRef.current && isDraftNonEmpty(draftRef.current)) {
@@ -100,30 +243,35 @@ export function useEmailDraft(threadId: string) {
     return () => window.removeEventListener('beforeunload', handler);
   }, [threadId]);
 
-  // Flush save (immediate, for blur events etc)
-  const flushSave = useCallback(() => {
-    if (draftRef.current) {
-      saveDraft(draftRef.current);
-    }
-  }, [saveDraft]);
+  // Tear down debounce on unmount.
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, []);
 
-  // Delete draft explicitly
+  // ── Lifecycle ───────────────────────────────────────────────────────────
+
   const discardDraft = useCallback(() => {
+    if (debounceTimer.current) { clearTimeout(debounceTimer.current); debounceTimer.current = null; }
     deleteDraftFromStorage(threadId);
+    const uid = userIdRef.current;
+    if (uid) void deleteServerDraft(uid, threadId);
     draftRef.current = null;
     lastSavedRef.current = '';
     setSaveStatus('idle');
   }, [threadId]);
 
-  // Cleanup on send
   const clearDraftOnSend = useCallback(() => {
+    if (debounceTimer.current) { clearTimeout(debounceTimer.current); debounceTimer.current = null; }
     deleteDraftFromStorage(threadId);
+    const uid = userIdRef.current;
+    if (uid) void deleteServerDraft(uid, threadId);
     draftRef.current = null;
     lastSavedRef.current = '';
     setSaveStatus('idle');
   }, [threadId]);
 
-  // Check if a saved draft exists for this thread
   const hasSavedDraft = useCallback((): boolean => {
     const draft = loadDraftFromStorage(threadId);
     return draft !== null && isDraftNonEmpty(draft);
@@ -131,6 +279,7 @@ export function useEmailDraft(threadId: string) {
 
   return {
     loadDraft,
+    loadServerDraft,
     updateDraft,
     flushSave,
     saveDraft,
