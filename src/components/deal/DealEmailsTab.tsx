@@ -960,6 +960,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         to: p.to,
         subject: p.subject,
         body: p.body,
+        bodyHtml: emailData.body_html,
+        attachments: emailData._outgoing_files,
       }),
       onSent: () => {
         setEmails(prev => [{ ...emailData, id: `mock-sent-${Date.now()}`, threadId }, ...prev]);
