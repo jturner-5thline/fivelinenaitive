@@ -257,6 +257,32 @@ function useDealsClosedQTD() {
   });
 }
 
+/** One Income line item from a QBO Profit & Loss report (used for Revenue drilldown). */
+export interface ExecRevenueLineItem {
+  account: string;
+  amount: number;
+}
+
+/** Recursively flatten QBO P&L Income rows into a flat line-item list. */
+function flattenQboIncomeRows(rows: any[]): ExecRevenueLineItem[] {
+  const out: ExecRevenueLineItem[] = [];
+  const walk = (rs: any[]) => {
+    for (const r of rs ?? []) {
+      if (r?.type === 'Data') {
+        const account = r?.ColData?.[0]?.value ?? '—';
+        const amount = parseFloat(r?.ColData?.[1]?.value ?? '0');
+        if (Number.isFinite(amount) && amount !== 0) {
+          out.push({ account, amount });
+        }
+      } else if (r?.Rows?.Row) {
+        walk(r.Rows.Row);
+      }
+    }
+  };
+  walk(rows);
+  return out;
+}
+
 // ── 3. Revenue (QTD) — 5th Line Capital Advisors via QBO ───────────
 function useRevenueQTDForDebtEntity() {
   const { user } = useAuth();
@@ -318,12 +344,13 @@ function useRevenueQTDForDebtEntity() {
         }
       }
 
-      if (!report) return { revenue: null as number | null };
+      if (!report) return { revenue: null as number | null, lineItems: [] as ExecRevenueLineItem[] };
 
       // Walk the QB P&L payload to find the Income section summary.
       const rows: any[] = report?.Rows?.Row ?? [];
       let income = 0;
       let found = false;
+      let lineItems: ExecRevenueLineItem[] = [];
       for (const row of rows) {
         if (row?.type === 'Section' && row?.group === 'Income') {
           const summaryAmount = parseFloat(row?.Summary?.ColData?.[1]?.value ?? '0');
@@ -331,10 +358,13 @@ function useRevenueQTDForDebtEntity() {
             income = summaryAmount;
             found = true;
           }
+          lineItems = flattenQboIncomeRows(row?.Rows?.Row ?? []).sort(
+            (a, b) => b.amount - a.amount,
+          );
           break;
         }
       }
-      return { revenue: found ? income : null };
+      return { revenue: found ? income : null, lineItems };
     },
   });
 }
