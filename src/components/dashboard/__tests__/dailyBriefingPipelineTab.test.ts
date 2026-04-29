@@ -27,7 +27,12 @@ describe('DailyBriefingModal.tsx — Pipeline tab Grid removal', () => {
   });
 
   it('no longer reads the legacy briefing_pipeline_view_mode pref', () => {
-    expect(source).not.toMatch(/briefing_pipeline_view_mode/);
+    // The pref key may still appear inside the localStorage cleanup
+    // (`removeItem('ui_pref_briefing_pipeline_view_mode')`), but it must
+    // never be read again via useUiPreference.
+    expect(source).not.toMatch(
+      /useUiPreference[^)]*briefing_pipeline_view_mode/,
+    );
   });
 
   it('clears the legacy pref from localStorage on mount', () => {
