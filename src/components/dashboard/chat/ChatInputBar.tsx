@@ -73,7 +73,7 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
     const el = textareaRef.current;
     if (el) {
       el.style.height = 'auto';
-      el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+      el.style.height = Math.min(el.scrollHeight, 112) + 'px';
     }
   }, [inputValue]);
 
