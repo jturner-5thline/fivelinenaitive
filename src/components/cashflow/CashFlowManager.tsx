@@ -24,6 +24,7 @@ import { WEEKLY_HISTORICAL_SEED, LAST_HISTORICAL_WEEK_ENDING } from './weeklyHis
 import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
+import { FilterMultiSelect } from './FilterMultiSelect';
 import './cashflow.css';
 
 function deepClone<T>(obj: T): T {
