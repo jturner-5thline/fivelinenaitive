@@ -249,6 +249,10 @@ function PaginationFooter({
 export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingExternal, onGmailSend, onLoadMore, hasMore, isLoadingMore, isAutoPaginating }: DealEmailsTabProps) {
   const { user } = useAuth();
   const { company } = useCompany();
+  // Saved signature from Settings → Email signature. Auto-injected into the
+  // composer so manual New Mail / Reply drafts include it without the user
+  // having to re-type or click "Insert signature".
+  const composerSignature = useUserEmailSignature();
   // Routes read-state writes through Nylas → Gmail/Outlook so the change
   // is reflected in the user's actual mailbox. We only call this for
   // real (externally hydrated) emails — never mock fixtures.
