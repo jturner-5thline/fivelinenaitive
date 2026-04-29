@@ -198,6 +198,15 @@ function Toolbar({ editor, dataRoomUrl }: { editor: any; dataRoomUrl?: string | 
       >
         <UnderlineIcon className="h-3.5 w-3.5" />
       </Toggle>
+      <Toggle
+        size="sm"
+        pressed={editor.isActive('strike')}
+        onPressedChange={() => editor.chain().focus().toggleStrike().run()}
+        className="h-7 w-7 p-0"
+        aria-label="Strikethrough"
+      >
+        <Strikethrough className="h-3.5 w-3.5" />
+      </Toggle>
 
       <Separator orientation="vertical" className="h-5 mx-0.5" />
 
@@ -334,6 +343,24 @@ function Toolbar({ editor, dataRoomUrl }: { editor: any; dataRoomUrl?: string | 
               Remove
             </Button>
           </div>
+          {dataRoomUrl && (
+            <>
+              <div className="border-t pt-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-7 w-full text-xs gap-1.5 justify-start"
+                  onClick={insertDataRoomLink}
+                >
+                  <Database className="h-3 w-3" />
+                  Insert Data Room link
+                </Button>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Inserts <span className="font-medium">View Data Room</span> at the cursor.
+                </p>
+              </div>
+            </>
+          )}
         </PopoverContent>
       </Popover>
 
