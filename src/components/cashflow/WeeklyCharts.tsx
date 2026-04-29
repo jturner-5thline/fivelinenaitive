@@ -1,7 +1,6 @@
 import { useEffect, useRef, memo, useMemo } from 'react';
 import { Chart, registerables } from 'chart.js';
 import type { WeeklyData, ThemeMode } from './types';
-import { LAST_HISTORICAL_WEEK_ENDING } from './weeklyHistoricalSeed';
 
 Chart.register(...registerables);
 
