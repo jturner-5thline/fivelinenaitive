@@ -117,22 +117,29 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
     const t = setTimeout(() => {
       if (donutRef.current) {
         donutChart.current?.destroy();
+        // Pull donut accent colors from the shared chart palette tokens —
+        // matches Insights dashboard semantics (positive · warning · destructive).
+        const root = getComputedStyle(document.documentElement);
+        const hsl = (token: string) => `hsl(${root.getPropertyValue(token).trim()})`;
+        const onTrack = hsl('--chart-2');       // green / positive
+        const atRisk  = hsl('--chart-3');       // amber / warning
+        const offTrack = hsl('--destructive');  // red
         donutChart.current = new Chart(donutRef.current, {
           type: 'doughnut',
           data: {
             labels: ['On Track', 'At Risk', 'Off Track'],
             datasets: [{
               data: metrics.donutData,
-              backgroundColor: ['rgba(40,200,130,0.75)', 'rgba(220,175,40,0.75)', 'rgba(220,70,85,0.5)'],
-              borderColor: ['rgba(40,220,140,0.9)', 'rgba(240,200,50,0.9)', 'rgba(255,100,115,0.6)'],
-              borderWidth: 2,
+              backgroundColor: [onTrack, atRisk, offTrack],
+              borderColor: [onTrack, atRisk, offTrack],
+              borderWidth: 1,
               hoverOffset: 6
             }]
           },
           options: {
             responsive: true, maintainAspectRatio: false, cutout: '68%',
             plugins: {
-              legend: { display: true, position: 'bottom', labels: { color: 'rgba(160,200,220,0.6)', font: { size: 10 }, padding: 14, boxWidth: 10, boxHeight: 10 } },
+              legend: { display: true, position: 'bottom', labels: { color: hsl('--muted-foreground'), font: { size: 10 }, padding: 14, boxWidth: 10, boxHeight: 10 } },
               tooltip: { callbacks: { label: (ctx: any) => ' $' + ctx.parsed.toFixed(1) + 'MM' } }
             }
           }
@@ -140,16 +147,19 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
       }
       if (barRef.current) {
         barChart.current?.destroy();
-        const gx = { ticks: { color: 'rgba(130,165,190,0.5)', font: { size: 9 } }, grid: { display: false }, border: { display: false } };
-        const gy = { ticks: { color: 'rgba(130,165,190,0.4)', font: { size: 9 }, callback: (v: any) => '$' + v + 'K' }, grid: { color: 'rgba(255,255,255,0.04)' }, border: { display: false } };
+        const root = getComputedStyle(document.documentElement);
+        const hsl = (token: string) => `hsl(${root.getPropertyValue(token).trim()})`;
+        const muted = hsl('--muted-foreground');
+        const gx = { ticks: { color: muted, font: { size: 9 } }, grid: { display: false }, border: { display: false } };
+        const gy = { ticks: { color: muted, font: { size: 9 }, callback: (v: any) => '$' + v + 'K' }, grid: { color: 'rgba(255,255,255,0.04)' }, border: { display: false } };
         barChart.current = new Chart(barRef.current, {
           type: 'bar',
           data: {
             labels: metrics.months,
             datasets: [
-              { label: 'Revenue', data: metrics.monthlyRevenue, backgroundColor: 'rgba(50,120,190,0.45)', borderColor: 'rgba(80,155,210,0.8)', borderWidth: 1, borderRadius: 4 },
-              { label: 'Commissions', data: metrics.monthlyCommissions, backgroundColor: 'rgba(210,60,75,0.4)', borderColor: 'rgba(220,70,85,0.75)', borderWidth: 1, borderRadius: 4 },
-              { label: 'Profit', data: metrics.monthlyProfit, backgroundColor: 'rgba(30,160,100,0.45)', borderColor: 'rgba(40,200,130,0.8)', borderWidth: 1, borderRadius: 4 }
+              { label: 'Revenue', data: metrics.monthlyRevenue, backgroundColor: hsl('--chart-1'), borderColor: hsl('--chart-1'), borderWidth: 1, borderRadius: 4 },
+              { label: 'Commissions', data: metrics.monthlyCommissions, backgroundColor: hsl('--destructive'), borderColor: hsl('--destructive'), borderWidth: 1, borderRadius: 4 },
+              { label: 'Profit', data: metrics.monthlyProfit, backgroundColor: hsl('--chart-2'), borderColor: hsl('--chart-2'), borderWidth: 1, borderRadius: 4 }
             ]
           },
           options: {
@@ -177,27 +187,15 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] p-0 border-none bg-transparent overflow-hidden"
+        className="max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] p-0 overflow-hidden glass-module"
         overlayClassName="bg-black/80"
+        aria-label="Deal Pipeline"
       >
         <div className="db-root" style={{ overflow: 'auto', height: '100%', borderRadius: 'inherit' }}>
           <style dangerouslySetInnerHTML={{ __html: DASHBOARD_CSS }} />
           <div className="db-r">
-            {/* HEADER */}
-            <div className="db-g db-p" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, background: '#1a2d42', borderColor: 'rgba(255,255,255,0.09)' }}>
-              <div>
-                <div style={{ fontSize: 17, fontWeight: 700, color: '#e8f4ff', letterSpacing: '-.3px' }}>5th<span style={{ color: '#5ba3d0' }}>Line</span> Capital Advisors — Deal Pipeline</div>
-                <div style={{ fontSize: 9, color: 'rgba(140,175,200,0.4)', marginTop: 2, fontStyle: 'italic' }}>Goals &amp; Targets 2025 &nbsp;·&nbsp; Current Pipeline Summary</div>
-              </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span className="db-pill db-pill-on">On Track</span>
-                <span className="db-pill db-pill-risk">At Risk</span>
-                <span className="db-pill db-pill-off">Off Track</span>
-              </div>
-            </div>
-
             {/* KPI STRIP */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,minmax(0,1fr))', gap: 8, marginBottom: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,minmax(0,1fr))', gap: 16, marginBottom: 16 }}>
               {[
                 { label: 'Deals Closed', value: String(metrics.dealCount), cls: 'db-bl', sub: 'Target: 2025 goal' },
                 { label: 'Dollars Funded', value: metrics.totalVolume, cls: 'db-up', sub: 'On Track' },
@@ -206,37 +204,39 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
                 { label: 'Deal Volume', value: metrics.totalVolume, cls: 'db-bl', sub: `${metrics.dealCount} active deals` },
                 { label: 'Avg Deal Size', value: metrics.avgDealSize, cls: 'db-bl', sub: `"Live" Rev: ${metrics.liveRevenue}` },
               ].map((k, i) => (
-                <div key={i} className="db-g db-p" style={{ padding: '12px 14px' }}>
-                  <div className="db-kl">{k.label}</div>
-                  <div className={`db-kv ${k.cls}`}>{k.value}</div>
-                  <div className="db-kd">{k.sub}</div>
+                <div key={i} className="glass-module p-4">
+                  <div className="text-sm text-muted-foreground">{k.label}</div>
+                  <div className={`text-2xl font-bold text-foreground mt-1 ${k.cls}`}>{k.value}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{k.sub}</div>
                 </div>
               ))}
             </div>
 
             {/* ROW 1 */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,2.2fr)', gap: 10, marginBottom: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,2.2fr)', gap: 16, marginBottom: 16 }}>
               {/* LEFT */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div className="db-g db-p">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div className="glass-module p-4">
                   <div className="db-ct">Pipeline Summary</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
                     {[
-                      { label: 'On Track', value: metrics.onTrack.volumeStr, color: '#4de8a0', borderColor: 'rgba(40,190,120,0.2)', labelColor: 'rgba(40,220,140,0.5)', sub: `${metrics.onTrack.count} deals · ${metrics.onTrack.pct}`, subColor: 'rgba(160,210,180,0.5)' },
-                      { label: 'At Risk', value: metrics.atRisk.volumeStr, color: '#f0c84a', borderColor: 'rgba(220,175,40,0.2)', labelColor: 'rgba(220,175,40,0.5)', sub: `${metrics.atRisk.count} deals · ${metrics.atRisk.pct}`, subColor: 'rgba(220,190,100,0.5)' },
-                      { label: 'Off Track', value: metrics.offTrack.volumeStr, color: '#ff8a96', borderColor: 'rgba(220,70,85,0.2)', labelColor: 'rgba(220,70,85,0.5)', sub: `${metrics.offTrack.count} deals · ${metrics.offTrack.pct}`, subColor: 'rgba(220,120,130,0.5)' },
+                      { label: 'On Track',  value: metrics.onTrack.volumeStr,  pillCls: 'db-pill db-pill-on',   valueCls: 'value-positive', sub: `${metrics.onTrack.count} deals · ${metrics.onTrack.pct}` },
+                      { label: 'At Risk',   value: metrics.atRisk.volumeStr,   pillCls: 'db-pill db-pill-risk', valueCls: 'value-warning',  sub: `${metrics.atRisk.count} deals · ${metrics.atRisk.pct}` },
+                      { label: 'Off Track', value: metrics.offTrack.volumeStr, pillCls: 'db-pill db-pill-off',  valueCls: 'value-negative', sub: `${metrics.offTrack.count} deals · ${metrics.offTrack.pct}` },
                     ].map((s, i) => (
-                      <div key={i} style={{ background: '#0f1923', border: `1px solid ${s.borderColor}`, borderRadius: 8, padding: 10, textAlign: 'center' }}>
-                        <div style={{ fontSize: 9, color: s.labelColor, fontWeight: 700, letterSpacing: '.8px', textTransform: 'uppercase', marginBottom: 4 }}>{s.label}</div>
-                        <div style={{ fontSize: 18, fontWeight: 700, color: s.color }}>{s.value}</div>
-                        <div style={{ fontSize: 10, color: s.subColor, marginTop: 2 }}>{s.sub}</div>
+                      <div key={i} className="glass-module p-3 text-center">
+                        <div className="mb-2 flex justify-center">
+                          <span className={s.pillCls}>{s.label}</span>
+                        </div>
+                        <div className={`text-lg font-bold ${s.valueCls}`}>{s.value}</div>
+                        <div className="text-xs text-muted-foreground mt-1">{s.sub}</div>
                       </div>
                     ))}
                   </div>
                   <div className="db-cw" style={{ height: 180 }}><canvas ref={donutRef} /></div>
                 </div>
 
-                <div className="db-g db-p">
+                <div className="glass-module p-4">
                   <div className="db-ct">Revenue Totals</div>
                   {[
                     ['Total Pipeline', metrics.totalPipeline, 'db-bl'],
@@ -250,16 +250,16 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
                   ))}
                 </div>
 
-                <div className="db-g db-p">
+                <div className="glass-module p-4">
                   <div className="db-ct">Fee Revenue by Status</div>
-                  <div className="db-stat-row"><span className="db-sn">On Track</span><span className="db-sv db-up">{metrics.onTrack.feeTotalStr} <span style={{ fontSize: 10, opacity: 0.6 }}>· {metrics.onTrack.count} deals</span></span></div>
-                  <div className="db-stat-row"><span className="db-sn">At Risk</span><span className="db-sv db-am">{metrics.atRisk.feeTotalStr} <span style={{ fontSize: 10, opacity: 0.6 }}>· {metrics.atRisk.count} deals</span></span></div>
-                  <div className="db-stat-row"><span className="db-sn">Off Track</span><span className="db-sv" style={{ color: 'rgba(160,190,210,0.35)' }}>{metrics.offTrack.feeTotalStr} <span style={{ fontSize: 10, opacity: 0.6 }}>· {metrics.offTrack.count} deals</span></span></div>
+                  <div className="db-stat-row"><span className="db-sn">On Track</span><span className="db-sv value-positive">{metrics.onTrack.feeTotalStr} <span className="text-muted-foreground" style={{ fontSize: 10 }}>· {metrics.onTrack.count} deals</span></span></div>
+                  <div className="db-stat-row"><span className="db-sn">At Risk</span><span className="db-sv value-warning">{metrics.atRisk.feeTotalStr} <span className="text-muted-foreground" style={{ fontSize: 10 }}>· {metrics.atRisk.count} deals</span></span></div>
+                  <div className="db-stat-row"><span className="db-sn">Off Track</span><span className="db-sv text-muted-foreground">{metrics.offTrack.feeTotalStr} <span style={{ fontSize: 10 }}>· {metrics.offTrack.count} deals</span></span></div>
                 </div>
               </div>
 
               {/* RIGHT: Deal Table */}
-              <div className="db-g db-p">
+              <div className="glass-module p-4">
                 <div className="db-ct">Deal Pipeline — Active Deals</div>
                 <div style={{ overflowX: 'auto' }}>
                   <table className="db-tbl">
@@ -353,7 +353,7 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
             </div>
 
             {/* ROW 2: Bar chart */}
-            <div className="db-g db-p">
+            <div className="glass-module p-4">
               <div className="db-ct">Revenue · Commissions · Profit — Monthly</div>
               <div style={{ display: 'flex', gap: 14, marginBottom: 6, fontSize: 9, color: 'rgba(140,175,200,0.55)' }}>
                 {[['rgba(80,155,210,0.8)', 'Revenue'], ['rgba(220,70,85,0.75)', 'Commissions'], ['rgba(40,200,130,0.8)', 'Profit']].map(([c, l]) => (
@@ -372,48 +372,44 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
 }
 
 const DASHBOARD_CSS = `
-.db-root { background: #0f1923; }
-.db-r { background: #0f1923; padding: 14px; color: #d0dce8; font-family: system-ui, sans-serif; min-width: 860px; }
-.db-g { background: #182535; border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; position: relative; overflow: hidden; }
-.db-g::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(120,190,255,0.15), transparent); pointer-events: none; }
-.db-p { padding: 12px 14px; }
-.db-ct { font-size: 9px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(160,190,210,0.45); margin-bottom: 8px; }
-.db-up { color: #3de89a; }
-.db-dn { color: #ff6b7a; }
-.db-am { color: #ffc53d; }
-.db-bl { color: #5ba3d0; }
+.db-root { background: hsl(var(--background)); }
+/* Top padding bumped to 24px so the KPI strip sits inside the Insights spacing
+   scale (p-6) and clears the floating close (×) button. */
+.db-r { background: transparent; padding: 24px 20px 20px; color: hsl(var(--foreground)); font-family: system-ui, sans-serif; min-width: 860px; }
+.db-ct { font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: hsl(var(--muted-foreground)); margin-bottom: 12px; }
+.db-up { color: hsl(var(--chart-2)); }
+.db-dn { color: hsl(var(--destructive)); }
+.db-am { color: hsl(var(--chart-3)); }
+.db-bl { color: hsl(var(--chart-1)); }
 .db-sep { height: 1px; background: rgba(255,255,255,0.06); margin: 8px 0; }
-.db-kl { font-size: 9px; color: rgba(140,175,200,0.5); font-weight: 600; letter-spacing: .5px; text-transform: uppercase; }
-.db-kv { font-size: 22px; font-weight: 700; color: #e8f4ff; line-height: 1.1; margin: 4px 0 2px; }
-.db-kd { font-size: 10px; color: rgba(160,190,210,0.4); }
-.db-pill { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
-.db-pill-on { background: rgba(40,190,120,0.15); color: #4de8a0; border: 1px solid rgba(40,190,120,0.25); }
-.db-pill-risk { background: rgba(220,170,40,0.15); color: #f0c84a; border: 1px solid rgba(220,175,40,0.25); }
-.db-pill-off { background: rgba(220,70,85,0.15); color: #ff8a96; border: 1px solid rgba(220,70,85,0.25); }
+.db-pill { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 8px; border-radius: 9999px; }
+.db-pill-on { background: hsl(var(--chart-2) / 0.15); color: hsl(var(--chart-2)); border: 1px solid hsl(var(--chart-2) / 0.25); }
+.db-pill-risk { background: hsl(var(--chart-3) / 0.15); color: hsl(var(--chart-3)); border: 1px solid hsl(var(--chart-3) / 0.25); }
+.db-pill-off { background: hsl(var(--destructive) / 0.15); color: hsl(var(--destructive)); border: 1px solid hsl(var(--destructive) / 0.25); }
 .db-tbl { width: 100%; border-collapse: collapse; font-size: 11px; }
-.db-tbl th { color: rgba(140,175,200,0.45); font-weight: 700; text-align: right; padding: 5px 7px; border-bottom: 1px solid rgba(255,255,255,0.07); font-size: 9px; letter-spacing: .5px; text-transform: uppercase; white-space: nowrap; }
+.db-tbl th { color: hsl(var(--muted-foreground)); font-weight: 700; text-align: right; padding: 6px 8px; border-bottom: 1px solid hsl(var(--border)); font-size: 9px; letter-spacing: .5px; text-transform: uppercase; white-space: nowrap; }
 .db-tbl th:first-child, .db-tbl th:nth-child(2), .db-tbl th:nth-child(3) { text-align: left; }
-.db-tbl th:hover { color: rgba(200,225,240,0.7); }
-.db-tbl td { text-align: right; padding: 5px 7px; border-bottom: 1px solid rgba(255,255,255,0.04); color: rgba(190,215,230,0.7); font-size: 11px; white-space: nowrap; }
-.db-tbl td:first-child { text-align: left; font-weight: 600; color: #e8f4ff; }
-.db-tbl td:nth-child(2) { text-align: left; color: rgba(130,165,190,0.6); }
-.db-tbl td:nth-child(3) { text-align: left; color: rgba(130,165,190,0.6); }
+.db-tbl th:hover { color: hsl(var(--foreground)); }
+.db-tbl td { text-align: right; padding: 6px 8px; border-bottom: 1px solid hsl(var(--border) / 0.5); color: hsl(var(--foreground) / 0.85); font-size: 11px; white-space: nowrap; }
+.db-tbl td:first-child { text-align: left; font-weight: 600; color: hsl(var(--foreground)); }
+.db-tbl td:nth-child(2) { text-align: left; color: hsl(var(--muted-foreground)); }
+.db-tbl td:nth-child(3) { text-align: left; color: hsl(var(--muted-foreground)); }
 .db-tbl tr:last-child td { border-bottom: none; }
-.db-tbl tr:hover td { background: rgba(255,255,255,0.02); }
-.db-ttm-box { background: #0f1923; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 8px 12px; margin-top: 8px; }
+.db-tbl tr:hover td { background: hsl(var(--muted) / 0.4); }
+.db-ttm-box { background: hsl(var(--muted) / 0.3); border: 1px solid hsl(var(--border)); border-radius: 8px; padding: 8px 12px; margin-top: 8px; }
 .db-cw { position: relative; width: 100%; }
-.db-stat-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 11px; }
+.db-stat-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid hsl(var(--border) / 0.5); font-size: 11px; }
 .db-stat-row:last-child { border-bottom: none; }
-.db-sn { color: rgba(130,165,190,0.55); }
-.db-sv { font-weight: 500; color: #d0e8f8; }
+.db-sn { color: hsl(var(--muted-foreground)); }
+.db-sv { font-weight: 500; color: hsl(var(--foreground)); }
 .db-comm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
-.db-comm-item { background: #0f1923; border: 1px solid rgba(255,255,255,0.05); border-radius: 7px; padding: 7px 10px; }
-.db-comm-label { font-size: 9px; color: rgba(130,165,190,0.45); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 2px; }
-.db-comm-val { font-size: 13px; font-weight: 700; color: #e8f4ff; }
+.db-comm-item { background: hsl(var(--muted) / 0.3); border: 1px solid hsl(var(--border)); border-radius: 8px; padding: 7px 10px; }
+.db-comm-label { font-size: 9px; color: hsl(var(--muted-foreground)); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 2px; }
+.db-comm-val { font-size: 13px; font-weight: 700; color: hsl(var(--foreground)); }
 .db-closing-select {
-  background: rgba(15,25,35,0.8);
-  color: rgba(190,215,230,0.8);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: hsl(var(--muted) / 0.5);
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
   border-radius: 4px;
   font-size: 9px;
   font-weight: 600;
@@ -429,7 +425,7 @@ const DASHBOARD_CSS = `
   background-position: right 4px center;
   padding-right: 14px;
 }
-.db-closing-select:hover { border-color: rgba(255,255,255,0.2); }
-.db-closing-select:focus { border-color: rgba(91,163,208,0.5); }
-.db-closing-select option { background: #0f1923; color: #d0dce8; }
+.db-closing-select:hover { border-color: hsl(var(--border)); }
+.db-closing-select:focus { border-color: hsl(var(--ring)); }
+.db-closing-select option { background: hsl(var(--popover)); color: hsl(var(--popover-foreground)); }
 `;
