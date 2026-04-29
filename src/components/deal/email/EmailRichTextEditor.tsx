@@ -470,6 +470,67 @@ function Toolbar({
       >
         <Eraser className="h-3.5 w-3.5" />
       </Button>
+
+      {enableImages && (
+        <>
+          <Separator orientation="vertical" className="h-5 mx-0.5" />
+          <Popover open={imageOpen} onOpenChange={setImageOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Insert image">
+                <ImageIcon className="h-3.5 w-3.5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-3 space-y-2">
+              <div className="space-y-1">
+                <p className="text-[11px] font-medium text-muted-foreground">Image URL</p>
+                <Input
+                  placeholder="https://…"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  className="h-7 text-xs"
+                  onKeyDown={(e) => e.key === 'Enter' && insertImage(imageUrl)}
+                />
+                <Button size="sm" className="h-6 text-xs w-full" onClick={() => insertImage(imageUrl)}>
+                  Insert
+                </Button>
+              </div>
+              <div className="border-t pt-2 space-y-1">
+                <p className="text-[11px] font-medium text-muted-foreground">Or upload</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/gif,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleUpload(f);
+                  }}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 w-full text-xs gap-1.5"
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="h-3 w-3" />
+                  {uploading ? 'Uploading…' : 'Upload (PNG, JPG, GIF, WEBP, ≤2MB)'}
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            aria-label="Horizontal rule"
+            onClick={() => editor.chain().focus().setHorizontalRule().run()}
+          >
+            <Minus className="h-3.5 w-3.5" />
+          </Button>
+        </>
+      )}
     </div>
   );
 }
