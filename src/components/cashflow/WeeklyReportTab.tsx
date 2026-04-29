@@ -395,7 +395,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   };
 
   return (
-    <div className={`cf-weekly-layout cf-has-drawer${sidebarOpen ? ' cf-drawer-open' : ''}`}>
+    <div className="cf-weekly-layout">
       <div className="cf-weekly-main">
         <WeeklyCharts
           weeklyData={safeWeeklyData}
