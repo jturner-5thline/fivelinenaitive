@@ -1445,7 +1445,7 @@ function PresetChip({
       <button
         onClick={onLoad}
         onDoubleClick={() => { setMenuOpen(true); setRenaming(true); }}
-        className={`flex items-center gap-1 h-6 ${view.pinned_at ? 'pl-1' : 'pl-2.5'} pr-1.5 text-[11px] font-medium transition-colors`}
+        className={`flex items-center gap-1.5 h-7 ${view.pinned_at ? 'pl-1' : 'pl-2.5'} pr-2 text-[11px] font-medium transition-colors`}
         style={{ color: isActive ? '#cfe3ff' : '#9aa3b6' }}
         title="Load preset · double-click to rename"
       >
@@ -1455,11 +1455,11 @@ function PresetChip({
       <Popover open={menuOpen} onOpenChange={setMenuOpen}>
         <PopoverTrigger asChild>
           <button
-            className="px-1 h-6 flex items-center justify-center transition-colors hover:bg-[rgba(255,255,255,0.06)]"
+            className="px-1.5 h-7 flex items-center justify-center transition-colors hover:bg-[rgba(255,255,255,0.06)]"
             style={{ color: '#7a8194', borderLeft: '1px solid rgba(255,255,255,0.05)' }}
             title="Preset actions"
           >
-            <MoreVertical className="h-2.5 w-2.5" />
+            <MoreVertical className="h-3 w-3" />
           </button>
         </PopoverTrigger>
         <PopoverContent
