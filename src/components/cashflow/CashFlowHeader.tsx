@@ -132,15 +132,6 @@ export const CashFlowHeader = memo(function CashFlowHeader({
         <button className="cf-tab active" onClick={() => onTabChange('weekly')}>
           Weekly Report
         </button>
-        {onConfigureScheduled && (
-          <button
-            className="cf-btn cf-btn-secondary"
-            style={{ marginLeft: 'auto', alignSelf: 'center', marginRight: 'var(--space-4)' }}
-            onClick={onConfigureScheduled}
-          >
-            Configure
-          </button>
-        )}
       </div>
     </>
   );
