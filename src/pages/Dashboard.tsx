@@ -189,6 +189,14 @@ function EmailTileWithIntelligence({
     closeTimer.current = setTimeout(() => setIsHovering(false), 120);
   };
 
+  const closeNow = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+    setIsHovering(false);
+  };
+
   useEffect(() => {
     return () => {
       if (closeTimer.current) clearTimeout(closeTimer.current);
@@ -204,6 +212,13 @@ function EmailTileWithIntelligence({
       onBlur={(e) => {
         // Only close if focus actually leaves the wrapper subtree
         if (!e.currentTarget.contains(e.relatedTarget as Node)) scheduleClose();
+      }}
+      onKeyDownCapture={(e) => {
+        if (e.key === 'Escape' && isHovering) {
+          e.stopPropagation();
+          closeNow();
+          (e.currentTarget as HTMLElement).blur();
+        }
       }}
     >
       <QuickActionTile
