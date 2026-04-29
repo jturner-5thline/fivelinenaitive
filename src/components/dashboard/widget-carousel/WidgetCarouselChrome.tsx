@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWidgetCarouselStore } from '@/stores/widgetCarouselStore';
+import { useCloseOnRouteChange } from '@/hooks/useCloseOnRouteChange';
 
 /**
  * Persistent chrome overlay for the widget carousel.
@@ -27,6 +28,11 @@ export function WidgetCarouselChrome() {
   const next = useWidgetCarouselStore((s) => s.next);
   const prev = useWidgetCarouselStore((s) => s.prev);
   const close = useWidgetCarouselStore((s) => s.close);
+
+  // Router-level safety net: if any widget body fires a navigation
+  // (e.g. EmailIntelligenceWidget → /email-intelligence), force-close the
+  // carousel as soon as the pathname changes so it never lingers on screen.
+  useCloseOnRouteChange(isOpen, close);
 
   const total = order.length;
   const active = order[activeIndex];
