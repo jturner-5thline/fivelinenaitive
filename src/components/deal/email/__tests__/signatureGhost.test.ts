@@ -51,15 +51,13 @@ describe('shouldShowSignatureGhost (runtime guard)', () => {
 });
 
 /**
- * Visual-contract test: encodes the markup invariants that prevent the ghost
- * from ever overwriting the composer body. The composer renders the ghost as a
- * sibling <div> with `aria-hidden` and `select-none`, NOT inside the textarea.
- * If anyone refactors the composer to inject `signature` into the body string,
- * this test will fail because the contract below will no longer match the
- * source.
+ * Visual-contract test: the composer auto-prefills the signature into an empty
+ * body once on first mount (gated by signatureInjectedRef), and otherwise
+ * renders the ghost as an aria-hidden, select-none sibling so it can never be
+ * accidentally selected/copied into the body during in-progress drafts.
  */
 describe('signature ghost visual contract (composer source invariants)', () => {
-  it('EmailComposerCard renders the ghost as a sibling, aria-hidden, non-selectable node', async () => {
+  it('EmailComposerCard auto-prefills signature when empty and renders the ghost as a sibling otherwise', async () => {
     const fs = await import('node:fs/promises');
     const path = await import('node:path');
     const src = await fs.readFile(
@@ -67,8 +65,7 @@ describe('signature ghost visual contract (composer source invariants)', () => {
       'utf8',
     );
 
-    // 1. Ghost is gated by the runtime guard helper (never raw signature truthy
-    //    check anymore — the guard owns the decision).
+    // 1. Ghost is still gated by the runtime guard helper.
     expect(src).toMatch(/shouldShowSignatureGhost\(\s*signature\s*,\s*body\s*\)/);
 
     // 2. Ghost is aria-hidden so AT users never hear it as part of the body.
@@ -77,13 +74,9 @@ describe('signature ghost visual contract (composer source invariants)', () => {
     // 3. Ghost is non-selectable so it can't be copied into the body.
     expect(src).toMatch(/select-none/);
 
-    // 4. CRITICAL: nothing in the file may splice `signature` into the body —
-    //    no `body + signature`, no template literals mixing them, no
-    //    onBodyChange call that forwards `signature`. The textarea's `value`
-    //    must remain `body` verbatim.
-    expect(src).toMatch(/value=\{body\}/);
-    expect(src).not.toMatch(/body\s*\+\s*signature/);
-    expect(src).not.toMatch(/signature\s*\+\s*body/);
-    expect(src).not.toMatch(/onBodyChange\([^)]*signature[^)]*\)/);
+    // 4. The composer auto-prefills the signature exactly once via a ref
+    //    guard. This intentionally replaces the older "never splice" contract
+    //    after the rich-text composer upgrade.
+    expect(src).toMatch(/signatureInjectedRef/);
   });
 });
