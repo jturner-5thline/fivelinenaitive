@@ -223,18 +223,23 @@ function EmailTileWithIntelligence({
       */}
       <div
         className={cn(
-          'pointer-events-none absolute left-1/2 top-full z-40 mt-2 w-[360px] max-w-[92vw] -translate-x-1/2',
-          'transition-all duration-150 ease-out',
+          // Prefer opening to the right of the tile with a small gap.
+          // On narrower viewports (where there isn't room on the right),
+          // fall back to anchoring below the tile, centered.
+          'pointer-events-none absolute z-40 w-[360px] max-w-[92vw]',
+          'left-full top-0 ml-3',
+          'max-[1100px]:left-1/2 max-[1100px]:top-full max-[1100px]:ml-0 max-[1100px]:mt-2 max-[1100px]:-translate-x-1/2',
+          'transition-all duration-200 ease-out',
           '[@media(hover:none)]:hidden',
           isHovering
-            ? 'translate-y-0 opacity-100 pointer-events-auto'
-            : '-translate-y-1 opacity-0',
+            ? 'translate-x-0 opacity-100 pointer-events-auto max-[1100px]:translate-y-0'
+            : '-translate-x-1 opacity-0 max-[1100px]:translate-x-0 max-[1100px]:-translate-y-1',
         )}
         role="region"
         aria-label="Email Intelligence"
         aria-hidden={!isHovering}
       >
-        <div className="rounded-xl border border-border/40 bg-popover/95 shadow-xl backdrop-blur-xl flex flex-col max-h-[360px] overflow-hidden">
+        <div className="rounded-xl border border-border/60 bg-card shadow-2xl shadow-black/40 ring-1 ring-black/5 flex flex-col max-h-[360px] overflow-hidden">
           <EmailIntelligenceWidget />
         </div>
       </div>
