@@ -1,4 +1,4 @@
-import { useState, useEffect, memo, useCallback, useRef } from 'react';
+import { useState, useEffect, memo, useCallback, useRef, useMemo } from 'react';
 import { ChevronDown, ChevronRight, MessageSquare, PanelRightOpen, PanelRightClose, X } from 'lucide-react';
 import type { WeeklyData, SidebarData, PlanSnapshot, ThemeMode, WeeklyOverrides } from './types';
 import { fmtAbbrev } from './formatters';
@@ -108,6 +108,8 @@ const WEEKLY_ROW_ORDER: Array<WeeklyRow> = [
 
 const DEBT_ADV_COLLAPSE_KEY = 'cf:debtAdvisoryCollapsed';
 const TRANSFERS_COLLAPSE_KEY = 'cf:internalTransfersCollapsed';
+const LINE_ITEM_COL_WIDTH = 240;
+const WEEK_COL_MIN_WIDTH = 130;
 
 export const WeeklyReportTab = memo(function WeeklyReportTab({
   weeklyData, weeklyOverrides, onCashOverride,
@@ -147,7 +149,29 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
 
   const startIdx = Math.max(0, effectiveCurrentIndex - weeksPast);
   const endIdx = Math.min(totalWeeks, effectiveCurrentIndex + 1 + weeksFuture);
-  const visibleWeeks = sortedWeeks.slice(startIdx, endIdx);
+  const visibleWeeks = useMemo(
+    () => sortedWeeks.slice(startIdx, endIdx),
+    [sortedWeeks, startIdx, endIdx, weeksPast, weeksFuture],
+  );
+  const visibleWeekKeys = useMemo(() => visibleWeeks.map(([key]) => key), [visibleWeeks]);
+  const tableMinWidth = useMemo(
+    () => LINE_ITEM_COL_WIDTH + visibleWeeks.length * WEEK_COL_MIN_WIDTH,
+    [visibleWeeks.length],
+  );
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    console.debug('[WeeklyReportTab] visible week columns', {
+      weeksPast,
+      weeksFuture,
+      startIdx,
+      endIdx,
+      totalWeeks,
+      expectedColumnCount: Math.max(0, endIdx - startIdx),
+      renderedColumnCount: visibleWeeks.length,
+      weekKeys: visibleWeekKeys,
+    });
+  }, [weeksPast, weeksFuture, startIdx, endIdx, totalWeeks, visibleWeeks.length, visibleWeekKeys]);
 
   const [savePlanOpen, setSavePlanOpen] = useState(false);
   const [planName, setPlanName] = useState('');
@@ -360,7 +384,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
         <WeeklyCharts
           weeklyData={safeWeeklyData}
           theme={theme}
-          visibleWeekKeys={visibleWeeks.map(([k]) => k)}
+          visibleWeekKeys={visibleWeekKeys}
         />
 
         {/* Table card */}
@@ -386,6 +410,15 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
             <span className="cf-range-label">
               Showing {visibleWeeks.length} of {totalWeeks} weeks
             </span>
+            {(edgeState.left || edgeState.right) && (
+              <span className="cf-overflow-hint" aria-live="polite">
+                {edgeState.left && edgeState.right
+                  ? '← → Scroll to see more weeks'
+                  : edgeState.right
+                    ? '→ Scroll to see more weeks'
+                    : '← More weeks to the left'}
+              </span>
+            )}
           </div>
           <div className="cf-range-controls">
             <button className="cf-btn cf-btn-secondary" onClick={() => setSavePlanOpen(true)}>Save Plan</button>
@@ -418,7 +451,17 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
           className={`cf-grid-wrap${edgeState.left ? ' cf-edge-left' : ''}${edgeState.right ? ' cf-edge-right' : ''}`}
           style={{ borderRadius: '0 0 var(--radius-lg) var(--radius-lg)' }}
         >
-          <table className="cf-grid">
+          <table
+            className="cf-grid"
+            style={{ minWidth: `${tableMinWidth}px` }}
+            key={`weeks-${visibleWeeks.length}-${visibleWeekKeys[0] ?? 'none'}-${visibleWeekKeys[visibleWeekKeys.length - 1] ?? 'none'}`}
+          >
+            <colgroup>
+              <col style={{ width: LINE_ITEM_COL_WIDTH, minWidth: LINE_ITEM_COL_WIDTH }} />
+              {visibleWeekKeys.map((weekKey) => (
+                <col key={weekKey} style={{ width: WEEK_COL_MIN_WIDTH, minWidth: WEEK_COL_MIN_WIDTH }} />
+              ))}
+            </colgroup>
             <thead>
               <tr>
                 <th className="cf-label-col">Line Item</th>
