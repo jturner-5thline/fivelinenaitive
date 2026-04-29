@@ -63,6 +63,117 @@ function SourceCitations({ sources }: { sources?: string[] }) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Lender-contact enrichment for submission drafts
+//
+// For each generated draft, look up the matching `master_lenders` record by
+// case-insensitive name (RLS scopes by user/company), pull its `lender_contacts`,
+// and pre-populate the To field with the primary contact email. Falls back to
+// the legacy single `master_lenders.email` column when no per-contact rows exist.
+// Drafts whose lender isn't found stay with empty `to` and trigger the
+// "no email on file" warning in the modal.
+// ─────────────────────────────────────────────────────────────────────────────
+async function enrichDraftsWithLenderContacts(drafts: EmailDraft[]): Promise<EmailDraft[]> {
+  const names = Array.from(new Set(
+    drafts.map((d) => (d.lenderName || '').trim()).filter(Boolean),
+  ));
+  if (names.length === 0) return drafts;
+
+  // 1) Fetch matching master_lenders by name (case-insensitive). RLS handles scoping.
+  let masterRows: Array<{ id: string; name: string; email: string | null }> = [];
+  try {
+    const { data, error } = await supabase
+      .from('master_lenders')
+      .select('id, name, email')
+      .in('name', names);
+    if (error) throw error;
+    masterRows = data || [];
+
+    // Case-insensitive fallback: re-fetch any names that did not exact-match.
+    const matchedNamesLower = new Set(masterRows.map((r) => r.name.toLowerCase()));
+    const unmatched = names.filter((n) => !matchedNamesLower.has(n.toLowerCase()));
+    if (unmatched.length > 0) {
+      // ilike per name is fine — submission drafts are typically <10 lenders.
+      const ilikeResults = await Promise.all(
+        unmatched.map((n) =>
+          supabase
+            .from('master_lenders')
+            .select('id, name, email')
+            .ilike('name', n)
+            .limit(1)
+            .maybeSingle()
+        ),
+      );
+      for (const r of ilikeResults) {
+        if (r.data) masterRows.push(r.data as { id: string; name: string; email: string | null });
+      }
+    }
+  } catch (err) {
+    console.warn('[lender-submission] master_lenders lookup failed:', err);
+    return drafts;
+  }
+
+  if (masterRows.length === 0) return drafts;
+
+  // 2) Fetch contacts for all matched lender ids in a single round-trip.
+  const lenderIds = masterRows.map((r) => r.id);
+  const { data: contactRows } = await supabase
+    .from('lender_contacts')
+    .select('id, lender_id, name, title, email, is_primary')
+    .in('lender_id', lenderIds);
+
+  const contactsByLender = new Map<string, Array<LenderContactOption>>();
+  for (const c of contactRows || []) {
+    if (!c.email || !c.email.trim()) continue;
+    const list = contactsByLender.get(c.lender_id) || [];
+    list.push({
+      id: c.id,
+      name: c.name || 'Contact',
+      title: c.title,
+      email: c.email.trim(),
+      isPrimary: !!c.is_primary,
+    });
+    contactsByLender.set(c.lender_id, list);
+  }
+
+  // 3) Build a name → master row lookup (lowercased).
+  const masterByName = new Map<string, { id: string; name: string; email: string | null }>();
+  for (const r of masterRows) masterByName.set(r.name.toLowerCase(), r);
+
+  // 4) Apply enrichment per draft.
+  return drafts.map((d) => {
+    const master = masterByName.get((d.lenderName || '').toLowerCase());
+    if (!master) return d;
+
+    const contacts = contactsByLender.get(master.id) || [];
+    // Sort: primary first, then by name.
+    contacts.sort((a, b) => {
+      if (!!b.isPrimary !== !!a.isPrimary) return b.isPrimary ? 1 : -1;
+      return a.name.localeCompare(b.name);
+    });
+
+    // Legacy fallback: the master_lenders.email column (no per-contact row).
+    const legacyEmail = (master.email || '').trim();
+    if (contacts.length === 0 && legacyEmail) {
+      contacts.push({
+        id: 'legacy',
+        name: 'Primary contact',
+        email: legacyEmail,
+        isPrimary: true,
+      });
+    }
+
+    const primary = contacts[0];
+    return {
+      ...d,
+      lenderId: master.id,
+      availableContacts: contacts,
+      selectedContactId: primary?.id ?? null,
+      to: primary?.email ?? '',
+    };
+  });
+}
+
 export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const { documents } = useDealSpaceDocuments(dealId);
   const { financials } = useDealSpaceFinancials(dealId);
