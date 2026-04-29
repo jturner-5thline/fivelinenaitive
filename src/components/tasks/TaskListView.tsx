@@ -467,21 +467,42 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
     <div>
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="w-full flex items-center gap-2.5 px-4 h-9 transition-colors text-left sticky z-[5]"
+        className={cn(
+          'w-full grid', TASK_GRID_COLS,
+          'gap-2 items-center px-4 min-h-[34px] text-left sticky z-[5] transition-colors',
+          'border-b border-border/30',
+        )}
         style={{
-          top: 38,
+          top: 36,
           borderLeft: '2px solid #e57373',
           backgroundColor: 'rgba(229,115,115,0.08)',
           backdropFilter: 'blur(6px)',
-          borderBottom: '1px solid rgba(255,255,255,0.04)',
         }}
       >
-        {collapsed ? <ChevronRight className="h-3 w-3" style={{ color: '#e57373' }} /> : <ChevronDown className="h-3 w-3" style={{ color: '#e57373' }} />}
-        <AlertTriangle className="h-3 w-3" style={{ color: '#e57373' }} />
-        <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: '#e57373' }}>Overdue</span>
-        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md" style={{ backgroundColor: 'rgba(229,115,115,0.18)', color: '#e57373' }}>
-          {tasks.length}
-        </span>
+        <div aria-hidden />
+        <div className="flex items-center justify-center">
+          {collapsed
+            ? <ChevronRight className="h-3 w-3" style={{ color: '#e57373' }} />
+            : <ChevronDown className="h-3 w-3" style={{ color: '#e57373' }} />}
+        </div>
+        <div className="flex items-center justify-center">
+          <AlertTriangle className="h-3 w-3" style={{ color: '#e57373' }} />
+        </div>
+        <div aria-hidden />
+        <div aria-hidden />
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[11px] font-semibold uppercase tracking-wide truncate" style={{ color: '#e57373' }}>
+            Overdue
+          </span>
+          <span
+            className="text-[10px] font-medium px-1.5 py-0.5 rounded-md"
+            style={{ backgroundColor: 'rgba(229,115,115,0.18)', color: '#e57373' }}
+          >
+            {tasks.length}
+          </span>
+        </div>
+        <div aria-hidden /><div aria-hidden /><div aria-hidden />
+        <div aria-hidden /><div aria-hidden /><div aria-hidden /><div aria-hidden />
       </button>
       {!collapsed && tasks.map(task => {
         const globalIndex = allTasks.indexOf(task);
