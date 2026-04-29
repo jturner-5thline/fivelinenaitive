@@ -445,10 +445,26 @@ function useAvgDealSizeT12M() {
 // ── Public hook ────────────────────────────────────────────────────
 export interface ExecutiveTopRowKpis {
   pipelineResolved: boolean;
-  totalActiveDealVolume: { value: number | null; loading: boolean };
-  dealsClosedQTD: { value: number | null; loading: boolean };
-  revenueQTD: { value: number | null; loading: boolean };
-  avgDealSize: { value: number | null; loading: boolean };
+  totalActiveDealVolume: {
+    value: number | null;
+    loading: boolean;
+    deals: ExecKpiDrilldownDeal[];
+  };
+  dealsClosedQTD: {
+    value: number | null;
+    loading: boolean;
+    deals: ExecKpiDrilldownDeal[];
+  };
+  revenueQTD: {
+    value: number | null;
+    loading: boolean;
+    lineItems: ExecRevenueLineItem[];
+  };
+  avgDealSize: {
+    value: number | null;
+    loading: boolean;
+    deals: ExecKpiDrilldownDeal[];
+  };
 }
 
 export function useExecutiveTopRowKpis(): ExecutiveTopRowKpis {
@@ -464,18 +480,22 @@ export function useExecutiveTopRowKpis(): ExecutiveTopRowKpis {
       totalActiveDealVolume: {
         value: totalVol.data?.total ?? (totalVol.isLoading ? null : 0),
         loading: stages.isLoading || totalVol.isLoading,
+        deals: totalVol.data?.deals ?? [],
       },
       dealsClosedQTD: {
         value: closedQtd.data?.count ?? (closedQtd.isLoading ? null : 0),
         loading: stages.isLoading || closedQtd.isLoading,
+        deals: closedQtd.data?.deals ?? [],
       },
       revenueQTD: {
         value: revenueQtd.data?.revenue ?? null,
         loading: revenueQtd.isLoading,
+        lineItems: revenueQtd.data?.lineItems ?? [],
       },
       avgDealSize: {
         value: avgSize.data?.avg ?? null,
         loading: stages.isLoading || avgSize.isLoading,
+        deals: avgSize.data?.deals ?? [],
       },
     }),
     [stages, totalVol, closedQtd, revenueQtd, avgSize],
