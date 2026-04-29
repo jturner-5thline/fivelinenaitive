@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import {
   Bold, Italic, Underline as UnderlineIcon, List, ListOrdered,
   Link as LinkIcon, Palette, Highlighter, Indent, Outdent, Eraser,
-  ChevronDown,
+  ChevronDown, Strikethrough, Database,
 } from 'lucide-react';
 import {
   Popover, PopoverContent, PopoverTrigger,
@@ -30,6 +30,11 @@ interface Props {
   onChange: (html: string) => void;
   className?: string;
   minHeight?: number;
+  /**
+   * Optional FLEx data-room URL. When provided, a "Data Room" shortcut
+   * appears in the link popover that inserts an `View Data Room` link.
+   */
+  dataRoomUrl?: string | null;
 }
 
 const FONT_COLORS = [
@@ -50,7 +55,7 @@ const FONT_SIZES = [
   { label: 'X-Large', value: '22px' },
 ];
 
-export function EmailRichTextEditor({ content, onChange, className, minHeight = 240 }: Props) {
+export function EmailRichTextEditor({ content, onChange, className, minHeight = 240, dataRoomUrl }: Props) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -100,7 +105,7 @@ export function EmailRichTextEditor({ content, onChange, className, minHeight = 
 
   return (
     <div className={cn('border rounded-md overflow-hidden bg-background flex flex-col', className)}>
-      <Toolbar editor={editor} />
+      <Toolbar editor={editor} dataRoomUrl={dataRoomUrl} />
       <div className="flex-1 overflow-auto">
         <EditorContent editor={editor} />
       </div>
@@ -108,7 +113,7 @@ export function EmailRichTextEditor({ content, onChange, className, minHeight = 
   );
 }
 
-function Toolbar({ editor }: { editor: any }) {
+function Toolbar({ editor, dataRoomUrl }: { editor: any; dataRoomUrl?: string | null }) {
   const [linkUrl, setLinkUrl] = useState('');
   const [linkOpen, setLinkOpen] = useState(false);
 
@@ -121,6 +126,20 @@ function Toolbar({ editor }: { editor: any }) {
     }
     setLinkOpen(false);
     setLinkUrl('');
+  };
+
+  const insertDataRoomLink = () => {
+    if (!dataRoomUrl) return;
+    const href = /^https?:\/\//i.test(dataRoomUrl) ? dataRoomUrl : `https://${dataRoomUrl}`;
+    // Insert a fresh link with display text "View Data Room" at the caret.
+    editor
+      .chain()
+      .focus()
+      .insertContent(
+        `<a href="${href}" target="_blank" rel="noopener noreferrer">View Data Room</a>`,
+      )
+      .run();
+    setLinkOpen(false);
   };
 
   return (
