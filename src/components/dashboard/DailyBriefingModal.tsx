@@ -988,13 +988,6 @@ function PipelineTab({
   targetDealOwnerName?: string;
 }) {
   const { data, isLoading } = usePipelineData(enabled, targetDealOwnerName);
-  const { data: catchUpData, isLoading: catchUpLoading } = useCatchUpData(enabled, targetDealOwnerName);
-  const [detail, setDetail] = useState<NewsItem | null>(null);
-  const [dealDetail, setDealDetail] = useState<any>(null);
-  const [viewMode, setViewMode] = useUiPreference<'grid' | 'memo'>(
-    'briefing_pipeline_view_mode',
-    'memo',
-  );
 
   // Today's Follow-Ups (replaces the old "Your follow-ups for today" email
   // for jturner@5thline.co — same source data, surfaced in-app instead).
@@ -1003,20 +996,25 @@ function PipelineTab({
   const { data: followups = [] } = useMorningFollowups(enabled && isJTurner);
   const showFollowups = isJTurner && followups.length > 0;
 
-  if ((isLoading && !data) || (catchUpLoading && !catchUpData)) return <TabSkeleton />;
+  // One-time cleanup of the legacy Grid/Memo view-mode preference.
+  // The Grid view was removed; Memo is now the only render path.
+  // We sweep the localStorage cache so a stale 'grid' value can't surface
+  // anywhere else. The DB row (if any) is harmless — nothing reads the key.
+  useEffect(() => {
+    try { localStorage.removeItem('ui_pref_briefing_pipeline_view_mode'); } catch { /* ignore */ }
+  }, []);
 
-  const { newDeals, riskDeals, stageChanges, recentActivity, scopedDeals } = data || {
+  if (isLoading && !data) return <TabSkeleton />;
+
+  const { scopedDeals, newDeals, riskDeals, stageChanges, recentActivity } = data || {
     newDeals: [], riskDeals: [], stageChanges: [], recentActivity: [], scopedDeals: [],
   };
-  const highlights = catchUpData?.highlights || [];
-  const newsItems = catchUpData?.newsItems || [];
-  const dealAlerts = (catchUpData?.alerts || []).filter((a: any) => a.deal_id);
 
-  // Empty state for delegated view with no owned/managed deals
+  // Empty state for delegated view with no owned/managed deals.
   const isDelegated = !!targetDealOwnerName;
   const hasAnyContent =
-    newDeals.length + riskDeals.length + stageChanges.length + recentActivity.length +
-    highlights.length + newsItems.length + dealAlerts.length > 0;
+    newDeals.length + riskDeals.length + stageChanges.length + recentActivity.length > 0
+    || (scopedDeals as any[]).length > 0;
   if (isDelegated && !hasAnyContent) {
     return (
       <div className="p-1">
@@ -1025,84 +1023,8 @@ function PipelineTab({
     );
   }
 
-  const ViewToggle = (
-    <div className="flex items-center justify-end mb-3 px-0.5">
-      <div className="inline-flex items-center rounded-lg bg-white/[0.06] glass-border-softer p-0.5">
-        <button
-          type="button"
-          onClick={() => setViewMode('grid')}
-          aria-pressed={viewMode === 'grid'}
-          className={cn(
-            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors',
-            viewMode === 'grid'
-              ? 'bg-primary/15 text-foreground'
-              : 'text-muted-foreground hover:text-foreground',
-          )}
-        >
-          <LayoutGrid className="h-3 w-3" />
-          Grid
-        </button>
-        <button
-          type="button"
-          onClick={() => setViewMode('memo')}
-          aria-pressed={viewMode === 'memo'}
-          className={cn(
-            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors',
-            viewMode === 'memo'
-              ? 'bg-primary/15 text-foreground'
-              : 'text-muted-foreground hover:text-foreground',
-          )}
-        >
-          <FileText className="h-3 w-3" />
-          Memo
-        </button>
-      </div>
-    </div>
-  );
-
-  if (viewMode === 'memo') {
-    return (
-      <div className="relative h-full">
-        {ViewToggle}
-        {showFollowups && (
-          <Section title="Today's Follow-Ups">
-            {followups.map((f) => (
-              <BriefingRow
-                key={f.key}
-                icon={ListChecks}
-                title={`${f.company} — ${f.title}`}
-                subtitle={f.stage ? `Stage: ${f.stage}` : undefined}
-                badge={f.source === 'scheduled' ? '3-day' : 'Task'}
-                badgeVariant="default"
-                onClick={f.dealId ? () => onNavigate(`/deal/${f.dealId}`) : undefined}
-              />
-            ))}
-          </Section>
-        )}
-        <Suspense
-          fallback={
-            <div className="pipeline-memo-page rounded-xl py-12 px-4 text-center">
-              <p className="text-[#4a6070] text-sm font-light italic">Loading memo view…</p>
-            </div>
-          }
-        >
-          <PipelineMemoView
-            deals={scopedDeals as any}
-            emptyMessage={
-              isDelegated
-                ? `No active deals for ${targetDealOwnerName}.`
-                : 'No active deals to summarize.'
-            }
-            onOpenDeal={id => onNavigate(`/deal/${id}`)}
-          />
-        </Suspense>
-      </div>
-    );
-  }
-
   return (
     <div className="relative h-full">
-      {ViewToggle}
       {showFollowups && (
         <Section title="Today's Follow-Ups">
           {followups.map((f) => (
@@ -1118,115 +1040,23 @@ function PipelineTab({
           ))}
         </Section>
       )}
-      {detail && (
-        <DetailPopup title={detail.title} onClose={() => setDetail(null)}>
-          <div className="space-y-3">
-            <div className="text-sm text-muted-foreground">{detail.summary}</div>
-            {detail.meta?.from_name && <div className="text-sm"><strong>From:</strong> {detail.meta.from_name}</div>}
-            {detail.meta?.lender_name && <div className="text-sm"><strong>Lender:</strong> {detail.meta.lender_name}</div>}
-            {detail.timestamp && <div className="text-sm"><strong>Time:</strong> {format(new Date(detail.timestamp), 'PPp')}</div>}
-            {detail.action && (
-              <Button size="sm" variant="outline" className="glass-border-soft" onClick={() => onNavigate(detail.action!.path)}>
-                {detail.action.label} <ExternalLink className="h-3 w-3 ml-1" />
-              </Button>
-            )}
+      <Suspense
+        fallback={
+          <div className="pipeline-memo-page rounded-xl py-12 px-4 text-center">
+            <p className="text-[#4a6070] text-sm font-light italic">Loading memo view…</p>
           </div>
-        </DetailPopup>
-      )}
-      {dealDetail && !detail && (
-        <DetailPopup title={dealDetail.company || dealDetail.description || 'Deal Detail'} onClose={() => setDealDetail(null)}>
-          <div className="space-y-3">
-            {dealDetail.company && <div className="text-sm"><strong>Company:</strong> {dealDetail.company}</div>}
-            {dealDetail.stage && <div className="text-sm"><strong>Stage:</strong> {dealDetail.stage}</div>}
-            {dealDetail.manager && <div className="text-sm"><strong>Manager:</strong> {dealDetail.manager}</div>}
-            {dealDetail.activity_type && <div className="text-sm"><strong>Type:</strong> {dealDetail.activity_type}</div>}
-            {dealDetail.description && <div className="text-sm">{dealDetail.description}</div>}
-            {dealDetail.user_display_name && <div className="text-sm"><strong>By:</strong> {dealDetail.user_display_name}</div>}
-            {dealDetail.created_at && <div className="text-sm"><strong>Time:</strong> {format(new Date(dealDetail.created_at), 'PPp')}</div>}
-            <Button size="sm" variant="outline" className="glass-border-soft" onClick={() => onNavigate(`/deal/${dealDetail.id || dealDetail.deal_id}`)}>
-              Open Deal <ExternalLink className="h-3 w-3 ml-1" />
-            </Button>
-          </div>
-        </DetailPopup>
-      )}
-
-      {dealAlerts.length > 0 && (
-        <Section title="Priority Deal Alerts">
-          {dealAlerts.map((a: any) => (
-            <BriefingRow
-              key={a.id}
-              icon={AlertCircle}
-              title={a.description}
-              subtitle={a.user_display_name || undefined}
-              badge={a.activity_type}
-              badgeVariant="destructive"
-              time={formatDistanceToNow(new Date(a.created_at), { addSuffix: true })}
-              onClick={() => setDetail({
-                id: a.id, category: 'general', title: a.description,
-                summary: `${a.activity_type} by ${a.user_display_name || 'System'}`,
-                timestamp: a.created_at,
-                action: a.deal_id ? { label: 'Open Deal', path: `/deal/${a.deal_id}` } : undefined,
-              })}
-            />
-          ))}
-        </Section>
-      )}
-
-      <Section title="Today's Highlights">
-        {highlights.length === 0 ? (
-          <EmptySection message="No noteworthy highlights in this window" />
-        ) : (
-          highlights.map((h: any, i: number) => (
-            <BriefingRow key={i} icon={TrendingUp} title={h.label} subtitle={h.value} badge="Summary" badgeVariant="outline" />
-          ))
-        )}
-      </Section>
-
-      <Section title="What Happened — News Feed">
-        {newsItems.length === 0 ? (
-          <EmptySection message="No deal-related news in this window" />
-        ) : (
-          newsItems.map((item: NewsItem) => {
-            const cfg = NEWS_CATEGORY_CONFIG[item.category] || NEWS_CATEGORY_CONFIG.general;
-            return (
-              <BriefingRow
-                key={item.id}
-                icon={cfg.icon}
-                title={item.title}
-                subtitle={item.summary}
-                badge={cfg.badge}
-                badgeVariant={cfg.variant}
-                time={item.timestamp ? formatDistanceToNow(new Date(item.timestamp), { addSuffix: true }) : ''}
-                onClick={() => setDetail(item)}
-              />
-            );
-          })
-        )}
-      </Section>
-
-      <Section title="New Opportunities">
-        {newDeals.length === 0 ? <EmptySection message="No new deals added in this window" /> : newDeals.map((d: any) => (
-          <BriefingRow key={d.id} icon={GitBranch} title={d.company} subtitle={`Stage: ${d.stage} • Manager: ${d.manager || 'Unassigned'}`} badge="New" badgeVariant="default" onClick={() => setDealDetail(d)} />
-        ))}
-      </Section>
-
-      <Section title="Stage Changes">
-        {stageChanges.length === 0 ? <EmptySection message="No stage changes in this window" /> : stageChanges.filter((sc: any) => sc.activity_type !== 'deal_created').map((sc: any) => (
-          <BriefingRow key={sc.id} icon={ArrowRight} title={sc.description} time={formatDistanceToNow(new Date(sc.created_at), { addSuffix: true })} onClick={() => setDealDetail(sc)} />
-        ))}
-      </Section>
-
-      <Section title="Potential Pipeline & Client Risks">
-        {riskDeals.length === 0 ? <EmptySection message="No risk signals detected" /> : riskDeals.map((d: any) => (
-          <BriefingRow key={d.id} icon={AlertCircle} title={d.company} subtitle={`${d.isFlagged ? 'Flagged' : 'Stale'} • Stage: ${d.stage}`} badge={d.isFlagged ? 'Flagged' : 'At Risk'} badgeVariant={d.isFlagged ? 'destructive' : 'secondary'} onClick={() => setDealDetail(d)} />
-        ))}
-      </Section>
-
-      <Section title="Recent Pipeline Activity">
-        {recentActivity.length === 0 ? <EmptySection message="No pipeline activity since 5 PM ET yesterday" /> : recentActivity.map((a: any) => (
-          <BriefingRow key={a.id} icon={Clock} title={a.description} subtitle={a.user_display_name || undefined} badge={a.activity_type.replace(/_/g, ' ')} badgeVariant="outline" time={formatDistanceToNow(new Date(a.created_at), { addSuffix: true })} onClick={() => setDealDetail(a)} />
-        ))}
-      </Section>
+        }
+      >
+        <PipelineMemoView
+          deals={scopedDeals as any}
+          emptyMessage={
+            isDelegated
+              ? `No active deals for ${targetDealOwnerName}.`
+              : 'No active deals to summarize.'
+          }
+          onOpenDeal={id => onNavigate(`/deal/${id}`)}
+        />
+      </Suspense>
     </div>
   );
 }
