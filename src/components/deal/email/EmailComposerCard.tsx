@@ -825,7 +825,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
         <EmailRichTextEditor
           content={body}
           onChange={onBodyChange}
-          dataRoomUrl={dataRoomUrl}
+          dataRoomUrl={resolvedDataRoomUrl}
           minHeight={bodyMinHeight}
           className="border-0 shadow-none"
         />
@@ -932,14 +932,14 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
               Attach a file (max {Math.round(maxAttachmentBytes / (1024 * 1024))}MB total)
             </TooltipContent>
           </Tooltip>
-          {dataRoomUrl && (
+          {resolvedDataRoomUrl && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="gap-1 text-muted-foreground h-7 text-xs"
-                  onClick={() => insertAtCursor(`<p><a href="${dataRoomUrl}" target="_blank" rel="noopener noreferrer">View Data Room</a></p>`)}
+                  onClick={() => insertAtCursor(`<p><a href="${resolvedDataRoomUrl}" target="_blank" rel="noopener noreferrer">View Data Room</a></p>`)}
                   aria-label="Insert Data Room link"
                 >
                   <Database className="h-3 w-3" />Data Room
