@@ -374,10 +374,41 @@ export function useGmail() {
     bodyHtml?: string;
     cc?: string[];
     bcc?: string[];
+    /** Real File attachments — base64-encoded inline before send (Gmail 25MB cap enforced server-side). */
+    attachments?: File[];
+    /** When set, threads the outbound message under the original via Nylas reply_to_message_id. */
+    replyToMessageId?: string;
   }) => {
     if (!user) return null;
 
     try {
+      let encodedAttachments: Array<{
+        filename: string;
+        content_type: string;
+        content: string;
+        size: number;
+      }> | undefined;
+      if (options.attachments && options.attachments.length > 0) {
+        encodedAttachments = await Promise.all(
+          options.attachments.map(async (file) => {
+            const buf = await file.arrayBuffer();
+            // base64-encode in chunks to avoid call-stack overflow on large files.
+            const bytes = new Uint8Array(buf);
+            let binary = '';
+            const CHUNK = 0x8000;
+            for (let i = 0; i < bytes.length; i += CHUNK) {
+              binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK)) as any);
+            }
+            return {
+              filename: file.name,
+              content_type: file.type || 'application/octet-stream',
+              content: btoa(binary),
+              size: file.size,
+            };
+          }),
+        );
+      }
+
       const { data, error } = await supabase.functions.invoke('gmail-messages', {
         body: {
           action: 'send',
@@ -387,6 +418,8 @@ export function useGmail() {
           body_html: options.bodyHtml,
           cc: options.cc,
           bcc: options.bcc,
+          attachments: encodedAttachments,
+          reply_to_message_id: options.replyToMessageId,
         },
       });
 
