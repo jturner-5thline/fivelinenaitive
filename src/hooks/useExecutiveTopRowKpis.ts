@@ -36,6 +36,22 @@ import { useCompany } from '@/hooks/useCompany';
 import { QBO_REALM_DEBT } from '@/config/qboEntities';
 
 /**
+ * Optional explicit date window — when supplied by the dashboard's week
+ * stepper, KPIs #2/#3/#4 recompute against [start,end] instead of their
+ * default semantic windows (QTD / T12M).
+ *
+ * Card #1 (Total Active Deal Volume) is intentionally always a *live*
+ * snapshot; an "open deals as of week X" interpretation is ambiguous so
+ * we leave it alone.
+ */
+export interface ExecKpiWindow {
+  start: Date;
+  end: Date;
+  /** Short label rendered in subtitles, e.g. "Apr 21 → Apr 27". */
+  label: string;
+}
+
+/**
  * Drilldown row used by the Executive Dashboard top-row KPI modals.
  * Mirrors the shape used by SalesTeamBoardDashboard's StageEntryDeal
  * so the same DrilldownModal-style table can render any of the four cards.
