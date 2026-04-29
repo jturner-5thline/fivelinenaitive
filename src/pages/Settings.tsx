@@ -165,7 +165,7 @@ export default function Settings() {
         <meta name="description" content="Manage application settings" />
       </Helmet>
 
-      <div className="bg-background">
+      <div className="bg-background min-h-full pb-24">
         <DealsHeader />
 
         <main className="container mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
