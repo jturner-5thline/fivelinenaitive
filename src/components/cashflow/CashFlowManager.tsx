@@ -1054,22 +1054,19 @@ export function CashFlowManager() {
           <>
             <button
               type="button"
-              className="cf-btn cf-btn-ghost"
-              style={{ fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              className="cf-pill"
               onClick={() => setCashInDialogOpen(true)}
               title="Cash-In: Next 8 Weeks — click to view & edit"
             >
-              <span style={{ color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, fontSize: 10 }}>
-                Cash-In Next 8W:
-              </span>
-              <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>
+              <span className="cf-pill-label">Cash-In Next 8W</span>
+              <span className="cf-pill-value">
                 {fmtShort(computeCashInTotal(rawSidebar, sidebarDbItems))}
               </span>
             </button>
             <button
               type="button"
-              className="cf-btn cf-btn-ghost"
-              style={{ fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 6, position: 'relative' }}
+              className="cf-pill"
+              style={{ position: 'relative' }}
               onClick={() => setNotesDialogOpen(true)}
               title="Notes & Cell Comments"
             >
