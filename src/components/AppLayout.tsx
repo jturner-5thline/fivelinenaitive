@@ -39,7 +39,7 @@ function MainContent({
         className,
       )}
       style={{
-        overflowY: 'overlay' as any,
+        overflowY: 'auto',
         overflowX: 'hidden',
         scrollbarWidth: 'thin',
         scrollbarColor: 'rgba(255,255,255,0.15) transparent',
