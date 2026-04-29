@@ -2,7 +2,6 @@ import * as React from "react";
 import { useLocation } from "react-router-dom";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { TaskAssignmentBanner } from "@/components/TaskAssignmentBanner";
 import { PlatformTour } from "@/components/PlatformTour";
 import { ClaapRoutingTasksBadge } from "@/components/integrations/claap/ClaapRoutingTasksBadge";
@@ -118,7 +117,6 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
         <AppSidebar />
         <MainContent className={mainClassName}>{children}</MainContent>
       </div>
-      <FeedbackWidget />
       <TaskAssignmentBanner />
       <PlatformTour />
       {!isDashboardPage && (
