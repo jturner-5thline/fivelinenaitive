@@ -50,6 +50,8 @@ interface WeeklyReportTabProps {
   cashInDialogOpen?: boolean;
   onCashInDialogOpenChange?: (open: boolean) => void;
   onCellCommentCountChange?: (count: number) => void;
+  weeksFuture?: number;
+  onWeeksFutureChange?: (n: number) => void;
 }
 
 const DEBT_ADV_PARENT_KEY = 'Debt Advisory Revenue';
