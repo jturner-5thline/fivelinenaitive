@@ -149,29 +149,27 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
 
   const startIdx = Math.max(0, effectiveCurrentIndex - weeksPast);
   const endIdx = Math.min(totalWeeks, effectiveCurrentIndex + 1 + weeksFuture);
-  const visibleWeeks = useMemo(
-    () => sortedWeeks.slice(startIdx, endIdx),
-    [sortedWeeks, startIdx, endIdx, weeksPast, weeksFuture],
-  );
-  const visibleWeekKeys = useMemo(() => visibleWeeks.map(([key]) => key), [visibleWeeks]);
+  const cols = useMemo(() => sortedWeeks.slice(startIdx, endIdx), [sortedWeeks, startIdx, endIdx]);
+  const visibleWeeks = cols;
+  const visibleWeekKeys = useMemo(() => cols.map(([key]) => key), [cols]);
   const tableMinWidth = useMemo(
-    () => LINE_ITEM_COL_WIDTH + visibleWeeks.length * WEEK_COL_MIN_WIDTH,
-    [visibleWeeks.length],
+    () => `calc(${LINE_ITEM_COL_WIDTH}px + ${cols.length} * ${WEEK_COL_MIN_WIDTH}px)`,
+    [cols.length],
   );
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
-    console.debug('[WeeklyReportTab] visible week columns', {
+    console.log('[WeeklyReportTab] visible week columns', {
       weeksPast,
       weeksFuture,
       startIdx,
       endIdx,
       totalWeeks,
       expectedColumnCount: Math.max(0, endIdx - startIdx),
-      renderedColumnCount: visibleWeeks.length,
+      renderedColumnCount: cols.length,
       weekKeys: visibleWeekKeys,
     });
-  }, [weeksPast, weeksFuture, startIdx, endIdx, totalWeeks, visibleWeeks.length, visibleWeekKeys]);
+  }, [weeksPast, weeksFuture, startIdx, endIdx, totalWeeks, cols.length, visibleWeekKeys]);
 
   const [savePlanOpen, setSavePlanOpen] = useState(false);
   const [planName, setPlanName] = useState('');
@@ -451,31 +449,31 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
           className={`cf-grid-wrap${edgeState.left ? ' cf-edge-left' : ''}${edgeState.right ? ' cf-edge-right' : ''}`}
           style={{ borderRadius: '0 0 var(--radius-lg) var(--radius-lg)' }}
         >
-          <table
-            className="cf-grid"
-            style={{ minWidth: `${tableMinWidth}px` }}
-            key={`weeks-${visibleWeeks.length}-${visibleWeekKeys[0] ?? 'none'}-${visibleWeekKeys[visibleWeekKeys.length - 1] ?? 'none'}`}
-          >
-            <colgroup>
-              <col style={{ width: LINE_ITEM_COL_WIDTH, minWidth: LINE_ITEM_COL_WIDTH }} />
-              {visibleWeekKeys.map((weekKey) => (
-                <col key={weekKey} style={{ width: WEEK_COL_MIN_WIDTH, minWidth: WEEK_COL_MIN_WIDTH }} />
-              ))}
-            </colgroup>
-            <thead>
-              <tr>
-                <th className="cf-label-col">Line Item</th>
-                {visibleWeeks.map(([key, entry]) => (
-                  <th key={key}>
-                    <div>Wk {entry.week_num}</div>
-                    <div style={{ fontSize: '9px' }}>
-                      {new Date(entry.week_ending).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </div>
-                  </th>
+          <div className="cf-grid-inner" style={{ minWidth: tableMinWidth, width: tableMinWidth }}>
+            <table
+              className="cf-grid"
+              key={`weeks-${cols.length}-${visibleWeekKeys[0] ?? 'none'}-${visibleWeekKeys[visibleWeekKeys.length - 1] ?? 'none'}`}
+            >
+              <colgroup>
+                <col style={{ width: LINE_ITEM_COL_WIDTH, minWidth: LINE_ITEM_COL_WIDTH }} />
+                {visibleWeekKeys.map((weekKey) => (
+                  <col key={weekKey} style={{ width: WEEK_COL_MIN_WIDTH, minWidth: WEEK_COL_MIN_WIDTH }} />
                 ))}
-              </tr>
-            </thead>
-            <tbody>
+              </colgroup>
+              <thead>
+                <tr>
+                  <th className="cf-label-col">Line Item</th>
+                  {cols.map(([key, entry]) => (
+                    <th key={key}>
+                      <div>Wk {entry.week_num}</div>
+                      <div style={{ fontSize: '9px' }}>
+                        {new Date(entry.week_ending).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
               {WEEKLY_ROW_ORDER.map((rowDef) => {
                 if ('isHeader' in rowDef && rowDef.isHeader) {
                   const isCollapsible = rowDef.section === 'receipts' || rowDef.section === 'disbursements';
@@ -756,8 +754,9 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                   </tr>
                 );
               })}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </div>
         </div>
       </div>
