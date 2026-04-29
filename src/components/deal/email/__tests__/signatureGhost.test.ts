@@ -1,0 +1,83 @@
+import { describe, it, expect } from 'vitest';
+import { shouldShowSignatureGhost } from '../signatureGhost';
+
+const SIG = 'Best,\nJane Doe';
+
+describe('shouldShowSignatureGhost (runtime guard)', () => {
+  it('hides the ghost when no signature is configured', () => {
+    expect(shouldShowSignatureGhost(undefined, 'Hi there')).toBe(false);
+    expect(shouldShowSignatureGhost(null, 'Hi there')).toBe(false);
+    expect(shouldShowSignatureGhost('', 'Hi there')).toBe(false);
+    expect(shouldShowSignatureGhost('   \n  ', 'Hi there')).toBe(false);
+  });
+
+  it('shows the ghost when signature exists and body is empty', () => {
+    expect(shouldShowSignatureGhost(SIG, '')).toBe(true);
+    expect(shouldShowSignatureGhost(SIG, '   ')).toBe(true);
+    expect(shouldShowSignatureGhost(SIG, undefined)).toBe(true);
+  });
+
+  it('shows the ghost while user is composing a body that does not yet contain the sign-off', () => {
+    expect(shouldShowSignatureGhost(SIG, 'Hi team,\n\nQuick question on the deal.')).toBe(true);
+  });
+
+  it('hides the ghost when the full signature already appears in the body (no duplication)', () => {
+    const body = 'Hi team,\n\nQuick question.\n\nBest,\nJane Doe';
+    expect(shouldShowSignatureGhost(SIG, body)).toBe(false);
+  });
+
+  it('hides the ghost when only the first sign-off line is typed at the tail', () => {
+    const body = 'Hi team,\n\nQuick question.\n\nBest,';
+    expect(shouldShowSignatureGhost(SIG, body)).toBe(false);
+  });
+
+  it('is whitespace- and case-insensitive when matching the signature', () => {
+    const body = 'Hello.\n\nbest,    jane    doe';
+    expect(shouldShowSignatureGhost(SIG, body)).toBe(false);
+  });
+
+  it('does not suppress when the first-line token is too short (avoids false positives)', () => {
+    // 2-char sign-off should not trigger tail suppression
+    expect(shouldShowSignatureGhost('JD', 'Some long body ending with JD letters somewhere')).toBe(true);
+  });
+
+  it('is pure — never mutates inputs (referential body stays identical)', () => {
+    const body = 'Hi team,\n\nQuick question.';
+    const before = body;
+    shouldShowSignatureGhost(SIG, body);
+    expect(body).toBe(before);
+  });
+});
+
+/**
+ * Visual-contract test: encodes the markup invariants that prevent the ghost
+ * from ever overwriting the composer body. The composer renders the ghost as a
+ * sibling <div> with `aria-hidden` and `select-none`, NOT inside the textarea.
+ * If anyone refactors the composer to inject `signature` into the body string,
+ * this test will fail because the contract below will no longer match the
+ * source.
+ */
+describe('signature ghost visual contract (composer source invariants)', () => {
+  it('EmailComposerCard renders the ghost as a sibling, aria-hidden, non-selectable node', async () => {
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+    const src = await fs.readFile(
+      path.resolve(__dirname, '../EmailComposerCard.tsx'),
+      'utf8',
+    );
+
+    // 1. Ghost is gated by a truthy `signature` check.
+    expect(src).toMatch(/\{signature && \(/);
+
+    // 2. Ghost is aria-hidden so AT users never hear it as part of the body.
+    expect(src).toMatch(/aria-hidden/);
+
+    // 3. Ghost is non-selectable so it can't be copied into the body.
+    expect(src).toMatch(/select-none/);
+
+    // 4. CRITICAL: the textarea's `value` must be `body` only — never a
+    //    template-literal that splices in `signature`.
+    expect(src).not.toMatch(/value=\{[^}]*signature[^}]*\}/);
+    expect(src).not.toMatch(/onBodyChange\([^)]*signature[^)]*\)/);
+  });
+});
