@@ -197,6 +197,9 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
     subject, onSubjectChange,
     body, onBodyChange,
     attachments, onAttachmentsChange,
+    onFilesChange,
+    maxAttachmentBytes = 25 * 1024 * 1024,
+    dataRoomUrl,
     onSend, onDiscard, onPopOut, onFieldBlur,
     dealName, dealId,
     signature,
@@ -210,9 +213,10 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
   } = props;
 
   const { search } = useEmailContacts();
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const subjectInputRef = useRef<HTMLInputElement>(null);
   const liveRegionRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [files, setFiles] = useState<File[]>([]);
 
   const [isSending, setIsSending] = useState(false);
   const [showCcBcc, setShowCcBcc] = useState(recipients.cc.length > 0 || recipients.bcc.length > 0);
