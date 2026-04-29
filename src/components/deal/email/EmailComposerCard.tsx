@@ -795,6 +795,42 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
         {DiscardKebab}
       </div>
 
+      {/* First-visit signature CTA — surfaces once per user/session when no
+          email_signature has been saved yet. */}
+      {showSignatureCta && (
+        <div
+          className="flex items-center gap-2 px-4 py-2 border-b border-border/40 bg-[hsl(var(--outlook-blue))]/8"
+          role="status"
+        >
+          <Edit3 className="h-3.5 w-3.5 text-[hsl(var(--outlook-blue))] shrink-0" aria-hidden />
+          <span className="text-[11px] text-foreground/90 flex-1 min-w-0">
+            <span className="font-medium">Configure your email signature</span>{' '}
+            <span className="text-muted-foreground">
+              so it's automatically appended to outgoing replies.
+            </span>
+          </span>
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-[11px] text-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/15"
+          >
+            <Link to="/settings?tab=email" onClick={dismissSignatureCta}>
+              Set up signature
+            </Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-muted-foreground hover:text-foreground"
+            onClick={dismissSignatureCta}
+            aria-label="Dismiss signature reminder"
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
+
       {/* Recipient rows */}
       <div className="px-4 py-1.5 space-y-1 border-b border-border/40">
         <div className="flex items-start gap-2">
