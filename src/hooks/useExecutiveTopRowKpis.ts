@@ -35,6 +35,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { QBO_REALM_DEBT } from '@/config/qboEntities';
 
+/**
+ * Drilldown row used by the Executive Dashboard top-row KPI modals.
+ * Mirrors the shape used by SalesTeamBoardDashboard's StageEntryDeal
+ * so the same DrilldownModal-style table can render any of the four cards.
+ */
+export interface ExecKpiDrilldownDeal {
+  deal_id: string;
+  company: string;
+  value: number;
+  /** Stage label for current snapshot, or stage label entered for history rows. */
+  stage_label: string | null;
+  /** Event timestamp (stage-entry changed_at) or deal updated_at for snapshot rows. */
+  occurred_at: string | null;
+}
+
 // ── Globally-excluded test deals (per project memory). ─────────────
 const EXCLUDED_DEAL_NAMES = new Set(["Test-Niki's Store", 'Example Deal']);
 function isExcludedDealName(name: string | null | undefined): boolean {
@@ -54,6 +69,15 @@ interface PipelineStage {
   id: string;
   label: string;
   color?: string;
+}
+
+/** Build a stage_id → label map for resolving drilldown stage labels. */
+function buildStageIdLabelMap(stages: PipelineStage[]): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const s of stages) {
+    if (s?.id) m.set(s.id, s.label ?? s.id);
+  }
+  return m;
 }
 
 /**
@@ -111,6 +135,7 @@ function useActivePipelineStageMap() {
         stageIdsInRange,
         fundedInvoicedStageId: idxFunded >= 0 ? stages[idxFunded].id : null,
         finalCreditItemsStageId: idxFinalCredit >= 0 ? stages[idxFinalCredit].id : null,
+        stageLabelById: buildStageIdLabelMap(stages),
       };
     },
   });
