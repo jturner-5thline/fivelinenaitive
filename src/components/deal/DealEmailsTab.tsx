@@ -67,6 +67,7 @@ import { EmailList, EmailDetail } from './email/EmailListAndDetail';
 import { cn } from '@/lib/utils';
 import { EmailIntelligenceDialog } from './email/EmailIntelligenceDialog';
 import { InlineComposePanel } from './email/InlineComposePanel';
+import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
 import { useAIEmailSearch, AI_SEARCH_MIN_LENGTH } from '@/hooks/useAIEmailSearch';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { useGmail } from '@/hooks/useGmail';
@@ -248,6 +249,10 @@ function PaginationFooter({
 export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingExternal, onGmailSend, onLoadMore, hasMore, isLoadingMore, isAutoPaginating }: DealEmailsTabProps) {
   const { user } = useAuth();
   const { company } = useCompany();
+  // Saved signature from Settings → Email signature. Auto-injected into the
+  // composer so manual New Mail / Reply drafts include it without the user
+  // having to re-type or click "Insert signature".
+  const composerSignature = useUserEmailSignature();
   // Routes read-state writes through Nylas → Gmail/Outlook so the change
   // is reflected in the user's actual mailbox. We only call this for
   // real (externally hydrated) emails — never mock fixtures.
@@ -1872,6 +1877,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 onSend={handleComposeSend}
                 onClose={() => { setComposeOpen(false); setComposeReplyTo(null); }}
                 replyTo={composeReplyTo}
+                dealId={dealId}
+                signature={composerSignature}
               />
             ) : currentThread ? (
               <EmailDetail

@@ -32,6 +32,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { shouldShowSignatureGhost } from './signatureGhost';
 import { EmailRichTextEditor } from './EmailRichTextEditor';
+import {
+  signatureToHtml,
+  signatureToPlainText,
+  signatureFirstLine,
+  bodyContainsSignature,
+} from './signatureHtml';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Public surface
@@ -497,11 +503,11 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
       signatureInjectedRef.current = true;
       return;
     }
-    const sigHtml = signature
-      .split(/\r?\n/)
-      .map((l) => l ? escapeHtml(l) : '<br/>')
-      .join('<br/>');
-    onBodyChange(`<p></p><p></p><p>${sigHtml}</p>`);
+    // Signatures may be plain-text (legacy) OR rich HTML (RTE). signatureToHtml
+    // sanitizes HTML and escapes/wraps plain text — so the editor renders the
+    // signature exactly the way the recipient will see it, never as raw markup.
+    const sigHtml = signatureToHtml(signature);
+    onBodyChange(`<p></p><p></p>${sigHtml}`);
     signatureInjectedRef.current = true;
     // We intentionally don't react to subsequent body/signature updates — this
     // is a one-shot prefill. Subsequent edits are owned by the user.
@@ -963,13 +969,13 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
           minHeight={bodyMinHeight}
           className="border-0 shadow-none"
         />
-        {shouldShowSignatureGhost(signature, body) && (
+        {shouldShowSignatureGhost(signatureToPlainText(signature), signatureToPlainText(body)) && (
           <div
             className="text-[11px] text-muted-foreground/60 whitespace-pre-wrap pt-2 border-t border-border/30 mt-2 select-none"
             aria-hidden
             data-testid="signature-ghost"
           >
-            {signature}
+            {signatureToPlainText(signature)}
           </div>
         )}
         {/* Deal-link preview — mirrors what the outgoing message will reference.
@@ -1145,12 +1151,12 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
           {hasSavedSignature === true && props.signature ? (
             <span
               className="inline-flex items-center gap-1 truncate max-w-[260px]"
-              title={props.signature}
+              title={signatureToPlainText(props.signature)}
             >
               <Edit3 className="h-2.5 w-2.5 opacity-60" aria-hidden />
               <span className="opacity-70">Signature:</span>
               <span className="text-foreground/80 truncate">
-                {props.signature.split('\n').find(l => l.trim()) || ''}
+                {signatureFirstLine(props.signature)}
               </span>
             </span>
           ) : hasSavedSignature === false ? (
