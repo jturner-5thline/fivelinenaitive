@@ -128,7 +128,7 @@ function QuickActionTile({
   ariaLabel,
 }: {
   label: string;
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  icon: React.ComponentType<any>;
   category: TileCategory;
   onClick: (e: React.MouseEvent<HTMLDivElement>) => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLDivElement>) => void;
