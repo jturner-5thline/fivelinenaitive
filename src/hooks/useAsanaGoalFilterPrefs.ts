@@ -23,11 +23,26 @@ export interface UseAsanaGoalFilterPrefsResult extends AsanaGoalFilterPrefs {
   reset: () => Promise<void>;
 }
 
-const DEFAULTS: AsanaGoalFilterPrefs = {
-  filters: DEFAULT_ASANA_GOAL_FILTERS,
-  override: null,
-  exactMatch: false,
-};
+/**
+ * Build defaults lazily.
+ *
+ * IMPORTANT: do NOT capture `DEFAULT_ASANA_GOAL_FILTERS` in a module-scope
+ * `const` here. When Rollup hoists this hook and its leaf-types module into
+ * the same lazy chunk, a top-level reference to the imported binding is
+ * evaluated during chunk init and can run *before* the leaf module has
+ * bound its exports — producing a TDZ ReferenceError ("Cannot access 'mt'
+ * before initialization") on /insights.
+ *
+ * Calling this from inside function bodies / hook callbacks defers the
+ * read until after both modules have finished initializing.
+ */
+function buildDefaults(): AsanaGoalFilterPrefs {
+  return {
+    filters: DEFAULT_ASANA_GOAL_FILTERS,
+    override: null,
+    exactMatch: false,
+  };
+}
 
 const LS_KEY_PREFIX = 'asanaGoalFilterPrefs:v1:';
 const lsKey = (companyId: string | null) => `${LS_KEY_PREFIX}${companyId ?? 'global'}`;
@@ -75,7 +90,7 @@ function writeLocalSnapshot(companyId: string | null, prefs: AsanaGoalFilterPref
 export function useAsanaGoalFilterPrefs(): UseAsanaGoalFilterPrefsResult {
   const { company } = useCompany();
   const companyId = company?.id ?? null;
-  const [prefs, setPrefs] = useState<AsanaGoalFilterPrefs>(() => readLocalSnapshot(null) ?? DEFAULTS);
+  const [prefs, setPrefs] = useState<AsanaGoalFilterPrefs>(() => readLocalSnapshot(null) ?? buildDefaults());
   const [isLoaded, setIsLoaded] = useState(false);
   const userIdRef = useRef<string | null>(null);
 
