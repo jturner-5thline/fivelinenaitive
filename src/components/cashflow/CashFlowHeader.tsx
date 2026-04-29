@@ -86,14 +86,6 @@ export const CashFlowHeader = memo(function CashFlowHeader({
   return (
     <>
       <div className="cf-header">
-        <div className="cf-brand">
-          <LogoSVG />
-          <div>
-            <div className="cf-brand-title">5th Line Capital, LLC</div>
-            <div className="cf-brand-sub">Cash Flow Manager</div>
-          </div>
-        </div>
-
         <div className="cf-kpi-row">
           <div className="cf-kpi">
             <div className="cf-kpi-label">Cash In</div>
