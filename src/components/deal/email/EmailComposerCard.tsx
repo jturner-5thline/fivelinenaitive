@@ -969,7 +969,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
           minHeight={bodyMinHeight}
           className="border-0 shadow-none"
         />
-        {shouldShowSignatureGhost(signature, body) && (
+        {shouldShowSignatureGhost(signatureToPlainText(signature), signatureToPlainText(body)) && (
           <div
             className="text-[11px] text-muted-foreground/60 whitespace-pre-wrap pt-2 border-t border-border/30 mt-2 select-none"
             aria-hidden
