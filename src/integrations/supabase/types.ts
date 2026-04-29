@@ -7503,6 +7503,47 @@ export type Database = {
           },
         ]
       }
+      deal_stage_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          company_id: string | null
+          deal_id: string
+          from_stage: string | null
+          id: string
+          pipeline_id: string | null
+          to_stage: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          company_id?: string | null
+          deal_id: string
+          from_stage?: string | null
+          id?: string
+          pipeline_id?: string | null
+          to_stage: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          company_id?: string | null
+          deal_id?: string
+          from_stage?: string | null
+          id?: string
+          pipeline_id?: string | null
+          to_stage?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_stage_history_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_status_notes: {
         Row: {
           created_at: string
