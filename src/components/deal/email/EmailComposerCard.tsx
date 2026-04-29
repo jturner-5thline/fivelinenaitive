@@ -1140,6 +1140,29 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
             />
             Track opens
           </label>
+          {/* Signature indicator — shows the saved signature's first line, or a
+              link to configure one if the user hasn't set one yet. */}
+          {hasSavedSignature === true && props.signature ? (
+            <span
+              className="inline-flex items-center gap-1 truncate max-w-[260px]"
+              title={props.signature}
+            >
+              <Edit3 className="h-2.5 w-2.5 opacity-60" aria-hidden />
+              <span className="opacity-70">Signature:</span>
+              <span className="text-foreground/80 truncate">
+                {props.signature.split('\n').find(l => l.trim()) || ''}
+              </span>
+            </span>
+          ) : hasSavedSignature === false ? (
+            <Link
+              to="/settings?tab=email"
+              className="inline-flex items-center gap-1 text-[hsl(var(--outlook-blue))] hover:underline"
+              onClick={dismissSignatureCta}
+            >
+              <Edit3 className="h-2.5 w-2.5" aria-hidden />
+              No signature set — Add one in Settings
+            </Link>
+          ) : null}
         </div>
       )}
 
