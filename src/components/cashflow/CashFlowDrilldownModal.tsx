@@ -8,6 +8,7 @@ import {
   resolveCategoryToGridRow,
   CASH_IN_CATEGORIES,
   CASH_OUT_CATEGORIES,
+  CANONICAL_TO_GRID_ROW,
   type ScheduledCashFlow,
 } from './scheduledCashFlows';
 import { fmt } from './formatters';
