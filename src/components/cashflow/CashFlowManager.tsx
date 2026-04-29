@@ -968,88 +968,37 @@ export function CashFlowManager() {
 
       {/* Date period filter */}
       <div className="cf-filter-bar">
-        <div className="cf-filter-group">
-          <label className="cf-filter-label">Year</label>
-          <div className="cf-toggle-group">
-            {availableYears.map(y => {
-              const yStr = String(y);
-              const active = filterYears.includes(yStr);
-              return (
-                <button
-                  key={y}
-                  className={`cf-toggle-btn ${active ? 'active' : ''}`}
-                  onClick={() => setFilterYears(prev =>
-                    active ? prev.filter(v => v !== yStr) : [...prev, yStr]
-                  )}
-                >
-                  {y}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        <div className="cf-filter-group">
-          <label className="cf-filter-label">Quarter</label>
-          <div className="cf-toggle-group">
-            {(['Q1', 'Q2', 'Q3', 'Q4'] as const).map(q => {
-              const active = filterQuarters.includes(q);
-              return (
-                <button
-                  key={q}
-                  className={`cf-toggle-btn ${active ? 'active' : ''}`}
-                  onClick={() => setFilterQuarters(prev =>
-                    active ? prev.filter(v => v !== q) : [...prev, q]
-                  )}
-                >
-                  {q}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <FilterMultiSelect
+          label="Year"
+          options={availableYears.map(String)}
+          selected={filterYears}
+          onChange={setFilterYears}
+        />
+        <FilterMultiSelect
+          label="Quarter"
+          options={['Q1', 'Q2', 'Q3', 'Q4']}
+          selected={filterQuarters}
+          onChange={setFilterQuarters}
+        />
         {availableEntities.length > 0 && (
-          <div className="cf-filter-group">
-            <label className="cf-filter-label">Entity</label>
-            <div className="cf-toggle-group">
-              {availableEntities.map(ent => {
-                const active = filterEntities.includes(ent);
-                return (
-                  <button
-                    key={ent}
-                    className={`cf-toggle-btn ${active ? 'active' : ''}`}
-                    onClick={() => setFilterEntities(prev =>
-                      active ? prev.filter(v => v !== ent) : [...prev, ent]
-                    )}
-                    title={`Show only entries for ${ent}`}
-                  >
-                    {ent}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <FilterMultiSelect
+            label="Entity"
+            options={availableEntities}
+            selected={filterEntities}
+            onChange={setFilterEntities}
+            searchable
+            inlineSummaryMax={1}
+          />
         )}
         {availableCategories.length > 0 && (
-          <div className="cf-filter-group">
-            <label className="cf-filter-label">Category</label>
-            <div className="cf-toggle-group">
-              {availableCategories.map(cat => {
-                const active = filterCategories.includes(cat);
-                return (
-                  <button
-                    key={cat}
-                    className={`cf-toggle-btn ${active ? 'active' : ''}`}
-                    onClick={() => setFilterCategories(prev =>
-                      active ? prev.filter(v => v !== cat) : [...prev, cat]
-                    )}
-                    title={`Show only ${cat} entries`}
-                  >
-                    {cat}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <FilterMultiSelect
+            label="Category"
+            options={availableCategories}
+            selected={filterCategories}
+            onChange={setFilterCategories}
+            searchable
+            inlineSummaryMax={1}
+          />
         )}
         {(filterYears.length > 0 || filterQuarters.length > 0 || filterEntities.length > 0 || filterCategories.length > 0) && (
           <button
