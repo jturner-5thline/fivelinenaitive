@@ -1877,6 +1877,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 onSend={handleComposeSend}
                 onClose={() => { setComposeOpen(false); setComposeReplyTo(null); }}
                 replyTo={composeReplyTo}
+                dealId={dealId}
+                signature={composerSignature}
               />
             ) : currentThread ? (
               <EmailDetail
