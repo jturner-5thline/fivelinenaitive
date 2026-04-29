@@ -11,6 +11,7 @@ import {
   Newspaper, Mail, DollarSign, GitBranch, ListChecks,
   AlertCircle, ExternalLink, TrendingUp,
   FileText, X, ChevronRight, ChevronLeft, RefreshCw,
+  Check, Clock, ArrowUpRight,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -38,7 +39,7 @@ const PipelineMemoView = lazy(() =>
   import('@/pages/pipeline/PipelineMemoView').then(m => ({ default: m.PipelineMemoView })),
 );
 import { useAuth } from '@/contexts/AuthContext';
-import { useMorningFollowups } from '@/hooks/useMorningFollowups';
+import { useMorningFollowups, useFollowupActions, type FollowupDealGroup, type FollowupItem } from '@/hooks/useMorningFollowups';
 
 interface DailyBriefingModalProps {
   open: boolean;
