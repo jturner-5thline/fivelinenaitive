@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { TaskDuplicatePanel } from '@/components/tasks/TaskDuplicatePanel';
 import { type Task, useTaskComments, useTaskActivity, useSubtasks } from '@/hooks/useTasks';
 import { useTaskDependencies } from '@/hooks/useTaskDependencies';
 import { useTaskAttachments } from '@/hooks/useTaskAttachments';
@@ -523,6 +524,11 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
               <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={handleSaveDesc} disabled={descValue === (task.description || '')} style={{ color: '#8b92a5' }}>Save</Button>
             </div>
           </div>
+
+          <Separator style={{ backgroundColor: '#2a2f3e' }} />
+
+          {/* Duplicate-detection panel — human-in-the-loop review */}
+          <TaskDuplicatePanel taskId={task.id} />
 
           <Separator style={{ backgroundColor: '#2a2f3e' }} />
 
