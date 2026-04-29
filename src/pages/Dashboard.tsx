@@ -306,6 +306,7 @@ export default function Dashboard() {
   const [pendingRemoval, setPendingRemoval] = useState<{ widgetId: string; widget: WidgetConfig; gridItem: GridItem } | null>(null);
   const [dealsDialogOpen, setDealsDialogOpen] = useState(false);
   const [dealsInitialView, setDealsInitialView] = useState<DealsCarouselView | undefined>(undefined);
+  const [newDealOpen, setNewDealOpen] = useState(false);
 
   // Sync tab from URL query params
   useEffect(() => {
