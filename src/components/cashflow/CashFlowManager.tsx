@@ -715,14 +715,40 @@ export function CashFlowManager() {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   }, []);
 
-  // KPIs from visible weekly data — include scheduled cash flow entries so the
-  // Configure Payments & Revenue rows drive the headline Cash In / Cash Out / Net Cash KPIs.
-  const { cashIn, cashOut, netChange } = useMemo(() => {
-    const weekEntries = Object.values(weeklyWithScheduled || {});
-    const ci = weekEntries.reduce((s, e) => s + ((e["TOTAL RECEIPTS"] as number) || 0), 0);
-    const co = weekEntries.reduce((s, e) => s + ((e["TOTAL DISBURSEMENTS"] as number) || 0), 0);
-    return { cashIn: ci, cashOut: co, netChange: ci - co };
-  }, [weeklyWithScheduled]);
+  // KPIs scoped to the forward-looking window: current week → current week + weeksFuture.
+  // Driven from `filteredWeekly` so Year / Quarter / Entity / Category filters and Configure
+  // entries all flow through to the headline Cash In / Cash Out / Net Change tiles.
+  const { cashIn, cashOut, netChange, kpiRangeLabel, kpiWeekCount } = useMemo(() => {
+    const sortedEntries = Object.entries(filteredWeekly || {}).sort(([a], [b]) => a.localeCompare(b));
+    const todayISO = new Date().toISOString().split('T')[0];
+    let currentIdx = sortedEntries.findIndex(([dateKey, entry]: any) => {
+      const we = typeof entry?.week_ending === 'string' ? entry.week_ending : dateKey;
+      return we >= todayISO;
+    });
+    if (currentIdx < 0) currentIdx = sortedEntries.length - 1;
+    const startIdx = Math.max(0, currentIdx);
+    const endIdx = Math.min(sortedEntries.length, startIdx + 1 + Math.max(0, weeksFuture));
+    const window = sortedEntries.slice(startIdx, endIdx);
+    const ci = window.reduce((s, [, e]: any) => s + (Number(e?.["TOTAL RECEIPTS"]) || 0), 0);
+    const co = window.reduce((s, [, e]: any) => s + (Number(e?.["TOTAL DISBURSEMENTS"]) || 0), 0);
+    let label = '—';
+    if (window.length > 0) {
+      const fmt = (iso: string) => {
+        const d = new Date(iso + 'T00:00:00');
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      };
+      const firstWE = (window[0][1] as any)?.week_ending || window[0][0];
+      const lastWE = (window[window.length - 1][1] as any)?.week_ending || window[window.length - 1][0];
+      label = `${fmt(firstWE)} – ${fmt(lastWE)} (${window.length} ${window.length === 1 ? 'week' : 'weeks'})`;
+    }
+    return {
+      cashIn: ci || 0,
+      cashOut: co || 0,
+      netChange: (ci || 0) - (co || 0),
+      kpiRangeLabel: label,
+      kpiWeekCount: window.length,
+    };
+  }, [filteredWeekly, weeksFuture]);
 
   const handleCellEdit = useCallback((rowKey: string, colIdx: number, value: number) => {
     pushUndo(`Edit daily cell: ${rowKey}, col ${colIdx}`);
