@@ -736,8 +736,12 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
           aria-label="Email body"
           aria-invalid={!!bodyError}
         />
-        {signature && (
-          <div className="text-[11px] text-muted-foreground/60 whitespace-pre-wrap pt-2 border-t border-border/30 mt-2 select-none" aria-hidden>
+        {shouldShowSignatureGhost(signature, body) && (
+          <div
+            className="text-[11px] text-muted-foreground/60 whitespace-pre-wrap pt-2 border-t border-border/30 mt-2 select-none"
+            aria-hidden
+            data-testid="signature-ghost"
+          >
             {signature}
           </div>
         )}
