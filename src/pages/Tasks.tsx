@@ -1167,9 +1167,17 @@ export default function Tasks() {
               recurrence_end_date: input.recurrence_end_date,
             });
             toast.success(`Task created: "${input.title}"`);
-            // After the list re-renders with the new row, scroll it into view
-            // and move keyboard focus to it so users can act on it immediately.
             const newId = (created as any)?.id as string | undefined;
+            // Fire-and-forget duplicate check for the new task — results stream
+            // into the drawer panel via realtime. Errors here are non-fatal
+            // (the DB trigger also runs as a backup).
+            if (newId) {
+              supabase.functions.invoke('task-duplicate-check', { body: { task_id: newId } })
+                .catch(err => console.warn('[task-duplicate-check] post-create check failed', err));
+              // Open the detail drawer so the user can review duplicates before
+              // moving on. Falls back to focus restore if the row never mounts.
+              setSelectedTaskId(newId);
+            }
             if (newId) {
               const tryFocus = (attempt = 0) => {
                 const el = document.querySelector<HTMLElement>(`[data-task-id="${newId}"]`);
