@@ -13814,6 +13814,7 @@ export type Database = {
           display_name: string | null
           email: string | null
           email_notifications: boolean
+          email_signature: string | null
           email_task_assigned: boolean | null
           first_name: string | null
           id: string
@@ -13861,6 +13862,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           email_notifications?: boolean
+          email_signature?: string | null
           email_task_assigned?: boolean | null
           first_name?: string | null
           id?: string
@@ -13908,6 +13910,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           email_notifications?: boolean
+          email_signature?: string | null
           email_task_assigned?: boolean | null
           first_name?: string | null
           id?: string
