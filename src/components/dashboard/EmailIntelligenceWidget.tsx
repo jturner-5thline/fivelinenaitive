@@ -13,6 +13,7 @@ import { EmailDetailModal } from '@/components/dashboard/EmailDetailModal';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useWidgetCarouselStore } from '@/stores/widgetCarouselStore';
 
 const CATEGORY_COLORS: Record<string, string> = {
   deal_update: 'bg-primary/10 text-primary border-primary/20',
