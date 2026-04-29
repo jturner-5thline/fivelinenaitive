@@ -1027,9 +1027,7 @@
 .rdp-row { display: flex !important; width: 100%; }
 .rdp-head_cell,
 .rdp-cell { display: flex !important; align-items: center; justify-content: center; }
+/* Reset font-variant-numeric inheritance from `.insights-glass-skin` so the
+   day numbers don't look squished in tabular columns smaller than the cell. */
 .rdp-day { font-variant-numeric: normal; }
-.rdp-button_reset { all: unset; cursor: pointer; }
-/* Ensure popover-mounted calendars inherit a readable background/contrast
-   in dark mode without depending on parent skin classes. */
-.rdp-month .rdp-caption_label { font-weight: 500; }
 
