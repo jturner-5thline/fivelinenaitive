@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { emailStringToArray, emailArrayToString } from './RecipientField';
 import { MockEmail } from './mockEmailData';
 import { EmailComposerCard, type ComposerRecipients, type ComposerSendOptions } from './EmailComposerCard';
+export type { ComposerSendOptions } from './EmailComposerCard';
 import { usePreSendChecks } from './usePreSendChecks';
 import { PreSendAlertDialog } from './PreSendAlertDialog';
 import type { TokenContext } from '@/hooks/useEmailSnippets';
