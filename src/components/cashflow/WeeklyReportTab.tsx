@@ -769,22 +769,46 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
         </div>
       </div>
 
-      <WeeklySidebar
-        data={safeSidebarData}
-        dbItems={safeSidebarDbItems}
-        isAdmin={isAdmin}
-        onEditItem={onSidebarEditItem}
-        onRemoveItem={onSidebarRemoveItem}
-        onAddItem={onSidebarAddItem}
-        onRemoveDbItem={onSidebarRemoveDbItem}
-        onNoteEdit={onNoteEdit}
-        onNoteRemove={onNoteRemove}
-        onNoteAdd={onNoteAdd}
-        cellComments={cellComments}
-        currentUserId={user?.id ?? null}
-        onCellCommentClick={handleSidebarCommentClick}
-        onCellCommentDelete={(c) => deleteCellComment(c.id)}
-      />
+      {/* Cash-In: Next 8 Weeks dialog (triggered from filter bar) */}
+      <Dialog open={!!cashInDialogOpen} onOpenChange={(o) => onCashInDialogOpenChange?.(o)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Cash-In: Next 8 Weeks</DialogTitle>
+          </DialogHeader>
+          <CashInPanel
+            data={safeSidebarData}
+            dbItems={safeSidebarDbItems}
+            isAdmin={isAdmin}
+            onEditItem={onSidebarEditItem}
+            onRemoveItem={onSidebarRemoveItem}
+            onAddItem={onSidebarAddItem}
+            onRemoveDbItem={onSidebarRemoveDbItem}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Notes & Cell Comments dialog (triggered from filter bar) */}
+      <Dialog open={!!notesDialogOpen} onOpenChange={(o) => onNotesDialogOpenChange?.(o)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Notes & Key Items</DialogTitle>
+          </DialogHeader>
+          <NotesPanel
+            data={safeSidebarData}
+            isAdmin={isAdmin}
+            onNoteEdit={onNoteEdit}
+            onNoteRemove={onNoteRemove}
+            onNoteAdd={onNoteAdd}
+            cellComments={cellComments}
+            currentUserId={user?.id ?? null}
+            onCellCommentClick={(c) => {
+              onNotesDialogOpenChange?.(false);
+              handleSidebarCommentClick(c);
+            }}
+            onCellCommentDelete={(c) => deleteCellComment(c.id)}
+          />
+        </DialogContent>
+      </Dialog>
 
       {menuState && (
         <CellCommentMenu
