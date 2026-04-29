@@ -1151,12 +1151,12 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
           {hasSavedSignature === true && props.signature ? (
             <span
               className="inline-flex items-center gap-1 truncate max-w-[260px]"
-              title={props.signature}
+              title={signatureToPlainText(props.signature)}
             >
               <Edit3 className="h-2.5 w-2.5 opacity-60" aria-hidden />
               <span className="opacity-70">Signature:</span>
               <span className="text-foreground/80 truncate">
-                {props.signature.split('\n').find(l => l.trim()) || ''}
+                {signatureFirstLine(props.signature)}
               </span>
             </span>
           ) : hasSavedSignature === false ? (
