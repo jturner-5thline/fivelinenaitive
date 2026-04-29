@@ -361,6 +361,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
+                        type="button"
                         className={`w-full justify-between font-normal h-9 ${selectedDealTypes.length === 0 ? 'border-destructive/40' : ''}`}
                       >
                         {selectedDealTypes.length > 0 ? (
@@ -382,7 +383,15 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     </PopoverTrigger>
                     <PopoverContent className="w-full p-2" align="start">
                       <div className="space-y-1">
-                        {availableDealTypes.map((type) => {
+                        {isLoadingDealTypes && availableDealTypes.length === 0 ? (
+                          <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                            Loading deal types…
+                          </div>
+                        ) : availableDealTypes.length === 0 ? (
+                          <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                            No deal types available — contact an admin.
+                          </div>
+                        ) : availableDealTypes.map((type) => {
                           const isSelected = selectedDealTypes.includes(type.id);
                           return (
                             <button
@@ -607,7 +616,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
               {sortedMilestones.length > 0 && (
                 <Collapsible open={showMilestonesPreview} onOpenChange={setShowMilestonesPreview}>
                   <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
+                    <Button type="button" variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
                       <span className="flex items-center gap-2">
                         <Flag className="h-4 w-4" />
                         {sortedMilestones.length} default milestone{sortedMilestones.length !== 1 ? 's' : ''} will be added
