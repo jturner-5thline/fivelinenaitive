@@ -1,4 +1,6 @@
 /**
+ * @vitest-environment jsdom
+ *
  * Regression tests for the dashboard quick-action safety net.
  *
  * The bug being prevented: a dashboard dropdown / widget panel that fires a
