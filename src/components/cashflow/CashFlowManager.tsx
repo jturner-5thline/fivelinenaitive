@@ -1126,6 +1126,11 @@ export function CashFlowManager() {
           onNoteEdit={handleNoteEdit}
           onNoteRemove={handleNoteRemove}
           onNoteAdd={handleNoteAdd}
+          notesDialogOpen={notesDialogOpen}
+          onNotesDialogOpenChange={setNotesDialogOpen}
+          cashInDialogOpen={cashInDialogOpen}
+          onCashInDialogOpenChange={setCashInDialogOpen}
+          onCellCommentCountChange={setCellCommentCount}
         />
       )}
 
