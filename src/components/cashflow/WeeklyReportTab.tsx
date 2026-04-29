@@ -353,7 +353,11 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   return (
     <div className="cf-weekly-layout">
       <div className="cf-weekly-main">
-        <WeeklyCharts weeklyData={safeWeeklyData} theme={theme} />
+        <WeeklyCharts
+          weeklyData={safeWeeklyData}
+          theme={theme}
+          visibleWeekKeys={visibleWeeks.map(([k]) => k)}
+        />
 
         {/* Table card */}
         <div ref={gridWrapRef} className="cf-table-card">

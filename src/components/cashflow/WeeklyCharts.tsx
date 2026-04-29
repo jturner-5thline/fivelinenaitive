@@ -7,9 +7,16 @@ Chart.register(...registerables);
 interface WeeklyChartsProps {
   weeklyData: WeeklyData;
   theme: ThemeMode;
+  /**
+   * Optional set of week keys (entries of weeklyData) that should be plotted.
+   * When provided, the chart x-axis is restricted to exactly this window so it
+   * stays in lockstep with the Weekly Report table. When omitted/empty, all
+   * weeks in weeklyData are plotted (legacy behavior).
+   */
+  visibleWeekKeys?: string[];
 }
 
-export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: WeeklyChartsProps) {
+export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme, visibleWeekKeys }: WeeklyChartsProps) {
   const chart1Ref = useRef<HTMLCanvasElement>(null);
   const chart2Ref = useRef<HTMLCanvasElement>(null);
   const chart1Instance = useRef<Chart | null>(null);
@@ -17,7 +24,12 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
 
   // Memoize chart data to avoid recalculation
   const chartData = useMemo(() => {
-    const entries = Object.entries(weeklyData || {}).sort(([a], [b]) => a.localeCompare(b));
+    const all = Object.entries(weeklyData || {}).sort(([a], [b]) => a.localeCompare(b));
+    let entries = all;
+    if (visibleWeekKeys && visibleWeekKeys.length > 0) {
+      const allow = new Set(visibleWeekKeys);
+      entries = all.filter(([k]) => allow.has(k));
+    }
     return {
       labels: entries.map(([, v]) => {
         const d = new Date(v.week_ending);
@@ -28,7 +40,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
       cashIn: entries.map(([, v]) => ((v["TOTAL RECEIPTS"] as number) || 0) / 1000),
       cashOut: entries.map(([, v]) => ((v["TOTAL DISBURSEMENTS"] as number) || 0) / 1000),
     };
-  }, [weeklyData]);
+  }, [weeklyData, visibleWeekKeys]);
 
   useEffect(() => {
     const canvas1 = chart1Ref.current;
@@ -62,7 +74,16 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
         },
       },
       scales: {
-        x: { grid: { color: gridColor }, ticks: { font: { size: 9 }, color: textColor, maxTicksLimit: 20 } },
+        x: {
+          grid: { color: gridColor },
+          ticks: {
+            font: { size: 9 },
+            color: textColor,
+            // Auto-thin ticks based on window size: show all up to ~16, then taper
+            maxTicksLimit: labels.length <= 16 ? labels.length : labels.length <= 32 ? 16 : 20,
+            autoSkip: true,
+          },
+        },
         y: {
           grid: { color: gridColor },
           ticks: {
