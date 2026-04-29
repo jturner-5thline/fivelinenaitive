@@ -366,6 +366,24 @@ function Toolbar({ editor, dataRoomUrl }: { editor: any; dataRoomUrl?: string | 
 
       <Separator orientation="vertical" className="h-5 mx-0.5" />
 
+      {/* Data Room shortcut — one-click insert of the FLEx URL as "View Data Room". */}
+      {dataRoomUrl && (
+        <>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs gap-1 text-primary hover:text-primary"
+            aria-label="Insert Data Room link"
+            title="Insert View Data Room link"
+            onClick={insertDataRoomLink}
+          >
+            <Database className="h-3.5 w-3.5" />
+            Data Room
+          </Button>
+          <Separator orientation="vertical" className="h-5 mx-0.5" />
+        </>
+      )}
+
       <Button
         variant="ghost"
         size="icon"
