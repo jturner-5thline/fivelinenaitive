@@ -100,6 +100,7 @@ function EmailIntelligenceHoverLabel({
 
 function EmailRow({ email, onClick }: { email: EnrichedEmail; onClick: () => void }) {
   const navigate = useNavigate();
+  const closeCarousel = useWidgetCarouselStore((s) => s.close);
   const analysis = email.analysis;
   const sentimentInfo = SENTIMENT_ICONS[analysis?.sentiment || 'neutral'] || SENTIMENT_ICONS.neutral;
   const SentimentIcon = sentimentInfo.icon;
@@ -161,7 +162,13 @@ function EmailRow({ email, onClick }: { email: EnrichedEmail; onClick: () => voi
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (analysis.deal_id) navigate(`/deal/${analysis.deal_id}`);
+                if (analysis.deal_id) {
+                  // Close the dashboard carousel/widget panel synchronously
+                  // BEFORE navigating so it never lingers on screen during
+                  // the route transition.
+                  closeCarousel();
+                  navigate(`/deal/${analysis.deal_id}`);
+                }
               }}
               className="text-[10px] text-primary hover:underline truncate max-w-[120px]"
             >
@@ -193,6 +200,13 @@ export function EmailIntelligenceWidget() {
   const { status, isStatusLoading } = useGmail();
   const { emails, stats, isLoading, isAnalyzing, syncEmails } = useEmailIntelligence();
   const navigate = useNavigate();
+  const closeCarousel = useWidgetCarouselStore((s) => s.close);
+  // Quick-action launchers must dismiss the dashboard widget panel BEFORE
+  // route changes so the panel never lingers on top of the destination.
+  const goTo = (path: string) => {
+    closeCarousel();
+    navigate(path);
+  };
   const [selectedEmail, setSelectedEmail] = useState<EnrichedEmail | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
