@@ -1,7 +1,8 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Lock, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Lock } from 'lucide-react';
+import { useExecutiveTopRowKpis } from '@/hooks/useExecutiveTopRowKpis';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Line, ComposedChart, Area, PieChart, Pie, Cell, Legend } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { PieGlassDefs, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
@@ -193,44 +194,26 @@ function StatCard({
   title,
   value,
   subtitle,
-  trend,
-  trendValue,
+  loading,
 }: {
   title: string;
   value: string | number;
   subtitle?: string;
-  trend?: 'up' | 'down';
-  trendValue?: string;
+  loading?: boolean;
 }) {
-  const isUp = trend === 'up';
   return (
     <GlassCard interactive>
       <GlassCardHeader title={title} subtitle={subtitle} />
       <GlassCardBody className="pt-0 pb-5 space-y-2">
-        <p
-          className={GLASS_TOKENS.valueClass}
-          style={{ color: GLASS_TOKENS.valueColor }}
-        >
-          {value}
-        </p>
-        {trend && trendValue && (
-          <div className="flex items-center gap-1.5">
-            <span
-              className={
-                'inline-flex items-center gap-0.5 text-[10px] font-semibold rounded px-1 py-0.5 ' +
-                (isUp
-                  ? 'text-success bg-success/10'
-                  : 'text-destructive bg-destructive/10')
-              }
-            >
-              {isUp ? (
-                <ArrowUpRight className="h-2.5 w-2.5" />
-              ) : (
-                <ArrowDownRight className="h-2.5 w-2.5" />
-              )}
-              {trendValue}
-            </span>
-          </div>
+        {loading ? (
+          <Skeleton className="h-8 w-24" />
+        ) : (
+          <p
+            className={GLASS_TOKENS.valueClass}
+            style={{ color: GLASS_TOKENS.valueColor }}
+          >
+            {value}
+          </p>
         )}
       </GlassCardBody>
     </GlassCard>
@@ -260,6 +243,13 @@ function ChartCardHeader({ title, subtitle }: { title: string; subtitle?: string
 }
 
 export function ExecutiveDashboard() {
+  const kpis = useExecutiveTopRowKpis();
+
+  const fmtMoney = (v: number | null) =>
+    v === null || !Number.isFinite(v) ? '—' : formatCurrency(v);
+  const fmtCount = (v: number | null) =>
+    v === null || !Number.isFinite(v) ? '—' : v.toLocaleString();
+
   // Sample data for executive metrics
   const revenueByMonthData = [
     { month: 'Aug-25', revenue: 250000 },
@@ -299,31 +289,29 @@ export function ExecutiveDashboard() {
     <div className="space-y-6">
       {/* Row 1: Key Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard 
-          title="Total Pipeline Value" 
-          value="$43M" 
-          subtitle="Active deals"
-          trend="up"
-          trendValue="+12% vs last month"
+        <StatCard
+          title="Total Active Deal Volume"
+          value={fmtMoney(kpis.totalActiveDealVolume.value)}
+          subtitle="Final Credit Items → In Due Diligence"
+          loading={kpis.totalActiveDealVolume.loading}
         />
-        <StatCard 
-          title="Deals Closed (QTD)" 
-          value="15" 
-          subtitle="Quarter to date"
-          trend="up"
-          trendValue="+3 vs prior quarter"
+        <StatCard
+          title="Deals Closed (QTD)"
+          value={fmtCount(kpis.dealsClosedQTD.value)}
+          subtitle="Entered Funded / Invoiced this quarter"
+          loading={kpis.dealsClosedQTD.loading}
         />
-        <StatCard 
-          title="Revenue (QTD)" 
-          value="$1.8M" 
-          subtitle="Quarter to date"
-          trend="down"
-          trendValue="-5% vs prior quarter"
+        <StatCard
+          title="Revenue (QTD)"
+          value={fmtMoney(kpis.revenueQTD.value)}
+          subtitle="5th Line Capital Advisors · QBO"
+          loading={kpis.revenueQTD.loading}
         />
-        <StatCard 
-          title="Avg Deal Size" 
-          value="$3.2M" 
-          subtitle="Last 12 months"
+        <StatCard
+          title="Avg. Deal Size"
+          value={fmtMoney(kpis.avgDealSize.value)}
+          subtitle="Entered Final Credit Items · Trailing 12 mo."
+          loading={kpis.avgDealSize.loading}
         />
       </div>
 
