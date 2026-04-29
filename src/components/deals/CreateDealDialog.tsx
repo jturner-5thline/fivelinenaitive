@@ -361,6 +361,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
+                        type="button"
                         className={`w-full justify-between font-normal h-9 ${selectedDealTypes.length === 0 ? 'border-destructive/40' : ''}`}
                       >
                         {selectedDealTypes.length > 0 ? (
@@ -382,7 +383,15 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     </PopoverTrigger>
                     <PopoverContent className="w-full p-2" align="start">
                       <div className="space-y-1">
-                        {availableDealTypes.map((type) => {
+                        {isLoadingDealTypes && availableDealTypes.length === 0 ? (
+                          <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                            Loading deal types…
+                          </div>
+                        ) : availableDealTypes.length === 0 ? (
+                          <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                            No deal types available — contact an admin.
+                          </div>
+                        ) : availableDealTypes.map((type) => {
                           const isSelected = selectedDealTypes.includes(type.id);
                           return (
                             <button
