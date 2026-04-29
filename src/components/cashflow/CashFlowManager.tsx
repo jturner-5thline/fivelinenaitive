@@ -448,6 +448,8 @@ export function CashFlowManager() {
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [cashInDialogOpen, setCashInDialogOpen] = useState(false);
   const [cellCommentCount, setCellCommentCount] = useState(0);
+  // Lifted from WeeklyReportTab so headline KPIs can scope to (current week → +weeksFuture).
+  const [weeksFuture, setWeeksFuture] = useState<number>(12);
 
   // Entity (account) and Category filters for Configure-driven KPIs/charts/grid
   const [filterEntities, setFilterEntities] = useState<string[]>([]);
