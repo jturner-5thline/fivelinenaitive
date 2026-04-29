@@ -1135,6 +1135,19 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const effectiveDealName =
     linkedDealName || thread.dealName || detailWorkflowAnalysis?.likely_deal?.name;
 
+  // Derive a lightweight default signature from the signed-in user's profile so
+  // the composer's ghost-text signature renders. Future iterations can replace
+  // this with a settings-driven value.
+  const { user } = useAuth();
+  const composerSignature = useMemo(() => {
+    const name =
+      (user?.user_metadata as any)?.full_name ||
+      (user?.user_metadata as any)?.name ||
+      (user?.email ? user.email.split('@')[0] : '');
+    if (!name) return undefined;
+    return `Best,\n${name}`;
+  }, [user?.email, user?.user_metadata]);
+
   // Hoist the latest message's full body load so the toolbar/dialog can see
   // its attachments (the per-message MessageBlock loads its own copy too —
   // both share the Nylas cache so this is cheap).
