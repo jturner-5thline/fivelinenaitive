@@ -26,6 +26,8 @@ import { useEmailContacts } from '@/hooks/useEmailContacts';
 import type { DraftSaveStatus } from '@/hooks/useEmailDraft';
 import type { TokenContext } from '@/hooks/useEmailSnippets';
 import { SnippetPicker } from './SnippetPicker';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Public surface
@@ -259,11 +261,43 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
     if (!hasContent) { setBodyError('Write a reply before sending'); return; }
     setIsSending(true);
     try {
+      if (opts.scheduledFor) {
+        const { data: userRes } = await supabase.auth.getUser();
+        const uid = userRes?.user?.id;
+        if (!uid) {
+          toast.error('Not signed in — cannot schedule send');
+          return;
+        }
+        const { error } = await supabase.from('scheduled_emails').insert({
+          user_id: uid,
+          to_recipients: recipients.to,
+          cc_recipients: recipients.cc,
+          bcc_recipients: recipients.bcc,
+          subject,
+          body_html: props.body,
+          metadata: {
+            autoLinkDeal: autoLink,
+            trackOpens,
+            dealId: props.dealId ?? null,
+            archiveAfterSend: !!opts.archiveAfterSend,
+          },
+          scheduled_for: opts.scheduledFor,
+          status: 'pending',
+        });
+        if (error) {
+          toast.error(`Could not schedule send — ${error.message}`);
+          return;
+        }
+        const when = new Date(opts.scheduledFor).toLocaleString();
+        toast.success(`Scheduled for ${when}`);
+        onDiscard();
+        return;
+      }
       await onSend({ ...opts, autoLinkDeal: autoLink, trackOpens });
     } finally {
       setIsSending(false);
     }
-  }, [hasRecipient, hasContent, onSend, autoLink, trackOpens]);
+  }, [hasRecipient, hasContent, onSend, onDiscard, autoLink, trackOpens, recipients, subject, props.body, props.dealId]);
 
   // ── Keyboard shortcuts: ⌘↵ send · ⌘J AI draft ───────────────────────────
   const handleBodyKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
