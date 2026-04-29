@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { EmailRichTextEditor } from './EmailRichTextEditor';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -1457,12 +1457,11 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
 
           {/* Body — grows to fill remaining space inside the scrollable region */}
           <div className="flex-1 min-h-[200px] flex flex-col">
-            <Textarea
-              value={body}
-              onChange={e => setBody(e.target.value)}
-              placeholder="Write your message..."
-              className="flex-1 min-h-[200px] border-0 resize-none focus-visible:ring-0 p-0 text-sm bg-transparent"
-              tabIndex={6}
+            <EmailRichTextEditor
+              content={body}
+              onChange={setBody}
+              minHeight={200}
+              className="flex-1 border-0 shadow-none"
             />
           </div>
 
