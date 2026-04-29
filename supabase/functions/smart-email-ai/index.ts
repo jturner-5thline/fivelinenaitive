@@ -301,7 +301,7 @@ ${h.most_overdue_item && (h.most_overdue_item.days_overdue ?? 0) >= 3
     let userContext = "";
     const { data: profile } = await supabase
       .from("profiles")
-      .select("display_name, first_name, last_name, email")
+      .select("display_name, first_name, last_name, email, email_signature")
       .eq("user_id", user.id)
       .single();
 
@@ -311,6 +311,10 @@ ${h.most_overdue_item && (h.most_overdue_item.days_overdue ?? 0) >= 3
 - Email: ${profile.email || user.email}
 `;
     }
+
+    // User-level signature (configured in Settings → Email) takes precedence
+    // over the company-level style guide signature when appending to AI drafts.
+    const userSignature = ((profile as any)?.email_signature || "").trim();
 
     // ─── Load company Email Style Guide (admin-managed) ─────────
     // Resolves the user's company, then fetches the configured signature,
@@ -530,7 +534,8 @@ CONFIRMING-DETAILS RULE (use when the deal context is thin or specific facts you
 - Also reflect this in the JSON: when you include the line, set "requires_more_context": true and list the missing fields in "missing_context_items".
 
 ${generationRule}
-- Do NOT include email signatures — the app handles that.
+- Do NOT include any sign-off or signature block (no "Best,", "Thanks,", name, title, phone, etc.) — the app appends the user's configured signature automatically.
+- End the body with the final sentence of content only. No closing line. No name.
 - Return ONLY valid JSON matching the required schema. No markdown fences, no commentary.
 ${hasSchedulingIntent ? "\n- SCHEDULING DETECTED: Only reference specific availability times if they were provided in the context. If no calendar data is provided, suggest the recipient propose times rather than inventing availability." : ""}
 
@@ -577,7 +582,11 @@ Generate ${wantSingle ? 1 : 2} draft ${effectiveDraftType} option${wantSingle ? 
       case "draft_reply": {
         systemPrompt = `You are an expert debt advisory professional at a capital advisory firm. Draft a professional reply email based on the deal context and conversation. Be concise, professional, and action-oriented. Output ONLY the email body text (no subject, no "From:", etc.).`;
         if (styleGuideBlock) systemPrompt += `\n${styleGuideBlock}`;
-        if (companySignature) systemPrompt += `\nAlways end the email body with this exact signature on its own lines:\n${companySignature}`;
+        {
+          const sig = userSignature || companySignature;
+          if (sig) systemPrompt += `\nAlways end the email body with this exact signature on its own lines (do NOT modify it, do NOT add any other closing line before it):\n${sig}`;
+          else systemPrompt += `\nDo NOT include any signature or sign-off — the app appends the user's signature automatically.`;
+        }
         userPrompt = `${dealContext}
 
 EMAIL THREAD:
@@ -595,7 +604,11 @@ Draft a professional reply to the most recent email in this thread. Consider the
       case "auto_draft": {
         systemPrompt = `You are an expert debt advisory professional at a capital advisory firm. You proactively draft reply emails when a response is needed. Your drafts should be concise, professional, and address any questions or requests in the latest email. Consider the full deal context for accuracy. Output ONLY the email body text (no subject, no "From:", etc.). Keep replies under 150 words unless the complexity requires more.`;
         if (styleGuideBlock) systemPrompt += `\n${styleGuideBlock}`;
-        if (companySignature) systemPrompt += `\nAlways end the email body with this exact signature on its own lines:\n${companySignature}`;
+        {
+          const sig = userSignature || companySignature;
+          if (sig) systemPrompt += `\nAlways end the email body with this exact signature on its own lines (do NOT modify it, do NOT add any other closing line before it):\n${sig}`;
+          else systemPrompt += `\nDo NOT include any signature or sign-off — the app appends the user's signature automatically.`;
+        }
         userPrompt = `${dealContext}
 
 EMAIL THREAD: "${threadData?.subject}"
@@ -1211,6 +1224,33 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
       parsed.cited_context_sources = merged.length > 0 ? merged : ["email_thread_only"];
       // Also expose the explicit injected-fields array for any UI that wants it.
       parsed.deal_context_used = modelInjected;
+
+      // ─── Append the user's configured signature to each draft body ───
+      // The model is instructed not to add any sign-off; we append the user's
+      // Settings → Email signature (or, as fallback, the company style-guide
+      // signature, then a sender-name fallback) so drafts always end with the
+      // user's actual signature instead of a generic "Best, <name>".
+      try {
+        const senderName =
+          (profile?.display_name as string | undefined)?.trim() ||
+          `${profile?.first_name || ""} ${profile?.last_name || ""}`.trim() ||
+          "";
+        const fallbackSig = senderName ? `Best,\n${senderName}` : "";
+        const sigToAppend = (userSignature || companySignature || fallbackSig).trim();
+        if (sigToAppend) {
+          const appendSig = (body: unknown): string => {
+            if (typeof body !== "string") return body as any;
+            let trimmed = body.replace(/[\s\n]+$/g, "");
+            // If the model already ended with this exact signature, leave it.
+            if (trimmed.endsWith(sigToAppend)) return trimmed;
+            return `${trimmed}\n\n${sigToAppend}`;
+          };
+          if (parsed.option_1_body) parsed.option_1_body = appendSig(parsed.option_1_body);
+          if (parsed.option_2_body) parsed.option_2_body = appendSig(parsed.option_2_body);
+        }
+      } catch (sigErr) {
+        console.warn("[smart-email-ai] signature append skipped:", sigErr);
+      }
     }
 
     // For analyze_thread_workflow, post-process to ensure deal_id resolution.
