@@ -41,13 +41,34 @@ import {
   type DueBoundaries,
 } from '@/lib/taskDateGrouping';
 
-// Stable column template — every column has a deterministic width so content
-// can never push a neighboring column off-axis. The title column uses
-// `minmax(0,1fr)` so its inner truncation can actually shrink (a bare `1fr`
-// in CSS Grid resolves to `minmax(auto, 1fr)`, which lets long unbroken
-// strings expand the track and overlap the next column).
+/**
+ * Stable column template for the My Tasks list. The header row and every
+ * data row use this same template so columns line up across rows and chevron
+ * / checkbox / owner / deal / due / priority / status sit on a single
+ * vertical centerline.
+ *
+ *   1  drag handle    20px (hidden until row hover)
+ *   2  expand chevron 20px
+ *   3  multi-select   20px
+ *   4  complete check 20px
+ *   5  star           20px
+ *   6  task name      minmax(240px, 1fr)  ← only growable column
+ *   7  owner          140px
+ *   8  collaborators   60px
+ *   9  deal           180px
+ *  10  due date       120px (right-aligned, tabular-nums)
+ *  11  priority pill  100px
+ *  12  status pill    120px
+ *  13  row actions     32px
+ */
 const TASK_GRID_COLS =
-  'grid-cols-[20px_16px_20px_16px_16px_minmax(0,1fr)_100px_60px_100px_140px_100px_100px_40px]';
+  'grid-cols-[20px_20px_20px_20px_20px_minmax(240px,1fr)_140px_60px_180px_120px_100px_120px_32px]';
+
+/** Locked row height — every data row, header row, and add-row uses this. */
+const TASK_ROW_MIN_H = 'min-h-[44px]';
+/** Pill column constants (kept as className tokens). */
+const PRIORITY_PILL_MIN_W = 'min-w-[72px]';
+const STATUS_PILL_MIN_W = 'min-w-[96px]';
 
 const STATUS_COLORS: Record<string, { label: string; bg: string; dot: string }> = {
   not_started: { label: 'Not Started', bg: '#7a8194', dot: '#7a8194' },
