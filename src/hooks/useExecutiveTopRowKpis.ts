@@ -209,7 +209,7 @@ function useTotalActiveDealVolume() {
 }
 
 // ── 2. Deals Closed (QTD): entered Funded/Invoiced this quarter ────
-function useDealsClosedQTD() {
+function useDealsClosed(window?: ExecKpiWindow) {
   const { company } = useCompany();
   const companyId = company?.id ?? null;
   const stages = useActivePipelineStageMap();
@@ -217,21 +217,24 @@ function useDealsClosedQTD() {
   const fundedStageId = stages.data?.fundedInvoicedStageId ?? null;
   const fundedLabel =
     (fundedStageId && stages.data?.stageLabelById.get(fundedStageId)) || 'Funded / Invoiced';
+  const winStart = window?.start ?? null;
+  const winEnd = window?.end ?? null;
 
   return useQuery({
     queryKey: [
       'exec-top-kpis',
-      'deals-closed-qtd',
+      'deals-closed',
       companyId,
       pipelineId,
       fundedStageId,
+      winStart?.toISOString() ?? 'qtd',
+      winEnd?.toISOString() ?? 'qtd',
     ],
     enabled: !!companyId && !!pipelineId && !!fundedStageId,
     staleTime: 60_000,
     queryFn: async () => {
-      const now = new Date();
-      const qStart = startOfQuarter(now);
-      const qEnd = endOfQuarter(now);
+      const start = winStart ?? startOfQuarter(new Date());
+      const end = winEnd ?? endOfQuarter(new Date());
 
       const { data, error } = await supabase
         .from('deal_stage_history')
@@ -239,8 +242,8 @@ function useDealsClosedQTD() {
         .eq('company_id', companyId)
         .eq('pipeline_id', pipelineId)
         .eq('to_stage', fundedStageId)
-        .gte('changed_at', qStart.toISOString())
-        .lte('changed_at', qEnd.toISOString());
+        .gte('changed_at', start.toISOString())
+        .lte('changed_at', end.toISOString());
       if (error) throw error;
 
       // Keep the EARLIEST entry per deal_id this quarter so the drilldown shows
