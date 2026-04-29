@@ -105,14 +105,51 @@ const handleTileKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, action: () =>
  */
 function WidgetTileSkeleton() {
   return (
-    <Card
-      className="!border-0 !bg-transparent !shadow-none p-[calc(var(--tile-size)*0.08)] h-full"
+    <div
+      className="rounded-2xl border border-border bg-card shadow-sm p-[calc(var(--tile-size)*0.14)] h-full flex flex-col items-center justify-center gap-[calc(var(--tile-size)*0.10)]"
       aria-hidden="true"
     >
-      <div className="flex flex-col items-center justify-center text-center gap-[calc(var(--tile-size)*0.12)] h-full">
-        <Skeleton className="h-[var(--tile-size)] w-[var(--tile-size)] rounded-lg" />
-        <Skeleton className="h-[calc(var(--tile-size)*0.18)] w-[calc(var(--tile-size)*0.6)]" />
-      </div>
+      <Skeleton className="h-7 w-7 rounded" />
+      <Skeleton className="h-3 w-16" />
+    </div>
+  );
+}
+
+/**
+ * Single shared dashboard quick-action tile. All 7 tiles use this.
+ */
+function QuickActionTile({
+  label,
+  icon: Icon,
+  category,
+  onClick,
+  onKeyDown,
+  className,
+  ariaLabel,
+}: {
+  label: string;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  category: TileCategory;
+  onClick: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLDivElement>) => void;
+  className?: string;
+  ariaLabel?: string;
+}) {
+  return (
+    <Card
+      className={cn(TILE_INTERACTIVE_CLASSES, className)}
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={onKeyDown}
+      aria-label={ariaLabel ?? label}
+    >
+      <span
+        aria-hidden="true"
+        className={cn('absolute left-0 right-0 top-0 h-[2px]', CATEGORY_BAR_CLASS[category])}
+      />
+      <Icon className={TILE_ICON_CLASSES} strokeWidth={1.75} />
+      <span className={TILE_LABEL_CLASSES}>{label}</span>
     </Card>
   );
 }
@@ -169,24 +206,13 @@ function EmailTileWithIntelligence({
         if (!e.currentTarget.contains(e.relatedTarget as Node)) scheduleClose();
       }}
     >
-      <Card
-        className={cn(TILE_INTERACTIVE_CLASSES, 'h-full overflow-hidden')}
+      <QuickActionTile
+        label="Email"
+        icon={Mail}
+        category="inbox"
         onClick={(e) => onOpen(e.currentTarget as HTMLElement)}
-        role="button"
-        tabIndex={0}
         onKeyDown={onKeyDown}
-      >
-        <div className="flex flex-col items-center justify-center text-center gap-[calc(var(--tile-size)*0.12)] h-full">
-          <div
-            className={TILE_CHIP_BASE}
-            style={{ background: TILE_CHIP_GRADIENTS.email }}
-          >
-            <TileChipGloss />
-            <Mail className="relative z-10 h-[calc(var(--tile-size)*0.5)] w-[calc(var(--tile-size)*0.5)]" style={{ color: '#c084f5' }} />
-          </div>
-          <span className={TILE_LABEL_CLASSES}>Email</span>
-        </div>
-      </Card>
+      />
 
       {/*
         Hover-anchored Email Intelligence panel.
