@@ -117,22 +117,29 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
     const t = setTimeout(() => {
       if (donutRef.current) {
         donutChart.current?.destroy();
+        // Pull donut accent colors from the shared chart palette tokens —
+        // matches Insights dashboard semantics (positive · warning · destructive).
+        const root = getComputedStyle(document.documentElement);
+        const hsl = (token: string) => `hsl(${root.getPropertyValue(token).trim()})`;
+        const onTrack = hsl('--chart-2');       // green / positive
+        const atRisk  = hsl('--chart-3');       // amber / warning
+        const offTrack = hsl('--destructive');  // red
         donutChart.current = new Chart(donutRef.current, {
           type: 'doughnut',
           data: {
             labels: ['On Track', 'At Risk', 'Off Track'],
             datasets: [{
               data: metrics.donutData,
-              backgroundColor: ['rgba(40,200,130,0.75)', 'rgba(220,175,40,0.75)', 'rgba(220,70,85,0.5)'],
-              borderColor: ['rgba(40,220,140,0.9)', 'rgba(240,200,50,0.9)', 'rgba(255,100,115,0.6)'],
-              borderWidth: 2,
+              backgroundColor: [onTrack, atRisk, offTrack],
+              borderColor: [onTrack, atRisk, offTrack],
+              borderWidth: 1,
               hoverOffset: 6
             }]
           },
           options: {
             responsive: true, maintainAspectRatio: false, cutout: '68%',
             plugins: {
-              legend: { display: true, position: 'bottom', labels: { color: 'rgba(160,200,220,0.6)', font: { size: 10 }, padding: 14, boxWidth: 10, boxHeight: 10 } },
+              legend: { display: true, position: 'bottom', labels: { color: hsl('--muted-foreground'), font: { size: 10 }, padding: 14, boxWidth: 10, boxHeight: 10 } },
               tooltip: { callbacks: { label: (ctx: any) => ' $' + ctx.parsed.toFixed(1) + 'MM' } }
             }
           }
@@ -140,16 +147,19 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
       }
       if (barRef.current) {
         barChart.current?.destroy();
-        const gx = { ticks: { color: 'rgba(130,165,190,0.5)', font: { size: 9 } }, grid: { display: false }, border: { display: false } };
-        const gy = { ticks: { color: 'rgba(130,165,190,0.4)', font: { size: 9 }, callback: (v: any) => '$' + v + 'K' }, grid: { color: 'rgba(255,255,255,0.04)' }, border: { display: false } };
+        const root = getComputedStyle(document.documentElement);
+        const hsl = (token: string) => `hsl(${root.getPropertyValue(token).trim()})`;
+        const muted = hsl('--muted-foreground');
+        const gx = { ticks: { color: muted, font: { size: 9 } }, grid: { display: false }, border: { display: false } };
+        const gy = { ticks: { color: muted, font: { size: 9 }, callback: (v: any) => '$' + v + 'K' }, grid: { color: 'rgba(255,255,255,0.04)' }, border: { display: false } };
         barChart.current = new Chart(barRef.current, {
           type: 'bar',
           data: {
             labels: metrics.months,
             datasets: [
-              { label: 'Revenue', data: metrics.monthlyRevenue, backgroundColor: 'rgba(50,120,190,0.45)', borderColor: 'rgba(80,155,210,0.8)', borderWidth: 1, borderRadius: 4 },
-              { label: 'Commissions', data: metrics.monthlyCommissions, backgroundColor: 'rgba(210,60,75,0.4)', borderColor: 'rgba(220,70,85,0.75)', borderWidth: 1, borderRadius: 4 },
-              { label: 'Profit', data: metrics.monthlyProfit, backgroundColor: 'rgba(30,160,100,0.45)', borderColor: 'rgba(40,200,130,0.8)', borderWidth: 1, borderRadius: 4 }
+              { label: 'Revenue', data: metrics.monthlyRevenue, backgroundColor: hsl('--chart-1'), borderColor: hsl('--chart-1'), borderWidth: 1, borderRadius: 4 },
+              { label: 'Commissions', data: metrics.monthlyCommissions, backgroundColor: hsl('--destructive'), borderColor: hsl('--destructive'), borderWidth: 1, borderRadius: 4 },
+              { label: 'Profit', data: metrics.monthlyProfit, backgroundColor: hsl('--chart-2'), borderColor: hsl('--chart-2'), borderWidth: 1, borderRadius: 4 }
             ]
           },
           options: {
