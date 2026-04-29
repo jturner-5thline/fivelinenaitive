@@ -454,6 +454,44 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <Popover open={schedulePickerOpen} onOpenChange={setSchedulePickerOpen}>
+        <PopoverTrigger asChild>
+          {/* Anchor only; opens via dropdown item */}
+          <span className="sr-only" aria-hidden />
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-72 p-3 space-y-2">
+          <div className="text-xs font-medium">Schedule send</div>
+          <Input
+            type="datetime-local"
+            value={scheduleValue}
+            min={new Date(Date.now() + 60_000).toISOString().slice(0, 16)}
+            onChange={(e) => setScheduleValue(e.target.value)}
+            className="h-8 text-xs"
+          />
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setSchedulePickerOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="h-7 text-xs"
+              disabled={!canSend || !scheduleValue}
+              onClick={() => {
+                const iso = new Date(scheduleValue).toISOString();
+                setSchedulePickerOpen(false);
+                void runSend({ scheduledFor: iso });
+              }}
+            >
+              Schedule
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 
