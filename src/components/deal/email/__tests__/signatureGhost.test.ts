@@ -66,8 +66,9 @@ describe('signature ghost visual contract (composer source invariants)', () => {
       'utf8',
     );
 
-    // 1. Ghost is gated by a truthy `signature` check.
-    expect(src).toMatch(/\{signature && \(/);
+    // 1. Ghost is gated by the runtime guard helper (never raw signature truthy
+    //    check anymore — the guard owns the decision).
+    expect(src).toMatch(/shouldShowSignatureGhost\(\s*signature\s*,\s*body\s*\)/);
 
     // 2. Ghost is aria-hidden so AT users never hear it as part of the body.
     expect(src).toMatch(/aria-hidden/);
@@ -75,9 +76,13 @@ describe('signature ghost visual contract (composer source invariants)', () => {
     // 3. Ghost is non-selectable so it can't be copied into the body.
     expect(src).toMatch(/select-none/);
 
-    // 4. CRITICAL: the textarea's `value` must be `body` only — never a
-    //    template-literal that splices in `signature`.
-    expect(src).not.toMatch(/value=\{[^}]*signature[^}]*\}/);
+    // 4. CRITICAL: nothing in the file may splice `signature` into the body —
+    //    no `body + signature`, no template literals mixing them, no
+    //    onBodyChange call that forwards `signature`. The textarea's `value`
+    //    must remain `body` verbatim.
+    expect(src).toMatch(/value=\{body\}/);
+    expect(src).not.toMatch(/body\s*\+\s*signature/);
+    expect(src).not.toMatch(/signature\s*\+\s*body/);
     expect(src).not.toMatch(/onBodyChange\([^)]*signature[^)]*\)/);
   });
 });
