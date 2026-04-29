@@ -2,6 +2,20 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2, SlidersHorizontal } from 'lucide-react';
 import { useAsanaGoals, type AsanaGoalRow } from '@/hooks/useAsanaGoals';
 import { useAsanaGoalFilterPrefs } from '@/hooks/useAsanaGoalFilterPrefs';
+import {
+  DEFAULT_ASANA_GOAL_FILTERS,
+  type AsanaGoalFilterTemplates,
+  type QKey,
+  type HKey,
+} from './asanaGoalFilterTypes';
+// Re-export so any existing consumers importing these from
+// QuarterlyInsightsReport continue to work.
+export {
+  DEFAULT_ASANA_GOAL_FILTERS,
+  type AsanaGoalFilterTemplates,
+  type QKey,
+  type HKey,
+};
 
 /* ─────────────────────────────────────────────────────────────────────────
    Quarterly Insights Report — reusable full report page for the existing
@@ -46,24 +60,6 @@ function monthsForQuarter(quarter: string): string[] {
 /* ── Asana Goals: period → filter mapping ────────────────────────────────
    Templates may include "{year}" which is replaced with the report's year.
    This keeps the mapping configurable yet generic across years. */
-export type QKey = 'Q1' | 'Q2' | 'Q3' | 'Q4';
-export type HKey = 'H1' | 'H2';
-export interface AsanaGoalFilterTemplates {
-  quarters: Record<QKey, string>;
-  halves: Record<HKey, string>;
-}
-export const DEFAULT_ASANA_GOAL_FILTERS: AsanaGoalFilterTemplates = {
-  quarters: {
-    Q1: 'Q1 {year}',
-    Q2: 'Q2 {year}',
-    Q3: 'Q3 {year}',
-    Q4: 'Q4 {year}',
-  },
-  halves: {
-    H1: 'H1 {year}',
-    H2: 'H2 {year}',
-  },
-};
 const Q_TO_HALF: Record<QKey, HKey> = { Q1: 'H1', Q2: 'H1', Q3: 'H2', Q4: 'H2' };
 const MONTH_TO_Q: Record<string, QKey> = {
   January: 'Q1', February: 'Q1', March: 'Q1',
