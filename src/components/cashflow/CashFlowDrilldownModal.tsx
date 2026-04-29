@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Search, X } from 'lucide-react';
 import {
   generateOccurrences,
-  resolveCategoryAlias,
+  resolveCategoryToGridRow,
   CASH_IN_CATEGORIES,
   CASH_OUT_CATEGORIES,
   type ScheduledCashFlow,
