@@ -94,6 +94,20 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   private handleWindowError = (e: ErrorEvent) => {
+    // Benign browser noise — Chrome fires this when a ResizeObserver callback
+    // schedules a layout change that itself triggers another resize on the
+    // next frame. It does not indicate a real bug and must NOT trip the
+    // fallback overlay. Silently swallow so it doesn't bubble to other
+    // listeners (e.g. Vite's HMR overlay).
+    const msg = e.message || (e.error instanceof Error ? e.error.message : '');
+    if (
+      /ResizeObserver loop completed with undelivered notifications/i.test(msg) ||
+      /ResizeObserver loop limit exceeded/i.test(msg)
+    ) {
+      e.preventDefault?.();
+      e.stopImmediatePropagation?.();
+      return;
+    }
     const ctx = this.snapshotContext();
     console.error(
       '[RUNTIME ERROR] window.error:',
@@ -120,6 +134,15 @@ export class ErrorBoundary extends Component<Props, State> {
   };
 
   private handleRejection = (e: PromiseRejectionEvent) => {
+    const reasonMsgEarly =
+      e.reason instanceof Error ? e.reason.message : String(e.reason ?? '');
+    if (
+      /ResizeObserver loop completed with undelivered notifications/i.test(reasonMsgEarly) ||
+      /ResizeObserver loop limit exceeded/i.test(reasonMsgEarly)
+    ) {
+      e.preventDefault?.();
+      return;
+    }
     const ctx = this.snapshotContext();
     const reason = e.reason;
     const message = reason instanceof Error ? reason.message : String(reason);
