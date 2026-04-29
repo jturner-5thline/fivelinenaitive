@@ -748,7 +748,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
             <span>AI draft inserted</span>
             <button
               type="button"
-              onClick={() => { aiChipDismiss(); textareaRef.current?.focus(); }}
+              onClick={() => { aiChipDismiss(); }}
               className="hover:underline"
             >
               Edit
@@ -765,22 +765,28 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
         </div>
       )}
 
-      {/* Body + signature ghost */}
-      <div className="px-4 pt-3 pb-1 flex-1 min-h-0">
-        <Textarea
-          ref={textareaRef}
-          value={body}
-          onChange={(e) => onBodyChange(e.target.value)}
-          onKeyDown={handleBodyKeyDown}
-          onBlur={onFieldBlur}
-          placeholder="Write your reply… or press ⌘J to draft with AI."
-          className={cn(
-            'border-0 resize-none focus-visible:ring-0 p-0 text-sm bg-transparent w-full placeholder:text-muted-foreground/70',
-            'focus-visible:outline-none',
-          )}
-          style={{ minHeight: bodyMinHeight }}
-          aria-label="Email body"
-          aria-invalid={!!bodyError}
+      {/* Body — rich text editor */}
+      <div
+        className="px-4 pt-3 pb-1 flex-1 min-h-0"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            void runSend();
+            return;
+          }
+          if (e.key.toLowerCase() === 'j' && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            requestAiDraft();
+          }
+        }}
+        onBlur={onFieldBlur}
+      >
+        <EmailRichTextEditor
+          content={body}
+          onChange={onBodyChange}
+          dataRoomUrl={dataRoomUrl}
+          minHeight={bodyMinHeight}
+          className="border-0 shadow-none"
         />
         {shouldShowSignatureGhost(signature, body) && (
           <div
@@ -828,41 +834,81 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
       </div>
 
       {/* Attachments */}
-      {attachments.length > 0 && (
+      {(files.length > 0 || attachments.length > 0) && (
         <div className="px-4 pb-1.5">
           <div className="flex flex-wrap gap-1.5">
-            {attachments.map((name) => (
-              <Badge key={name} variant="secondary" className="text-[10px] gap-1 pr-1 py-0.5">
-                <Paperclip className="h-2.5 w-2.5" />{name}
+            {(files.length > 0 ? files.map((f) => ({ name: f.name, size: f.size })) : attachments.map((n) => ({ name: n, size: 0 }))).map((a) => (
+              <Badge key={a.name} variant="secondary" className="text-[10px] gap-1 pr-1 py-0.5">
+                <Paperclip className="h-2.5 w-2.5" />
+                <span className="max-w-[14rem] truncate">{a.name}</span>
+                {a.size > 0 && (
+                  <span className="text-muted-foreground/70">{formatBytes(a.size)}</span>
+                )}
                 <button
                   type="button"
-                  onClick={() => removeAttachment(name)}
+                  onClick={() => removeAttachment(a.name)}
                   className="ml-0.5 rounded-full hover:bg-muted p-0.5"
-                  aria-label={`Remove attachment ${name}`}
+                  aria-label={`Remove attachment ${a.name}`}
                 >
                   <X className="h-2.5 w-2.5" />
                 </button>
               </Badge>
             ))}
           </div>
+          {files.length > 0 && (
+            <div className="text-[10px] text-muted-foreground mt-1">
+              {files.length} file{files.length === 1 ? '' : 's'} · {formatBytes(totalBytes)} of {formatBytes(maxAttachmentBytes)}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Toolbar — Format · Insert · AI · Send */}
+      {/* Hidden file input wired to the paperclip */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={(e) => handleFilesSelected(e.target.files)}
+      />
+
+      {/* Toolbar — Insert · AI · Send (formatting lives in the editor toolbar) */}
       <div className="flex items-center flex-wrap gap-y-1 px-4 py-2 border-t border-border/50">
         <ToolbarZone>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleBold} aria-label="Bold"><Bold className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent side="top" className="text-xs">Bold (⌘B)</TooltipContent></Tooltip>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleItalic} aria-label="Italic"><Italic className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent side="top" className="text-xs">Italic (⌘I)</TooltipContent></Tooltip>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleUnderline} aria-label="Underline"><Underline className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent side="top" className="text-xs">Underline (⌘U)</TooltipContent></Tooltip>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleLink} aria-label="Insert link"><LinkIcon className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent side="top" className="text-xs">Link</TooltipContent></Tooltip>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleBullet} aria-label="Bulleted list"><List className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent side="top" className="text-xs">Bulleted list</TooltipContent></Tooltip>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleNumbered} aria-label="Numbered list"><ListOrdered className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent side="top" className="text-xs">Numbered list</TooltipContent></Tooltip>
-        </ToolbarZone>
-
-        <ToolbarDivider />
-
-        <ToolbarZone>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" className="gap-1 text-muted-foreground h-7 text-xs" onClick={handleAddAttachment} aria-label="Attach file"><Paperclip className="h-3 w-3" />Attach</Button></TooltipTrigger><TooltipContent side="top" className="text-xs">Attach a file</TooltipContent></Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1 text-muted-foreground h-7 text-xs"
+                onClick={triggerFilePicker}
+                aria-label="Attach file"
+              >
+                <Paperclip className="h-3 w-3" />Attach
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              Attach a file (max {Math.round(maxAttachmentBytes / (1024 * 1024))}MB total)
+            </TooltipContent>
+          </Tooltip>
+          {dataRoomUrl && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 text-muted-foreground h-7 text-xs"
+                  onClick={() => insertAtCursor(`<p><a href="${dataRoomUrl}" target="_blank" rel="noopener noreferrer">View Data Room</a></p>`)}
+                  aria-label="Insert Data Room link"
+                >
+                  <Database className="h-3 w-3" />Data Room
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                Insert FLEx data room link
+              </TooltipContent>
+            </Tooltip>
+          )}
           <SnippetPicker onInsert={insertAtCursor} tokenContext={tokenContext} />
           <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" disabled aria-label="Insert image"><ImageIcon className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent side="top" className="text-xs">Insert image (soon)</TooltipContent></Tooltip>
         </ToolbarZone>
