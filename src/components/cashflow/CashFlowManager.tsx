@@ -1050,8 +1050,26 @@ export function CashFlowManager() {
             Clear
           </button>
         )}
+        {activeTab === 'daily' && (
+          <span className="cf-filter-summary">
+            {`${filteredDaily.dates.length} days`}
+            {isConfigureFilterActive && (
+              <span style={{ marginLeft: 8, opacity: 0.75 }}>
+                · Configure-only: {filteredScheduledItems.length} entr{filteredScheduledItems.length === 1 ? 'y' : 'ies'}
+              </span>
+            )}
+          </span>
+        )}
+        {activeTab === 'weekly' && isConfigureFilterActive && (
+          <span className="cf-filter-summary" style={{ opacity: 0.75 }}>
+            Configure-only: {filteredScheduledItems.length} entr{filteredScheduledItems.length === 1 ? 'y' : 'ies'}
+          </span>
+        )}
         {activeTab === 'weekly' && (
-          <>
+          <div
+            className="cf-filter-actions"
+            style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+          >
             <button
               type="button"
               className="cf-pill"
@@ -1091,32 +1109,15 @@ export function CashFlowManager() {
                 </span>
               )}
             </button>
-          </>
-        )}
-        {activeTab === 'daily' && (
-          <span className="cf-filter-summary">
-            {`${filteredDaily.dates.length} days`}
-            {isConfigureFilterActive && (
-              <span style={{ marginLeft: 8, opacity: 0.75 }}>
-                · Configure-only: {filteredScheduledItems.length} entr{filteredScheduledItems.length === 1 ? 'y' : 'ies'}
-              </span>
-            )}
-          </span>
-        )}
-        {activeTab === 'weekly' && isConfigureFilterActive && (
-          <span className="cf-filter-summary" style={{ opacity: 0.75 }}>
-            Configure-only: {filteredScheduledItems.length} entr{filteredScheduledItems.length === 1 ? 'y' : 'ies'}
-          </span>
-        )}
-        {activeTab === 'weekly' && (
-          <button
-            type="button"
-            className="cf-btn cf-btn-secondary"
-            style={{ marginLeft: activeTab === 'weekly' && !isConfigureFilterActive ? 'auto' : undefined }}
-            onClick={() => setScheduledModalOpen(true)}
-          >
-            Configure
-          </button>
+            <button
+              type="button"
+              className="cf-pill"
+              onClick={() => setScheduledModalOpen(true)}
+              title="Configure scheduled payments & revenue"
+            >
+              Configure
+            </button>
+          </div>
         )}
       </div>
 
