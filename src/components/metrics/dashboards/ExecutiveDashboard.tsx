@@ -76,14 +76,25 @@ const STATUS_BUCKETS = [
 ];
 const STATUS_COLORS = STATUS_BUCKETS.map(b => b.color);
 
-function useDealsByStatusFee() {
+function useDealsByStatusFee(window?: { start: Date; end: Date }) {
   return useQuery({
-    queryKey: ['executive-dashboard', 'deals-by-status-fee'],
+    queryKey: [
+      'executive-dashboard',
+      'deals-by-status-fee',
+      window?.start.toISOString() ?? 'all',
+      window?.end.toISOString() ?? 'all',
+    ],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('deals')
-        .select('status, total_fee, company')
+        .select('status, total_fee, company, updated_at')
         .not('total_fee', 'is', null);
+      if (window) {
+        q = q
+          .gte('updated_at', window.start.toISOString())
+          .lte('updated_at', window.end.toISOString());
+      }
+      const { data, error } = await q;
       if (error) throw error;
 
       // Apply the global test-deal exclusion (Test-Niki's Store, Example Deal,
