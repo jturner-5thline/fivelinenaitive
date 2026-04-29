@@ -77,6 +77,7 @@ export function PopOutComposer({
   const [subject, setSubject] = useState(initialDraft.subject);
   const [body, setBody] = useState(initialDraft.body);
   const [attachments, setAttachments] = useState<string[]>(initialDraft.attachments);
+  const [files, setFiles] = useState<File[]>([]);
   const [minimized, setMinimized] = useState(false);
 
   // Floating window state
@@ -142,10 +143,9 @@ export function PopOutComposer({
   const executeSend = useCallback(async (opts: ComposerSendOptions) => {
     clearPreSendAlert();
     if (recipients.to.length === 0) { toast.error('Please add a recipient'); return; }
-    await new Promise(r => setTimeout(r, 1200));
     const toEmail = recipients.to[0];
     const recipientName = toEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    onSend({
+    await onSend({
       subject,
       from_name: 'You',
       from_email: 'jturner@5thline.co',
@@ -153,6 +153,7 @@ export function PopOutComposer({
       to_email: recipients.to.join(', '),
       snippet: body.substring(0, 120),
       body_preview: body,
+      body_html: body,
       received_at: new Date().toISOString(),
       is_read: true,
       is_starred: false,
@@ -163,9 +164,10 @@ export function PopOutComposer({
       is_follow_up: false,
       needs_response: false,
       category: 'deal',
+      _outgoing_files: files.length > 0 ? files : undefined,
     }, opts);
     toast.success('Email sent successfully', { description: `To: ${recipients.to.join(', ')}`, icon: '✉️' });
-  }, [recipients.to, subject, body, attachments, onSend, clearPreSendAlert]);
+  }, [recipients.to, subject, body, attachments, files, onSend, clearPreSendAlert]);
 
   const handleSend = useCallback(async (opts: ComposerSendOptions) => {
     if (recipients.to.length === 0) { toast.error('Please add a recipient'); return; }
@@ -275,6 +277,7 @@ export function PopOutComposer({
           onBodyChange={setBody}
           attachments={attachments}
           onAttachmentsChange={setAttachments}
+          onFilesChange={setFiles}
           onSend={handleSend}
           onDiscard={onDiscard}
           onFieldBlur={onFieldBlur}

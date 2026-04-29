@@ -25,6 +25,7 @@ export function InlineComposePanel({ onSend, onClose, replyTo, dealName, dealId,
   const [subject, setSubject] = useState(replyTo ? `Re: ${replyTo.subject}` : '');
   const [body, setBody] = useState('');
   const [attachments, setAttachments] = useState<string[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
   const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
 
   const resetForm = useCallback(() => {
@@ -32,6 +33,7 @@ export function InlineComposePanel({ onSend, onClose, replyTo, dealName, dealId,
     setSubject(replyTo ? `Re: ${replyTo.subject}` : '');
     setBody('');
     setAttachments([]);
+    setFiles([]);
   }, [replyTo]);
 
   const pendingSendOpts = useMemo<{ current: ComposerSendOptions }>(() => ({ current: {} }), []);
@@ -49,6 +51,7 @@ export function InlineComposePanel({ onSend, onClose, replyTo, dealName, dealId,
       to_email: recipients.to.join(', '),
       snippet: body.substring(0, 120),
       body_preview: body,
+      body_html: body,
       received_at: new Date().toISOString(),
       is_read: true,
       is_starred: false,
@@ -59,10 +62,11 @@ export function InlineComposePanel({ onSend, onClose, replyTo, dealName, dealId,
       is_follow_up: false,
       needs_response: false,
       category: 'deal',
+      _outgoing_files: files.length > 0 ? files : undefined,
     }, opts);
     resetForm();
     onClose();
-  }, [recipients.to, subject, body, attachments, onSend, resetForm, onClose, clearPreSendAlert]);
+  }, [recipients.to, subject, body, attachments, files, onSend, resetForm, onClose, clearPreSendAlert]);
 
   const handleSend = useCallback(async (opts: ComposerSendOptions) => {
     if (recipients.to.length === 0) { toast.error('Please add a recipient'); return; }
@@ -100,6 +104,7 @@ export function InlineComposePanel({ onSend, onClose, replyTo, dealName, dealId,
           onBodyChange={setBody}
           attachments={attachments}
           onAttachmentsChange={setAttachments}
+          onFilesChange={setFiles}
           onSend={handleSend}
           onDiscard={handleDiscard}
           dealName={dealName}

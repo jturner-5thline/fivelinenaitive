@@ -64,6 +64,7 @@ export function InlineReplyComposer({
   const [subject, setSubject] = useState(initialDraft?.subject ?? `Re: ${replyTo.subject}`);
   const [body, setBody] = useState(initialDraft?.body ?? '');
   const [attachments, setAttachments] = useState<string[]>(initialDraft?.attachments ?? []);
+  const [files, setFiles] = useState<File[]>([]);
 
   const getCurrentDraft = useCallback((): ReplyDraft => ({
     to: emailArrayToString(recipients.to),
@@ -91,10 +92,9 @@ export function InlineReplyComposer({
       toast.error('Please add a recipient');
       return;
     }
-    await new Promise(r => setTimeout(r, 1200));
     const toEmail = toEmails[0];
     const recipientName = toEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    onSend({
+    await onSend({
       subject,
       from_name: 'You',
       from_email: 'jturner@5thline.co',
@@ -102,6 +102,7 @@ export function InlineReplyComposer({
       to_email: toEmails.join(', '),
       snippet: body.substring(0, 120),
       body_preview: body,
+      body_html: body,
       received_at: new Date().toISOString(),
       is_read: true,
       is_starred: false,
@@ -112,9 +113,10 @@ export function InlineReplyComposer({
       is_follow_up: false,
       needs_response: false,
       category: 'deal',
+      _outgoing_files: files.length > 0 ? files : undefined,
     }, opts);
     toast.success('Email sent successfully', { description: `To: ${toEmails.join(', ')}`, icon: '✉️' });
-  }, [recipients.to, subject, body, attachments, onSend, clearPreSendAlert]);
+  }, [recipients.to, subject, body, attachments, files, onSend, clearPreSendAlert]);
 
   const pendingSendOpts = useMemo<{ current: ComposerSendOptions }>(() => ({ current: {} }), []);
 
@@ -157,6 +159,7 @@ export function InlineReplyComposer({
         onBodyChange={setBody}
         attachments={attachments}
         onAttachmentsChange={setAttachments}
+        onFilesChange={setFiles}
         onSend={handleSend}
         onDiscard={onDiscard}
         onPopOut={() => onPopOut(getCurrentDraft())}

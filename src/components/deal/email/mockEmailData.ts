@@ -57,6 +57,16 @@ export interface MockEmail {
   deal_name?: string;
   ai_summary?: string;
   ai_sentiment?: 'positive' | 'neutral' | 'needs_attention';
+  /**
+   * Transient: real File objects attached by the composer for an outbound
+   * send. Not persisted to mock data — used only for the Nylas hand-off.
+   */
+  _outgoing_files?: File[];
+  /**
+   * Transient: provider message id this outbound email is replying to.
+   * Used for Nylas threading (In-Reply-To/References).
+   */
+  _reply_to_message_id?: string;
 }
 
 const now = new Date();

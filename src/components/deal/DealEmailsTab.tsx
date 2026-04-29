@@ -107,6 +107,10 @@ interface DealEmailsTabProps {
     bodyHtml?: string;
     cc?: string[];
     bcc?: string[];
+    /** Real File objects to attach (Gmail 25MB total cap, enforced server-side). */
+    attachments?: File[];
+    /** Provider message id to thread the outbound reply under (Nylas). */
+    replyToMessageId?: string;
   }) => Promise<any>;
   /** Pagination — invoked when user clicks "Load more" or hits the auto-load sentinel */
   onLoadMore?: () => void | Promise<void>;
@@ -956,6 +960,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         to: p.to,
         subject: p.subject,
         body: p.body,
+        bodyHtml: emailData.body_html,
+        attachments: emailData._outgoing_files,
       }),
       onSent: () => {
         setEmails(prev => [{ ...emailData, id: `mock-sent-${Date.now()}`, threadId }, ...prev]);
@@ -1905,6 +1911,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                       to: p.to,
                       subject: p.subject,
                       body: p.body,
+                      bodyHtml: emailData.body_html,
+                      attachments: emailData._outgoing_files,
+                      replyToMessageId: emailData._reply_to_message_id,
                     }),
                     onSent: () => {
                       setEmails(prev => [{ ...emailData, id: `mock-sent-${Date.now()}`, threadId }, ...prev]);
