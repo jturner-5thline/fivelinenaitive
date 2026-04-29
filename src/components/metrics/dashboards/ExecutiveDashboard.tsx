@@ -508,6 +508,50 @@ export function ExecutiveDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Week stepper — drives the time-bound metrics on this page */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={goPrev}
+            aria-label="Previous week"
+            className="h-8 w-8 p-0"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="min-w-[180px] text-center px-3 py-1.5 rounded-md bg-white/5 border border-white/10">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Week of
+            </p>
+            <p className="text-xs font-medium tabular-nums">{selectedWindow.label}</p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={goNext}
+            disabled={isCurrentWeek}
+            aria-label="Next week"
+            className="h-8 w-8 p-0"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          {!isCurrentWeek && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={goCurrent}
+              className="h-8 text-xs"
+            >
+              Current week
+            </Button>
+          )}
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Mon → Sun · Total Active Deal Volume is always live
+        </p>
+      </div>
+
       {/* Row 1: Key Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
