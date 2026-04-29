@@ -207,6 +207,13 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
   const [recipientError, setRecipientError] = useState<string | null>(null);
   const [aiInsertedAt, setAiInsertedAt] = useState<number | null>(null);
   const [aiPending, setAiPending] = useState(false);
+  const [schedulePickerOpen, setSchedulePickerOpen] = useState(false);
+  const [scheduleValue, setScheduleValue] = useState<string>(() => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() + 60);
+    d.setSeconds(0, 0);
+    return d.toISOString().slice(0, 16); // yyyy-MM-ddTHH:mm
+  });
 
   // Drag-to-resize state (inline only)
   const [extraHeight, setExtraHeight] = useState(0);
