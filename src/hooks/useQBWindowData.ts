@@ -113,3 +113,78 @@ export function useQBRevenueByWindow(window: TimeWindow, realmId?: string | null
     staleTime: 10_000,
   });
 }
+
+/**
+ * Query QuickBooks invoices for an arbitrary [startDate, endDate] inclusive
+ * range and optional realmId. Mirrors `useQBRevenueByWindow` so the
+ * KPIDetailCard can drive its main + breakdown values from the dashboard's
+ * selected quarter (or any custom period) and compute period-over-period
+ * deltas against the immediately preceding period of the same length.
+ */
+export function useQBRevenueByDateRange(
+  startDate: string | null,
+  endDate: string | null,
+  realmId?: string | null,
+) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['qb-revenue-range', user?.id, startDate, endDate, realmId],
+    queryFn: async () => {
+      let query = supabase
+        .from('quickbooks_invoices')
+        .select('txn_date, total_amt')
+        .order('txn_date', { ascending: true });
+
+      if (realmId) query = query.eq('realm_id', realmId);
+      if (startDate) query = query.gte('txn_date', startDate);
+      if (endDate) query = query.lte('txn_date', endDate);
+
+      const { data: rows, error } = await query;
+      if (error) throw error;
+
+      const periodMap = new Map<string, { label: string; amount: number }>();
+      for (const row of rows ?? []) {
+        if (!row.txn_date) continue;
+        const d = new Date(row.txn_date + 'T00:00:00');
+        const key = row.txn_date.slice(0, 7);
+        const label = d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+        const existing = periodMap.get(key);
+        if (existing) existing.amount += row.total_amt ?? 0;
+        else periodMap.set(key, { label, amount: row.total_amt ?? 0 });
+      }
+
+      const sorted = Array.from(periodMap.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([, v]) => ({ period: v.label, amount: v.amount }));
+
+      const total = sorted.reduce((s, r) => s + r.amount, 0);
+      return { periods: sorted, total };
+    },
+    enabled: !!user && !!startDate && !!endDate,
+    staleTime: 10_000,
+  });
+}
+
+/**
+ * Given an inclusive date range, return the immediately preceding range of
+ * identical length. Used to compute "vs Previous Period" deltas that align
+ * to whatever the user has selected (a quarter → prior quarter, a month →
+ * prior month, a custom span → the prior span of the same length).
+ */
+export function getPriorDateRange(
+  startDate: string,
+  endDate: string,
+): { start: string; end: string } {
+  const start = new Date(startDate + 'T00:00:00');
+  const end = new Date(endDate + 'T00:00:00');
+  // Length in whole days, inclusive of both endpoints.
+  const lengthDays = Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+  const priorEnd = new Date(start);
+  priorEnd.setDate(priorEnd.getDate() - 1);
+  const priorStart = new Date(priorEnd);
+  priorStart.setDate(priorStart.getDate() - (lengthDays - 1));
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return { start: fmt(priorStart), end: fmt(priorEnd) };
+}

@@ -615,6 +615,7 @@ export function ManagementSnapshotDashboard({
                 timeWindow={props.timeWindow}
                 entityFilter={props.entityFilter}
                 isEditMode={isEditMode}
+                selectedPeriod={selectedQuarter}
               />
             ) : cardId === 'avg-rev-per-client' ? (
               <AvgRevenuePerClientWidget />
