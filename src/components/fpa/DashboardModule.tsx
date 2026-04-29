@@ -203,6 +203,7 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
               </TooltipContent>
             </Tooltip>
           )}
+          {headerExtras}
         </div>
       </div>
 
