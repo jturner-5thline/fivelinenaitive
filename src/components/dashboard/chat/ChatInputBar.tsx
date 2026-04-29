@@ -322,9 +322,9 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
         </div>
       )}
 
-      <div className="flex items-end gap-2 border border-[hsl(263,40%,30%,0.3)] bg-[linear-gradient(135deg,hsl(260,20%,10%,0.3)_0%,hsl(263,18%,8%,0.4)_100%)] backdrop-blur-sm rounded-xl px-1 transition-all duration-200 focus-within:border-[hsl(263,50%,40%,0.5)] focus-within:shadow-[0_0_12px_hsl(263,40%,30%,0.15)]">
+      <div className="flex items-end gap-2 border border-border/40 bg-background/40 rounded-lg px-1 transition-all duration-200 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 focus-within:ring-offset-0">
         <div className="relative flex-1">
-          <Sparkles className="absolute left-3 top-3 h-4 w-4 text-primary" />
+          <Sparkles className="absolute left-3 top-2.5 h-4 w-4 text-primary" />
           <Textarea
             ref={textareaRef as any}
             placeholder={
@@ -339,7 +339,7 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
             onBlur={onBlur}
             rows={1}
             className={cn(
-              "pl-10 pr-3 min-h-[40px] max-h-[120px] resize-none border-0 text-sm placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent",
+              "pl-10 pr-3 py-2 min-h-[36px] max-h-[112px] resize-none border-0 text-sm placeholder:text-muted-foreground/70 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent",
               isListening && "placeholder:text-destructive placeholder:animate-pulse"
             )}
             disabled={isLoading}
