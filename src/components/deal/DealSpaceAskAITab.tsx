@@ -332,6 +332,27 @@ CRITICAL RULES:
       )));
       toast({ title: 'Email sent', description: `Sent to ${draft.lenderName}` });
 
+      // Log to deal activity timeline so the recipient + lender are auditable.
+      // Fire-and-forget — never block UX on logging failures.
+      void supabase.from('activity_logs').insert({
+        deal_id: dealId,
+        activity_type: 'email_sent',
+        description: `Sent submission email to ${draft.lenderName} (${recipient}): "${draft.subject}"`,
+        metadata: {
+          source: 'naitive_lender_submission',
+          lender_name: draft.lenderName,
+          lender_id: draft.lenderId ?? null,
+          contact_id: draft.selectedContactId ?? null,
+          to_email: recipient,
+          cc: splitEmails(draft.cc),
+          bcc: splitEmails(draft.bcc),
+          subject: draft.subject,
+          sent_at: new Date().toISOString(),
+        },
+      }).then(({ error: logErr }) => {
+        if (logErr) console.warn('[lender-submission] activity log failed:', logErr.message);
+      });
+
       // Auto-advance to next unsent draft, staying inside the modal.
       setActiveDraftIndex((curr) => {
         if (curr !== index) return curr;
