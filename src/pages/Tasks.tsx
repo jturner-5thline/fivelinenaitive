@@ -622,12 +622,12 @@ export default function Tasks() {
       */}
       <div className="flex flex-col h-full bg-transparent">
         {/* Header — title + muted summary + segmented view control */}
-        <div className="flex items-end justify-between px-6 pt-5 pb-3 min-w-0 gap-4 flex-nowrap">
+        <div className="flex items-center justify-between px-6 pt-5 pb-3 min-w-0 gap-4 flex-nowrap">
           <div className="min-w-0">
             <h1 className="text-[20px] font-semibold tracking-tight leading-none" style={{ color: '#f3f4f6' }}>
               {ownerFilter === 'mine' ? 'My Tasks' : ownerFilter === 'others' ? "Others' Tasks" : 'All Tasks'}
             </h1>
-            <p className="mt-1.5 text-[12px]" style={{ color: '#7a8194' }}>
+            <p className="mt-1.5 text-[12px] tabular-nums" style={{ color: '#7a8194' }}>
               <span>{filtered.filter(t => t.status !== 'complete').length} open</span>
               {overdueCount > 0 && (
                 <>
@@ -652,7 +652,7 @@ export default function Tasks() {
                     key={tab.key}
                     onClick={() => setViewMode(tab.key as ViewMode)}
                     className={cn(
-                      'flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-[5px] transition-all'
+                      'flex items-center gap-1.5 px-2.5 h-[22px] text-[11px] font-medium rounded-[5px] transition-all'
                     )}
                     style={{
                       backgroundColor: isActive ? 'rgba(126,184,247,0.12)' : 'transparent',
@@ -708,7 +708,7 @@ export default function Tasks() {
               >
                 {s.label}
                 <span
-                  className="text-[10px] px-1.5 rounded-full"
+                  className="text-[10px] px-1.5 rounded-full tabular-nums min-w-[20px] text-center"
                   style={{
                     backgroundColor: isActive ? 'rgba(126,184,247,0.15)' : 'rgba(255,255,255,0.04)',
                     color: isActive ? '#cfe3ff' : '#7a8194',
@@ -740,10 +740,10 @@ export default function Tasks() {
         )}
 
         {/* Filter presets bar — quick switch between saved combinations */}
-        <div className="flex items-center gap-1.5 px-6 py-2 flex-wrap" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-          <span className="text-[10px] uppercase tracking-wide font-medium mr-1" style={{ color: '#5b6173' }}>Presets</span>
+        <div className="flex items-center gap-1.5 px-6 py-2 flex-wrap min-h-[40px]" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+          <span className="text-[10px] uppercase tracking-wide font-medium mr-1 self-center" style={{ color: '#5b6173' }}>Presets</span>
           {savedViews.length === 0 && (
-            <span className="text-[11px]" style={{ color: '#7a8194' }}>None saved yet — configure filters then click Save preset.</span>
+            <span className="text-[11px] self-center" style={{ color: '#7a8194' }}>None saved yet — configure filters then click Save preset.</span>
           )}
           {savedViews.map(v => {
             const isActive = activePresetId === v.id;
@@ -763,7 +763,7 @@ export default function Tasks() {
           })}
           <button
             onClick={() => setShowSaveViewDialog(true)}
-            className="flex items-center gap-1 h-6 px-2 text-[11px] font-medium rounded-md transition-colors hover:bg-[rgba(255,255,255,0.04)]"
+            className="flex items-center gap-1.5 h-7 px-2.5 text-[11px] font-medium rounded-md transition-colors hover:bg-[rgba(255,255,255,0.04)]"
             style={{ color: '#7a8194', border: '1px dashed rgba(255,255,255,0.08)' }}
             title="Save current filters as a preset"
           >
@@ -1445,7 +1445,7 @@ function PresetChip({
       <button
         onClick={onLoad}
         onDoubleClick={() => { setMenuOpen(true); setRenaming(true); }}
-        className={`flex items-center gap-1 h-6 ${view.pinned_at ? 'pl-1' : 'pl-2.5'} pr-1.5 text-[11px] font-medium transition-colors`}
+        className={`flex items-center gap-1.5 h-7 ${view.pinned_at ? 'pl-1' : 'pl-2.5'} pr-2 text-[11px] font-medium transition-colors`}
         style={{ color: isActive ? '#cfe3ff' : '#9aa3b6' }}
         title="Load preset · double-click to rename"
       >
@@ -1455,11 +1455,11 @@ function PresetChip({
       <Popover open={menuOpen} onOpenChange={setMenuOpen}>
         <PopoverTrigger asChild>
           <button
-            className="px-1 h-6 flex items-center justify-center transition-colors hover:bg-[rgba(255,255,255,0.06)]"
+            className="px-1.5 h-7 flex items-center justify-center transition-colors hover:bg-[rgba(255,255,255,0.06)]"
             style={{ color: '#7a8194', borderLeft: '1px solid rgba(255,255,255,0.05)' }}
             title="Preset actions"
           >
-            <MoreVertical className="h-2.5 w-2.5" />
+            <MoreVertical className="h-3 w-3" />
           </button>
         </PopoverTrigger>
         <PopoverContent
