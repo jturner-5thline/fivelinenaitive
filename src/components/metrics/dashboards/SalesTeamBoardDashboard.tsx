@@ -20,6 +20,47 @@ import {
 import { useSalesTeamBoardMetrics } from '@/hooks/useSalesTeamBoardMetrics';
 import type { StageEntryDeal } from '@/hooks/usePipelineStageMetrics';
 import { cn } from '@/lib/utils';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Legend,
+} from 'recharts';
+import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
+import { GlassCard, GlassCardHeader, GlassCardBody } from '@/components/metrics/GlassCard';
+
+// Liquid Glass chart primitives (mirrors Executive Dashboard styling).
+const AXIS_TICK = { fontSize: 10, fill: 'rgba(180, 210, 245, 0.55)' } as const;
+const AXIS_LINE = { stroke: 'rgba(160, 200, 255, 0.12)' } as const;
+const GRID_STROKE = 'rgba(160, 200, 255, 0.10)';
+const TOOLTIP_STYLE: React.CSSProperties = {
+  backgroundColor: 'hsl(var(--popover) / 0.96)',
+  border: '1px solid hsl(0 0% 100% / 0.14)',
+  borderRadius: '8px',
+  fontSize: '12px',
+  color: 'hsl(0 0% 100%)',
+  boxShadow: 'var(--shadow-xl)',
+  backdropFilter: 'blur(16px)',
+};
+const LEGEND_STYLE: React.CSSProperties = {
+  fontSize: 11,
+  color: 'rgba(180, 210, 245, 0.7)',
+  paddingTop: 4,
+};
+
+// Team Performance — relocated from Executive Dashboard. Mock data
+// preserved as-is; live wiring is a separate follow-up.
+const TEAM_PERFORMANCE_DATA = [
+  { name: 'James', closed: 5, value: 12000000 },
+  { name: 'Flor', closed: 3, value: 8000000 },
+  { name: 'Niki', closed: 4, value: 9500000 },
+  { name: 'Paz', closed: 2, value: 4500000 },
+  { name: 'Chandler', closed: 1, value: 3000000 },
+];
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
@@ -291,6 +332,34 @@ export function SalesTeamBoardDashboard() {
         title={drilldown?.title ?? ''}
         deals={drilldown?.deals ?? []}
       />
+
+      {/* Team Performance */}
+      <GlassCard interactive>
+        <GlassCardHeader title="Team Performance" subtitle="Quarter to date" />
+        <GlassCardBody>
+          <div className="h-[220px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={TEAM_PERFORMANCE_DATA} margin={{ top: 8, right: 8, left: -10, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="2 4" stroke={GRID_STROKE} vertical={false} />
+                <XAxis dataKey="name" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
+                <YAxis yAxisId="left" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
+                <YAxis yAxisId="right" orientation="right" tickFormatter={formatCurrency} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
+                <Tooltip
+                  formatter={(value: number, name: string) => [
+                    name === 'Deal Value' ? formatCurrency(value) : value,
+                    name,
+                  ]}
+                  contentStyle={TOOLTIP_STYLE}
+                  cursor={{ fill: 'rgba(160,200,255,0.06)' }}
+                />
+                <Legend wrapperStyle={LEGEND_STYLE} iconType="circle" iconSize={8} />
+                <Bar yAxisId="left" dataKey="closed" fill="hsl(var(--primary))" name="Deals Closed" shape={createGlassBarShape({ radius: 4 })} />
+                <Bar yAxisId="right" dataKey="value" fill="hsl(var(--chart-2))" name="Deal Value" shape={createGlassBarShape({ radius: 4 })} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </GlassCardBody>
+      </GlassCard>
     </div>
   );
 }
