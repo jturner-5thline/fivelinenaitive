@@ -571,8 +571,8 @@ export function ManagementSnapshotDashboard({
     comparisonSourceField: null,
     breakdownColumns: 2,
     layoutVariant: 'full',
-    left: { label: 'Debt Revenue', valueField: 'f-revenue', varianceField: null, entityId: '9341451968897660' },
-    right: { label: 'FinServ Revenue', valueField: 'f-revenue', varianceField: null, entityId: '193514877331929' },
+    left: { label: 'Debt Revenue', valueField: 'f-revenue', varianceField: null, entityId: '193514877331929' },
+    right: { label: 'FinServ Revenue', valueField: 'f-revenue', varianceField: null, entityId: '9341451968897660' },
   };
 
   const allCards: CardEntry[] = [
