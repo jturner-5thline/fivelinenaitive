@@ -91,7 +91,16 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme }: We
       resizeDelay: 300,
       animation: false as const,
       plugins: {
-        legend: { position: 'bottom' as const, labels: { font: { size: 10 }, color: textColor, boxWidth: 12 } },
+        legend: {
+          position: 'bottom' as const,
+          labels: {
+            font: { size: 10 },
+            color: textColor,
+            boxWidth: 28,
+            boxHeight: 0,
+            useLineStyle: true,
+          },
+        },
       },
       scales: {
         x: { grid: { color: gridColor }, ticks: { font: { size: 9 }, color: textColor, maxTicksLimit: 20 } },
