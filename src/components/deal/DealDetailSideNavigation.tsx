@@ -177,33 +177,41 @@ function NavArrow({
   const Icon = isLeft ? ChevronLeft : ChevronRight;
   const disabled = !deal;
 
-  const positionClasses = isLeft ? 'left-2' : 'right-2';
+  // Outer wrapper is viewport-fixed and vertically centered. Hidden on
+  // narrow viewports (<sm) so the arrows never overlap mobile content.
+  // pointer-events-none when disabled so dead arrows don't swallow clicks
+  // on the underlying page.
+  const positionClasses = isLeft ? 'left-3 sm:left-4' : 'right-3 sm:right-4';
 
   return (
     <div
-      className={`fixed top-1/2 -translate-y-1/2 z-40 ${positionClasses}`}
-      style={{ pointerEvents: 'auto' }}
+      className={`hidden sm:block fixed top-1/2 -translate-y-1/2 z-40 ${positionClasses} ${
+        disabled ? 'pointer-events-none' : 'pointer-events-auto'
+      }`}
     >
       <Tooltip>
         <TooltipTrigger asChild>
           <button
+            type="button"
             onClick={onClick}
             disabled={disabled}
             aria-label={isLeft ? 'Previous deal' : 'Next deal'}
             className={`
-              flex items-center justify-center
-              h-10 w-10 rounded-full
-              border border-border/50
-              bg-background/80 backdrop-blur-md
-              shadow-lg
+              group flex items-center justify-center
+              h-9 w-9 rounded-full
+              border border-border/60
+              bg-background/80 backdrop-blur-xl
+              shadow-[0_6px_20px_-10px_rgba(0,0,0,0.45)]
+              opacity-75
               transition-all duration-200
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:opacity-100
               ${disabled
-                ? 'opacity-30 cursor-not-allowed'
-                : 'hover:bg-accent hover:scale-110 hover:shadow-xl active:scale-95 cursor-pointer'
+                ? 'opacity-0 cursor-not-allowed pointer-events-none'
+                : 'hover:opacity-100 hover:scale-105 hover:bg-background/90 hover:shadow-[0_10px_28px_-10px_rgba(0,0,0,0.55)] active:scale-95 cursor-pointer'
               }
             `}
           >
-            <Icon className="h-5 w-5 text-foreground" />
+            <Icon className="h-[18px] w-[18px] text-foreground" strokeWidth={2.25} />
           </button>
         </TooltipTrigger>
         {deal && (

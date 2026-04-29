@@ -176,16 +176,17 @@ export function WidgetCarouselChrome() {
         disabled={disablePrev}
         aria-label="Previous widget"
         className={cn(
-          'pointer-events-auto absolute left-2 top-1/2 -translate-y-1/2 sm:left-4',
-          'flex h-12 w-12 items-center justify-center rounded-full',
-          'bg-background/50 backdrop-blur-2xl glass-border-softer',
-          'shadow-[0_8px_28px_-14px_rgba(0,0,0,0.35)]',
-          'transition-all duration-200 hover:bg-background/70 hover:scale-105',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-          'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-background/50',
+          'pointer-events-auto absolute left-3 top-1/2 -translate-y-1/2 sm:left-4',
+          'hidden sm:flex h-10 w-10 items-center justify-center rounded-full',
+          'bg-background/80 backdrop-blur-xl border border-border/60',
+          'shadow-[0_6px_20px_-10px_rgba(0,0,0,0.45)]',
+          'opacity-75 transition-all duration-200',
+          'hover:bg-background/90 hover:opacity-100 hover:scale-105 hover:shadow-[0_10px_28px_-10px_rgba(0,0,0,0.55)]',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:opacity-100',
+          'disabled:opacity-0 disabled:pointer-events-none disabled:cursor-not-allowed',
         )}
       >
-        <ChevronLeft className="h-6 w-6 text-foreground/90" />
+        <ChevronLeft className="h-5 w-5 text-foreground" strokeWidth={2.25} />
       </button>
 
       {/* Next arrow */}
@@ -205,16 +206,17 @@ export function WidgetCarouselChrome() {
         disabled={disableNext}
         aria-label="Next widget"
         className={cn(
-          'pointer-events-auto absolute right-2 top-1/2 -translate-y-1/2 sm:right-4',
-          'flex h-12 w-12 items-center justify-center rounded-full',
-          'bg-background/50 backdrop-blur-2xl glass-border-softer',
-          'shadow-[0_8px_28px_-14px_rgba(0,0,0,0.35)]',
-          'transition-all duration-200 hover:bg-background/70 hover:scale-105',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-          'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-background/50',
+          'pointer-events-auto absolute right-3 top-1/2 -translate-y-1/2 sm:right-4',
+          'hidden sm:flex h-10 w-10 items-center justify-center rounded-full',
+          'bg-background/80 backdrop-blur-xl border border-border/60',
+          'shadow-[0_6px_20px_-10px_rgba(0,0,0,0.45)]',
+          'opacity-75 transition-all duration-200',
+          'hover:bg-background/90 hover:opacity-100 hover:scale-105 hover:shadow-[0_10px_28px_-10px_rgba(0,0,0,0.55)]',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:opacity-100',
+          'disabled:opacity-0 disabled:pointer-events-none disabled:cursor-not-allowed',
         )}
       >
-        <ChevronRight className="h-6 w-6 text-foreground/90" />
+        <ChevronRight className="h-5 w-5 text-foreground" strokeWidth={2.25} />
       </button>
     </div>
   );
