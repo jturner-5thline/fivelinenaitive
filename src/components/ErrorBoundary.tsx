@@ -40,6 +40,34 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error, componentStack: null, source: 'render' };
   }
 
+  /**
+   * Detect the family of errors that fire when the browser tries to load a
+   * dynamic chunk URL that no longer exists (typical after a deploy or HMR
+   * update while the tab is still open). When we see one, we attempt a
+   * single hard reload guarded by sessionStorage so we never reload-loop.
+   * Returns true when a reload was scheduled (caller should suppress
+   * fallback rendering).
+   */
+  private maybeReloadOnChunkError(error: unknown): boolean {
+    const message = error instanceof Error ? error.message : String(error ?? '');
+    const isChunk =
+      /Failed to fetch dynamically imported module/i.test(message) ||
+      /Importing a module script failed/i.test(message) ||
+      /Loading chunk \d+ failed/i.test(message) ||
+      /Loading CSS chunk/i.test(message);
+    if (!isChunk) return false;
+    try {
+      const KEY = 'chunk_reload_eb';
+      if (sessionStorage.getItem(KEY)) return false;
+      sessionStorage.setItem(KEY, '1');
+    } catch {
+      /* ignore — sessionStorage may be unavailable */
+    }
+    // Defer slightly so the current error log/handler can flush.
+    setTimeout(() => window.location.reload(), 50);
+    return true;
+  }
+
   componentDidMount() {
     window.addEventListener('error', this.handleWindowError);
     window.addEventListener('unhandledrejection', this.handleRejection);
@@ -77,6 +105,7 @@ export class ErrorBoundary extends Component<Props, State> {
       '\n  error:',
       e.error,
     );
+    if (this.maybeReloadOnChunkError(e.error ?? e.message)) return;
     if (!this.state.hasError) {
       this.setState({
         hasError: true,
@@ -102,6 +131,9 @@ export class ErrorBoundary extends Component<Props, State> {
       '\n  reason:',
       reason,
     );
+    // Stale dynamic-import chunks often surface as unhandled rejections
+    // from React.lazy. Reload once to recover the user transparently.
+    this.maybeReloadOnChunkError(reason);
     // Do not trip the fallback for promise rejections — they often come from
     // background network calls and would hide an otherwise-healthy app.
   };
