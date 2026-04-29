@@ -1224,6 +1224,33 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
       parsed.cited_context_sources = merged.length > 0 ? merged : ["email_thread_only"];
       // Also expose the explicit injected-fields array for any UI that wants it.
       parsed.deal_context_used = modelInjected;
+
+      // ─── Append the user's configured signature to each draft body ───
+      // The model is instructed not to add any sign-off; we append the user's
+      // Settings → Email signature (or, as fallback, the company style-guide
+      // signature, then a sender-name fallback) so drafts always end with the
+      // user's actual signature instead of a generic "Best, <name>".
+      try {
+        const senderName =
+          (profile?.display_name as string | undefined)?.trim() ||
+          `${profile?.first_name || ""} ${profile?.last_name || ""}`.trim() ||
+          "";
+        const fallbackSig = senderName ? `Best,\n${senderName}` : "";
+        const sigToAppend = (userSignature || companySignature || fallbackSig).trim();
+        if (sigToAppend) {
+          const appendSig = (body: unknown): string => {
+            if (typeof body !== "string") return body as any;
+            let trimmed = body.replace(/[\s\n]+$/g, "");
+            // If the model already ended with this exact signature, leave it.
+            if (trimmed.endsWith(sigToAppend)) return trimmed;
+            return `${trimmed}\n\n${sigToAppend}`;
+          };
+          if (parsed.option_1_body) parsed.option_1_body = appendSig(parsed.option_1_body);
+          if (parsed.option_2_body) parsed.option_2_body = appendSig(parsed.option_2_body);
+        }
+      } catch (sigErr) {
+        console.warn("[smart-email-ai] signature append skipped:", sigErr);
+      }
     }
 
     // For analyze_thread_workflow, post-process to ensure deal_id resolution.
