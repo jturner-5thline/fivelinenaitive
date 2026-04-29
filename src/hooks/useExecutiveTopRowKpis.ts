@@ -35,6 +35,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { QBO_REALM_DEBT } from '@/config/qboEntities';
 
+/**
+ * Drilldown row used by the Executive Dashboard top-row KPI modals.
+ * Mirrors the shape used by SalesTeamBoardDashboard's StageEntryDeal
+ * so the same DrilldownModal-style table can render any of the four cards.
+ */
+export interface ExecKpiDrilldownDeal {
+  deal_id: string;
+  company: string;
+  value: number;
+  /** Stage label for current snapshot, or stage label entered for history rows. */
+  stage_label: string | null;
+  /** Event timestamp (stage-entry changed_at) or deal updated_at for snapshot rows. */
+  occurred_at: string | null;
+}
+
 // ── Globally-excluded test deals (per project memory). ─────────────
 const EXCLUDED_DEAL_NAMES = new Set(["Test-Niki's Store", 'Example Deal']);
 function isExcludedDealName(name: string | null | undefined): boolean {
@@ -54,6 +69,15 @@ interface PipelineStage {
   id: string;
   label: string;
   color?: string;
+}
+
+/** Build a stage_id → label map for resolving drilldown stage labels. */
+function buildStageIdLabelMap(stages: PipelineStage[]): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const s of stages) {
+    if (s?.id) m.set(s.id, s.label ?? s.id);
+  }
+  return m;
 }
 
 /**
@@ -111,6 +135,7 @@ function useActivePipelineStageMap() {
         stageIdsInRange,
         fundedInvoicedStageId: idxFunded >= 0 ? stages[idxFunded].id : null,
         finalCreditItemsStageId: idxFinalCredit >= 0 ? stages[idxFinalCredit].id : null,
+        stageLabelById: buildStageIdLabelMap(stages),
       };
     },
   });
@@ -123,6 +148,7 @@ function useTotalActiveDealVolume() {
   const stages = useActivePipelineStageMap();
   const pipelineId = stages.data?.pipelineId ?? null;
   const stageIds = stages.data?.stageIdsInRange ?? [];
+  const labelById = stages.data?.stageLabelById ?? new Map<string, string>();
 
   return useQuery({
     queryKey: [
@@ -137,21 +163,31 @@ function useTotalActiveDealVolume() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('deals')
-        .select('id, value, company, stage, pipeline_id')
+        .select('id, value, company, stage, pipeline_id, updated_at')
         .eq('company_id', companyId)
         .eq('pipeline_id', pipelineId)
         .in('stage', stageIds);
       if (error) throw error;
       let total = 0;
       let count = 0;
+      const deals: ExecKpiDrilldownDeal[] = [];
       for (const d of data ?? []) {
         if (isExcludedDealName(d.company)) continue;
         const v = Number(d.value);
         if (!Number.isFinite(v)) continue;
         total += v;
         count += 1;
+        deals.push({
+          deal_id: d.id,
+          company: d.company ?? '—',
+          value: v,
+          stage_label: labelById.get(d.stage) ?? d.stage ?? null,
+          occurred_at: (d as { updated_at?: string }).updated_at ?? null,
+        });
       }
-      return { total, count };
+      // Sort by value desc — most material deals first.
+      deals.sort((a, b) => b.value - a.value);
+      return { total, count, deals };
     },
   });
 }
@@ -163,6 +199,8 @@ function useDealsClosedQTD() {
   const stages = useActivePipelineStageMap();
   const pipelineId = stages.data?.pipelineId ?? null;
   const fundedStageId = stages.data?.fundedInvoicedStageId ?? null;
+  const fundedLabel =
+    (fundedStageId && stages.data?.stageLabelById.get(fundedStageId)) || 'Funded / Invoiced';
 
   return useQuery({
     queryKey: [
@@ -181,7 +219,7 @@ function useDealsClosedQTD() {
 
       const { data, error } = await supabase
         .from('deal_stage_history')
-        .select('deal_id, deals!inner(company)')
+        .select('deal_id, changed_at, deals!inner(company, value)')
         .eq('company_id', companyId)
         .eq('pipeline_id', pipelineId)
         .eq('to_stage', fundedStageId)
@@ -189,14 +227,60 @@ function useDealsClosedQTD() {
         .lte('changed_at', qEnd.toISOString());
       if (error) throw error;
 
-      const distinctDealIds = new Set<string>();
-      for (const row of (data ?? []) as Array<{ deal_id: string; deals: { company: string | null } | null }>) {
+      // Keep the EARLIEST entry per deal_id this quarter so the drilldown shows
+      // when each deal first crossed into Funded/Invoiced.
+      const seen = new Map<string, ExecKpiDrilldownDeal>();
+      for (const row of (data ?? []) as Array<{
+        deal_id: string;
+        changed_at: string;
+        deals: { company: string | null; value: number | null } | null;
+      }>) {
         if (isExcludedDealName(row.deals?.company ?? null)) continue;
-        distinctDealIds.add(row.deal_id);
+        const v = Number(row.deals?.value);
+        const candidate: ExecKpiDrilldownDeal = {
+          deal_id: row.deal_id,
+          company: row.deals?.company ?? '—',
+          value: Number.isFinite(v) ? v : 0,
+          stage_label: fundedLabel,
+          occurred_at: row.changed_at,
+        };
+        const prev = seen.get(row.deal_id);
+        if (!prev || (prev.occurred_at && candidate.occurred_at && candidate.occurred_at < prev.occurred_at)) {
+          seen.set(row.deal_id, candidate);
+        }
       }
-      return { count: distinctDealIds.size };
+      const deals = Array.from(seen.values()).sort((a, b) =>
+        (b.occurred_at ?? '').localeCompare(a.occurred_at ?? ''),
+      );
+      return { count: deals.length, deals };
     },
   });
+}
+
+/** One Income line item from a QBO Profit & Loss report (used for Revenue drilldown). */
+export interface ExecRevenueLineItem {
+  account: string;
+  amount: number;
+}
+
+/** Recursively flatten QBO P&L Income rows into a flat line-item list. */
+function flattenQboIncomeRows(rows: any[]): ExecRevenueLineItem[] {
+  const out: ExecRevenueLineItem[] = [];
+  const walk = (rs: any[]) => {
+    for (const r of rs ?? []) {
+      if (r?.type === 'Data') {
+        const account = r?.ColData?.[0]?.value ?? '—';
+        const amount = parseFloat(r?.ColData?.[1]?.value ?? '0');
+        if (Number.isFinite(amount) && amount !== 0) {
+          out.push({ account, amount });
+        }
+      } else if (r?.Rows?.Row) {
+        walk(r.Rows.Row);
+      }
+    }
+  };
+  walk(rows);
+  return out;
 }
 
 // ── 3. Revenue (QTD) — 5th Line Capital Advisors via QBO ───────────
@@ -260,12 +344,13 @@ function useRevenueQTDForDebtEntity() {
         }
       }
 
-      if (!report) return { revenue: null as number | null };
+      if (!report) return { revenue: null as number | null, lineItems: [] as ExecRevenueLineItem[] };
 
       // Walk the QB P&L payload to find the Income section summary.
       const rows: any[] = report?.Rows?.Row ?? [];
       let income = 0;
       let found = false;
+      let lineItems: ExecRevenueLineItem[] = [];
       for (const row of rows) {
         if (row?.type === 'Section' && row?.group === 'Income') {
           const summaryAmount = parseFloat(row?.Summary?.ColData?.[1]?.value ?? '0');
@@ -273,10 +358,13 @@ function useRevenueQTDForDebtEntity() {
             income = summaryAmount;
             found = true;
           }
+          lineItems = flattenQboIncomeRows(row?.Rows?.Row ?? []).sort(
+            (a, b) => b.amount - a.amount,
+          );
           break;
         }
       }
-      return { revenue: found ? income : null };
+      return { revenue: found ? income : null, lineItems };
     },
   });
 }
@@ -288,6 +376,9 @@ function useAvgDealSizeT12M() {
   const stages = useActivePipelineStageMap();
   const pipelineId = stages.data?.pipelineId ?? null;
   const finalCreditStageId = stages.data?.finalCreditItemsStageId ?? null;
+  const finalCreditLabel =
+    (finalCreditStageId && stages.data?.stageLabelById.get(finalCreditStageId)) ||
+    'Final Credit Items';
 
   return useQuery({
     queryKey: [
@@ -305,7 +396,7 @@ function useAvgDealSizeT12M() {
 
       const { data, error } = await supabase
         .from('deal_stage_history')
-        .select('deal_id, deals!inner(company, value)')
+        .select('deal_id, changed_at, deals!inner(company, value)')
         .eq('company_id', companyId)
         .eq('pipeline_id', pipelineId)
         .eq('to_stage', finalCreditStageId)
@@ -315,24 +406,37 @@ function useAvgDealSizeT12M() {
 
       // Dedupe by deal_id — a deal that re-entered the stage twice still
       // contributes one (sum of value, count of 1).
-      const seen = new Map<string, number>();
+      const seen = new Map<string, ExecKpiDrilldownDeal>();
       for (const row of (data ?? []) as Array<{
         deal_id: string;
+        changed_at: string;
         deals: { company: string | null; value: number | null } | null;
       }>) {
         if (isExcludedDealName(row.deals?.company ?? null)) continue;
         const v = Number(row.deals?.value);
         if (!Number.isFinite(v)) continue;
-        if (!seen.has(row.deal_id)) seen.set(row.deal_id, v);
+        const candidate: ExecKpiDrilldownDeal = {
+          deal_id: row.deal_id,
+          company: row.deals?.company ?? '—',
+          value: v,
+          stage_label: finalCreditLabel,
+          occurred_at: row.changed_at,
+        };
+        const prev = seen.get(row.deal_id);
+        if (!prev || (prev.occurred_at && candidate.occurred_at && candidate.occurred_at < prev.occurred_at)) {
+          seen.set(row.deal_id, candidate);
+        }
       }
 
-      const values = Array.from(seen.values());
-      const sum = values.reduce((a, b) => a + b, 0);
-      const count = values.length;
+      const deals = Array.from(seen.values());
+      const sum = deals.reduce((a, b) => a + b.value, 0);
+      const count = deals.length;
+      deals.sort((a, b) => b.value - a.value);
       return {
         avg: count > 0 ? sum / count : null,
         count,
         sum,
+        deals,
       };
     },
   });
@@ -341,10 +445,26 @@ function useAvgDealSizeT12M() {
 // ── Public hook ────────────────────────────────────────────────────
 export interface ExecutiveTopRowKpis {
   pipelineResolved: boolean;
-  totalActiveDealVolume: { value: number | null; loading: boolean };
-  dealsClosedQTD: { value: number | null; loading: boolean };
-  revenueQTD: { value: number | null; loading: boolean };
-  avgDealSize: { value: number | null; loading: boolean };
+  totalActiveDealVolume: {
+    value: number | null;
+    loading: boolean;
+    deals: ExecKpiDrilldownDeal[];
+  };
+  dealsClosedQTD: {
+    value: number | null;
+    loading: boolean;
+    deals: ExecKpiDrilldownDeal[];
+  };
+  revenueQTD: {
+    value: number | null;
+    loading: boolean;
+    lineItems: ExecRevenueLineItem[];
+  };
+  avgDealSize: {
+    value: number | null;
+    loading: boolean;
+    deals: ExecKpiDrilldownDeal[];
+  };
 }
 
 export function useExecutiveTopRowKpis(): ExecutiveTopRowKpis {
@@ -360,18 +480,22 @@ export function useExecutiveTopRowKpis(): ExecutiveTopRowKpis {
       totalActiveDealVolume: {
         value: totalVol.data?.total ?? (totalVol.isLoading ? null : 0),
         loading: stages.isLoading || totalVol.isLoading,
+        deals: totalVol.data?.deals ?? [],
       },
       dealsClosedQTD: {
         value: closedQtd.data?.count ?? (closedQtd.isLoading ? null : 0),
         loading: stages.isLoading || closedQtd.isLoading,
+        deals: closedQtd.data?.deals ?? [],
       },
       revenueQTD: {
         value: revenueQtd.data?.revenue ?? null,
         loading: revenueQtd.isLoading,
+        lineItems: revenueQtd.data?.lineItems ?? [],
       },
       avgDealSize: {
         value: avgSize.data?.avg ?? null,
         loading: stages.isLoading || avgSize.isLoading,
+        deals: avgSize.data?.deals ?? [],
       },
     }),
     [stages, totalVol, closedQtd, revenueQtd, avgSize],

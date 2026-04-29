@@ -2,7 +2,22 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Lock } from 'lucide-react';
-import { useExecutiveTopRowKpis } from '@/hooks/useExecutiveTopRowKpis';
+import { useState } from 'react';
+import {
+  useExecutiveTopRowKpis,
+  type ExecKpiDrilldownDeal,
+  type ExecRevenueLineItem,
+} from '@/hooks/useExecutiveTopRowKpis';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Line, ComposedChart, Area, PieChart, Pie, Cell, Legend } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { PieGlassDefs, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
@@ -195,14 +210,20 @@ function StatCard({
   value,
   subtitle,
   loading,
+  onClick,
 }: {
   title: string;
   value: string | number;
   subtitle?: string;
   loading?: boolean;
+  onClick?: () => void;
 }) {
   return (
-    <GlassCard interactive>
+    <GlassCard
+      interactive
+      onClick={onClick}
+      className={onClick ? 'cursor-pointer' : undefined}
+    >
       <GlassCardHeader title={title} subtitle={subtitle} />
       <GlassCardBody className="pt-0 pb-5 space-y-2">
         {loading ? (
@@ -242,8 +263,131 @@ function ChartCardHeader({ title, subtitle }: { title: string; subtitle?: string
   return <GlassCardHeader title={title} subtitle={subtitle} />;
 }
 
+// ── Drilldown modal ───────────────────────────────────────────────
+// Powers click-through from each top-row KPI tile. Renders either a
+// deal-level table (cards #1, #2, #4) or a QBO Income line-item table
+// (card #3). Currency totals are computed from the rendered rows so the
+// modal stays internally consistent with what the user sees.
+
+type ExecKpiDrilldownKind =
+  | { kind: 'deals'; rows: ExecKpiDrilldownDeal[]; subtitle?: string }
+  | { kind: 'revenue'; rows: ExecRevenueLineItem[]; subtitle?: string };
+
+type ExecKpiDrilldown = ExecKpiDrilldownKind & { title: string };
+
+function fmtFullMoney(n: number) {
+  return `$${Math.round(n).toLocaleString()}`;
+}
+
+function ExecKpiDrilldownModal({
+  drilldown,
+  onClose,
+}: {
+  drilldown: ExecKpiDrilldown | null;
+  onClose: () => void;
+}) {
+  const open = !!drilldown;
+  const total =
+    drilldown?.kind === 'deals'
+      ? drilldown.rows.reduce((s, r) => s + (Number.isFinite(r.value) ? r.value : 0), 0)
+      : drilldown?.kind === 'revenue'
+        ? drilldown.rows.reduce((s, r) => s + r.amount, 0)
+        : 0;
+  const count = drilldown?.rows.length ?? 0;
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
+        <DialogHeader>
+          <DialogTitle>{drilldown?.title ?? ''}</DialogTitle>
+          {drilldown?.subtitle && (
+            <DialogDescription>{drilldown.subtitle}</DialogDescription>
+          )}
+        </DialogHeader>
+
+        <div className="flex items-center gap-2 mb-4">
+          <Badge variant="outline" className="text-xs">
+            {count} {drilldown?.kind === 'revenue' ? 'line item' : 'deal'}
+            {count === 1 ? '' : 's'}
+          </Badge>
+          <Badge variant="secondary" className="text-xs font-mono">
+            {fmtFullMoney(total)}
+          </Badge>
+        </div>
+
+        {count === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">
+            No underlying records for this metric.
+          </p>
+        ) : drilldown?.kind === 'deals' ? (
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Company</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Stage</th>
+                  <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Value</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Date</th>
+                  <th className="w-8" />
+                </tr>
+              </thead>
+              <tbody>
+                {drilldown.rows.map(d => (
+                  <tr key={`${d.deal_id}-${d.occurred_at ?? ''}`} className="border-b last:border-0 hover:bg-muted/20">
+                    <td className="px-3 py-2 text-xs font-medium">{d.company}</td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">{d.stage_label ?? '—'}</td>
+                    <td className="px-3 py-2 text-xs text-right font-mono">{fmtFullMoney(d.value)}</td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">
+                      {d.occurred_at
+                        ? new Date(d.occurred_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })
+                        : '—'}
+                    </td>
+                    <td className="px-2 py-2 text-xs">
+                      <Link
+                        to={`/deals/${d.deal_id}`}
+                        className="inline-flex items-center text-muted-foreground hover:text-foreground"
+                        title="Open deal"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Income Account</th>
+                  <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {drilldown.rows.map((r, i) => (
+                  <tr key={`${r.account}-${i}`} className="border-b last:border-0 hover:bg-muted/20">
+                    <td className="px-3 py-2 text-xs">{r.account}</td>
+                    <td className="px-3 py-2 text-xs text-right font-mono">{fmtFullMoney(r.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function ExecutiveDashboard() {
   const kpis = useExecutiveTopRowKpis();
+  const [drilldown, setDrilldown] = useState<ExecKpiDrilldown | null>(null);
 
   const fmtMoney = (v: number | null) =>
     v === null || !Number.isFinite(v) ? '—' : formatCurrency(v);
@@ -277,24 +421,56 @@ export function ExecutiveDashboard() {
           value={fmtMoney(kpis.totalActiveDealVolume.value)}
           subtitle="Final Credit Items → In Due Diligence"
           loading={kpis.totalActiveDealVolume.loading}
+          onClick={() =>
+            setDrilldown({
+              kind: 'deals',
+              title: 'Total Active Deal Volume',
+              subtitle: 'Open deals · Final Credit Items → In Due Diligence (active pipeline)',
+              rows: kpis.totalActiveDealVolume.deals,
+            })
+          }
         />
         <StatCard
           title="Deals Closed (QTD)"
           value={fmtCount(kpis.dealsClosedQTD.value)}
           subtitle="Entered Funded / Invoiced this quarter"
           loading={kpis.dealsClosedQTD.loading}
+          onClick={() =>
+            setDrilldown({
+              kind: 'deals',
+              title: 'Deals Closed (QTD)',
+              subtitle: 'Stage-entry events into Funded / Invoiced this quarter',
+              rows: kpis.dealsClosedQTD.deals,
+            })
+          }
         />
         <StatCard
           title="Revenue (QTD)"
           value={fmtMoney(kpis.revenueQTD.value)}
           subtitle="5th Line Capital Advisors · QBO"
           loading={kpis.revenueQTD.loading}
+          onClick={() =>
+            setDrilldown({
+              kind: 'revenue',
+              title: 'Revenue (QTD)',
+              subtitle: '5th Line Capital Advisors · Income line items from QuickBooks P&L',
+              rows: kpis.revenueQTD.lineItems,
+            })
+          }
         />
         <StatCard
           title="Avg. Deal Size"
           value={fmtMoney(kpis.avgDealSize.value)}
           subtitle="Entered Final Credit Items · Trailing 12 mo."
           loading={kpis.avgDealSize.loading}
+          onClick={() =>
+            setDrilldown({
+              kind: 'deals',
+              title: 'Avg. Deal Size — Trailing 12 mo.',
+              subtitle: 'Deals that entered Final Credit Items in the last 12 months',
+              rows: kpis.avgDealSize.deals,
+            })
+          }
         />
       </div>
 
@@ -340,6 +516,8 @@ export function ExecutiveDashboard() {
       <div className="grid grid-cols-1 gap-4">
         <DealsByStatusPieChart />
       </div>
+
+      <ExecKpiDrilldownModal drilldown={drilldown} onClose={() => setDrilldown(null)} />
     </div>
   );
 }
