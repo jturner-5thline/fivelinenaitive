@@ -106,7 +106,7 @@ export function useAsanaGoalFilterPrefs(): UseAsanaGoalFilterPrefsResult {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !companyId) {
         if (!cancelled) {
-          const fallback = local ?? DEFAULTS;
+          const fallback = local ?? buildDefaults();
           setPrefs(fallback);
           setIsLoaded(true);
         }
@@ -125,7 +125,7 @@ export function useAsanaGoalFilterPrefs(): UseAsanaGoalFilterPrefsResult {
 
       if (error) {
         console.error('[AsanaGoalFilterPrefs] load failed:', error);
-        setPrefs(local ?? DEFAULTS);
+        setPrefs(local ?? buildDefaults());
         setIsLoaded(true);
         return;
       }
@@ -145,7 +145,7 @@ export function useAsanaGoalFilterPrefs(): UseAsanaGoalFilterPrefsResult {
         setPrefs(next);
         writeLocalSnapshot(companyId, next);
       } else {
-        const fallback = local ?? DEFAULTS;
+        const fallback = local ?? buildDefaults();
         setPrefs(fallback);
         writeLocalSnapshot(companyId, fallback);
       }
@@ -188,8 +188,9 @@ export function useAsanaGoalFilterPrefs(): UseAsanaGoalFilterPrefsResult {
   }, [companyId]);
 
   const reset = useCallback(async () => {
-    setPrefs(DEFAULTS);
-    writeLocalSnapshot(companyId, DEFAULTS);
+    const defaults = buildDefaults();
+    setPrefs(defaults);
+    writeLocalSnapshot(companyId, defaults);
     const userId = userIdRef.current;
     if (!userId || !companyId) return;
     const { error } = await supabase
