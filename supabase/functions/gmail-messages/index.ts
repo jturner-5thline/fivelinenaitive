@@ -68,6 +68,21 @@ interface MessageRequest {
   max_results?: number;
   page_token?: string;
   query?: string;
+  /**
+   * Outbound attachments. Each entry must include base64-encoded `content`
+   * (no data: URI prefix). The total payload (after base64 expansion) is
+   * capped at ~25MB by the client.
+   */
+  attachments?: Array<{
+    filename: string;
+    content_type?: string;
+    content: string;
+    size?: number;
+    is_inline?: boolean;
+    content_id?: string;
+  }>;
+  /** When set, include In-Reply-To/References threading via Nylas reply_to_message_id. */
+  reply_to_message_id?: string;
 }
 
 // Normalize Nylas attachment objects to a consistent shape.
