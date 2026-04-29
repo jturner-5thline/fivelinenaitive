@@ -18,6 +18,15 @@ import {
   Loader2, X, RefreshCw, AlertTriangle, Briefcase, ChevronDown, Send, Paperclip,
   Clock, Save, PenLine, Undo2, Trash2,
 } from 'lucide-react';
+import {
+  Bold as BoldIcon,
+  Italic as ItalicIcon,
+  Underline as UnderlineIcon,
+  Strikethrough as StrikeIcon,
+  List as ListIcon,
+  ListOrdered as ListOrderedIcon,
+  Link as LinkIcon,
+} from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -332,6 +341,69 @@ function SentenceView({
         ),
       )}{' '}
     </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Formatting toolbar — applies inline formatting via document.execCommand to
+// whatever sentence span currently holds the selection. Pure visual affordance:
+// the sentence model still commits innerText on blur, so the AI pill /
+// provenance pipeline is unaffected.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function FormattingToolbar() {
+  const exec = (command: string, value?: string) => (e: React.MouseEvent) => {
+    // Prevent the toolbar button from stealing focus from the editable span.
+    e.preventDefault();
+    try {
+      document.execCommand(command, false, value);
+    } catch {
+      /* no-op */
+    }
+  };
+
+  const onLink = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const url = window.prompt('Enter URL');
+    if (!url) return;
+    try {
+      document.execCommand('createLink', false, url);
+    } catch {
+      /* no-op */
+    }
+  };
+
+  const btn = 'h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors';
+
+  return (
+    <div
+      className="flex items-center gap-0.5 px-3 py-1.5 border-b border-border/40 bg-muted/10"
+      onMouseDown={(e) => e.preventDefault()}
+    >
+      <button type="button" className={btn} onMouseDown={exec('bold')} title="Bold (Ctrl+B)">
+        <BoldIcon className="h-3 w-3" />
+      </button>
+      <button type="button" className={btn} onMouseDown={exec('italic')} title="Italic (Ctrl+I)">
+        <ItalicIcon className="h-3 w-3" />
+      </button>
+      <button type="button" className={btn} onMouseDown={exec('underline')} title="Underline (Ctrl+U)">
+        <UnderlineIcon className="h-3 w-3" />
+      </button>
+      <button type="button" className={btn} onMouseDown={exec('strikeThrough')} title="Strikethrough">
+        <StrikeIcon className="h-3 w-3" />
+      </button>
+      <div className="w-px h-3.5 bg-border/60 mx-1" />
+      <button type="button" className={btn} onMouseDown={exec('insertUnorderedList')} title="Bulleted list">
+        <ListIcon className="h-3 w-3" />
+      </button>
+      <button type="button" className={btn} onMouseDown={exec('insertOrderedList')} title="Numbered list">
+        <ListOrderedIcon className="h-3 w-3" />
+      </button>
+      <div className="w-px h-3.5 bg-border/60 mx-1" />
+      <button type="button" className={btn} onMouseDown={onLink} title="Insert link">
+        <LinkIcon className="h-3 w-3" />
+      </button>
+    </div>
   );
 }
 
@@ -785,6 +857,12 @@ export function YourReplyComposer({ thread, dealId, onClose, onSend, initialMode
             </button>
           </div>
         )}
+
+        {/* Formatting toolbar — applies to current selection inside any sentence span.
+            Note: the sentence model commits innerText on blur, so formatting is a
+            session-level affordance and does not persist to the sent plain-text body.
+            This intentionally preserves the AI pill / provenance pipeline. */}
+        <FormattingToolbar />
 
         {/* Body — sentence renderer */}
         <div className="px-4 py-3 min-h-[140px]">
