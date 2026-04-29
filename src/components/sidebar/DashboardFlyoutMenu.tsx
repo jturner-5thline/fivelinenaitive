@@ -10,6 +10,7 @@ import {
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useDashboardCarouselWidgets } from '@/hooks/useDashboardCarouselWidgets';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { useCloseOnRouteChange } from '@/hooks/useCloseOnRouteChange';
 
 const OPEN_DELAY = 120;
 const CLOSE_DELAY = 180;
@@ -38,6 +39,11 @@ export function DashboardFlyoutMenu() {
   const rowRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
+
+  // Safety net: if anything inside the flyout (or anywhere else) drives a
+  // route change while the panel is open, force-close synchronously so the
+  // panel never lingers on top of the destination route.
+  useCloseOnRouteChange(open, () => setOpen(false));
 
   const showExpanded = state === 'expanded' || (state === 'collapsed' && isHovering);
   const isDashboardRoute = location.pathname === '/dashboard';
