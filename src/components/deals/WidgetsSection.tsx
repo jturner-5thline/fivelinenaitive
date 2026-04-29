@@ -552,7 +552,14 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
         onDragEnd={handleDragEnd}
       >
         <SortableContext items={widgets.map(w => w.id)} strategy={rectSortingStrategy}>
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          {/*
+            Responsive grid for the Active Pipeline summary widgets:
+              ≥ 1280px (xl)  → 6 up (single row)
+              ≥ 900px (md+)  → 3 up
+              < 900px        → 2 up
+            items-stretch keeps every card the same height across the row.
+          */}
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 items-stretch">
             {widgets.map((widget) => (
               <WidgetCard
                 key={widget.id}
