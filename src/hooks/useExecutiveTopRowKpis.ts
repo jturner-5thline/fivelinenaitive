@@ -302,18 +302,18 @@ function flattenQboIncomeRows(rows: any[]): ExecRevenueLineItem[] {
   return out;
 }
 
-// ── 3. Revenue (QTD) — 5th Line Capital Advisors via QBO ───────────
-function useRevenueQTDForDebtEntity() {
+// ── 3. Revenue — 5th Line Capital Advisors via QBO (window-aware) ──
+function useRevenueForDebtEntity(window?: ExecKpiWindow) {
   const { user } = useAuth();
   const realmId = QBO_REALM_DEBT;
   const now = new Date();
-  const qStart = startOfQuarter(now);
-  const qEnd = endOfQuarter(now);
+  const qStart = window?.start ?? startOfQuarter(now);
+  const qEnd = window?.end ?? endOfQuarter(now);
   const startStr = format(qStart, 'yyyy-MM-dd');
   const endStr = format(qEnd, 'yyyy-MM-dd');
 
   return useQuery({
-    queryKey: ['exec-top-kpis', 'revenue-qtd-debt', realmId, startStr, endStr, user?.id],
+    queryKey: ['exec-top-kpis', 'revenue-debt', realmId, startStr, endStr, user?.id],
     enabled: !!user,
     staleTime: 5 * 60_000,
     queryFn: async () => {
@@ -359,7 +359,7 @@ function useRevenueQTDForDebtEntity() {
           }
         } catch (e) {
           // Soft-fail: leave revenue as null and let UI show "—"
-          console.warn('[useRevenueQTDForDebtEntity] sync failed', e);
+          console.warn('[useRevenueForDebtEntity] sync failed', e);
         }
       }
 
@@ -389,7 +389,7 @@ function useRevenueQTDForDebtEntity() {
 }
 
 // ── 4. Avg Deal Size — entered Final Credit Items in trailing 12 months ──
-function useAvgDealSizeT12M() {
+function useAvgDealSize(window?: ExecKpiWindow) {
   const { company } = useCompany();
   const companyId = company?.id ?? null;
   const stages = useActivePipelineStageMap();
@@ -398,20 +398,25 @@ function useAvgDealSizeT12M() {
   const finalCreditLabel =
     (finalCreditStageId && stages.data?.stageLabelById.get(finalCreditStageId)) ||
     'Final Credit Items';
+  const winStart = window?.start ?? null;
+  const winEnd = window?.end ?? null;
 
   return useQuery({
     queryKey: [
       'exec-top-kpis',
-      'avg-deal-size-t12m',
+      'avg-deal-size',
       companyId,
       pipelineId,
       finalCreditStageId,
+      winStart?.toISOString() ?? 't12m',
+      winEnd?.toISOString() ?? 't12m',
     ],
     enabled: !!companyId && !!pipelineId && !!finalCreditStageId,
     staleTime: 60_000,
     queryFn: async () => {
       const now = new Date();
-      const windowStart = subMonths(now, 12);
+      const start = winStart ?? subMonths(now, 12);
+      const end = winEnd ?? now;
 
       const { data, error } = await supabase
         .from('deal_stage_history')
@@ -419,8 +424,8 @@ function useAvgDealSizeT12M() {
         .eq('company_id', companyId)
         .eq('pipeline_id', pipelineId)
         .eq('to_stage', finalCreditStageId)
-        .gte('changed_at', windowStart.toISOString())
-        .lte('changed_at', now.toISOString());
+        .gte('changed_at', start.toISOString())
+        .lte('changed_at', end.toISOString());
       if (error) throw error;
 
       // Dedupe by deal_id — a deal that re-entered the stage twice still
@@ -486,12 +491,12 @@ export interface ExecutiveTopRowKpis {
   };
 }
 
-export function useExecutiveTopRowKpis(): ExecutiveTopRowKpis {
+export function useExecutiveTopRowKpis(window?: ExecKpiWindow): ExecutiveTopRowKpis {
   const stages = useActivePipelineStageMap();
   const totalVol = useTotalActiveDealVolume();
-  const closedQtd = useDealsClosedQTD();
-  const revenueQtd = useRevenueQTDForDebtEntity();
-  const avgSize = useAvgDealSizeT12M();
+  const closed = useDealsClosed(window);
+  const revenue = useRevenueForDebtEntity(window);
+  const avgSize = useAvgDealSize(window);
 
   return useMemo(
     () => ({
@@ -502,14 +507,14 @@ export function useExecutiveTopRowKpis(): ExecutiveTopRowKpis {
         deals: totalVol.data?.deals ?? [],
       },
       dealsClosedQTD: {
-        value: closedQtd.data?.count ?? (closedQtd.isLoading ? null : 0),
-        loading: stages.isLoading || closedQtd.isLoading,
-        deals: closedQtd.data?.deals ?? [],
+        value: closed.data?.count ?? (closed.isLoading ? null : 0),
+        loading: stages.isLoading || closed.isLoading,
+        deals: closed.data?.deals ?? [],
       },
       revenueQTD: {
-        value: revenueQtd.data?.revenue ?? null,
-        loading: revenueQtd.isLoading,
-        lineItems: revenueQtd.data?.lineItems ?? [],
+        value: revenue.data?.revenue ?? null,
+        loading: revenue.isLoading,
+        lineItems: revenue.data?.lineItems ?? [],
       },
       avgDealSize: {
         value: avgSize.data?.avg ?? null,
@@ -517,6 +522,6 @@ export function useExecutiveTopRowKpis(): ExecutiveTopRowKpis {
         deals: avgSize.data?.deals ?? [],
       },
     }),
-    [stages, totalVol, closedQtd, revenueQtd, avgSize],
+    [stages, totalVol, closed, revenue, avgSize],
   );
 }
