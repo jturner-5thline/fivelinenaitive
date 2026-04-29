@@ -938,7 +938,7 @@ export function VdrThreeColumnWorkspace({
       <ResizablePanel defaultSize={38} minSize={25}>
         <div
           className={cn(
-            'flex flex-col h-full transition-colors bg-card/30',
+            'flex flex-col h-full transition-colors',
             dropTarget === 'internal' && 'bg-primary/5 ring-2 ring-inset ring-primary/40'
           )}
           onDragOver={e => allowDrop(e, 'internal')}
@@ -1112,7 +1112,7 @@ export function VdrThreeColumnWorkspace({
       <ResizablePanel defaultSize={38} minSize={25}>
         <div
           className={cn(
-            'flex flex-col h-full transition-colors bg-[hsl(272,60%,50%,0.04)]',
+            'flex flex-col h-full transition-colors',
             dropTarget === 'dataroom' && 'bg-primary/5 ring-2 ring-inset ring-primary/40'
           )}
           onDragOver={e => allowDrop(e, 'dataroom')}
