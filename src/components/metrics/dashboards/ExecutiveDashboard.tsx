@@ -2,7 +2,22 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Lock } from 'lucide-react';
-import { useExecutiveTopRowKpis } from '@/hooks/useExecutiveTopRowKpis';
+import { useState } from 'react';
+import {
+  useExecutiveTopRowKpis,
+  type ExecKpiDrilldownDeal,
+  type ExecRevenueLineItem,
+} from '@/hooks/useExecutiveTopRowKpis';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Line, ComposedChart, Area, PieChart, Pie, Cell, Legend } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { PieGlassDefs, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
