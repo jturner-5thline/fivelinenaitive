@@ -41,7 +41,7 @@ export function WidgetCard({ widget, value, isEditMode, isClickable, onEdit, onD
     <Card
       ref={setNodeRef}
       style={style}
-      className={`deal-glass group transition-all duration-200 ${isDragging ? 'z-50 opacity-50' : ''} ${isClickable && !isEditMode ? 'cursor-pointer hover:-translate-y-0.5' : ''}`}
+      className={`deal-glass group h-full transition-all duration-200 ${isDragging ? 'z-50 opacity-50' : ''} ${isClickable && !isEditMode ? 'cursor-pointer hover:-translate-y-0.5' : ''}`}
       onClick={handleClick}
     >
       {isEditMode && (
@@ -73,17 +73,23 @@ export function WidgetCard({ widget, value, isEditMode, isClickable, onEdit, onD
           </Button>
         </div>
       )}
-      <CardContent className="flex flex-col justify-center gap-1 px-3 py-3">
+      <CardContent className="flex flex-col items-center justify-center gap-1 px-2 py-3 h-full text-center">
         <p
-          className="text-[11px] font-medium uppercase tracking-wide truncate leading-tight"
+          className="w-full text-[10px] font-medium uppercase tracking-wide truncate leading-tight"
           style={{ color: 'rgba(160, 200, 255, 0.55)' }}
           title={widget.label}
         >
           {widget.label}
         </p>
         <p
-          className="text-xl font-semibold tabular-nums truncate leading-tight"
-          style={{ color: '#dde8f8' }}
+          className="w-full font-semibold tabular-nums leading-tight whitespace-nowrap overflow-hidden text-ellipsis"
+          style={{
+            color: '#dde8f8',
+            // Step the value font down at narrow desktop widths so larger
+            // values like "$79.75MM" never wrap or truncate at xl 6-up.
+            fontSize: 'clamp(0.95rem, 1.1vw + 0.25rem, 1.25rem)',
+          }}
+          title={String(value)}
         >
           {value}
         </p>
