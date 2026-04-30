@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Loader2,
   X,
@@ -9,6 +10,7 @@ import {
   RefreshCw,
   AlertTriangle,
   ArrowRight,
+  Bookmark,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { cn } from '@/lib/utils';
@@ -684,20 +686,6 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             />
           )}
 
-          {/* Save to Deal — additive one-click save for attachments, body, or
-              highlighted text. Auto-suggests the matched deal (or AI fallback)
-              and lets the user route to Data Room or Deal Notes without leaving
-              the email. */}
-          <SaveToDealCard
-            thread={thread}
-            attachments={drAttachments}
-            messageId={latestId}
-            matchedDealId={dealId}
-            matchedDealName={dealName}
-            fallbackDealId={workflowAnalysis?.likely_deal?.id || null}
-            fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
-          />
-
           {/* Error (non-blocking — shell still renders below) */}
           {error && (
             <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-center space-y-2">
@@ -944,8 +932,8 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       </ScrollArea>
 
       {/* Footer actions */}
-      {selectedOption && (
-        <div className="border-t border-white/[0.06] px-3 py-3 flex items-center gap-2 shrink-0 bg-card/60 min-w-0 w-full">
+      <div className="border-t border-white/[0.06] px-3 py-3 flex items-center gap-2 shrink-0 bg-card/60 min-w-0 w-full">
+        {selectedOption && (
           <Button
             variant="ghost"
             size="sm"
@@ -955,7 +943,39 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
           >
             <RefreshCw className={cn('h-3 w-3', isSelectedLoading && 'animate-spin')} /> Regenerate
           </Button>
-          <div className="flex-1 min-w-0" />
+        )}
+        <div className="flex-1 min-w-0" />
+        {/* Save to Deal — popover wrapping the SaveToDealCard so users can
+            route attachments, body, or highlighted text to Data Room or Deal
+            Notes without leaving the email. Sits alongside Insert into Reply. */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-[11px] gap-1.5 shrink-0"
+            >
+              <Bookmark className="h-3 w-3" /> Save to deal
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="end"
+            side="top"
+            sideOffset={8}
+            className="w-[320px] p-0 border-white/[0.08] bg-card/95 backdrop-blur"
+          >
+            <SaveToDealCard
+              thread={thread}
+              attachments={drAttachments}
+              messageId={latestId}
+              matchedDealId={dealId}
+              matchedDealName={dealName}
+              fallbackDealId={workflowAnalysis?.likely_deal?.id || null}
+              fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
+            />
+          </PopoverContent>
+        </Popover>
+        {selectedOption && (
           <Button
             size="sm"
             className="h-8 text-[11px] gap-1.5 shrink-0 bg-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/90"
@@ -964,8 +984,8 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             <Check className="h-3 w-3" /> Insert into reply
             <ArrowRight className="h-3 w-3" />
           </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Send-to-Data-Room dialog (mounted from the proactive card) */}
       {drDialogOpen && (
