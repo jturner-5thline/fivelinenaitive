@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Loader2, Check, X, Quote, AlertCircle, Briefcase, User, Building2, Zap, Link2, Plus } from 'lucide-react';
+import { Loader2, Check, X, Quote, AlertCircle, Briefcase, User, Building2, Zap, Link2, Plus, Inbox as InboxIcon } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import type { WorkflowAnalysis, WorkflowConfidence } from '@/hooks/useThreadWorkflowAnalysis';
 import { useLenderStages } from '@/contexts/LenderStagesContext';
 import { SuggestedTaskCards } from './SuggestedTaskCards';
+import { useEnqueueAiAction } from '@/hooks/useAiActionQueue';
 
 interface Props {
   analysis: WorkflowAnalysis;
