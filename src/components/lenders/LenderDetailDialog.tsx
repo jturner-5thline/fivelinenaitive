@@ -954,7 +954,11 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                             <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 ml-1" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-64 p-2 z-[9999] bg-popover" align="start">
+                        <PopoverContent
+                          className="w-64 p-2 z-[9999] bg-popover"
+                          align="start"
+                          onKeyDown={(e) => { if (e.key === 'Escape') e.stopPropagation(); }}
+                        >
                           <div className="mb-2">
                             <Input
                               placeholder="Search regions..."
@@ -1007,7 +1011,11 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                             <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 ml-1" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-64 p-2 z-[9999] bg-popover" align="start">
+                        <PopoverContent
+                          className="w-64 p-2 z-[9999] bg-popover"
+                          align="start"
+                          onKeyDown={(e) => { if (e.key === 'Escape') e.stopPropagation(); }}
+                        >
                           <div className="mb-2">
                             <Input
                               placeholder="Search industries..."
@@ -1060,7 +1068,11 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                             <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 ml-1" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-64 p-2 z-[9999] bg-popover" align="start">
+                        <PopoverContent
+                          className="w-64 p-2 z-[9999] bg-popover"
+                          align="start"
+                          onKeyDown={(e) => { if (e.key === 'Escape') e.stopPropagation(); }}
+                        >
                           <div className="mb-2">
                             <Input
                               placeholder="Search loan types..."
@@ -1135,7 +1147,11 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                             <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 ml-1" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-72 p-2 z-[9999] bg-popover" align="start">
+                        <PopoverContent
+                          className="w-72 p-2 z-[9999] bg-popover"
+                          align="start"
+                          onKeyDown={(e) => { if (e.key === 'Escape') e.stopPropagation(); }}
+                        >
                           <div className="mb-2">
                             <Input
                               placeholder="Search requirements..."
