@@ -502,6 +502,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   // matching engine that powers the inline "Likely: …" badges) and sorted
   // chronologically across the entire loaded mailbox.
   const [selectedDealFilterId, setSelectedDealFilterId] = useState<string | null>(null);
+  // Inbox label-chip filter selection. Holds a label id (DB) or a virtual
+  // system label id (e.g. SYSTEM_LABEL_JTURNER_ID). Null = no label filter.
+  const [selectedLabelFilterId, setSelectedLabelFilterId] = useState<string | null>(null);
   const isInboxScope = !dealId; // true when rendered inside InboxDialog
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
