@@ -19,6 +19,7 @@ import { useThreadWorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
 import { LenderPassSidebarCard } from './LenderPassSidebarCard';
 import { WorkflowIntelligenceCard } from './WorkflowIntelligenceCard';
 import { DataRoomSuggestionCard } from './DataRoomSuggestionCard';
+import { useEnqueueAiAction } from '@/hooks/useAiActionQueue';
 import { SendToDataRoomDialog } from './SendToDataRoomDialog';
 import { useFullEmailMessage } from './useFullEmailMessage';
 import { useEmailToDataRoom, type DataRoomDestinationSuggestion } from '@/hooks/useEmailToDataRoom';
