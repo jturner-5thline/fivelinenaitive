@@ -114,6 +114,15 @@ function HighlightedFinancials({
   );
 }
 
+function highlightChildren(children: React.ReactNode, sources?: string[]): React.ReactNode {
+  return React.Children.map(children, (child, idx) => {
+    if (typeof child === 'string') {
+      return <HighlightedFinancials key={idx} text={child} sources={sources} />;
+    }
+    return child;
+  });
+}
+
 //
 // Each citation string returned by the deal-space-ai edge function is the
 // `name` of an underlying source. Document sources match a row in
