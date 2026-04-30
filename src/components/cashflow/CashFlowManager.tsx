@@ -19,7 +19,7 @@ import { ScheduledCashFlowsModal } from './ScheduledCashFlowsModal';
 import { useCashFlowImport } from './useCashFlowImport';
 import { useCashInItems } from './useCashInItems';
 import { useScheduledCashFlows } from './useScheduledCashFlows';
-import { mergeScheduledIntoWeekly, ACCOUNT_OPTIONS, resolveCategoryToGridRow, DEBT_ADVISORY_DEFAULT_SUBCATEGORY } from './scheduledCashFlows';
+import { mergeScheduledIntoWeekly, ACCOUNT_OPTIONS, resolveCategoryToGridRow, DEBT_ADVISORY_DEFAULT_SUBCATEGORY, generateOccurrences } from './scheduledCashFlows';
 import { WEEKLY_HISTORICAL_SEED, LAST_HISTORICAL_WEEK_ENDING } from './weeklyHistoricalSeed';
 import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
@@ -638,6 +638,21 @@ export function CashFlowManager() {
 
   const rawSidebar = useMemo(() => normalizeSidebarData(role === 'viewer' && sandboxSidebar ? sandboxSidebar : sidebarData), [role, sandboxSidebar, sidebarData]);
 
+  // Sum of all Configure-modal Cash-In entries with occurrences in the next 8 weeks (today → +56 days).
+  const scheduledCashInNext8Weeks = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const end = new Date(today);
+    end.setDate(end.getDate() + 56);
+    let total = 0;
+    for (const entry of scheduledItems || []) {
+      if (entry.flow_type !== 'cash_in') continue;
+      const occurrences = generateOccurrences(entry, today, end);
+      total += occurrences.length * (Number(entry.amount) || 0);
+    }
+    return total;
+  }, [scheduledItems]);
+
   const availableYears = useMemo(() => getAvailableYears(rawDaily.dates), [rawDaily.dates]);
 
   // Distinct entities/categories present in Configure entries (preserve canonical ordering)
@@ -1078,7 +1093,7 @@ export function CashFlowManager() {
             >
               <span className="cf-pill-label">Cash-In Next 8W</span>
               <span className="cf-pill-value">
-                {fmtShort(computeCashInTotal(rawSidebar, sidebarDbItems))}
+                {fmtShort(computeCashInTotal(rawSidebar, sidebarDbItems) + scheduledCashInNext8Weeks)}
               </span>
             </button>
             <button
