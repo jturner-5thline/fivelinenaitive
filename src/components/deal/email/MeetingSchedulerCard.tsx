@@ -555,7 +555,11 @@ export function MeetingSchedulerCard({
   );
 
   // Default attendees as a stable, key-addressable list. Keys use email
-  // (case-folded) so removals survive re-renders and dedupe naturally.
+  // (trimmed + case-folded) so removals survive re-renders and dedupe
+  // naturally. The same person can be selected from multiple sources
+  // (e.g. recipient who is also a teammate, or a custom-added email that
+  // matches the current user) — `normEmailKey` is the single source of
+  // truth that collapses every variant into one chip.
   type AttendeeRow = {
     key: string;
     email: string;
@@ -563,21 +567,23 @@ export function MeetingSchedulerCard({
     role: 'recipient' | 'me' | 'teammate' | 'custom';
     removable: boolean;
   };
+  const normEmailKey = (e: string | null | undefined): string =>
+    (e || '').trim().toLowerCase();
   const defaultAttendees: AttendeeRow[] = useMemo(() => {
     const rows: AttendeeRow[] = [];
-    if (recipientEmail) {
+    if (recipientEmail && normEmailKey(recipientEmail)) {
       rows.push({
-        key: recipientEmail.toLowerCase(),
-        email: recipientEmail,
+        key: normEmailKey(recipientEmail),
+        email: recipientEmail.trim(),
         name: recipientName,
         role: 'recipient',
         removable: true,
       });
     }
-    if (user?.email) {
+    if (user?.email && normEmailKey(user.email)) {
       rows.push({
-        key: user.email.toLowerCase(),
-        email: user.email,
+        key: normEmailKey(user.email),
+        email: user.email.trim(),
         name: 'You',
         role: 'me',
         // The organiser is implicit on the Nylas event; allow removal too
@@ -587,10 +593,10 @@ export function MeetingSchedulerCard({
     }
     if (partiesMode === 'me_plus') {
       for (const m of extraMembers) {
-        if (!m.email) continue;
+        if (!normEmailKey(m.email)) continue;
         rows.push({
-          key: m.email.toLowerCase(),
-          email: m.email,
+          key: normEmailKey(m.email),
+          email: m.email.trim(),
           name: m.display_name,
           role: 'teammate',
           removable: true,
@@ -603,16 +609,22 @@ export function MeetingSchedulerCard({
   const finalAttendees: AttendeeRow[] = useMemo(() => {
     const seen = new Set<string>();
     const rows: AttendeeRow[] = [];
+    // Dedup precedence: defaults preserve the order recipient → you →
+    // teammates, then custom rows are appended only if their normalized
+    // key hasn't already been used. This guarantees that if a teammate's
+    // email matches the recipient (or the user adds a custom email that
+    // matches anyone above), the duplicate is dropped silently and the
+    // first occurrence — usually the more meaningful role — wins.
     for (const r of defaultAttendees) {
       if (removedKeys.has(r.key) || seen.has(r.key)) continue;
       seen.add(r.key);
       rows.push(r);
     }
     for (const c of customAttendees) {
-      const key = c.email.toLowerCase();
-      if (seen.has(key)) continue;
+      const key = normEmailKey(c.email);
+      if (!key || seen.has(key)) continue;
       seen.add(key);
-      rows.push({ key, email: c.email, name: c.name, role: 'custom', removable: true });
+      rows.push({ key, email: c.email.trim(), name: c.name, role: 'custom', removable: true });
     }
     return rows;
   }, [defaultAttendees, removedKeys, customAttendees]);
