@@ -1124,12 +1124,48 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs">Draft with AI (⌘J)</TooltipContent>
           </Tooltip>
+          {canPolish && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 h-7 text-xs text-muted-foreground hover:text-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/10"
+                  onClick={() => setPolishOpen(true)}
+                  aria-label="Polish with AI"
+                >
+                  <Sparkles className="h-3 w-3" />Polish with AI
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                Rewrite your draft in 5th Line voice — facts preserved
+              </TooltipContent>
+            </Tooltip>
+          )}
         </ToolbarZone>
 
         <div className="flex-1" />
 
         {SplitSend}
       </div>
+
+      <PolishWithAiDialog
+        open={polishOpen}
+        onOpenChange={setPolishOpen}
+        draftBody={body || ''}
+        subject={subject}
+        recipientName={replyToName}
+        onAccept={(finalBody) => {
+          // finalBody is plain text with newlines preserved.
+          // Wrap in <p> blocks so the rich-text editor renders paragraphs.
+          const html = finalBody
+            .split(/\n{2,}/)
+            .map(par => `<p>${par.split(/\n/).map(escapeHtml).join('<br />')}</p>`)
+            .join('');
+          onBodyChange(html);
+          toast.success('Polished draft applied');
+        }}
+      />
 
       {/* Contextual metadata strip */}
       {(dealName || true) && (
