@@ -15,9 +15,10 @@ import {
 } from '@/components/ui/collapsible';
 import { useDealSpaceAI } from '@/hooks/useDealSpaceAI';
 import { useDealSpaceConversations } from '@/hooks/useDealSpaceConversations';
-import { useDealSpaceDocuments } from '@/hooks/useDealSpaceDocuments';
+import { useDealSpaceDocuments, type DealSpaceDocument } from '@/hooks/useDealSpaceDocuments';
 import { useDealSpaceFinancials } from '@/hooks/useDealSpaceFinancials';
 import { DealSpaceConversationHistory } from './DealSpaceConversationHistory';
+import { DealSpaceDocumentPreview } from './DealSpaceDocumentPreview';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -44,8 +45,31 @@ const SCOPE_LABELS: Record<DocumentScope, string> = {
 };
 
 // Source citation chip component
-function SourceCitations({ sources }: { sources?: string[] }) {
+//
+// Each citation string returned by the deal-space-ai edge function is the
+// `name` of an underlying source. Document sources match a row in
+// `useDealSpaceDocuments`; when they do, we render the badge as a clickable
+// button that opens the same preview dialog used in the Documents tab so the
+// user can read the exact passage the AI cited. Non-document sources
+// (Deal Record, Lenders, Milestones, …) stay as static badges.
+function SourceCitations({
+  sources,
+  documents,
+  onOpenDocument,
+}: {
+  sources?: string[];
+  documents: DealSpaceDocument[];
+  onOpenDocument: (doc: DealSpaceDocument) => void;
+}) {
   if (!sources || sources.length === 0) return null;
+
+  // Build a case-insensitive lookup by document name. The edge function
+  // pushes `doc.name` directly into sourcesUsed, so an exact (case-folded)
+  // match is the canonical way to resolve a citation back to a file.
+  const docByName = new Map<string, DealSpaceDocument>();
+  for (const d of documents) {
+    if (d?.name) docByName.set(d.name.toLowerCase(), d);
+  }
 
   return (
     <Collapsible>
@@ -58,11 +82,28 @@ function SourceCitations({ sources }: { sources?: string[] }) {
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="flex flex-wrap gap-1 mt-1.5">
-          {sources.map((source, i) => (
-            <Badge key={i} variant="outline" className="text-[9px] py-0 px-1.5 h-4 bg-muted/50 font-normal">
-              {source}
-            </Badge>
-          ))}
+          {sources.map((source, i) => {
+            const matched = docByName.get(source.toLowerCase());
+            if (matched) {
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => onOpenDocument(matched)}
+                  title={`Open ${matched.name} in Deal Space`}
+                  className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 h-4 text-[9px] font-normal text-primary hover:bg-primary/20 hover:border-primary/50 transition-colors"
+                >
+                  <FileText className="h-2.5 w-2.5" />
+                  <span className="max-w-[160px] truncate">{source}</span>
+                </button>
+              );
+            }
+            return (
+              <Badge key={i} variant="outline" className="text-[9px] py-0 px-1.5 h-4 bg-muted/50 font-normal">
+                {source}
+              </Badge>
+            );
+          })}
         </div>
       </CollapsibleContent>
     </Collapsible>
