@@ -81,7 +81,15 @@ function buildConsolidatedInsert(
     for (const { question, state } of answered) {
       const topic = (question.topics[0] || question.text).trim();
       const ans = (state.content || '').trim().replace(/\s+/g, ' ');
-      lines.push(`• ${topic} — ${ans}`);
+      // Cite up to the top 3 Deal Space sources inline so the lender (and
+      // the sender reviewing the draft) can trace where each figure came
+      // from. Skip silently when the model returned no sources.
+      const cites = (state.sources || [])
+        .map((s) => (s || '').trim())
+        .filter(Boolean)
+        .slice(0, 3);
+      const citation = cites.length > 0 ? ` (Source: ${cites.join('; ')})` : '';
+      lines.push(`• ${topic} — ${ans}${citation}`);
     }
   }
   if (missing.length > 0) {
