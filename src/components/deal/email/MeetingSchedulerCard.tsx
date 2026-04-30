@@ -60,12 +60,16 @@ interface Props {
   onClose: () => void;
 }
 
-const SLOT_MINUTES = 45;
+/** Default meeting length when no preference is persisted. */
+const DEFAULT_SLOT_MINUTES = 45;
+/** Selectable durations exposed in the picker. */
+const DURATION_OPTIONS = [15, 30, 45, 60, 90] as const;
 const WORK_START_HOUR = 9;   // 9 AM local
 const WORK_END_HOUR = 17;    // 5 PM local
 
 const BROWSER_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 const TZ_PREF_KEY = 'naitive.meetingScheduler.tz';
+const DURATION_PREF_KEY = 'naitive.meetingScheduler.durationMinutes';
 
 /**
  * Curated timezone shortlist — covers the common 5th Line counterparties
@@ -138,7 +142,7 @@ function fmtSlot(s: Slot, tz: string): string {
  * "10:00 in London" lands at the right absolute moment regardless of the
  * browser locale running this code.
  */
-function buildCandidateSlots(now: Date, tz: string): Slot[] {
+function buildCandidateSlots(now: Date, tz: string, durationMinutes: number): Slot[] {
   const slots: Slot[] = [];
   // Get the calendar date "today" as seen in `tz` (so a user in NY at 11pm
   // doesn't accidentally schedule for "tomorrow" in London terms).
@@ -155,9 +159,12 @@ function buildCandidateSlots(now: Date, tz: string): Slot[] {
     const y = candidateDay.getFullYear();
     const m = candidateDay.getMonth() + 1;
     const d = candidateDay.getDate();
-    for (let h = WORK_START_HOUR; h + SLOT_MINUTES / 60 <= WORK_END_HOUR; h += 1) {
+    // Step the start hour at hourly anchors but ensure the chosen
+    // duration still fits inside the working window.
+    const durationHours = durationMinutes / 60;
+    for (let h = WORK_START_HOUR; h + durationHours <= WORK_END_HOUR; h += 1) {
       const start = zonedDateToUtc(y, m, d, h, 0, tz);
-      const end = new Date(start.getTime() + SLOT_MINUTES * 60 * 1000);
+      const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
       slots.push({ start, end });
     }
   }
