@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Bookmark, Check, ChevronDown, FileText, FolderOpen, Loader2, Paperclip, Highlighter, Mail } from 'lucide-react';
+import { Bookmark, Check, ChevronDown, ExternalLink, FileText, FolderOpen, Loader2, Paperclip, Highlighter, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,14 @@ import type { EmailThread, EmailAttachment } from './mockEmailData';
 
 type SourceKind = 'attachments' | 'body' | 'highlighted';
 type Destination = 'data_room' | 'notes';
+
+interface LastSaved {
+  destination: Destination;
+  dealId: string;
+  dealName: string;
+  label: string; // human-readable target (file name or "note")
+  count?: number; // for multi-file uploads
+}
 
 interface Props {
   thread: EmailThread;
@@ -87,6 +95,7 @@ export function SaveToDealCard({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [highlighted, setHighlighted] = useState('');
   const [saving, setSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<LastSaved | null>(null);
 
   // Capture window selection on mousedown of the card so the user's
   // highlight isn't lost when focus shifts. We only persist when the
@@ -145,8 +154,8 @@ export function SaveToDealCard({
     if (error) throw error;
   };
 
-  const saveTextAsDataRoomFile = async (text: string, label: string): Promise<void> => {
-    if (!user || !dealId) return;
+  const saveTextAsDataRoomFile = async (text: string, label: string): Promise<string> => {
+    if (!user || !dealId) return '';
     const fullText = `${buildContextHeader(thread)}${text}`;
     const blob = new Blob([fullText], { type: 'text/plain' });
     const safeSubject = (thread.subject || 'email').replace(/[^a-z0-9-_ ]/gi, '').slice(0, 60).trim() || 'email';
@@ -172,6 +181,7 @@ export function SaveToDealCard({
       source_sender: `${thread.latestEmail.from_name} <${thread.latestEmail.from_email}>`,
     } as any);
     if (dbErr) throw dbErr;
+    return finalName;
   };
 
   const handleSave = async () => {
@@ -184,6 +194,7 @@ export function SaveToDealCard({
       return;
     }
     setSaving(true);
+    setLastSaved(null);
     try {
       if (source === 'attachments') {
         if (destination === 'data_room') {
@@ -213,12 +224,22 @@ export function SaveToDealCard({
           });
           if (result && result.uploaded > 0) {
             toast.success(`Saved to ${dealName} Data Room.`);
+            setLastSaved({
+              destination: 'data_room',
+              dealId,
+              dealName,
+              label: result.uploaded === 1
+                ? (uploadable[0]?.filename || 'attachment')
+                : `${result.uploaded} files`,
+              count: result.uploaded,
+            });
           }
         } else {
           // attachments → notes (list filenames)
           const lines = uploadable.map((a) => `• ${a.filename || 'attachment'}`).join('\n');
           await saveTextAsNote(`Attachments referenced from email:\n${lines}`);
           toast.success(`Saved to ${dealName} Notes.`);
+          setLastSaved({ destination: 'notes', dealId, dealName, label: 'Deal note' });
         }
       } else {
         const text = source === 'body' ? buildBodyText() : highlighted;
@@ -229,9 +250,11 @@ export function SaveToDealCard({
         if (destination === 'notes') {
           await saveTextAsNote(text);
           toast.success(`Saved to ${dealName} Notes.`);
+          setLastSaved({ destination: 'notes', dealId, dealName, label: 'Deal note' });
         } else {
-          await saveTextAsDataRoomFile(text, source === 'body' ? 'email body' : 'highlight');
+          const fileName = await saveTextAsDataRoomFile(text, source === 'body' ? 'email body' : 'highlight');
           toast.success(`Saved to ${dealName} Data Room.`);
+          setLastSaved({ destination: 'data_room', dealId, dealName, label: fileName || 'File' });
         }
       }
     } catch (err: any) {
@@ -290,6 +313,10 @@ export function SaveToDealCard({
   };
 
   const busy = saving || uploading;
+
+  const lastSavedHref = lastSaved
+    ? `/deal/${lastSaved.dealId}?tab=${lastSaved.destination === 'data_room' ? 'data-room' : 'deal-management'}`
+    : null;
 
   return (
     <div ref={captureRef} className="rounded-md border border-white/[0.06] bg-card/40 p-2.5 space-y-2.5">
@@ -388,6 +415,27 @@ export function SaveToDealCard({
           Save to deal
         </Button>
       </div>
+
+      {lastSaved && lastSavedHref && (
+        <div className="flex items-start gap-1.5 rounded-md border border-emerald-500/20 bg-emerald-500/[0.06] px-2 py-1.5">
+          <Check className="h-3 w-3 text-emerald-400 mt-0.5 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <div className="text-[11px] text-foreground/90 truncate">
+              Saved <span className="font-medium">{lastSaved.label}</span> to{' '}
+              <span className="font-medium">{lastSaved.dealName}</span>
+            </div>
+            <a
+              href={lastSavedHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline mt-0.5"
+            >
+              Open {lastSaved.destination === 'data_room' ? 'Data Room' : 'Deal Notes'}
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
