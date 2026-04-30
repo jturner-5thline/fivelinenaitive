@@ -1879,17 +1879,6 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
               ))}
             </div>
 
-            {/* Label filter chips — DB labels + system auto-tag labels.
-                Inbox-scope only; on a deal page the existing labels are
-                managed inline via the thread bar. */}
-            {isInboxScope && (
-              <LabelFilterChipsRow
-                labels={[...SYSTEM_LABELS, ...userLabels]}
-                selectedLabelId={selectedLabelFilterId}
-                onSelect={setSelectedLabelFilterId}
-              />
-            )}
-
             {activeFilterChips.length > 0 && (
               <div className="flex flex-wrap gap-1 px-3 py-1.5 border-b border-border/30">
                 {activeFilterChips.map(chip => (
