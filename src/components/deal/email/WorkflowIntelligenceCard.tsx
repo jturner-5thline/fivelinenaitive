@@ -29,6 +29,12 @@ interface Props {
   onConfirm: (overrides?: {
     reasonNote?: string;
     confirmedStatus?: string;
+    /**
+     * Tracking-status group of the chosen Lender Stage (e.g. 'passed',
+     * 'active', 'on-deck', 'on-hold'). Sourced from the stage's
+     * `group` field in Settings → Lender Stages.
+     */
+    confirmedTrackingStatus?: string;
     /** Comma-joined label string (back-compat, written into deal_lenders.pass_reason). */
     confirmedDetail?: string;
     /** Multi-select: array of pass-reason LABELS (from useLenderStages().passReasons). */
@@ -71,21 +77,52 @@ const SIGNAL_TONE: Record<string, string> = {
   no_signal: 'bg-muted text-muted-foreground border-border',
 };
 
-const STATUS_OPTIONS: { value: string; label: string }[] = [
-  { value: 'passed', label: 'Passed' },
-  { value: 'not_a_fit', label: 'Not a Fit' },
-  { value: 'interested', label: 'Interested' },
-  { value: 'in_diligence', label: 'In Diligence' },
-  { value: 'follow_up', label: 'Follow Up' },
-  { value: 'declined', label: 'Declined' },
-];
-const STATUS_LABEL: Record<string, string> = STATUS_OPTIONS.reduce((acc, o) => {
-  acc[o.value] = o.label;
-  return acc;
-}, {} as Record<string, string>);
+/**
+ * Stage groups that close out a lender — show the disposition detail
+ * (pass-reason) dropdown for these. Tied to the configurable Lender
+ * Stages in Settings: any stage whose `group === 'passed'` is treated
+ * as a closing stage. We deliberately key off the GROUP (not the
+ * stage id) so user-renamed/added stages still classify correctly.
+ */
+const CLOSING_STAGE_GROUPS = new Set(['passed']);
 
-/** Statuses that close out a lender — show the disposition detail dropdown. */
-const CLOSING_STATUSES = new Set(['passed', 'not_a_fit', 'declined']);
+/**
+ * Best-effort fallback for legacy AI-emitted status tokens (e.g. the
+ * old enum keys `passed`, `interested`, `in_diligence`, `follow_up`,
+ * `not_a_fit`, `declined`) → resolve to the matching configured Lender
+ * Stage id. Used only to PRE-SELECT a sensible default in the dropdown.
+ */
+function resolveAiStageId(
+  aiToken: string | undefined,
+  stageOptions: Array<{ id: string; label: string; group: string }>,
+): string {
+  if (stageOptions.length === 0) return '';
+  const t = (aiToken || '').toLowerCase().trim();
+  if (!t) return stageOptions[0].id;
+  // Direct id or label match first.
+  const direct = stageOptions.find((s) => s.id.toLowerCase() === t || s.label.toLowerCase() === t);
+  if (direct) return direct.id;
+  // Common AI tokens → group/keyword matches.
+  const tokenToHints: Record<string, string[]> = {
+    passed: ['pass'],
+    not_a_fit: ['pass'],
+    declined: ['pass'],
+    interested: ['engaged', 'interest', 'on deck'],
+    in_diligence: ['diligence', 'drl', 'review'],
+    follow_up: ['follow', 'engaged'],
+    terms_issued: ['term', 'draft'],
+    info_requested: ['drl', 'review'],
+    engaged: ['engaged', 'interest'],
+  };
+  const hints = tokenToHints[t] || [t];
+  const hintMatch = stageOptions.find((s) =>
+    hints.some((h) => s.id.toLowerCase().includes(h) || s.label.toLowerCase().includes(h)),
+  );
+  if (hintMatch) return hintMatch.id;
+  // Final fallback: first active-group stage, else the first stage.
+  const activeFallback = stageOptions.find((s) => s.group === 'active' || s.group === 'on-deck');
+  return (activeFallback || stageOptions[0]).id;
+}
 
 /**
  * Convert "AI suggested" detail tokens (the old hardcoded enum keys returned
@@ -104,14 +141,9 @@ const AI_DETAIL_TOKEN_TO_LABEL_HINT: Record<string, string[]> = {
   other: [],
 };
 
-function normalizeSuggested(stage: string | undefined): string {
-  if (!stage) return 'follow_up';
-  const s = stage.toLowerCase();
-  if (STATUS_LABEL[s]) return s;
-  if (s === 'terms_issued') return 'in_diligence';
-  if (s === 'info_requested' || s === 'engaged') return 'follow_up';
-  return 'follow_up';
-}
+// Stage resolution lives in resolveAiStageId() above — it operates on
+// the user-configured Lender Stages from Settings (single source of
+// truth), not the legacy hardcoded enum.
 
 function logAnalytics(event: string, payload: Record<string, unknown>) {
   try {
@@ -136,9 +168,14 @@ export function WorkflowIntelligenceCard({
   threadId = null,
   hideSuggestedTasks = false,
 }: Props) {
-  // Source of truth for pass-reason options — same list shown in the
-  // deal-detail Lenders tab "Confirm Pass" dialog so the two stay in sync.
-  const { passReasons: passReasonOptions } = useLenderStages();
+  // Source of truth for both Lender Stages and Pass Reasons — same lists
+  // configured in Settings → Lender Stages and shown on the deal-detail
+  // Lenders tab. Keeping them centralized here means any rename/reorder
+  // in Settings flows through to this AI Assist card automatically.
+  const {
+    passReasons: passReasonOptions,
+    stages: lenderStageOptions,
+  } = useLenderStages();
   const enqueueAiAction = useEnqueueAiAction();
 
   const rec = analysis.recommended_update;
@@ -156,7 +193,11 @@ export function WorkflowIntelligenceCard({
   const threadLinked = hasLinkedDeal || isThreadLinkedToDeal === true;
   const willAutoLinkThread =
     !threadLinked && isThreadLinkedToDeal === false && !!resolvedDealId && rec.kind !== 'none';
-  const aiSuggestedStatus = normalizeSuggested(rec.new_stage);
+  // Pre-select a sensible default Stage from Settings based on the AI's
+  // legacy token (e.g. "interested" → first matching configured stage).
+  const aiSuggestedStageId = resolveAiStageId(rec.new_stage, lenderStageOptions);
+  const stageLabelById = (id: string) =>
+    lenderStageOptions.find((s) => s.id === id)?.label || id;
   const aiSuggestedDetailToken = (rec.suggested_detail || '').toLowerCase();
 
   /**
@@ -175,7 +216,10 @@ export function WorkflowIntelligenceCard({
   })();
 
   const [reason, setReason] = useState(rec.reason_note || '');
-  const [confirmedStatus, setConfirmedStatus] = useState<string>(aiSuggestedStatus);
+  // `confirmedStatus` is now a configured Lender Stage **id** (from
+  // Settings) rather than a hardcoded enum key. Persisted directly to
+  // deal_lenders.stage on confirm.
+  const [confirmedStatus, setConfirmedStatus] = useState<string>(aiSuggestedStageId);
   // Selected pass-reason LABELS — multi-select, capped at 3 to match the
   // deal-detail dialog UX.
   const [selectedReasonLabels, setSelectedReasonLabels] = useState<string[]>(aiSuggestedLabels);
@@ -187,10 +231,10 @@ export function WorkflowIntelligenceCard({
   // see the suggested action AND its supporting context at the same time
   // without paging.
 
-  const analysisKey = `${analysis.signal.type}::${rec.lender_id || rec.master_lender_id || rec.lender_name}::${rec.new_stage}::${rec.suggested_detail || ''}::${passReasonOptions.length}`;
+  const analysisKey = `${analysis.signal.type}::${rec.lender_id || rec.master_lender_id || rec.lender_name}::${rec.new_stage}::${rec.suggested_detail || ''}::${passReasonOptions.length}::${lenderStageOptions.length}`;
   if (renderedKey !== analysisKey) {
     setRenderedKey(analysisKey);
-    setConfirmedStatus(aiSuggestedStatus);
+    setConfirmedStatus(aiSuggestedStageId);
     setSelectedReasonLabels(aiSuggestedLabels);
     setReason(rec.reason_note || '');
     if (hasUpdate && rec.kind === 'lender_status') {
@@ -199,7 +243,7 @@ export function WorkflowIntelligenceCard({
         lender_id: rec.lender_id || null,
         master_lender_id: rec.master_lender_id || null,
         lender_name: rec.lender_name,
-        ai_suggested_status: aiSuggestedStatus,
+        ai_suggested_stage_id: aiSuggestedStageId,
         ai_suggested_detail: aiSuggestedDetailToken || null,
         ai_suggested_labels: aiSuggestedLabels,
         signal_type: analysis.signal.type,
@@ -209,12 +253,13 @@ export function WorkflowIntelligenceCard({
     }
   }
 
-  const userOverrodeStatus = confirmedStatus !== aiSuggestedStatus;
+  const userOverrodeStatus = confirmedStatus !== aiSuggestedStageId;
   const userOverrodeDetail =
     selectedReasonLabels.join('||') !== aiSuggestedLabels.join('||');
   const userOverrodeSuggestion = userOverrodeStatus || userOverrodeDetail;
   const isLenderStatus = rec.kind === 'lender_status';
-  const showDetailField = isLenderStatus && CLOSING_STATUSES.has(confirmedStatus);
+  const selectedStage = lenderStageOptions.find((s) => s.id === confirmedStatus);
+  const showDetailField = isLenderStatus && !!selectedStage && CLOSING_STAGE_GROUPS.has(selectedStage.group);
 
   // Lender association: trust the DB-backed resolver first (handles cases
   // where the AI didn't return a lender_id but the row is already on the
@@ -277,9 +322,9 @@ export function WorkflowIntelligenceCard({
   const handleStatusChange = (next: string) => {
     setConfirmedStatus(next);
     logAnalytics('ai_suggested_update_modified', {
-      field: 'status',
-      original_suggested_status: aiSuggestedStatus,
-      final_confirmed_status: next,
+      field: 'stage',
+      original_suggested_stage_id: aiSuggestedStageId,
+      final_confirmed_stage_id: next,
     });
   };
   const toggleReasonLabel = (label: string) => {
@@ -305,6 +350,9 @@ export function WorkflowIntelligenceCard({
     onConfirm({
       reasonNote: reason || rec.reason_note || '',
       confirmedStatus,
+      // Derive tracking_status from the configured stage's group so the
+      // deal_lenders row stays internally consistent with Settings.
+      confirmedTrackingStatus: selectedStage?.group || undefined,
       confirmedDetail: joinedDetail,
       confirmedDetailLabels: showDetailField ? selectedReasonLabels : [],
     });
@@ -337,30 +385,47 @@ export function WorkflowIntelligenceCard({
                 </p>
 
                 {isLenderStatus && (
-                  <div className="flex items-center gap-2 min-w-0">
-                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0">
-                      Status
-                    </label>
-                    <Select value={confirmedStatus} onValueChange={handleStatusChange}>
-                      <SelectTrigger className="h-7 text-[11px] flex-1 min-w-0">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STATUS_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value} className="text-[11px]">
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  lenderStageOptions.length === 0 ? (
+                    // No Lender Stages configured — surface a clear inline
+                    // CTA to Settings rather than a broken empty dropdown.
+                    <div className="flex items-center gap-2 min-w-0 text-[11px] text-amber-300/90">
+                      <AlertCircle className="h-3 w-3 shrink-0" />
+                      <span className="min-w-0">
+                        No Lender Stages configured.{' '}
+                        <a
+                          href="/settings?tab=lender-stages"
+                          className="underline underline-offset-2 hover:text-amber-200"
+                        >
+                          Configure in Settings
+                        </a>
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 min-w-0">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0">
+                        Stage
+                      </label>
+                      <Select value={confirmedStatus} onValueChange={handleStatusChange}>
+                        <SelectTrigger className="h-7 text-[11px] flex-1 min-w-0">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {lenderStageOptions.map((opt) => (
+                            <SelectItem key={opt.id} value={opt.id} className="text-[11px]">
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )
                 )}
-                {isLenderStatus && userOverrodeStatus && (
+                {isLenderStatus && userOverrodeStatus && lenderStageOptions.length > 0 && (
                   <div className="text-[10px] leading-tight -mt-1 line-clamp-1">
                     <span className="text-muted-foreground">AI: </span>
-                    <span className="text-foreground/70">{STATUS_LABEL[aiSuggestedStatus]}</span>
+                    <span className="text-foreground/70">{stageLabelById(aiSuggestedStageId)}</span>
                     <span className="text-muted-foreground"> → </span>
-                    <span className="text-primary font-medium">{STATUS_LABEL[confirmedStatus]}</span>
+                    <span className="text-primary font-medium">{stageLabelById(confirmedStatus)}</span>
                   </div>
                 )}
 
@@ -520,7 +585,10 @@ export function WorkflowIntelligenceCard({
                         deal_name: analysis.likely_deal?.name || null,
                         payload: {
                           kind: rec.kind,
-                          new_status: confirmedStatus,
+                          // Stage id from Settings → Lender Stages (single
+                          // source of truth). Persisted to deal_lenders.stage.
+                          new_stage_id: confirmedStatus,
+                          new_tracking_status: selectedStage?.group || null,
                           deal_lender_id: rec.lender_id || null,
                           lender_name: rec.lender_name,
                           pass_reasons: selectedReasonLabels,

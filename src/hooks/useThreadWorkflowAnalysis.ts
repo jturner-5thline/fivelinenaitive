@@ -171,7 +171,7 @@ export function useThreadWorkflowAnalysis({
   autoRun = true,
 }: UseThreadWorkflowAnalysisOptions) {
   const { user } = useAuth();
-  const { refreshDeals } = useDealsContext();
+  const { refreshDeals, deals } = useDealsContext();
   const queryClient = useQueryClient();
   const [analysis, setAnalysis] = useState<WorkflowAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
@@ -226,6 +226,69 @@ export function useThreadWorkflowAnalysis({
       const r = data?.result as WorkflowAnalysis | { raw?: string } | undefined;
       if (!r || (r as any).raw) throw new Error('Invalid workflow analysis response');
       const result = r as WorkflowAnalysis;
+
+      // ─── Canonical deal override ────────────────────────────────────
+      // The AI sometimes nominates the wrong deal (e.g. picks "Back Bar
+      // Project" for a thread whose subject + linked deal both say
+      // "Censys Technologies"). The AI Assist panel must use a SINGLE
+      // source of truth across the header, the chip row, and the
+      // SuggestedUpdate card. Resolution priority:
+      //   1. The parent-passed dealId (canonical link from deal_emails).
+      //   2. The deal whose name appears literally in the subject line.
+      //      (Strongest semantic signal — outranks any AI heuristic.)
+      // If either fires we overwrite the AI's `likely_deal` AND
+      // `recommended_update.{deal_id, deal_name}` so every consumer
+      // agrees. We do NOT touch lender/signal fields — only the deal.
+      try {
+        const subject = (latestInbound?.subject || threadData?.subject || '').toLowerCase();
+        // Pre-pass: parent dealId always wins.
+        let canonical: { id: string; name: string } | null = null;
+        if (dealId) {
+          const matched = (deals || []).find((d: any) => d.id === dealId);
+          if (matched) canonical = { id: matched.id, name: matched.name };
+        }
+        // Subject-line literal match (longest wins so "Censys Technologies"
+        // beats a substring match on a single word).
+        if (!canonical && subject) {
+          const candidates = (deals || [])
+            .filter((d: any) => d?.name && subject.includes(String(d.name).toLowerCase()))
+            .sort((a: any, b: any) => (b.name?.length || 0) - (a.name?.length || 0));
+          if (candidates.length > 0) {
+            canonical = { id: candidates[0].id, name: candidates[0].name };
+          }
+        }
+        if (canonical && canonical.id !== result.likely_deal?.id) {
+          // eslint-disable-next-line no-console
+          console.info('[useThreadWorkflowAnalysis] overriding AI deal pick with canonical match', {
+            aiPicked: result.likely_deal,
+            canonical,
+            reason: dealId ? 'parent_linked_deal' : 'subject_literal_match',
+          });
+          result.likely_deal = {
+            id: canonical.id,
+            name: canonical.name,
+            confidence: 'high',
+            reasoning: dealId
+              ? 'Thread is already linked to this deal.'
+              : `Deal name appears in the email subject ("${latestInbound?.subject || ''}").`,
+          };
+          if (result.recommended_update && result.recommended_update.kind !== 'none') {
+            result.recommended_update.deal_id = canonical.id;
+            result.recommended_update.deal_name = canonical.name;
+            // Rewrite the title so the rendered card matches the real
+            // deal name instead of the AI's misidentified one.
+            const oldName = result.recommended_update.deal_name;
+            if (result.recommended_update.title && oldName) {
+              result.recommended_update.title = result.recommended_update.title
+                .replace(new RegExp(oldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), canonical.name);
+            }
+          }
+        }
+      } catch (overrideErr) {
+        // Non-fatal — fall back to AI's pick if our heuristic blows up.
+        console.warn('[useThreadWorkflowAnalysis] canonical-deal override failed', overrideErr);
+      }
+
       setAnalysis(result);
 
       // Fire prefill analytics event so we can track AI suggestion quality.
@@ -623,7 +686,20 @@ export function useThreadWorkflowAnalysis({
    */
   const confirmRecommendation = useCallback(async (overrides?: {
     reasonNote?: string;
+    /**
+     * Configured Lender Stage **id** selected by the user (sourced from
+     * Settings → Lender Stages). Persisted directly into
+     * `deal_lenders.stage`. When omitted we fall back to whatever the AI
+     * recommended (`rec.new_stage`).
+     */
     confirmedStatus?: string;
+    /**
+     * Tracking status group of the selected stage (e.g. 'passed',
+     * 'active', 'on-deck', 'on-hold'). Derived in the card from the
+     * stage's `group`. Used to keep `deal_lenders.tracking_status`
+     * aligned with the selected stage.
+     */
+    confirmedTrackingStatus?: string;
     confirmedDetail?: string;
     confirmedDetailLabels?: string[];
   }) => {
@@ -667,15 +743,21 @@ export function useThreadWorkflowAnalysis({
             : []);
       const passReasonText = finalDetailLabels.join(', ') || overrides?.confirmedDetail || 'Passed';
       const reason = overrides?.reasonNote ?? rec.reason_note ?? analysis.signal.label ?? '';
-      const finalStatus = (overrides?.confirmedStatus || rec.new_stage || 'passed').toLowerCase();
+      // The card now passes a configured Lender Stage **id** directly.
+      // Fall back to the AI's suggested stage only if the card didn't
+      // pass anything (legacy callers).
+      const finalStageId = (overrides?.confirmedStatus || rec.new_stage || 'passed');
+      const finalTrackingStatus = overrides?.confirmedTrackingStatus
+        || (finalStageId === 'passed' ? 'passed' : 'active');
+      const isClosingStage = finalTrackingStatus === 'passed';
       const sourceMessageId = latestInbound?.gmail_message_id || latestInbound?.id || messageId || null;
 
       currentStep = 'updateDealLender';
       const lenderUpdatePayload: DealLenderUpdate = {
-        stage: 'passed',
+        stage: finalStageId,
         substage: null,
-        tracking_status: 'passed',
-        pass_reason: passReasonText,
+        tracking_status: finalTrackingStatus,
+        pass_reason: isClosingStage ? passReasonText : null,
         notes: reason || targetRow.notes || null,
         updated_at: new Date().toISOString(),
       };
@@ -722,11 +804,11 @@ export function useThreadWorkflowAnalysis({
         verifyError: verifyError?.message || null,
       });
       if (verifyError) throw verifyError;
-      if (!verifyRow || verifyRow.stage !== 'passed' || verifyRow.tracking_status !== 'passed') {
-        throw new Error(`Read-back mismatch for ids=${JSON.stringify(debugContext)} status=${verifyRow?.stage || 'missing'}`);
+      if (!verifyRow || verifyRow.stage !== finalStageId || verifyRow.tracking_status !== finalTrackingStatus) {
+        throw new Error(`Read-back mismatch for ids=${JSON.stringify(debugContext)} stage=${verifyRow?.stage || 'missing'} expected=${finalStageId}`);
       }
 
-      if (finalDetailLabels.length > 0) {
+      if (isClosingStage && finalDetailLabels.length > 0) {
         const labelToCategory = (label: string): LenderPassReasonCategory => {
           const l = label.toLowerCase();
           if (/(deal\s*size|size|too\s*small|too\s*big|check\s*size)/.test(l)) return 'deal_size_mismatch';
@@ -757,7 +839,7 @@ export function useThreadWorkflowAnalysis({
       const activityPayload = {
         deal_id: canonicalDealId,
         activity_type: 'lender_stage_change',
-        description: `${verifyRow.name} marked as Passed${passReasonText ? ` — ${passReasonText}` : ''}`,
+        description: `${verifyRow.name} stage → ${finalStageId}${isClosingStage && passReasonText ? ` — ${passReasonText}` : ''}`,
         user_id: user.id,
         metadata: {
           source: 'ai_thread_workflow',
@@ -765,8 +847,9 @@ export function useThreadWorkflowAnalysis({
           lender_name: verifyRow.name,
           company_id: company.id,
           from: targetRow.stage,
-          to: 'passed',
-          final_confirmed_status: finalStatus,
+          to: finalStageId,
+          final_confirmed_stage_id: finalStageId,
+          final_confirmed_tracking_status: finalTrackingStatus,
           final_confirmed_detail_labels: finalDetailLabels,
           reason_note: reason,
           source_thread_id: threadData?.threadId || null,
@@ -805,7 +888,7 @@ export function useThreadWorkflowAnalysis({
         readBackTrackingStatus: verifyRow.tracking_status,
       });
 
-      toast.success(`${verifyRow.name} marked as Passed — verified write succeeded`);
+      toast.success(`${verifyRow.name} stage updated → ${finalStageId}`);
       dismiss();
       return true;
     } catch (err: any) {
