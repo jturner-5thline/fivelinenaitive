@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -67,6 +67,28 @@ function isStale(item: QueuedAiAction): boolean {
  */
 export function useAiActionQueue() {
   const { user } = useAuth();
+  const qc = useQueryClient();
+
+  // Realtime: invalidate the queue whenever any ai_action_queue row for this
+  // user changes (insert / update / delete) so the count badge stays live
+  // without polling. One channel per mounted hook instance — React Query
+  // dedupes renders, so this is cheap.
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`ai-action-queue-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'ai_action_queue', filter: `user_id=eq.${user.id}` },
+        () => {
+          qc.invalidateQueries({ queryKey: QUEUE_KEY });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, qc]);
 
   return useQuery({
     queryKey: [...QUEUE_KEY, user?.id ?? 'anon'],
