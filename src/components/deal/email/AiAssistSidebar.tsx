@@ -664,6 +664,25 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
           {/* Thread Summary — auto-generated for multi-message threads, collapsed by default */}
           <ThreadSummaryCard thread={thread} dealId={dealId} />
 
+          {/* Lender data Q&A — when a deal is matched and the inbound email
+              contains data-style questions (ARR, debt, EBITDA, collateral,
+              etc.), surface a card that answers each question from the
+              matched deal's Deal Space (RAG over docs / financials / write-up
+              / outstanding items) with explicit source citations. */}
+          {dealId && (
+            <LenderDataAnswerCard
+              emailBodyText={
+                latestFull?.body_text
+                || thread.latestEmail.body_text
+                || thread.latestEmail.body_preview
+                || ''
+              }
+              dealId={dealId}
+              dealName={dealName}
+              onInsertIntoReply={onInsertDraft}
+            />
+          )}
+
           {/* Save to Deal — additive one-click save for attachments, body, or
               highlighted text. Auto-suggests the matched deal (or AI fallback)
               and lets the user route to Data Room or Deal Notes without leaving
