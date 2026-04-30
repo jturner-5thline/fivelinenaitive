@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
 import { cn } from '@/lib/utils';
+import { useInboxCacheStore } from '@/stores/inboxCacheStore';
 
 interface InboxDialogProps {
   open: boolean;
@@ -118,23 +119,34 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Inbox + sent message stores (raw Gmail/Nylas shape, deduped by id)
-  const [inboxMessages, setInboxMessages] = useState<any[]>([]);
-  const [sentMessages, setSentMessages] = useState<any[]>([]);
+  // Inbox + sent message stores (raw Gmail/Nylas shape, deduped by id).
+  // Seeded synchronously from the shared `inboxCacheStore` that the
+  // Dashboard pre-warms on mount + polls every 2 minutes — so the dialog
+  // is never blank on open. Pagination still flows through local state
+  // and is mirrored back into the cache store so the unread badge and
+  // next open both see the latest data.
+  const cacheSnapshot = useInboxCacheStore.getState();
+  const [inboxMessages, setInboxMessages] = useState<any[]>(() => cacheSnapshot.inboxMessages);
+  const [sentMessages, setSentMessages] = useState<any[]>(() => cacheSnapshot.sentMessages);
   const [cachedInboxEmails, setCachedInboxEmails] = useState<any[]>([]);
 
-  // Pagination cursors
-  const [inboxNextToken, setInboxNextToken] = useState<string | null>(null);
-  const [sentNextToken, setSentNextToken] = useState<string | null>(null);
+  // Pagination cursors — also seeded from the cache so "Load more" picks
+  // up where the prefetch left off.
+  const [inboxNextToken, setInboxNextToken] = useState<string | null>(cacheSnapshot.inboxNextToken);
+  const [sentNextToken, setSentNextToken] = useState<string | null>(cacheSnapshot.sentNextToken);
   const [hasMoreInbox, setHasMoreInbox] = useState(true);
   const [hasMoreSent, setHasMoreSent] = useState(true);
 
   // Loading flags
+  // Only show the initial spinner when we have nothing cached to render.
+  // Otherwise the open is instant and the refresh happens silently below.
   const [isInitialLoading, setIsInitialLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Lifecycle refs to prevent overlapping fetches & stale state writes after close
-  const hasLoadedRef = useRef(false);
+  // Pre-seeded as `true` when cache already has data so the open-effect
+  // skips the foreground fetch and only kicks the silent background refresh.
+  const hasLoadedRef = useRef(cacheSnapshot.hasInitial && cacheSnapshot.inboxMessages.length > 0);
   const isMountedRef = useRef(true);
   const isPaginatingRef = useRef(false);
 
