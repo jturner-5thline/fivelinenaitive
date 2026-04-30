@@ -953,18 +953,29 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               Reply" pill row + "Draft Options" card duo with a single
               drafting workspace. */}
           {!error && (
-            <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-2.5 space-y-2.5 overflow-hidden max-w-full min-w-0 w-full">
-              {/* Header — title + optional helper. No counter, no chevrons:
-                  the variant pill row below is the single switching surface. */}
-              <div className="flex items-center gap-1.5 min-w-0">
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setDraftOpen((v) => !v)}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md border border-white/[0.06] bg-card/40 hover:bg-card/60 transition-colors group"
+                aria-expanded={draftOpen}
+              >
                 <Sparkles className="h-3 w-3 text-primary shrink-0" />
-                <span className="text-[11px] font-semibold tracking-wide text-foreground min-w-0 truncate">
-                  Draft reply
+                <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground group-hover:text-foreground transition-colors">
+                  Draft Reply
                 </span>
                 {isSelectedLoading && (
                   <Loader2 className="h-2.5 w-2.5 animate-spin text-primary/60" />
                 )}
-              </div>
+                <div className="flex-1" />
+                <ChevronDown
+                  className={cn('h-3 w-3 text-muted-foreground transition-transform', !draftOpen && '-rotate-90')}
+                />
+              </button>
+              {draftOpen && (
+              <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-3 space-y-2.5 overflow-hidden max-w-full min-w-0 w-full">
+              {/* Header — title + optional helper. No counter, no chevrons:
+                  the variant pill row below is the single switching surface. */}
 
               {/* Variant selector — compact segmented pill row. Active state
                   is visually clear but not heavy. Only one option active at
@@ -1100,15 +1111,28 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                   )}
                 </div>
               )}
+              </div>
+              )}
             </div>
           )}
 
         </div>
       </ScrollArea>
 
+      {/* Sticky AI action input — always one click away, no scrolling. */}
+      <div className="border-t border-white/[0.06] px-3 pt-3 shrink-0 bg-card/60 min-w-0 w-full">
+        <EmailUnifiedAiAction
+          thread={thread}
+          dealId={dealId}
+          dealName={dealName}
+          fallbackDealId={workflowAnalysis?.likely_deal?.id || null}
+          fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
+        />
+      </div>
+
       {/* Footer actions */}
       <div className="border-t border-white/[0.06] px-3 py-3 flex items-center gap-2 shrink-0 bg-card/60 min-w-0 w-full">
-        {selectedOption && (
+        {draftOpen && selectedOption && (
           <Button
             variant="ghost"
             size="sm"
@@ -1150,7 +1174,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             />
           </PopoverContent>
         </Popover>
-        {selectedOption && (
+        {draftOpen && selectedOption && (
           <Button
             size="sm"
             className="h-8 text-[11px] gap-1.5 shrink-0 bg-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/90"
