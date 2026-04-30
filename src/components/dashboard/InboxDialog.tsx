@@ -28,37 +28,56 @@ const AUTO_LOAD_CAP = 1000;
 // or trip Nylas' rate limiter.
 const AUTO_LOAD_DELAY_MS = 350;
 
-// Map Gmail messages to MockEmail format for DealEmailsTab compatibility
-function mapGmailToMockEmails(gmailMessages: any[], folderOverride: 'inbox' | 'sent' | 'drafts' = 'inbox'): MockEmail[] {
-  return gmailMessages.map((msg) => ({
-    id: msg.id || msg.gmail_message_id,
-    threadId: msg.thread_id || msg.id || msg.gmail_message_id,
-    // Canonical provider thread id — never falls back to a message id, so
-    // label assignments persisted against this key remain stable across
-    // deals, sessions and refetches.
-    provider_thread_id: msg.thread_id || null,
-    subject: msg.subject || '(No subject)',
-    from_name: msg.from_name || msg.from_email || 'Unknown',
-    from_email: msg.from_email || '',
-    to_name: (msg.to_names || msg.to_emails || [])[0] || 'You',
-    to_email: (msg.to_emails || [])[0] || '',
-    snippet: msg.snippet || '',
-    body_preview: msg.body_text || msg.body_html || msg.snippet || '',
-    body_html: msg.body_html || undefined,
-    body_text: msg.body_text || undefined,
-    body_loaded: !!(msg.body_html || msg.body_text),
-    received_at: msg.received_at || new Date().toISOString(),
-    is_read: msg.is_read ?? true,
-    is_starred: msg.is_starred ?? false,
-    folder: folderOverride,
-    labels: msg.labels || [],
-    has_attachments: !!msg.has_attachments,
-    attachments: Array.isArray(msg.attachments) ? msg.attachments : undefined,
-    is_linked_to_deal: false,
-    is_follow_up: false,
-    needs_response: folderOverride === 'inbox' ? !msg.is_read : false,
-    category: 'deal' as const,
-  }));
+// Map Gmail messages to MockEmail format for DealEmailsTab compatibility.
+// Defensive: per-message try/catch + drop messages without an id so a single
+// malformed payload can't crash the inbox list mid-render.
+function mapGmailToMockEmails(
+  gmailMessages: any[],
+  folderOverride: 'inbox' | 'sent' | 'drafts' = 'inbox',
+): MockEmail[] {
+  if (!Array.isArray(gmailMessages)) return [];
+  const out: MockEmail[] = [];
+  for (const msg of gmailMessages) {
+    try {
+      if (!msg || typeof msg !== 'object') continue;
+      const id = msg.id || msg.gmail_message_id;
+      if (!id) continue; // can't render a row without a stable id
+      out.push({
+        id,
+        threadId: msg.thread_id || id,
+        // Canonical provider thread id — never falls back to a message id,
+        // so label assignments persisted against this key remain stable.
+        provider_thread_id: msg.thread_id || null,
+        subject: msg.subject || '(No subject)',
+        from_name: msg.from_name || msg.from_email || 'Unknown',
+        from_email: msg.from_email || '',
+        to_name: (msg.to_names || msg.to_emails || [])[0] || 'You',
+        to_email: (msg.to_emails || [])[0] || '',
+        snippet: msg.snippet || '',
+        body_preview: msg.body_text || msg.body_html || msg.snippet || '',
+        body_html: msg.body_html || undefined,
+        body_text: msg.body_text || undefined,
+        body_loaded: !!(msg.body_html || msg.body_text),
+        received_at: msg.received_at || new Date().toISOString(),
+        is_read: msg.is_read ?? true,
+        is_starred: msg.is_starred ?? false,
+        folder: folderOverride,
+        labels: Array.isArray(msg.labels) ? msg.labels : [],
+        has_attachments: !!msg.has_attachments,
+        attachments: Array.isArray(msg.attachments) ? msg.attachments : undefined,
+        is_linked_to_deal: false,
+        is_follow_up: false,
+        needs_response: folderOverride === 'inbox' ? !msg.is_read : false,
+        category: 'deal' as const,
+      });
+    } catch (err) {
+      console.error('[InboxDialog] failed to map gmail message', {
+        err,
+        msgId: msg?.id || msg?.gmail_message_id,
+      });
+    }
+  }
+  return out;
 }
 
 // Direct paginated fetch against the gmail-messages edge function. Returns
