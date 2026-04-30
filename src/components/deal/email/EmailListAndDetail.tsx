@@ -533,7 +533,7 @@ function EmailListSkeleton() {
   );
 }
 
-class EmailPaneErrorBoundary extends Component<{
+export class EmailPaneErrorBoundary extends Component<{
   children: ReactNode;
   fallbackTitle: string;
   fallbackMessage: string;
