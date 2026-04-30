@@ -19,7 +19,7 @@ import { ScheduledCashFlowsModal } from './ScheduledCashFlowsModal';
 import { useCashFlowImport } from './useCashFlowImport';
 import { useCashInItems } from './useCashInItems';
 import { useScheduledCashFlows } from './useScheduledCashFlows';
-import { mergeScheduledIntoWeekly, ACCOUNT_OPTIONS, resolveCategoryToGridRow, DEBT_ADVISORY_DEFAULT_SUBCATEGORY, generateOccurrences } from './scheduledCashFlows';
+import { mergeScheduledIntoWeekly, ACCOUNT_OPTIONS, resolveCategoryToGridRow, DEBT_ADVISORY_DEFAULT_SUBCATEGORY, generateOccurrences, applyVariance } from './scheduledCashFlows';
 import { WEEKLY_HISTORICAL_SEED, LAST_HISTORICAL_WEEK_ENDING } from './weeklyHistoricalSeed';
 import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
@@ -648,7 +648,11 @@ export function CashFlowManager() {
     for (const entry of scheduledItems || []) {
       if (entry.flow_type !== 'cash_in') continue;
       const occurrences = generateOccurrences(entry, today, end);
-      total += occurrences.length * (Number(entry.amount) || 0);
+      const base = Number(entry.amount) || 0;
+      const v = entry.frequency_config?.variance_pct;
+      for (const occ of occurrences) {
+        total += applyVariance(base, v, `${entry.id || entry.category}:${occ}`);
+      }
     }
     return total;
   }, [scheduledItems]);
