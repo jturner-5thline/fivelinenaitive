@@ -178,12 +178,18 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
       prev.map((d) => {
         if (d._draftId !== draftId) return d;
         const today = new Date().toISOString().slice(0, 10);
+        // Preserve variance across frequency changes so users don't lose it.
+        const preservedVariance = d.frequency_config?.variance_pct;
         let cfg: Record<string, any> = {};
         if (freq === 'one_time') cfg = { one_time_date: d.frequency_config?.one_time_date || today };
-        if (freq === 'weekly') cfg = { day_of_week: d.frequency_config?.day_of_week ?? 1 };
+        if (freq === 'weekly' || freq === 'bi_weekly')
+          cfg = { day_of_week: d.frequency_config?.day_of_week ?? 1 };
         if (freq === 'monthly_first' || freq === 'monthly_last')
           cfg = { ordinal_day_of_week: d.frequency_config?.ordinal_day_of_week ?? 1 };
         if (freq === 'monthly_day') cfg = { day_of_month: d.frequency_config?.day_of_month ?? 1 };
+        if (preservedVariance !== undefined && preservedVariance !== null) {
+          cfg.variance_pct = preservedVariance;
+        }
         return { ...d, frequency_type: freq, frequency_config: cfg };
       }),
     );
