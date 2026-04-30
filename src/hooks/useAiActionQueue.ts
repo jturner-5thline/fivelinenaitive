@@ -191,11 +191,10 @@ async function executeQueuedAction(item: QueuedAiAction, userId: string): Promis
           description: p.description ?? item.description ?? null,
           due_date: p.due_date ?? null,
           priority: p.priority ?? 'medium',
-          status: 'todo',
           deal_id: item.deal_id,
           assigned_to: p.assigned_to ?? userId,
-          created_by: userId,
-        });
+          assigned_by: userId,
+        } as any);
         if (error) return { ok: false, error: error.message };
         break;
       }
@@ -215,9 +214,11 @@ async function executeQueuedAction(item: QueuedAiAction, userId: string): Promis
         if (!p.deal_lender_id || !p.new_status) {
           return { ok: false, error: 'Missing lender id or status' };
         }
+        // Lender "status" is stored on deal_lenders.substage (canonical)
+        // and tracking_status (legacy mirror). Update both.
         const { error } = await supabase
           .from('deal_lenders')
-          .update({ status: p.new_status })
+          .update({ substage: p.new_status, tracking_status: p.tracking_status ?? undefined } as any)
           .eq('id', p.deal_lender_id);
         if (error) return { ok: false, error: error.message };
         break;
