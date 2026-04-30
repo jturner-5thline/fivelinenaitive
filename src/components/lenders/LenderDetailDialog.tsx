@@ -1826,107 +1826,62 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                     </h3>
                   </div>
                   
-                  {/* Pending Files - Category Selection */}
-                  {pendingFiles.length > 0 ? (
-                    <div className="border rounded-lg p-4 mb-3 bg-muted/30">
-                      <div className="space-y-2 mb-3 max-h-32 overflow-y-auto">
-                        {pendingFiles.map((file, index) => (
-                          <div key={index} className="flex items-center gap-3">
-                            <FileText className="h-4 w-4 text-primary flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{file.name}</p>
-                              <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                              onClick={() => handleRemovePendingFile(index)}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                    <Select value={selectedCategory} onValueChange={(v) => setSelectedCategory(v as LenderAttachmentCategory)} disabled={isUploading}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LENDER_ATTACHMENT_CATEGORIES.map((cat) => (
+                          <SelectItem key={cat.value} value={cat.value}>
+                            {cat.label}
+                          </SelectItem>
                         ))}
-                      </div>
-                      <p className="text-xs text-muted-foreground mb-2">
-                        {pendingFiles.length} file{pendingFiles.length > 1 ? 's' : ''} selected
-                      </p>
-                      <div className="flex items-center gap-2 mb-3">
-                        <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                        <Select value={selectedCategory} onValueChange={(v) => setSelectedCategory(v as LenderAttachmentCategory)}>
-                          <SelectTrigger className="flex-1">
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {LENDER_ATTACHMENT_CATEGORIES.map((cat) => (
-                              <SelectItem key={cat.value} value={cat.value}>
-                                {cat.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={handleConfirmUpload}
-                          disabled={isUploading}
-                          className="flex-1"
-                        >
-                          {isUploading ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              Uploading...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="h-4 w-4 mr-2" />
-                              Upload {pendingFiles.length > 1 ? `${pendingFiles.length} Files` : ''}
-                            </>
-                          )}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={handleCancelUpload}
-                          disabled={isUploading}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    /* Drag and Drop Zone */
-                    <div
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
-                      onClick={() => fileInputRef.current?.click()}
-                      className={cn(
-                        "border-2 border-dashed rounded-lg p-4 mb-3 text-center cursor-pointer transition-colors",
-                        isDragging 
-                          ? "border-primary bg-primary/5" 
-                          : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50"
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div
+                    onDragOver={isUploading ? undefined : handleDragOver}
+                    onDragLeave={isUploading ? undefined : handleDragLeave}
+                    onDrop={isUploading ? undefined : handleDrop}
+                    onClick={() => !isUploading && fileInputRef.current?.click()}
+                    className={cn(
+                      "border-2 border-dashed rounded-lg p-4 mb-3 text-center transition-colors",
+                      isUploading
+                        ? "border-muted-foreground/25 bg-muted/40 cursor-wait"
+                        : "cursor-pointer " + (isDragging
+                          ? "border-primary bg-primary/5"
+                          : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50")
+                    )}
+                  >
+                    <input
+                      type="file"
+                      multiple
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      className="hidden"
+                      disabled={isUploading}
+                    />
+                    <div className="flex flex-col items-center gap-2 py-2">
+                      {isUploading ? (
+                        <>
+                          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                          <p className="text-sm text-muted-foreground">Uploading…</p>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className={cn(
+                            "h-6 w-6 transition-colors",
+                            isDragging ? "text-primary" : "text-muted-foreground"
+                          )} />
+                          <p className="text-sm text-muted-foreground">
+                            {isDragging ? "Drop files here" : "Drag & drop or click to upload (multiple files supported)"}
+                          </p>
+                        </>
                       )}
-                    >
-                      <input
-                        type="file"
-                        multiple
-                        ref={fileInputRef}
-                        onChange={handleFileChange}
-                        className="hidden"
-                      />
-                      <div className="flex flex-col items-center gap-2 py-2">
-                        <Upload className={cn(
-                          "h-6 w-6 transition-colors",
-                          isDragging ? "text-primary" : "text-muted-foreground"
-                        )} />
-                        <p className="text-sm text-muted-foreground">
-                          {isDragging ? "Drop files here" : "Drag & drop or click to upload (multiple files supported)"}
-                        </p>
-                      </div>
                     </div>
-                  )}
+                  </div>
                   
                   {isLoadingAttachments ? (
                     <div className="flex items-center justify-center py-4">
