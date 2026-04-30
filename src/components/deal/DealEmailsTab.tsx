@@ -82,6 +82,10 @@ import {
 } from '@/hooks/useEmailLabels';
 import { EmailLabelsManageDialog, labelSwatch } from './email/EmailLabelsManageDialog';
 import { Tag, Plus as PlusIcon } from 'lucide-react';
+import { DealFilterChipsRow } from '@/components/dashboard/inbox/DealFilterChipsRow';
+import { DealFilterSummaryCard } from '@/components/dashboard/inbox/DealFilterSummaryCard';
+import { useDealsContext } from '@/contexts/DealsContext';
+import { rankDealsForThread } from '@/lib/dealEvidenceMatcher';
 
 /** Compute next business day in local TZ as 'YYYY-MM-DD'. Skips weekends. */
 function nextBusinessDayISO(): string {
