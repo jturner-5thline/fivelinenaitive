@@ -1,5 +1,5 @@
 import { useState, useEffect, memo, useCallback, useRef, useMemo } from 'react';
-import { ChevronDown, ChevronRight, MessageSquare, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, MessageSquare, X, Plus } from 'lucide-react';
 import type { WeeklyData, SidebarData, PlanSnapshot, ThemeMode, WeeklyOverrides } from './types';
 import { fmtAbbrev } from './formatters';
 import { WeeklyCharts } from './WeeklyCharts';
@@ -52,6 +52,21 @@ interface WeeklyReportTabProps {
   onCellCommentCountChange?: (count: number) => void;
   weeksFuture?: number;
   onWeeksFutureChange?: (n: number) => void;
+  /**
+   * Add a one-time scheduled cash flow entry for a specific row + week.
+   * Used by inline cell "+ Add" popover so users can quickly add ad-hoc
+   * receipts/disbursements that flow into both the weekly grid and the
+   * Configure modal as one-time entries.
+   */
+  onAddOneTimeEntry?: (args: {
+    rowKey: string;
+    rowLabel: string;
+    weekKey: string;
+    weekEnding: string | null;
+    flowType: 'cash_in' | 'cash_out';
+    amount: number;
+    description: string;
+  }) => Promise<boolean> | boolean;
 }
 
 const DEBT_ADV_PARENT_KEY = 'Debt Advisory Revenue';
