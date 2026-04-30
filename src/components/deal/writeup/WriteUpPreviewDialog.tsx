@@ -336,7 +336,6 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                   { label: 'Year Founded', value: data.yearFounded },
                   { label: 'Customer Base', value: data.customerBase?.join(', ') },
                   { label: 'Headcount', value: data.headcount },
-                  { label: 'Business Model', value: data.billingModels.join(', ') },
                   { label: 'Profitability', value: data.profitability },
                   { label: 'Accounting System', value: data.accountingSystem },
                 ].filter(f => f.value).map(f => (
