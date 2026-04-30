@@ -1044,14 +1044,14 @@ export default function Lenders() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button 
-                      variant={syncPendingCount > 0 ? "default" : "outline"} 
+                      variant="outline"
                       size="sm" 
-                      className="gap-1 relative"
+                      className="gap-1 relative bg-white/[0.03] hover:bg-white/[0.06] border-white/10 hover:border-white/20 text-foreground/80 hover:text-foreground shadow-none transition-colors"
                     >
                       <RefreshCw className="h-4 w-4" />
                       Sync
                       {syncPendingCount > 0 && (
-                        <Badge variant="destructive" className="ml-1 h-5 min-w-5 rounded-full text-xs px-1.5">
+                        <Badge variant="secondary" className="ml-1 h-5 min-w-5 rounded-full text-xs px-1.5 bg-white/10 text-foreground border-0">
                           {syncPendingCount}
                         </Badge>
                       )}
@@ -1090,7 +1090,11 @@ export default function Lenders() {
                   <Settings className="h-4 w-4" />
                   Configuration
                 </Button>
-                <Button onClick={openAddDialog} size="sm" className="gap-1">
+                <Button
+                  onClick={openAddDialog}
+                  size="sm"
+                  className="gap-1 bg-white/[0.08] hover:bg-white/[0.12] border border-white/15 hover:border-white/25 text-foreground shadow-none transition-colors"
+                >
                   <Plus className="h-4 w-4" />
                   Add Lender
                 </Button>
