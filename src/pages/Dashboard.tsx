@@ -232,13 +232,20 @@ function EmailTileWithIntelligence({
     const wrapperRect = wrapper.getBoundingClientRect();
     const vw = window.innerWidth;
 
+    // Always anchor BENEATH the Email tile so the popover never overlaps
+    // the neighboring Action Queue / Deals tiles. Falls back to side
+    // placements only if there's truly no vertical room (rare on desktop).
+    const spaceBelow = window.innerHeight - tileRect.bottom - VIEWPORT_PAD;
     const spaceRight = vw - tileRect.right - VIEWPORT_PAD;
     const spaceLeft = tileRect.left - VIEWPORT_PAD;
 
-    let next: Placement = 'right';
-    if (spaceRight >= PANEL_WIDTH + GAP) next = 'right';
-    else if (spaceLeft >= PANEL_WIDTH + GAP) next = 'left';
-    else next = 'bottom';
+    let next: Placement = 'bottom';
+    if (spaceBelow < 220) {
+      // Not enough vertical room — fall back to a side that fits.
+      if (spaceRight >= PANEL_WIDTH + GAP) next = 'right';
+      else if (spaceLeft >= PANEL_WIDTH + GAP) next = 'left';
+      else next = 'bottom';
+    }
 
     // Position relative to wrapper (which is position: relative).
     const tileTopInWrapper = tileRect.top - wrapperRect.top;
