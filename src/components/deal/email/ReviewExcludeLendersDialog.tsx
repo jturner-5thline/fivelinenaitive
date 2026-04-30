@@ -1,0 +1,312 @@
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Loader2, Mail, AlertCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/hooks/use-toast';
+
+/** Distilled status used for the review screen. */
+export type LenderReviewStatus = 'passed' | 'in-review' | 'no-response';
+
+export interface LenderReviewRow {
+  id: string;
+  name: string;
+  status: LenderReviewStatus;
+  /** Raw db tracking_status, kept for log payload + filtering. */
+  trackingStatus: string | null;
+  substage: string | null;
+  passReason: string | null;
+  lastContactAt: string | null;
+  /** True by default for `passed`; user can flip. */
+  excluded: boolean;
+}
+
+interface Props {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  dealId: string;
+  dealName?: string | null;
+  /** Called with the names of lenders to INCLUDE in the upcoming submission. */
+  onConfirm: (includedLenderNames: string[]) => void;
+}
+
+const STATUS_META: Record<LenderReviewStatus, { label: string; className: string }> = {
+  'passed':       { label: 'Passed',      className: 'bg-destructive/15 text-destructive border-destructive/25' },
+  'in-review':    { label: 'In Review',   className: 'bg-amber-500/15 text-amber-600 border-amber-500/25 dark:text-amber-400' },
+  'no-response':  { label: 'No Response', className: 'bg-muted text-muted-foreground border-border' },
+};
+
+function distillStatus(row: { tracking_status: string | null; substage: string | null; last_contact_at: string | null }): LenderReviewStatus {
+  const ts = (row.tracking_status || '').toLowerCase();
+  const sub = (row.substage || '').toLowerCase();
+  if (ts === 'passed' || sub === 'passed') return 'passed';
+  if (sub.includes('review') || ts === 'active' || ts === 'on-deck') return 'in-review';
+  // Anything that's been contacted but has no review activity = no response
+  return 'no-response';
+}
+
+/**
+ * Pre-submission review step. Loads every lender on the deal, lets the user
+ * exclude any of them (auto-excluding "passed"), shows a live skip summary,
+ * and writes a `lender_resubmission_review` entry to the deal's activity log
+ * before handing control back to the email-draft flow.
+ */
+export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealName, onConfirm }: Props) {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [rows, setRows] = useState<LenderReviewRow[]>([]);
+  const [confirming, setConfirming] = useState(false);
+
+  // Load lenders fresh every time the dialog opens so status is current.
+  useEffect(() => {
+    if (!open || !dealId) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('deal_lenders')
+          .select('id, name, tracking_status, substage, pass_reason, last_contact_at')
+          .eq('deal_id', dealId)
+          .order('name', { ascending: true });
+        if (error) throw error;
+        if (cancelled) return;
+        const distilled: LenderReviewRow[] = (data || []).map((r: any) => {
+          const status = distillStatus(r);
+          return {
+            id: r.id,
+            name: r.name,
+            status,
+            trackingStatus: r.tracking_status ?? null,
+            substage: r.substage ?? null,
+            passReason: r.pass_reason ?? null,
+            lastContactAt: r.last_contact_at ?? null,
+            // Auto-exclude passed lenders by default.
+            excluded: status === 'passed',
+          };
+        });
+        setRows(distilled);
+      } catch (err: any) {
+        toast({
+          title: 'Could not load lenders',
+          description: err?.message || 'Please try again.',
+          variant: 'destructive',
+        });
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, dealId]);
+
+  const summary = useMemo(() => {
+    const included = rows.filter((r) => !r.excluded);
+    const excluded = rows.filter((r) => r.excluded);
+    const passedSkipped = excluded.filter((r) => r.status === 'passed').length;
+    const inReviewSkipped = excluded.filter((r) => r.status === 'in-review').length;
+    const otherSkipped = excluded.length - passedSkipped - inReviewSkipped;
+    return {
+      includedCount: included.length,
+      excludedCount: excluded.length,
+      passedSkipped,
+      inReviewSkipped,
+      otherSkipped,
+    };
+  }, [rows]);
+
+  const toggleExcluded = (id: string, value: boolean) => {
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, excluded: value } : r)));
+  };
+
+  const handleConfirm = async () => {
+    if (summary.includedCount === 0) {
+      toast({
+        title: 'No lenders selected',
+        description: 'Include at least one lender before continuing.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setConfirming(true);
+    try {
+      // ── Audit: log who reviewed what for this resubmission round.
+      const includedRows = rows.filter((r) => !r.excluded);
+      const excludedRows = rows.filter((r) => r.excluded);
+      const description =
+        `Lender resubmission reviewed${dealName ? ` for ${dealName}` : ''} — ` +
+        `submitting to ${includedRows.length}, skipping ${excludedRows.length}` +
+        (excludedRows.length
+          ? ` (${summary.passedSkipped} passed, ${summary.inReviewSkipped} already in review` +
+            (summary.otherSkipped ? `, ${summary.otherSkipped} other` : '') +
+            ')'
+          : '');
+
+      const metadata = {
+        included: includedRows.map((r) => ({ id: r.id, name: r.name, status: r.status })),
+        excluded: excludedRows.map((r) => ({
+          id: r.id,
+          name: r.name,
+          status: r.status,
+          // "why" the user skipped them, derived from current status
+          reason:
+            r.status === 'passed'
+              ? `passed${r.passReason ? `: ${r.passReason}` : ''}`
+              : r.status === 'in-review'
+                ? 'already in review'
+                : 'manually excluded',
+        })),
+        counts: {
+          included: summary.includedCount,
+          excluded: summary.excludedCount,
+          passed_skipped: summary.passedSkipped,
+          in_review_skipped: summary.inReviewSkipped,
+        },
+      };
+
+      // Non-blocking: if the activity log fails we still proceed with the send.
+      const { error: logErr } = await supabase.from('activity_logs').insert({
+        deal_id: dealId,
+        activity_type: 'lender_resubmission_review',
+        description,
+        metadata,
+        user_id: user?.id ?? null,
+      } as any);
+      if (logErr) {
+        console.warn('[ReviewExcludeLenders] activity log failed:', logErr);
+      }
+
+      onConfirm(includedRows.map((r) => r.name));
+      onOpenChange(false);
+    } catch (err: any) {
+      toast({
+        title: 'Could not record review',
+        description: err?.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[88vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Mail className="h-4 w-4 text-primary" />
+            Review &amp; Exclude Lenders
+          </DialogTitle>
+          <DialogDescription>
+            Confirm who to include in this round. Lenders who already passed are pre-excluded —
+            re-include them if you want to follow up.
+          </DialogDescription>
+        </DialogHeader>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-12 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin mr-2" />
+            Loading lenders…
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
+            <AlertCircle className="h-5 w-5" />
+            <span className="text-sm">No lenders are attached to this deal yet.</span>
+          </div>
+        ) : (
+          <ScrollArea className="flex-1 -mx-6 px-6">
+            <ul className="divide-y divide-border/60">
+              {rows.map((r) => {
+                const meta = STATUS_META[r.status];
+                return (
+                  <li
+                    key={r.id}
+                    className={cn(
+                      'flex items-center gap-3 py-2.5',
+                      r.excluded && 'opacity-60',
+                    )}
+                  >
+                    <Checkbox
+                      checked={r.excluded}
+                      onCheckedChange={(v) => toggleExcluded(r.id, v === true)}
+                      aria-label={`Exclude ${r.name}`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className={cn('text-sm font-medium truncate', r.excluded && 'line-through')}>
+                        {r.name}
+                      </div>
+                      {r.passReason && r.status === 'passed' && (
+                        <div className="text-[11px] text-muted-foreground truncate">
+                          {r.passReason}
+                        </div>
+                      )}
+                    </div>
+                    <Badge variant="outline" className={cn('text-[10px] font-medium', meta.className)}>
+                      {meta.label}
+                    </Badge>
+                    <span className="text-[10px] text-muted-foreground w-16 text-right shrink-0">
+                      {r.excluded ? 'Skipping' : 'Included'}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </ScrollArea>
+        )}
+
+        <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-xs text-foreground/90">
+          {rows.length === 0 ? (
+            <span className="text-muted-foreground">Nothing to submit.</span>
+          ) : (
+            <>
+              <span className="font-medium">Submitting to {summary.includedCount} lender{summary.includedCount === 1 ? '' : 's'}</span>
+              {summary.excludedCount > 0 && (
+                <>
+                  {', skipping '}
+                  <span className="font-medium">{summary.excludedCount}</span>
+                  {' ('}
+                  {summary.passedSkipped} passed
+                  {', '}
+                  {summary.inReviewSkipped} already in review
+                  {summary.otherSkipped > 0 && `, ${summary.otherSkipped} other`}
+                  {')'}
+                </>
+              )}
+              .
+            </>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={confirming}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirm}
+            disabled={loading || confirming || summary.includedCount === 0}
+          >
+            {confirming ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                Recording…
+              </>
+            ) : (
+              <>Continue to drafts</>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

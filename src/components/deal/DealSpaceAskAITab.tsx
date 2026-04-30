@@ -23,6 +23,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
 import { DraftSubmissionEmailsModal, type EmailDraft, type LenderContactOption, draftBodyToPlainText } from './email/DraftSubmissionEmailsModal';
+import { ReviewExcludeLendersDialog } from './email/ReviewExcludeLendersDialog';
 
 interface DealSpaceAskAITabProps {
   dealId: string;
@@ -197,6 +198,10 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const [emailDrafts, setEmailDrafts] = useState<EmailDraft[]>([]);
   const [activeDraftIndex, setActiveDraftIndex] = useState(0);
   const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false);
+  // ── Pre-flight review step: lets the user exclude specific lenders
+  // (auto-skipping anyone already passed) before drafts are generated.
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [includedLenderNames, setIncludedLenderNames] = useState<string[] | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -314,17 +319,30 @@ CRITICAL RULES:
 - Use \\n\\n between paragraphs in the body for readability.
 - The "subject" field must NOT include a "Subject:" prefix — just the line itself.`;
 
+  // Entry point for the lender submission flow. We now ALWAYS open the
+  // Review & Exclude step first — drafts are only generated after the user
+  // confirms which lenders to include in this round.
+  const handleDraftSubmission = useCallback(async () => {
+    setIsReviewOpen(true);
+  }, []);
+
   // Silent background handler — invokes the AI directly via the edge function,
   // bypassing the chat hook entirely. The Ask AI panel is never touched.
-  const handleDraftSubmission = useCallback(async () => {
+  // `onlyLenders` (when provided) restricts which lenders the AI drafts for.
+  const generateDraftsForLenders = useCallback(async (onlyLenders: string[]) => {
     setIsDraftingEmail(true);
     setEmailDrafts([]);
     setActiveDraftIndex(0);
     setIsDraftDialogOpen(true);
     try {
+      const lenderConstraintBlock = onlyLenders.length
+        ? `\n\nIMPORTANT — RESTRICTED LENDER LIST:\n` +
+          `Generate drafts ONLY for the following lenders (one entry per name, exact match, no others):\n` +
+          onlyLenders.map((n) => `- ${n}`).join('\n')
+        : '';
       const { data, error } = await supabase.functions.invoke('deal-space-ai', {
         body: {
-          messages: [{ role: 'user', content: DRAFT_SUBMISSION_PROMPT }],
+          messages: [{ role: 'user', content: DRAFT_SUBMISSION_PROMPT + lenderConstraintBlock }],
           dealId,
           scope: 'all',
         },
@@ -379,12 +397,22 @@ CRITICAL RULES:
         throw new Error('No active lenders found to draft emails for.');
       }
 
+      // Hard filter as a safety net — even if the model ignores the
+      // restriction list, we never surface drafts for excluded lenders.
+      const allowedLowercase = new Set(onlyLenders.map((n) => n.toLowerCase().trim()));
+      const filteredDrafts = allowedLowercase.size
+        ? drafts.filter((d) => allowedLowercase.has((d.lenderName || '').toLowerCase().trim()))
+        : drafts;
+      if (filteredDrafts.length === 0) {
+        throw new Error('No drafts were generated for the selected lenders.');
+      }
+
       // ── Resolve each lender's primary contact email from the lender directory.
       // Match `master_lenders` by case-insensitive name (RLS scopes to the user's
       // workspace). For each match, pull `lender_contacts` and pre-populate the
       // To field with the primary contact (or first contact, or legacy
       // master_lenders.email as a final fallback).
-      const enriched = await enrichDraftsWithLenderContacts(drafts);
+      const enriched = await enrichDraftsWithLenderContacts(filteredDrafts);
       setEmailDrafts(enriched);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to draft submission email';
@@ -716,6 +744,21 @@ CRITICAL RULES:
         activeIndex={activeDraftIndex}
         setActiveIndex={setActiveDraftIndex}
         onSend={sendDraftAtIndex}
+      />
+
+      {/* Review & Exclude — gates the draft modal so the user can drop
+          lenders (auto-skipping anyone already passed) and the round is
+          recorded on the deal activity timeline before any AI work runs. */}
+      <ReviewExcludeLendersDialog
+        open={isReviewOpen}
+        onOpenChange={setIsReviewOpen}
+        dealId={dealId}
+        onConfirm={(names) => {
+          setIncludedLenderNames(names);
+          // Defer one tick so the review dialog fully closes before the
+          // drafts dialog mounts (avoids overlapping aria-modal layers).
+          setTimeout(() => generateDraftsForLenders(names), 50);
+        }}
       />
     </Card>
   );
