@@ -333,7 +333,14 @@ function EmailTileWithIntelligence({
       }}
     >
       <div ref={tileRef} className="h-full">
-        <EmailTileWithBadge onOpen={onOpen} onKeyDown={onKeyDown} />
+        <QuickActionTile
+          label="Email"
+          icon={Mail}
+          category="inbox"
+          badgeCount={useInboxCacheStore(selectUnreadCount)}
+          onClick={(e) => onOpen(e.currentTarget as HTMLElement)}
+          onKeyDown={onKeyDown}
+        />
       </div>
 
       {/*
