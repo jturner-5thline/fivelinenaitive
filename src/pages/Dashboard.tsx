@@ -333,7 +333,7 @@ function EmailTileWithIntelligence({
       }}
     >
       <div ref={tileRef} className="h-full">
-        <EmailTileQuickAction onOpen={onOpen} onKeyDown={onKeyDown} />
+        <EmailTileWithBadge onOpen={onOpen} onKeyDown={onKeyDown} />
       </div>
 
       {/*
