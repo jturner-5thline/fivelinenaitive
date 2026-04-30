@@ -1267,10 +1267,14 @@ export function CashFlowManager() {
           open={scheduledModalOpen}
           initialEntries={scheduledItems}
           onClose={() => setScheduledModalOpen(false)}
-          onSave={async (entries) => {
+          onSave={async (entries, deleteIds) => {
             pushUndo(`Update scheduled cash flows`);
-            const ok = await saveScheduledItems(entries);
-            if (ok) logAction(`Updated scheduled cash flows (${entries.length} entries)`);
+            const ok = await saveScheduledItems(entries, deleteIds);
+            if (ok) {
+              logAction(
+                `Updated scheduled cash flows (${entries.length} kept, ${deleteIds.length} removed)`,
+              );
+            }
             return ok;
           }}
         />
