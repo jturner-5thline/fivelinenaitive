@@ -194,7 +194,7 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
         console.warn('[ReviewExcludeLenders] activity log failed:', logErr);
       }
 
-      onConfirm(includedRows.map((r) => r.name));
+      onConfirm(includedRows.map((r) => r.name), personalize);
       onOpenChange(false);
     } catch (err: any) {
       toast({
