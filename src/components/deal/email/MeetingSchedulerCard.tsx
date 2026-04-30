@@ -136,6 +136,25 @@ function fmtSlot(s: Slot, tz: string): string {
 }
 
 /**
+ * Compact time-only label for a slot in a given zone, e.g. "2:00–2:45 PM (ET)".
+ * Used to render the secondary "your local time" line next to each slot
+ * without repeating the date.
+ */
+function fmtSlotTimeOnly(s: Slot, tz: string): string {
+  const start = s.start.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: tz,
+  });
+  const end = s.end.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: tz,
+  });
+  return `${start}–${end} (${shortTzLabel(tz, s.start)})`;
+}
+
+/**
  * Build candidate working-hour slots across the next 5 business days,
  * anchored in the user-selected timezone. We compute the wall-clock
  * date/hour in `tz`, then resolve back to a real UTC instant — that way
