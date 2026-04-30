@@ -14,13 +14,20 @@ import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 export function ActionQueueWidget() {
   const [open, setOpen] = useState(false);
   const count = useAiActionQueueCount();
-  const { data: items = [] } = useAiActionQueue();
+  const { data: items = [], refetch } = useAiActionQueue();
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    // Auto-refresh queue contents whenever the modal opens so the user
+    // always sees the latest pending AI actions, even if the cache is warm.
+    if (next) refetch();
+  };
 
   return (
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => handleOpenChange(true)}
         className={cn(
           'group mb-3 w-full rounded-xl border border-border/40 bg-card/60 backdrop-blur',
           'supports-[backdrop-filter]:bg-card/40 px-3 py-2.5 flex items-center justify-between gap-3',
@@ -53,7 +60,7 @@ export function ActionQueueWidget() {
         </div>
       </button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[640px] p-0 overflow-hidden flex flex-col max-h-[80vh]">
           <DialogHeader className="sr-only">
             <DialogTitle>Action Queue</DialogTitle>
