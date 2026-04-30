@@ -59,6 +59,13 @@ export interface EnqueueArgs {
 const QUEUE_KEY = ['ai-action-queue'] as const;
 const QUEUE_COUNT_KEY = ['ai-action-queue-count'] as const;
 
+/** Invalidate both the panel and lightweight count queries together so
+ * mutations stay consistent with realtime fan-out. */
+function invalidateQueueAll(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: QUEUE_KEY });
+  qc.invalidateQueries({ queryKey: QUEUE_COUNT_KEY });
+}
+
 /** Trailing-edge debounce window for realtime-driven refetches. Bursts of
  * row changes (bulk approve, multi-insert) are coalesced into a single
  * invalidation so we don't thrash the queue + count queries. */
