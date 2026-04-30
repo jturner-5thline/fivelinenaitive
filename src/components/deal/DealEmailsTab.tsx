@@ -715,6 +715,20 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     if (categoryTab !== 'all') {
       filtered = filterEmailsByCategory(filtered, categoryTab, classifierEntities, orgCtx);
     }
+    // Label chip filter (DB labels + system auto-tags). Only applied in the
+    // inbox scope so deal-page filtering stays untouched.
+    if (isInboxScope && selectedLabelFilterId) {
+      if (isSystemLabelId(selectedLabelFilterId)) {
+        filtered = filtered.filter((e) =>
+          emailMatchesSystemLabel(e, selectedLabelFilterId),
+        );
+      } else {
+        const threadIds = threadIdsForLabel(selectedLabelFilterId, labelAssignments);
+        filtered = filtered.filter((e) =>
+          threadIds.has(e.provider_thread_id || e.threadId),
+        );
+      }
+    }
     if (viewFilter === 'unread') filtered = filtered.filter(e => !e.is_read);
     if (viewFilter === 'needs_response') filtered = filtered.filter(e => e.needs_response);
     if (chipFilter === 'recent') filtered = filtered.sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime());
