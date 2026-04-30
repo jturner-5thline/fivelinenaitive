@@ -1500,9 +1500,7 @@ export default function Lenders() {
                   </div>
                 )}
             </div>
-          </div>
-        </main>
-      </div>
+      </WorkspacePage>
 
       {/* Add/Edit Lender Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
