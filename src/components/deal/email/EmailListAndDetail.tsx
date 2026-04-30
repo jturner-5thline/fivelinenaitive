@@ -100,6 +100,7 @@ import { useAutoEmailLabelEvaluator } from '@/hooks/useAutoEmailLabelEvaluator';
 import type { EmailLabel } from '@/hooks/useEmailLabels';
 import { useLabels, useAllLabelAssignments, buildThreadLabelMap } from '@/hooks/useEmailLabels';
 import { labelSwatch } from './EmailLabelsManageDialog';
+import { systemLabelsForEmail } from './systemAutoLabels';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -278,6 +279,17 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
           )}
           aria-label={`Priority signal: ${priorityFlag.label}`}
           title={`Priority signal: ${priorityFlag.label} — "${priorityFlag.quote}"`}
+        />
+      )}
+      {/* Label color stripe — only when no higher-priority bar (selected /
+          urgency signal) is already painted. Uses the first (highest-
+          ranked) label's color so the row at-a-glance reads as that label. */}
+      {!isSelected && !priorityFlag && userLabels && userLabels.length > 0 && (
+        <div
+          className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full"
+          style={{ backgroundColor: labelSwatch(userLabels[0].color) }}
+          aria-label={`Label: ${userLabels[0].name}`}
+          title={userLabels.map((l) => l.name).join(', ')}
         />
       )}
       <div className="flex items-start gap-2.5 px-3 py-2 min-w-0">
@@ -650,7 +662,23 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
           onDelete={onDelete}
           evaluateAutoLabels={evaluateAutoLabels}
           priorityFlag={flagsByThread[thread.threadId]}
-          userLabels={threadLabelMap.get(thread.provider_thread_id || thread.threadId)}
+          userLabels={(() => {
+            const dbLabels =
+              threadLabelMap.get(thread.provider_thread_id || thread.threadId) ?? [];
+            // Auto-tag system labels (e.g. jturner@5thline.co) — derived from
+            // the latest message's sender/recipient, no DB rows required.
+            const sysLabels = systemLabelsForEmail(thread.latestEmail);
+            if (sysLabels.length === 0) return dbLabels;
+            // De-dupe by id; system labels first so they paint the row stripe.
+            const seen = new Set<string>();
+            const merged: EmailLabel[] = [];
+            for (const l of [...sysLabels, ...dbLabels]) {
+              if (seen.has(l.id)) continue;
+              seen.add(l.id);
+              merged.push(l);
+            }
+            return merged;
+          })()}
         />
       ))}
     </div>

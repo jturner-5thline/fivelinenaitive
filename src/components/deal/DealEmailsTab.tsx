@@ -84,6 +84,12 @@ import { EmailLabelsManageDialog, labelSwatch } from './email/EmailLabelsManageD
 import { Tag, Plus as PlusIcon } from 'lucide-react';
 import { DealFilterChipsRow } from '@/components/dashboard/inbox/DealFilterChipsRow';
 import { DealFilterSummaryCard } from '@/components/dashboard/inbox/DealFilterSummaryCard';
+import { LabelFilterChipsRow } from '@/components/dashboard/inbox/LabelFilterChipsRow';
+import {
+  SYSTEM_LABELS,
+  emailMatchesSystemLabel,
+  isSystemLabelId,
+} from './email/systemAutoLabels';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { rankDealsForThread } from '@/lib/dealEvidenceMatcher';
 
@@ -496,6 +502,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   // matching engine that powers the inline "Likely: …" badges) and sorted
   // chronologically across the entire loaded mailbox.
   const [selectedDealFilterId, setSelectedDealFilterId] = useState<string | null>(null);
+  // Inbox label-chip filter selection. Holds a label id (DB) or a virtual
+  // system label id (e.g. SYSTEM_LABEL_JTURNER_ID). Null = no label filter.
+  const [selectedLabelFilterId, setSelectedLabelFilterId] = useState<string | null>(null);
   const isInboxScope = !dealId; // true when rendered inside InboxDialog
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -706,6 +715,20 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     if (categoryTab !== 'all') {
       filtered = filterEmailsByCategory(filtered, categoryTab, classifierEntities, orgCtx);
     }
+    // Label chip filter (DB labels + system auto-tags). Only applied in the
+    // inbox scope so deal-page filtering stays untouched.
+    if (isInboxScope && selectedLabelFilterId) {
+      if (isSystemLabelId(selectedLabelFilterId)) {
+        filtered = filtered.filter((e) =>
+          emailMatchesSystemLabel(e, selectedLabelFilterId),
+        );
+      } else {
+        const threadIds = threadIdsForLabel(selectedLabelFilterId, labelAssignments);
+        filtered = filtered.filter((e) =>
+          threadIds.has(e.provider_thread_id || e.threadId),
+        );
+      }
+    }
     if (viewFilter === 'unread') filtered = filtered.filter(e => !e.is_read);
     if (viewFilter === 'needs_response') filtered = filtered.filter(e => e.needs_response);
     if (chipFilter === 'recent') filtered = filtered.sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime());
@@ -769,7 +792,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       );
     }
     return filtered;
-  }, [emails, activeItem, viewFilter, chipFilter, categoryTab, searchQuery, searchFilters, classifierEntities, aiSearchActive, aiSearch.result, isInboxScope, selectedDealFilterId, emailDealIdMap, orgCtx]);
+  }, [emails, activeItem, viewFilter, chipFilter, categoryTab, searchQuery, searchFilters, classifierEntities, aiSearchActive, aiSearch.result, isInboxScope, selectedDealFilterId, emailDealIdMap, orgCtx, selectedLabelFilterId, labelAssignments]);
 
   // Candidate set for AI search = the same list pre-search (so categories/folders
   // narrow the AI search scope as the spec requires).
@@ -1855,6 +1878,17 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 </button>
               ))}
             </div>
+
+            {/* Label filter chips — DB labels + system auto-tag labels.
+                Inbox-scope only; on a deal page the existing labels are
+                managed inline via the thread bar. */}
+            {isInboxScope && (
+              <LabelFilterChipsRow
+                labels={[...SYSTEM_LABELS, ...userLabels]}
+                selectedLabelId={selectedLabelFilterId}
+                onSelect={setSelectedLabelFilterId}
+              />
+            )}
 
             {/* Deal filter chips — only shown in the inbox-dialog scope.
                 Uses the same matching engine that powers inline "Likely: …"

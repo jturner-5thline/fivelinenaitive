@@ -29,7 +29,15 @@ const COLOR_HEX: Record<string, string> = {
 };
 
 export function labelSwatch(color: LabelColor): string {
-  return COLOR_HEX[color as string] ?? COLOR_HEX.slate;
+  if (!color) return COLOR_HEX.slate;
+  const key = String(color);
+  if (COLOR_HEX[key]) return COLOR_HEX[key];
+  // Already a hex / CSS color string (the legacy settings UI writes hex
+  // values like "#f59e0b" directly into `color`).
+  if (key.startsWith('#') || key.startsWith('hsl') || key.startsWith('rgb')) {
+    return key;
+  }
+  return COLOR_HEX.slate;
 }
 
 interface Props {
