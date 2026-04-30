@@ -624,29 +624,14 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
     onSelectionChange(next);
   }, [onSelectionChange, selectedIds]);
 
-  if (isLoading) {
-    return <EmailListSkeleton />;
-  }
-
-  if (threads.length === 0) {
-    return (
-      <div
-        className="flex flex-col items-center justify-center h-full py-16 text-center"
-        role="status"
-        aria-live="polite"
-      >
-        <MessageSquare className="h-8 w-8 text-muted-foreground/30 mb-2" aria-hidden="true" />
-        <p className="text-sm text-muted-foreground">No emails in this folder</p>
-      </div>
-    );
-  }
-
   // The parent column already provides the scroll container (overflow-auto);
   // an additional Radix <ScrollArea> here would create a nested scroller that
   // intercepts wheel events and prevents scroll chaining/IO sentinels from
   // working correctly. Render rows as a plain list — the parent owns scroll.
   // Compute the per-thread merged userLabels lazily inside the row renderer
   // so windowed rows only run this work when they actually paint.
+  // NOTE: All hooks below MUST run on every render — early returns for
+  // loading/empty states live AFTER the hook calls to keep hook order stable.
   const buildUserLabels = useCallback(
     (thread: EmailThread): EmailLabel[] => {
       const dbLabels =
@@ -701,6 +686,23 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
       buildUserLabels,
     ],
   );
+
+  if (isLoading) {
+    return <EmailListSkeleton />;
+  }
+
+  if (threads.length === 0) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center h-full py-16 text-center"
+        role="status"
+        aria-live="polite"
+      >
+        <MessageSquare className="h-8 w-8 text-muted-foreground/30 mb-2" aria-hidden="true" />
+        <p className="text-sm text-muted-foreground">No emails in this folder</p>
+      </div>
+    );
+  }
 
   // When the parent passes a scroll element, virtualize. Off-screen rows are
   // not rendered — DOM stays bounded regardless of how many pages are loaded.
