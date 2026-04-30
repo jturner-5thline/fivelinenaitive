@@ -717,20 +717,22 @@ export function MeetingSchedulerCard({
     }
     const slot = proposedSlots[confirmedIdx];
     if (!slot) return;
-    if (!recipientEmail) {
-      toast.error('No recipient email available on this thread.');
+    // The user can fully edit the attendee list in the confirm stage, so
+    // require at least one attendee on the final list rather than the
+    // original recipient.
+    if (finalAttendees.length === 0) {
+      toast.error('Add at least one attendee before confirming.');
       return;
     }
     setCreating(true);
     try {
-      const attendees: { email: string; name?: string }[] = [
-        { email: recipientEmail, name: recipientName },
-      ];
-      if (partiesMode === 'me_plus' && extraMembers.length > 0) {
-        for (const m of extraMembers) {
-          if (m.email) attendees.push({ email: m.email, name: m.display_name });
-        }
-      }
+      // Use the user-edited attendee list. Skip the organiser's own email
+      // since Nylas adds them automatically as the event owner; including
+      // them again can cause "duplicate attendee" rejections on some
+      // Google Workspace tenants.
+      const attendees: { email: string; name?: string }[] = finalAttendees
+        .filter((a) => a.role !== 'me')
+        .map((a) => ({ email: a.email, name: a.role === 'me' ? undefined : a.name }));
       const summary = dealName
         ? `${dealName} — Intro call`
         : threadSubject
@@ -770,7 +772,7 @@ export function MeetingSchedulerCard({
     } finally {
       setCreating(false);
     }
-  }, [confirmedIdx, proposedSlots, recipientEmail, recipientName, partiesMode, extraMembers, dealName, threadSubject, timezone, onInsert, onClose]);
+  }, [confirmedIdx, proposedSlots, finalAttendees, dealName, threadSubject, timezone, onInsert, onClose]);
 
   return (
     <div className="rounded-lg border border-white/10 bg-card/60 p-3 space-y-3">
