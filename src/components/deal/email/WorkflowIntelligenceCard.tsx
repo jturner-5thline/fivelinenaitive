@@ -503,7 +503,7 @@ export function WorkflowIntelligenceCard({
                     className="h-7 px-2 text-[11px] gap-1 shrink-0"
                     title="Add to Action Queue for batch review"
                     onClick={async () => {
-                      const isLenderUpdate = rec.kind === 'lender_status_change' || rec.kind === 'lender_pass';
+                      const isLenderUpdate = rec.kind === 'lender_status';
                       await enqueueAiAction({
                         action_type: isLenderUpdate ? 'update_lender_status' : 'log_note',
                         title: rec.title || 'AI suggestion',
@@ -513,8 +513,7 @@ export function WorkflowIntelligenceCard({
                         payload: {
                           kind: rec.kind,
                           new_status: confirmedStatus,
-                          tracking_status: rec.tracking_status,
-                          deal_lender_id: rec.deal_lender_id || null,
+                          deal_lender_id: rec.lender_id || null,
                           lender_name: rec.lender_name,
                           pass_reasons: selectedReasonLabels,
                           reason_note: reason,
