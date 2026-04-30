@@ -883,9 +883,33 @@ CRITICAL RULES:
                     >
                       {msg.role === 'assistant' ? (
                         <>
-                          <div className="prose prose-sm dark:prose-invert max-w-none">
-                            <ReactMarkdown>{msg.content}</ReactMarkdown>
-                          </div>
+                          <TooltipProvider delayDuration={150}>
+                            <div className="prose prose-sm dark:prose-invert max-w-none">
+                              <ReactMarkdown
+                                components={{
+                                  // Highlight financial figures inside any
+                                  // text-bearing block. We walk children and
+                                  // replace bare strings with the highlighter
+                                  // so nested markdown (bold/italic/links)
+                                  // continues to render normally.
+                                  p: ({ children }) => (
+                                    <p>{highlightChildren(children, msg.sources)}</p>
+                                  ),
+                                  li: ({ children }) => (
+                                    <li>{highlightChildren(children, msg.sources)}</li>
+                                  ),
+                                  strong: ({ children }) => (
+                                    <strong>{highlightChildren(children, msg.sources)}</strong>
+                                  ),
+                                  em: ({ children }) => (
+                                    <em>{highlightChildren(children, msg.sources)}</em>
+                                  ),
+                                }}
+                              >
+                                {msg.content}
+                              </ReactMarkdown>
+                            </div>
+                          </TooltipProvider>
                           <SourceCitations
                             sources={msg.sources}
                             documents={documents}
