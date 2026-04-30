@@ -1159,7 +1159,36 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const responseCount = filteredEmails.filter(e => e.needs_response).length;
   const filteredUnread = filteredEmails.filter(e => !e.is_read).length;
 
-  const allThreads = useMemo(() => groupEmailsByThread(filteredEmails), [filteredEmails]);
+  // Inbox renders ONE ROW PER MESSAGE — keyboard nav must traverse the same
+  // ordering. Build per-message rows here too so j/k step through individual
+  // messages, not whole conversations. Match the row identity contract used
+  // in EmailList: `threadId = message.id`, `latestEmail = the message`.
+  const allThreads = useMemo(() => {
+    return [...filteredEmails]
+      .sort(
+        (a, b) =>
+          new Date(b.received_at).getTime() -
+          new Date(a.received_at).getTime(),
+      )
+      .map(
+        (msg) =>
+          ({
+            threadId: msg.id,
+            provider_thread_id: msg.provider_thread_id ?? null,
+            subject: msg.subject || '(no subject)',
+            emails: [msg],
+            latestEmail: msg,
+            participants: msg.from_name && msg.from_name !== 'You' ? [msg.from_name] : [],
+            hasUnread: !msg.is_read,
+            isStarred: !!msg.is_starred,
+            isLinked: !!msg.is_linked_to_deal,
+            hasAttachments: !!msg.has_attachments,
+            needsResponse: !!msg.needs_response,
+            dealName: msg.deal_name,
+            category: msg.category,
+          } as EmailThread),
+      );
+  }, [filteredEmails]);
 
   const responseQueue = useMemo(() => {
     return emails
