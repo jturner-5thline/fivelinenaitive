@@ -638,6 +638,21 @@ export function CashFlowManager() {
 
   const rawSidebar = useMemo(() => normalizeSidebarData(role === 'viewer' && sandboxSidebar ? sandboxSidebar : sidebarData), [role, sandboxSidebar, sidebarData]);
 
+  // Sum of all Configure-modal Cash-In entries with occurrences in the next 8 weeks (today → +56 days).
+  const scheduledCashInNext8Weeks = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const end = new Date(today);
+    end.setDate(end.getDate() + 56);
+    let total = 0;
+    for (const entry of scheduledItems || []) {
+      if (entry.flow_type !== 'cash_in') continue;
+      const occurrences = generateOccurrences(entry, today, end);
+      total += occurrences.length * (Number(entry.amount) || 0);
+    }
+    return total;
+  }, [scheduledItems]);
+
   const availableYears = useMemo(() => getAvailableYears(rawDaily.dates), [rawDaily.dates]);
 
   // Distinct entities/categories present in Configure entries (preserve canonical ordering)
