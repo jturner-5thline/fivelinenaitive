@@ -686,7 +686,20 @@ export function useThreadWorkflowAnalysis({
    */
   const confirmRecommendation = useCallback(async (overrides?: {
     reasonNote?: string;
+    /**
+     * Configured Lender Stage **id** selected by the user (sourced from
+     * Settings → Lender Stages). Persisted directly into
+     * `deal_lenders.stage`. When omitted we fall back to whatever the AI
+     * recommended (`rec.new_stage`).
+     */
     confirmedStatus?: string;
+    /**
+     * Tracking status group of the selected stage (e.g. 'passed',
+     * 'active', 'on-deck', 'on-hold'). Derived in the card from the
+     * stage's `group`. Used to keep `deal_lenders.tracking_status`
+     * aligned with the selected stage.
+     */
+    confirmedTrackingStatus?: string;
     confirmedDetail?: string;
     confirmedDetailLabels?: string[];
   }) => {
@@ -730,15 +743,21 @@ export function useThreadWorkflowAnalysis({
             : []);
       const passReasonText = finalDetailLabels.join(', ') || overrides?.confirmedDetail || 'Passed';
       const reason = overrides?.reasonNote ?? rec.reason_note ?? analysis.signal.label ?? '';
-      const finalStatus = (overrides?.confirmedStatus || rec.new_stage || 'passed').toLowerCase();
+      // The card now passes a configured Lender Stage **id** directly.
+      // Fall back to the AI's suggested stage only if the card didn't
+      // pass anything (legacy callers).
+      const finalStageId = (overrides?.confirmedStatus || rec.new_stage || 'passed');
+      const finalTrackingStatus = overrides?.confirmedTrackingStatus
+        || (finalStageId === 'passed' ? 'passed' : 'active');
+      const isClosingStage = finalTrackingStatus === 'passed';
       const sourceMessageId = latestInbound?.gmail_message_id || latestInbound?.id || messageId || null;
 
       currentStep = 'updateDealLender';
       const lenderUpdatePayload: DealLenderUpdate = {
-        stage: 'passed',
+        stage: finalStageId,
         substage: null,
-        tracking_status: 'passed',
-        pass_reason: passReasonText,
+        tracking_status: finalTrackingStatus,
+        pass_reason: isClosingStage ? passReasonText : null,
         notes: reason || targetRow.notes || null,
         updated_at: new Date().toISOString(),
       };
@@ -785,11 +804,11 @@ export function useThreadWorkflowAnalysis({
         verifyError: verifyError?.message || null,
       });
       if (verifyError) throw verifyError;
-      if (!verifyRow || verifyRow.stage !== 'passed' || verifyRow.tracking_status !== 'passed') {
-        throw new Error(`Read-back mismatch for ids=${JSON.stringify(debugContext)} status=${verifyRow?.stage || 'missing'}`);
+      if (!verifyRow || verifyRow.stage !== finalStageId || verifyRow.tracking_status !== finalTrackingStatus) {
+        throw new Error(`Read-back mismatch for ids=${JSON.stringify(debugContext)} stage=${verifyRow?.stage || 'missing'} expected=${finalStageId}`);
       }
 
-      if (finalDetailLabels.length > 0) {
+      if (isClosingStage && finalDetailLabels.length > 0) {
         const labelToCategory = (label: string): LenderPassReasonCategory => {
           const l = label.toLowerCase();
           if (/(deal\s*size|size|too\s*small|too\s*big|check\s*size)/.test(l)) return 'deal_size_mismatch';
@@ -820,7 +839,7 @@ export function useThreadWorkflowAnalysis({
       const activityPayload = {
         deal_id: canonicalDealId,
         activity_type: 'lender_stage_change',
-        description: `${verifyRow.name} marked as Passed${passReasonText ? ` — ${passReasonText}` : ''}`,
+        description: `${verifyRow.name} stage → ${finalStageId}${isClosingStage && passReasonText ? ` — ${passReasonText}` : ''}`,
         user_id: user.id,
         metadata: {
           source: 'ai_thread_workflow',
@@ -828,8 +847,9 @@ export function useThreadWorkflowAnalysis({
           lender_name: verifyRow.name,
           company_id: company.id,
           from: targetRow.stage,
-          to: 'passed',
-          final_confirmed_status: finalStatus,
+          to: finalStageId,
+          final_confirmed_stage_id: finalStageId,
+          final_confirmed_tracking_status: finalTrackingStatus,
           final_confirmed_detail_labels: finalDetailLabels,
           reason_note: reason,
           source_thread_id: threadData?.threadId || null,
@@ -868,7 +888,7 @@ export function useThreadWorkflowAnalysis({
         readBackTrackingStatus: verifyRow.tracking_status,
       });
 
-      toast.success(`${verifyRow.name} marked as Passed — verified write succeeded`);
+      toast.success(`${verifyRow.name} stage updated → ${finalStageId}`);
       dismiss();
       return true;
     } catch (err: any) {
