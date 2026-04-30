@@ -1330,22 +1330,13 @@ export default function Lenders() {
                   </div>
                 )}
 
-                {/* Loading State */}
+                {/*
+                  Loading State — mirrors the Deals page pattern: tile-shaped
+                  skeletons that share the `.deal-glass` surface so the page
+                  keeps the same depth/contrast hierarchy while data loads.
+                */}
                 {isLoading && (
-                  <div className="space-y-3">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <div key={i} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                        <div className="flex-1 space-y-2">
-                          <Skeleton className="h-6 w-48" />
-                          <Skeleton className="h-4 w-64" />
-                        </div>
-                        <div className="flex gap-2">
-                          <Skeleton className="h-8 w-8 rounded" />
-                          <Skeleton className="h-8 w-8 rounded" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <LendersListSkeleton viewMode={viewMode === 'spreadsheet' ? 'list' : viewMode} />
                 )}
 
                 {/* List View */}
@@ -1470,20 +1461,46 @@ export default function Lenders() {
                   />
                 )}
 
+                {/*
+                  Empty / no-results states — same surface, border, and text
+                  contrast components as the Deals page "No deals found" view
+                  (muted-circle icon + heading + muted subtext).
+                */}
                 {!isLoading && loadingMore && sortedLenders.length === 0 && masterLenders.length > 0 && (
-                  <p className="text-center text-muted-foreground py-8">
-                    Loading lenders...
-                  </p>
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+                      <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
+                    </div>
+                    <h3 className="text-lg font-medium text-foreground">Loading lenders</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Fetching your lender directory…
+                    </p>
+                  </div>
                 )}
                 {!isLoading && !loadingMore && sortedLenders.length === 0 && masterLenders.length > 0 && (
-                  <p className="text-center text-muted-foreground py-8">
-                    No lenders match your search.
-                  </p>
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+                      <FileX className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-medium text-foreground">No lenders found</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Try adjusting your filters or clearing your search to see more lenders.
+                    </p>
+                  </div>
                 )}
                 {!isLoading && masterLenders.length === 0 && (
-                  <div className="text-center text-muted-foreground py-8">
-                    <p>No lenders in your database yet.</p>
-                    <p className="text-sm mt-2">Import your master lender database or add lenders manually to get started.</p>
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+                      <Building2 className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-medium text-foreground">No lenders yet</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Import your master lender database or add lenders manually to get started.
+                    </p>
+                    <Button onClick={openAddDialog} size="sm" className="gap-1 mt-4">
+                      <Plus className="h-4 w-4" />
+                      Add Lender
+                    </Button>
                   </div>
                 )}
             </div>
