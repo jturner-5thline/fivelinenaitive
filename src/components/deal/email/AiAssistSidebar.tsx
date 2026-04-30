@@ -649,13 +649,78 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
         style={{ overscrollBehavior: 'contain', contain: 'layout paint style' }}
       >
         <div className="min-w-0 max-w-full w-full p-4 space-y-4">
-          {/* Deal Context — auto-expanded when a deal is linked. Drives the
-              draft tone via dealContextHint forwarded to the edge function. */}
-          <DealContextCard
-            dealId={dealId}
-            dealName={dealName}
-            onSummaryChange={setDealContextSummary}
-          />
+          {/* Deal context chip row — single-line at-a-glance summary of the
+              entities the AI resolved for this thread. Replaces the earlier
+              multi-row paragraph layout so the eye lands on the key actors
+              (deal, contact, lender) immediately. Each chip is colored by
+              role and truncates gracefully on narrow widths. The full
+              DealContextCard is still rendered below — collapsed by default
+              — for the rare case the user wants stage age, status notes,
+              and overdue items. */}
+          {(() => {
+            const dealChip = dealName || workflowAnalysis?.likely_deal?.name;
+            const contactChip = workflowAnalysis?.likely_contact?.name
+              || thread.latestEmail.from_name;
+            const lenderChip = workflowAnalysis?.likely_lender_firm?.name;
+            if (!dealChip && !contactChip && !lenderChip) return null;
+            return (
+              <div className="flex flex-wrap items-center gap-1.5 -mt-1">
+                {dealChip && (
+                  <span className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+                    <Briefcase className="h-2.5 w-2.5 shrink-0" />
+                    <span className="truncate">Deal: {dealChip}</span>
+                  </span>
+                )}
+                {contactChip && (
+                  <span className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[11px] text-sky-300">
+                    <UserIcon className="h-2.5 w-2.5 shrink-0" />
+                    <span className="truncate">Contact: {contactChip}</span>
+                  </span>
+                )}
+                {lenderChip && (
+                  <span className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-300">
+                    <Building2 className="h-2.5 w-2.5 shrink-0" />
+                    <span className="truncate">Lender: {lenderChip}</span>
+                  </span>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Deal Context — collapsed by default; the chip row above is the
+              primary at-a-glance summary. Still renders so the deal-context
+              hint is forwarded to the AI draft generator. */}
+          {dealDetailsOpen ? (
+            <DealContextCard
+              dealId={dealId}
+              dealName={dealName}
+              onSummaryChange={setDealContextSummary}
+              defaultExpanded={true}
+            />
+          ) : (
+            // Hidden mount so the summary still loads / forwards even while
+            // the visual card is collapsed.
+            <div className="hidden">
+              <DealContextCard
+                dealId={dealId}
+                dealName={dealName}
+                onSummaryChange={setDealContextSummary}
+                defaultExpanded={false}
+              />
+            </div>
+          )}
+          {dealId && (
+            <button
+              type="button"
+              onClick={() => setDealDetailsOpen((v) => !v)}
+              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors -mt-2"
+            >
+              <ChevronDown
+                className={cn('h-3 w-3 transition-transform', !dealDetailsOpen && '-rotate-90')}
+              />
+              {dealDetailsOpen ? 'Hide deal details' : 'Show deal details'}
+            </button>
+          )}
 
           {/* Unmatched-email context: contact card / body-mention deal
               suggestion / Link Deal fallback. Only renders when no deal is
@@ -678,18 +743,9 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             />
           )}
 
-          {/* Unified AI action — replaces the previous Ask AI + Quick Task
-              boxes with a single natural-language input that infers intent
-              (ask / task / note / data room / draft) and routes accordingly. */}
-          <EmailUnifiedAiAction
-            thread={thread}
-            dealId={dealId}
-            dealName={dealName}
-            fallbackDealId={workflowAnalysis?.likely_deal?.id || null}
-            fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
-          />
-
-          {/* Thread Summary lives in the thread header (under the
+          {/* The Ask-AI textbox lives in the sticky footer below the scroll
+              area so it's always one click away — no scrolling required.
+              Thread Summary lives in the thread header (under the
               "N messages" count) as a compact glass popover, not inline
               in the AI Assist sidebar. */}
           {/* Lender data Q&A — when a deal is matched and the inbound email
