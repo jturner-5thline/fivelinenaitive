@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
 import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History, Bell, ChevronDown, FolderPlus, FileX } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
+import { WorkspacePage } from '@/components/layout/WorkspacePage';
 import { BetaBadge } from '@/components/ui/beta-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -957,15 +958,11 @@ export default function Lenders() {
       />
 
       {/*
-        Page surface — match the Deals page exactly so Lender Directory
-        reads as the same component family (transparent base over the
-        ambient app backdrop, identical padding rhythm).
+        Page surface — routed through the shared `<WorkspacePage>` primitive
+        so Lender Directory and Deals can never drift apart on canvas tone,
+        header chrome, or padding rhythm.
       */}
-      <div className="bg-transparent">
-        <DealsHeader />
-
-        <main className="w-full px-4 pt-5 pb-3 sm:px-6">
-          <div className="space-y-6">
+      <WorkspacePage contentClassName="space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-semibold flex items-center gap-2 text-foreground">
@@ -1503,9 +1500,7 @@ export default function Lenders() {
                   </div>
                 )}
             </div>
-          </div>
-        </main>
-      </div>
+      </WorkspacePage>
 
       {/* Add/Edit Lender Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
