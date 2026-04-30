@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react';
-import { CheckSquare, Paperclip, Mail as MailIcon, Loader2, X, ExternalLink } from 'lucide-react';
+import { CheckSquare, Paperclip, Mail as MailIcon, Loader2, X, ExternalLink, ListPlus, CalendarClock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useOutstandingItems, type OutstandingItem } from '@/hooks/useOutstandingItems';
 import { useDealAuditLog } from '@/hooks/useDealAuditLog';
+import { useOutstandingItemSuggestions } from '@/hooks/useOutstandingItemSuggestions';
+import { useEmailToDataRoom } from '@/hooks/useEmailToDataRoom';
+import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
 import type { EmailThread, EmailAttachment } from './mockEmailData';
 
 /**
@@ -85,12 +88,20 @@ interface AttachmentMatch {
   item: OutstandingItem;
   attachment: EmailAttachment;
   matchedOn: string;
+  /** When the match came from the AI analyzer rather than the keyword fallback. */
+  source: 'ai' | 'fuzzy';
+  confidence?: 'low' | 'medium' | 'high';
 }
 
 interface ContactMatch {
   item: OutstandingItem;
   /** The "from <contact>" portion extracted from the item text. */
   requestedFrom: string;
+  /** When the match came from the AI analyzer rather than the regex fallback. */
+  source?: 'ai' | 'regex';
+  /** Verbatim email sentence that fulfills the request, when AI provided it. */
+  supportingQuote?: string;
+  confidence?: 'low' | 'medium' | 'high';
 }
 
 /**
@@ -134,10 +145,24 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
   const { logAuditAction } = useDealAuditLog(dealId);
   const [working, setWorking] = useState<Record<string, boolean>>({});
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const { commitUpload } = useEmailToDataRoom();
+  const { addItem } = useOutstandingItems(dealId);
 
   const openItems = useMemo(() => items.filter((i) => !i.received), [items]);
 
-  const attachmentMatches = useMemo<AttachmentMatch[]>(() => {
+  // ── AI-driven analysis (Claude semantic match + new-item detection) ──
+  // Falls back to the deterministic matchers below when AI returns nothing
+  // or the call is in flight.
+  const { result: aiResult } = useOutstandingItemSuggestions({
+    dealId,
+    dealName,
+    openItems,
+    attachments,
+    thread,
+    enabled: !!dealId,
+  });
+
+  const fuzzyAttachmentMatches = useMemo<AttachmentMatch[]>(() => {
     if (!attachments || attachments.length === 0 || openItems.length === 0) return [];
     const out: AttachmentMatch[] = [];
     const seenItemIds = new Set<string>();
@@ -149,7 +174,7 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
         if (seenItemIds.has(item.id)) continue;
         const hit = matchDocKeyword(fname, item.text);
         if (hit) {
-          out.push({ item, attachment: att, matchedOn: hit });
+          out.push({ item, attachment: att, matchedOn: hit, source: 'fuzzy' });
           seenItemIds.add(item.id);
           break;
         }
@@ -158,7 +183,42 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
     return out;
   }, [attachments, openItems]);
 
-  const contactMatches = useMemo<ContactMatch[]>(() => {
+  const aiAttachmentMatches = useMemo<AttachmentMatch[]>(() => {
+    const list = aiResult.attachment_matches || [];
+    if (list.length === 0 || !attachments || openItems.length === 0) return [];
+    const itemMap = new Map(openItems.map((i) => [i.id, i]));
+    const attMap = new Map(
+      (attachments || []).map((a) => [(a.filename || '').toLowerCase(), a]),
+    );
+    const seen = new Set<string>();
+    const out: AttachmentMatch[] = [];
+    for (const m of list) {
+      const item = itemMap.get(m.item_id);
+      const att = attMap.get((m.filename || '').toLowerCase());
+      if (!item || !att || seen.has(item.id) || att.is_inline) continue;
+      seen.add(item.id);
+      out.push({
+        item,
+        attachment: att,
+        matchedOn: m.matched_on || item.text.slice(0, 40),
+        source: 'ai',
+        confidence: m.confidence,
+      });
+    }
+    return out;
+  }, [aiResult.attachment_matches, attachments, openItems]);
+
+  // Prefer AI matches; fall back per-item to fuzzy when AI didn't catch it.
+  const attachmentMatches = useMemo<AttachmentMatch[]>(() => {
+    const aiItemIds = new Set(aiAttachmentMatches.map((m) => m.item.id));
+    const merged = [...aiAttachmentMatches];
+    for (const m of fuzzyAttachmentMatches) {
+      if (!aiItemIds.has(m.item.id)) merged.push(m);
+    }
+    return merged;
+  }, [aiAttachmentMatches, fuzzyAttachmentMatches]);
+
+  const regexContactMatches = useMemo<ContactMatch[]>(() => {
     return detectContactFulfillment(
       openItems,
       thread.latestEmail?.from_name || '',
@@ -166,15 +226,115 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
     );
   }, [openItems, thread.latestEmail?.from_name, thread.latestEmail?.from_email]);
 
+  const aiContactMatches = useMemo<ContactMatch[]>(() => {
+    const list = aiResult.info_fulfillment_matches || [];
+    if (list.length === 0) return [];
+    const itemMap = new Map(openItems.map((i) => [i.id, i]));
+    const out: ContactMatch[] = [];
+    for (const m of list) {
+      const item = itemMap.get(m.item_id);
+      if (!item) continue;
+      out.push({
+        item,
+        requestedFrom: m.requested_from || '',
+        source: 'ai',
+        supportingQuote: m.supporting_quote,
+        confidence: m.confidence,
+      });
+    }
+    return out;
+  }, [aiResult.info_fulfillment_matches, openItems]);
+
+  const contactMatches = useMemo<ContactMatch[]>(() => {
+    const aiItemIds = new Set(aiContactMatches.map((m) => m.item.id));
+    const merged = [...aiContactMatches];
+    for (const m of regexContactMatches) {
+      if (!aiItemIds.has(m.item.id)) merged.push({ ...m, source: 'regex' });
+    }
+    return merged;
+  }, [aiContactMatches, regexContactMatches]);
+
   // Filter out dismissed and any items already covered by attachment match.
   const visibleAttachmentMatches = attachmentMatches.filter((m) => !dismissed.has(`att:${m.item.id}`));
   const visibleContactMatches = contactMatches.filter(
     (m) => !dismissed.has(`contact:${m.item.id}`) && !attachmentMatches.some((a) => a.item.id === m.item.id),
   );
+  const visibleNewItemSuggestions = (aiResult.new_item_suggestions || []).filter(
+    (s, i) => !dismissed.has(`new:${i}:${s.description}`),
+  );
 
-  if (!dealId || (visibleAttachmentMatches.length === 0 && visibleContactMatches.length === 0)) {
+  if (
+    !dealId ||
+    (visibleAttachmentMatches.length === 0 &&
+      visibleContactMatches.length === 0 &&
+      visibleNewItemSuggestions.length === 0)
+  ) {
     return null;
   }
+
+  /**
+   * Pick a sensible VDR category for the matched attachment based on the
+   * outstanding-item description. Mirrors the manual category options in
+   * SendToDataRoomDialog so the auto-upload lands in the right section.
+   */
+  const categoryForItem = (itemText: string): DealAttachmentCategory => {
+    const t = (itemText || '').toLowerCase();
+    if (/(p&l|pnl|profit|loss|income statement|balance sheet|cash flow|financial statement|tax return|bank statement|ar aging|ap aging|cap table|debt schedule|audited)/.test(t)) {
+      return 'financials';
+    }
+    if (/(nda|agreement|contract|term sheet|engagement|operating agreement)/.test(t)) {
+      return 'agreements';
+    }
+    return 'materials';
+  };
+
+  const handleConfirmAttachmentMatch = async (m: AttachmentMatch) => {
+    if (!dealId) return;
+    setWorking((w) => ({ ...w, [m.item.id]: true }));
+    try {
+      // 1. Upload the attachment to the deal VDR (one-click, no extra dialog)
+      //    so the file is staged under the right section. Failure here is
+      //    non-fatal — we still mark the item received so the user gets the
+      //    primary value.
+      const messageId =
+        thread.latestEmail?.id ||
+        ((thread.latestEmail as any)?.gmail_message_id as string | undefined) ||
+        '';
+      if (messageId && m.attachment.id) {
+        try {
+          await commitUpload({
+            dealId,
+            messageId,
+            sourceEmail: {
+              messageId,
+              threadId: thread.threadId,
+              subject: thread.subject,
+              senderName: thread.latestEmail?.from_name || '',
+              senderEmail: thread.latestEmail?.from_email || '',
+            },
+            plan: [
+              {
+                attachment: m.attachment,
+                desiredName: m.attachment.filename || 'attachment',
+                category: categoryForItem(m.item.text),
+                include: true,
+              },
+            ],
+          });
+        } catch (uploadErr) {
+          console.warn('[OutstandingItemMatchCard] VDR upload failed (continuing):', uploadErr);
+        }
+      }
+
+      // 2. Mark the outstanding item received + log to the timeline.
+      await handleMarkReceived(m.item, 'attachment', {
+        matchedOn: m.matchedOn,
+        attachmentName: m.attachment.filename,
+      });
+    } finally {
+      setWorking((w) => ({ ...w, [m.item.id]: false }));
+    }
+  };
 
   const handleMarkReceived = async (
     item: OutstandingItem,
@@ -233,13 +393,63 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
     }
   };
 
+  const handleAddNewItem = async (
+    suggestion: AiResultNewItemBound,
+    index: number,
+  ) => {
+    if (!dealId) return;
+    const dismissKey = `new:${index}:${suggestion.description}`;
+    setWorking((w) => ({ ...w, [dismissKey]: true }));
+    try {
+      const mappedPriority: 'urgent' | 'high' | 'normal' =
+        suggestion.priority === 'urgent'
+          ? 'urgent'
+          : suggestion.priority === 'high'
+            ? 'high'
+            : 'normal';
+      const created = await addItem(suggestion.description, [], mappedPriority);
+      if (created) {
+        await logAuditAction(
+          'outstanding_item_added_from_email',
+          'outstanding_item',
+          created.id,
+          suggestion.description,
+          {
+            source: 'ai_assist_email',
+            thread_id: thread.threadId,
+            thread_subject: thread.subject || null,
+            from_name: thread.latestEmail?.from_name || null,
+            from_email: thread.latestEmail?.from_email || null,
+            due_date: suggestion.due_date,
+            priority: suggestion.priority,
+            source_quote: suggestion.source_quote,
+            confidence: suggestion.confidence,
+            confirmed_at: new Date().toISOString(),
+          },
+        );
+        toast.success(`Added to ${dealName || 'deal'}`, {
+          description: suggestion.description,
+        });
+        setDismissed((d) => {
+          const n = new Set(d);
+          n.add(dismissKey);
+          return n;
+        });
+      } else {
+        toast.error('Could not add outstanding item');
+      }
+    } finally {
+      setWorking((w) => ({ ...w, [dismissKey]: false }));
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
           Outstanding Items
           <span className="ml-1.5 text-muted-foreground/50 normal-case tracking-normal">
-            · {visibleAttachmentMatches.length + visibleContactMatches.length} suggested
+            · {visibleAttachmentMatches.length + visibleContactMatches.length + visibleNewItemSuggestions.length} suggested
           </span>
         </p>
       </div>
@@ -264,7 +474,7 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
               <Row label="Item" value={item.text} />
               <Row label="File" value={attachment.filename || 'attachment'} mono />
               <p className="text-[11px] text-muted-foreground/85 leading-snug pt-1">
-                Mark this outstanding item as <span className="text-foreground/90">received</span> on {dealName || 'this deal'}?
+                Add the file to the data room and mark this item as <span className="text-foreground/90">received</span> on {dealName || 'this deal'}?
               </p>
               <div className="flex items-center gap-2 pt-1">
                 <Button
@@ -272,9 +482,11 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
                   className="h-7 text-[11px] gap-1"
                   disabled={!!working[item.id]}
                   onClick={() =>
-                    handleMarkReceived(item, 'attachment', {
+                    handleConfirmAttachmentMatch({
+                      item,
+                      attachment,
                       matchedOn,
-                      attachmentName: attachment.filename,
+                      source: 'ai',
                     })
                   }
                 >
@@ -283,7 +495,7 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
                   ) : (
                     <CheckSquare className="h-3 w-3" />
                   )}
-                  Mark received
+                  Add to VDR & mark received
                 </Button>
                 <Button
                   size="sm"
@@ -304,7 +516,7 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
           </div>
         ))}
 
-        {visibleContactMatches.map(({ item, requestedFrom }) => (
+        {visibleContactMatches.map(({ item, requestedFrom, supportingQuote }) => (
           <div
             key={`contact-${item.id}`}
             className="rounded-md border border-white/[0.08] bg-background/40 overflow-hidden"
@@ -326,6 +538,11 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
                 value={`${thread.latestEmail?.from_name || ''} <${thread.latestEmail?.from_email || ''}>`}
                 mono
               />
+              {supportingQuote && (
+                <div className="text-[11px] text-muted-foreground/85 italic leading-snug border-l-2 border-white/[0.08] pl-2 mt-1">
+                  "{supportingQuote}"
+                </div>
+              )}
               <p className="text-[11px] text-muted-foreground/85 leading-snug pt-1">
                 This email looks like a response to "request from {requestedFrom}". Mark the item complete?
               </p>
@@ -369,10 +586,88 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
             </div>
           </div>
         ))}
+
+        {visibleNewItemSuggestions.map((s, idx) => {
+          const dismissKey = `new:${idx}:${s.description}`;
+          return (
+            <div
+              key={dismissKey}
+              className="rounded-md border border-white/[0.08] bg-background/40 overflow-hidden"
+            >
+              <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.04] bg-muted/20">
+                <ListPlus className="h-3 w-3 text-primary/80 shrink-0" />
+                <span className="text-[11px] font-medium text-foreground/85 truncate flex-1">
+                  Add to outstanding items on {dealName || 'deal'}?
+                </span>
+                <Badge variant="secondary" className="h-4 text-[9px] px-1.5 shrink-0">
+                  new
+                </Badge>
+              </div>
+              <div className="px-3 py-2.5 space-y-2">
+                <Row label="Deal" value={dealName || '—'} />
+                <Row label="Item" value={s.description} />
+                {s.due_date && (
+                  <div className="flex items-start gap-2 text-[11px]">
+                    <span className="text-muted-foreground/70 w-14 shrink-0">Due</span>
+                    <span className="flex-1 text-foreground/90 inline-flex items-center gap-1">
+                      <CalendarClock className="h-3 w-3 text-muted-foreground/70" />
+                      {s.due_date}
+                    </span>
+                  </div>
+                )}
+                {s.priority && s.priority !== 'normal' && (
+                  <Row label="Priority" value={s.priority} />
+                )}
+                {s.source_quote && (
+                  <div className="text-[11px] text-muted-foreground/85 italic leading-snug border-l-2 border-white/[0.08] pl-2 mt-1">
+                    "{s.source_quote}"
+                  </div>
+                )}
+                <div className="flex items-center gap-2 pt-1">
+                  <Button
+                    size="sm"
+                    className="h-7 text-[11px] gap-1"
+                    disabled={!!working[dismissKey]}
+                    onClick={() => handleAddNewItem(s, idx)}
+                  >
+                    {working[dismissKey] ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <ListPlus className="h-3 w-3" />
+                    )}
+                    Add item
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-[11px] gap-1 text-muted-foreground"
+                    onClick={() =>
+                      setDismissed((d) => {
+                        const n = new Set(d);
+                        n.add(dismissKey);
+                        return n;
+                      })
+                    }
+                  >
+                    <X className="h-3 w-3" /> Dismiss
+                  </Button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
+
+type AiResultNewItemBound = {
+  description: string;
+  due_date: string | null;
+  source_quote: string;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  confidence: 'low' | 'medium' | 'high';
+};
 
 function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
