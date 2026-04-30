@@ -676,9 +676,9 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
           />
 
-          {/* Thread Summary — auto-generated for multi-message threads, collapsed by default */}
-          <ThreadSummaryCard thread={thread} dealId={dealId} />
-
+          {/* Thread Summary lives in the thread header (under the
+              "N messages" count) as a compact glass popover, not inline
+              in the AI Assist sidebar. */}
           {/* Lender data Q&A — when a deal is matched and the inbound email
               contains data-style questions (ARR, debt, EBITDA, collateral,
               etc.), surface a card that answers each question from the
