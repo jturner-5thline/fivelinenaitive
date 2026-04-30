@@ -280,6 +280,17 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
   const [aiInsertedAt, setAiInsertedAt] = useState<number | null>(null);
   const [aiPending, setAiPending] = useState(false);
   const [schedulePickerOpen, setSchedulePickerOpen] = useState(false);
+  const [polishOpen, setPolishOpen] = useState(false);
+
+  // The Polish button surfaces only once the user has typed something
+  // meaningful. 60 chars ≈ ~10 words — enough to be worth polishing.
+  // Hidden while an AI draft is pending or just inserted (that flow has
+  // its own review chip).
+  const plainBodyLength = useMemo(() => {
+    const plain = /<[a-z][\s\S]*>/i.test(body || '') ? htmlToPlainText(body || '') : (body || '');
+    return plain.replace(/\s+/g, ' ').trim().length;
+  }, [body]);
+  const canPolish = plainBodyLength >= 60 && !aiInsertedAt && !aiPending;
   const [scheduleValue, setScheduleValue] = useState<string>(() => {
     const d = new Date();
     d.setMinutes(d.getMinutes() + 60);
