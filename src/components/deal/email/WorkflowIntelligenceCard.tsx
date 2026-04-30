@@ -43,6 +43,13 @@ interface Props {
    * carries attachments and is linked to (or likely-matched to) a deal.
    */
   attachmentFallback?: ReactNode;
+  /**
+   * When true, suppress the embedded SuggestedTaskCards block. The
+   * redesigned AI Assist sidebar renders task suggestions in its own
+   * collapsible "Suggested Tasks" section so the workflow card stays
+   * focused on the lender/deal status update.
+   */
+  hideSuggestedTasks?: boolean;
 }
 
 const CONFIDENCE_TONE: Record<WorkflowConfidence, string> = {
@@ -127,6 +134,7 @@ export function WorkflowIntelligenceCard({
   onMaybeLater,
   attachmentFallback,
   threadId = null,
+  hideSuggestedTasks = false,
 }: Props) {
   // Source of truth for pass-reason options — same list shown in the
   // deal-detail Lenders tab "Confirm Pass" dialog so the two stay in sync.
@@ -556,7 +564,7 @@ export function WorkflowIntelligenceCard({
                 as confirm-first cards inline within the Suggested Update list
                 so the user sees deal-level updates and task suggestions
                 together. No modal, no form. */}
-            {analysis.suggested_tasks && analysis.suggested_tasks.length > 0 && (
+            {!hideSuggestedTasks && analysis.suggested_tasks && analysis.suggested_tasks.length > 0 && (
               <div className="pt-2 border-t border-primary/10">
                 <SuggestedTaskCards
                   suggestions={analysis.suggested_tasks}
