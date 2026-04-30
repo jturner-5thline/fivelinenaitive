@@ -51,7 +51,13 @@ interface Props {
   open: boolean;
   initialEntries: ScheduledCashFlow[];
   onClose: () => void;
-  onSave: (entries: ScheduledCashFlow[]) => Promise<boolean>;
+  /**
+   * `entries` are the rows to persist (existing rows are matched by `id`,
+   * new rows have empty `id`). `deleteIds` is the explicit list of ids the
+   * user removed via the trash button — only these will be deleted from
+   * the database. Rows that simply aren't in `entries` are left alone.
+   */
+  onSave: (entries: ScheduledCashFlow[], deleteIds: string[]) => Promise<boolean>;
 }
 
 type DraftEntry = Omit<ScheduledCashFlow, 'id' | 'company_id'> & { id?: string; _draftId: string };
@@ -131,6 +137,11 @@ function DatePickerField({
 export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave }: Props) {
   const [drafts, setDrafts] = useState<DraftEntry[]>([]);
   const [saving, setSaving] = useState(false);
+  // Ids of existing entries the user explicitly removed in this session.
+  // These — and only these — are deleted on save. This protects against
+  // wiping rows added in other surfaces (e.g. inline cell adds) while the
+  // modal was open.
+  const [deletedIds, setDeletedIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -141,6 +152,7 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
         frequency_config: e.frequency_config || {},
       })),
     );
+    setDeletedIds([]);
   }, [open, initialEntries]);
 
   const updateRow = useCallback((draftId: string, patch: Partial<DraftEntry>) => {
@@ -158,7 +170,13 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
   }, []);
 
   const addRow = () => setDrafts((prev) => [...prev, newDraft()]);
-  const deleteRow = (id: string) => setDrafts((prev) => prev.filter((d) => d._draftId !== id));
+  const deleteRow = (id: string) =>
+    setDrafts((prev) => {
+      const removed = prev.find((d) => d._draftId === id);
+      // Track DB id deletions so saveAll can apply them server-side.
+      if (removed?.id) setDeletedIds((ids) => (ids.includes(removed.id!) ? ids : [...ids, removed.id!]));
+      return prev.filter((d) => d._draftId !== id);
+    });
 
   const handleFlowChange = (draftId: string, flow: FlowType) => {
     setDrafts((prev) =>
@@ -230,7 +248,7 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
       end_date: d.end_date,
       notes: d.notes,
     }));
-    const ok = await onSave(entries);
+    const ok = await onSave(entries, deletedIds);
     setSaving(false);
     if (ok) {
       toast.success('Scheduled cash flows saved');
