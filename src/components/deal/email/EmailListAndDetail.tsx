@@ -645,50 +645,93 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
   // an additional Radix <ScrollArea> here would create a nested scroller that
   // intercepts wheel events and prevents scroll chaining/IO sentinels from
   // working correctly. Render rows as a plain list — the parent owns scroll.
+  // Compute the per-thread merged userLabels lazily inside the row renderer
+  // so windowed rows only run this work when they actually paint.
+  const buildUserLabels = useCallback(
+    (thread: EmailThread): EmailLabel[] => {
+      const dbLabels =
+        threadLabelMap.get(thread.provider_thread_id || thread.threadId) ?? [];
+      const sysLabels = systemLabelsForEmail(thread.latestEmail);
+      if (sysLabels.length === 0) return dbLabels;
+      const seen = new Set<string>();
+      const merged: EmailLabel[] = [];
+      for (const l of [...sysLabels, ...dbLabels]) {
+        if (seen.has(l.id)) continue;
+        seen.add(l.id);
+        merged.push(l);
+      }
+      return merged;
+    },
+    [threadLabelMap],
+  );
+
+  const renderThread = useCallback(
+    (_index: number, thread: EmailThread) => (
+      <ThreadListRow
+        key={thread.threadId}
+        thread={thread}
+        isSelected={selectedThread?.threadId === thread.threadId}
+        isChecked={selectedIds?.has(thread.threadId)}
+        onSelectThread={onSelectThread}
+        onCheckChangeOuter={handleCheckChange}
+        onToggleLink={onToggleLink}
+        onToggleStar={onToggleStar}
+        onMarkRead={onMarkRead}
+        onMarkUnread={onMarkUnread}
+        onArchive={onArchive}
+        onDelete={onDelete}
+        evaluateAutoLabels={evaluateAutoLabels}
+        priorityFlag={flagsByThread[thread.threadId]}
+        userLabels={buildUserLabels(thread)}
+      />
+    ),
+    [
+      selectedThread,
+      selectedIds,
+      onSelectThread,
+      handleCheckChange,
+      onToggleLink,
+      onToggleStar,
+      onMarkRead,
+      onMarkUnread,
+      onArchive,
+      onDelete,
+      evaluateAutoLabels,
+      flagsByThread,
+      buildUserLabels,
+    ],
+  );
+
+  // When the parent passes a scroll element, virtualize. Off-screen rows are
+  // not rendered — DOM stays bounded regardless of how many pages are loaded.
+  // We intentionally keep the existing pagination footer outside this
+  // component so its IntersectionObserver continues to operate against the
+  // same scroll parent.
+  if (scrollParent) {
+    return (
+      <Virtuoso
+        data={threads}
+        customScrollParent={scrollParent}
+        itemContent={renderThread}
+        computeItemKey={(_i, t) => t.threadId}
+        // Reserve a sensible initial height so a quick first paint doesn't
+        // collapse the list before measurements complete.
+        defaultItemHeight={72}
+        increaseViewportBy={{ top: 400, bottom: 600 }}
+      />
+    );
+  }
+
+  // Fallback: plain list (used by deal-page reading pane and any callers
+  // that don't supply a scroll parent). Preserves prior behavior exactly.
   return (
     <div
       className="space-y-0"
       style={{
-        // Promote the list to its own paint/layout boundary so row hover/select
-        // doesn't repaint the surrounding shell.
         contain: 'layout paint style',
       }}
     >
-      {threads.map((thread) => (
-        <ThreadListRow
-          key={thread.threadId}
-          thread={thread}
-          isSelected={selectedThread?.threadId === thread.threadId}
-          isChecked={selectedIds?.has(thread.threadId)}
-          onSelectThread={onSelectThread}
-          onCheckChangeOuter={handleCheckChange}
-          onToggleLink={onToggleLink}
-          onToggleStar={onToggleStar}
-          onMarkRead={onMarkRead}
-          onMarkUnread={onMarkUnread}
-          onArchive={onArchive}
-          onDelete={onDelete}
-          evaluateAutoLabels={evaluateAutoLabels}
-          priorityFlag={flagsByThread[thread.threadId]}
-          userLabels={(() => {
-            const dbLabels =
-              threadLabelMap.get(thread.provider_thread_id || thread.threadId) ?? [];
-            // Auto-tag system labels (e.g. jturner@5thline.co) — derived from
-            // the latest message's sender/recipient, no DB rows required.
-            const sysLabels = systemLabelsForEmail(thread.latestEmail);
-            if (sysLabels.length === 0) return dbLabels;
-            // De-dupe by id; system labels first so they paint the row stripe.
-            const seen = new Set<string>();
-            const merged: EmailLabel[] = [];
-            for (const l of [...sysLabels, ...dbLabels]) {
-              if (seen.has(l.id)) continue;
-              seen.add(l.id);
-              merged.push(l);
-            }
-            return merged;
-          })()}
-        />
-      ))}
+      {threads.map((thread, idx) => renderThread(idx, thread))}
     </div>
   );
 }
