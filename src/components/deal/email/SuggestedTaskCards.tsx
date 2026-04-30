@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Check, X, Loader2, ListTodo, Calendar as CalendarIcon, User as UserIcon, Link2, MinusCircle, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Check, X, Loader2, ListTodo, Calendar as CalendarIcon, User as UserIcon, Link2, MinusCircle, AlertTriangle, RefreshCw, Inbox as InboxIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -12,6 +12,7 @@ import { createTaskFromDraft, type TaskDraft } from '@/hooks/useNaitiveTaskParse
 import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
 import { useUiPreference } from '@/hooks/useUiPreference';
 import type { WorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
+import { useEnqueueAiAction } from '@/hooks/useAiActionQueue';
 import {
   AlertDialog,
   AlertDialogAction,
