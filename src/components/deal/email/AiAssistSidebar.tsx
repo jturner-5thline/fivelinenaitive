@@ -909,6 +909,23 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                 })}
               </div>
 
+              {/* Inline meeting scheduler — opens when the existing
+                  "Request a meeting" chip is clicked. Reads the connected
+                  Google Calendar, proposes 3 free slots over the next 5
+                  business days, lets the user pick parties, and either
+                  inserts a proposal block or creates a confirmed event with
+                  a Google Meet link. Never auto-creates without a click. */}
+              {schedulerOpen && (
+                <MeetingSchedulerCard
+                  recipientEmail={thread.latestEmail?.from_email}
+                  recipientName={thread.latestEmail?.from_name || undefined}
+                  threadSubject={thread.subject}
+                  dealName={dealName}
+                  onInsert={(text) => onInsertDraft(text)}
+                  onClose={() => setSchedulerOpen(false)}
+                />
+              )}
+
               {/* Shared draft preview — dominant element. Layout never jumps;
                   only the body text content swaps when the user switches
                   variants. */}
