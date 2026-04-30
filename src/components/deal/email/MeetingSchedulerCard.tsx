@@ -553,6 +553,121 @@ export function MeetingSchedulerCard({
     [teamMembers, extraTeamMemberIds],
   );
 
+  // Default attendees as a stable, key-addressable list. Keys use email
+  // (case-folded) so removals survive re-renders and dedupe naturally.
+  type AttendeeRow = {
+    key: string;
+    email: string;
+    name?: string;
+    role: 'recipient' | 'me' | 'teammate' | 'custom';
+    removable: boolean;
+  };
+  const defaultAttendees: AttendeeRow[] = useMemo(() => {
+    const rows: AttendeeRow[] = [];
+    if (recipientEmail) {
+      rows.push({
+        key: recipientEmail.toLowerCase(),
+        email: recipientEmail,
+        name: recipientName,
+        role: 'recipient',
+        removable: true,
+      });
+    }
+    if (user?.email) {
+      rows.push({
+        key: user.email.toLowerCase(),
+        email: user.email,
+        name: 'You',
+        role: 'me',
+        // The organiser is implicit on the Nylas event; allow removal too
+        // so the user has full control over the visible invite list.
+        removable: true,
+      });
+    }
+    if (partiesMode === 'me_plus') {
+      for (const m of extraMembers) {
+        if (!m.email) continue;
+        rows.push({
+          key: m.email.toLowerCase(),
+          email: m.email,
+          name: m.display_name,
+          role: 'teammate',
+          removable: true,
+        });
+      }
+    }
+    return rows;
+  }, [recipientEmail, recipientName, user?.email, partiesMode, extraMembers]);
+
+  const finalAttendees: AttendeeRow[] = useMemo(() => {
+    const seen = new Set<string>();
+    const rows: AttendeeRow[] = [];
+    for (const r of defaultAttendees) {
+      if (removedKeys.has(r.key) || seen.has(r.key)) continue;
+      seen.add(r.key);
+      rows.push(r);
+    }
+    for (const c of customAttendees) {
+      const key = c.email.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ key, email: c.email, name: c.name, role: 'custom', removable: true });
+    }
+    return rows;
+  }, [defaultAttendees, removedKeys, customAttendees]);
+
+  // Reset the editable overlay every time the user enters the confirm
+  // stage, so the chips reflect the current proposal (changes to teammates
+  // or recipient since last visit aren't lost behind stale removals).
+  useEffect(() => {
+    if (stage === 'confirm') {
+      setRemovedKeys(new Set());
+      setCustomAttendees([]);
+      setNewAttendeeEmail('');
+    }
+  }, [stage]);
+
+  const removeAttendee = useCallback((key: string) => {
+    // Custom rows are dropped from `customAttendees`; defaults are masked
+    // via `removedKeys` so re-entering confirm restores them naturally.
+    setCustomAttendees((prev) => prev.filter((c) => c.email.toLowerCase() !== key));
+    setRemovedKeys((prev) => {
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+  }, []);
+
+  const addCustomAttendee = useCallback(() => {
+    const raw = newAttendeeEmail.trim();
+    if (!raw) return;
+    // Minimal RFC-ish guard — the calendar API will reject bad addresses
+    // anyway, so we just block obviously-invalid entries here.
+    const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw);
+    if (!ok) {
+      toast.error('Enter a valid email address.');
+      return;
+    }
+    const key = raw.toLowerCase();
+    // If the email matches a previously-removed default, un-remove it
+    // instead of adding a duplicate row.
+    if (removedKeys.has(key)) {
+      setRemovedKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+      setNewAttendeeEmail('');
+      return;
+    }
+    if (finalAttendees.some((r) => r.key === key)) {
+      toast.error('That attendee is already on the list.');
+      return;
+    }
+    setCustomAttendees((prev) => [...prev, { email: raw }]);
+    setNewAttendeeEmail('');
+  }, [newAttendeeEmail, removedKeys, finalAttendees]);
+
   const toggleExtraMember = useCallback((id: string) => {
     setExtraTeamMemberIds((prev) => {
       const next = new Set(prev);
