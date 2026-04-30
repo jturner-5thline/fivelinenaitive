@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   Mail, Loader2, ChevronLeft, ChevronRight, Check, CheckCircle2,
-  AlertCircle, RotateCw, Send, Users, ExternalLink, AlertTriangle,
+  AlertCircle, RotateCw, Send, Users, ExternalLink, AlertTriangle, Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EmailRichTextEditor } from './EmailRichTextEditor';
@@ -49,6 +49,12 @@ export type EmailDraft = {
   isCcEdited?: boolean;
   isBccEdited?: boolean;
   errorMessage?: string;
+  /**
+   * One-line explanation of why the AI personalized this draft to the lender
+   * (e.g. "Tailored to Founderpath's SaaS focus and $1–10MM range"). Empty
+   * when "Personalize per lender" was off and the same draft was broadcast.
+   */
+  personalizationRationale?: string;
 };
 
 type AppliedField = 'subject' | 'body' | 'cc' | 'bcc' | null;
@@ -329,6 +335,17 @@ export function DraftSubmissionEmailsModal({
                     />
                   )}
                 </div>
+
+                {/* Personalization rationale — surfaced when the AI tailored
+                    this draft to the lender's profile (focus areas, deal
+                    size range, prior interaction). Hidden when the user
+                    chose to broadcast a single generic draft. */}
+                {draft.personalizationRationale && (
+                  <div className="flex items-start gap-1.5 ml-[56px] -mt-1 text-[11px] text-primary/90">
+                    <Sparkles className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                    <span className="flex-1 italic">{draft.personalizationRationale}</span>
+                  </div>
+                )}
 
                 {/* Body */}
                 <div className="flex flex-col gap-1 flex-1 min-h-0">

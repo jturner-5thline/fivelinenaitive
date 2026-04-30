@@ -24,6 +24,11 @@ import { toast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
 import { DraftSubmissionEmailsModal, type EmailDraft, type LenderContactOption, draftBodyToPlainText } from './email/DraftSubmissionEmailsModal';
 import { ReviewExcludeLendersDialog } from './email/ReviewExcludeLendersDialog';
+import {
+  fetchLenderProfilesForDeal,
+  renderLenderProfileBlock,
+  type LenderProfileSnapshot,
+} from './email/lenderPersonalization';
 
 interface DealSpaceAskAITabProps {
   dealId: string;
@@ -278,7 +283,47 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
     setIsHistoryOpen(false);
   }, [clearMessages]);
 
-  const DRAFT_SUBMISSION_PROMPT = `You are drafting lender submission emails for this deal. Generate ONE email PER ACTIVE LENDER on this deal.
+  /**
+   * Build the draft-submission prompt. When `personalize` is true and we
+   * have profile data for the requested lenders, the prompt:
+   *   - Embeds a per-lender profile block (focus areas, deal-size range,
+   *     industry, prior interaction).
+   *   - Asks the model to customize the OPENING paragraph to connect the
+   *     deal to that lender's stated focus.
+   *   - Requires a one-line `personalizationRationale` per draft.
+   *
+   * When `personalize` is false, exactly ONE generic draft is produced and
+   * the caller fans it out to every selected lender.
+   */
+  const buildDraftSubmissionPrompt = useCallback(
+    (personalize: boolean, profiles: Map<string, LenderProfileSnapshot>): string => {
+      const personalizationBlock = personalize
+        ? `
+
+PERSONALIZATION (REQUIRED WHEN PROFILE DATA IS PROVIDED):
+- For EACH lender below, customize the OPENING paragraph to explicitly connect this deal to that lender's stated focus areas (deal types, deal-size range, industry focus). Example: if a lender focuses on SaaS growth capital $1–10MM, lead the opening with the company's ARR and SaaS positioning.
+- Reference prior interaction on this deal when present (e.g. "circling back after our last conversation on <date>").
+- Keep the rest of the body close to the template — only the OPENING and any natural transitions are personalized.
+- For each draft, also include a "personalizationRationale" field: a single short sentence (max 18 words) explaining what you tailored to. Example: "Tailored to Founderpath's SaaS focus and $1–10MM range."
+- If a lender has no profile data, still output a draft using the generic template and set "personalizationRationale" to "" (empty string).`
+        : `
+
+BROADCAST MODE (PERSONALIZATION OFF):
+- Produce EXACTLY ONE draft entry. Use lenderName: "All selected lenders". Do NOT generate per-lender variants — the caller fans this single draft out to every recipient.
+- Set "personalizationRationale" to "" (empty string).`;
+
+      const profileBlocks: string[] = [];
+      if (personalize) {
+        for (const p of profiles.values()) {
+          const rendered = renderLenderProfileBlock(p);
+          if (rendered) profileBlocks.push(rendered);
+        }
+      }
+      const lenderProfilesSection = profileBlocks.length
+        ? `\n\nLENDER PROFILES (for personalizing each opening):\n\n${profileBlocks.join('\n\n')}`
+        : '';
+
+      return `You are drafting lender submission emails for this deal.${personalize ? ' Generate ONE email PER ACTIVE LENDER on this deal.' : ''}
 
 Return your response as STRICT, VALID JSON (no markdown fences, no commentary) matching this exact shape:
 
@@ -287,7 +332,8 @@ Return your response as STRICT, VALID JSON (no markdown fences, no commentary) m
     {
       "lenderName": "<full lender institution name>",
       "subject": "<COMPANY NAME> | <LENDER INSTITUTION NAME> - New Deal <DEAL AMOUNT>",
-      "body": "<the full email body, plain text with \\n\\n between paragraphs>"
+      "body": "<the full email body, plain text with \\n\\n between paragraphs>",
+      "personalizationRationale": "<one short sentence explaining what was tailored, or empty string>"
     }
   ]
 }
@@ -310,14 +356,17 @@ Thank you,
 
 CRITICAL RULES:
 - Output VALID JSON ONLY. No prose before/after. No markdown code fences.
-- Generate one entry in "drafts" for EACH active lender on this deal.
+- ${personalize ? 'Generate one entry in "drafts" for EACH active lender on this deal.' : 'Generate EXACTLY ONE draft entry — do not produce per-lender variants.'}
 - LENDER FIRST NAME = the first name of the contact person for that lender. If only the institution name is available, use the institution name.
 - LENDER INSTITUTION NAME = the full lender institution/company name (used in the subject line).
 - COMPANY NAME = the deal's company name.
 - DEAL AMOUNT/DEAL SIZE = use abbreviated currency: $6MM, $1.5MM, $500K, $2B (K=thousands, MM=millions, B=billions).
 - Do NOT include any (Source:...) citations or source references.
 - Use \\n\\n between paragraphs in the body for readability.
-- The "subject" field must NOT include a "Subject:" prefix — just the line itself.`;
+- The "subject" field must NOT include a "Subject:" prefix — just the line itself.${personalizationBlock}${lenderProfilesSection}`;
+    },
+    [],
+  );
 
   // Entry point for the lender submission flow. We now ALWAYS open the
   // Review & Exclude step first — drafts are only generated after the user
@@ -328,21 +377,33 @@ CRITICAL RULES:
 
   // Silent background handler — invokes the AI directly via the edge function,
   // bypassing the chat hook entirely. The Ask AI panel is never touched.
-  // `onlyLenders` (when provided) restricts which lenders the AI drafts for.
-  const generateDraftsForLenders = useCallback(async (onlyLenders: string[]) => {
+  // `onlyLenders` (when provided) restricts which lenders the AI drafts for,
+  // and `personalize` toggles per-lender opening customization.
+  const generateDraftsForLenders = useCallback(async (onlyLenders: string[], personalize: boolean) => {
     setIsDraftingEmail(true);
     setEmailDrafts([]);
     setActiveDraftIndex(0);
     setIsDraftDialogOpen(true);
     try {
+      // Pre-fetch lender profiles so we can embed them directly in the prompt
+      // (instead of the model guessing). Profiles are scoped to the workspace
+      // via RLS on master_lenders / deal_lenders.
+      const profiles = personalize
+        ? await fetchLenderProfilesForDeal(dealId, onlyLenders)
+        : new Map<string, LenderProfileSnapshot>();
+
+      const promptBase = buildDraftSubmissionPrompt(personalize, profiles);
+
       const lenderConstraintBlock = onlyLenders.length
-        ? `\n\nIMPORTANT — RESTRICTED LENDER LIST:\n` +
-          `Generate drafts ONLY for the following lenders (one entry per name, exact match, no others):\n` +
-          onlyLenders.map((n) => `- ${n}`).join('\n')
+        ? personalize
+          ? `\n\nIMPORTANT — RESTRICTED LENDER LIST:\n` +
+            `Generate drafts ONLY for the following lenders (one entry per name, exact match, no others):\n` +
+            onlyLenders.map((n) => `- ${n}`).join('\n')
+          : `\n\nNOTE: This single draft will be sent to the following ${onlyLenders.length} lender${onlyLenders.length === 1 ? '' : 's'} — keep the body neutral enough to broadcast.`
         : '';
       const { data, error } = await supabase.functions.invoke('deal-space-ai', {
         body: {
-          messages: [{ role: 'user', content: DRAFT_SUBMISSION_PROMPT + lenderConstraintBlock }],
+          messages: [{ role: 'user', content: promptBase + lenderConstraintBlock }],
           dealId,
           scope: 'all',
         },
@@ -358,14 +419,14 @@ CRITICAL RULES:
       const end = cleaned.lastIndexOf('}');
       const jsonText = start !== -1 && end !== -1 ? cleaned.slice(start, end + 1) : cleaned;
 
-      let parsed: { drafts?: Array<{ lenderName?: string; subject?: string; body?: string }> } = {};
+      let parsed: { drafts?: Array<{ lenderName?: string; subject?: string; body?: string; personalizationRationale?: string }> } = {};
       try {
         parsed = JSON.parse(jsonText);
       } catch {
         throw new Error('AI response could not be parsed. Please try again.');
       }
 
-      const drafts: EmailDraft[] = (parsed.drafts || [])
+      let drafts: EmailDraft[] = (parsed.drafts || [])
         .filter((d) => d && (d.body || d.subject))
         .map((d) => {
           // Convert AI plain-text body (\n\n paragraphs) into HTML for the rich-text editor.
@@ -390,6 +451,7 @@ CRITICAL RULES:
             subject: d.subject?.replace(/^subject:\s*/i, '').trim() || '',
             bodyHtml,
             status: 'draft' as const,
+            personalizationRationale: (d.personalizationRationale || '').trim() || undefined,
           } satisfies EmailDraft;
         });
 
@@ -397,14 +459,34 @@ CRITICAL RULES:
         throw new Error('No active lenders found to draft emails for.');
       }
 
-      // Hard filter as a safety net — even if the model ignores the
-      // restriction list, we never surface drafts for excluded lenders.
-      const allowedLowercase = new Set(onlyLenders.map((n) => n.toLowerCase().trim()));
-      const filteredDrafts = allowedLowercase.size
-        ? drafts.filter((d) => allowedLowercase.has((d.lenderName || '').toLowerCase().trim()))
-        : drafts;
-      if (filteredDrafts.length === 0) {
-        throw new Error('No drafts were generated for the selected lenders.');
+      let filteredDrafts: EmailDraft[];
+      if (!personalize) {
+        // Broadcast mode: take the first draft and fan it out to every
+        // selected lender so contact resolution + the per-lender pager in
+        // the modal still work as expected. No personalization rationale.
+        const template = drafts[0];
+        filteredDrafts = onlyLenders.map((name) => ({
+          ...template,
+          lenderName: name,
+          // Subject template references the lender name, so refresh it for
+          // each fan-out target. We swap the LENDER INSTITUTION segment
+          // (after "|") with this lender's name when present, otherwise
+          // leave the subject untouched.
+          subject: template.subject.includes('|')
+            ? template.subject.replace(/\|[^|]+(?= -|$)/, `| ${name}`)
+            : template.subject,
+          personalizationRationale: undefined,
+        }));
+      } else {
+        // Hard filter as a safety net — even if the model ignores the
+        // restriction list, we never surface drafts for excluded lenders.
+        const allowedLowercase = new Set(onlyLenders.map((n) => n.toLowerCase().trim()));
+        filteredDrafts = drafts.filter((d) =>
+          allowedLowercase.has((d.lenderName || '').toLowerCase().trim())
+        );
+        if (filteredDrafts.length === 0) {
+          throw new Error('No drafts were generated for the selected lenders.');
+        }
       }
 
       // ── Resolve each lender's primary contact email from the lender directory.
@@ -421,7 +503,7 @@ CRITICAL RULES:
     } finally {
       setIsDraftingEmail(false);
     }
-  }, [dealId, DRAFT_SUBMISSION_PROMPT]);
+  }, [dealId, buildDraftSubmissionPrompt]);
 
   // Native in-app send via the connected email account (Nylas-backed).
   // No mailto:, no external clients — the request is fully handled inside the platform.
@@ -753,11 +835,11 @@ CRITICAL RULES:
         open={isReviewOpen}
         onOpenChange={setIsReviewOpen}
         dealId={dealId}
-        onConfirm={(names) => {
+        onConfirm={(names, personalize) => {
           setIncludedLenderNames(names);
           // Defer one tick so the review dialog fully closes before the
           // drafts dialog mounts (avoids overlapping aria-modal layers).
-          setTimeout(() => generateDraftsForLenders(names), 50);
+          setTimeout(() => generateDraftsForLenders(names, personalize), 50);
         }}
       />
     </Card>
