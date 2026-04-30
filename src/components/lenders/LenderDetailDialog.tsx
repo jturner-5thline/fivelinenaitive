@@ -492,33 +492,35 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
     navigate(`/deal/${dealId}`);
   };
 
+  const startUpload = async (files: File[]) => {
+    if (!files.length) return;
+    if (!lender?.name) {
+      toast.error('Upload failed — please try again');
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const results = await uploadMultipleAttachments(files, selectedCategory);
+      if (!results || results.length === 0) {
+        toast.error('Upload failed — please try again');
+      }
+    } catch (err) {
+      console.error('Lender attachment upload failed:', err);
+      toast.error('Upload failed — please try again');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      setPendingFiles(Array.from(files));
+      const list = Array.from(files);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+      void startUpload(list);
     }
-  };
-
-  const handleConfirmUpload = async () => {
-    if (pendingFiles.length > 0) {
-      setIsUploading(true);
-      await uploadMultipleAttachments(pendingFiles, selectedCategory);
-      setIsUploading(false);
-      setPendingFiles([]);
-      setSelectedCategory('general');
-    }
-  };
-
-  const handleCancelUpload = () => {
-    setPendingFiles([]);
-    setSelectedCategory('general');
-  };
-
-  const handleRemovePendingFile = (index: number) => {
-    setPendingFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
