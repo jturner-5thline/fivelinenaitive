@@ -792,7 +792,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       );
     }
     return filtered;
-  }, [emails, activeItem, viewFilter, chipFilter, categoryTab, searchQuery, searchFilters, classifierEntities, aiSearchActive, aiSearch.result, isInboxScope, selectedDealFilterId, emailDealIdMap, orgCtx]);
+  }, [emails, activeItem, viewFilter, chipFilter, categoryTab, searchQuery, searchFilters, classifierEntities, aiSearchActive, aiSearch.result, isInboxScope, selectedDealFilterId, emailDealIdMap, orgCtx, selectedLabelFilterId, labelAssignments]);
 
   // Candidate set for AI search = the same list pre-search (so categories/folders
   // narrow the AI search scope as the spec requires).
