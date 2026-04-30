@@ -27,7 +27,6 @@ import { useFullEmailMessage } from './useFullEmailMessage';
 import { useEmailToDataRoom, type DataRoomDestinationSuggestion } from '@/hooks/useEmailToDataRoom';
 import { SuggestedDealUpdatesSection } from './SuggestedDealUpdatesSection';
 import { DataRoomUploadSuggestionCard } from './DataRoomUploadSuggestionCard';
-import { ThreadSummaryCard } from './ThreadSummaryCard';
 import { DealContextCard } from './DealContextCard';
 import { UnmatchedEmailContextCard } from './UnmatchedEmailContextCard';
 import { EmailUnifiedAiAction } from './EmailUnifiedAiAction';
