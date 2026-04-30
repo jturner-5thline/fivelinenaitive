@@ -401,7 +401,13 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
     const dismissKey = `new:${index}:${suggestion.description}`;
     setWorking((w) => ({ ...w, [dismissKey]: true }));
     try {
-      const created = await addItem(suggestion.description, [], suggestion.priority || 'normal');
+      const mappedPriority: 'urgent' | 'high' | 'normal' =
+        suggestion.priority === 'urgent'
+          ? 'urgent'
+          : suggestion.priority === 'high'
+            ? 'high'
+            : 'normal';
+      const created = await addItem(suggestion.description, [], mappedPriority);
       if (created) {
         await logAuditAction(
           'outstanding_item_added_from_email',
