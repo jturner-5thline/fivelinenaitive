@@ -27,6 +27,8 @@ interface EventsRequest {
     start: string;
     end: string;
     all_day?: boolean;
+    attendees?: { email: string; name?: string }[];
+    add_meet_link?: boolean;
   };
 }
 
