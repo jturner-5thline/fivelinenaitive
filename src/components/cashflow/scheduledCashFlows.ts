@@ -164,6 +164,37 @@ export function resolveCategoryToGridRow(category: string): string {
 
 export const DAY_OF_WEEK_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+/**
+ * Deterministic pseudo-random in [-1, 1] from a string seed (entry id + date).
+ * Stable across renders so the projected weekly grid does not flicker.
+ */
+function seededUnit(seed: string): number {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  // Map to [-1, 1]
+  return ((h % 20001) - 10000) / 10000;
+}
+
+/**
+ * Apply optional ± Variance % to a base amount, deterministically per
+ * (entry, occurrence date). Returns the base amount when variance is
+ * unset / zero / invalid.
+ */
+export function applyVariance(
+  baseAmount: number,
+  variancePct: number | undefined | null,
+  seedKey: string,
+): number {
+  const v = Number(variancePct);
+  if (!Number.isFinite(v) || v <= 0) return baseAmount;
+  const factor = 1 + (v / 100) * seededUnit(seedKey);
+  // Clamp to non-negative
+  return Math.max(0, baseAmount * factor);
+}
+
 function parseDate(s: string): Date {
   return new Date(s + 'T00:00:00');
 }
