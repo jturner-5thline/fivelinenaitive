@@ -527,6 +527,35 @@ export function MeetingSchedulerCard({
         </Select>
       </div>
 
+      {/* Duration selector — drives both the candidate slot length and
+          the end time written onto the Google Calendar event. Persisted
+          to localStorage. */}
+      <div className="flex items-center gap-2">
+        <Label htmlFor="meeting-duration" className="text-[10.5px] uppercase tracking-wide text-muted-foreground/70 shrink-0">
+          Duration
+        </Label>
+        <Select value={String(durationMinutes)} onValueChange={handleDurationChange}>
+          <SelectTrigger
+            id="meeting-duration"
+            className="h-7 text-[11px] flex-1 min-w-0"
+            aria-label="Meeting duration for proposed slots and calendar invite"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {DURATION_OPTIONS.map((mins) => (
+              <SelectItem key={mins} value={String(mins)} className="text-[11.5px]">
+                {mins < 60
+                  ? `${mins} minutes`
+                  : mins === 60
+                    ? '1 hour'
+                    : `${mins / 60} hours`}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Slots list */}
       {loadingBusy ? (
         <div className="space-y-1.5">
