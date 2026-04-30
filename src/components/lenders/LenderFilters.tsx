@@ -160,7 +160,7 @@ function SimpleFilters({
               placeholder="Lender or contact..."
               value={filters.searchQuery}
               onChange={(e) => onFiltersChange({ ...filters, searchQuery: e.target.value })}
-              className="h-9 pl-8"
+              className="h-9 pl-8 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
             />
           </div>
         </div>
@@ -171,7 +171,7 @@ function SimpleFilters({
             placeholder="e.g. 1000000"
             value={filters.minDealSize}
             onChange={(e) => onFiltersChange({ ...filters, minDealSize: e.target.value })}
-            className="h-9"
+            className="h-9 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
           />
         </div>
         <div className="space-y-1.5">
@@ -181,7 +181,7 @@ function SimpleFilters({
             placeholder="e.g. 50000000"
             value={filters.maxDealSize}
             onChange={(e) => onFiltersChange({ ...filters, maxDealSize: e.target.value })}
-            className="h-9"
+            className="h-9 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
           />
         </div>
         <div className="space-y-1.5">
@@ -191,7 +191,7 @@ function SimpleFilters({
             placeholder="e.g. 5000000"
             value={filters.minRevenue}
             onChange={(e) => onFiltersChange({ ...filters, minRevenue: e.target.value })}
-            className="h-9"
+            className="h-9 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
           />
         </div>
         <div className="space-y-1.5">
@@ -382,19 +382,19 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap gap-2">
                 {filters.searchQuery && (
-                  <Badge variant="outline" className="gap-1 pr-1">
+                  <Badge variant="secondary" className="gap-1 pr-1">
                     Search: "{filters.searchQuery}"
                     <button
                       type="button"
                       onClick={clearSearch}
-                      className="ml-1 rounded-full hover:bg-muted p-0.5"
+                      className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors"
                     >
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
                 )}
                 {filterMode === 'advanced' && conditionSummaries.map(({ id, summary }) => (
-                  <Badge key={id} variant="outline" className="gap-1 pr-1 max-w-[200px] truncate">
+                  <Badge key={id} variant="secondary" className="gap-1 pr-1 max-w-[200px] truncate">
                     {summary}
                     <button
                       type="button"
@@ -403,14 +403,14 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
                           (filters.advancedConditions || []).filter((c) => c.id !== id)
                         );
                       }}
-                      className="ml-1 rounded-full hover:bg-muted p-0.5 shrink-0"
+                      className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors shrink-0"
                     >
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
                 ))}
                 {filterMode === 'simple' && simpleFilterSummaries.map(({ key, label }) => (
-                  <Badge key={key} variant="outline" className="gap-1 max-w-[200px] truncate">
+                  <Badge key={key} variant="secondary" className="gap-1 max-w-[200px] truncate">
                     {label}
                   </Badge>
                 ))}
@@ -443,7 +443,7 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
                       placeholder="Search by lender name or contact..."
                       value={filters.searchQuery}
                       onChange={handleSearchChange}
-                      className="h-9 pl-8"
+                      className="h-9 pl-8 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
                       debounceMs={300}
                     />
                   </div>
