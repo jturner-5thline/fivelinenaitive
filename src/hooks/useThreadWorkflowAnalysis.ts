@@ -171,7 +171,7 @@ export function useThreadWorkflowAnalysis({
   autoRun = true,
 }: UseThreadWorkflowAnalysisOptions) {
   const { user } = useAuth();
-  const { refreshDeals } = useDealsContext();
+  const { refreshDeals, deals } = useDealsContext();
   const queryClient = useQueryClient();
   const [analysis, setAnalysis] = useState<WorkflowAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
@@ -226,6 +226,69 @@ export function useThreadWorkflowAnalysis({
       const r = data?.result as WorkflowAnalysis | { raw?: string } | undefined;
       if (!r || (r as any).raw) throw new Error('Invalid workflow analysis response');
       const result = r as WorkflowAnalysis;
+
+      // ─── Canonical deal override ────────────────────────────────────
+      // The AI sometimes nominates the wrong deal (e.g. picks "Back Bar
+      // Project" for a thread whose subject + linked deal both say
+      // "Censys Technologies"). The AI Assist panel must use a SINGLE
+      // source of truth across the header, the chip row, and the
+      // SuggestedUpdate card. Resolution priority:
+      //   1. The parent-passed dealId (canonical link from deal_emails).
+      //   2. The deal whose name appears literally in the subject line.
+      //      (Strongest semantic signal — outranks any AI heuristic.)
+      // If either fires we overwrite the AI's `likely_deal` AND
+      // `recommended_update.{deal_id, deal_name}` so every consumer
+      // agrees. We do NOT touch lender/signal fields — only the deal.
+      try {
+        const subject = (latestInbound?.subject || threadData?.subject || '').toLowerCase();
+        // Pre-pass: parent dealId always wins.
+        let canonical: { id: string; name: string } | null = null;
+        if (dealId) {
+          const matched = (deals || []).find((d: any) => d.id === dealId);
+          if (matched) canonical = { id: matched.id, name: matched.name };
+        }
+        // Subject-line literal match (longest wins so "Censys Technologies"
+        // beats a substring match on a single word).
+        if (!canonical && subject) {
+          const candidates = (deals || [])
+            .filter((d: any) => d?.name && subject.includes(String(d.name).toLowerCase()))
+            .sort((a: any, b: any) => (b.name?.length || 0) - (a.name?.length || 0));
+          if (candidates.length > 0) {
+            canonical = { id: candidates[0].id, name: candidates[0].name };
+          }
+        }
+        if (canonical && canonical.id !== result.likely_deal?.id) {
+          // eslint-disable-next-line no-console
+          console.info('[useThreadWorkflowAnalysis] overriding AI deal pick with canonical match', {
+            aiPicked: result.likely_deal,
+            canonical,
+            reason: dealId ? 'parent_linked_deal' : 'subject_literal_match',
+          });
+          result.likely_deal = {
+            id: canonical.id,
+            name: canonical.name,
+            confidence: 'high',
+            reasoning: dealId
+              ? 'Thread is already linked to this deal.'
+              : `Deal name appears in the email subject ("${latestInbound?.subject || ''}").`,
+          };
+          if (result.recommended_update && result.recommended_update.kind !== 'none') {
+            result.recommended_update.deal_id = canonical.id;
+            result.recommended_update.deal_name = canonical.name;
+            // Rewrite the title so the rendered card matches the real
+            // deal name instead of the AI's misidentified one.
+            const oldName = result.recommended_update.deal_name;
+            if (result.recommended_update.title && oldName) {
+              result.recommended_update.title = result.recommended_update.title
+                .replace(new RegExp(oldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), canonical.name);
+            }
+          }
+        }
+      } catch (overrideErr) {
+        // Non-fatal — fall back to AI's pick if our heuristic blows up.
+        console.warn('[useThreadWorkflowAnalysis] canonical-deal override failed', overrideErr);
+      }
+
       setAnalysis(result);
 
       // Fire prefill analytics event so we can track AI suggestion quality.
