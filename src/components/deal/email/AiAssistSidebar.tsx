@@ -34,6 +34,7 @@ import { EmailUnifiedAiAction } from './EmailUnifiedAiAction';
 import { SaveToDealCard } from './SaveToDealCard';
 import { LenderDataAnswerCard } from './LenderDataAnswerCard';
 import { OutstandingItemMatchCard } from './OutstandingItemMatchCard';
+import { MeetingSchedulerCard } from './MeetingSchedulerCard';
 import type { DealContextSummary } from '@/hooks/useDealContextSummary';
 import { toast } from 'sonner';
 import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
@@ -169,6 +170,10 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   // we can show a loading indicator on the active chip without blocking the
   // rest of the panel.
   const [activeIntentKey, setActiveIntentKey] = useState<string | null>(null);
+  // When true, the "Request a meeting" chip swaps the chip-row UI for the
+  // full meeting scheduler workspace (calendar read → slot pick → invite).
+  // This UPGRADES the existing chip without adding a new button anywhere.
+  const [schedulerOpen, setSchedulerOpen] = useState(false);
   // Snapshot of the slim deal-context summary surfaced in the sidebar header
   // card. Forwarded to the edge function so the draft tone reflects whether
   // the deal is At Risk, Off Track, On Hold, etc.
@@ -497,6 +502,13 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
    */
   const applyIntent = useCallback(
     async (option: DraftIntentOption) => {
+      // ── Special-case: "Request a meeting" upgrades to the full scheduling
+      //    workspace instead of regenerating the draft text. The chip is the
+      //    same chip the user already knows; the behavior is upgraded.
+      if (option.key === 'request_meeting') {
+        setSchedulerOpen(true);
+        return;
+      }
       // Block re-entry while another intent or regen is mid-flight on the
       // selected tone — keeps state predictable.
       if (loadingTones[selected]) return;
@@ -896,6 +908,23 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                   );
                 })}
               </div>
+
+              {/* Inline meeting scheduler — opens when the existing
+                  "Request a meeting" chip is clicked. Reads the connected
+                  Google Calendar, proposes 3 free slots over the next 5
+                  business days, lets the user pick parties, and either
+                  inserts a proposal block or creates a confirmed event with
+                  a Google Meet link. Never auto-creates without a click. */}
+              {schedulerOpen && (
+                <MeetingSchedulerCard
+                  recipientEmail={thread.latestEmail?.from_email}
+                  recipientName={thread.latestEmail?.from_name || undefined}
+                  threadSubject={thread.subject}
+                  dealName={dealName}
+                  onInsert={(text) => onInsertDraft(text)}
+                  onClose={() => setSchedulerOpen(false)}
+                />
+              )}
 
               {/* Shared draft preview — dominant element. Layout never jumps;
                   only the body text content swaps when the user switches
