@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Check, Edit3, X, FileText, Loader2, Mail, MessageSquareQuote, Settings } from 'lucide-react';
+import { Check, Edit3, X, FileText, Loader2, Mail, MessageSquareQuote, Settings, Inbox as InboxIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -36,6 +36,7 @@ import {
 } from '@/lib/diffThreadQAndA';
 import { usePendingDealResolutionsStore } from '@/stores/pendingDealResolutionsStore';
 import { DealPickerCard } from './DealPickerCard';
+import { useEnqueueAiAction } from '@/hooks/useAiActionQueue';
 
 interface Props {
   dealId?: string;
