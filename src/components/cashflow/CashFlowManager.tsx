@@ -158,7 +158,7 @@ export function CashFlowManager() {
   const { company } = useCompany();
   const { importedDailyData, importedRowStructure, isImported, isImportLoading, importFile } = useCashFlowImport(company?.id);
   const { items: cashInDbItems, fetchItems: refreshCashInItems, removeItem: removeCashInDbItem, toSidebarItems } = useCashInItems();
-  const { items: scheduledItems, saveAll: saveScheduledItems } = useScheduledCashFlows(company?.id);
+  const { items: scheduledItems, saveAll: saveScheduledItems, addItem: addScheduledItem } = useScheduledCashFlows(company?.id);
   const [addCashInOpen, setAddCashInOpen] = useState(false);
   const [scheduledModalOpen, setScheduledModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1206,24 +1206,23 @@ export function CashFlowManager() {
             // Pick a date inside the week — prefer the week-ending date so it
             // visibly lands in that column; fall back to the week-start key.
             const occDate = weekEnding || weekKey;
-            const newEntry = {
-              // id will be assigned on insert; saveAll wipes-and-replaces using
-              // the company_id, so a placeholder id here is fine.
-              id: '',
-              company_id: company?.id || '',
+            pushUndo(`Add one-time ${flowType === 'cash_in' ? 'cash-in' : 'cash-out'}: ${rowLabel}`);
+            // Use the dedicated single-insert path so this add can never
+            // accidentally drop other entries (the previous "saveAll(full list)"
+            // pattern was vulnerable to stale closures captured before another
+            // add/save completed). The viewport (Weeks Past/Future) is purely
+            // a render concern and never deletes underlying entries.
+            const ok = await addScheduledItem({
               account: ACCOUNT_OPTIONS[0],
               category: rowKey, // grid-row key passes through resolveCategoryToGridRow as-is
               amount,
-              frequency_type: 'one_time' as const,
+              frequency_type: 'one_time',
               frequency_config: { one_time_date: occDate },
               flow_type: flowType,
               start_date: occDate,
               end_date: null,
               notes: description || null,
-            };
-            const next = [...(scheduledItems || []), newEntry];
-            pushUndo(`Add one-time ${flowType === 'cash_in' ? 'cash-in' : 'cash-out'}: ${rowLabel}`);
-            const ok = await saveScheduledItems(next);
+            });
             if (ok) {
               logAction(
                 `Added one-time ${flowType === 'cash_in' ? 'cash-in' : 'cash-out'} entry: ${rowLabel} ($${amount.toLocaleString()})`,
@@ -1268,10 +1267,14 @@ export function CashFlowManager() {
           open={scheduledModalOpen}
           initialEntries={scheduledItems}
           onClose={() => setScheduledModalOpen(false)}
-          onSave={async (entries) => {
+          onSave={async (entries, deleteIds) => {
             pushUndo(`Update scheduled cash flows`);
-            const ok = await saveScheduledItems(entries);
-            if (ok) logAction(`Updated scheduled cash flows (${entries.length} entries)`);
+            const ok = await saveScheduledItems(entries, deleteIds);
+            if (ok) {
+              logAction(
+                `Updated scheduled cash flows (${entries.length} kept, ${deleteIds.length} removed)`,
+              );
+            }
             return ok;
           }}
         />
