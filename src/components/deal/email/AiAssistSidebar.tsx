@@ -778,52 +778,86 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             </div>
           )}
 
-          {/* Workflow Intelligence (Claude) — primary, confirm-first workflow assistant.
-              Renders above pass detection so the user sees the structured deal/lender/signal
-              extraction first, with explicit suggested updates. Drafts come last. */}
-          {showWorkflowCard && workflowAnalysis && (
-            <WorkflowIntelligenceCard
-              analysis={workflowAnalysis}
-              loading={workflowLoading}
-              committing={workflowCommitting}
-              hasLinkedDeal={!!dealId}
-              isThreadLinkedToDeal={workflowThreadLinked}
-              isLenderOnDeal={workflowLenderOnDeal}
-              threadId={thread.threadId}
-              onConfirm={(o) => confirmWorkflow(o)}
-              onDismiss={dismissWorkflow}
-              onMaybeLater={dismissWorkflow}
-              attachmentFallback={
-                showAttachmentFallback ? (
-                  <DataRoomUploadSuggestionCard
-                    dealName={fallbackDealName}
-                    attachments={drUploadable}
-                    committing={drUploading}
-                    onConfirm={(section, ids) =>
-                      handleAttachmentFallbackConfirm(section, ids)
+          {/* Suggested Updates section — wraps the workflow card, lender
+              pass card, data-room suggestion, outstanding-item match, and
+              SuggestedDealUpdatesSection under a single section header with
+              a count badge. Each card already provides its own border and
+              padding so we don't double-stack containers — the header just
+              gives the section a clear identity and breathing room. */}
+          {(() => {
+            const updateCount =
+              (showWorkflowCard && workflowAnalysis ? 1 : 0)
+              + (showPassCard && passDetection ? 1 : 0)
+              + (showDrCard ? 1 : 0);
+            // We render the OutstandingItemMatchCard and
+            // SuggestedDealUpdatesSection below the badge regardless — they
+            // self-hide when empty, and they don't carry an easy-to-count
+            // signal here, so the badge only reflects the cards we can
+            // count cheaply at the top.
+            const showSection =
+              updateCount > 0 || dealId; // section header still helps anchor outstanding-items / suggestions when present
+            if (!showSection) return null;
+            return (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    Suggested Updates
+                  </span>
+                  {updateCount > 0 && (
+                    <span className="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-primary/15 px-1.5 text-[10px] font-semibold text-primary">
+                      {updateCount}
+                    </span>
+                  )}
+                </div>
+
+                {/* Workflow Intelligence (Claude) — primary, confirm-first
+                    workflow assistant. Renders above pass detection so the
+                    user sees the structured deal/lender/signal extraction
+                    first, with explicit suggested updates. */}
+                {showWorkflowCard && workflowAnalysis && (
+                  <WorkflowIntelligenceCard
+                    analysis={workflowAnalysis}
+                    loading={workflowLoading}
+                    committing={workflowCommitting}
+                    hasLinkedDeal={!!dealId}
+                    isThreadLinkedToDeal={workflowThreadLinked}
+                    isLenderOnDeal={workflowLenderOnDeal}
+                    threadId={thread.threadId}
+                    hideSuggestedTasks
+                    onConfirm={(o) => confirmWorkflow(o)}
+                    onDismiss={dismissWorkflow}
+                    onMaybeLater={dismissWorkflow}
+                    attachmentFallback={
+                      showAttachmentFallback ? (
+                        <DataRoomUploadSuggestionCard
+                          dealName={fallbackDealName}
+                          attachments={drUploadable}
+                          committing={drUploading}
+                          onConfirm={(section, ids) =>
+                            handleAttachmentFallbackConfirm(section, ids)
+                          }
+                          onChangeSection={() => setDrDialogOpen(true)}
+                        />
+                      ) : undefined
                     }
-                    onChangeSection={() => setDrDialogOpen(true)}
                   />
-                ) : undefined
-              }
-            />
-          )}
+                )}
 
-          {/* Lender pass detection card (specialized confirm-first flow that already
-              writes back lender stage). Kept for back-compat with existing detections. */}
-          {showPassCard && passDetection && (
-            <LenderPassSidebarCard
-              detection={passDetection}
-              committing={passCommitting}
-              autoCommit={passAutoCommit}
-              onSetAutoCommit={setPassAutoCommit}
-              onConfirm={(reason) => confirmPass(reason)}
-              onDismiss={dismissPass}
-            />
-          )}
+                {/* Lender pass detection card (specialized confirm-first
+                    flow that already writes back lender stage). */}
+                {showPassCard && passDetection && (
+                  <LenderPassSidebarCard
+                    detection={passDetection}
+                    committing={passCommitting}
+                    autoCommit={passAutoCommit}
+                    onSetAutoCommit={setPassAutoCommit}
+                    onConfirm={(reason) => confirmPass(reason)}
+                    onDismiss={dismissPass}
+                  />
+                )}
 
-          {/* Data Room attachment suggestion card */}
-          {showDrCard && (
+                {/* Data Room attachment suggestion card */}
+                {showDrCard && (
             <DataRoomSuggestionCard
               attachmentCount={drUploadable.length}
               dealName={drSuggestion?.suggested_deal_name || dealName}
@@ -848,27 +882,70 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                 setDrDismissed(true);
               }}
             />
+                )}
+
+                {/* Outstanding-item auto-detection. Self-hides when empty. */}
+                <OutstandingItemMatchCard
+                  dealId={dealId}
+                  dealName={dealName}
+                  thread={thread}
+                  attachments={drAttachments}
+                />
+
+                {/* Pending suggested deal updates (contact emails, deal-picker
+                    prompts). Self-hides when empty. */}
+                <SuggestedDealUpdatesSection
+                  dealId={dealId}
+                  dealName={dealName}
+                  threadId={thread.threadId}
+                />
+              </div>
+            );
+          })()}
+
+          {/* Suggested Tasks — collapsible section. Collapsed by default
+              when a Suggested Update is also visible to reduce double-stack
+              noise; expanded automatically when it's the only suggestion
+              we have for the user. */}
+          {workflowAnalysis?.suggested_tasks && workflowAnalysis.suggested_tasks.length > 0 && (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setTasksOpen((v) => !v)}
+                className="flex items-center gap-2 group"
+                aria-expanded={tasksOpen}
+              >
+                <ChevronDown
+                  className={cn(
+                    'h-3 w-3 text-muted-foreground transition-transform',
+                    !tasksOpen && '-rotate-90',
+                  )}
+                />
+                <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground group-hover:text-foreground transition-colors">
+                  Suggested Tasks
+                </span>
+                <span className="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-primary/15 px-1.5 text-[10px] font-semibold text-primary">
+                  {workflowAnalysis.suggested_tasks.length}
+                </span>
+              </button>
+              {tasksOpen && (
+                <SuggestedTaskCards
+                  suggestions={workflowAnalysis.suggested_tasks}
+                  dealId={
+                    workflowAnalysis.recommended_update?.deal_id
+                    || workflowAnalysis.likely_deal?.id
+                    || null
+                  }
+                  dealName={
+                    workflowAnalysis.recommended_update?.deal_name
+                    || workflowAnalysis.likely_deal?.name
+                    || null
+                  }
+                  threadId={thread.threadId}
+                />
+              )}
+            </div>
           )}
-
-          {/* Suggested Deal Updates — pending confirm-first writes (e.g., contact
-              emails detected in drafts) plus the multi-deal picker prompt when
-              auto-resolution was ambiguous. Render even without a linked deal so
-              the user can still pick. */}
-          {/* Outstanding-item auto-detection: surfaces "X received from Y" and
-              "reply from requested contact" suggestions when the email
-              attachments / sender match an open outstanding item on the deal. */}
-          <OutstandingItemMatchCard
-            dealId={dealId}
-            dealName={dealName}
-            thread={thread}
-            attachments={drAttachments}
-          />
-
-          <SuggestedDealUpdatesSection
-            dealId={dealId}
-            dealName={dealName}
-            threadId={thread.threadId}
-          />
 
           {/* Unified Draft reply module — single card containing the section
               header, variant selector, one shared draft preview, and (in the
