@@ -82,6 +82,10 @@ import {
 } from '@/hooks/useEmailLabels';
 import { EmailLabelsManageDialog, labelSwatch } from './email/EmailLabelsManageDialog';
 import { Tag, Plus as PlusIcon } from 'lucide-react';
+import { DealFilterChipsRow } from '@/components/dashboard/inbox/DealFilterChipsRow';
+import { DealFilterSummaryCard } from '@/components/dashboard/inbox/DealFilterSummaryCard';
+import { useDealsContext } from '@/contexts/DealsContext';
+import { rankDealsForThread } from '@/lib/dealEvidenceMatcher';
 
 /** Compute next business day in local TZ as 'YYYY-MM-DD'. Skips weekends. */
 function nextBusinessDayISO(): string {
@@ -487,6 +491,12 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
   const [chipFilter, setChipFilter] = useState<ChipFilter>(null);
   const [categoryTab, setCategoryTab] = useState<EmailCategoryTab>('all');
+  // Inbox-only deal filter chip selection. When set, the inbox is filtered to
+  // emails whose best deal-match resolves to this deal id (using the same
+  // matching engine that powers the inline "Likely: …" badges) and sorted
+  // chronologically across the entire loaded mailbox.
+  const [selectedDealFilterId, setSelectedDealFilterId] = useState<string | null>(null);
+  const isInboxScope = !dealId; // true when rendered inside InboxDialog
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
@@ -641,8 +651,53 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     }));
   };
 
+  // ── Inbox-scope: per-email best deal-match id ────────────────────────
+  // Used by the deal filter chip row + summary card. Cached per email id +
+  // deal list so we only score each loaded message once. Mirrors the engine
+  // used by the inline "Likely: …" badges to keep filter membership and
+  // badge labels perfectly consistent.
+  const { deals: allDeals } = useDealsContext();
+  const emailDealIdMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (!isInboxScope || !selectedDealFilterId || !allDeals?.length) return map;
+    for (const e of emails) {
+      const ranked = rankDealsForThread(allDeals, {
+        subject: e.subject,
+        messages: [{
+          subject: e.subject,
+          fromEmail: e.from_email,
+          fromName: e.from_name,
+          toEmails: e.to_email ? [e.to_email] : undefined,
+          isLatest: true,
+        }],
+      });
+      if (ranked.best && ranked.best.confidence !== 'low') {
+        map.set(e.id, ranked.best.deal.id);
+      }
+    }
+    return map;
+  }, [emails, allDeals, isInboxScope, selectedDealFilterId]);
+
+  const dealIdsWithEmails = useMemo(() => {
+    const set = new Set<string>();
+    emailDealIdMap.forEach((dealId) => set.add(dealId));
+    return set;
+  }, [emailDealIdMap]);
+
   const filteredEmails = useMemo(() => {
-    let filtered = emails.filter(activeItem.filterFn);
+    // When a deal chip is active, span the entire loaded mailbox (inbox + sent)
+    // chronologically — the user is following a specific deal conversation,
+    // not a folder. Otherwise honor the active sidebar item.
+    let filtered = (isInboxScope && selectedDealFilterId)
+      ? [...emails]
+      : emails.filter(activeItem.filterFn);
+
+    // Deal filter (inbox scope only)
+    if (isInboxScope && selectedDealFilterId) {
+      filtered = filtered.filter(e => emailDealIdMap.get(e.id) === selectedDealFilterId);
+      filtered.sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime());
+    }
+
     // Category tab filter (shared classifier)
     if (categoryTab !== 'all') {
       filtered = filterEmailsByCategory(filtered, categoryTab, classifierEntities, orgCtx);
@@ -710,7 +765,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       );
     }
     return filtered;
-  }, [emails, activeItem, viewFilter, chipFilter, categoryTab, searchQuery, searchFilters, classifierEntities, aiSearchActive, aiSearch.result]);
+  }, [emails, activeItem, viewFilter, chipFilter, categoryTab, searchQuery, searchFilters, classifierEntities, aiSearchActive, aiSearch.result, isInboxScope, selectedDealFilterId, emailDealIdMap, orgCtx]);
 
   // Candidate set for AI search = the same list pre-search (so categories/folders
   // narrow the AI search scope as the spec requires).
@@ -1797,6 +1852,17 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
               ))}
             </div>
 
+            {/* Deal filter chips — only shown in the inbox-dialog scope.
+                Uses the same matching engine that powers inline "Likely: …"
+                badges so chip membership and badge labels stay consistent. */}
+            {isInboxScope && (
+              <DealFilterChipsRow
+                selectedDealId={selectedDealFilterId}
+                onSelect={setSelectedDealFilterId}
+                dealIdsWithEmails={dealIdsWithEmails}
+              />
+            )}
+
             {activeFilterChips.length > 0 && (
               <div className="flex flex-wrap gap-1 px-3 py-1.5 border-b border-border/30">
                 {activeFilterChips.map(chip => (
@@ -1815,6 +1881,19 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 this is the sole scroller; that lets the IO pagination
                 sentinel observe the right element and lets the browser
                 composite this column independently. */}
+            {isInboxScope && selectedDealFilterId && (() => {
+              const deal = allDeals.find(d => d.id === selectedDealFilterId);
+              if (!deal) return null;
+              const lastActivityAt = filteredEmails[0]?.received_at || null;
+              return (
+                <DealFilterSummaryCard
+                  deal={deal}
+                  lastActivityAt={lastActivityAt}
+                  matchedCount={filteredEmails.length}
+                  onClear={() => setSelectedDealFilterId(null)}
+                />
+              );
+            })()}
             <div
               ref={inboxScrollRef}
               className="flex-1 min-h-0 min-w-0 overflow-auto"
