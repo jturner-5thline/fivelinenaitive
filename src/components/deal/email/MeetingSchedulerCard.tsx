@@ -345,7 +345,7 @@ export function MeetingSchedulerCard({
           end: e.end,
           all_day: !!e.all_day,
         }));
-        const candidates = buildCandidateSlots(now, timezone);
+        const candidates = buildCandidateSlots(now, timezone, durationMinutes);
         const free = filterFreeSlots(candidates, events);
         const picked = pickThreeSpread(free);
         setProposedSlots(picked);
@@ -358,10 +358,10 @@ export function MeetingSchedulerCard({
       }
     })();
     return () => { cancelled = true; };
-    // Re-run whenever the user changes timezone — slot wall-clock anchors
-    // shift, so the proposed list must rebuild to match what the recipient
-    // will actually see in the email.
-  }, [timezone]);
+    // Re-run whenever the user changes timezone or duration — both shift
+    // the wall-clock anchors / slot length, so the proposed list must
+    // rebuild to match what the recipient will actually see.
+  }, [timezone, durationMinutes]);
 
   const handleTimezoneChange = useCallback((next: string) => {
     setTimezone(next);
