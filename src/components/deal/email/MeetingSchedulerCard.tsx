@@ -70,6 +70,16 @@ const WORK_END_HOUR = 17;    // 5 PM local
 const BROWSER_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 const TZ_PREF_KEY = 'naitive.meetingScheduler.tz';
 const DURATION_PREF_KEY = 'naitive.meetingScheduler.durationMinutes';
+/** Persisted parties mode: 'me' or 'me_plus'. */
+const PARTIES_MODE_PREF_KEY = 'naitive.meetingScheduler.partiesMode';
+/** Persisted teammate profile IDs (JSON-encoded string array). */
+const PARTIES_IDS_PREF_KEY = 'naitive.meetingScheduler.extraTeamMemberIds';
+/** Persisted slot indices the user last chose to offer (JSON array of ints).
+ *  Slot identities change every session (fresh calendar reads), so we
+ *  preserve the *positional* preference and intersect with the new slot
+ *  count on load — e.g. a user who always picks the first two slots will
+ *  open the scheduler with [0, 1] pre-checked even after a refresh. */
+const SELECTED_IDX_PREF_KEY = 'naitive.meetingScheduler.selectedSlotIdx';
 
 /**
  * Curated timezone shortlist — covers the common 5th Line counterparties
@@ -327,13 +337,48 @@ export function MeetingSchedulerCard({
   const [loadingBusy, setLoadingBusy] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [proposedSlots, setProposedSlots] = useState<Slot[]>([]);
-  const [selectedSlotIdx, setSelectedSlotIdx] = useState<Set<number>>(new Set([0, 1, 2]));
+  // Hydrate the slot-index preference from localStorage; default to the
+  // first three positions (matches the previous behaviour). The preference
+  // is intersected with the freshly proposed slot count once the calendar
+  // load finishes, so we never end up with a stale index out of range.
+  const [selectedSlotIdx, setSelectedSlotIdx] = useState<Set<number>>(() => {
+    try {
+      const raw = localStorage.getItem(SELECTED_IDX_PREF_KEY);
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          const ints = arr.filter((v) => Number.isInteger(v) && v >= 0);
+          if (ints.length > 0) return new Set<number>(ints);
+        }
+      }
+    } catch { /* ignore */ }
+    return new Set([0, 1, 2]);
+  });
 
-  const [partiesMode, setPartiesMode] = useState<'me' | 'me_plus'>('me');
+  const [partiesMode, setPartiesMode] = useState<'me' | 'me_plus'>(() => {
+    try {
+      const raw = localStorage.getItem(PARTIES_MODE_PREF_KEY);
+      return raw === 'me_plus' ? 'me_plus' : 'me';
+    } catch {
+      return 'me';
+    }
+  });
   // Multi-select: any number of 5th Line teammates can be added as
   // attendees alongside the current user. Stored as a Set of profile IDs
   // so toggling is O(1) and the order matches the team list.
-  const [extraTeamMemberIds, setExtraTeamMemberIds] = useState<Set<string>>(new Set());
+  const [extraTeamMemberIds, setExtraTeamMemberIds] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem(PARTIES_IDS_PREF_KEY);
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          const ids = arr.filter((v): v is string => typeof v === 'string');
+          if (ids.length > 0) return new Set<string>(ids);
+        }
+      }
+    } catch { /* ignore */ }
+    return new Set();
+  });
 
   const [stage, setStage] = useState<'propose' | 'confirm'>('propose');
   const [confirmedIdx, setConfirmedIdx] = useState<number | null>(null);
@@ -368,7 +413,14 @@ export function MeetingSchedulerCard({
         const free = filterFreeSlots(candidates, events);
         const picked = pickThreeSpread(free);
         setProposedSlots(picked);
-        setSelectedSlotIdx(new Set(picked.map((_, i) => i)));
+        // Reconcile the persisted index preference against the freshly
+        // proposed slot count. Drop anything out of range; if nothing
+        // valid remains, fall back to "all proposed slots checked".
+        setSelectedSlotIdx((prev) => {
+          const valid = Array.from(prev).filter((i) => i < picked.length);
+          if (valid.length > 0) return new Set(valid);
+          return new Set(picked.map((_, i) => i));
+        });
       } catch (e: any) {
         console.error('[MeetingScheduler] free/busy load failed', e);
         setErrorMsg(e?.message || 'Could not read calendar. Reconnect your account in Settings.');
@@ -391,9 +443,29 @@ export function MeetingSchedulerCard({
     setSelectedSlotIdx((prev) => {
       const next = new Set(prev);
       if (next.has(i)) next.delete(i); else next.add(i);
+      try {
+        localStorage.setItem(SELECTED_IDX_PREF_KEY, JSON.stringify(Array.from(next)));
+      } catch { /* ignore */ }
       return next;
     });
   };
+
+  // Persist parties mode whenever it flips. Kept in an effect (rather
+  // than wrapping setPartiesMode) so the RadioGroup's onValueChange stays
+  // a plain setter.
+  useEffect(() => {
+    try { localStorage.setItem(PARTIES_MODE_PREF_KEY, partiesMode); } catch { /* ignore */ }
+  }, [partiesMode]);
+
+  // Persist the teammate ID set on every change.
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        PARTIES_IDS_PREF_KEY,
+        JSON.stringify(Array.from(extraTeamMemberIds)),
+      );
+    } catch { /* ignore */ }
+  }, [extraTeamMemberIds]);
 
   const extraMembers: TeamMember[] = useMemo(
     () => teamMembers.filter((m) => extraTeamMemberIds.has(m.id)),
