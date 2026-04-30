@@ -271,6 +271,26 @@ export function MeetingSchedulerCard({
     }
   });
 
+  // ── Meeting duration preference ──────────────────────────────────────
+  // Persisted alongside the timezone so a user who always books 30-min
+  // intros doesn't have to reset it on every email.
+  const [durationMinutes, setDurationMinutes] = useState<number>(() => {
+    try {
+      const raw = localStorage.getItem(DURATION_PREF_KEY);
+      const parsed = raw ? Number(raw) : NaN;
+      return DURATION_OPTIONS.includes(parsed as any) ? parsed : DEFAULT_SLOT_MINUTES;
+    } catch {
+      return DEFAULT_SLOT_MINUTES;
+    }
+  });
+
+  const handleDurationChange = useCallback((next: string) => {
+    const n = Number(next);
+    if (!Number.isFinite(n) || n <= 0) return;
+    setDurationMinutes(n);
+    try { localStorage.setItem(DURATION_PREF_KEY, String(n)); } catch { /* ignore */ }
+  }, []);
+
   // Build the dropdown options once — include the persisted/browser tz at
   // the top if it isn't part of the curated list.
   const tzOptions = useMemo(() => {
