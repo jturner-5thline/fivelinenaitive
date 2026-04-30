@@ -5,6 +5,16 @@ import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -96,6 +106,9 @@ export function SaveToDealCard({
   const [highlighted, setHighlighted] = useState('');
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<LastSaved | null>(null);
+  const [dupOpen, setDupOpen] = useState(false);
+  const [dupInfo, setDupInfo] = useState<{ title: string; description: string } | null>(null);
+  const pendingSaveRef = useRef<(() => Promise<void>) | null>(null);
 
   // Capture window selection on mousedown of the card so the user's
   // highlight isn't lost when focus shifts. We only persist when the
@@ -184,7 +197,62 @@ export function SaveToDealCard({
     return finalName;
   };
 
-  const handleSave = async () => {
+  // ---------- Duplicate detection ----------
+  const checkDuplicateAttachments = async (): Promise<string[]> => {
+    if (!dealId) return [];
+    const names = uploadable.map((a) => a.filename || '').filter(Boolean);
+    if (!names.length) return [];
+    const { data } = await supabase
+      .from('deal_attachments')
+      .select('name, source_email_id, source')
+      .eq('deal_id', dealId)
+      .eq('source_email_id', messageId);
+    if (!data || !data.length) return [];
+    // Match by stem of original filename (prior saves include a timestamp suffix)
+    const stems = names.map((n) => {
+      const dot = n.lastIndexOf('.');
+      return (dot > 0 ? n.slice(0, dot) : n).toLowerCase().trim();
+    });
+    return data
+      .filter((row: any) => {
+        const lower = String(row.name || '').toLowerCase();
+        return stems.some((s) => s && lower.includes(s));
+      })
+      .map((row: any) => row.name as string);
+  };
+
+  const checkDuplicateTextFile = async (): Promise<boolean> => {
+    if (!dealId) return false;
+    const { data } = await supabase
+      .from('deal_attachments')
+      .select('id')
+      .eq('deal_id', dealId)
+      .eq('source_email_id', messageId)
+      .eq('source', 'email_body')
+      .limit(1);
+    return !!(data && data.length);
+  };
+
+  const checkDuplicateNote = async (text: string): Promise<boolean> => {
+    if (!dealId) return false;
+    // Use a stable signature: subject + first 80 chars of payload
+    const signature = `${thread.subject || ''}::${text.slice(0, 80)}`.toLowerCase().trim();
+    if (!signature) return false;
+    const { data } = await supabase
+      .from('deal_status_notes')
+      .select('note')
+      .eq('deal_id', dealId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (!data || !data.length) return false;
+    return data.some((row: any) => {
+      const n = String(row.note || '').toLowerCase();
+      return n.includes((thread.subject || '').toLowerCase()) && n.includes(text.slice(0, 80).toLowerCase());
+    });
+  };
+  // -----------------------------------------
+
+  const performSave = async () => {
     if (!dealId) {
       toast.error('Pick a deal first');
       return;
@@ -263,6 +331,63 @@ export function SaveToDealCard({
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSave = async () => {
+    if (!dealId) {
+      toast.error('Pick a deal first');
+      return;
+    }
+    if (sourceDisabled(source)) {
+      toast.warning('Nothing to save from the selected source');
+      return;
+    }
+    // Run duplicate detection before performing the save
+    try {
+      if (source === 'attachments' && destination === 'data_room') {
+        const dups = await checkDuplicateAttachments();
+        if (dups.length) {
+          setDupInfo({
+            title: 'Already saved to this deal',
+            description: `${dups.length === 1 ? 'This attachment was' : `${dups.length} of these attachments were`} already saved from this email to ${dealName}'s Data Room (e.g. "${dups[0]}"). Save again anyway?`,
+          });
+          pendingSaveRef.current = performSave;
+          setDupOpen(true);
+          return;
+        }
+      } else if (source !== 'attachments' && destination === 'data_room') {
+        const dup = await checkDuplicateTextFile();
+        if (dup) {
+          setDupInfo({
+            title: 'Already saved to this deal',
+            description: `Text from this email was already saved to ${dealName}'s Data Room. Save another copy?`,
+          });
+          pendingSaveRef.current = performSave;
+          setDupOpen(true);
+          return;
+        }
+      } else if (destination === 'notes') {
+        const text = source === 'attachments'
+          ? `Attachments referenced from email:\n${uploadable.map((a) => `• ${a.filename || 'attachment'}`).join('\n')}`
+          : (source === 'body' ? buildBodyText() : highlighted);
+        if (text) {
+          const dup = await checkDuplicateNote(text);
+          if (dup) {
+            setDupInfo({
+              title: 'Already saved to this deal',
+              description: `A note from this email already exists on ${dealName}. Add another copy?`,
+            });
+            pendingSaveRef.current = performSave;
+            setDupOpen(true);
+            return;
+          }
+        }
+      }
+    } catch (err) {
+      // Non-fatal: if detection fails, proceed with save
+      console.warn('[SaveToDeal] dup check failed:', err);
+    }
+    await performSave();
   };
 
   const SourceChip = ({ kind, label, icon: Icon }: { kind: SourceKind; label: string; icon: any }) => {
@@ -436,6 +561,37 @@ export function SaveToDealCard({
           </div>
         </div>
       )}
+
+      <AlertDialog open={dupOpen} onOpenChange={setDupOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{dupInfo?.title || 'Possible duplicate'}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {dupInfo?.description || 'This item appears to already exist on the deal.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                pendingSaveRef.current = null;
+                setDupInfo(null);
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                const fn = pendingSaveRef.current;
+                pendingSaveRef.current = null;
+                setDupInfo(null);
+                if (fn) await fn();
+              }}
+            >
+              Save anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
