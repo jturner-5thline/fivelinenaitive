@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, useMemo } from 'react';
 import {
   Search as SearchIcon,
@@ -14,6 +15,7 @@ import {
   Database,
   LineChart,
   Sparkles,
+  Lock,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -135,14 +137,22 @@ export function AgentCatalog() {
       </div>
 
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+        <TooltipProvider delayDuration={150}>
         {filtered.map((agent) => {
           const Icon = agent.icon;
           return (
-            <Card
-              key={agent.name}
-              className="group relative overflow-hidden border-border/60 bg-card hover:border-border transition-colors"
-              aria-disabled="true"
-            >
+            <Tooltip key={agent.name}>
+              <TooltipTrigger asChild>
+                <Card
+                  role="button"
+                  tabIndex={0}
+                  aria-disabled="true"
+                  onClick={(e) => e.preventDefault()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') e.preventDefault();
+                  }}
+                  className="group relative overflow-hidden border-border/60 bg-card hover:border-border transition-colors cursor-not-allowed opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 min-w-0">
@@ -174,14 +184,24 @@ export function AgentCatalog() {
                   <span className="text-[11px] uppercase tracking-wide text-muted-foreground/80">
                     Preview
                   </span>
-                  <span className="inline-flex items-center text-[11px] font-medium text-muted-foreground/70 select-none">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/70 select-none">
+                    <Lock className="h-3 w-3" />
                     Not yet available
                   </span>
                 </div>
               </CardContent>
-            </Card>
+                </Card>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs">
+                <div className="flex items-center gap-1.5 text-xs">
+                  <Lock className="h-3 w-3" />
+                  <span>{agent.name} is coming soon — not yet available.</span>
+                </div>
+              </TooltipContent>
+            </Tooltip>
           );
         })}
+        </TooltipProvider>
       </div>
 
       {filtered.length === 0 && (
