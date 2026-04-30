@@ -375,23 +375,35 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
             {filteredTeam.length > 0 && (
               <Card data-pdf-section className="mb-6">
                 <CardHeader icon={<Users style={{ width: 20, height: 20, color: T.primary }} />} title="Team" />
-                <div style={{ padding: '16px 24px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-                  {filteredTeam.map(member => (
-                    <div key={member.id} style={{
-                      padding: 16, borderRadius: T.radius, background: T.secondaryBg50,
-                      border: `1px solid ${T.cardBorder}`,
-                    }}>
-                      <div style={{ fontSize: 16, fontWeight: 600, color: T.fg }}>{member.name}</div>
-                      {member.title && <div style={{ fontSize: 14, color: T.mutedFg, marginTop: 2 }}>{member.title}</div>}
-                      {member.linkedin && (
-                        <a href={member.linkedin.startsWith('http') ? member.linkedin : `https://${member.linkedin}`}
-                          target="_blank" rel="noopener noreferrer"
-                          style={{ fontSize: 12, color: T.primary, textDecoration: 'none', marginTop: 4, display: 'inline-block' }}>
-                          LinkedIn Profile <ExternalLink style={{ width: 10, height: 10, display: 'inline', verticalAlign: 'middle' }} />
-                        </a>
-                      )}
-                    </div>
-                  ))}
+                <div style={{ padding: '16px 24px 24px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${T.cardBorder}` }}>
+                        <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12, fontWeight: 600, color: T.mutedFg, textTransform: 'uppercase', letterSpacing: 0.5 }}>Name</th>
+                        <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12, fontWeight: 600, color: T.mutedFg, textTransform: 'uppercase', letterSpacing: 0.5 }}>Title</th>
+                        <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12, fontWeight: 600, color: T.mutedFg, textTransform: 'uppercase', letterSpacing: 0.5 }}>LinkedIn Profile</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredTeam.map(member => (
+                        <tr key={member.id} style={{ borderBottom: `1px solid ${T.cardBorder}` }}>
+                          <td style={{ padding: '10px 12px', color: T.fg, fontWeight: 500 }}>{member.name}</td>
+                          <td style={{ padding: '10px 12px', color: T.mutedFg }}>{member.title || '—'}</td>
+                          <td style={{ padding: '10px 12px' }}>
+                            {member.linkedin ? (
+                              <a href={member.linkedin.startsWith('http') ? member.linkedin : `https://${member.linkedin}`}
+                                target="_blank" rel="noopener noreferrer"
+                                style={{ fontSize: 13, color: T.primary, textDecoration: 'none' }}>
+                                View Profile <ExternalLink style={{ width: 10, height: 10, display: 'inline', verticalAlign: 'middle' }} />
+                              </a>
+                            ) : (
+                              <span style={{ color: T.mutedFg }}>—</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </Card>
             )}
