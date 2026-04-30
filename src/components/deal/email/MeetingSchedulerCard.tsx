@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, CalendarClock, Video, Check, AlertTriangle, X } from 'lucide-react';
+import { Loader2, CalendarClock, Video, Check, AlertTriangle, X, ChevronDown, ChevronUp, CalendarX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useTeamMembers, type TeamMember } from '@/hooks/useTeamMembers';
@@ -44,6 +44,22 @@ interface BusyEvent {
   start: string;
   end: string;
   all_day: boolean;
+  /** Event title (when the calendar API returned one). Optional because
+   *  Nylas may omit it for privacy-restricted events — those render as
+   *  "Busy". */
+  title?: string | null;
+}
+
+/**
+ * One conflict surfaced in the "Why these times?" explanation panel —
+ * an existing calendar event that overlapped at least one working-hour
+ * candidate slot, with the count of slots it knocked out.
+ */
+interface BlockingEvent {
+  title: string;
+  start: Date;
+  end: Date;
+  blockedSlotCount: number;
 }
 
 interface Props {
@@ -251,6 +267,46 @@ function filterFreeSlots(candidates: Slot[], busy: BusyEvent[]): Slot[] {
   });
 }
 
+/**
+ * Identify which busy events actually blocked candidate slots, with a
+ * count of how many slots each one knocked out. Used to power the
+ * "Why these times?" explanation panel — gives the user a transparent
+ * audit trail of why their availability is what it is.
+ *
+ * All-day events are excluded (they don't block specific working-hour
+ * slots in a useful way) and conflicts are sorted by start time so the
+ * panel reads chronologically.
+ */
+function computeBlockingEvents(
+  candidates: Slot[],
+  busy: BusyEvent[],
+): BlockingEvent[] {
+  const out: BlockingEvent[] = [];
+  for (const b of busy) {
+    if (b.all_day || !b.start || !b.end) continue;
+    const bStart = new Date(b.start);
+    const bEnd = new Date(b.end);
+    const bs = bStart.getTime();
+    const be = bEnd.getTime();
+    let blocked = 0;
+    for (const slot of candidates) {
+      const s = slot.start.getTime();
+      const e = slot.end.getTime();
+      if (s < be && e > bs) blocked += 1;
+    }
+    if (blocked > 0) {
+      out.push({
+        title: (b.title || '').trim() || 'Busy',
+        start: bStart,
+        end: bEnd,
+        blockedSlotCount: blocked,
+      });
+    }
+  }
+  out.sort((a, b) => a.start.getTime() - b.start.getTime());
+  return out;
+}
+
 /** Pick 3 well-spaced free slots — prefer different days when possible. */
 function pickThreeSpread(free: Slot[]): Slot[] {
   if (free.length <= 3) return free.slice(0, 3);
@@ -384,6 +440,14 @@ export function MeetingSchedulerCard({
   const [confirmedIdx, setConfirmedIdx] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
 
+  // Calendar events that knocked out one or more candidate working-hour
+  // slots — surfaced in the "Why these times?" explanation panel.
+  const [blockingEvents, setBlockingEvents] = useState<BlockingEvent[]>([]);
+  // Total count of working-hour candidate slots BEFORE busy filtering.
+  // Powers the "X of Y working-hour slots are taken" headline.
+  const [totalCandidates, setTotalCandidates] = useState(0);
+  const [showWhyPanel, setShowWhyPanel] = useState(false);
+
   // ── Load free/busy from connected Google Calendar (via Nylas) ───────────
   useEffect(() => {
     let cancelled = false;
@@ -408,10 +472,19 @@ export function MeetingSchedulerCard({
           start: e.start,
           end: e.end,
           all_day: !!e.all_day,
+          // Nylas/Google return the title under different keys depending
+          // on provider mapping — fall back through the common ones.
+          title: e.title || e.summary || e.subject || null,
         }));
         const candidates = buildCandidateSlots(now, timezone, durationMinutes);
         const free = filterFreeSlots(candidates, events);
         const picked = pickThreeSpread(free);
+        // Capture conflict metadata for the explanation panel BEFORE we
+        // narrow down to the picked top-3 — we want to explain blockers
+        // across the entire working-hour window, not just the offered
+        // slots.
+        setBlockingEvents(computeBlockingEvents(candidates, events));
+        setTotalCandidates(candidates.length);
         setProposedSlots(picked);
         // Reconcile the persisted index preference against the freshly
         // proposed slot count. Drop anything out of range; if nothing
@@ -715,6 +788,67 @@ export function MeetingSchedulerCard({
               </label>
             );
           })}
+        </div>
+      )}
+
+      {/* "Why these times?" — transparency panel listing the calendar
+          events that knocked out working-hour candidate slots. Renders
+          whenever the calendar load succeeded and at least one event
+          blocked something (including the zero-slots case, which is
+          when this is most useful). Collapsed by default to keep the
+          scheduler compact. */}
+      {!loadingBusy && !errorMsg && blockingEvents.length > 0 && (
+        <div className="rounded-md border border-white/10 bg-white/[0.03] overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowWhyPanel((v) => !v)}
+            className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-white/[0.05] transition-colors"
+            aria-expanded={showWhyPanel}
+          >
+            <CalendarX className="h-3 w-3 text-amber-400/80 shrink-0" />
+            <span className="text-[11px] font-medium text-foreground/85">
+              Why these times?
+            </span>
+            <span className="text-[10.5px] text-muted-foreground/70 truncate">
+              {blockingEvents.length} event{blockingEvents.length === 1 ? '' : 's'} blocking
+              {totalCandidates > 0 ? ` ${Math.min(
+                blockingEvents.reduce((acc, e) => acc + e.blockedSlotCount, 0),
+                totalCandidates,
+              )} of ${totalCandidates} slots` : ''}
+            </span>
+            <span className="ml-auto text-muted-foreground/70 shrink-0">
+              {showWhyPanel ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </span>
+          </button>
+          {showWhyPanel && (
+            <ul className="border-t border-white/[0.06] divide-y divide-white/[0.04]">
+              {blockingEvents.slice(0, 12).map((ev, i) => (
+                <li key={i} className="px-2.5 py-1.5 text-[11px]">
+                  <div className="flex items-baseline gap-2 min-w-0">
+                    <span className="text-foreground/85 truncate flex-1" title={ev.title}>
+                      {ev.title}
+                    </span>
+                    <span className="text-muted-foreground/70 shrink-0">
+                      blocks {ev.blockedSlotCount} slot{ev.blockedSlotCount === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                  <div className="text-[10.5px] text-muted-foreground/75 mt-0.5 truncate">
+                    {fmtSlot({ start: ev.start, end: ev.end }, timezone)}
+                    {timezone !== BROWSER_TZ && (
+                      <span className="text-muted-foreground/60">
+                        {' '}· local: {fmtSlotTimeOnly({ start: ev.start, end: ev.end }, BROWSER_TZ)}
+                      </span>
+                    )}
+                  </div>
+                </li>
+              ))}
+              {blockingEvents.length > 12 && (
+                <li className="px-2.5 py-1.5 text-[10.5px] text-muted-foreground/70">
+                  +{blockingEvents.length - 12} more event{blockingEvents.length - 12 === 1 ? '' : 's'} not shown
+                </li>
+              )}
+            </ul>
+          )}
         </div>
       )}
 
