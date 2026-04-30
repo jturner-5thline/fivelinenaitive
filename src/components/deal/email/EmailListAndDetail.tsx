@@ -2101,15 +2101,21 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               </div>
               {/* Thread count indicator */}
               {totalMessages > 1 && (
-                <div className="flex items-center gap-1 text-xs text-[hsl(var(--email-text-secondary))] shrink-0">
-                  <MessageSquare className="h-3.5 w-3.5" />
-                  <span>{totalMessages} messages</span>
-                  <button
-                    onClick={isFullyExpanded ? handleCollapseAll : handleExpandAll}
-                    className="ml-1 hover:text-[hsl(var(--email-text-primary))] transition-colors"
-                  >
-                    {isFullyExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                  </button>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <div className="flex items-center gap-1 text-xs text-[hsl(var(--email-text-secondary))]">
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    <span>{totalMessages} messages</span>
+                    <button
+                      onClick={isFullyExpanded ? handleCollapseAll : handleExpandAll}
+                      className="ml-1 hover:text-[hsl(var(--email-text-primary))] transition-colors"
+                    >
+                      {isFullyExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                    </button>
+                  </div>
+                  {/* Thread Summary trigger — opens a compact glass popover.
+                      Click-outside dismissal, Escape, and focus return are
+                      handled by Radix Popover inside ThreadSummaryCard. */}
+                  <ThreadSummaryCard thread={thread} dealId={effectiveDealId} variant="inline-button" />
                 </div>
               )}
             </div>
