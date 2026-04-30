@@ -389,6 +389,7 @@ import {
   NIKI_EMAIL,
 } from '@/constants/nikiBriefing';
 import { useDashboardCarouselWidgets } from '@/hooks/useDashboardCarouselWidgets';
+import { useInboxPrefetch } from '@/hooks/useInboxPrefetch';
 
 export default function Dashboard() {
   const { user } = useAuth();
