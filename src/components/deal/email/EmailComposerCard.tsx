@@ -38,6 +38,8 @@ import {
   signatureFirstLine,
   bodyContainsSignature,
 } from './signatureHtml';
+import { PolishWithAiDialog } from './PolishWithAiDialog';
+import { htmlToPlainText } from '@/lib/htmlToPlainText';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Public surface
@@ -278,6 +280,17 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
   const [aiInsertedAt, setAiInsertedAt] = useState<number | null>(null);
   const [aiPending, setAiPending] = useState(false);
   const [schedulePickerOpen, setSchedulePickerOpen] = useState(false);
+  const [polishOpen, setPolishOpen] = useState(false);
+
+  // The Polish button surfaces only once the user has typed something
+  // meaningful. 60 chars ≈ ~10 words — enough to be worth polishing.
+  // Hidden while an AI draft is pending or just inserted (that flow has
+  // its own review chip).
+  const plainBodyLength = useMemo(() => {
+    const plain = /<[a-z][\s\S]*>/i.test(body || '') ? htmlToPlainText(body || '') : (body || '');
+    return plain.replace(/\s+/g, ' ').trim().length;
+  }, [body]);
+  const canPolish = plainBodyLength >= 60 && !aiInsertedAt && !aiPending;
   const [scheduleValue, setScheduleValue] = useState<string>(() => {
     const d = new Date();
     d.setMinutes(d.getMinutes() + 60);
@@ -1111,12 +1124,48 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs">Draft with AI (⌘J)</TooltipContent>
           </Tooltip>
+          {canPolish && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 h-7 text-xs text-muted-foreground hover:text-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/10"
+                  onClick={() => setPolishOpen(true)}
+                  aria-label="Polish with AI"
+                >
+                  <Sparkles className="h-3 w-3" />Polish with AI
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                Rewrite your draft in 5th Line voice — facts preserved
+              </TooltipContent>
+            </Tooltip>
+          )}
         </ToolbarZone>
 
         <div className="flex-1" />
 
         {SplitSend}
       </div>
+
+      <PolishWithAiDialog
+        open={polishOpen}
+        onOpenChange={setPolishOpen}
+        draftBody={body || ''}
+        subject={subject}
+        recipientName={replyToName}
+        onAccept={(finalBody) => {
+          // finalBody is plain text with newlines preserved.
+          // Wrap in <p> blocks so the rich-text editor renders paragraphs.
+          const html = finalBody
+            .split(/\n{2,}/)
+            .map(par => `<p>${par.split(/\n/).map(escapeHtml).join('<br />')}</p>`)
+            .join('');
+          onBodyChange(html);
+          toast.success('Polished draft applied');
+        }}
+      />
 
       {/* Contextual metadata strip */}
       {(dealName || true) && (
