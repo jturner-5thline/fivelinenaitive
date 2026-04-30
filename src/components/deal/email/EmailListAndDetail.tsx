@@ -100,6 +100,7 @@ import { useAutoEmailLabelEvaluator } from '@/hooks/useAutoEmailLabelEvaluator';
 import type { EmailLabel } from '@/hooks/useEmailLabels';
 import { useLabels, useAllLabelAssignments, buildThreadLabelMap } from '@/hooks/useEmailLabels';
 import { labelSwatch } from './EmailLabelsManageDialog';
+import { systemLabelsForEmail } from './systemAutoLabels';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
