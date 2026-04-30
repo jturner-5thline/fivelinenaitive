@@ -119,6 +119,31 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // Perf: close the [InboxOpen] timer started on the dashboard tile click
+  // exactly once after the dialog mounts with `open === true`. This lets
+  // us measure click → first paint in the console / User Timing track.
+  const perfLoggedRef = useRef(false);
+  useEffect(() => {
+    if (!open || perfLoggedRef.current) return;
+    perfLoggedRef.current = true;
+    // Wait one frame so we measure post-commit (first paint), not mount.
+    requestAnimationFrame(() => {
+      try {
+        // eslint-disable-next-line no-console
+        console.timeEnd('[InboxOpen] click → first paint');
+        if (typeof performance !== 'undefined' && performance.getEntriesByName('inbox:open-click').length) {
+          performance.measure('inbox:open → first paint', 'inbox:open-click');
+        }
+      } catch {
+        // Timer may not have been started (e.g. modal opened via deep link).
+      }
+    });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) perfLoggedRef.current = false;
+  }, [open]);
+
   // Inbox + sent message stores (raw Gmail/Nylas shape, deduped by id).
   // Seeded synchronously from the shared `inboxCacheStore` that the
   // Dashboard pre-warms on mount + polls every 2 minutes — so the dialog
