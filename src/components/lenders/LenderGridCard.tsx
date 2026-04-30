@@ -87,7 +87,7 @@ export const LenderGridCard = memo(function LenderGridCard({
 
   return (
     <div
-      className={`relative bg-muted/50 rounded-lg p-3 flex flex-col transition-transform duration-200 hover:scale-105 cursor-pointer h-full min-h-[180px] ${isSelected ? 'ring-2 ring-primary bg-primary/5' : ''}`}
+      className={`deal-glass relative p-3 flex flex-col transition-all duration-200 hover:-translate-y-0.5 cursor-pointer h-full min-h-[180px] ${isSelected ? 'ring-2 ring-primary' : ''}`}
       onClick={() => onOpenDetail(lender)}
     >
       {/* Selection checkbox */}

@@ -956,14 +956,19 @@ export default function Lenders() {
         className="hidden"
       />
 
-      <div className="bg-background">
+      {/*
+        Page surface — match the Deals page exactly so Lender Directory
+        reads as the same component family (transparent base over the
+        ambient app backdrop, identical padding rhythm).
+      */}
+      <div className="bg-transparent">
         <DealsHeader />
 
-        <main className="px-4 py-6 sm:px-6 lg:px-8">
+        <main className="w-full px-4 pt-5 pb-3 sm:px-6">
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-semibold flex items-center gap-2 bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">
+                <h1 className="text-2xl font-semibold flex items-center gap-2 text-foreground">
                   <Building2 className="h-6 w-6 text-foreground" />
                   Lender Directory
                   <BetaBadge featureKey="page_lenders" />
@@ -1088,7 +1093,7 @@ export default function Lenders() {
                   <Settings className="h-4 w-4" />
                   Configuration
                 </Button>
-                <Button variant="gradient" onClick={openAddDialog} size="sm" className="gap-1">
+                <Button onClick={openAddDialog} size="sm" className="gap-1">
                   <Plus className="h-4 w-4" />
                   Add Lender
                 </Button>
