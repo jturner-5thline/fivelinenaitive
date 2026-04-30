@@ -1194,6 +1194,43 @@ export function CashFlowManager() {
           onCellCommentCountChange={setCellCommentCount}
           weeksFuture={weeksFuture}
           onWeeksFutureChange={setWeeksFuture}
+          onAddOneTimeEntry={async ({
+            rowKey,
+            rowLabel,
+            weekKey,
+            weekEnding,
+            flowType,
+            amount,
+            description,
+          }) => {
+            // Pick a date inside the week — prefer the week-ending date so it
+            // visibly lands in that column; fall back to the week-start key.
+            const occDate = weekEnding || weekKey;
+            const newEntry = {
+              // id will be assigned on insert; saveAll wipes-and-replaces using
+              // the company_id, so a placeholder id here is fine.
+              id: '',
+              company_id: company?.id || '',
+              account: ACCOUNT_OPTIONS[0],
+              category: rowKey, // grid-row key passes through resolveCategoryToGridRow as-is
+              amount,
+              frequency_type: 'one_time' as const,
+              frequency_config: { one_time_date: occDate },
+              flow_type: flowType,
+              start_date: occDate,
+              end_date: null,
+              notes: description || null,
+            };
+            const next = [...(scheduledItems || []), newEntry];
+            pushUndo(`Add one-time ${flowType === 'cash_in' ? 'cash-in' : 'cash-out'}: ${rowLabel}`);
+            const ok = await saveScheduledItems(next);
+            if (ok) {
+              logAction(
+                `Added one-time ${flowType === 'cash_in' ? 'cash-in' : 'cash-out'} entry: ${rowLabel} ($${amount.toLocaleString()})`,
+              );
+            }
+            return ok;
+          }}
         />
       )}
 
