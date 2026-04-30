@@ -24,6 +24,7 @@ import { ProactiveAlerts } from './chat/ProactiveAlerts';
 import { RecentPromptsStrip } from './chat/RecentPromptsStrip';
 import { QuickActionChips } from './chat/QuickActionChips';
 import { isBriefingPrompt, BRIEFING_MARKER } from './chat/MorningBriefing';
+import { ActionQueueWidget } from './ActionQueueWidget';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claude-dashboard-chat`;
 const CHAT_REQUEST_TIMEOUT_MS = 70_000;
@@ -639,6 +640,12 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
                 above the composer. */}
             {!showHistory && !isChatActive && (
               <ProactiveAlerts onAction={(prompt) => { setInputValue(prompt); handleSend(prompt); }} />
+            )}
+
+            {/* AI Action Queue widget — sits directly above the input so deferred
+                AI suggestions stay one click away without leaving the dashboard. */}
+            {!showHistory && !isChatActive && (
+              <ActionQueueWidget />
             )}
 
             {/* AI conversation — renders below the header */}
