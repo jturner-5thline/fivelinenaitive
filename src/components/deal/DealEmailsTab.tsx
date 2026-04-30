@@ -1041,6 +1041,18 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     }
   }, [emails, syncReadStateToProvider, applyLocalOverride]);
 
+  // Stable handlers for the EmailDetail right-pane. Keeping these out of the
+  // JSX prevents a fresh function identity on every parent render — which,
+  // combined with the heavy EmailDetail subtree, was a hot path during
+  // search keystrokes / hover / list state churn.
+  const handleEmailDetailBack = useCallback(() => {
+    setSelectedThread(null);
+    setReadingPaneExpanded(false);
+  }, []);
+  const handleEmailDetailToggleExpand = useCallback(() => {
+    setReadingPaneExpanded(prev => !prev);
+  }, []);
+
   const isSectionOpen = (section: SidebarSection) => {
     if (collapsedSections[section.title] !== undefined) return !collapsedSections[section.title];
     return section.defaultOpen ?? false;
