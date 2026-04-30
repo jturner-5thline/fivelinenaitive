@@ -40,8 +40,17 @@ export function ActionQueueWidget() {
             <InboxIcon className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-medium text-foreground leading-tight truncate">
-              Action Queue
+            <p className="text-xs font-medium text-foreground leading-tight truncate flex items-center gap-1.5">
+              <span>Action Queue</span>
+              {count > 0 && (
+                <Badge
+                  variant="default"
+                  className="h-4 min-w-[16px] px-1 text-[10px] font-semibold bg-[hsl(var(--outlook-blue))] text-white border-0 leading-none"
+                  aria-label={`${count} pending`}
+                >
+                  {count > 99 ? '99+' : count}
+                </Badge>
+              )}
             </p>
             <p className="text-[11px] text-muted-foreground leading-tight truncate">
               {count > 0
@@ -51,11 +60,6 @@ export function ActionQueueWidget() {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {count > 0 && (
-            <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-              {count}
-            </Badge>
-          )}
           <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
         </div>
       </button>
