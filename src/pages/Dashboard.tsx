@@ -393,6 +393,12 @@ import { useDashboardCarouselWidgets } from '@/hooks/useDashboardCarouselWidgets
 export default function Dashboard() {
   const { user } = useAuth();
   const { profile } = useProfile();
+  // Dev-only: emit a single performance.measure for Dashboard mount
+  // latency. View in DevTools → Performance → User Timing, or set
+  // `localStorage.setItem('perf:debug','1')` to log to the console.
+  useEffect(() => {
+    perfMeasure('dashboard:mount', 'dashboard:mount-start');
+  }, []);
   const isJTurner = user?.email === 'jturner@5thline.co';
   const canSeeNiki = canSeeNikiBriefing(user?.email);
   const isNikiViewingHerself = user?.email?.toLowerCase() === NIKI_EMAIL;
