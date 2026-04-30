@@ -71,21 +71,52 @@ const SIGNAL_TONE: Record<string, string> = {
   no_signal: 'bg-muted text-muted-foreground border-border',
 };
 
-const STATUS_OPTIONS: { value: string; label: string }[] = [
-  { value: 'passed', label: 'Passed' },
-  { value: 'not_a_fit', label: 'Not a Fit' },
-  { value: 'interested', label: 'Interested' },
-  { value: 'in_diligence', label: 'In Diligence' },
-  { value: 'follow_up', label: 'Follow Up' },
-  { value: 'declined', label: 'Declined' },
-];
-const STATUS_LABEL: Record<string, string> = STATUS_OPTIONS.reduce((acc, o) => {
-  acc[o.value] = o.label;
-  return acc;
-}, {} as Record<string, string>);
+/**
+ * Stage groups that close out a lender — show the disposition detail
+ * (pass-reason) dropdown for these. Tied to the configurable Lender
+ * Stages in Settings: any stage whose `group === 'passed'` is treated
+ * as a closing stage. We deliberately key off the GROUP (not the
+ * stage id) so user-renamed/added stages still classify correctly.
+ */
+const CLOSING_STAGE_GROUPS = new Set(['passed']);
 
-/** Statuses that close out a lender — show the disposition detail dropdown. */
-const CLOSING_STATUSES = new Set(['passed', 'not_a_fit', 'declined']);
+/**
+ * Best-effort fallback for legacy AI-emitted status tokens (e.g. the
+ * old enum keys `passed`, `interested`, `in_diligence`, `follow_up`,
+ * `not_a_fit`, `declined`) → resolve to the matching configured Lender
+ * Stage id. Used only to PRE-SELECT a sensible default in the dropdown.
+ */
+function resolveAiStageId(
+  aiToken: string | undefined,
+  stageOptions: Array<{ id: string; label: string; group: string }>,
+): string {
+  if (stageOptions.length === 0) return '';
+  const t = (aiToken || '').toLowerCase().trim();
+  if (!t) return stageOptions[0].id;
+  // Direct id or label match first.
+  const direct = stageOptions.find((s) => s.id.toLowerCase() === t || s.label.toLowerCase() === t);
+  if (direct) return direct.id;
+  // Common AI tokens → group/keyword matches.
+  const tokenToHints: Record<string, string[]> = {
+    passed: ['pass'],
+    not_a_fit: ['pass'],
+    declined: ['pass'],
+    interested: ['engaged', 'interest', 'on deck'],
+    in_diligence: ['diligence', 'drl', 'review'],
+    follow_up: ['follow', 'engaged'],
+    terms_issued: ['term', 'draft'],
+    info_requested: ['drl', 'review'],
+    engaged: ['engaged', 'interest'],
+  };
+  const hints = tokenToHints[t] || [t];
+  const hintMatch = stageOptions.find((s) =>
+    hints.some((h) => s.id.toLowerCase().includes(h) || s.label.toLowerCase().includes(h)),
+  );
+  if (hintMatch) return hintMatch.id;
+  // Final fallback: first active-group stage, else the first stage.
+  const activeFallback = stageOptions.find((s) => s.group === 'active' || s.group === 'on-deck');
+  return (activeFallback || stageOptions[0]).id;
+}
 
 /**
  * Convert "AI suggested" detail tokens (the old hardcoded enum keys returned
