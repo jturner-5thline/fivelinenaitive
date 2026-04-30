@@ -996,6 +996,14 @@ export default function Dashboard() {
         }}
         initialView={dealsInitialView}
       />
+      <Dialog open={actionQueueOpen} onOpenChange={setActionQueueOpen}>
+        <DialogContent className="sm:max-w-[640px] p-0 overflow-hidden flex flex-col max-h-[80vh]">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Action Queue</DialogTitle>
+          </DialogHeader>
+          <ActionQueuePanel items={actionQueueItems} onClose={() => setActionQueueOpen(false)} />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
