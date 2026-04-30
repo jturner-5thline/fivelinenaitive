@@ -62,7 +62,7 @@ const QUEUE_COUNT_KEY = ['ai-action-queue-count'] as const;
 /** Invalidate both the panel and lightweight count queries together so
  * mutations stay consistent with realtime fan-out. */
 function invalidateQueueAll(qc: ReturnType<typeof useQueryClient>) {
-  invalidateQueueAll(qc);
+  qc.invalidateQueries({ queryKey: QUEUE_KEY });
   qc.invalidateQueries({ queryKey: QUEUE_COUNT_KEY });
 }
 
@@ -93,7 +93,6 @@ function useAiActionQueueRealtime() {
     const flush = () => {
       timerRef.current = null;
       invalidateQueueAll(qc);
-      qc.invalidateQueries({ queryKey: QUEUE_COUNT_KEY });
     };
 
     const channel = supabase
