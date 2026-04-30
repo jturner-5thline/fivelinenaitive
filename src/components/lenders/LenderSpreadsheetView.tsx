@@ -158,6 +158,51 @@ function getSortValue(lender: MasterLender, key: ColumnKey): string | number | b
 // Total width of all columns for the horizontal scroll (add 40 for checkbox column)
 const TOTAL_WIDTH = COLUMNS.reduce((sum, col) => sum + col.width, 0) + 50 + 40; // +50 for row number, +40 for checkbox
 
+type ColumnDef = typeof COLUMNS[number];
+
+function LenderCell({ lender, col }: { lender: MasterLender; col: ColumnDef }) {
+  const isCurrency = CURRENCY_COLUMNS.has(col.key);
+  const isIndustries = col.key === 'industries';
+  const rawValue = lender[col.key as keyof MasterLender];
+  const formatted = formatCellValue(lender, col.key);
+
+  // Tag/chip rendering for Deal Industries
+  if (isIndustries && Array.isArray(rawValue) && rawValue.length > 0) {
+    return (
+      <div
+        className="flex-shrink-0 px-3 py-2 border-r border-white/[0.04] flex items-center gap-1 overflow-hidden"
+        style={{ width: col.width }}
+        title={rawValue.join(', ')}
+      >
+        <div className="flex items-center gap-1 flex-nowrap overflow-hidden">
+          {rawValue.map((industry, i) => (
+            <span
+              key={`${industry}-${i}`}
+              className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium text-foreground/80 bg-white/[0.05] border border-white/10 whitespace-nowrap shrink-0"
+            >
+              {industry}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`flex-shrink-0 px-3 py-2 text-xs border-r border-white/[0.04] truncate flex items-center ${
+        isCurrency ? 'justify-center tabular-nums' : ''
+      } ${
+        col.key === 'name' ? 'text-foreground font-medium' : 'text-foreground/75'
+      }`}
+      style={{ width: col.width }}
+      title={formatted}
+    >
+      {formatted || <span className="text-muted-foreground/30">—</span>}
+    </div>
+  );
+}
+
 export function LenderSpreadsheetView({
   lenders,
   activeDealCounts,
