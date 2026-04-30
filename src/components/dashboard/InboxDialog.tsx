@@ -291,6 +291,15 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
   const SYNC_INTERVAL_MS = 15_000;
   const SYNC_BATCH_LIMIT = 150; // most-recent N messages per cycle
   const syncInFlightRef = useRef(false);
+  // Hold the latest inboxMessages snapshot in a ref so the sync effect
+  // doesn't re-subscribe (clearing/recreating its interval + visibility
+  // listeners) every time a new page is appended. Without this, every
+  // page append during auto-pagination tore down and rebuilt the listener
+  // graph — wasted work and a steady stream of listener churn.
+  const inboxMessagesRef = useRef<any[]>(inboxMessages);
+  useEffect(() => {
+    inboxMessagesRef.current = inboxMessages;
+  }, [inboxMessages]);
 
   const reconcileStates = useCallback((states: Array<{ id: string; is_read: boolean; is_starred: boolean; missing?: boolean }>) => {
     if (!states.length || !isMountedRef.current) return;
@@ -323,7 +332,7 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
       // Skip when tab is hidden — saves quota and avoids needless calls.
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       // Snapshot most-recent inbox message IDs for delta sync.
-      const ids = inboxMessages
+      const ids = inboxMessagesRef.current
         .slice(0, SYNC_BATCH_LIMIT)
         .map(m => m.id || m.gmail_message_id)
         .filter(Boolean);
@@ -361,7 +370,10 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('focus', runSync);
     };
-  }, [open, status.connected, inboxMessages, reconcileStates]);
+    // Intentionally omit `inboxMessages` from deps — we read it via ref so
+    // pagination updates do not tear down/recreate this effect's listeners.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, status.connected, reconcileStates]);
 
 
   // Combined deduped list (use API results if any; fall back to cache)
