@@ -316,9 +316,9 @@ export function WorkflowIntelligenceCard({
   const handleStatusChange = (next: string) => {
     setConfirmedStatus(next);
     logAnalytics('ai_suggested_update_modified', {
-      field: 'status',
-      original_suggested_status: aiSuggestedStatus,
-      final_confirmed_status: next,
+      field: 'stage',
+      original_suggested_stage_id: aiSuggestedStageId,
+      final_confirmed_stage_id: next,
     });
   };
   const toggleReasonLabel = (label: string) => {
@@ -376,30 +376,47 @@ export function WorkflowIntelligenceCard({
                 </p>
 
                 {isLenderStatus && (
-                  <div className="flex items-center gap-2 min-w-0">
-                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0">
-                      Status
-                    </label>
-                    <Select value={confirmedStatus} onValueChange={handleStatusChange}>
-                      <SelectTrigger className="h-7 text-[11px] flex-1 min-w-0">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STATUS_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value} className="text-[11px]">
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  lenderStageOptions.length === 0 ? (
+                    // No Lender Stages configured — surface a clear inline
+                    // CTA to Settings rather than a broken empty dropdown.
+                    <div className="flex items-center gap-2 min-w-0 text-[11px] text-amber-300/90">
+                      <AlertCircle className="h-3 w-3 shrink-0" />
+                      <span className="min-w-0">
+                        No Lender Stages configured.{' '}
+                        <a
+                          href="/settings?tab=lender-stages"
+                          className="underline underline-offset-2 hover:text-amber-200"
+                        >
+                          Configure in Settings
+                        </a>
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 min-w-0">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0">
+                        Stage
+                      </label>
+                      <Select value={confirmedStatus} onValueChange={handleStatusChange}>
+                        <SelectTrigger className="h-7 text-[11px] flex-1 min-w-0">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {lenderStageOptions.map((opt) => (
+                            <SelectItem key={opt.id} value={opt.id} className="text-[11px]">
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )
                 )}
-                {isLenderStatus && userOverrodeStatus && (
+                {isLenderStatus && userOverrodeStatus && lenderStageOptions.length > 0 && (
                   <div className="text-[10px] leading-tight -mt-1 line-clamp-1">
                     <span className="text-muted-foreground">AI: </span>
-                    <span className="text-foreground/70">{STATUS_LABEL[aiSuggestedStatus]}</span>
+                    <span className="text-foreground/70">{stageLabelById(aiSuggestedStageId)}</span>
                     <span className="text-muted-foreground"> → </span>
-                    <span className="text-primary font-medium">{STATUS_LABEL[confirmedStatus]}</span>
+                    <span className="text-primary font-medium">{stageLabelById(confirmedStatus)}</span>
                   </div>
                 )}
 
