@@ -101,7 +101,37 @@ const EmailIntelligencePage = lazy(lazyRetry(() => import("./pages/EmailIntellig
 const FinServ = lazy(lazyRetry(() => import("./pages/FinServ")));
 
 
-const queryClient = new QueryClient();
+/**
+ * React Query defaults tuned for perceived speed across Naitive.
+ *
+ * Rationale:
+ *  - `staleTime: 60_000` — within a minute, navigating back to a screen
+ *    paints instantly from cache instead of triggering a network round-trip.
+ *    Mutations still call `queryClient.invalidateQueries(...)` explicitly
+ *    (see hooks under src/hooks/), so user-initiated changes update right
+ *    away. This only suppresses *passive* refetches.
+ *  - `gcTime: 5 * 60_000` — keep cached pages warm for 5 minutes after
+ *    components unmount so back-navigation is free.
+ *  - `refetchOnWindowFocus: false` — previously every tab-focus event
+ *    refetched dozens of queries simultaneously, causing the "comes back
+ *    laggy" feel. Background revalidation still happens on remount when
+ *    data is stale.
+ *  - `retry: 1` — single retry instead of the default 3 so transient errors
+ *    surface faster in the UI rather than silently spinning.
+ *
+ * Per-query overrides remain in effect; this only changes defaults for
+ * queries that don't specify their own.
+ */
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 function PageLoader() {
   return (

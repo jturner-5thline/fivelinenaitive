@@ -1,11 +1,22 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useSearchParams } from 'react-router-dom';
 import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Briefcase, LayoutTemplate, Newspaper, Handshake, Inbox as InboxIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
-import { InboxDialog } from '@/components/dashboard/InboxDialog';
-import { DealsCarouselDialog, DealsCarouselView } from '@/components/dashboard/DealsCarouselDialog';
+// Heavy modals are lazy-loaded so they don't bloat the initial Dashboard
+// chunk. Each is only mounted when the user actually opens its widget,
+// so deferring the import has no perceptible cost on first interaction
+// (the dynamic import races with the modal's open animation).
+import type { DealsCarouselView } from '@/components/dashboard/DealsCarouselDialog';
+const DailyBriefingModal = lazy(() =>
+  import('@/components/dashboard/DailyBriefingModal').then(m => ({ default: m.DailyBriefingModal })),
+);
+const InboxDialog = lazy(() =>
+  import('@/components/dashboard/InboxDialog').then(m => ({ default: m.InboxDialog })),
+);
+const DealsCarouselDialog = lazy(() =>
+  import('@/components/dashboard/DealsCarouselDialog').then(m => ({ default: m.DealsCarouselDialog })),
+);
 import { WidgetCarouselChrome } from '@/components/dashboard/widget-carousel/WidgetCarouselChrome';
 import { useWidgetCarouselStore } from '@/stores/widgetCarouselStore';
 import { useProfile } from '@/hooks/useProfile';
@@ -19,7 +30,9 @@ import { Card } from '@/components/ui/card';
 import { PresetManager } from '@/components/dashboard/PresetManager';
 import { NewPresetButton } from '@/components/dashboard/NewPresetButton';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
-import { AddWidgetDialog } from '@/components/dashboard/AddWidgetDialog';
+const AddWidgetDialog = lazy(() =>
+  import('@/components/dashboard/AddWidgetDialog').then(m => ({ default: m.AddWidgetDialog })),
+);
 import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
 import { EmailIntelligenceWidget } from '@/components/dashboard/EmailIntelligenceWidget';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -27,6 +40,14 @@ import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 import { useAiActionQueue, useAiActionQueueCount } from '@/hooks/useAiActionQueue';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { perfMark, perfMeasure } from '@/lib/perfMarks';
+
+// Mark module evaluation as the start of the Dashboard mount window.
+// Paired with the post-mount measure below to surface initial-load latency
+// in the browser User Timing track during dev profiling.
+if (typeof performance !== 'undefined') {
+  perfMark('dashboard:mount-start');
+}
 
 /**
  * Shared interaction styles for the dashboard widget tiles
@@ -355,7 +376,9 @@ function EmailTileWithIntelligence({
 }
 
 import { DashboardTemplatesDialog } from '@/components/dashboard/DashboardTemplates';
-import { FullCalendarView } from '@/components/dashboard/FullCalendarView';
+const FullCalendarView = lazy(() =>
+  import('@/components/dashboard/FullCalendarView').then(m => ({ default: m.FullCalendarView })),
+);
 import { NewsFeedPanel } from '@/components/dashboard/NewsFeedPanel';
 import { NewsFeedDialog } from '@/components/dashboard/NewsFeedDialog';
 import { toast } from 'sonner';
@@ -370,6 +393,12 @@ import { useDashboardCarouselWidgets } from '@/hooks/useDashboardCarouselWidgets
 export default function Dashboard() {
   const { user } = useAuth();
   const { profile } = useProfile();
+  // Dev-only: emit a single performance.measure for Dashboard mount
+  // latency. View in DevTools → Performance → User Timing, or set
+  // `localStorage.setItem('perf:debug','1')` to log to the console.
+  useEffect(() => {
+    perfMeasure('dashboard:mount', 'dashboard:mount-start');
+  }, []);
   const isJTurner = user?.email === 'jturner@5thline.co';
   const canSeeNiki = canSeeNikiBriefing(user?.email);
   const isNikiViewingHerself = user?.email?.toLowerCase() === NIKI_EMAIL;
@@ -851,11 +880,13 @@ export default function Dashboard() {
                     onApplyToCurrentDashboard={handleApplyTemplateToCurrentDashboard}
                   />
                   {isEditing && activePreset && (
-                    <AddWidgetDialog
-                      existingWidgetIds={activePreset.widgets_config.map(w => w.id)}
-                      onAddBuiltIn={handleAddBuiltIn}
-                      onAddCustom={handleAddCustom}
-                    />
+                    <Suspense fallback={null}>
+                      <AddWidgetDialog
+                        existingWidgetIds={activePreset.widgets_config.map(w => w.id)}
+                        onAddBuiltIn={handleAddBuiltIn}
+                        onAddCustom={handleAddCustom}
+                      />
+                    </Suspense>
                   )}
                   <HintTooltip
                     hint="Click 'Edit' to customize your dashboard — add, remove, or rearrange widgets to match your workflow."
@@ -960,42 +991,49 @@ export default function Dashboard() {
         widget's own X / Esc / backdrop, which still calls
         handleCarouselDialogOpenChange(false).
       */}
-      {isWidgetActive('calendar') && (
-        <FullCalendarView open onOpenChange={handleCarouselDialogOpenChange} />
-      )}
-      {isWidgetActive('email') && (
-        <InboxDialog open onOpenChange={handleCarouselDialogOpenChange} />
-      )}
-      {isJTurner && isWidgetActive('daily-briefing') && (
-        <DailyBriefingModal open onOpenChange={handleCarouselDialogOpenChange} />
-      )}
-      {canSeeNiki && isWidgetActive('niki-briefing') && (
-        <DailyBriefingModal
-          open
-          onOpenChange={handleCarouselDialogOpenChange}
-          title={isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
-          targetUserId={NIKI_USER_ID}
-          targetAssigneeName={NIKI_ASSIGNEE_NAME}
-          excludeTabs={['financial']}
-        />
-      )}
-      {is5thLine && isWidgetActive('deal-rundown') && (
-        <DailyBriefingModal
-          open
-          onOpenChange={handleCarouselDialogOpenChange}
-          title="Deal Rundown"
-          initialTab="pipeline"
-        />
-      )}
-      <WidgetCarouselChrome />
-      <DealsCarouselDialog
-        open={dealsDialogOpen}
-        onOpenChange={(next) => {
-          setDealsDialogOpen(next);
-          if (!next) setDealsInitialView(undefined);
-        }}
-        initialView={dealsInitialView}
-      />
+      {/* Lazy-loaded modal shells. fallback={null} keeps the dashboard
+          paint instant; each modal renders its own skeleton/loader once
+          its chunk arrives. */}
+      <Suspense fallback={null}>
+        {isWidgetActive('calendar') && (
+          <FullCalendarView open onOpenChange={handleCarouselDialogOpenChange} />
+        )}
+        {isWidgetActive('email') && (
+          <InboxDialog open onOpenChange={handleCarouselDialogOpenChange} />
+        )}
+        {isJTurner && isWidgetActive('daily-briefing') && (
+          <DailyBriefingModal open onOpenChange={handleCarouselDialogOpenChange} />
+        )}
+        {canSeeNiki && isWidgetActive('niki-briefing') && (
+          <DailyBriefingModal
+            open
+            onOpenChange={handleCarouselDialogOpenChange}
+            title={isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
+            targetUserId={NIKI_USER_ID}
+            targetAssigneeName={NIKI_ASSIGNEE_NAME}
+            excludeTabs={['financial']}
+          />
+        )}
+        {is5thLine && isWidgetActive('deal-rundown') && (
+          <DailyBriefingModal
+            open
+            onOpenChange={handleCarouselDialogOpenChange}
+            title="Deal Rundown"
+            initialTab="pipeline"
+          />
+        )}
+        <WidgetCarouselChrome />
+        {dealsDialogOpen && (
+          <DealsCarouselDialog
+            open={dealsDialogOpen}
+            onOpenChange={(next) => {
+              setDealsDialogOpen(next);
+              if (!next) setDealsInitialView(undefined);
+            }}
+            initialView={dealsInitialView}
+          />
+        )}
+      </Suspense>
       <Dialog open={actionQueueOpen} onOpenChange={setActionQueueOpen}>
         <DialogContent className="sm:max-w-[640px] p-0 overflow-hidden flex flex-col max-h-[80vh]">
           <DialogHeader className="sr-only">
