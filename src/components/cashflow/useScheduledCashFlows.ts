@@ -1,18 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ScheduledCashFlow } from './scheduledCashFlows';
 
 export function useScheduledCashFlows(companyId: string | undefined) {
   const [items, setItems] = useState<ScheduledCashFlow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  // Always-fresh ref to current items so callbacks (and concurrent saves)
-  // never operate on a stale snapshot. The previous "delete-all then insert"
-  // strategy could silently destroy entries when the caller passed a stale
-  // list (e.g. an inline add racing with a Configure modal save), since both
-  // paths called saveAll with their own captured list. Diff-based persistence
-  // below avoids the wipe entirely.
-  const itemsRef = useRef<ScheduledCashFlow[]>([]);
-  useEffect(() => { itemsRef.current = items; }, [items]);
 
   const fetchItems = useCallback(async () => {
     if (!companyId) return;
