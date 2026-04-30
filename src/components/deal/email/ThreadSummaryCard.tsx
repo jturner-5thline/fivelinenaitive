@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { ChevronDown, ChevronRight, FileText, AlertTriangle, CheckCircle2, Clock, RefreshCw, Loader2 } from 'lucide-react';
+import { ChevronDown, FileText, AlertTriangle, CheckCircle2, Clock, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import type { EmailThread } from './mockEmailData';
 
 interface ThreadSummary {
@@ -15,6 +16,15 @@ interface ThreadSummary {
 interface Props {
   thread: EmailThread;
   dealId?: string;
+  /**
+   * Visual variant of the trigger.
+   * - `card` (default): legacy expandable card (kept for back-compat).
+   * - `inline-button`: compact pill-style trigger that opens a glass popover.
+   *   Used in the thread header under the "N messages" count.
+   */
+  variant?: 'card' | 'inline-button';
+  /** Optional className for the trigger element (inline-button variant). */
+  className?: string;
 }
 
 /**
@@ -27,11 +37,11 @@ interface Props {
  *
  * Hidden entirely for single-message threads.
  */
-export function ThreadSummaryCard({ thread, dealId }: Props) {
+export function ThreadSummaryCard({ thread, dealId, variant = 'card', className }: Props) {
   const messageCount = thread.emails?.length ?? 0;
   const isMultiMessage = messageCount > 1;
 
-  const [expanded, setExpanded] = useState(false);
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState<ThreadSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -137,42 +147,13 @@ export function ThreadSummaryCard({ thread, dealId }: Props) {
     summary.open_items.length > 0
   );
 
-  return (
-    <div className="rounded-md border border-white/[0.06] bg-background/40 overflow-hidden">
-      {/* Header — clickable to expand */}
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted/20 transition-colors"
-        aria-expanded={expanded}
-      >
-        {expanded ? (
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        ) : (
-          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        )}
-        <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="text-[12px] font-semibold text-foreground leading-tight">
-            Thread Summary
-          </div>
-          <div className="text-[10px] text-muted-foreground leading-tight mt-0.5 truncate">
-            {loading
-              ? 'Generating summary…'
-              : error
-                ? 'Tap to retry'
-                : hasContent
-                  ? `${messageCount} messages · ${summary!.key_decisions.length} decisions · ${summary!.open_items.length} open`
-                  : `${messageCount} messages in thread`}
-          </div>
-        </div>
-        {loading && <Loader2 className="h-3 w-3 animate-spin text-primary/70 shrink-0" />}
-      </button>
-
-      {/* Body */}
-      {expanded && (
-        <div className="border-t border-white/[0.04] px-3 py-2.5 space-y-3">
-          {error && (
+  // Shared body rendered in both the legacy card and the popover variant.
+  // Radix Popover already handles outside-click dismissal, Escape, and
+  // returns focus to the trigger — so the popover variant is fully
+  // accessible without bespoke handlers.
+  const body = (
+    <div className="space-y-3">
+      {error && (
             <div className="flex items-start gap-2 text-[11px] text-destructive">
               <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
               <div className="flex-1 min-w-0">
@@ -268,7 +249,94 @@ export function ThreadSummaryCard({ thread, dealId }: Props) {
               </Button>
             </div>
           )}
+    </div>
+  );
+
+  // ── Popover (compact glass) variant ─────────────────────────────
+  if (variant === 'inline-button') {
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              'inline-flex items-center gap-1 h-5 px-2 rounded-full text-[10.5px] font-medium leading-none',
+              'border border-white/10 bg-white/[0.04] backdrop-blur-md',
+              'text-foreground/80 hover:text-foreground hover:bg-white/[0.08] hover:border-white/20',
+              'transition-colors shadow-[inset_0_1px_0_0_hsl(0_0%_100%/0.05)]',
+              'data-[state=open]:bg-primary/15 data-[state=open]:border-primary/30 data-[state=open]:text-primary',
+              className,
+            )}
+            aria-label="Open thread summary"
+          >
+            <FileText className="h-2.5 w-2.5" />
+            Thread Summary
+            {loading ? (
+              <Loader2 className="h-2.5 w-2.5 animate-spin" />
+            ) : (
+              <ChevronDown className="h-2.5 w-2.5 opacity-70" />
+            )}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          sideOffset={6}
+          className={cn(
+            'w-80 max-w-[min(20rem,90vw)] p-3',
+            // Glassmorphism: translucent surface + blur + soft border + tight shadow.
+            'rounded-xl border border-white/10 bg-background/60 backdrop-blur-xl',
+            'shadow-[0_10px_30px_-12px_hsl(0_0%_0%/0.6)] text-popover-foreground',
+          )}
+        >
+          <div className="flex items-center gap-1.5 mb-2">
+            <FileText className="h-3 w-3 text-primary" />
+            <span className="text-[11px] font-semibold text-foreground">Thread Summary</span>
+            <span className="ml-auto text-[10px] text-muted-foreground/70">
+              {hasContent
+                ? `${messageCount} msgs · ${summary!.key_decisions.length} decisions · ${summary!.open_items.length} open`
+                : `${messageCount} messages`}
+            </span>
+          </div>
+          {body}
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
+  // ── Legacy card variant (kept for back-compat) ──────────────────
+  return (
+    <div className="rounded-md border border-white/[0.06] bg-background/40 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted/20 transition-colors"
+        aria-expanded={open}
+      >
+        <ChevronDown
+          className={cn(
+            'h-3.5 w-3.5 text-muted-foreground shrink-0 transition-transform',
+            !open && '-rotate-90',
+          )}
+        />
+        <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="text-[12px] font-semibold text-foreground leading-tight">
+            Thread Summary
+          </div>
+          <div className="text-[10px] text-muted-foreground leading-tight mt-0.5 truncate">
+            {loading
+              ? 'Generating summary…'
+              : error
+                ? 'Tap to retry'
+                : hasContent
+                  ? `${messageCount} messages · ${summary!.key_decisions.length} decisions · ${summary!.open_items.length} open`
+                  : `${messageCount} messages in thread`}
+          </div>
         </div>
+        {loading && <Loader2 className="h-3 w-3 animate-spin text-primary/70 shrink-0" />}
+      </button>
+      {open && (
+        <div className="border-t border-white/[0.04] px-3 py-2.5">{body}</div>
       )}
     </div>
   );
