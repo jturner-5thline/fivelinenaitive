@@ -11,9 +11,11 @@ import type { DealsCarouselView } from '@/components/dashboard/DealsCarouselDial
 const DailyBriefingModal = lazy(() =>
   import('@/components/dashboard/DailyBriefingModal').then(m => ({ default: m.DailyBriefingModal })),
 );
-const InboxDialog = lazy(() =>
-  import('@/components/dashboard/InboxDialog').then(m => ({ default: m.InboxDialog })),
-);
+// InboxDialog is eagerly imported (NOT lazy) so the modal can paint
+// instantly from the prefetched inbox cache on click. Lazy-loading this
+// chunk previously added 1–2s of network + parse latency between the
+// click and the first list paint, defeating the prefetch.
+import { InboxDialog } from '@/components/dashboard/InboxDialog';
 const DealsCarouselDialog = lazy(() =>
   import('@/components/dashboard/DealsCarouselDialog').then(m => ({ default: m.DealsCarouselDialog })),
 );
@@ -764,11 +766,25 @@ export default function Dashboard() {
             />
             <EmailTileWithIntelligence
               className={isJTurner ? 'order-2' : undefined}
-              onOpen={(el) => openCarouselWidget('email', el)}
+              onOpen={(el) => {
+                // Perf: time the click → first paint window so we can
+                // verify the eager-import + prefetch keep this instant.
+                if (typeof performance !== 'undefined') {
+                  performance.mark('inbox:open-click');
+                  // eslint-disable-next-line no-console
+                  console.time('[InboxOpen] click → first paint');
+                }
+                openCarouselWidget('email', el);
+              }}
               onKeyDown={(e) =>
-                handleTileKeyDown(e, () =>
-                  openCarouselWidget('email', e.currentTarget as HTMLElement),
-                )
+                handleTileKeyDown(e, () => {
+                  if (typeof performance !== 'undefined') {
+                    performance.mark('inbox:open-click');
+                    // eslint-disable-next-line no-console
+                    console.time('[InboxOpen] click → first paint');
+                  }
+                  openCarouselWidget('email', e.currentTarget as HTMLElement);
+                })
               }
             />
             {/* Action Queue tile — first-class quick-action sibling to
