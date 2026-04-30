@@ -19,6 +19,12 @@ import { DealsHeader } from '@/components/deals/DealsHeader';
 export interface WorkspacePageProps {
   /** Page sections (header row, widgets, filters, content). */
   children: React.ReactNode;
+  /**
+   * Optional content rendered inside `<main>` BEFORE the spaced content
+   * block — typically modals/banners that should not participate in the
+   * `space-y-*` rhythm.
+   */
+  beforeContent?: React.ReactNode;
   /** Optional override for the inner `space-y-*` rhythm. */
   contentClassName?: string;
   /**
@@ -32,6 +38,7 @@ export interface WorkspacePageProps {
 
 export function WorkspacePage({
   children,
+  beforeContent,
   contentClassName,
   afterMain,
 }: WorkspacePageProps) {
@@ -40,6 +47,7 @@ export function WorkspacePage({
       <DealsHeader />
 
       <main className="w-full px-4 pt-5 pb-3 sm:px-6">
+        {beforeContent}
         <div className={cn('space-y-5', contentClassName)}>{children}</div>
       </main>
 
