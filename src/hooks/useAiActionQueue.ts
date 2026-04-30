@@ -62,7 +62,7 @@ const QUEUE_COUNT_KEY = ['ai-action-queue-count'] as const;
 /** Invalidate both the panel and lightweight count queries together so
  * mutations stay consistent with realtime fan-out. */
 function invalidateQueueAll(qc: ReturnType<typeof useQueryClient>) {
-  qc.invalidateQueries({ queryKey: QUEUE_KEY });
+  invalidateQueueAll(qc);
   qc.invalidateQueries({ queryKey: QUEUE_COUNT_KEY });
 }
 
@@ -92,7 +92,7 @@ function useAiActionQueueRealtime() {
 
     const flush = () => {
       timerRef.current = null;
-      qc.invalidateQueries({ queryKey: QUEUE_KEY });
+      invalidateQueueAll(qc);
       qc.invalidateQueries({ queryKey: QUEUE_COUNT_KEY });
     };
 
@@ -219,7 +219,7 @@ export function useEnqueueAiAction() {
       toast.success('Added to Action Queue', {
         description: `${args.title} — review later from the queue.`,
       });
-      qc.invalidateQueries({ queryKey: QUEUE_KEY });
+      invalidateQueueAll(qc);
       return data as QueuedAiAction;
     },
     [user, qc],
@@ -238,7 +238,7 @@ export function useDismissAiAction() {
         toast.error('Could not dismiss item');
         return;
       }
-      qc.invalidateQueries({ queryKey: QUEUE_KEY });
+      invalidateQueueAll(qc);
     },
     [qc],
   );
@@ -258,7 +258,7 @@ export function useDismissManyAiActions() {
         toast.error('Could not dismiss items');
         return;
       }
-      qc.invalidateQueries({ queryKey: QUEUE_KEY });
+      invalidateQueueAll(qc);
       toast.success(`Dismissed ${ids.length} item${ids.length !== 1 ? 's' : ''}`);
     },
     [qc],
@@ -277,7 +277,7 @@ export function useUpdateAiAction() {
         toast.error('Could not update item');
         return;
       }
-      qc.invalidateQueries({ queryKey: QUEUE_KEY });
+      invalidateQueueAll(qc);
     },
     [qc],
   );
@@ -389,7 +389,7 @@ export function useApproveAiAction() {
           execution_error: result.ok ? null : result.error || 'Execution failed',
         })
         .eq('id', item.id);
-      qc.invalidateQueries({ queryKey: QUEUE_KEY });
+      invalidateQueueAll(qc);
       return result;
     },
     [user, qc],
@@ -407,7 +407,7 @@ export function useApproveAllAiActions() {
         const r = await approve(item);
         if (r?.ok) okCount += 1; else failCount += 1;
       }
-      qc.invalidateQueries({ queryKey: QUEUE_KEY });
+      invalidateQueueAll(qc);
       if (okCount) toast.success(`Approved ${okCount} action${okCount !== 1 ? 's' : ''}`);
       if (failCount) toast.error(`${failCount} failed — check the queue for details`);
     },
