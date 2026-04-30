@@ -135,14 +135,9 @@ const AI_DETAIL_TOKEN_TO_LABEL_HINT: Record<string, string[]> = {
   other: [],
 };
 
-function normalizeSuggested(stage: string | undefined): string {
-  if (!stage) return 'follow_up';
-  const s = stage.toLowerCase();
-  if (STATUS_LABEL[s]) return s;
-  if (s === 'terms_issued') return 'in_diligence';
-  if (s === 'info_requested' || s === 'engaged') return 'follow_up';
-  return 'follow_up';
-}
+// Stage resolution lives in resolveAiStageId() above — it operates on
+// the user-configured Lender Stages from Settings (single source of
+// truth), not the legacy hardcoded enum.
 
 function logAnalytics(event: string, payload: Record<string, unknown>) {
   try {
@@ -167,9 +162,14 @@ export function WorkflowIntelligenceCard({
   threadId = null,
   hideSuggestedTasks = false,
 }: Props) {
-  // Source of truth for pass-reason options — same list shown in the
-  // deal-detail Lenders tab "Confirm Pass" dialog so the two stay in sync.
-  const { passReasons: passReasonOptions } = useLenderStages();
+  // Source of truth for both Lender Stages and Pass Reasons — same lists
+  // configured in Settings → Lender Stages and shown on the deal-detail
+  // Lenders tab. Keeping them centralized here means any rename/reorder
+  // in Settings flows through to this AI Assist card automatically.
+  const {
+    passReasons: passReasonOptions,
+    stages: lenderStageOptions,
+  } = useLenderStages();
   const enqueueAiAction = useEnqueueAiAction();
 
   const rec = analysis.recommended_update;
@@ -187,7 +187,11 @@ export function WorkflowIntelligenceCard({
   const threadLinked = hasLinkedDeal || isThreadLinkedToDeal === true;
   const willAutoLinkThread =
     !threadLinked && isThreadLinkedToDeal === false && !!resolvedDealId && rec.kind !== 'none';
-  const aiSuggestedStatus = normalizeSuggested(rec.new_stage);
+  // Pre-select a sensible default Stage from Settings based on the AI's
+  // legacy token (e.g. "interested" → first matching configured stage).
+  const aiSuggestedStageId = resolveAiStageId(rec.new_stage, lenderStageOptions);
+  const stageLabelById = (id: string) =>
+    lenderStageOptions.find((s) => s.id === id)?.label || id;
   const aiSuggestedDetailToken = (rec.suggested_detail || '').toLowerCase();
 
   /**
@@ -206,7 +210,10 @@ export function WorkflowIntelligenceCard({
   })();
 
   const [reason, setReason] = useState(rec.reason_note || '');
-  const [confirmedStatus, setConfirmedStatus] = useState<string>(aiSuggestedStatus);
+  // `confirmedStatus` is now a configured Lender Stage **id** (from
+  // Settings) rather than a hardcoded enum key. Persisted directly to
+  // deal_lenders.stage on confirm.
+  const [confirmedStatus, setConfirmedStatus] = useState<string>(aiSuggestedStageId);
   // Selected pass-reason LABELS — multi-select, capped at 3 to match the
   // deal-detail dialog UX.
   const [selectedReasonLabels, setSelectedReasonLabels] = useState<string[]>(aiSuggestedLabels);
@@ -218,10 +225,10 @@ export function WorkflowIntelligenceCard({
   // see the suggested action AND its supporting context at the same time
   // without paging.
 
-  const analysisKey = `${analysis.signal.type}::${rec.lender_id || rec.master_lender_id || rec.lender_name}::${rec.new_stage}::${rec.suggested_detail || ''}::${passReasonOptions.length}`;
+  const analysisKey = `${analysis.signal.type}::${rec.lender_id || rec.master_lender_id || rec.lender_name}::${rec.new_stage}::${rec.suggested_detail || ''}::${passReasonOptions.length}::${lenderStageOptions.length}`;
   if (renderedKey !== analysisKey) {
     setRenderedKey(analysisKey);
-    setConfirmedStatus(aiSuggestedStatus);
+    setConfirmedStatus(aiSuggestedStageId);
     setSelectedReasonLabels(aiSuggestedLabels);
     setReason(rec.reason_note || '');
     if (hasUpdate && rec.kind === 'lender_status') {
@@ -230,7 +237,7 @@ export function WorkflowIntelligenceCard({
         lender_id: rec.lender_id || null,
         master_lender_id: rec.master_lender_id || null,
         lender_name: rec.lender_name,
-        ai_suggested_status: aiSuggestedStatus,
+        ai_suggested_stage_id: aiSuggestedStageId,
         ai_suggested_detail: aiSuggestedDetailToken || null,
         ai_suggested_labels: aiSuggestedLabels,
         signal_type: analysis.signal.type,
@@ -240,12 +247,13 @@ export function WorkflowIntelligenceCard({
     }
   }
 
-  const userOverrodeStatus = confirmedStatus !== aiSuggestedStatus;
+  const userOverrodeStatus = confirmedStatus !== aiSuggestedStageId;
   const userOverrodeDetail =
     selectedReasonLabels.join('||') !== aiSuggestedLabels.join('||');
   const userOverrodeSuggestion = userOverrodeStatus || userOverrodeDetail;
   const isLenderStatus = rec.kind === 'lender_status';
-  const showDetailField = isLenderStatus && CLOSING_STATUSES.has(confirmedStatus);
+  const selectedStage = lenderStageOptions.find((s) => s.id === confirmedStatus);
+  const showDetailField = isLenderStatus && !!selectedStage && CLOSING_STAGE_GROUPS.has(selectedStage.group);
 
   // Lender association: trust the DB-backed resolver first (handles cases
   // where the AI didn't return a lender_id but the row is already on the
