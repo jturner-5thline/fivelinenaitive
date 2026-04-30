@@ -932,6 +932,54 @@ export function MeetingSchedulerCard({
 
       {/* Actions */}
       {!loadingBusy && !errorMsg && proposedSlots.length > 0 && (
+        <>
+        {/* Attendee preview — compact list of who will be invited, shown
+            right before the user confirms the slot so there are no
+            surprises when the calendar event is created. Mirrors the
+            exact attendees sent to Nylas in `confirmAndCreate`. */}
+        {stage === 'confirm' && (
+          <div className="rounded-md border border-white/10 bg-card/40 p-2 text-[11px]">
+            <div className="text-[10px] font-medium text-muted-foreground mb-1">
+              Attendees ({1 + (recipientEmail ? 1 : 0) + (partiesMode === 'me_plus' ? extraMembers.length : 0)})
+            </div>
+            <ul className="space-y-0.5">
+              {recipientEmail && (
+                <li className="flex items-center justify-between gap-2 min-w-0">
+                  <span className="truncate text-foreground/90">
+                    {recipientName || recipientEmail}
+                  </span>
+                  {recipientName && (
+                    <span className="truncate text-muted-foreground/80 text-[10px]">
+                      {recipientEmail}
+                    </span>
+                  )}
+                </li>
+              )}
+              <li className="flex items-center justify-between gap-2 min-w-0">
+                <span className="truncate text-foreground/90">
+                  {user?.email ? 'You' : 'You'}
+                </span>
+                {user?.email && (
+                  <span className="truncate text-muted-foreground/80 text-[10px]">
+                    {user.email}
+                  </span>
+                )}
+              </li>
+              {partiesMode === 'me_plus' && extraMembers.map((m) => (
+                <li key={m.id} className="flex items-center justify-between gap-2 min-w-0">
+                  <span className="truncate text-foreground/90">
+                    {m.display_name || m.email}
+                  </span>
+                  {m.email && (
+                    <span className="truncate text-muted-foreground/80 text-[10px]">
+                      {m.email}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <div className="flex items-center gap-2 pt-1">
           {stage === 'propose' ? (
             <>
@@ -983,6 +1031,7 @@ export function MeetingSchedulerCard({
             </>
           )}
         </div>
+        </>
       )}
     </div>
   );
