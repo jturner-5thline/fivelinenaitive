@@ -628,7 +628,18 @@ export function MeetingSchedulerCard({
                     className="h-3 w-3 accent-primary"
                   />
                 )}
-                <span className="text-foreground/85">{fmtSlot(slot, timezone)}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-foreground/85 truncate">{fmtSlot(slot, timezone)}</div>
+                  {/* Secondary line: same instant in the user's browser
+                      time zone, so they always see what the slot looks
+                      like locally. Hidden when the selected zone IS the
+                      browser zone (would be redundant). */}
+                  {timezone !== BROWSER_TZ && (
+                    <div className="text-[10.5px] text-muted-foreground/80 truncate">
+                      Your local time: {fmtSlotTimeOnly(slot, BROWSER_TZ)}
+                    </div>
+                  )}
+                </div>
               </label>
             );
           })}
