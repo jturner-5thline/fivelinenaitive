@@ -641,12 +641,13 @@ export function MeetingSchedulerCard({
   }, [stage]);
 
   const removeAttendee = useCallback((key: string) => {
+    const norm = normEmailKey(key);
     // Custom rows are dropped from `customAttendees`; defaults are masked
     // via `removedKeys` so re-entering confirm restores them naturally.
-    setCustomAttendees((prev) => prev.filter((c) => c.email.toLowerCase() !== key));
+    setCustomAttendees((prev) => prev.filter((c) => normEmailKey(c.email) !== norm));
     setRemovedKeys((prev) => {
       const next = new Set(prev);
-      next.add(key);
+      next.add(norm);
       return next;
     });
   }, []);
@@ -661,7 +662,7 @@ export function MeetingSchedulerCard({
       toast.error('Enter a valid email address.');
       return;
     }
-    const key = raw.toLowerCase();
+    const key = normEmailKey(raw);
     // If the email matches a previously-removed default, un-remove it
     // instead of adding a duplicate row.
     if (removedKeys.has(key)) {
