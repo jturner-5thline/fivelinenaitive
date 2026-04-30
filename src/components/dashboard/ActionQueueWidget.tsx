@@ -43,25 +43,20 @@ export function ActionQueueWidget() {
             <p className="text-xs font-medium text-foreground leading-tight truncate flex items-center gap-1.5">
               <span>Action Queue</span>
               {count > 0 && (
-                <Badge
-                  asChild
-                  variant="default"
-                  className="h-4 min-w-[16px] px-1 text-[10px] font-semibold bg-[hsl(var(--outlook-blue))] text-white border-0 leading-none cursor-pointer hover:bg-[hsl(var(--outlook-blue)/0.85)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--outlook-blue))] focus-visible:ring-offset-1"
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    // Stop bubbling so the surrounding tile-button doesn't
+                    // also fire (which would double-toggle the dialog).
+                    e.stopPropagation();
+                    handleOpenChange(true);
+                  }}
+                  aria-label={`${count} pending — open Action Queue`}
+                  title={`${count} pending — open Action Queue`}
+                  className="inline-flex items-center justify-center rounded-full h-4 min-w-[16px] px-1 text-[10px] font-semibold bg-[hsl(var(--outlook-blue))] text-white leading-none cursor-pointer hover:bg-[hsl(var(--outlook-blue)/0.85)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--outlook-blue))] focus-visible:ring-offset-1 transition-colors"
                 >
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      // Stop bubbling so the surrounding tile-button doesn't
-                      // also fire (which would double-toggle the dialog).
-                      e.stopPropagation();
-                      handleOpenChange(true);
-                    }}
-                    aria-label={`${count} pending — open Action Queue`}
-                    title={`${count} pending — open Action Queue`}
-                  >
-                    {count > 99 ? '99+' : count}
-                  </button>
-                </Badge>
+                  {count > 99 ? '99+' : count}
+                </button>
               )}
             </p>
             <p className="text-[11px] text-muted-foreground leading-tight truncate">
