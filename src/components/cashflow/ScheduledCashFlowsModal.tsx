@@ -414,6 +414,26 @@ export function ScheduledCashFlowsModal({
                                   {c}
                                 </SelectItem>
                               ))}
+                          {d.flow_type === 'cash_in' && extraCashInCategories.length > 0 && (
+                            <SelectGroup>
+                              <SelectLabel>Custom</SelectLabel>
+                              {extraCashInCategories.map((c) => (
+                                <SelectItem key={`custom-in-${c}`} value={c}>
+                                  {c}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          )}
+                          {d.flow_type === 'cash_out' && extraCashOutCategories.length > 0 && (
+                            <SelectGroup>
+                              <SelectLabel>Custom</SelectLabel>
+                              {extraCashOutCategories.map((c) => (
+                                <SelectItem key={`custom-out-${c}`} value={c}>
+                                  {c}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          )}
                         </SelectContent>
                       </Select>
 
