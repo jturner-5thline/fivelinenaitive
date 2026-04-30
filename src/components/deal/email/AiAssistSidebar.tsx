@@ -30,6 +30,7 @@ import { DealContextCard } from './DealContextCard';
 import { UnmatchedEmailContextCard } from './UnmatchedEmailContextCard';
 import { EmailUnifiedAiAction } from './EmailUnifiedAiAction';
 import { SaveToDealCard } from './SaveToDealCard';
+import { LenderDataAnswerCard } from './LenderDataAnswerCard';
 import type { DealContextSummary } from '@/hooks/useDealContextSummary';
 import { toast } from 'sonner';
 import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
