@@ -1,5 +1,5 @@
 import { useState, useEffect, memo, useCallback, useRef, useMemo } from 'react';
-import { ChevronDown, ChevronRight, MessageSquare, X, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, MessageSquare, X, Plus, Pencil } from 'lucide-react';
 import type { WeeklyData, SidebarData, PlanSnapshot, ThemeMode, WeeklyOverrides } from './types';
 import { fmtAbbrev } from './formatters';
 import { WeeklyCharts } from './WeeklyCharts';
@@ -817,7 +817,9 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                                 : ((planEntry[rowDef.key] as number) || 0))
                         : null;
                       const isOverridden = !!(isCashRow && overrideField && safeOverrides[weekKey]?.[overrideField] !== undefined);
-                      const editable = isAdmin && isCashRow && !!onCashOverride;
+                      // Beginning/Ending Cash cells are editable for any user — typing
+                      // a value writes a per-week override that persists until cleared.
+                      const editable = isCashRow && !!onCashOverride;
 
                       // Cell comment plumbing
                       const lineItemKey = isTransferAccount && transferAcc
@@ -895,7 +897,15 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                           ) : (
                             <div>{fmtAbbrev(displayVal)}</div>
                           )}
-                          {isOverridden && <span className="cf-override-dot" aria-hidden />}
+                          {isOverridden && (
+                            <span
+                              className="cf-override-badge"
+                              aria-label="Manually overridden"
+                              title="Manually overridden — double-click to clear"
+                            >
+                              <Pencil size={9} strokeWidth={2.5} />
+                            </span>
+                          )}
                           {cellCommentsHere.length > 0 && (
                             <span
                               className={`cf-cell-comment-indicator${cellCommentsHere.length > 1 ? ' has-multiple' : ''}`}
