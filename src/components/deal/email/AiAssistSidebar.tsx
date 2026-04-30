@@ -31,6 +31,7 @@ import { UnmatchedEmailContextCard } from './UnmatchedEmailContextCard';
 import { EmailUnifiedAiAction } from './EmailUnifiedAiAction';
 import { SaveToDealCard } from './SaveToDealCard';
 import { LenderDataAnswerCard } from './LenderDataAnswerCard';
+import { OutstandingItemMatchCard } from './OutstandingItemMatchCard';
 import type { DealContextSummary } from '@/hooks/useDealContextSummary';
 import { toast } from 'sonner';
 import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
@@ -784,6 +785,16 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               emails detected in drafts) plus the multi-deal picker prompt when
               auto-resolution was ambiguous. Render even without a linked deal so
               the user can still pick. */}
+          {/* Outstanding-item auto-detection: surfaces "X received from Y" and
+              "reply from requested contact" suggestions when the email
+              attachments / sender match an open outstanding item on the deal. */}
+          <OutstandingItemMatchCard
+            dealId={dealId}
+            dealName={dealName}
+            thread={thread}
+            attachments={drAttachments}
+          />
+
           <SuggestedDealUpdatesSection
             dealId={dealId}
             dealName={dealName}
