@@ -51,6 +51,10 @@ interface Props {
   open: boolean;
   initialEntries: ScheduledCashFlow[];
   onClose: () => void;
+  /** Extra user-defined Cash-In category labels to append to the dropdown. */
+  extraCashInCategories?: string[];
+  /** Extra user-defined Cash-Out category labels to append to the dropdown. */
+  extraCashOutCategories?: string[];
   /**
    * `entries` are the rows to persist (existing rows are matched by `id`,
    * new rows have empty `id`). `deleteIds` is the explicit list of ids the
@@ -134,7 +138,14 @@ function DatePickerField({
   );
 }
 
-export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave }: Props) {
+export function ScheduledCashFlowsModal({
+  open,
+  initialEntries,
+  onClose,
+  onSave,
+  extraCashInCategories = [],
+  extraCashOutCategories = [],
+}: Props) {
   const [drafts, setDrafts] = useState<DraftEntry[]>([]);
   const [saving, setSaving] = useState(false);
   // Ids of existing entries the user explicitly removed in this session.
