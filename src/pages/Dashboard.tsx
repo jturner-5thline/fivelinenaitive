@@ -40,6 +40,14 @@ import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 import { useAiActionQueue, useAiActionQueueCount } from '@/hooks/useAiActionQueue';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { perfMark, perfMeasure } from '@/lib/perfMarks';
+
+// Mark module evaluation as the start of the Dashboard mount window.
+// Paired with the post-mount measure below to surface initial-load latency
+// in the browser User Timing track during dev profiling.
+if (typeof performance !== 'undefined') {
+  perfMark('dashboard:mount-start');
+}
 
 /**
  * Shared interaction styles for the dashboard widget tiles
