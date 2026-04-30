@@ -906,10 +906,68 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   }, [searchQuery, searchMode, aiSearchCandidates]);
 
 
+  // ─── Selected message resolution (per-message inbox rows) ──────────────
+  // The inbox renders ONE ROW PER MESSAGE (Gmail "All Mail" behavior). Each
+  // row's `threadId` is actually the individual message id and `latestEmail`
+  // is the clicked message. The reading pane needs:
+  //   • `latestEmail` = the message the user clicked (drives sender/body/UI)
+  //   • `emails`      = the surrounding conversation, freshest data
+  //
+  // Trust `selectedThread.latestEmail.id` as the canonical key, then re-hydrate
+  // the conversation context from the live `emails` array so the detail pane
+  // always renders the latest read/star state and any newly-arrived sibling
+  // messages.
   const currentThread = useMemo(() => {
     if (!selectedThread) return null;
-    const threads = groupEmailsByThread(emails);
-    return threads.find(t => t.threadId === selectedThread.threadId) || null;
+    try {
+      const selectedMsgId = selectedThread.latestEmail?.id;
+      // Locate the message itself first — survives id-mismatch, deletes, etc.
+      const liveMsg =
+        (selectedMsgId && emails.find(e => e.id === selectedMsgId)) ||
+        selectedThread.latestEmail ||
+        null;
+      if (!liveMsg) return null;
+
+      // Hydrate the surrounding conversation by provider thread id (or fall
+      // back to the local threadId on the message itself).
+      const convoKey = liveMsg.provider_thread_id || liveMsg.threadId;
+      const convoEmails = convoKey
+        ? emails
+            .filter(
+              e =>
+                (e.provider_thread_id || e.threadId) === convoKey,
+            )
+            .sort(
+              (a, b) =>
+                new Date(b.received_at).getTime() -
+                new Date(a.received_at).getTime(),
+            )
+        : [liveMsg];
+
+      return {
+        ...selectedThread,
+        threadId: liveMsg.id, // per-message identity for the detail pane
+        provider_thread_id: liveMsg.provider_thread_id ?? null,
+        subject: liveMsg.subject || selectedThread.subject || '(no subject)',
+        latestEmail: liveMsg,
+        emails: convoEmails.length > 0 ? convoEmails : [liveMsg],
+        hasUnread: !liveMsg.is_read,
+        isStarred: !!liveMsg.is_starred,
+        isLinked: !!liveMsg.is_linked_to_deal,
+        hasAttachments: !!liveMsg.has_attachments,
+        needsResponse: !!liveMsg.needs_response,
+        category: liveMsg.category,
+      } as typeof selectedThread;
+    } catch (err) {
+      console.error('[DealEmailsTab] currentThread resolution failed', {
+        err,
+        selectedThreadId: selectedThread?.threadId,
+        selectedMsgId: selectedThread?.latestEmail?.id,
+        emailsCount: emails.length,
+      });
+      // Fail soft — keep the selection (detail pane shows fallback)
+      return selectedThread;
+    }
   }, [emails, selectedThread]);
 
   // Stabilize so memoized ThreadListRow / ThreadListItem instances don't get
