@@ -130,6 +130,7 @@ function QuickActionTile({
   onKeyDown,
   className,
   ariaLabel,
+  badgeCount,
 }: {
   label: string;
   icon: React.ComponentType<any>;
@@ -138,6 +139,7 @@ function QuickActionTile({
   onKeyDown?: (e: React.KeyboardEvent<HTMLDivElement>) => void;
   className?: string;
   ariaLabel?: string;
+  badgeCount?: number;
 }) {
   return (
     <Card
@@ -154,6 +156,14 @@ function QuickActionTile({
       />
       <Icon className={TILE_ICON_CLASSES} strokeWidth={1.75} />
       <span className={TILE_LABEL_CLASSES}>{label}</span>
+      {typeof badgeCount === 'number' && badgeCount > 0 && (
+        <Badge
+          variant="destructive"
+          className="absolute top-1.5 right-1.5 h-4 min-w-4 px-1 text-[10px] leading-none"
+        >
+          {badgeCount > 99 ? '99+' : badgeCount}
+        </Badge>
+      )}
     </Card>
   );
 }
