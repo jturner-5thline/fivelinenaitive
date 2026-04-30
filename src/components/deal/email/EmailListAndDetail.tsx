@@ -585,9 +585,16 @@ interface EmailListProps {
   onMarkUnread?: (email: MockEmail) => void;
   onArchive?: (email: MockEmail) => void;
   onDelete?: (email: MockEmail) => void;
+  /**
+   * When provided, the list virtualizes its rows using the given element as
+   * the scroll parent. Off-screen rows are not rendered. The parent retains
+   * ownership of the scroll container so existing pagination footers /
+   * IntersectionObservers continue to work unchanged.
+   */
+  scrollParent?: HTMLElement | null;
 }
 
-export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink, onToggleStar, isLoading, selectedIds, onSelectionChange, onMarkRead, onMarkUnread, onArchive, onDelete }: EmailListProps) {
+export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink, onToggleStar, isLoading, selectedIds, onSelectionChange, onMarkRead, onMarkUnread, onArchive, onDelete, scrollParent }: EmailListProps) {
   const { evaluate: evaluateAutoLabels } = useAutoEmailLabelEvaluator();
   // Detect high-priority deal signals (e.g. "due diligence", "term sheet",
   // "wire", "signed") and dispatch in-app + Slack notifications. Returns a
