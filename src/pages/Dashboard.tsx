@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useSearchParams } from 'react-router-dom';
-import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Briefcase, LayoutTemplate, Newspaper, Handshake } from 'lucide-react';
+import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Briefcase, LayoutTemplate, Newspaper, Handshake, Inbox as InboxIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
 import { InboxDialog } from '@/components/dashboard/InboxDialog';
@@ -22,6 +22,10 @@ import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { AddWidgetDialog } from '@/components/dashboard/AddWidgetDialog';
 import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
 import { EmailIntelligenceWidget } from '@/components/dashboard/EmailIntelligenceWidget';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
+import { useAiActionQueue, useAiActionQueueCount } from '@/hooks/useAiActionQueue';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 /**
@@ -126,6 +130,7 @@ function QuickActionTile({
   onKeyDown,
   className,
   ariaLabel,
+  badgeCount,
 }: {
   label: string;
   icon: React.ComponentType<any>;
@@ -134,6 +139,7 @@ function QuickActionTile({
   onKeyDown?: (e: React.KeyboardEvent<HTMLDivElement>) => void;
   className?: string;
   ariaLabel?: string;
+  badgeCount?: number;
 }) {
   return (
     <Card
@@ -150,6 +156,14 @@ function QuickActionTile({
       />
       <Icon className={TILE_ICON_CLASSES} strokeWidth={1.75} />
       <span className={TILE_LABEL_CLASSES}>{label}</span>
+      {typeof badgeCount === 'number' && badgeCount > 0 && (
+        <Badge
+          variant="destructive"
+          className="absolute top-1.5 right-1.5 h-4 min-w-4 px-1 text-[10px] leading-none"
+        >
+          {badgeCount > 99 ? '99+' : badgeCount}
+        </Badge>
+      )}
     </Card>
   );
 }
@@ -403,6 +417,11 @@ export default function Dashboard() {
   const [pendingRemoval, setPendingRemoval] = useState<{ widgetId: string; widget: WidgetConfig; gridItem: GridItem } | null>(null);
   const [dealsDialogOpen, setDealsDialogOpen] = useState(false);
   const [dealsInitialView, setDealsInitialView] = useState<DealsCarouselView | undefined>(undefined);
+  // Action Queue modal — opened from the top-row quick-action tile so the
+  // queue stays a first-class shortcut rather than a sibling card.
+  const [actionQueueOpen, setActionQueueOpen] = useState(false);
+  const actionQueueCount = useAiActionQueueCount();
+  const { data: actionQueueItems = [] } = useAiActionQueue();
 
   // Sync tab from URL query params
   useEffect(() => {
@@ -581,6 +600,7 @@ export default function Dashboard() {
     const skeletonTileCount =
       4 /* base */ +
       1 /* always-on Deals tile */ +
+      1 /* always-on Action Queue tile */ +
       (isJTurner ? 1 : 0) +
       (canSeeNiki ? 1 : 0) +
       (is5thLine ? 1 : 0);
@@ -666,9 +686,9 @@ export default function Dashboard() {
             // who is allowed to see it (jturner included). For jturner the
             // tiles are also reordered via Tailwind `order-*` classes.
             const nikiInTopRow = canSeeNiki;
-            // Base tiles: Calendar + Email + Deals (AI insights). New Deal
-            // moved to the dashboard action row next to Templates.
-            const tileCount = 3 + (isJTurner ? 1 : 0) + (nikiInTopRow ? 1 : 0) + (is5thLine ? 1 : 0);
+            // Base tiles: Calendar + Email + Action Queue + Deals (AI insights).
+            // New Deal moved to the dashboard action row next to Templates.
+            const tileCount = 4 + (isJTurner ? 1 : 0) + (nikiInTopRow ? 1 : 0) + (is5thLine ? 1 : 0);
             const gridColsClass =
               tileCount >= 8 ? 'grid-cols-4 sm:grid-cols-8'
               : tileCount === 7 ? 'grid-cols-4 sm:grid-cols-7'
@@ -707,6 +727,19 @@ export default function Dashboard() {
                   openCarouselWidget('email', e.currentTarget as HTMLElement),
                 )
               }
+            />
+            {/* Action Queue tile — first-class quick-action sibling to
+                Calendar/Email/Deals. Click opens the queue modal so deferred
+                AI suggestions are one tap away from the dashboard hero. */}
+            <QuickActionTile
+              label="Action Queue"
+              icon={InboxIcon}
+              category="inbox"
+              ariaLabel={`Open Action Queue${actionQueueCount > 0 ? `, ${actionQueueCount} pending` : ''}`}
+              badgeCount={actionQueueCount}
+              className={cn(isJTurner && 'order-3')}
+              onClick={() => setActionQueueOpen(true)}
+              onKeyDown={(e) => handleTileKeyDown(e, () => setActionQueueOpen(true))}
             />
             {isJTurner && (
               <QuickActionTile
@@ -752,7 +785,7 @@ export default function Dashboard() {
                 label="Deal Rundown"
                 icon={Briefcase}
                 category="pipeline"
-                className={cn(isJTurner && 'order-3')}
+                className={cn(isJTurner && 'order-4')}
                 onClick={(e) => openCarouselWidget('deal-rundown', e.currentTarget as HTMLElement)}
                 onKeyDown={(e) =>
                   handleTileKeyDown(e, () =>
@@ -963,6 +996,14 @@ export default function Dashboard() {
         }}
         initialView={dealsInitialView}
       />
+      <Dialog open={actionQueueOpen} onOpenChange={setActionQueueOpen}>
+        <DialogContent className="sm:max-w-[640px] p-0 overflow-hidden flex flex-col max-h-[80vh]">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Action Queue</DialogTitle>
+          </DialogHeader>
+          <ActionQueuePanel items={actionQueueItems} onClose={() => setActionQueueOpen(false)} />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
