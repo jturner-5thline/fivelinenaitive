@@ -728,6 +728,19 @@ export default function Dashboard() {
                 )
               }
             />
+            {/* Action Queue tile — first-class quick-action sibling to
+                Calendar/Email/Deals. Click opens the queue modal so deferred
+                AI suggestions are one tap away from the dashboard hero. */}
+            <QuickActionTile
+              label="Action Queue"
+              icon={InboxIcon}
+              category="inbox"
+              ariaLabel={`Open Action Queue${actionQueueCount > 0 ? `, ${actionQueueCount} pending` : ''}`}
+              badgeCount={actionQueueCount}
+              className={cn(isJTurner && 'order-3')}
+              onClick={() => setActionQueueOpen(true)}
+              onKeyDown={(e) => handleTileKeyDown(e, () => setActionQueueOpen(true))}
+            />
             {isJTurner && (
               <QuickActionTile
                 label="Daily Briefing"
@@ -772,7 +785,7 @@ export default function Dashboard() {
                 label="Deal Rundown"
                 icon={Briefcase}
                 category="pipeline"
-                className={cn(isJTurner && 'order-3')}
+                className={cn(isJTurner && 'order-4')}
                 onClick={(e) => openCarouselWidget('deal-rundown', e.currentTarget as HTMLElement)}
                 onKeyDown={(e) =>
                   handleTileKeyDown(e, () =>
