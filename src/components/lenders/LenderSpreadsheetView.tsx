@@ -206,13 +206,13 @@ export function LenderSpreadsheetView({
     
     if (sortState.column === columnKey) {
       if (sortState.direction === 'asc') {
-        return <ArrowUp className="h-3 w-3 ml-1 text-primary" />;
+        return <ArrowUp className="h-3 w-3 ml-1 text-[hsl(292,46%,72%)]" />;
       }
       if (sortState.direction === 'desc') {
-        return <ArrowDown className="h-3 w-3 ml-1 text-primary" />;
+        return <ArrowDown className="h-3 w-3 ml-1 text-[hsl(292,46%,72%)]" />;
       }
     }
-    return <ArrowUpDown className="h-3 w-3 ml-1 text-muted-foreground/50" />;
+    return <ArrowUpDown className="h-3 w-3 ml-1 text-muted-foreground/30 group-hover:text-muted-foreground/60" />;
   };
 
   return (
