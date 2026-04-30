@@ -25,13 +25,21 @@ export function ActionQueueWidget() {
 
   return (
     <>
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => handleOpenChange(true)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleOpenChange(true);
+          }
+        }}
         className={cn(
-          'group mb-3 w-full rounded-xl border border-border/40 bg-card/60 backdrop-blur',
+          'group mb-3 w-full rounded-xl border border-border/40 bg-card/60 backdrop-blur cursor-pointer',
           'supports-[backdrop-filter]:bg-card/40 px-3 py-2.5 flex items-center justify-between gap-3',
           'transition-colors hover:bg-card/80 hover:border-border/60 text-left',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         )}
         aria-label={`Open Action Queue${count > 0 ? `, ${count} pending` : ''}`}
       >
@@ -69,7 +77,7 @@ export function ActionQueueWidget() {
         <div className="flex items-center gap-2 shrink-0">
           <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
         </div>
-      </button>
+      </div>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[640px] p-0 overflow-hidden flex flex-col max-h-[80vh]">
