@@ -11,9 +11,11 @@ import type { DealsCarouselView } from '@/components/dashboard/DealsCarouselDial
 const DailyBriefingModal = lazy(() =>
   import('@/components/dashboard/DailyBriefingModal').then(m => ({ default: m.DailyBriefingModal })),
 );
-const InboxDialog = lazy(() =>
-  import('@/components/dashboard/InboxDialog').then(m => ({ default: m.InboxDialog })),
-);
+// InboxDialog is eagerly imported (NOT lazy) so the modal can paint
+// instantly from the prefetched inbox cache on click. Lazy-loading this
+// chunk previously added 1–2s of network + parse latency between the
+// click and the first list paint, defeating the prefetch.
+import { InboxDialog } from '@/components/dashboard/InboxDialog';
 const DealsCarouselDialog = lazy(() =>
   import('@/components/dashboard/DealsCarouselDialog').then(m => ({ default: m.DealsCarouselDialog })),
 );
