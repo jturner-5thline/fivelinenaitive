@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Mail, AlertCircle } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Loader2, Mail, AlertCircle, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -38,8 +39,11 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   dealId: string;
   dealName?: string | null;
-  /** Called with the names of lenders to INCLUDE in the upcoming submission. */
-  onConfirm: (includedLenderNames: string[]) => void;
+  /**
+   * Called with the names of lenders to INCLUDE in the upcoming submission
+   * plus whether to personalize each draft to the lender's profile.
+   */
+  onConfirm: (includedLenderNames: string[], personalize: boolean) => void;
 }
 
 const STATUS_META: Record<LenderReviewStatus, { label: string; className: string }> = {
@@ -68,6 +72,9 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<LenderReviewRow[]>([]);
   const [confirming, setConfirming] = useState(false);
+  // Default ON — per-lender personalization is the higher-quality choice
+  // and matches how senior bankers actually pitch deals.
+  const [personalize, setPersonalize] = useState(true);
 
   // Load lenders fresh every time the dialog opens so status is current.
   useEffect(() => {
