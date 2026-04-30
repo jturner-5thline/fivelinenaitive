@@ -1,7 +1,13 @@
 // Helpers and types for scheduled cash flow entries
 import type { WeeklyData } from './types';
 
-export type FrequencyType = 'one_time' | 'weekly' | 'monthly_first' | 'monthly_last' | 'monthly_day';
+export type FrequencyType =
+  | 'one_time'
+  | 'weekly'
+  | 'bi_weekly'
+  | 'monthly_first'
+  | 'monthly_last'
+  | 'monthly_day';
 export type FlowType = 'cash_in' | 'cash_out';
 
 export interface FrequencyConfig {
@@ -9,6 +15,8 @@ export interface FrequencyConfig {
   day_of_week?: number;         // 0=Sun..6=Sat
   ordinal_day_of_week?: number; // for monthly_first / monthly_last (0..6)
   day_of_month?: number;        // 1..31 for monthly_day
+  /** Optional ± variance percentage applied per occurrence (e.g. 10 = ±10%). */
+  variance_pct?: number;
 }
 
 export interface ScheduledCashFlow {
@@ -156,6 +164,37 @@ export function resolveCategoryToGridRow(category: string): string {
 
 export const DAY_OF_WEEK_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+/**
+ * Deterministic pseudo-random in [-1, 1] from a string seed (entry id + date).
+ * Stable across renders so the projected weekly grid does not flicker.
+ */
+function seededUnit(seed: string): number {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  // Map to [-1, 1]
+  return ((h % 20001) - 10000) / 10000;
+}
+
+/**
+ * Apply optional ± Variance % to a base amount, deterministically per
+ * (entry, occurrence date). Returns the base amount when variance is
+ * unset / zero / invalid.
+ */
+export function applyVariance(
+  baseAmount: number,
+  variancePct: number | undefined | null,
+  seedKey: string,
+): number {
+  const v = Number(variancePct);
+  if (!Number.isFinite(v) || v <= 0) return baseAmount;
+  const factor = 1 + (v / 100) * seededUnit(seedKey);
+  // Clamp to non-negative
+  return Math.max(0, baseAmount * factor);
+}
+
 function parseDate(s: string): Date {
   return new Date(s + 'T00:00:00');
 }
@@ -206,6 +245,19 @@ export function generateOccurrences(
     while (cur <= effectiveEnd) {
       dates.push(fmtDate(cur));
       cur.setDate(cur.getDate() + 7);
+    }
+    return dates;
+  }
+
+  if (entry.frequency_type === 'bi_weekly') {
+    const dow = cfg.day_of_week ?? 1;
+    const cur = new Date(effectiveStart);
+    while (cur.getDay() !== dow && cur <= effectiveEnd) {
+      cur.setDate(cur.getDate() + 1);
+    }
+    while (cur <= effectiveEnd) {
+      dates.push(fmtDate(cur));
+      cur.setDate(cur.getDate() + 14);
     }
     return dates;
   }
@@ -307,7 +359,12 @@ export function mergeScheduledIntoWeekly(
       // what makes a Configure "Retainer" entry land in the visible
       // "Retainers" row, "Payroll Expense" in "Payroll - Salaries", etc.
       const cat = resolveCategoryToGridRow(entry.category);
-      const amt = Number(entry.amount) || 0;
+      const baseAmt = Number(entry.amount) || 0;
+      const amt = applyVariance(
+        baseAmt,
+        entry.frequency_config?.variance_pct,
+        `${entry.id || entry.category}:${occ}`,
+      );
       target[cat] = (Number(target[cat]) || 0) + amt;
       // Note: parent "Advisors Revenue" value is computed in the weekly view as
       // the sum of its sub-categories, so we do NOT write to the parent key here.

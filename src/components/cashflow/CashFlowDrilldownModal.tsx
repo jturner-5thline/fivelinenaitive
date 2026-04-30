@@ -9,6 +9,7 @@ import {
   CASH_IN_CATEGORIES,
   CASH_OUT_CATEGORIES,
   CANONICAL_TO_GRID_ROW,
+  applyVariance,
   type ScheduledCashFlow,
 } from './scheduledCashFlows';
 import { fmt } from './formatters';
@@ -129,7 +130,12 @@ export function CashFlowDrilldownModal({ open, onClose, context, items }: Props)
 
       const occurrences = generateOccurrences(entry, rangeStart, rangeEnd);
       for (const occ of occurrences) {
-        const amt = Number(entry.amount) || 0;
+        const base = Number(entry.amount) || 0;
+        const amt = applyVariance(
+          base,
+          entry.frequency_config?.variance_pct,
+          `${entry.id || entry.category}:${occ}`,
+        );
         out.push({
           id: `${entry.id}-${occ}`,
           date: occ,
