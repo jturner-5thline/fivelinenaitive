@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Loader2, MessageSquare, ArrowRight, Copy, AlertCircle, FileText, Check } from 'lucide-react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { Loader2, MessageSquare, ArrowRight, Copy, AlertCircle, FileText, Check, ListChecks } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -53,10 +53,56 @@ function buildReplyInsert(question: string, answer: string): string {
   return `Re: ${question.replace(/\s+/g, ' ').trim()}\n\n${trimmed}\n`;
 }
 
+/**
+ * Compose a single consolidated reply block that addresses every detected
+ * question as bullet points. Skips entries the model couldn't answer from
+ * the Deal Space (so the lender never sees "Not in deal record" injected
+ * silently into a reply — those still surface as a closing note).
+ *
+ * Format:
+ *   Below are the answers to your questions, based on our deal record:
+ *
+ *   • [Question topic] — [Answer]
+ *   • [Question topic] — [Answer]
+ *
+ *   For [topic], we don't have this on file yet — happy to follow up.
+ */
+function buildConsolidatedInsert(
+  pairs: { question: DetectedQuestion; state: AnswerState }[],
+): string {
+  const answered = pairs.filter((p) => p.state.content && !p.state.missing);
+  const missing = pairs.filter((p) => p.state.content && p.state.missing);
+  if (answered.length === 0 && missing.length === 0) return '';
+
+  const lines: string[] = [];
+  if (answered.length > 0) {
+    lines.push('Below are the answers to your questions, based on our deal record:');
+    lines.push('');
+    for (const { question, state } of answered) {
+      const topic = (question.topics[0] || question.text).trim();
+      const ans = (state.content || '').trim().replace(/\s+/g, ' ');
+      lines.push(`• ${topic} — ${ans}`);
+    }
+  }
+  if (missing.length > 0) {
+    if (lines.length) lines.push('');
+    const topics = missing.map((m) => (m.question.topics[0] || m.question.text).trim());
+    lines.push(
+      `For ${topics.join(', ')}, we don't have this on file yet — happy to follow up once available.`,
+    );
+  }
+  lines.push('');
+  return lines.join('\n');
+}
+
 export function LenderDataAnswerCard({ emailBodyText, dealId, dealName, onInsertIntoReply }: Props) {
   const questions = useMemo(() => detectDataQuestions(emailBodyText), [emailBodyText]);
   const [active, setActive] = useState<DetectedQuestion | null>(null);
   const [answers, setAnswers] = useState<Record<string, AnswerState>>({});
+  // Tracks the "Answer all" parallel batch so we can render a single
+  // unified spinner/disabled state across the chip row instead of N
+  // individual loaders racing each other.
+  const [batchLoading, setBatchLoading] = useState(false);
 
   // Reset when the underlying email body changes (new thread / new message).
   useEffect(() => {
@@ -68,19 +114,20 @@ export function LenderDataAnswerCard({ emailBodyText, dealId, dealName, onInsert
 
   const answerState = active ? (answers[active.id] || EMPTY) : EMPTY;
 
-  const runAnswer = async (q: DetectedQuestion) => {
-    setActive(q);
-    if (answers[q.id]?.content) return; // already cached
-    setAnswers((s) => ({ ...s, [q.id]: { ...EMPTY, loading: true } }));
-    try {
-      const { data, error } = await supabase.functions.invoke('deal-space-ai', {
-        body: {
-          dealId,
-          scope: 'all',
-          messages: [
-            {
-              role: 'user',
-              content:
+  /**
+   * Issue a single Deal Space query for one detected question. Pulled into
+   * a standalone helper so both single-chip clicks and the parallel
+   * "Answer all" path share identical prompt + parsing logic.
+   */
+  const fetchAnswer = useCallback(async (q: DetectedQuestion): Promise<AnswerState> => {
+    const { data, error } = await supabase.functions.invoke('deal-space-ai', {
+      body: {
+        dealId,
+        scope: 'all',
+        messages: [
+          {
+            role: 'user',
+            content:
 `A lender asked the following question by email about this deal. Answer ONLY using data already in the Deal Space (financials, debt schedule, collateral, use of funds, write-up, transcripts, outstanding items, notes, attachments).
 
 Rules:
@@ -91,24 +138,30 @@ Rules:
 
 QUESTION:
 "${q.text}"`,
-            },
-          ],
-        },
-      });
-      if (error) throw new Error(error.message || 'Request failed');
-      if (data?.error) throw new Error(data.error);
-      const content: string = (data?.content || '').trim();
-      const sources: string[] = Array.isArray(data?.sources) ? data.sources : [];
-      setAnswers((s) => ({
-        ...s,
-        [q.id]: {
-          loading: false,
-          content,
-          sources,
-          missing: isMissingInfo(content),
-          error: null,
-        },
-      }));
+          },
+        ],
+      },
+    });
+    if (error) throw new Error(error.message || 'Request failed');
+    if (data?.error) throw new Error(data.error);
+    const content: string = (data?.content || '').trim();
+    const sources: string[] = Array.isArray(data?.sources) ? data.sources : [];
+    return {
+      loading: false,
+      content,
+      sources,
+      missing: isMissingInfo(content),
+      error: null,
+    };
+  }, [dealId]);
+
+  const runAnswer = useCallback(async (q: DetectedQuestion) => {
+    setActive(q);
+    if (answers[q.id]?.content) return; // already cached
+    setAnswers((s) => ({ ...s, [q.id]: { ...EMPTY, loading: true } }));
+    try {
+      const next = await fetchAnswer(q);
+      setAnswers((s) => ({ ...s, [q.id]: next }));
     } catch (err: any) {
       console.error('[LenderDataAnswer] error:', err);
       setAnswers((s) => ({
@@ -116,7 +169,76 @@ QUESTION:
         [q.id]: { ...EMPTY, error: err?.message || 'Failed to answer.' },
       }));
     }
-  };
+  }, [answers, fetchAnswer]);
+
+  /**
+   * Answer every detected question in parallel, then insert one
+   * consolidated bullet-point block into the active reply. Cached answers
+   * are reused — only un-answered questions hit the edge function.
+   * On completion the active chip is set to the first question so the
+   * user can still drill in and edit individual answers if desired.
+   */
+  const runAnswerAll = useCallback(async () => {
+    if (questions.length === 0 || batchLoading) return;
+    setBatchLoading(true);
+    // Optimistically mark every uncached question as loading so chips
+    // reflect the in-flight batch.
+    setAnswers((s) => {
+      const next = { ...s };
+      for (const q of questions) {
+        if (!next[q.id]?.content) {
+          next[q.id] = { ...EMPTY, loading: true };
+        }
+      }
+      return next;
+    });
+    try {
+      const results = await Promise.all(
+        questions.map(async (q) => {
+          const cached = answers[q.id];
+          if (cached?.content) return { q, state: cached };
+          try {
+            const state = await fetchAnswer(q);
+            return { q, state };
+          } catch (err: any) {
+            console.error('[LenderDataAnswer] batch error for', q.id, err);
+            return {
+              q,
+              state: { ...EMPTY, error: err?.message || 'Failed to answer.' } as AnswerState,
+            };
+          }
+        }),
+      );
+      // Commit all state updates in a single render pass.
+      setAnswers((s) => {
+        const next = { ...s };
+        for (const { q, state } of results) next[q.id] = state;
+        return next;
+      });
+      const insert = buildConsolidatedInsert(
+        results.map(({ q, state }) => ({ question: q, state })),
+      );
+      if (insert) {
+        onInsertIntoReply(insert);
+        const answeredCount = results.filter((r) => r.state.content && !r.state.missing).length;
+        const missingCount = results.filter((r) => r.state.content && r.state.missing).length;
+        if (answeredCount > 0) {
+          toast.success(
+            `Inserted ${answeredCount} answer${answeredCount === 1 ? '' : 's'}` +
+            (missingCount > 0 ? ` · ${missingCount} not in deal record` : ''),
+          );
+        } else {
+          toast.info("None of the questions could be answered from the deal record");
+        }
+      } else {
+        toast.error('No answers returned.');
+      }
+      // Surface the first question so the detail panel reflects the batch.
+      if (!active && questions[0]) setActive(questions[0]);
+    } finally {
+      setBatchLoading(false);
+    }
+  }, [questions, answers, fetchAnswer, batchLoading, active, onInsertIntoReply]);
 
   const handleCopy = async () => {
     if (!answerState.content) return;
@@ -146,6 +268,34 @@ QUESTION:
           {questions.length} question{questions.length === 1 ? '' : 's'} detected
         </span>
       </div>
+
+      {/* Batch action — visible whenever 2+ questions are detected.
+          Runs every question in parallel against deal-space-ai and inserts
+          a single consolidated bullet-point block into the reply. Cached
+          answers are re-used so re-running is cheap. */}
+      {questions.length >= 2 && (
+        <div className="flex items-center justify-between gap-2 rounded-md border border-primary/20 bg-primary/[0.06] px-2 py-1.5">
+          <div className="flex items-center gap-1.5 text-[11px] text-foreground/85 min-w-0">
+            <ListChecks className="h-3 w-3 text-primary shrink-0" />
+            <span className="truncate">
+              Answer all {questions.length} questions and insert as bullet points
+            </span>
+          </div>
+          <Button
+            size="sm"
+            className="h-6 text-[11px] gap-1 px-2 shrink-0 bg-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/90"
+            onClick={runAnswerAll}
+            disabled={batchLoading}
+          >
+            {batchLoading ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <ListChecks className="h-3 w-3" />
+            )}
+            Answer all
+          </Button>
+        </div>
+      )}
 
       {/* Question chips — scrollable single row, mirrors the draft-intent chips style. */}
       <div
