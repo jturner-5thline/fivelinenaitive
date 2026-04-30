@@ -11,6 +11,10 @@ import {
   AlertTriangle,
   ArrowRight,
   Bookmark,
+  ChevronDown,
+  Briefcase,
+  User as UserIcon,
+  Building2,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { cn } from '@/lib/utils';
@@ -26,6 +30,7 @@ import { SendToDataRoomDialog } from './SendToDataRoomDialog';
 import { useFullEmailMessage } from './useFullEmailMessage';
 import { useEmailToDataRoom, type DataRoomDestinationSuggestion } from '@/hooks/useEmailToDataRoom';
 import { SuggestedDealUpdatesSection } from './SuggestedDealUpdatesSection';
+import { SuggestedTaskCards } from './SuggestedTaskCards';
 import { DataRoomUploadSuggestionCard } from './DataRoomUploadSuggestionCard';
 import { DealContextCard } from './DealContextCard';
 import { UnmatchedEmailContextCard } from './UnmatchedEmailContextCard';
