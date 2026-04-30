@@ -120,6 +120,14 @@ export function LenderDataAnswerCard({ emailBodyText, dealId, dealName, onInsert
    * "Answer all" path share identical prompt + parsing logic.
    */
   const fetchAnswer = useCallback(async (q: DetectedQuestion): Promise<AnswerState> => {
+    // Surface the heuristic's best-guess Deal Space fields to the model so
+    // it searches the right corner first (e.g. "DSCR" → debt schedule).
+    // The model is still required to ground its answer in real data — the
+    // hint is a starting point, not a license to invent.
+    const fieldHint =
+      q.suggestedFields && q.suggestedFields.length > 0
+        ? `\nLIKELY SOURCES (search these first; do not invent if absent):\n- ${q.suggestedFields.join('\n- ')}\n`
+        : '';
     const { data, error } = await supabase.functions.invoke('deal-space-ai', {
       body: {
         dealId,
@@ -135,7 +143,7 @@ Rules:
 - Quote the figure or status exactly as it appears in the source. Do NOT round or restate.
 - If the answer is NOT in the deal record, reply with exactly: "This information isn't in the deal record." Then suggest the type of document the user could request from the client. Do NOT guess.
 - Never invent numbers, dates, lenders, or commitments.
-
+${fieldHint}
 QUESTION:
 "${q.text}"`,
           },
