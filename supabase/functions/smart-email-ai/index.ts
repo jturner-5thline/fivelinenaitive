@@ -1083,7 +1083,12 @@ CONFIDENCE:
 If the email is internal commentary only (kind="internal_note"), recommended_update should be {"kind":"none"}.
 
 SUGGESTED TASKS:
-- Detect clear next-action language in the inbound email — e.g. "send the due diligence list", "follow up with a term sheet", "schedule a call", "confirm the wire", "share the model", "circle back next week", "get me the cap table".
+- Detect clear next-action language in the inbound email. Trigger phrases include (non-exhaustive):
+  • "send the due diligence list" / "please send over" / "can you send" / "share the model" / "get me the cap table"
+  • "follow up with a term sheet" / "circle back next week" / "follow up on …"
+  • "schedule a call" / "let's set up a call" / "let's get on a call" / "set up time"
+  • "confirm the wire" / "confirm the …" / "approve the …"
+  Treat polite/ask variants ("please …", "can you …", "could you …", "would you …", "let's …") as equivalent to the imperative form.
 - Each detected next action becomes ONE entry in suggested_tasks. Up to 3 tasks max. Return [] when there is no clear next action.
 - Title MUST be a concrete, action-verb-led sentence pre-filled from the email context. Include the counterparty name and the deal name when they are known. Examples:
   • "Send due diligence list to Steven Adler @ Prospeq"
