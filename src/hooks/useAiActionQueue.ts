@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -57,9 +57,58 @@ export interface EnqueueArgs {
 }
 
 const QUEUE_KEY = ['ai-action-queue'] as const;
+const QUEUE_COUNT_KEY = ['ai-action-queue-count'] as const;
+
+/** Trailing-edge debounce window for realtime-driven refetches. Bursts of
+ * row changes (bulk approve, multi-insert) are coalesced into a single
+ * invalidation so we don't thrash the queue + count queries. */
+const REALTIME_DEBOUNCE_MS = 250;
 
 function isStale(item: QueuedAiAction): boolean {
   return item.status === 'pending' && new Date(item.expires_at).getTime() < Date.now();
+}
+
+/**
+ * Subscribe to realtime row changes on `ai_action_queue` for this user and
+ * fan-out a single debounced invalidation that refreshes BOTH the panel
+ * query and the lightweight count query. Centralized so any consumer that
+ * mounts a queue/count hook gets live updates without each hook opening
+ * its own channel.
+ */
+function useAiActionQueueRealtime() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const flush = () => {
+      timerRef.current = null;
+      qc.invalidateQueries({ queryKey: QUEUE_KEY });
+      qc.invalidateQueries({ queryKey: QUEUE_COUNT_KEY });
+    };
+
+    const channel = supabase
+      .channel(`ai-action-queue-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'ai_action_queue', filter: `user_id=eq.${user.id}` },
+        () => {
+          if (timerRef.current) clearTimeout(timerRef.current);
+          timerRef.current = setTimeout(flush, REALTIME_DEBOUNCE_MS);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, qc]);
 }
 
 /**
@@ -67,28 +116,7 @@ function isStale(item: QueuedAiAction): boolean {
  */
 export function useAiActionQueue() {
   const { user } = useAuth();
-  const qc = useQueryClient();
-
-  // Realtime: invalidate the queue whenever any ai_action_queue row for this
-  // user changes (insert / update / delete) so the count badge stays live
-  // without polling. One channel per mounted hook instance — React Query
-  // dedupes renders, so this is cheap.
-  useEffect(() => {
-    if (!user?.id) return;
-    const channel = supabase
-      .channel(`ai-action-queue-${user.id}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'ai_action_queue', filter: `user_id=eq.${user.id}` },
-        () => {
-          qc.invalidateQueries({ queryKey: QUEUE_KEY });
-        },
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user?.id, qc]);
+  useAiActionQueueRealtime();
 
   return useQuery({
     queryKey: [...QUEUE_KEY, user?.id ?? 'anon'],
@@ -118,10 +146,38 @@ export function useAiActionQueue() {
   });
 }
 
-/** Just the count of pending non-expired items, for the nav badge. */
+/**
+ * Just the count of pending non-expired items, for the nav badge.
+ *
+ * This is a SEPARATE lightweight query (selects only id/status/expires_at)
+ * so mounting a badge anywhere in the app doesn't pull the full payload
+ * for every queued action. Realtime invalidations from
+ * `useAiActionQueueRealtime` keep it live alongside the panel query.
+ */
 export function useAiActionQueueCount(): number {
-  const { data = [] } = useAiActionQueue();
-  return data.filter(i => i.status === 'pending' && !isStale(i)).length;
+  const { user } = useAuth();
+  useAiActionQueueRealtime();
+
+  const { data = 0 } = useQuery({
+    queryKey: [...QUEUE_COUNT_KEY, user?.id ?? 'anon'],
+    enabled: !!user,
+    staleTime: 15_000,
+    refetchOnWindowFocus: true,
+    queryFn: async (): Promise<number> => {
+      const { data, error } = await supabase
+        .from('ai_action_queue')
+        .select('id, status, expires_at')
+        .eq('status', 'pending')
+        .limit(500);
+      if (error) throw error;
+      const now = Date.now();
+      return (data || []).filter(
+        (r: { status: string; expires_at: string }) =>
+          r.status === 'pending' && new Date(r.expires_at).getTime() >= now,
+      ).length;
+    },
+  });
+  return data;
 }
 
 export function useEnqueueAiAction() {
