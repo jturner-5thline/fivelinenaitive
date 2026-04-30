@@ -238,46 +238,57 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
     }
   }, [mergeUniqueById]);
 
-  // Initial load: first inbox page (so UI is responsive), then kick off background auto-pagination.
+  // Open effect.
+  // Two paths:
+  //  • Cold open (cache empty): show the initial spinner, fetch page 1 of
+  //    inbox foreground, then kick off the background auto-pagination.
+  //  • Warm open (cache populated): NEVER show a spinner. Render whatever
+  //    the prefetch put in the store, silently re-fetch page 1 of inbox
+  //    + sent in the background, merge anything newer in place, and only
+  //    auto-paginate if we haven't yet drained the tail.
   useEffect(() => {
-    if (!open || !status.connected || hasLoadedRef.current) return;
-    hasLoadedRef.current = true;
+    if (!open || !status.connected) return;
     isMountedRef.current = true;
+    if (hasLoadedRef.current) return; // already seeded from cache
+    hasLoadedRef.current = true;
+
+    const cacheHasData = inboxMessages.length > 0;
 
     (async () => {
-      setIsInitialLoading(true);
+      if (!cacheHasData) setIsInitialLoading(true);
       const firstInbox = await fetchPage({ labelIds: ['INBOX'] });
       if (!isMountedRef.current) return;
 
       if (firstInbox.messages.length === 0 && !firstInbox.nextPageToken) {
-        // Empty / rate-limited — try cache
-        await hydrateFromCache();
+        // Empty / rate-limited — try DB cache only on cold open.
+        if (!cacheHasData) await hydrateFromCache();
       } else {
-        setInboxMessages(prev => mergeUniqueById(prev, firstInbox.messages));
+        setInboxMessages((prev) => {
+          const next = mergeUniqueById(prev, firstInbox.messages);
+          // Mirror into the shared cache so the unread badge & next open
+          // see the freshest data even after this dialog unmounts.
+          useInboxCacheStore.setState({ inboxMessages: next });
+          return next;
+        });
         setInboxNextToken(firstInbox.nextPageToken);
         setHasMoreInbox(!!firstInbox.nextPageToken);
       }
-      setIsInitialLoading(false);
+      if (!cacheHasData) setIsInitialLoading(false);
 
-      // Kick off background auto-pagination (inbox tail + full sent)
+      // Kick off background auto-pagination (inbox tail + full sent).
       autoPaginate(firstInbox.nextPageToken);
     })();
-  }, [open, status.connected, hydrateFromCache, mergeUniqueById, autoPaginate]);
+  }, [open, status.connected, hydrateFromCache, mergeUniqueById, autoPaginate, inboxMessages.length]);
 
-  // Reset on close
+  // On close we tear down the in-flight fetch flags but DELIBERATELY keep
+  // local state intact — the next mount re-seeds from the cache store, so
+  // clearing here would only cause a needless flash. The shared cache is
+  // the durable source of truth between opens.
   useEffect(() => {
     if (!open) {
       hasLoadedRef.current = false;
       isMountedRef.current = false;
       isPaginatingRef.current = false;
-      setInboxMessages([]);
-      setSentMessages([]);
-      setCachedInboxEmails([]);
-      setInboxNextToken(null);
-      setSentNextToken(null);
-      setHasMoreInbox(true);
-      setHasMoreSent(true);
-      setIsInitialLoading(false);
       setIsLoadingMore(false);
     } else {
       isMountedRef.current = true;
