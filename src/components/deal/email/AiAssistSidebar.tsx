@@ -29,6 +29,7 @@ import { ThreadSummaryCard } from './ThreadSummaryCard';
 import { DealContextCard } from './DealContextCard';
 import { UnmatchedEmailContextCard } from './UnmatchedEmailContextCard';
 import { EmailUnifiedAiAction } from './EmailUnifiedAiAction';
+import { SaveToDealCard } from './SaveToDealCard';
 import type { DealContextSummary } from '@/hooks/useDealContextSummary';
 import { toast } from 'sonner';
 import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
@@ -661,6 +662,20 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
 
           {/* Thread Summary — auto-generated for multi-message threads, collapsed by default */}
           <ThreadSummaryCard thread={thread} dealId={dealId} />
+
+          {/* Save to Deal — additive one-click save for attachments, body, or
+              highlighted text. Auto-suggests the matched deal (or AI fallback)
+              and lets the user route to Data Room or Deal Notes without leaving
+              the email. */}
+          <SaveToDealCard
+            thread={thread}
+            attachments={drAttachments}
+            messageId={latestId}
+            matchedDealId={dealId}
+            matchedDealName={dealName}
+            fallbackDealId={workflowAnalysis?.likely_deal?.id || null}
+            fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
+          />
 
           {/* Error (non-blocking — shell still renders below) */}
           {error && (
