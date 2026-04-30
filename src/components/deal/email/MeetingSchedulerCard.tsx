@@ -60,12 +60,16 @@ interface Props {
   onClose: () => void;
 }
 
-const SLOT_MINUTES = 45;
+/** Default meeting length when no preference is persisted. */
+const DEFAULT_SLOT_MINUTES = 45;
+/** Selectable durations exposed in the picker. */
+const DURATION_OPTIONS = [15, 30, 45, 60, 90] as const;
 const WORK_START_HOUR = 9;   // 9 AM local
 const WORK_END_HOUR = 17;    // 5 PM local
 
 const BROWSER_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 const TZ_PREF_KEY = 'naitive.meetingScheduler.tz';
+const DURATION_PREF_KEY = 'naitive.meetingScheduler.durationMinutes';
 
 /**
  * Curated timezone shortlist — covers the common 5th Line counterparties
@@ -138,7 +142,7 @@ function fmtSlot(s: Slot, tz: string): string {
  * "10:00 in London" lands at the right absolute moment regardless of the
  * browser locale running this code.
  */
-function buildCandidateSlots(now: Date, tz: string): Slot[] {
+function buildCandidateSlots(now: Date, tz: string, durationMinutes: number): Slot[] {
   const slots: Slot[] = [];
   // Get the calendar date "today" as seen in `tz` (so a user in NY at 11pm
   // doesn't accidentally schedule for "tomorrow" in London terms).
@@ -155,9 +159,12 @@ function buildCandidateSlots(now: Date, tz: string): Slot[] {
     const y = candidateDay.getFullYear();
     const m = candidateDay.getMonth() + 1;
     const d = candidateDay.getDate();
-    for (let h = WORK_START_HOUR; h + SLOT_MINUTES / 60 <= WORK_END_HOUR; h += 1) {
+    // Step the start hour at hourly anchors but ensure the chosen
+    // duration still fits inside the working window.
+    const durationHours = durationMinutes / 60;
+    for (let h = WORK_START_HOUR; h + durationHours <= WORK_END_HOUR; h += 1) {
       const start = zonedDateToUtc(y, m, d, h, 0, tz);
-      const end = new Date(start.getTime() + SLOT_MINUTES * 60 * 1000);
+      const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
       slots.push({ start, end });
     }
   }
@@ -264,6 +271,26 @@ export function MeetingSchedulerCard({
     }
   });
 
+  // ── Meeting duration preference ──────────────────────────────────────
+  // Persisted alongside the timezone so a user who always books 30-min
+  // intros doesn't have to reset it on every email.
+  const [durationMinutes, setDurationMinutes] = useState<number>(() => {
+    try {
+      const raw = localStorage.getItem(DURATION_PREF_KEY);
+      const parsed = raw ? Number(raw) : NaN;
+      return DURATION_OPTIONS.includes(parsed as any) ? parsed : DEFAULT_SLOT_MINUTES;
+    } catch {
+      return DEFAULT_SLOT_MINUTES;
+    }
+  });
+
+  const handleDurationChange = useCallback((next: string) => {
+    const n = Number(next);
+    if (!Number.isFinite(n) || n <= 0) return;
+    setDurationMinutes(n);
+    try { localStorage.setItem(DURATION_PREF_KEY, String(n)); } catch { /* ignore */ }
+  }, []);
+
   // Build the dropdown options once — include the persisted/browser tz at
   // the top if it isn't part of the curated list.
   const tzOptions = useMemo(() => {
@@ -318,7 +345,7 @@ export function MeetingSchedulerCard({
           end: e.end,
           all_day: !!e.all_day,
         }));
-        const candidates = buildCandidateSlots(now, timezone);
+        const candidates = buildCandidateSlots(now, timezone, durationMinutes);
         const free = filterFreeSlots(candidates, events);
         const picked = pickThreeSpread(free);
         setProposedSlots(picked);
@@ -331,10 +358,10 @@ export function MeetingSchedulerCard({
       }
     })();
     return () => { cancelled = true; };
-    // Re-run whenever the user changes timezone — slot wall-clock anchors
-    // shift, so the proposed list must rebuild to match what the recipient
-    // will actually see in the email.
-  }, [timezone]);
+    // Re-run whenever the user changes timezone or duration — both shift
+    // the wall-clock anchors / slot length, so the proposed list must
+    // rebuild to match what the recipient will actually see.
+  }, [timezone, durationMinutes]);
 
   const handleTimezoneChange = useCallback((next: string) => {
     setTimezone(next);
@@ -494,6 +521,35 @@ export function MeetingSchedulerCard({
             {tzOptions.map((opt) => (
               <SelectItem key={opt.id} value={opt.id} className="text-[11.5px]">
                 {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Duration selector — drives both the candidate slot length and
+          the end time written onto the Google Calendar event. Persisted
+          to localStorage. */}
+      <div className="flex items-center gap-2">
+        <Label htmlFor="meeting-duration" className="text-[10.5px] uppercase tracking-wide text-muted-foreground/70 shrink-0">
+          Duration
+        </Label>
+        <Select value={String(durationMinutes)} onValueChange={handleDurationChange}>
+          <SelectTrigger
+            id="meeting-duration"
+            className="h-7 text-[11px] flex-1 min-w-0"
+            aria-label="Meeting duration for proposed slots and calendar invite"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {DURATION_OPTIONS.map((mins) => (
+              <SelectItem key={mins} value={String(mins)} className="text-[11.5px]">
+                {mins < 60
+                  ? `${mins} minutes`
+                  : mins === 60
+                    ? '1 hour'
+                    : `${mins / 60} hours`}
               </SelectItem>
             ))}
           </SelectContent>
