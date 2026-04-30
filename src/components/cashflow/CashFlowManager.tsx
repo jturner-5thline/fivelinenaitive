@@ -1093,7 +1093,7 @@ export function CashFlowManager() {
             >
               <span className="cf-pill-label">Cash-In Next 8W</span>
               <span className="cf-pill-value">
-                {fmtShort(computeCashInTotal(rawSidebar, sidebarDbItems))}
+                {fmtShort(computeCashInTotal(rawSidebar, sidebarDbItems) + scheduledCashInNext8Weeks)}
               </span>
             </button>
             <button
