@@ -1890,17 +1890,6 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
               />
             )}
 
-            {/* Deal filter chips — only shown in the inbox-dialog scope.
-                Uses the same matching engine that powers inline "Likely: …"
-                badges so chip membership and badge labels stay consistent. */}
-            {isInboxScope && (
-              <DealFilterChipsRow
-                selectedDealId={selectedDealFilterId}
-                onSelect={setSelectedDealFilterId}
-                dealIdsWithEmails={dealIdsWithEmails}
-              />
-            )}
-
             {activeFilterChips.length > 0 && (
               <div className="flex flex-wrap gap-1 px-3 py-1.5 border-b border-border/30">
                 {activeFilterChips.map(chip => (
