@@ -561,6 +561,37 @@ export function SaveToDealCard({
           </div>
         </div>
       )}
+
+      <AlertDialog open={dupOpen} onOpenChange={setDupOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{dupInfo?.title || 'Possible duplicate'}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {dupInfo?.description || 'This item appears to already exist on the deal.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                pendingSaveRef.current = null;
+                setDupInfo(null);
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                const fn = pendingSaveRef.current;
+                pendingSaveRef.current = null;
+                setDupInfo(null);
+                if (fn) await fn();
+              }}
+            >
+              Save anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
