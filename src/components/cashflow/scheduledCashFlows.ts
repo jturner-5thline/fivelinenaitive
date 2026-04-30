@@ -40,6 +40,7 @@ export const DEBT_ADVISORY_SUBCATEGORIES = [
   'Retainer',
   'Milestone',
   'Closing Fees',
+  'Referral Fees',
 ] as const;
 
 // Default fallback when a legacy entry is on the parent without a sub-category
@@ -70,6 +71,7 @@ export const CASH_IN_PARENT_MAP: Record<string, string> = {
   Retainer: 'Advisors Revenue',
   Milestone: 'Advisors Revenue',
   'Closing Fees': 'Advisors Revenue',
+  'Referral Fees': 'Advisors Revenue',
 };
 
 // Cash-Out categories — MUST match the row titles in `weeklyHistoricalSeed.ts`
@@ -96,7 +98,6 @@ export const CATEGORY_ALIASES: Record<string, string> = {
   // Cash-In aliases
   Retainers: 'Retainer',
   Milestones: 'Milestone',
-  'Referral Fees': 'Closing Fees',
   'Technology Revenue': 'Tech Revenue',
   'Other Receipts': 'Other Cash In',
   'Debt Advisory Revenue': 'Retainer',
