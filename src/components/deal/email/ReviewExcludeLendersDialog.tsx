@@ -180,6 +180,7 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
           passed_skipped: summary.passedSkipped,
           in_review_skipped: summary.inReviewSkipped,
         },
+        personalize,
       };
 
       // Non-blocking: if the activity log fails we still proceed with the send.
