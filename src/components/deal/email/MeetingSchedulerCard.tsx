@@ -743,10 +743,17 @@ export function MeetingSchedulerCard({
       // Use the user-edited attendee list. Skip the organiser's own email
       // since Nylas adds them automatically as the event owner; including
       // them again can cause "duplicate attendee" rejections on some
-      // Google Workspace tenants.
-      const attendees: { email: string; name?: string }[] = finalAttendees
-        .filter((a) => a.role !== 'me')
-        .map((a) => ({ email: a.email, name: a.role === 'me' ? undefined : a.name }));
+      // Google Workspace tenants. Final dedup on the normalized key is a
+      // defence-in-depth guarantee: even if upstream state ever lets the
+      // same email through twice, only one row reaches the calendar API.
+      const seenOut = new Set<string>();
+      const attendees: { email: string; name?: string }[] = [];
+      for (const a of finalAttendees) {
+        if (a.role === 'me') continue;
+        if (seenOut.has(a.key)) continue;
+        seenOut.add(a.key);
+        attendees.push({ email: a.email, name: a.name });
+      }
       const summary = dealName
         ? `${dealName} — Intro call`
         : threadSubject
