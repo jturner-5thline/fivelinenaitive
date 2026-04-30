@@ -2011,9 +2011,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
               <EmailDetail
                 thread={currentThread}
                 dealId={dealId}
-                onBack={() => { setSelectedThread(null); setReadingPaneExpanded(false); }}
+                onBack={handleEmailDetailBack}
                 isExpanded={readingPaneExpanded}
-                onToggleExpand={() => setReadingPaneExpanded(prev => !prev)}
+                onToggleExpand={handleEmailDetailToggleExpand}
                 deepLinkMessageId={
                   deepLinkTarget && deepLinkTarget.threadId === currentThread.threadId
                     ? deepLinkTarget.messageId
