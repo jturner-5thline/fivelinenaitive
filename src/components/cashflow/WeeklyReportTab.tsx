@@ -748,12 +748,21 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                         week_ending: (entry?.week_ending as string) ?? null,
                         cell_value_snapshot: displayVal,
                       };
+                      // Allow inline "+ Add" only on actual receipt/disbursement
+                      // line rows — not parents, totals, transfers, or headers.
+                      const isAddable =
+                        !!onAddOneTimeEntry &&
+                        (rowDef.section === 'receipts' || rowDef.section === 'disbursements') &&
+                        !rowDef.isParent &&
+                        !rowDef.isHeader &&
+                        !rowDef.isTotal &&
+                        !isTransferAccount;
 
                       return (
                         <td
                           key={weekKey}
                           ref={(el) => registerCellRef(ccKey, el)}
-                          className={`${displayVal > 0 ? 'cf-val-pos' : displayVal < 0 ? 'cf-val-neg' : ''}${isOverridden ? ' cf-cell-override' : ''}${cellCommentsHere.length > 0 ? ' cf-cell-has-comment' : ''}`}
+                          className={`group relative ${displayVal > 0 ? 'cf-val-pos' : displayVal < 0 ? 'cf-val-neg' : ''}${isOverridden ? ' cf-cell-override' : ''}${cellCommentsHere.length > 0 ? ' cf-cell-has-comment' : ''}`}
                           title={isOverridden ? 'Manually overridden — double-click to clear' : (editable ? 'Click to edit' : 'Click to view source entries')}
                           style={!editable ? { cursor: 'pointer' } : undefined}
                           onContextMenu={(e) => handleCellContextMenu(e, cellCtx)}
@@ -809,6 +818,31 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                             />
                           )}
                           {planVal !== null && renderVariance(val, planVal)}
+                          {isAddable && (
+                            <button
+                              type="button"
+                              className="absolute top-0.5 right-0.5 h-5 w-5 rounded-md bg-primary/10 hover:bg-primary/25 text-primary border border-primary/30 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity flex items-center justify-center"
+                              title="Add one-time entry for this week"
+                              aria-label="Add one-time entry for this week"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setAddCellPopover({
+                                  rowKey: rowDef.key,
+                                  rowLabel: labelText,
+                                  section: rowDef.section as 'receipts' | 'disbursements',
+                                  weekKey,
+                                  weekEnding: (entry?.week_ending as string) ?? null,
+                                });
+                                setAddCellDraft({
+                                  description: '',
+                                  amount: '',
+                                  flowType: rowDef.section === 'receipts' ? 'cash_in' : 'cash_out',
+                                });
+                              }}
+                            >
+                              <Plus size={11} strokeWidth={2.5} />
+                            </button>
+                          )}
                         </td>
                       );
                     })}
