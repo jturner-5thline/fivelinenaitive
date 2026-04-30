@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown, Info, FileText, Mail } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DraftSubmissionEmailsModal, type EmailDraft, type LenderContactOption, draftBodyToPlainText } from './email/DraftSubmissionEmailsModal';
 import { ReviewExcludeLendersDialog } from './email/ReviewExcludeLendersDialog';
 import {
@@ -45,6 +46,83 @@ const SCOPE_LABELS: Record<DocumentScope, string> = {
 };
 
 // Source citation chip component
+//
+// ───────────────────────────────────────────────────────────────────────────
+// Financial-figure highlighting
+//
+// Detects monetary amounts, percentages, and common finance shorthand
+// (e.g. $12.5M, 8.25%, 3.2x, 1.4B EBITDA) inside any rendered text node and
+// wraps each match in a styled span with a tooltip. The tooltip surfaces the
+// citation excerpt for the figure — currently the list of source documents
+// the AI used to compose this message, since the deal-space-ai edge function
+// returns sources at the message level rather than per-claim. This is a pure
+// presentational enhancement: it never mutates `msg.content`.
+// ───────────────────────────────────────────────────────────────────────────
+const FINANCIAL_REGEX =
+  /(\$\s?\d[\d,]*(?:\.\d+)?\s?(?:[KMB]|million|billion|thousand)?\b|\d[\d,]*(?:\.\d+)?\s?%|\d[\d,]*(?:\.\d+)?x\b|\d[\d,]*(?:\.\d+)?\s?(?:bps|basis points))/gi;
+
+function HighlightedFinancials({
+  text,
+  sources,
+}: {
+  text: string;
+  sources?: string[];
+}) {
+  if (!text) return <>{text}</>;
+  const parts: Array<string | { match: string; key: number }> = [];
+  let lastIndex = 0;
+  let m: RegExpExecArray | null;
+  let key = 0;
+  // Re-create the regex per call so we get a fresh `lastIndex`.
+  const re = new RegExp(FINANCIAL_REGEX.source, FINANCIAL_REGEX.flags);
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > lastIndex) parts.push(text.slice(lastIndex, m.index));
+    parts.push({ match: m[0], key: key++ });
+    lastIndex = m.index + m[0].length;
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  if (parts.every((p) => typeof p === 'string')) return <>{text}</>;
+
+  const excerpt = sources && sources.length > 0
+    ? sources.slice(0, 4).join(' · ')
+    : 'Source not specified';
+
+  return (
+    <>
+      {parts.map((p, i) => {
+        if (typeof p === 'string') return <span key={`t-${i}`}>{p}</span>;
+        return (
+          <Tooltip key={`f-${p.key}`} delayDuration={150}>
+            <TooltipTrigger asChild>
+              <mark
+                className="cursor-help rounded-sm bg-amber-400/20 px-0.5 py-px text-amber-200 ring-1 ring-amber-400/30 hover:bg-amber-400/30 transition-colors"
+              >
+                {p.match}
+              </mark>
+            </TooltipTrigger>
+            <TooltipContent
+              side="top"
+              className="max-w-[280px] text-[11px] leading-relaxed"
+            >
+              <div className="font-medium text-foreground/90 mb-0.5">Cited source</div>
+              <div className="text-muted-foreground break-words">{excerpt}</div>
+            </TooltipContent>
+          </Tooltip>
+        );
+      })}
+    </>
+  );
+}
+
+function highlightChildren(children: React.ReactNode, sources?: string[]): React.ReactNode {
+  return React.Children.map(children, (child, idx) => {
+    if (typeof child === 'string') {
+      return <HighlightedFinancials key={idx} text={child} sources={sources} />;
+    }
+    return child;
+  });
+}
+
 //
 // Each citation string returned by the deal-space-ai edge function is the
 // `name` of an underlying source. Document sources match a row in
@@ -814,9 +892,33 @@ CRITICAL RULES:
                     >
                       {msg.role === 'assistant' ? (
                         <>
-                          <div className="prose prose-sm dark:prose-invert max-w-none">
-                            <ReactMarkdown>{msg.content}</ReactMarkdown>
-                          </div>
+                          <TooltipProvider delayDuration={150}>
+                            <div className="prose prose-sm dark:prose-invert max-w-none">
+                              <ReactMarkdown
+                                components={{
+                                  // Highlight financial figures inside any
+                                  // text-bearing block. We walk children and
+                                  // replace bare strings with the highlighter
+                                  // so nested markdown (bold/italic/links)
+                                  // continues to render normally.
+                                  p: ({ children }) => (
+                                    <p>{highlightChildren(children, msg.sources)}</p>
+                                  ),
+                                  li: ({ children }) => (
+                                    <li>{highlightChildren(children, msg.sources)}</li>
+                                  ),
+                                  strong: ({ children }) => (
+                                    <strong>{highlightChildren(children, msg.sources)}</strong>
+                                  ),
+                                  em: ({ children }) => (
+                                    <em>{highlightChildren(children, msg.sources)}</em>
+                                  ),
+                                }}
+                              >
+                                {msg.content}
+                              </ReactMarkdown>
+                            </div>
+                          </TooltipProvider>
                           <SourceCitations
                             sources={msg.sources}
                             documents={documents}
