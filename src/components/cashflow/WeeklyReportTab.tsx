@@ -145,6 +145,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   onCellCommentCountChange,
   weeksFuture: weeksFutureProp,
   onWeeksFutureChange,
+  onAddOneTimeEntry,
 }: WeeklyReportTabProps) {
   const { user } = useAuth();
   const { comments: cellComments, byCell: cellCommentsByCell, addComment: addCellComment, deleteComment: deleteCellComment } =
