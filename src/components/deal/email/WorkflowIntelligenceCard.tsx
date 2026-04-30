@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Loader2, Check, X, Quote, AlertCircle, Briefcase, User, Building2, Zap, Link2, Plus } from 'lucide-react';
+import { Loader2, Check, X, Quote, AlertCircle, Briefcase, User, Building2, Zap, Link2, Plus, Inbox as InboxIcon } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import type { WorkflowAnalysis, WorkflowConfidence } from '@/hooks/useThreadWorkflowAnalysis';
 import { useLenderStages } from '@/contexts/LenderStagesContext';
 import { SuggestedTaskCards } from './SuggestedTaskCards';
+import { useEnqueueAiAction } from '@/hooks/useAiActionQueue';
 
 interface Props {
   analysis: WorkflowAnalysis;
@@ -130,6 +131,7 @@ export function WorkflowIntelligenceCard({
   // Source of truth for pass-reason options — same list shown in the
   // deal-detail Lenders tab "Confirm Pass" dialog so the two stay in sync.
   const { passReasons: passReasonOptions } = useLenderStages();
+  const enqueueAiAction = useEnqueueAiAction();
 
   const rec = analysis.recommended_update;
   const hasUpdate = rec.kind !== 'none' && !!rec.title;
@@ -494,6 +496,34 @@ export function WorkflowIntelligenceCard({
                   >
                     {committing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                     Confirm
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-[11px] gap-1 shrink-0"
+                    title="Add to Action Queue for batch review"
+                    onClick={async () => {
+                      const isLenderUpdate = rec.kind === 'lender_status';
+                      await enqueueAiAction({
+                        action_type: isLenderUpdate ? 'update_lender_status' : 'log_note',
+                        title: rec.title || 'AI suggestion',
+                        description: reason || rec.reason_note || null,
+                        deal_id: resolvedDealId || null,
+                        deal_name: analysis.likely_deal?.name || null,
+                        payload: {
+                          kind: rec.kind,
+                          new_status: confirmedStatus,
+                          deal_lender_id: rec.lender_id || null,
+                          lender_name: rec.lender_name,
+                          pass_reasons: selectedReasonLabels,
+                          reason_note: reason,
+                        },
+                        source: { thread_id: threadId },
+                      });
+                      onDismiss();
+                    }}
+                  >
+                    <InboxIcon className="h-3 w-3" /> Queue
                   </Button>
                   <Button
                     size="sm"

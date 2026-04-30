@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Check, X, Loader2, ListTodo, Calendar as CalendarIcon, User as UserIcon, Link2, MinusCircle, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Check, X, Loader2, ListTodo, Calendar as CalendarIcon, User as UserIcon, Link2, MinusCircle, AlertTriangle, RefreshCw, Inbox as InboxIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -12,6 +12,7 @@ import { createTaskFromDraft, type TaskDraft } from '@/hooks/useNaitiveTaskParse
 import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
 import { useUiPreference } from '@/hooks/useUiPreference';
 import type { WorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
+import { useEnqueueAiAction } from '@/hooks/useAiActionQueue';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -116,6 +117,7 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
   const { user } = useAuth();
   const { company } = useCompany();
   const queryClient = useQueryClient();
+  const enqueueAiAction = useEnqueueAiAction();
   // Profile-level default for "Sync new tasks to Asana". Editable on the
   // Account page; per-card switches still override on a one-off basis.
   const [defaultAsanaSync] = useUiPreference<boolean>('default_asana_sync', true);
@@ -471,6 +473,32 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
                     <Check className="h-3 w-3" />
                   )}
                   Create task
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-[11px] gap-1 shrink-0"
+                  title="Add to Action Queue for batch review"
+                  onClick={async () => {
+                    await enqueueAiAction({
+                      action_type: 'create_task',
+                      title: s.title || 'New task',
+                      description: s.title || null,
+                      deal_id: dealId || null,
+                      deal_name: dealName || null,
+                      payload: {
+                        title: s.title,
+                        due_date: resolveDueDate(s.due_date_hint || ''),
+                        assigned_to: user?.id,
+                        task_type: s.task_type || 'general',
+                      },
+                      source: { thread_id: threadId || null },
+                    });
+                    setDismissedKeys((prev) => ({ ...prev, [key]: true }));
+                  }}
+                >
+                  <InboxIcon className="h-3 w-3" />
+                  Add to Queue
                 </Button>
                 <Button
                   size="sm"

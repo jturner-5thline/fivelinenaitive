@@ -760,6 +760,69 @@ export type Database = {
           },
         ]
       }
+      ai_action_queue: {
+        Row: {
+          action_type: string
+          approved_at: string | null
+          created_at: string
+          deal_id: string | null
+          deal_name: string | null
+          description: string | null
+          dismissed_at: string | null
+          executed_at: string | null
+          execution_error: string | null
+          expires_at: string
+          id: string
+          payload: Json
+          reminder_sent_at: string | null
+          source: Json
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          approved_at?: string | null
+          created_at?: string
+          deal_id?: string | null
+          deal_name?: string | null
+          description?: string | null
+          dismissed_at?: string | null
+          executed_at?: string | null
+          execution_error?: string | null
+          expires_at?: string
+          id?: string
+          payload?: Json
+          reminder_sent_at?: string | null
+          source?: Json
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          approved_at?: string | null
+          created_at?: string
+          deal_id?: string | null
+          deal_name?: string | null
+          description?: string | null
+          dismissed_at?: string | null
+          executed_at?: string | null
+          execution_error?: string | null
+          expires_at?: string
+          id?: string
+          payload?: Json
+          reminder_sent_at?: string | null
+          source?: Json
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_configuration: {
         Row: {
           company_id: string

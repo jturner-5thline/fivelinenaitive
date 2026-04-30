@@ -19,6 +19,7 @@ import { useThreadWorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
 import { LenderPassSidebarCard } from './LenderPassSidebarCard';
 import { WorkflowIntelligenceCard } from './WorkflowIntelligenceCard';
 import { DataRoomSuggestionCard } from './DataRoomSuggestionCard';
+import { useEnqueueAiAction } from '@/hooks/useAiActionQueue';
 import { SendToDataRoomDialog } from './SendToDataRoomDialog';
 import { useFullEmailMessage } from './useFullEmailMessage';
 import { useEmailToDataRoom, type DataRoomDestinationSuggestion } from '@/hooks/useEmailToDataRoom';
@@ -149,6 +150,7 @@ interface Props {
 }
 
 export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDraft, onLinkDeal }: Props) {
+  const enqueueAiAction = useEnqueueAiAction();
   // `loadingTones` tracks per-tone in-flight requests (so the panel can render
   // skeletons selectively). The shell never blocks on either.
   const [loadingTones, setLoadingTones] = useState<Record<ToneKey, boolean>>({ concise: false, balanced: false });
@@ -724,6 +726,22 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               loading={drSuggesting && !drSuggestion}
               onConfirm={() => setDrDialogOpen(true)}
               onDismiss={() => setDrDismissed(true)}
+              onAddToQueue={async () => {
+                await enqueueAiAction({
+                  action_type: 'save_to_data_room',
+                  title: `Save ${drUploadable.length} attachment${drUploadable.length === 1 ? '' : 's'} to data room`,
+                  description: thread.subject || null,
+                  deal_id: dealId || null,
+                  deal_name: dealName || null,
+                  payload: {
+                    attachment_count: drUploadable.length,
+                    subject: thread.subject || null,
+                    suggested_destination: drSuggestion?.suggested_deal_name || null,
+                  },
+                  source: { thread_id: thread.threadId, subject: thread.subject || null },
+                });
+                setDrDismissed(true);
+              }}
             />
           )}
 

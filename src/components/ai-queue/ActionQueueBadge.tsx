@@ -1,0 +1,52 @@
+import { useMemo, useState } from 'react';
+import { Inbox } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useAiActionQueue, useAiActionQueueCount } from '@/hooks/useAiActionQueue';
+import { ActionQueuePanel } from './ActionQueuePanel';
+
+/**
+ * Header / sidebar badge that surfaces the count of pending AI Queue items
+ * and opens the inline review panel.
+ */
+export function ActionQueueBadge() {
+  const count = useAiActionQueueCount();
+  const { data = [] } = useAiActionQueue();
+  const [open, setOpen] = useState(false);
+
+  const label = useMemo(
+    () => (count === 0 ? 'Action Queue' : `Action Queue · ${count}`),
+    [count],
+  );
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="relative h-8 gap-1.5"
+          aria-label={label}
+        >
+          <Inbox className="h-4 w-4" />
+          <span className="text-xs hidden sm:inline">Queue</span>
+          {count > 0 && (
+            <Badge
+              variant="destructive"
+              className="h-4 min-w-4 px-1 text-[10px] absolute -top-1 -right-1"
+            >
+              {count}
+            </Badge>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-[420px] p-0 max-h-[80vh] overflow-hidden flex flex-col"
+        align="end"
+      >
+        <ActionQueuePanel items={data} onClose={() => setOpen(false)} />
+      </PopoverContent>
+    </Popover>
+  );
+}

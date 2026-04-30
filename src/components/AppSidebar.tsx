@@ -1,5 +1,7 @@
-import { LayoutDashboard, Briefcase, BarChart3, Users, Settings, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video, SlidersHorizontal, Contact, Building2, UserCircle, LogOut, Handshake, Landmark } from "lucide-react";
+import { LayoutDashboard, Briefcase, BarChart3, Users, Settings, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video, SlidersHorizontal, Contact, Building2, UserCircle, LogOut, Handshake, Landmark, Inbox as InboxIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useAiActionQueue, useAiActionQueueCount } from "@/hooks/useAiActionQueue";
+import { ActionQueuePanel } from "@/components/ai-queue/ActionQueuePanel";
 import { useCompanyFeatures } from "@/hooks/useCompanyFeatures";
 import { useClaapRoutingTasks } from '@/hooks/useClaapMeetings';
 import { usePendingJoinRequestCount } from '@/hooks/usePendingJoinRequestCount';
@@ -75,6 +77,8 @@ export function AppSidebar() {
   const canAccessInsights = useCanAccessInsights();
   const meetingTaskCount = routingTasks.length;
   const { data: pendingJoinCount = 0 } = usePendingJoinRequestCount();
+  const queueCount = useAiActionQueueCount();
+  const { data: queueItems = [] } = useAiActionQueue();
   const currentPath = location.pathname;
   // Show expanded content if either actually expanded or hovering while collapsed
   const showExpanded = state === "expanded" || (state === "collapsed" && isHovering);
@@ -158,7 +162,40 @@ export function AppSidebar() {
                 </SidebarMenuItem>
                 );
               })}
-              
+
+              {/* AI Action Queue — deferred AI suggestions awaiting bulk review */}
+              <SidebarMenuItem>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <SidebarMenuButton
+                      tooltip={`Action Queue${queueCount > 0 ? ` · ${queueCount}` : ''}`}
+                      className="hover:bg-sidebar-accent/50"
+                    >
+                      <div className="relative">
+                        <InboxIcon className="h-4 w-4" />
+                        {queueCount > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 h-3.5 min-w-3.5 px-0.5 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
+                            {queueCount}
+                          </span>
+                        )}
+                      </div>
+                      {showExpanded && (
+                        <span className="flex items-center gap-1.5">
+                          Action Queue
+                        </span>
+                      )}
+                    </SidebarMenuButton>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    side="right"
+                    align="start"
+                    className="w-[420px] p-0 max-h-[80vh] overflow-hidden flex flex-col"
+                  >
+                    <ActionQueuePanel items={queueItems} />
+                  </PopoverContent>
+                </Popover>
+              </SidebarMenuItem>
+
               {isAdmin && (
                 <SidebarMenuItem>
                   <SidebarMenuButton 
