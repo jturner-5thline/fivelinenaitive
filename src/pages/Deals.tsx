@@ -7,6 +7,7 @@ import { DuplicatesView } from '@/components/deals/duplicates/DuplicatesView';
 import { DealMergeDrawer } from '@/components/deals/duplicates/DealMergeDrawer';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DealsHeader } from '@/components/deals/DealsHeader';
+import { WorkspacePage } from '@/components/layout/WorkspacePage';
 import { DealFilters } from '@/components/deals/DealFilters';
 import { MilestoneManagerFilter } from '@/components/deals/MilestoneManagerFilter';
 import { DealsList } from '@/components/deals/DealsList';
@@ -394,33 +395,67 @@ export default function Dashboard() {
       </Helmet>
 
       {/*
-        Page surface — matches the dashboard glass language:
-        transparent base so the app's ambient backdrop shows through, with
-        a fine low-contrast border, soft inner highlight, and gentle
-        elevation so the Deals workspace reads as the same component family
-        as the dashboard widgets/modules instead of a flat dark slab.
+        Page surface — routed through the shared `<WorkspacePage>` primitive
+        so this page and the Lender Directory can never drift apart on
+        canvas tone, header chrome, or padding rhythm. Banners are passed as
+        `beforeContent` so they keep their original sibling position
+        OUTSIDE the `space-y-*` rhythm of the main page sections.
       */}
-      <div className="bg-transparent">
-        <DealsHeader />
+      <WorkspacePage
+        beforeContent={
+          <>
+            <OnboardingModal open={showOnboarding} onComplete={completeOnboarding} />
+            <EmailVerificationBanner />
+            <DemoBanner onDataCleared={refreshDeals} />
+            <CreateCompanyBanner />
+          </>
+        }
+        afterMain={
+          <>
+            {/* Dismiss all hints floating button */}
+            {isFirstTimeUser && (
+              <button
+                onClick={() => {
+                  dismissAllHints();
+                  toast({ title: 'Hints dismissed', description: 'All hints have been hidden.' });
+                }}
+                className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full bg-primary/90 px-3 py-1.5 text-xs text-primary-foreground shadow-lg hover:bg-primary transition-colors"
+              >
+                <X className="h-3 w-3" />
+                Dismiss all hints
+              </button>
+            )}
 
-        <main className="w-full px-4 pt-5 pb-3 sm:px-6">
-          <OnboardingModal open={showOnboarding} onComplete={completeOnboarding} />
+            {/* Flagged Deals Carousel */}
+            <FlaggedDealsCarousel
+              deals={allDeals}
+              isOpen={flaggedCarouselOpen}
+              onClose={() => {
+                setFlaggedCarouselOpen(false);
+                updateFilters({ flaggedOnly: false });
+              }}
+            />
 
-          <EmailVerificationBanner />
-          <DemoBanner onDataCleared={refreshDeals} />
-          <CreateCompanyBanner />
+            {/* Deal Size Confirmation Dialog (5th Line only) */}
+            {sizeConfirm && (
+              <DealSizeConfirmDialog
+                open={!!sizeConfirm}
+                dealName={sizeConfirm.dealName}
+                currentValue={sizeConfirm.currentValue}
+                newStage={sizeConfirm.newStageLabel}
+                onConfirm={handleSizeConfirm}
+                onCancel={() => setSizeConfirm(null)}
+              />
+            )}
 
-          {/*
-            Page-specific layers — mirrors Tasks/Dashboard rhythm:
-              1. Page header (title + subtitle | primary actions)
-              2. Stats / widgets row
-              3. Filter / toolbar row
-              4. Content
-            All container surfaces use the same shared full radius (no
-            top-only rounding) so the page reads as the same component
-            family as the rest of the platform.
-          */}
-          <div className="space-y-5">
+            <DealMergeDrawer
+              cluster={mergeCluster}
+              open={mergeDrawerOpen}
+              onOpenChange={setMergeDrawerOpen}
+            />
+          </>
+        }
+      >
             {/* 1. Page header (title + subtitle removed; actions row only) */}
             <div
               className="flex items-center justify-between gap-4 flex-wrap opacity-0"
