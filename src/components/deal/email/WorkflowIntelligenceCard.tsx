@@ -29,6 +29,12 @@ interface Props {
   onConfirm: (overrides?: {
     reasonNote?: string;
     confirmedStatus?: string;
+    /**
+     * Tracking-status group of the chosen Lender Stage (e.g. 'passed',
+     * 'active', 'on-deck', 'on-hold'). Sourced from the stage's
+     * `group` field in Settings → Lender Stages.
+     */
+    confirmedTrackingStatus?: string;
     /** Comma-joined label string (back-compat, written into deal_lenders.pass_reason). */
     confirmedDetail?: string;
     /** Multi-select: array of pass-reason LABELS (from useLenderStages().passReasons). */
