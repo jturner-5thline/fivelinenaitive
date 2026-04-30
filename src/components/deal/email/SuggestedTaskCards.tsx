@@ -476,6 +476,32 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
                 </Button>
                 <Button
                   size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-[11px] gap-1 shrink-0"
+                  title="Add to Action Queue for batch review"
+                  onClick={async () => {
+                    await enqueueAiAction({
+                      action_type: 'create_task',
+                      title: s.title || 'New task',
+                      description: s.title || null,
+                      deal_id: dealId || null,
+                      deal_name: dealName || null,
+                      payload: {
+                        title: s.title,
+                        due_date: resolveDueDate(s.due_date_hint || ''),
+                        assigned_to: user?.id,
+                        task_type: s.task_type || 'general',
+                      },
+                      source: { thread_id: threadId || null },
+                    });
+                    setDismissedKeys((prev) => ({ ...prev, [key]: true }));
+                  }}
+                >
+                  <InboxIcon className="h-3 w-3" />
+                  Add to Queue
+                </Button>
+                <Button
+                  size="sm"
                   variant="ghost"
                   className="h-7 w-6 p-0 text-muted-foreground"
                   onClick={() => setDismissedKeys((prev) => ({ ...prev, [key]: true }))}
