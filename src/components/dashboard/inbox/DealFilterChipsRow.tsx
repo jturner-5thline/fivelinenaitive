@@ -3,7 +3,7 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { cn } from '@/lib/utils';
 import { Briefcase, X } from 'lucide-react';
 import type { Deal } from '@/types/deal';
-import { isDealExcluded } from '@/utils/excludedDeals';
+import { isExcludedDealName } from '@/utils/excludedDeals';
 
 interface Props {
   selectedDealId: string | null;
@@ -28,7 +28,7 @@ export function DealFilterChipsRow({ selectedDealId, onSelect, dealIdsWithEmails
 
   const activeDeals = useMemo(() => {
     const list = (deals || []).filter((d: Deal) => {
-      if (isDealExcluded(d.name)) return false;
+      if (isExcludedDealName(d.name)) return false;
       // "Active" = not archived / off-track / on-hold so the chip row stays focused.
       if (d.status === 'archived' || d.status === 'on-hold') return false;
       return true;
