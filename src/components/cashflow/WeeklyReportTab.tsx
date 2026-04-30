@@ -945,6 +945,136 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
         context={drilldown}
         items={scheduledItems || []}
       />
+
+      {/* Inline Add One-Time Entry popover (cell click on receipts/disbursements) */}
+      {addCellPopover && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40"
+          onClick={closeAddCellPopover}
+        >
+          <div
+            className="w-[360px] rounded-xl border border-border bg-card shadow-2xl p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <div className="text-sm font-semibold text-foreground">Add Entry</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {addCellPopover.rowLabel} · Week of {addCellPopover.weekKey}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={closeAddCellPopover}
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] uppercase tracking-wide text-muted-foreground font-medium mb-1">
+                  Description
+                </label>
+                <input
+                  type="text"
+                  className="w-full h-9 rounded-md border border-border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                  placeholder="e.g. ACME retainer payment"
+                  value={addCellDraft.description}
+                  autoFocus
+                  onChange={(e) =>
+                    setAddCellDraft((d) => ({ ...d, description: e.target.value }))
+                  }
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] uppercase tracking-wide text-muted-foreground font-medium mb-1">
+                  Amount
+                </label>
+                <div className="relative">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    className="w-full h-9 rounded-md border border-border bg-background pl-6 pr-2 text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="0.00"
+                    value={addCellDraft.amount}
+                    onChange={(e) =>
+                      setAddCellDraft((d) => ({ ...d, amount: e.target.value }))
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') submitAddCell();
+                      if (e.key === 'Escape') closeAddCellPopover();
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] uppercase tracking-wide text-muted-foreground font-medium mb-1">
+                  Type
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setAddCellDraft((d) => ({ ...d, flowType: 'cash_in' }))
+                    }
+                    className={`h-9 rounded-md border text-xs font-medium transition-colors ${
+                      addCellDraft.flowType === 'cash_in'
+                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                        : 'bg-background text-muted-foreground border-border hover:bg-muted/40'
+                    }`}
+                  >
+                    + Cash-In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setAddCellDraft((d) => ({ ...d, flowType: 'cash_out' }))
+                    }
+                    className={`h-9 rounded-md border text-xs font-medium transition-colors ${
+                      addCellDraft.flowType === 'cash_out'
+                        ? 'bg-red-500/20 text-red-400 border-red-500/40'
+                        : 'bg-background text-muted-foreground border-border hover:bg-muted/40'
+                    }`}
+                  >
+                    − Cash-Out
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                type="button"
+                className="h-8 px-3 rounded-md text-xs text-muted-foreground hover:bg-muted/40"
+                onClick={closeAddCellPopover}
+                disabled={addCellSaving}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="h-8 px-3 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                onClick={submitAddCell}
+                disabled={
+                  addCellSaving ||
+                  !(Number(addCellDraft.amount) > 0)
+                }
+              >
+                {addCellSaving ? 'Saving…' : 'Save Entry'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
