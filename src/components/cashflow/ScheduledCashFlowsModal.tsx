@@ -51,6 +51,10 @@ interface Props {
   open: boolean;
   initialEntries: ScheduledCashFlow[];
   onClose: () => void;
+  /** Extra user-defined Cash-In category labels to append to the dropdown. */
+  extraCashInCategories?: string[];
+  /** Extra user-defined Cash-Out category labels to append to the dropdown. */
+  extraCashOutCategories?: string[];
   /**
    * `entries` are the rows to persist (existing rows are matched by `id`,
    * new rows have empty `id`). `deleteIds` is the explicit list of ids the
@@ -134,7 +138,14 @@ function DatePickerField({
   );
 }
 
-export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave }: Props) {
+export function ScheduledCashFlowsModal({
+  open,
+  initialEntries,
+  onClose,
+  onSave,
+  extraCashInCategories = [],
+  extraCashOutCategories = [],
+}: Props) {
   const [drafts, setDrafts] = useState<DraftEntry[]>([]);
   const [saving, setSaving] = useState(false);
   // Ids of existing entries the user explicitly removed in this session.
@@ -182,7 +193,9 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
     setDrafts((prev) =>
       prev.map((d) => {
         if (d._draftId !== draftId) return d;
-        const validCats = flow === 'cash_in' ? CASH_IN_CATEGORIES : CASH_OUT_CATEGORIES;
+        const baseCats = flow === 'cash_in' ? CASH_IN_CATEGORIES : CASH_OUT_CATEGORIES;
+        const extras = flow === 'cash_in' ? extraCashInCategories : extraCashOutCategories;
+        const validCats = [...baseCats, ...extras];
         const category = (validCats as readonly string[]).includes(d.category)
           ? d.category
           : validCats[0];
@@ -401,6 +414,26 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
                                   {c}
                                 </SelectItem>
                               ))}
+                          {d.flow_type === 'cash_in' && extraCashInCategories.length > 0 && (
+                            <SelectGroup>
+                              <SelectLabel>Custom</SelectLabel>
+                              {extraCashInCategories.map((c) => (
+                                <SelectItem key={`custom-in-${c}`} value={c}>
+                                  {c}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          )}
+                          {d.flow_type === 'cash_out' && extraCashOutCategories.length > 0 && (
+                            <SelectGroup>
+                              <SelectLabel>Custom</SelectLabel>
+                              {extraCashOutCategories.map((c) => (
+                                <SelectItem key={`custom-out-${c}`} value={c}>
+                                  {c}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          )}
                         </SelectContent>
                       </Select>
 

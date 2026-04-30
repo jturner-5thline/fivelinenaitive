@@ -19,6 +19,7 @@ import { ScheduledCashFlowsModal } from './ScheduledCashFlowsModal';
 import { useCashFlowImport } from './useCashFlowImport';
 import { useCashInItems } from './useCashInItems';
 import { useScheduledCashFlows } from './useScheduledCashFlows';
+import { useCustomCashFlowRows } from './useCustomCashFlowRows';
 import { mergeScheduledIntoWeekly, ACCOUNT_OPTIONS, resolveCategoryToGridRow, DEBT_ADVISORY_DEFAULT_SUBCATEGORY, generateOccurrences, applyVariance } from './scheduledCashFlows';
 import { WEEKLY_HISTORICAL_SEED, LAST_HISTORICAL_WEEK_ENDING } from './weeklyHistoricalSeed';
 import { useCompany } from '@/hooks/useCompany';
@@ -159,6 +160,7 @@ export function CashFlowManager() {
   const { importedDailyData, importedRowStructure, isImported, isImportLoading, importFile } = useCashFlowImport(company?.id);
   const { items: cashInDbItems, fetchItems: refreshCashInItems, removeItem: removeCashInDbItem, toSidebarItems } = useCashInItems();
   const { items: scheduledItems, saveAll: saveScheduledItems, addItem: addScheduledItem } = useScheduledCashFlows(company?.id);
+  const { rows: customRows, addRow: addCustomRow, removeRow: removeCustomRow } = useCustomCashFlowRows(company?.id);
   const [addCashInOpen, setAddCashInOpen] = useState(false);
   const [scheduledModalOpen, setScheduledModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1194,6 +1196,10 @@ export function CashFlowManager() {
           onCellCommentCountChange={setCellCommentCount}
           weeksFuture={weeksFuture}
           onWeeksFutureChange={setWeeksFuture}
+          customReceiptRows={customRows.receipts}
+          customDisbursementRows={customRows.disbursements}
+          onAddCustomRow={(section, name) => addCustomRow(section, name)}
+          onRemoveCustomRow={(section, name) => removeCustomRow(section, name)}
           onAddOneTimeEntry={async ({
             rowKey,
             rowLabel,
@@ -1267,6 +1273,8 @@ export function CashFlowManager() {
           open={scheduledModalOpen}
           initialEntries={scheduledItems}
           onClose={() => setScheduledModalOpen(false)}
+          extraCashInCategories={customRows.receipts}
+          extraCashOutCategories={customRows.disbursements}
           onSave={async (entries, deleteIds) => {
             pushUndo(`Update scheduled cash flows`);
             const ok = await saveScheduledItems(entries, deleteIds);

@@ -67,6 +67,14 @@ interface WeeklyReportTabProps {
     amount: number;
     description: string;
   }) => Promise<boolean> | boolean;
+  /** User-defined custom row labels appended to Cash Receipts. */
+  customReceiptRows?: string[];
+  /** User-defined custom row labels appended to Cash Disbursements. */
+  customDisbursementRows?: string[];
+  /** Persist a new custom row label. Return false to indicate rejection (e.g. duplicate). */
+  onAddCustomRow?: (section: 'receipts' | 'disbursements', name: string) => boolean;
+  /** Remove a previously added custom row. */
+  onRemoveCustomRow?: (section: 'receipts' | 'disbursements', name: string) => void;
 }
 
 const DEBT_ADV_PARENT_KEY = 'Debt Advisory Revenue';
@@ -86,6 +94,8 @@ type WeeklyRow = {
   isSpacer?: boolean;
   isTransferAccount?: boolean;
   transferAccount?: string;
+  isCustom?: boolean;
+  isAddRowFooter?: boolean;
 };
 
 const WEEKLY_ROW_ORDER: Array<WeeklyRow> = [
@@ -146,6 +156,10 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   weeksFuture: weeksFutureProp,
   onWeeksFutureChange,
   onAddOneTimeEntry,
+  customReceiptRows,
+  customDisbursementRows,
+  onAddCustomRow,
+  onRemoveCustomRow,
 }: WeeklyReportTabProps) {
   const { user } = useAuth();
   const { comments: cellComments, byCell: cellCommentsByCell, addComment: addCellComment, deleteComment: deleteCellComment } =
@@ -241,6 +255,51 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
     flowType: 'cash_in' | 'cash_out';
   }>({ description: '', amount: '', flowType: 'cash_in' });
   const [addCellSaving, setAddCellSaving] = useState(false);
+
+  // "+ Add Row" prompt state for custom Cash Receipts / Disbursements rows.
+  const [addRowPrompt, setAddRowPrompt] = useState<null | { section: 'receipts' | 'disbursements' }>(null);
+  const [addRowName, setAddRowName] = useState('');
+  const closeAddRowPrompt = useCallback(() => {
+    setAddRowPrompt(null);
+    setAddRowName('');
+  }, []);
+  const submitAddRow = useCallback(() => {
+    if (!addRowPrompt || !onAddCustomRow) return;
+    const ok = onAddCustomRow(addRowPrompt.section, addRowName);
+    if (ok) closeAddRowPrompt();
+  }, [addRowPrompt, addRowName, onAddCustomRow, closeAddRowPrompt]);
+
+  // Build the effective row order: inject custom rows + an "+ Add Row" footer
+  // into the receipts / disbursements sections. Custom row keys double as the
+  // category label for scheduled entries — `resolveCategoryToGridRow` falls
+  // through unknown keys as-is so values flow into the matching row.
+  const effectiveRowOrder = useMemo<WeeklyRow[]>(() => {
+    const out: WeeklyRow[] = [];
+    const extraReceipts = customReceiptRows ?? [];
+    const extraDisb = customDisbursementRows ?? [];
+    for (const row of WEEKLY_ROW_ORDER) {
+      out.push(row);
+      // Insert custom receipts + footer right after the last canonical receipts
+      // line item ('Other Receipts').
+      if (row.key === 'Other Receipts') {
+        for (const name of extraReceipts) {
+          out.push({ key: name, section: 'receipts', isCustom: true });
+        }
+        if (onAddCustomRow) {
+          out.push({ key: '__add_row_receipts', section: 'receipts', isAddRowFooter: true });
+        }
+      }
+      if (row.key === 'Other Disbursements') {
+        for (const name of extraDisb) {
+          out.push({ key: name, section: 'disbursements', isCustom: true });
+        }
+        if (onAddCustomRow) {
+          out.push({ key: '__add_row_disbursements', section: 'disbursements', isAddRowFooter: true });
+        }
+      }
+    }
+    return out;
+  }, [customReceiptRows, customDisbursementRows, onAddCustomRow]);
   const closeAddCellPopover = useCallback(() => {
     setAddCellPopover(null);
     setAddCellDraft({ description: '', amount: '', flowType: 'cash_in' });
@@ -535,7 +594,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                 </tr>
               </thead>
               <tbody>
-              {WEEKLY_ROW_ORDER.map((rowDef) => {
+              {effectiveRowOrder.map((rowDef) => {
                 if ('isHeader' in rowDef && rowDef.isHeader) {
                   const isCollapsible = rowDef.section === 'receipts' || rowDef.section === 'disbursements';
                   const isCollapsed = collapsedSections[rowDef.section];
@@ -612,6 +671,32 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                           padding: 0,
                         }}
                       />
+                    </tr>
+                  );
+                }
+
+                // "+ Add Row" footer for Cash Receipts / Disbursements sections.
+                // Honor the same section-collapsed rule as detail rows.
+                if ((rowDef as WeeklyRow).isAddRowFooter) {
+                  if (collapsedSections[rowDef.section]) return null;
+                  const section = rowDef.section as 'receipts' | 'disbursements';
+                  return (
+                    <tr key={rowDef.key} className="cf-add-row-footer">
+                      <td className="cf-label-col" style={{ paddingLeft: 16 }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAddRowName('');
+                            setAddRowPrompt({ section });
+                          }}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                          title={`Add a custom ${section === 'receipts' ? 'Cash Receipts' : 'Cash Disbursements'} row`}
+                        >
+                          <Plus size={12} strokeWidth={2.5} />
+                          Add Row
+                        </button>
+                      </td>
+                      <td colSpan={visibleWeeks.length} />
                     </tr>
                   );
                 }
@@ -1070,6 +1155,72 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                 }
               >
                 {addCellSaving ? 'Saving…' : 'Save Entry'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* "+ Add Row" prompt for custom Cash Receipts / Disbursements rows */}
+      {addRowPrompt && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40"
+          onClick={closeAddRowPrompt}
+        >
+          <div
+            className="w-[360px] rounded-xl border border-border bg-card shadow-2xl p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <div className="text-sm font-semibold text-foreground">Add Custom Row</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {addRowPrompt.section === 'receipts' ? 'Cash Receipts' : 'Cash Disbursements'} · appears in Configure modal
+                </div>
+              </div>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={closeAddRowPrompt}
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-[11px] uppercase tracking-wide text-muted-foreground font-medium mb-1">
+                Row Name
+              </label>
+              <input
+                type="text"
+                className="w-full h-9 rounded-md border border-border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                placeholder="e.g. Equipment Sales"
+                value={addRowName}
+                autoFocus
+                onChange={(e) => setAddRowName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') submitAddRow();
+                  if (e.key === 'Escape') closeAddRowPrompt();
+                }}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                type="button"
+                className="h-8 px-3 rounded-md text-xs text-muted-foreground hover:bg-muted/40"
+                onClick={closeAddRowPrompt}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="h-8 px-3 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                onClick={submitAddRow}
+                disabled={!addRowName.trim()}
+              >
+                Add Row
               </button>
             </div>
           </div>
