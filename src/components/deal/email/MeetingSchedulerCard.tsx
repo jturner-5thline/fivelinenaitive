@@ -4,6 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -437,6 +438,14 @@ export function MeetingSchedulerCard({
   });
 
   const [stage, setStage] = useState<'propose' | 'confirm'>('propose');
+  // ── Editable attendee overlay (confirm stage) ──────────────────────────
+  // Defaults are derived from recipient + current user + selected teammates.
+  // The user can remove any default by adding a key to `removedKeys`, or add
+  // custom guests via `customAttendees`. Both reset when re-entering the
+  // confirm stage so the list always starts from the current proposal.
+  const [removedKeys, setRemovedKeys] = useState<Set<string>>(new Set());
+  const [customAttendees, setCustomAttendees] = useState<Array<{ email: string; name?: string }>>([]);
+  const [newAttendeeEmail, setNewAttendeeEmail] = useState('');
   const [confirmedIdx, setConfirmedIdx] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -545,6 +554,121 @@ export function MeetingSchedulerCard({
     [teamMembers, extraTeamMemberIds],
   );
 
+  // Default attendees as a stable, key-addressable list. Keys use email
+  // (case-folded) so removals survive re-renders and dedupe naturally.
+  type AttendeeRow = {
+    key: string;
+    email: string;
+    name?: string;
+    role: 'recipient' | 'me' | 'teammate' | 'custom';
+    removable: boolean;
+  };
+  const defaultAttendees: AttendeeRow[] = useMemo(() => {
+    const rows: AttendeeRow[] = [];
+    if (recipientEmail) {
+      rows.push({
+        key: recipientEmail.toLowerCase(),
+        email: recipientEmail,
+        name: recipientName,
+        role: 'recipient',
+        removable: true,
+      });
+    }
+    if (user?.email) {
+      rows.push({
+        key: user.email.toLowerCase(),
+        email: user.email,
+        name: 'You',
+        role: 'me',
+        // The organiser is implicit on the Nylas event; allow removal too
+        // so the user has full control over the visible invite list.
+        removable: true,
+      });
+    }
+    if (partiesMode === 'me_plus') {
+      for (const m of extraMembers) {
+        if (!m.email) continue;
+        rows.push({
+          key: m.email.toLowerCase(),
+          email: m.email,
+          name: m.display_name,
+          role: 'teammate',
+          removable: true,
+        });
+      }
+    }
+    return rows;
+  }, [recipientEmail, recipientName, user?.email, partiesMode, extraMembers]);
+
+  const finalAttendees: AttendeeRow[] = useMemo(() => {
+    const seen = new Set<string>();
+    const rows: AttendeeRow[] = [];
+    for (const r of defaultAttendees) {
+      if (removedKeys.has(r.key) || seen.has(r.key)) continue;
+      seen.add(r.key);
+      rows.push(r);
+    }
+    for (const c of customAttendees) {
+      const key = c.email.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ key, email: c.email, name: c.name, role: 'custom', removable: true });
+    }
+    return rows;
+  }, [defaultAttendees, removedKeys, customAttendees]);
+
+  // Reset the editable overlay every time the user enters the confirm
+  // stage, so the chips reflect the current proposal (changes to teammates
+  // or recipient since last visit aren't lost behind stale removals).
+  useEffect(() => {
+    if (stage === 'confirm') {
+      setRemovedKeys(new Set());
+      setCustomAttendees([]);
+      setNewAttendeeEmail('');
+    }
+  }, [stage]);
+
+  const removeAttendee = useCallback((key: string) => {
+    // Custom rows are dropped from `customAttendees`; defaults are masked
+    // via `removedKeys` so re-entering confirm restores them naturally.
+    setCustomAttendees((prev) => prev.filter((c) => c.email.toLowerCase() !== key));
+    setRemovedKeys((prev) => {
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+  }, []);
+
+  const addCustomAttendee = useCallback(() => {
+    const raw = newAttendeeEmail.trim();
+    if (!raw) return;
+    // Minimal RFC-ish guard — the calendar API will reject bad addresses
+    // anyway, so we just block obviously-invalid entries here.
+    const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw);
+    if (!ok) {
+      toast.error('Enter a valid email address.');
+      return;
+    }
+    const key = raw.toLowerCase();
+    // If the email matches a previously-removed default, un-remove it
+    // instead of adding a duplicate row.
+    if (removedKeys.has(key)) {
+      setRemovedKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+      setNewAttendeeEmail('');
+      return;
+    }
+    if (finalAttendees.some((r) => r.key === key)) {
+      toast.error('That attendee is already on the list.');
+      return;
+    }
+    setCustomAttendees((prev) => [...prev, { email: raw }]);
+    setNewAttendeeEmail('');
+  }, [newAttendeeEmail, removedKeys, finalAttendees]);
+
   const toggleExtraMember = useCallback((id: string) => {
     setExtraTeamMemberIds((prev) => {
       const next = new Set(prev);
@@ -594,20 +718,22 @@ export function MeetingSchedulerCard({
     }
     const slot = proposedSlots[confirmedIdx];
     if (!slot) return;
-    if (!recipientEmail) {
-      toast.error('No recipient email available on this thread.');
+    // The user can fully edit the attendee list in the confirm stage, so
+    // require at least one attendee on the final list rather than the
+    // original recipient.
+    if (finalAttendees.length === 0) {
+      toast.error('Add at least one attendee before confirming.');
       return;
     }
     setCreating(true);
     try {
-      const attendees: { email: string; name?: string }[] = [
-        { email: recipientEmail, name: recipientName },
-      ];
-      if (partiesMode === 'me_plus' && extraMembers.length > 0) {
-        for (const m of extraMembers) {
-          if (m.email) attendees.push({ email: m.email, name: m.display_name });
-        }
-      }
+      // Use the user-edited attendee list. Skip the organiser's own email
+      // since Nylas adds them automatically as the event owner; including
+      // them again can cause "duplicate attendee" rejections on some
+      // Google Workspace tenants.
+      const attendees: { email: string; name?: string }[] = finalAttendees
+        .filter((a) => a.role !== 'me')
+        .map((a) => ({ email: a.email, name: a.role === 'me' ? undefined : a.name }));
       const summary = dealName
         ? `${dealName} — Intro call`
         : threadSubject
@@ -647,7 +773,7 @@ export function MeetingSchedulerCard({
     } finally {
       setCreating(false);
     }
-  }, [confirmedIdx, proposedSlots, recipientEmail, recipientName, partiesMode, extraMembers, dealName, threadSubject, timezone, onInsert, onClose]);
+  }, [confirmedIdx, proposedSlots, finalAttendees, dealName, threadSubject, timezone, onInsert, onClose]);
 
   return (
     <div className="rounded-lg border border-white/10 bg-card/60 p-3 space-y-3">
@@ -933,51 +1059,74 @@ export function MeetingSchedulerCard({
       {/* Actions */}
       {!loadingBusy && !errorMsg && proposedSlots.length > 0 && (
         <>
-        {/* Attendee preview — compact list of who will be invited, shown
-            right before the user confirms the slot so there are no
-            surprises when the calendar event is created. Mirrors the
-            exact attendees sent to Nylas in `confirmAndCreate`. */}
+        {/* Editable attendee chips — final invite list. The user can
+            remove any default (recipient/you/teammate) and add ad-hoc
+            guests by email before confirming. Whatever sits here is what
+            Nylas receives in `confirmAndCreate`. */}
         {stage === 'confirm' && (
-          <div className="rounded-md border border-white/10 bg-card/40 p-2 text-[11px]">
-            <div className="text-[10px] font-medium text-muted-foreground mb-1">
-              Attendees ({1 + (recipientEmail ? 1 : 0) + (partiesMode === 'me_plus' ? extraMembers.length : 0)})
+          <div className="rounded-md border border-white/10 bg-card/40 p-2 space-y-1.5">
+            <div className="text-[10px] font-medium text-muted-foreground">
+              Attendees ({finalAttendees.length})
             </div>
-            <ul className="space-y-0.5">
-              {recipientEmail && (
-                <li className="flex items-center justify-between gap-2 min-w-0">
-                  <span className="truncate text-foreground/90">
-                    {recipientName || recipientEmail}
-                  </span>
-                  {recipientName && (
-                    <span className="truncate text-muted-foreground/80 text-[10px]">
-                      {recipientEmail}
+            {finalAttendees.length === 0 ? (
+              <div className="text-[11px] text-amber-300/90">
+                No attendees — add at least one before confirming.
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-1">
+                {finalAttendees.map((a) => (
+                  <span
+                    key={a.key}
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] max-w-full',
+                      a.role === 'recipient' && 'border-primary/40 bg-primary/10 text-primary',
+                      a.role === 'me' && 'border-white/15 bg-white/5 text-foreground/90',
+                      a.role === 'teammate' && 'border-white/15 bg-white/5 text-foreground/90',
+                      a.role === 'custom' && 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200',
+                    )}
+                    title={a.email}
+                  >
+                    <span className="truncate max-w-[180px]">
+                      {a.name && a.name !== a.email ? `${a.name} · ${a.email}` : a.email}
                     </span>
-                  )}
-                </li>
-              )}
-              <li className="flex items-center justify-between gap-2 min-w-0">
-                <span className="truncate text-foreground/90">
-                  {user?.email ? 'You' : 'You'}
-                </span>
-                {user?.email && (
-                  <span className="truncate text-muted-foreground/80 text-[10px]">
-                    {user.email}
+                    {a.removable && (
+                      <button
+                        type="button"
+                        onClick={() => removeAttendee(a.key)}
+                        className="rounded-full p-0.5 hover:bg-white/10"
+                        aria-label={`Remove ${a.email}`}
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    )}
                   </span>
-                )}
-              </li>
-              {partiesMode === 'me_plus' && extraMembers.map((m) => (
-                <li key={m.id} className="flex items-center justify-between gap-2 min-w-0">
-                  <span className="truncate text-foreground/90">
-                    {m.display_name || m.email}
-                  </span>
-                  {m.email && (
-                    <span className="truncate text-muted-foreground/80 text-[10px]">
-                      {m.email}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-1 pt-0.5">
+              <Input
+                value={newAttendeeEmail}
+                onChange={(e) => setNewAttendeeEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addCustomAttendee();
+                  }
+                }}
+                placeholder="Add attendee email…"
+                className="h-6 text-[11px] flex-1"
+                type="email"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 text-[11px] px-2"
+                onClick={addCustomAttendee}
+                disabled={!newAttendeeEmail.trim()}
+              >
+                Add
+              </Button>
+            </div>
           </div>
         )}
         <div className="flex items-center gap-2 pt-1">
