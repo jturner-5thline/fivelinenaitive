@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, CalendarClock, Video, Check, AlertTriangle, X } from 'lucide-react';
+import { Loader2, CalendarClock, Video, Check, AlertTriangle, X, ChevronDown, ChevronUp, CalendarX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useTeamMembers, type TeamMember } from '@/hooks/useTeamMembers';
@@ -44,6 +44,22 @@ interface BusyEvent {
   start: string;
   end: string;
   all_day: boolean;
+  /** Event title (when the calendar API returned one). Optional because
+   *  Nylas may omit it for privacy-restricted events — those render as
+   *  "Busy". */
+  title?: string | null;
+}
+
+/**
+ * One conflict surfaced in the "Why these times?" explanation panel —
+ * an existing calendar event that overlapped at least one working-hour
+ * candidate slot, with the count of slots it knocked out.
+ */
+interface BlockingEvent {
+  title: string;
+  start: Date;
+  end: Date;
+  blockedSlotCount: number;
 }
 
 interface Props {
@@ -249,6 +265,46 @@ function filterFreeSlots(candidates: Slot[], busy: BusyEvent[]): Slot[] {
     const e = slot.end.getTime();
     return !busyRanges.some((b) => s < b.e && e > b.s);
   });
+}
+
+/**
+ * Identify which busy events actually blocked candidate slots, with a
+ * count of how many slots each one knocked out. Used to power the
+ * "Why these times?" explanation panel — gives the user a transparent
+ * audit trail of why their availability is what it is.
+ *
+ * All-day events are excluded (they don't block specific working-hour
+ * slots in a useful way) and conflicts are sorted by start time so the
+ * panel reads chronologically.
+ */
+function computeBlockingEvents(
+  candidates: Slot[],
+  busy: BusyEvent[],
+): BlockingEvent[] {
+  const out: BlockingEvent[] = [];
+  for (const b of busy) {
+    if (b.all_day || !b.start || !b.end) continue;
+    const bStart = new Date(b.start);
+    const bEnd = new Date(b.end);
+    const bs = bStart.getTime();
+    const be = bEnd.getTime();
+    let blocked = 0;
+    for (const slot of candidates) {
+      const s = slot.start.getTime();
+      const e = slot.end.getTime();
+      if (s < be && e > bs) blocked += 1;
+    }
+    if (blocked > 0) {
+      out.push({
+        title: (b.title || '').trim() || 'Busy',
+        start: bStart,
+        end: bEnd,
+        blockedSlotCount: blocked,
+      });
+    }
+  }
+  out.sort((a, b) => a.start.getTime() - b.start.getTime());
+  return out;
 }
 
 /** Pick 3 well-spaced free slots — prefer different days when possible. */
