@@ -344,6 +344,9 @@ export function WorkflowIntelligenceCard({
     onConfirm({
       reasonNote: reason || rec.reason_note || '',
       confirmedStatus,
+      // Derive tracking_status from the configured stage's group so the
+      // deal_lenders row stays internally consistent with Settings.
+      confirmedTrackingStatus: selectedStage?.group || undefined,
       confirmedDetail: joinedDetail,
       confirmedDetailLabels: showDetailField ? selectedReasonLabels : [],
     });
