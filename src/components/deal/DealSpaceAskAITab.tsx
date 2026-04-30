@@ -222,7 +222,7 @@ async function enrichDraftsWithLenderContacts(drafts: EmailDraft[]): Promise<Ema
 }
 
 export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
-  const { documents } = useDealSpaceDocuments(dealId);
+  const { documents, getDownloadUrl } = useDealSpaceDocuments(dealId);
   const { financials } = useDealSpaceFinancials(dealId);
   const { messages, sendMessage, clearMessages, isLoading: isAILoading, setMessages, scope, setScope } = useDealSpaceAI(dealId);
   const { 
@@ -238,6 +238,18 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const [question, setQuestion] = useState('');
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
+  // Inline-citation preview: when the user clicks a source badge that
+  // resolves to a Deal Space document, open the same preview dialog the
+  // Documents tab uses so they can read the cited passage in context.
+  const [citedDoc, setCitedDoc] = useState<DealSpaceDocument | null>(null);
+  const handleOpenCitedDocument = useCallback((doc: DealSpaceDocument) => {
+    setCitedDoc(doc);
+  }, []);
+  const handleDownloadCitedDocument = useCallback(async (doc: DealSpaceDocument) => {
+    const url = await getDownloadUrl(doc);
+    if (url) window.open(url, '_blank');
+  }, [getDownloadUrl]);
 
   // Draft Submission runs as a structured product action — fully decoupled from the chat panel.
   const [isDraftingEmail, setIsDraftingEmail] = useState(false);
@@ -805,7 +817,11 @@ CRITICAL RULES:
                           <div className="prose prose-sm dark:prose-invert max-w-none">
                             <ReactMarkdown>{msg.content}</ReactMarkdown>
                           </div>
-                          <SourceCitations sources={msg.sources} />
+                          <SourceCitations
+                            sources={msg.sources}
+                            documents={documents}
+                            onOpenDocument={handleOpenCitedDocument}
+                          />
                         </>
                       ) : (
                         <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -882,6 +898,15 @@ CRITICAL RULES:
           // drafts dialog mounts (avoids overlapping aria-modal layers).
           setTimeout(() => generateDraftsForLenders(names, personalize), 50);
         }}
+      />
+
+      {/* Cited-source preview — opened by clicking an inline citation
+          badge that matches a Deal Space document by name. */}
+      <DealSpaceDocumentPreview
+        document={citedDoc}
+        isOpen={citedDoc !== null}
+        onClose={() => setCitedDoc(null)}
+        onDownload={handleDownloadCitedDocument}
       />
     </Card>
   );
