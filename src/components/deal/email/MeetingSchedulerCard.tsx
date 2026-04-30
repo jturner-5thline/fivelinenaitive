@@ -284,7 +284,10 @@ export function MeetingSchedulerCard({
   const [selectedSlotIdx, setSelectedSlotIdx] = useState<Set<number>>(new Set([0, 1, 2]));
 
   const [partiesMode, setPartiesMode] = useState<'me' | 'me_plus'>('me');
-  const [extraTeamMemberId, setExtraTeamMemberId] = useState<string | null>(null);
+  // Multi-select: any number of 5th Line teammates can be added as
+  // attendees alongside the current user. Stored as a Set of profile IDs
+  // so toggling is O(1) and the order matches the team list.
+  const [extraTeamMemberIds, setExtraTeamMemberIds] = useState<Set<string>>(new Set());
 
   const [stage, setStage] = useState<'propose' | 'confirm'>('propose');
   const [confirmedIdx, setConfirmedIdx] = useState<number | null>(null);
@@ -346,17 +349,35 @@ export function MeetingSchedulerCard({
     });
   };
 
-  const extraMember: TeamMember | null = useMemo(
-    () => teamMembers.find((m) => m.id === extraTeamMemberId) || null,
-    [teamMembers, extraTeamMemberId],
+  const extraMembers: TeamMember[] = useMemo(
+    () => teamMembers.filter((m) => extraTeamMemberIds.has(m.id)),
+    [teamMembers, extraTeamMemberIds],
   );
 
+  const toggleExtraMember = useCallback((id: string) => {
+    setExtraTeamMemberIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  /**
+   * Natural-language subject for the proposal block, e.g.
+   *   "I"                                  → just me
+   *   "Alex and I"                         → me + 1
+   *   "Alex, Jordan and I"                 → me + 2+
+   * Falls back to "I" if me_plus is selected but no teammates are checked
+   * yet (avoids a dangling "and I").
+   */
   const partiesLine = useMemo(() => {
-    if (partiesMode === 'me_plus' && extraMember) {
-      return `${extraMember.display_name} and I`;
-    }
-    return 'I';
-  }, [partiesMode, extraMember]);
+    if (partiesMode !== 'me_plus' || extraMembers.length === 0) return 'I';
+    const names = extraMembers.map((m) => m.display_name);
+    if (names.length === 1) return `${names[0]} and I`;
+    const head = names.slice(0, -1).join(', ');
+    const tail = names[names.length - 1];
+    return `${head} and ${tail} and I`;
+  }, [partiesMode, extraMembers]);
 
   // ── Stage 1: insert "here are 3 times" proposal text ────────────────────
   const insertProposal = useCallback(() => {
@@ -391,8 +412,10 @@ export function MeetingSchedulerCard({
       const attendees: { email: string; name?: string }[] = [
         { email: recipientEmail, name: recipientName },
       ];
-      if (partiesMode === 'me_plus' && extraMember?.email) {
-        attendees.push({ email: extraMember.email, name: extraMember.display_name });
+      if (partiesMode === 'me_plus' && extraMembers.length > 0) {
+        for (const m of extraMembers) {
+          if (m.email) attendees.push({ email: m.email, name: m.display_name });
+        }
       }
       const summary = dealName
         ? `${dealName} — Intro call`
@@ -433,7 +456,7 @@ export function MeetingSchedulerCard({
     } finally {
       setCreating(false);
     }
-  }, [confirmedIdx, proposedSlots, recipientEmail, recipientName, partiesMode, extraMember, dealName, threadSubject, timezone, onInsert, onClose]);
+  }, [confirmedIdx, proposedSlots, recipientEmail, recipientName, partiesMode, extraMembers, dealName, threadSubject, timezone, onInsert, onClose]);
 
   return (
     <div className="rounded-lg border border-white/10 bg-card/60 p-3 space-y-3">
@@ -557,26 +580,60 @@ export function MeetingSchedulerCard({
             <div className="flex items-center gap-2">
               <RadioGroupItem value="me_plus" id="parties-plus" className="h-3.5 w-3.5" />
               <Label htmlFor="parties-plus" className="text-[11.5px] font-normal cursor-pointer">
-                Me + teammate
+                Me + teammates
               </Label>
             </div>
           </RadioGroup>
           {partiesMode === 'me_plus' && (
-            <Select value={extraTeamMemberId ?? ''} onValueChange={setExtraTeamMemberId}>
-              <SelectTrigger className="h-7 text-[11px]">
-                <SelectValue placeholder="Pick a 5th Line teammate" />
-              </SelectTrigger>
-              <SelectContent>
-                {teamMembers
+            <div className="rounded-md border border-white/10 bg-white/[0.03] p-1.5 max-h-40 overflow-y-auto space-y-0.5">
+              {teamMembers.filter((m) => m.id !== user?.id).length === 0 ? (
+                <div className="px-1.5 py-1 text-[11px] text-muted-foreground">
+                  No teammates available.
+                </div>
+              ) : (
+                teamMembers
                   .filter((m) => m.id !== user?.id)
-                  .map((m) => (
-                    <SelectItem key={m.id} value={m.id} className="text-[11.5px]">
-                      {m.display_name}
-                      {m.email ? <span className="text-muted-foreground"> · {m.email}</span> : null}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
+                  .map((m) => {
+                    const checked = extraTeamMemberIds.has(m.id);
+                    return (
+                      <label
+                        key={m.id}
+                        className={cn(
+                          'flex items-center gap-2 rounded-sm px-1.5 py-1 cursor-pointer text-[11.5px]',
+                          'hover:bg-white/[0.06] transition-colors',
+                          checked && 'bg-primary/10',
+                        )}
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={() => toggleExtraMember(m.id)}
+                          className="h-3.5 w-3.5"
+                        />
+                        <span className="text-foreground/85 truncate">
+                          {m.display_name}
+                          {m.email ? (
+                            <span className="text-muted-foreground"> · {m.email}</span>
+                          ) : null}
+                        </span>
+                      </label>
+                    );
+                  })
+              )}
+              {extraTeamMemberIds.size > 0 && (
+                <div className="flex items-center justify-between pt-1 px-1">
+                  <span className="text-[10px] text-muted-foreground/70">
+                    {extraTeamMemberIds.size} teammate{extraTeamMemberIds.size === 1 ? '' : 's'} selected
+                  </span>
+                  <button
+                    type="button"
+                    className="text-[10px] text-muted-foreground hover:text-foreground"
+                    onClick={() => setExtraTeamMemberIds(new Set())}
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
