@@ -726,6 +726,22 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               loading={drSuggesting && !drSuggestion}
               onConfirm={() => setDrDialogOpen(true)}
               onDismiss={() => setDrDismissed(true)}
+              onAddToQueue={async () => {
+                await enqueueAiAction({
+                  action_type: 'save_to_data_room',
+                  title: `Save ${drUploadable.length} attachment${drUploadable.length === 1 ? '' : 's'} to data room`,
+                  description: thread.subject || null,
+                  deal_id: dealId || null,
+                  deal_name: dealName || null,
+                  payload: {
+                    attachment_count: drUploadable.length,
+                    subject: thread.subject || null,
+                    suggested_destination: drSuggestion?.suggested_deal_name || null,
+                  },
+                  source: { thread_id: thread.threadId, subject: thread.subject || null },
+                });
+                setDrDismissed(true);
+              }}
             />
           )}
 
