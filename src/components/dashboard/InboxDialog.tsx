@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
 import { cn } from '@/lib/utils';
+import { useInboxCacheStore } from '@/stores/inboxCacheStore';
 
 interface InboxDialogProps {
   open: boolean;
@@ -118,23 +119,34 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Inbox + sent message stores (raw Gmail/Nylas shape, deduped by id)
-  const [inboxMessages, setInboxMessages] = useState<any[]>([]);
-  const [sentMessages, setSentMessages] = useState<any[]>([]);
+  // Inbox + sent message stores (raw Gmail/Nylas shape, deduped by id).
+  // Seeded synchronously from the shared `inboxCacheStore` that the
+  // Dashboard pre-warms on mount + polls every 2 minutes — so the dialog
+  // is never blank on open. Pagination still flows through local state
+  // and is mirrored back into the cache store so the unread badge and
+  // next open both see the latest data.
+  const cacheSnapshot = useInboxCacheStore.getState();
+  const [inboxMessages, setInboxMessages] = useState<any[]>(() => cacheSnapshot.inboxMessages);
+  const [sentMessages, setSentMessages] = useState<any[]>(() => cacheSnapshot.sentMessages);
   const [cachedInboxEmails, setCachedInboxEmails] = useState<any[]>([]);
 
-  // Pagination cursors
-  const [inboxNextToken, setInboxNextToken] = useState<string | null>(null);
-  const [sentNextToken, setSentNextToken] = useState<string | null>(null);
+  // Pagination cursors — also seeded from the cache so "Load more" picks
+  // up where the prefetch left off.
+  const [inboxNextToken, setInboxNextToken] = useState<string | null>(cacheSnapshot.inboxNextToken);
+  const [sentNextToken, setSentNextToken] = useState<string | null>(cacheSnapshot.sentNextToken);
   const [hasMoreInbox, setHasMoreInbox] = useState(true);
   const [hasMoreSent, setHasMoreSent] = useState(true);
 
   // Loading flags
+  // Only show the initial spinner when we have nothing cached to render.
+  // Otherwise the open is instant and the refresh happens silently below.
   const [isInitialLoading, setIsInitialLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Lifecycle refs to prevent overlapping fetches & stale state writes after close
-  const hasLoadedRef = useRef(false);
+  // Pre-seeded as `true` when cache already has data so the open-effect
+  // skips the foreground fetch and only kicks the silent background refresh.
+  const hasLoadedRef = useRef(cacheSnapshot.hasInitial && cacheSnapshot.inboxMessages.length > 0);
   const isMountedRef = useRef(true);
   const isPaginatingRef = useRef(false);
 
@@ -186,9 +198,14 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
           break;
         }
         if (page.messages.length === 0 && !page.nextPageToken) break;
-        setInboxMessages(prev => mergeUniqueById(prev, page.messages));
+        setInboxMessages(prev => {
+          const next = mergeUniqueById(prev, page.messages);
+          useInboxCacheStore.setState({ inboxMessages: next });
+          return next;
+        });
         token = page.nextPageToken;
         setInboxNextToken(token);
+        useInboxCacheStore.setState({ inboxNextToken: token });
         setHasMoreInbox(!!token);
         totalLoaded += page.messages.length;
       }
@@ -201,9 +218,14 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
         await new Promise(r => setTimeout(r, AUTO_LOAD_DELAY_MS));
         const firstSent = await fetchPage({ labelIds: ['SENT'] });
         if (isMountedRef.current && !firstSent.rateLimited) {
-          setSentMessages(prev => mergeUniqueById(prev, firstSent.messages));
+          setSentMessages(prev => {
+            const next = mergeUniqueById(prev, firstSent.messages);
+            useInboxCacheStore.setState({ sentMessages: next });
+            return next;
+          });
           sentToken = firstSent.nextPageToken;
           setSentNextToken(sentToken);
+          useInboxCacheStore.setState({ sentNextToken: sentToken });
           setHasMoreSent(!!sentToken);
           sentLoaded = firstSent.messages.length;
         }
@@ -215,9 +237,14 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
         if (!isMountedRef.current) break;
         if (page.rateLimited) break;
         if (page.messages.length === 0 && !page.nextPageToken) break;
-        setSentMessages(prev => mergeUniqueById(prev, page.messages));
+        setSentMessages(prev => {
+          const next = mergeUniqueById(prev, page.messages);
+          useInboxCacheStore.setState({ sentMessages: next });
+          return next;
+        });
         sentToken = page.nextPageToken;
         setSentNextToken(sentToken);
+        useInboxCacheStore.setState({ sentNextToken: sentToken });
         setHasMoreSent(!!sentToken);
         sentLoaded += page.messages.length;
       }
@@ -226,46 +253,57 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
     }
   }, [mergeUniqueById]);
 
-  // Initial load: first inbox page (so UI is responsive), then kick off background auto-pagination.
+  // Open effect.
+  // Two paths:
+  //  • Cold open (cache empty): show the initial spinner, fetch page 1 of
+  //    inbox foreground, then kick off the background auto-pagination.
+  //  • Warm open (cache populated): NEVER show a spinner. Render whatever
+  //    the prefetch put in the store, silently re-fetch page 1 of inbox
+  //    + sent in the background, merge anything newer in place, and only
+  //    auto-paginate if we haven't yet drained the tail.
   useEffect(() => {
-    if (!open || !status.connected || hasLoadedRef.current) return;
-    hasLoadedRef.current = true;
+    if (!open || !status.connected) return;
     isMountedRef.current = true;
+    if (hasLoadedRef.current) return; // already seeded from cache
+    hasLoadedRef.current = true;
+
+    const cacheHasData = inboxMessages.length > 0;
 
     (async () => {
-      setIsInitialLoading(true);
+      if (!cacheHasData) setIsInitialLoading(true);
       const firstInbox = await fetchPage({ labelIds: ['INBOX'] });
       if (!isMountedRef.current) return;
 
       if (firstInbox.messages.length === 0 && !firstInbox.nextPageToken) {
-        // Empty / rate-limited — try cache
-        await hydrateFromCache();
+        // Empty / rate-limited — try DB cache only on cold open.
+        if (!cacheHasData) await hydrateFromCache();
       } else {
-        setInboxMessages(prev => mergeUniqueById(prev, firstInbox.messages));
+        setInboxMessages((prev) => {
+          const next = mergeUniqueById(prev, firstInbox.messages);
+          // Mirror into the shared cache so the unread badge & next open
+          // see the freshest data even after this dialog unmounts.
+          useInboxCacheStore.setState({ inboxMessages: next });
+          return next;
+        });
         setInboxNextToken(firstInbox.nextPageToken);
         setHasMoreInbox(!!firstInbox.nextPageToken);
       }
-      setIsInitialLoading(false);
+      if (!cacheHasData) setIsInitialLoading(false);
 
-      // Kick off background auto-pagination (inbox tail + full sent)
+      // Kick off background auto-pagination (inbox tail + full sent).
       autoPaginate(firstInbox.nextPageToken);
     })();
-  }, [open, status.connected, hydrateFromCache, mergeUniqueById, autoPaginate]);
+  }, [open, status.connected, hydrateFromCache, mergeUniqueById, autoPaginate, inboxMessages.length]);
 
-  // Reset on close
+  // On close we tear down the in-flight fetch flags but DELIBERATELY keep
+  // local state intact — the next mount re-seeds from the cache store, so
+  // clearing here would only cause a needless flash. The shared cache is
+  // the durable source of truth between opens.
   useEffect(() => {
     if (!open) {
       hasLoadedRef.current = false;
       isMountedRef.current = false;
       isPaginatingRef.current = false;
-      setInboxMessages([]);
-      setSentMessages([]);
-      setCachedInboxEmails([]);
-      setInboxNextToken(null);
-      setSentNextToken(null);
-      setHasMoreInbox(true);
-      setHasMoreSent(true);
-      setIsInitialLoading(false);
       setIsLoadingMore(false);
     } else {
       isMountedRef.current = true;
@@ -324,6 +362,9 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
   const reconcileStates = useCallback((states: Array<{ id: string; is_read: boolean; is_starred: boolean; missing?: boolean }>) => {
     if (!states.length || !isMountedRef.current) return;
     const stateMap = new Map(states.map(s => [s.id, s]));
+    // Push deltas into the shared cache too so the unread badge updates
+    // even when the dialog is closed on the next render.
+    useInboxCacheStore.getState().applyStateDeltas(states);
     setInboxMessages(prev => {
       let changed = false;
       const next = prev

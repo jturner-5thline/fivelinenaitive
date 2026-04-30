@@ -337,6 +337,7 @@ function EmailTileWithIntelligence({
           label="Email"
           icon={Mail}
           category="inbox"
+          badgeCount={useInboxCacheStore(selectUnreadCount)}
           onClick={(e) => onOpen(e.currentTarget as HTMLElement)}
           onKeyDown={onKeyDown}
         />
@@ -389,10 +390,16 @@ import {
   NIKI_EMAIL,
 } from '@/constants/nikiBriefing';
 import { useDashboardCarouselWidgets } from '@/hooks/useDashboardCarouselWidgets';
+import { useInboxPrefetch } from '@/hooks/useInboxPrefetch';
+import { useInboxCacheStore, selectUnreadCount } from '@/stores/inboxCacheStore';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { profile } = useProfile();
+  // Eagerly warm the inbox cache on dashboard mount so the Email widget
+  // opens instantly with cached messages instead of a spinner. Polls
+  // every 2 minutes (and on tab focus) to keep new messages flowing in.
+  useInboxPrefetch();
   // Dev-only: emit a single performance.measure for Dashboard mount
   // latency. View in DevTools → Performance → User Timing, or set
   // `localStorage.setItem('perf:debug','1')` to log to the console.
