@@ -222,16 +222,12 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
           {/* Tab Content — only active tab renders */}
           {activeTab === 'overview' && (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
-                {e.plTable && (
-                  <div className="xl:col-span-3">
-                    <InteractivePLTable comparisonMode={comparisonMode} dateRange={dateRange} />
-                  </div>
-                )}
-                <div className={e.plTable ? "xl:col-span-2 space-y-4" : "xl:col-span-5 space-y-4"}>
-                  <RevenueOPEXCharts chartConfig={chartConfig} visibilityConfig={c} />
-                </div>
-              </div>
+              {/* Income Statement is the primary module — full width. */}
+              {e.plTable && (
+                <InteractivePLTable comparisonMode={comparisonMode} dateRange={dateRange} />
+              )}
+              {/* Supporting charts sit beneath it as a follow-on section. */}
+              <RevenueOPEXCharts chartConfig={chartConfig} visibilityConfig={c} />
             </div>
           )}
 
