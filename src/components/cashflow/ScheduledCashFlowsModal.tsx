@@ -430,6 +430,7 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
                             <SelectContent>
                               <SelectItem value="one_time">1-Time</SelectItem>
                               <SelectItem value="weekly">Weekly on [Day]</SelectItem>
+                              <SelectItem value="bi_weekly">Bi-Weekly on [Day]</SelectItem>
                               <SelectItem value="monthly_first">Monthly — First [Day]</SelectItem>
                               <SelectItem value="monthly_last">Monthly — Last [Day]</SelectItem>
                               <SelectItem value="monthly_day">Monthly on the [X] day</SelectItem>
@@ -447,7 +448,7 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
                             </div>
                           )}
 
-                          {d.frequency_type === 'weekly' && (
+                          {(d.frequency_type === 'weekly' || d.frequency_type === 'bi_weekly') && (
                             <Select
                               value={String(d.frequency_config?.day_of_week ?? 1)}
                               onValueChange={(v) =>
@@ -516,6 +517,45 @@ export function ScheduledCashFlowsModal({ open, initialEntries, onClose, onSave 
                               onChange={(iso) => updateRow(d._draftId, { end_date: iso })}
                               placeholder="End date (optional)"
                             />
+                          </div>
+                        )}
+
+                        {d.frequency_type !== 'one_time' && (
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs text-muted-foreground whitespace-nowrap">
+                              Variance ±
+                            </label>
+                            <div className="relative w-28">
+                              <Input
+                                type="number"
+                                min={0}
+                                max={100}
+                                step="0.1"
+                                value={
+                                  d.frequency_config?.variance_pct === undefined ||
+                                  d.frequency_config?.variance_pct === null
+                                    ? ''
+                                    : d.frequency_config.variance_pct
+                                }
+                                placeholder="0"
+                                onChange={(e) => {
+                                  const raw = e.target.value;
+                                  if (raw === '') {
+                                    updateConfig(d._draftId, { variance_pct: undefined });
+                                  } else {
+                                    const n = Math.max(0, Math.min(100, Number(raw)));
+                                    updateConfig(d._draftId, { variance_pct: n });
+                                  }
+                                }}
+                                className="h-9 pr-6 text-right tabular-nums"
+                              />
+                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                                %
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-muted-foreground">
+                              optional fluctuation per occurrence
+                            </span>
                           </div>
                         )}
                       </div>
