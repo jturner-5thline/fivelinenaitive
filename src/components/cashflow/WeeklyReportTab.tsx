@@ -227,6 +227,43 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   });
   const gridWrapRef = useGridWheelPassthrough<HTMLDivElement>();
 
+  // Inline "+ Add" popover state for receipts/disbursements cells.
+  const [addCellPopover, setAddCellPopover] = useState<null | {
+    rowKey: string;
+    rowLabel: string;
+    section: 'receipts' | 'disbursements';
+    weekKey: string;
+    weekEnding: string | null;
+  }>(null);
+  const [addCellDraft, setAddCellDraft] = useState<{
+    description: string;
+    amount: string;
+    flowType: 'cash_in' | 'cash_out';
+  }>({ description: '', amount: '', flowType: 'cash_in' });
+  const [addCellSaving, setAddCellSaving] = useState(false);
+  const closeAddCellPopover = useCallback(() => {
+    setAddCellPopover(null);
+    setAddCellDraft({ description: '', amount: '', flowType: 'cash_in' });
+    setAddCellSaving(false);
+  }, []);
+  const submitAddCell = useCallback(async () => {
+    if (!addCellPopover || !onAddOneTimeEntry) return;
+    const amt = Number(addCellDraft.amount);
+    if (!Number.isFinite(amt) || amt <= 0) return;
+    setAddCellSaving(true);
+    const ok = await onAddOneTimeEntry({
+      rowKey: addCellPopover.rowKey,
+      rowLabel: addCellPopover.rowLabel,
+      weekKey: addCellPopover.weekKey,
+      weekEnding: addCellPopover.weekEnding,
+      flowType: addCellDraft.flowType,
+      amount: amt,
+      description: addCellDraft.description.trim(),
+    });
+    if (ok) closeAddCellPopover();
+    else setAddCellSaving(false);
+  }, [addCellPopover, addCellDraft, onAddOneTimeEntry, closeAddCellPopover]);
+
   // Horizontal scroll edge-fade indicators
   const [edgeState, setEdgeState] = useState<{ left: boolean; right: boolean }>({ left: false, right: false });
   const handleGridScroll = useCallback((el: HTMLDivElement | null) => {
