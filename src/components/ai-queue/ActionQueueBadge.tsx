@@ -12,7 +12,7 @@ import { ActionQueuePanel } from './ActionQueuePanel';
  */
 export function ActionQueueBadge() {
   const count = useAiActionQueueCount();
-  const { data = [] } = useAiActionQueue();
+  const { data = [], refetch } = useAiActionQueue();
   const [open, setOpen] = useState(false);
 
   const label = useMemo(
@@ -20,8 +20,15 @@ export function ActionQueueBadge() {
     [count],
   );
 
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    // Refresh the queue every time the popover opens so the user always
+    // sees the latest pending items.
+    if (next) refetch();
+  };
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
