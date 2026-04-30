@@ -535,11 +535,25 @@ export async function exportWriteUpToPdf({ data, owners, totalEquityRaised, deal
     c.ensureSpace(80);
     sectionTitle('Ownership & Equity');
 
+    const fmtPct = (n: number) => {
+      if (!Number.isFinite(n)) return '0';
+      return Number(n.toFixed(1)).toString();
+    };
+    const fmtEquityRaised = (raw: string) => {
+      if (!raw) return '';
+      const trimmed = raw.trim();
+      if (/[a-zA-Z$,]/.test(trimmed) && !/^\$?\s*[\d.,]+\s*$/.test(trimmed)) return trimmed;
+      const numeric = Number(trimmed.replace(/[$,\s]/g, ''));
+      if (!Number.isFinite(numeric) || numeric <= 0) return trimmed;
+      if (numeric >= 1_000_000) return `$${(numeric / 1_000_000).toFixed(1)}MM`;
+      return `$${numeric.toLocaleString('en-US')}`;
+    };
+
     if (owners.length > 0) {
       autoTable(doc, {
         startY: c.y,
         head: [['Shareholder', 'Ownership %']],
-        body: owners.map(o => [o.owner_name, `${o.ownership_percentage}%`]),
+        body: owners.map(o => [o.owner_name, `${fmtPct(o.ownership_percentage)}%`]),
         margin: { left: c.marginL, right: c.marginR },
         headStyles: { fillColor: C.navy, textColor: C.white, fontStyle: 'bold', fontSize: 9 },
         styles: { fontSize: 9, cellPadding: 6, textColor: C.fg },
@@ -562,7 +576,7 @@ export async function exportWriteUpToPdf({ data, owners, totalEquityRaised, deal
       doc.text('Total Equity Raised:', c.marginL, c.y);
       const eqW = doc.getTextWidth('Total Equity Raised:  ');
       doc.setTextColor(...C.primary);
-      doc.text(totalEquityRaised, c.marginL + eqW, c.y);
+      doc.text(fmtEquityRaised(totalEquityRaised), c.marginL + eqW, c.y);
       c.y += 18;
     }
   }
