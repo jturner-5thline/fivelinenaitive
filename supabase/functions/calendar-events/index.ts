@@ -342,8 +342,27 @@ serve(async (req: Request): Promise<Response> => {
           };
         }
 
+        // Optional attendees — Nylas auto-emails invites to participants.
+        if (Array.isArray(ed.attendees) && ed.attendees.length > 0) {
+          nylasEvent.participants = ed.attendees
+            .filter((a) => a && a.email)
+            .map((a) => ({ email: a.email, name: a.name || undefined }));
+        }
+
+        // Optional Google Meet link via Nylas autocreate conferencing.
+        if (ed.add_meet_link) {
+          nylasEvent.conferencing = {
+            provider: "Google Meet",
+            autocreate: {},
+          };
+        }
+
         const createUrl = new URL(`${baseUrl}/events`);
         createUrl.searchParams.set("calendar_id", calendarId);
+        // Ensure invite emails go out to attendees.
+        if (Array.isArray(ed.attendees) && ed.attendees.length > 0) {
+          createUrl.searchParams.set("notify_participants", "true");
+        }
 
         const createResp = await fetch(createUrl.toString(), {
           method: "POST",
