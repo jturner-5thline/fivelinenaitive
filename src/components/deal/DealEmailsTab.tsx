@@ -491,6 +491,12 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
   const [chipFilter, setChipFilter] = useState<ChipFilter>(null);
   const [categoryTab, setCategoryTab] = useState<EmailCategoryTab>('all');
+  // Inbox-only deal filter chip selection. When set, the inbox is filtered to
+  // emails whose best deal-match resolves to this deal id (using the same
+  // matching engine that powers the inline "Likely: …" badges) and sorted
+  // chronologically across the entire loaded mailbox.
+  const [selectedDealFilterId, setSelectedDealFilterId] = useState<string | null>(null);
+  const isInboxScope = !dealId; // true when rendered inside InboxDialog
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
