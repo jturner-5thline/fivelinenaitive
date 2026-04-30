@@ -337,7 +337,6 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<LenderAttachmentCategory>('general');
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [isEditMode, setIsEditMode] = useState(initialEditMode);
   const [isSaving, setIsSaving] = useState(false);
   const [isReorderDialogOpen, setIsReorderDialogOpen] = useState(false);
