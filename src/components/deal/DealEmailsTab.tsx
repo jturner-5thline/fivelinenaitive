@@ -84,6 +84,12 @@ import { EmailLabelsManageDialog, labelSwatch } from './email/EmailLabelsManageD
 import { Tag, Plus as PlusIcon } from 'lucide-react';
 import { DealFilterChipsRow } from '@/components/dashboard/inbox/DealFilterChipsRow';
 import { DealFilterSummaryCard } from '@/components/dashboard/inbox/DealFilterSummaryCard';
+import { LabelFilterChipsRow } from '@/components/dashboard/inbox/LabelFilterChipsRow';
+import {
+  SYSTEM_LABELS,
+  emailMatchesSystemLabel,
+  isSystemLabelId,
+} from './email/systemAutoLabels';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { rankDealsForThread } from '@/lib/dealEvidenceMatcher';
 
