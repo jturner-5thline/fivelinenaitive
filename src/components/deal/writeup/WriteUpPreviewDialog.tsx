@@ -330,7 +330,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
               <CardHeader icon={<Building2 style={{ width: 20, height: 20, color: T.primary }} />} title="Company Overview" />
               <div style={{ padding: '16px 24px 24px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 32px' }}>
                 {[
-                  { label: 'Customer Base', value: data.billingModels.length > 0 ? data.billingModels.join(', ') : null },
+                  { label: 'Billing Model', value: data.billingModels.length > 0 ? data.billingModels.join(', ') : null },
                   { label: 'Headquarters', value: data.location },
                   { label: 'Industry', value: data.industries.join(', ') },
                   { label: 'Year Founded', value: data.yearFounded },
