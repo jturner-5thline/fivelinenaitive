@@ -94,6 +94,8 @@ type WeeklyRow = {
   isSpacer?: boolean;
   isTransferAccount?: boolean;
   transferAccount?: string;
+  isCustom?: boolean;
+  isAddRowFooter?: boolean;
 };
 
 const WEEKLY_ROW_ORDER: Array<WeeklyRow> = [
