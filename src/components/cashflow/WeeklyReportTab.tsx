@@ -255,6 +255,51 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
     flowType: 'cash_in' | 'cash_out';
   }>({ description: '', amount: '', flowType: 'cash_in' });
   const [addCellSaving, setAddCellSaving] = useState(false);
+
+  // "+ Add Row" prompt state for custom Cash Receipts / Disbursements rows.
+  const [addRowPrompt, setAddRowPrompt] = useState<null | { section: 'receipts' | 'disbursements' }>(null);
+  const [addRowName, setAddRowName] = useState('');
+  const closeAddRowPrompt = useCallback(() => {
+    setAddRowPrompt(null);
+    setAddRowName('');
+  }, []);
+  const submitAddRow = useCallback(() => {
+    if (!addRowPrompt || !onAddCustomRow) return;
+    const ok = onAddCustomRow(addRowPrompt.section, addRowName);
+    if (ok) closeAddRowPrompt();
+  }, [addRowPrompt, addRowName, onAddCustomRow, closeAddRowPrompt]);
+
+  // Build the effective row order: inject custom rows + an "+ Add Row" footer
+  // into the receipts / disbursements sections. Custom row keys double as the
+  // category label for scheduled entries — `resolveCategoryToGridRow` falls
+  // through unknown keys as-is so values flow into the matching row.
+  const effectiveRowOrder = useMemo<WeeklyRow[]>(() => {
+    const out: WeeklyRow[] = [];
+    const extraReceipts = customReceiptRows ?? [];
+    const extraDisb = customDisbursementRows ?? [];
+    for (const row of WEEKLY_ROW_ORDER) {
+      out.push(row);
+      // Insert custom receipts + footer right after the last canonical receipts
+      // line item ('Other Receipts').
+      if (row.key === 'Other Receipts') {
+        for (const name of extraReceipts) {
+          out.push({ key: name, section: 'receipts', isCustom: true });
+        }
+        if (onAddCustomRow) {
+          out.push({ key: '__add_row_receipts', section: 'receipts', isAddRowFooter: true });
+        }
+      }
+      if (row.key === 'Other Disbursements') {
+        for (const name of extraDisb) {
+          out.push({ key: name, section: 'disbursements', isCustom: true });
+        }
+        if (onAddCustomRow) {
+          out.push({ key: '__add_row_disbursements', section: 'disbursements', isAddRowFooter: true });
+        }
+      }
+    }
+    return out;
+  }, [customReceiptRows, customDisbursementRows, onAddCustomRow]);
   const closeAddCellPopover = useCallback(() => {
     setAddCellPopover(null);
     setAddCellDraft({ description: '', amount: '', flowType: 'cash_in' });
