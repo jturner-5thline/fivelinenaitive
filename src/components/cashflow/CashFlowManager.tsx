@@ -160,6 +160,7 @@ export function CashFlowManager() {
   const { importedDailyData, importedRowStructure, isImported, isImportLoading, importFile } = useCashFlowImport(company?.id);
   const { items: cashInDbItems, fetchItems: refreshCashInItems, removeItem: removeCashInDbItem, toSidebarItems } = useCashInItems();
   const { items: scheduledItems, saveAll: saveScheduledItems, addItem: addScheduledItem } = useScheduledCashFlows(company?.id);
+  const { rows: customRows, addRow: addCustomRow, removeRow: removeCustomRow } = useCustomCashFlowRows(company?.id);
   const [addCashInOpen, setAddCashInOpen] = useState(false);
   const [scheduledModalOpen, setScheduledModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
