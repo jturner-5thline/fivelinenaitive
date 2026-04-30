@@ -178,6 +178,15 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   // full meeting scheduler workspace (calendar read → slot pick → invite).
   // This UPGRADES the existing chip without adding a new button anywhere.
   const [schedulerOpen, setSchedulerOpen] = useState(false);
+  // Collapsible section state for the redesigned layout. Draft reply is the
+  // biggest space-hog so it stays collapsed by default; Suggested Tasks
+  // collapses by default whenever a Suggested Update is also visible to
+  // reduce double-stack noise. Deal details (the rich DealContextCard body)
+  // is collapsed by default so the chip row above stays the primary
+  // at-a-glance summary.
+  const [draftOpen, setDraftOpen] = useState(false);
+  const [tasksOpen, setTasksOpen] = useState(false);
+  const [dealDetailsOpen, setDealDetailsOpen] = useState(false);
   // Snapshot of the slim deal-context summary surfaced in the sidebar header
   // card. Forwarded to the edge function so the draft tone reflects whether
   // the deal is At Risk, Off Track, On Hold, etc.
