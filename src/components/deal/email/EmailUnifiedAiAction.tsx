@@ -621,7 +621,7 @@ export function EmailUnifiedAiAction({
               if (!text && !suggestion) setFocused(false);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Ask, draft, create a task, add a note…"
+            placeholder="Ask AI about this email..."
             disabled={routing || creating}
             className={cn(
               'pr-9 h-8 text-[12px] rounded-md',

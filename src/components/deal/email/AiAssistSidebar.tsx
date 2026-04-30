@@ -11,6 +11,10 @@ import {
   AlertTriangle,
   ArrowRight,
   Bookmark,
+  ChevronDown,
+  Briefcase,
+  User as UserIcon,
+  Building2,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { cn } from '@/lib/utils';
@@ -26,6 +30,7 @@ import { SendToDataRoomDialog } from './SendToDataRoomDialog';
 import { useFullEmailMessage } from './useFullEmailMessage';
 import { useEmailToDataRoom, type DataRoomDestinationSuggestion } from '@/hooks/useEmailToDataRoom';
 import { SuggestedDealUpdatesSection } from './SuggestedDealUpdatesSection';
+import { SuggestedTaskCards } from './SuggestedTaskCards';
 import { DataRoomUploadSuggestionCard } from './DataRoomUploadSuggestionCard';
 import { DealContextCard } from './DealContextCard';
 import { UnmatchedEmailContextCard } from './UnmatchedEmailContextCard';
@@ -173,6 +178,15 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   // full meeting scheduler workspace (calendar read → slot pick → invite).
   // This UPGRADES the existing chip without adding a new button anywhere.
   const [schedulerOpen, setSchedulerOpen] = useState(false);
+  // Collapsible section state for the redesigned layout. Draft reply is the
+  // biggest space-hog so it stays collapsed by default; Suggested Tasks
+  // collapses by default whenever a Suggested Update is also visible to
+  // reduce double-stack noise. Deal details (the rich DealContextCard body)
+  // is collapsed by default so the chip row above stays the primary
+  // at-a-glance summary.
+  const [draftOpen, setDraftOpen] = useState(false);
+  const [tasksOpen, setTasksOpen] = useState(false);
+  const [dealDetailsOpen, setDealDetailsOpen] = useState(false);
   // Snapshot of the slim deal-context summary surfaced in the sidebar header
   // card. Forwarded to the edge function so the draft tone reflects whether
   // the deal is At Risk, Off Track, On Hold, etc.
@@ -635,13 +649,78 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
         style={{ overscrollBehavior: 'contain', contain: 'layout paint style' }}
       >
         <div className="min-w-0 max-w-full w-full p-4 space-y-4">
-          {/* Deal Context — auto-expanded when a deal is linked. Drives the
-              draft tone via dealContextHint forwarded to the edge function. */}
-          <DealContextCard
-            dealId={dealId}
-            dealName={dealName}
-            onSummaryChange={setDealContextSummary}
-          />
+          {/* Deal context chip row — single-line at-a-glance summary of the
+              entities the AI resolved for this thread. Replaces the earlier
+              multi-row paragraph layout so the eye lands on the key actors
+              (deal, contact, lender) immediately. Each chip is colored by
+              role and truncates gracefully on narrow widths. The full
+              DealContextCard is still rendered below — collapsed by default
+              — for the rare case the user wants stage age, status notes,
+              and overdue items. */}
+          {(() => {
+            const dealChip = dealName || workflowAnalysis?.likely_deal?.name;
+            const contactChip = workflowAnalysis?.likely_contact?.name
+              || thread.latestEmail.from_name;
+            const lenderChip = workflowAnalysis?.likely_lender_firm?.name;
+            if (!dealChip && !contactChip && !lenderChip) return null;
+            return (
+              <div className="flex flex-wrap items-center gap-1.5 -mt-1">
+                {dealChip && (
+                  <span className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+                    <Briefcase className="h-2.5 w-2.5 shrink-0" />
+                    <span className="truncate">Deal: {dealChip}</span>
+                  </span>
+                )}
+                {contactChip && (
+                  <span className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[11px] text-sky-300">
+                    <UserIcon className="h-2.5 w-2.5 shrink-0" />
+                    <span className="truncate">Contact: {contactChip}</span>
+                  </span>
+                )}
+                {lenderChip && (
+                  <span className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-300">
+                    <Building2 className="h-2.5 w-2.5 shrink-0" />
+                    <span className="truncate">Lender: {lenderChip}</span>
+                  </span>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Deal Context — collapsed by default; the chip row above is the
+              primary at-a-glance summary. Still renders so the deal-context
+              hint is forwarded to the AI draft generator. */}
+          {dealDetailsOpen ? (
+            <DealContextCard
+              dealId={dealId}
+              dealName={dealName}
+              onSummaryChange={setDealContextSummary}
+              defaultExpanded={true}
+            />
+          ) : (
+            // Hidden mount so the summary still loads / forwards even while
+            // the visual card is collapsed.
+            <div className="hidden">
+              <DealContextCard
+                dealId={dealId}
+                dealName={dealName}
+                onSummaryChange={setDealContextSummary}
+                defaultExpanded={false}
+              />
+            </div>
+          )}
+          {dealId && (
+            <button
+              type="button"
+              onClick={() => setDealDetailsOpen((v) => !v)}
+              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors -mt-2"
+            >
+              <ChevronDown
+                className={cn('h-3 w-3 transition-transform', !dealDetailsOpen && '-rotate-90')}
+              />
+              {dealDetailsOpen ? 'Hide deal details' : 'Show deal details'}
+            </button>
+          )}
 
           {/* Unmatched-email context: contact card / body-mention deal
               suggestion / Link Deal fallback. Only renders when no deal is
@@ -664,18 +743,9 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             />
           )}
 
-          {/* Unified AI action — replaces the previous Ask AI + Quick Task
-              boxes with a single natural-language input that infers intent
-              (ask / task / note / data room / draft) and routes accordingly. */}
-          <EmailUnifiedAiAction
-            thread={thread}
-            dealId={dealId}
-            dealName={dealName}
-            fallbackDealId={workflowAnalysis?.likely_deal?.id || null}
-            fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
-          />
-
-          {/* Thread Summary lives in the thread header (under the
+          {/* The Ask-AI textbox lives in the sticky footer below the scroll
+              area so it's always one click away — no scrolling required.
+              Thread Summary lives in the thread header (under the
               "N messages" count) as a compact glass popover, not inline
               in the AI Assist sidebar. */}
           {/* Lender data Q&A — when a deal is matched and the inbound email
@@ -708,52 +778,86 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             </div>
           )}
 
-          {/* Workflow Intelligence (Claude) — primary, confirm-first workflow assistant.
-              Renders above pass detection so the user sees the structured deal/lender/signal
-              extraction first, with explicit suggested updates. Drafts come last. */}
-          {showWorkflowCard && workflowAnalysis && (
-            <WorkflowIntelligenceCard
-              analysis={workflowAnalysis}
-              loading={workflowLoading}
-              committing={workflowCommitting}
-              hasLinkedDeal={!!dealId}
-              isThreadLinkedToDeal={workflowThreadLinked}
-              isLenderOnDeal={workflowLenderOnDeal}
-              threadId={thread.threadId}
-              onConfirm={(o) => confirmWorkflow(o)}
-              onDismiss={dismissWorkflow}
-              onMaybeLater={dismissWorkflow}
-              attachmentFallback={
-                showAttachmentFallback ? (
-                  <DataRoomUploadSuggestionCard
-                    dealName={fallbackDealName}
-                    attachments={drUploadable}
-                    committing={drUploading}
-                    onConfirm={(section, ids) =>
-                      handleAttachmentFallbackConfirm(section, ids)
+          {/* Suggested Updates section — wraps the workflow card, lender
+              pass card, data-room suggestion, outstanding-item match, and
+              SuggestedDealUpdatesSection under a single section header with
+              a count badge. Each card already provides its own border and
+              padding so we don't double-stack containers — the header just
+              gives the section a clear identity and breathing room. */}
+          {(() => {
+            const updateCount =
+              (showWorkflowCard && workflowAnalysis ? 1 : 0)
+              + (showPassCard && passDetection ? 1 : 0)
+              + (showDrCard ? 1 : 0);
+            // We render the OutstandingItemMatchCard and
+            // SuggestedDealUpdatesSection below the badge regardless — they
+            // self-hide when empty, and they don't carry an easy-to-count
+            // signal here, so the badge only reflects the cards we can
+            // count cheaply at the top.
+            const showSection =
+              updateCount > 0 || dealId; // section header still helps anchor outstanding-items / suggestions when present
+            if (!showSection) return null;
+            return (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    Suggested Updates
+                  </span>
+                  {updateCount > 0 && (
+                    <span className="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-primary/15 px-1.5 text-[10px] font-semibold text-primary">
+                      {updateCount}
+                    </span>
+                  )}
+                </div>
+
+                {/* Workflow Intelligence (Claude) — primary, confirm-first
+                    workflow assistant. Renders above pass detection so the
+                    user sees the structured deal/lender/signal extraction
+                    first, with explicit suggested updates. */}
+                {showWorkflowCard && workflowAnalysis && (
+                  <WorkflowIntelligenceCard
+                    analysis={workflowAnalysis}
+                    loading={workflowLoading}
+                    committing={workflowCommitting}
+                    hasLinkedDeal={!!dealId}
+                    isThreadLinkedToDeal={workflowThreadLinked}
+                    isLenderOnDeal={workflowLenderOnDeal}
+                    threadId={thread.threadId}
+                    hideSuggestedTasks
+                    onConfirm={(o) => confirmWorkflow(o)}
+                    onDismiss={dismissWorkflow}
+                    onMaybeLater={dismissWorkflow}
+                    attachmentFallback={
+                      showAttachmentFallback ? (
+                        <DataRoomUploadSuggestionCard
+                          dealName={fallbackDealName}
+                          attachments={drUploadable}
+                          committing={drUploading}
+                          onConfirm={(section, ids) =>
+                            handleAttachmentFallbackConfirm(section, ids)
+                          }
+                          onChangeSection={() => setDrDialogOpen(true)}
+                        />
+                      ) : undefined
                     }
-                    onChangeSection={() => setDrDialogOpen(true)}
                   />
-                ) : undefined
-              }
-            />
-          )}
+                )}
 
-          {/* Lender pass detection card (specialized confirm-first flow that already
-              writes back lender stage). Kept for back-compat with existing detections. */}
-          {showPassCard && passDetection && (
-            <LenderPassSidebarCard
-              detection={passDetection}
-              committing={passCommitting}
-              autoCommit={passAutoCommit}
-              onSetAutoCommit={setPassAutoCommit}
-              onConfirm={(reason) => confirmPass(reason)}
-              onDismiss={dismissPass}
-            />
-          )}
+                {/* Lender pass detection card (specialized confirm-first
+                    flow that already writes back lender stage). */}
+                {showPassCard && passDetection && (
+                  <LenderPassSidebarCard
+                    detection={passDetection}
+                    committing={passCommitting}
+                    autoCommit={passAutoCommit}
+                    onSetAutoCommit={setPassAutoCommit}
+                    onConfirm={(reason) => confirmPass(reason)}
+                    onDismiss={dismissPass}
+                  />
+                )}
 
-          {/* Data Room attachment suggestion card */}
-          {showDrCard && (
+                {/* Data Room attachment suggestion card */}
+                {showDrCard && (
             <DataRoomSuggestionCard
               attachmentCount={drUploadable.length}
               dealName={drSuggestion?.suggested_deal_name || dealName}
@@ -778,27 +882,70 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                 setDrDismissed(true);
               }}
             />
+                )}
+
+                {/* Outstanding-item auto-detection. Self-hides when empty. */}
+                <OutstandingItemMatchCard
+                  dealId={dealId}
+                  dealName={dealName}
+                  thread={thread}
+                  attachments={drAttachments}
+                />
+
+                {/* Pending suggested deal updates (contact emails, deal-picker
+                    prompts). Self-hides when empty. */}
+                <SuggestedDealUpdatesSection
+                  dealId={dealId}
+                  dealName={dealName}
+                  threadId={thread.threadId}
+                />
+              </div>
+            );
+          })()}
+
+          {/* Suggested Tasks — collapsible section. Collapsed by default
+              when a Suggested Update is also visible to reduce double-stack
+              noise; expanded automatically when it's the only suggestion
+              we have for the user. */}
+          {workflowAnalysis?.suggested_tasks && workflowAnalysis.suggested_tasks.length > 0 && (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setTasksOpen((v) => !v)}
+                className="flex items-center gap-2 group"
+                aria-expanded={tasksOpen}
+              >
+                <ChevronDown
+                  className={cn(
+                    'h-3 w-3 text-muted-foreground transition-transform',
+                    !tasksOpen && '-rotate-90',
+                  )}
+                />
+                <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground group-hover:text-foreground transition-colors">
+                  Suggested Tasks
+                </span>
+                <span className="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-primary/15 px-1.5 text-[10px] font-semibold text-primary">
+                  {workflowAnalysis.suggested_tasks.length}
+                </span>
+              </button>
+              {tasksOpen && (
+                <SuggestedTaskCards
+                  suggestions={workflowAnalysis.suggested_tasks}
+                  dealId={
+                    workflowAnalysis.recommended_update?.deal_id
+                    || workflowAnalysis.likely_deal?.id
+                    || null
+                  }
+                  dealName={
+                    workflowAnalysis.recommended_update?.deal_name
+                    || workflowAnalysis.likely_deal?.name
+                    || null
+                  }
+                  threadId={thread.threadId}
+                />
+              )}
+            </div>
           )}
-
-          {/* Suggested Deal Updates — pending confirm-first writes (e.g., contact
-              emails detected in drafts) plus the multi-deal picker prompt when
-              auto-resolution was ambiguous. Render even without a linked deal so
-              the user can still pick. */}
-          {/* Outstanding-item auto-detection: surfaces "X received from Y" and
-              "reply from requested contact" suggestions when the email
-              attachments / sender match an open outstanding item on the deal. */}
-          <OutstandingItemMatchCard
-            dealId={dealId}
-            dealName={dealName}
-            thread={thread}
-            attachments={drAttachments}
-          />
-
-          <SuggestedDealUpdatesSection
-            dealId={dealId}
-            dealName={dealName}
-            threadId={thread.threadId}
-          />
 
           {/* Unified Draft reply module — single card containing the section
               header, variant selector, one shared draft preview, and (in the
@@ -806,18 +953,29 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               Reply" pill row + "Draft Options" card duo with a single
               drafting workspace. */}
           {!error && (
-            <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-2.5 space-y-2.5 overflow-hidden max-w-full min-w-0 w-full">
-              {/* Header — title + optional helper. No counter, no chevrons:
-                  the variant pill row below is the single switching surface. */}
-              <div className="flex items-center gap-1.5 min-w-0">
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setDraftOpen((v) => !v)}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md border border-white/[0.06] bg-card/40 hover:bg-card/60 transition-colors group"
+                aria-expanded={draftOpen}
+              >
                 <Sparkles className="h-3 w-3 text-primary shrink-0" />
-                <span className="text-[11px] font-semibold tracking-wide text-foreground min-w-0 truncate">
-                  Draft reply
+                <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground group-hover:text-foreground transition-colors">
+                  Draft Reply
                 </span>
                 {isSelectedLoading && (
                   <Loader2 className="h-2.5 w-2.5 animate-spin text-primary/60" />
                 )}
-              </div>
+                <div className="flex-1" />
+                <ChevronDown
+                  className={cn('h-3 w-3 text-muted-foreground transition-transform', !draftOpen && '-rotate-90')}
+                />
+              </button>
+              {draftOpen && (
+              <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-3 space-y-2.5 overflow-hidden max-w-full min-w-0 w-full">
+              {/* Header — title + optional helper. No counter, no chevrons:
+                  the variant pill row below is the single switching surface. */}
 
               {/* Variant selector — compact segmented pill row. Active state
                   is visually clear but not heavy. Only one option active at
@@ -953,15 +1111,28 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                   )}
                 </div>
               )}
+              </div>
+              )}
             </div>
           )}
 
         </div>
       </ScrollArea>
 
+      {/* Sticky AI action input — always one click away, no scrolling. */}
+      <div className="border-t border-white/[0.06] px-3 pt-3 shrink-0 bg-card/60 min-w-0 w-full">
+        <EmailUnifiedAiAction
+          thread={thread}
+          dealId={dealId}
+          dealName={dealName}
+          fallbackDealId={workflowAnalysis?.likely_deal?.id || null}
+          fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
+        />
+      </div>
+
       {/* Footer actions */}
       <div className="border-t border-white/[0.06] px-3 py-3 flex items-center gap-2 shrink-0 bg-card/60 min-w-0 w-full">
-        {selectedOption && (
+        {draftOpen && selectedOption && (
           <Button
             variant="ghost"
             size="sm"
@@ -1003,7 +1174,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             />
           </PopoverContent>
         </Popover>
-        {selectedOption && (
+        {draftOpen && selectedOption && (
           <Button
             size="sm"
             className="h-8 text-[11px] gap-1.5 shrink-0 bg-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/90"

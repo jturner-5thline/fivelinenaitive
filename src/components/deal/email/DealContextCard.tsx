@@ -13,6 +13,13 @@ interface Props {
   dealName?: string;
   /** Bubble the loaded summary up so the parent can pass it to the AI draft generator. */
   onSummaryChange?: (s: DealContextSummary | null) => void;
+  /**
+   * Controls the initial expanded state. When omitted the card auto-expands
+   * whenever a deal id is present (legacy behavior). The redesigned AI Assist
+   * sidebar passes `false` so the rich detail stays tucked away by default —
+   * the chip row above already conveys the deal at a glance.
+   */
+  defaultExpanded?: boolean;
 }
 
 const STATUS_META: Record<string, { label: string; icon: React.ComponentType<{ className?: string }>; tone: string }> = {
@@ -45,15 +52,18 @@ const FIELD_TOOLTIPS: Record<string, string> = {
  * stage age, status, last status note, lender count, and the most overdue
  * outstanding item — the same signals the draft tone is informed by.
  */
-export function DealContextCard({ dealId, dealName, onSummaryChange }: Props) {
+export function DealContextCard({ dealId, dealName, onSummaryChange, defaultExpanded }: Props) {
   const { summary, loading } = useDealContextSummary(dealId);
   const { getStageConfigForDeal } = usePipelineStageConfig();
 
-  // Auto-expand whenever we land on a new deal.
-  const [expanded, setExpanded] = useState<boolean>(!!dealId);
+  // Auto-expand whenever we land on a new deal — unless the parent explicitly
+  // requests collapsed-by-default (used by the redesigned AI Assist sidebar
+  // where a chip row already summarizes the deal context).
+  const initialExpanded = defaultExpanded ?? !!dealId;
+  const [expanded, setExpanded] = useState<boolean>(initialExpanded);
   useEffect(() => {
-    setExpanded(!!dealId);
-  }, [dealId]);
+    setExpanded(defaultExpanded ?? !!dealId);
+  }, [dealId, defaultExpanded]);
 
   useEffect(() => {
     onSummaryChange?.(summary);
