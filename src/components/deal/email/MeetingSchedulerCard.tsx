@@ -791,6 +791,67 @@ export function MeetingSchedulerCard({
         </div>
       )}
 
+      {/* "Why these times?" — transparency panel listing the calendar
+          events that knocked out working-hour candidate slots. Renders
+          whenever the calendar load succeeded and at least one event
+          blocked something (including the zero-slots case, which is
+          when this is most useful). Collapsed by default to keep the
+          scheduler compact. */}
+      {!loadingBusy && !errorMsg && blockingEvents.length > 0 && (
+        <div className="rounded-md border border-white/10 bg-white/[0.03] overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowWhyPanel((v) => !v)}
+            className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-white/[0.05] transition-colors"
+            aria-expanded={showWhyPanel}
+          >
+            <CalendarX className="h-3 w-3 text-amber-400/80 shrink-0" />
+            <span className="text-[11px] font-medium text-foreground/85">
+              Why these times?
+            </span>
+            <span className="text-[10.5px] text-muted-foreground/70 truncate">
+              {blockingEvents.length} event{blockingEvents.length === 1 ? '' : 's'} blocking
+              {totalCandidates > 0 ? ` ${Math.min(
+                blockingEvents.reduce((acc, e) => acc + e.blockedSlotCount, 0),
+                totalCandidates,
+              )} of ${totalCandidates} slots` : ''}
+            </span>
+            <span className="ml-auto text-muted-foreground/70 shrink-0">
+              {showWhyPanel ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </span>
+          </button>
+          {showWhyPanel && (
+            <ul className="border-t border-white/[0.06] divide-y divide-white/[0.04]">
+              {blockingEvents.slice(0, 12).map((ev, i) => (
+                <li key={i} className="px-2.5 py-1.5 text-[11px]">
+                  <div className="flex items-baseline gap-2 min-w-0">
+                    <span className="text-foreground/85 truncate flex-1" title={ev.title}>
+                      {ev.title}
+                    </span>
+                    <span className="text-muted-foreground/70 shrink-0">
+                      blocks {ev.blockedSlotCount} slot{ev.blockedSlotCount === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                  <div className="text-[10.5px] text-muted-foreground/75 mt-0.5 truncate">
+                    {fmtSlot({ start: ev.start, end: ev.end }, timezone)}
+                    {timezone !== BROWSER_TZ && (
+                      <span className="text-muted-foreground/60">
+                        {' '}· local: {fmtSlotTimeOnly({ start: ev.start, end: ev.end }, BROWSER_TZ)}
+                      </span>
+                    )}
+                  </div>
+                </li>
+              ))}
+              {blockingEvents.length > 12 && (
+                <li className="px-2.5 py-1.5 text-[10.5px] text-muted-foreground/70">
+                  +{blockingEvents.length - 12} more event{blockingEvents.length - 12 === 1 ? '' : 's'} not shown
+                </li>
+              )}
+            </ul>
+          )}
+        </div>
+      )}
+
       {/* Parties */}
       {!loadingBusy && !errorMsg && proposedSlots.length > 0 && (
         <div className="space-y-1.5">
