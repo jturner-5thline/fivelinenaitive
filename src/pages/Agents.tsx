@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
-import { Bot, Plus, Search, Users, Globe, Lock, Zap, History, Workflow, MessageCircle, Sparkles, ArrowRight } from 'lucide-react';
+import { Bot, Plus, Search, Users, Globe, Lock, Zap, History, Workflow, MessageCircle, Sparkles, ArrowRight, LayoutGrid } from 'lucide-react';
 import { NaitiveIcon } from '@/components/NaitiveIcon';
 import { useAgents, useCreateAgent, useUpdateAgent, useDeleteAgent, useDuplicateAgent, type Agent, type CreateAgentData } from '@/hooks/useAgents';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,6 +19,7 @@ import { AgentTriggersManager } from '@/components/agents/AgentTriggersManager';
 import { AgentRunsHistory } from '@/components/agents/AgentRunsHistory';
 import { AgentTemplatesGallery } from '@/components/agents/AgentTemplatesGallery';
 import { AgentSuggestionsPanel } from '@/components/agents/AgentSuggestionsPanel';
+import { AgentCatalog } from '@/components/agents/AgentCatalog';
 import { AgentCanvas } from '@/components/agents/canvas/AgentCanvas';
 import { FloatingAgentChat } from '@/components/agents/FloatingAgentChat';
 import { type AgentSuggestion } from '@/hooks/useAgentSuggestions';
@@ -34,7 +35,7 @@ export default function Agents() {
   const duplicateAgent = useDuplicateAgent();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('my-agents');
+  const [activeTab, setActiveTab] = useState('catalog');
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [testingAgent, setTestingAgent] = useState<Agent | null>(null);
@@ -257,6 +258,10 @@ export default function Agents() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
+            <TabsTrigger value="catalog" className="gap-2">
+              <LayoutGrid className="h-4 w-4" />
+              Agents
+            </TabsTrigger>
             <TabsTrigger value="my-agents" className="gap-2">
               <Lock className="h-4 w-4" />
               My Agents ({myAgents.length})
@@ -282,6 +287,10 @@ export default function Agents() {
               Run History
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="catalog" className="mt-6">
+            <AgentCatalog />
+          </TabsContent>
 
           <TabsContent value="my-agents" className="mt-6 space-y-6">
             <AgentSuggestionsPanel onCreateAgent={handleCreateFromSuggestion} />
