@@ -170,6 +170,10 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   // we can show a loading indicator on the active chip without blocking the
   // rest of the panel.
   const [activeIntentKey, setActiveIntentKey] = useState<string | null>(null);
+  // When true, the "Request a meeting" chip swaps the chip-row UI for the
+  // full meeting scheduler workspace (calendar read → slot pick → invite).
+  // This UPGRADES the existing chip without adding a new button anywhere.
+  const [schedulerOpen, setSchedulerOpen] = useState(false);
   // Snapshot of the slim deal-context summary surfaced in the sidebar header
   // card. Forwarded to the edge function so the draft tone reflects whether
   // the deal is At Risk, Off Track, On Hold, etc.
