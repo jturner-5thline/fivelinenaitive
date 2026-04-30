@@ -359,7 +359,12 @@ export function mergeScheduledIntoWeekly(
       // what makes a Configure "Retainer" entry land in the visible
       // "Retainers" row, "Payroll Expense" in "Payroll - Salaries", etc.
       const cat = resolveCategoryToGridRow(entry.category);
-      const amt = Number(entry.amount) || 0;
+      const baseAmt = Number(entry.amount) || 0;
+      const amt = applyVariance(
+        baseAmt,
+        entry.frequency_config?.variance_pct,
+        `${entry.id || entry.category}:${occ}`,
+      );
       target[cat] = (Number(target[cat]) || 0) + amt;
       // Note: parent "Advisors Revenue" value is computed in the weekly view as
       // the sum of its sub-categories, so we do NOT write to the parent key here.
