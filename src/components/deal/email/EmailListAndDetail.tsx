@@ -608,11 +608,58 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
     () => buildThreadLabelMap(userLabelDefs, labelAssignments),
     [userLabelDefs, labelAssignments],
   );
-  // Group emails into threads only when the email array identity changes.
-  // Without this memo, this O(n) loop ran on every parent re-render (selection
- // change, hover, AI Assist updates) and produced a fresh array each time,
-  // breaking row memoization downstream.
-  const threads = useMemo(() => groupEmailsByThread(emails), [emails]);
+  // Inbox list shows ONE ROW PER MESSAGE (Gmail "All Mail" behavior), not one
+  // row per conversation. We still build the underlying conversation grouping
+  // so the reading pane (which keys off `EmailThread.emails`) can show the
+  // prior-thread context collapsed under the selected message — but the list
+  // we render is flattened, sorted newest-first by per-message received_at.
+  //
+  // Each row's pseudo-thread:
+  //   • threadId       = the individual message id (unique per row, drives
+  //                      selection + checkbox identity)
+  //   • latestEmail    = THIS message (drives sender/subject/preview/time)
+  //   • emails         = the full conversation, ordered newest-first, so the
+  //                      detail view still has thread context to collapse
+  //   • hasUnread      = unread state of THIS message only (per-row bolding)
+  //   • isStarred / hasAttachments / needsResponse: scoped to THIS message
+  //   • subject        = THIS message's subject (preserves Re:/Fwd: prefixes
+  //                      so individual rows look like Gmail's All Mail view)
+  const threads = useMemo<EmailThread[]>(() => {
+    const conversations = groupEmailsByThread(emails);
+    const byProviderOrThread = new Map<string, EmailThread>();
+    for (const t of conversations) {
+      byProviderOrThread.set(t.provider_thread_id || t.threadId, t);
+    }
+    const rows: EmailThread[] = emails.map((msg) => {
+      const convo = byProviderOrThread.get(msg.provider_thread_id || msg.threadId);
+      const convoEmails = convo?.emails ?? [msg];
+      const participantSet = new Set<string>();
+      if (msg.from_name && msg.from_name !== 'You') participantSet.add(msg.from_name);
+      return {
+        // Unique per message — drives row identity, selection, checkboxes.
+        threadId: msg.id,
+        provider_thread_id: msg.provider_thread_id ?? null,
+        subject: msg.subject || '(no subject)',
+        // Full conversation so the reading pane can show thread history
+        // collapsed below the selected message.
+        emails: convoEmails,
+        latestEmail: msg,
+        participants: Array.from(participantSet),
+        hasUnread: !msg.is_read,
+        isStarred: !!msg.is_starred,
+        isLinked: !!msg.is_linked_to_deal,
+        hasAttachments: !!msg.has_attachments,
+        needsResponse: !!msg.needs_response,
+        dealName: msg.deal_name,
+        category: msg.category,
+      } as EmailThread;
+    });
+    return rows.sort(
+      (a, b) =>
+        new Date(b.latestEmail.received_at).getTime() -
+        new Date(a.latestEmail.received_at).getTime(),
+    );
+  }, [emails]);
 
   // Stabilize per-row check handler so memoized rows don't see a new function
   // every render.
