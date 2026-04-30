@@ -66,6 +66,15 @@ const COLUMNS = [
 
 type ColumnKey = typeof COLUMNS[number]['key'];
 
+// Monetary columns — values rendered center-aligned (header + cell)
+const CURRENCY_COLUMNS: ReadonlySet<string> = new Set([
+  'min_revenue',
+  'ebitda_min',
+  'min_deal',
+  'max_deal',
+  'referral_fee_offered',
+]);
+
 function formatCellValue(lender: MasterLender, key: ColumnKey): string {
   const value = lender[key as keyof MasterLender];
   
