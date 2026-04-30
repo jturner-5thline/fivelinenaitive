@@ -69,6 +69,7 @@ import { SideBySideMergeDialog } from '@/components/lenders/SideBySideMergeDialo
 import { NonBankLendersImportButton } from '@/components/lenders/NonBankLendersImportButton';
 import { BankLendersImportButton } from '@/components/lenders/BankLendersImportButton';
 import { LenderFiltersPanel, applyLenderFilters, emptyFilters, LenderFilters } from '@/components/lenders/LenderFilters';
+import { LendersListSkeleton } from '@/components/lenders/LenderCardSkeleton';
 import { LenderGridCard } from '@/components/lenders/LenderGridCard';
 import { LenderListCard } from '@/components/lenders/LenderListCard';
 import { LenderSpreadsheetView } from '@/components/lenders/LenderSpreadsheetView';
