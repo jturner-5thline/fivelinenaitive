@@ -1273,6 +1273,8 @@ export function CashFlowManager() {
           open={scheduledModalOpen}
           initialEntries={scheduledItems}
           onClose={() => setScheduledModalOpen(false)}
+          extraCashInCategories={customRows.receipts}
+          extraCashOutCategories={customRows.disbursements}
           onSave={async (entries, deleteIds) => {
             pushUndo(`Update scheduled cash flows`);
             const ok = await saveScheduledItems(entries, deleteIds);
