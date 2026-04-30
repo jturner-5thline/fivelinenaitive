@@ -291,7 +291,7 @@ export function useGmail() {
       setIsLoading(true);
       // Simulate brief loading
       await new Promise(r => setTimeout(r, 300));
-      const max = options?.maxResults || 20;
+      const max = options?.maxResults || 50;
       const demoMsgs = DEMO_MOCK_EMAILS.slice(0, max);
       setMessages(demoMsgs);
       cachedMessages = demoMsgs;
@@ -309,7 +309,7 @@ export function useGmail() {
       const { data, error } = await supabase.functions.invoke('gmail-messages', {
         body: {
           action: 'list',
-          max_results: options?.maxResults || 20,
+          max_results: options?.maxResults || 50,
           page_token: options?.pageToken,
           label_ids: options?.labelIds,
           query: options?.query,
