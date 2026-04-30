@@ -1196,6 +1196,10 @@ export function CashFlowManager() {
           onCellCommentCountChange={setCellCommentCount}
           weeksFuture={weeksFuture}
           onWeeksFutureChange={setWeeksFuture}
+          customReceiptRows={customRows.receipts}
+          customDisbursementRows={customRows.disbursements}
+          onAddCustomRow={(section, name) => addCustomRow(section, name)}
+          onRemoveCustomRow={(section, name) => removeCustomRow(section, name)}
           onAddOneTimeEntry={async ({
             rowKey,
             rowLabel,
