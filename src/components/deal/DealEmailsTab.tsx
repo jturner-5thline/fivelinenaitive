@@ -666,29 +666,49 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   // used by the inline "Likely: …" badges to keep filter membership and
   // badge labels perfectly consistent.
   const { deals: allDeals } = useDealsContext();
+  // Per-email best-deal-match map. Auto-pagination appends a new page every
+  // ~350ms which produces a fresh `emails` array reference each tick. Without
+  // a cache we re-rank EVERY message against EVERY deal on every append
+  // (O(N×M) per page), which dominated the inbox CPU profile. We cache by
+  // email id and bust the cache when the deal list changes.
+  const dealMatchCacheRef = useRef<{ deals: typeof allDeals; map: Map<string, string | null> }>({
+    deals: allDeals,
+    map: new Map(),
+  });
   const emailDealIdMap = useMemo(() => {
-    const map = new Map<string, string>();
-    // Pre-score every loaded inbox email against all active deals so the chip
-    // row can surface which deals already have matching emails before the user
-    // selects one. Same matching engine that powers the inline "Likely: …"
-    // badges, so chip membership and badges stay perfectly consistent.
-    if (!isInboxScope || !allDeals?.length) return map;
-    for (const e of emails) {
-      const ranked = rankDealsForThread(allDeals, {
-        subject: e.subject,
-        messages: [{
-          subject: e.subject,
-          fromEmail: e.from_email,
-          fromName: e.from_name,
-          toEmails: e.to_email ? [e.to_email] : undefined,
-          isLatest: true,
-        }],
-      });
-      if (ranked.best && ranked.best.confidence !== 'low') {
-        map.set(e.id, ranked.best.deal.id);
-      }
+    const out = new Map<string, string>();
+    if (!isInboxScope || !allDeals?.length) {
+      // Reset cache when scope/deal list goes away so a re-enter recomputes.
+      dealMatchCacheRef.current = { deals: allDeals, map: new Map() };
+      return out;
     }
-    return map;
+    // Bust cache if the deal list identity changed (deals added/removed/edited).
+    if (dealMatchCacheRef.current.deals !== allDeals) {
+      dealMatchCacheRef.current = { deals: allDeals, map: new Map() };
+    }
+    const cache = dealMatchCacheRef.current.map;
+    for (const e of emails) {
+      let cached = cache.get(e.id);
+      if (cached === undefined) {
+        const ranked = rankDealsForThread(allDeals, {
+          subject: e.subject,
+          messages: [{
+            subject: e.subject,
+            fromEmail: e.from_email,
+            fromName: e.from_name,
+            toEmails: e.to_email ? [e.to_email] : undefined,
+            isLatest: true,
+          }],
+        });
+        cached =
+          ranked.best && ranked.best.confidence !== 'low'
+            ? ranked.best.deal.id
+            : null;
+        cache.set(e.id, cached);
+      }
+      if (cached) out.set(e.id, cached);
+    }
+    return out;
   }, [emails, allDeals, isInboxScope]);
 
   const dealIdsWithEmails = useMemo(() => {
