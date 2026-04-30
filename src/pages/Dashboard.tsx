@@ -450,7 +450,14 @@ export default function Dashboard() {
   // queue stays a first-class shortcut rather than a sibling card.
   const [actionQueueOpen, setActionQueueOpen] = useState(false);
   const actionQueueCount = useAiActionQueueCount();
-  const { data: actionQueueItems = [] } = useAiActionQueue();
+  const { data: actionQueueItems = [], refetch: refetchActionQueue } = useAiActionQueue();
+
+  // Auto-refresh queue contents whenever the modal opens so the list always
+  // reflects the latest pending AI actions.
+  const openActionQueue = () => {
+    setActionQueueOpen(true);
+    refetchActionQueue();
+  };
 
   // Sync tab from URL query params
   useEffect(() => {
@@ -767,8 +774,8 @@ export default function Dashboard() {
               ariaLabel={`Open Action Queue${actionQueueCount > 0 ? `, ${actionQueueCount} pending` : ''}`}
               badgeCount={actionQueueCount}
               className={cn(isJTurner && 'order-3')}
-              onClick={() => setActionQueueOpen(true)}
-              onKeyDown={(e) => handleTileKeyDown(e, () => setActionQueueOpen(true))}
+              onClick={openActionQueue}
+              onKeyDown={(e) => handleTileKeyDown(e, openActionQueue)}
             />
             {isJTurner && (
               <QuickActionTile
