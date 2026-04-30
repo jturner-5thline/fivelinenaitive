@@ -390,6 +390,7 @@ import {
 } from '@/constants/nikiBriefing';
 import { useDashboardCarouselWidgets } from '@/hooks/useDashboardCarouselWidgets';
 import { useInboxPrefetch } from '@/hooks/useInboxPrefetch';
+import { useInboxCacheStore, selectUnreadCount } from '@/stores/inboxCacheStore';
 
 export default function Dashboard() {
   const { user } = useAuth();
