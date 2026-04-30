@@ -218,6 +218,19 @@ export function generateOccurrences(
     return dates;
   }
 
+  if (entry.frequency_type === 'bi_weekly') {
+    const dow = cfg.day_of_week ?? 1;
+    const cur = new Date(effectiveStart);
+    while (cur.getDay() !== dow && cur <= effectiveEnd) {
+      cur.setDate(cur.getDate() + 1);
+    }
+    while (cur <= effectiveEnd) {
+      dates.push(fmtDate(cur));
+      cur.setDate(cur.getDate() + 14);
+    }
+    return dates;
+  }
+
   if (entry.frequency_type === 'monthly_first' || entry.frequency_type === 'monthly_last') {
     const dow = cfg.ordinal_day_of_week ?? 1;
     const cur = new Date(effectiveStart.getFullYear(), effectiveStart.getMonth(), 1);
