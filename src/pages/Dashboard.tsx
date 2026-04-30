@@ -1,11 +1,22 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useSearchParams } from 'react-router-dom';
 import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Briefcase, LayoutTemplate, Newspaper, Handshake, Inbox as InboxIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
-import { InboxDialog } from '@/components/dashboard/InboxDialog';
-import { DealsCarouselDialog, DealsCarouselView } from '@/components/dashboard/DealsCarouselDialog';
+// Heavy modals are lazy-loaded so they don't bloat the initial Dashboard
+// chunk. Each is only mounted when the user actually opens its widget,
+// so deferring the import has no perceptible cost on first interaction
+// (the dynamic import races with the modal's open animation).
+import type { DealsCarouselView } from '@/components/dashboard/DealsCarouselDialog';
+const DailyBriefingModal = lazy(() =>
+  import('@/components/dashboard/DailyBriefingModal').then(m => ({ default: m.DailyBriefingModal })),
+);
+const InboxDialog = lazy(() =>
+  import('@/components/dashboard/InboxDialog').then(m => ({ default: m.InboxDialog })),
+);
+const DealsCarouselDialog = lazy(() =>
+  import('@/components/dashboard/DealsCarouselDialog').then(m => ({ default: m.DealsCarouselDialog })),
+);
 import { WidgetCarouselChrome } from '@/components/dashboard/widget-carousel/WidgetCarouselChrome';
 import { useWidgetCarouselStore } from '@/stores/widgetCarouselStore';
 import { useProfile } from '@/hooks/useProfile';
@@ -19,7 +30,9 @@ import { Card } from '@/components/ui/card';
 import { PresetManager } from '@/components/dashboard/PresetManager';
 import { NewPresetButton } from '@/components/dashboard/NewPresetButton';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
-import { AddWidgetDialog } from '@/components/dashboard/AddWidgetDialog';
+const AddWidgetDialog = lazy(() =>
+  import('@/components/dashboard/AddWidgetDialog').then(m => ({ default: m.AddWidgetDialog })),
+);
 import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
 import { EmailIntelligenceWidget } from '@/components/dashboard/EmailIntelligenceWidget';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -355,7 +368,9 @@ function EmailTileWithIntelligence({
 }
 
 import { DashboardTemplatesDialog } from '@/components/dashboard/DashboardTemplates';
-import { FullCalendarView } from '@/components/dashboard/FullCalendarView';
+const FullCalendarView = lazy(() =>
+  import('@/components/dashboard/FullCalendarView').then(m => ({ default: m.FullCalendarView })),
+);
 import { NewsFeedPanel } from '@/components/dashboard/NewsFeedPanel';
 import { NewsFeedDialog } from '@/components/dashboard/NewsFeedDialog';
 import { toast } from 'sonner';
