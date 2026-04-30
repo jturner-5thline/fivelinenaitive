@@ -253,6 +253,8 @@ export function LenderSpreadsheetView({
               <div
                 key={col.key}
                 className={`flex-shrink-0 px-3 py-2.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground border-r border-white/5 bg-white/[0.04] flex items-center transition-colors ${
+                  CURRENCY_COLUMNS.has(col.key) ? 'justify-center' : ''
+                } ${
                   col.sortable ? 'cursor-pointer hover:text-foreground hover:bg-white/[0.06] select-none' : ''
                 } ${col.key === 'name' ? 'text-foreground/90' : ''}`}
                 style={{ width: col.width }}
@@ -299,18 +301,7 @@ export function LenderSpreadsheetView({
                     {index + 1}
                   </div>
                   {COLUMNS.map((col) => (
-                    <div
-                      key={col.key}
-                      className={`flex-shrink-0 px-3 py-2 text-xs border-r border-white/[0.04] truncate flex items-center ${
-                        col.key === 'name'
-                          ? 'text-foreground font-medium'
-                          : 'text-foreground/75'
-                      }`}
-                      style={{ width: col.width }}
-                      title={formatCellValue(lender, col.key)}
-                    >
-                      {formatCellValue(lender, col.key) || <span className="text-muted-foreground/30">—</span>}
-                    </div>
+                    <LenderCell key={col.key} lender={lender} col={col} />
                   ))}
                 </div>
               );
