@@ -659,7 +659,11 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const { deals: allDeals } = useDealsContext();
   const emailDealIdMap = useMemo(() => {
     const map = new Map<string, string>();
-    if (!isInboxScope || !selectedDealFilterId || !allDeals?.length) return map;
+    // Pre-score every loaded inbox email against all active deals so the chip
+    // row can surface which deals already have matching emails before the user
+    // selects one. Same matching engine that powers the inline "Likely: …"
+    // badges, so chip membership and badges stay perfectly consistent.
+    if (!isInboxScope || !allDeals?.length) return map;
     for (const e of emails) {
       const ranked = rankDealsForThread(allDeals, {
         subject: e.subject,
@@ -676,7 +680,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       }
     }
     return map;
-  }, [emails, allDeals, isInboxScope, selectedDealFilterId]);
+  }, [emails, allDeals, isInboxScope]);
 
   const dealIdsWithEmails = useMemo(() => {
     const set = new Set<string>();
