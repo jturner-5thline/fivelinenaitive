@@ -975,42 +975,49 @@ export default function Dashboard() {
         widget's own X / Esc / backdrop, which still calls
         handleCarouselDialogOpenChange(false).
       */}
-      {isWidgetActive('calendar') && (
-        <FullCalendarView open onOpenChange={handleCarouselDialogOpenChange} />
-      )}
-      {isWidgetActive('email') && (
-        <InboxDialog open onOpenChange={handleCarouselDialogOpenChange} />
-      )}
-      {isJTurner && isWidgetActive('daily-briefing') && (
-        <DailyBriefingModal open onOpenChange={handleCarouselDialogOpenChange} />
-      )}
-      {canSeeNiki && isWidgetActive('niki-briefing') && (
-        <DailyBriefingModal
-          open
-          onOpenChange={handleCarouselDialogOpenChange}
-          title={isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
-          targetUserId={NIKI_USER_ID}
-          targetAssigneeName={NIKI_ASSIGNEE_NAME}
-          excludeTabs={['financial']}
-        />
-      )}
-      {is5thLine && isWidgetActive('deal-rundown') && (
-        <DailyBriefingModal
-          open
-          onOpenChange={handleCarouselDialogOpenChange}
-          title="Deal Rundown"
-          initialTab="pipeline"
-        />
-      )}
-      <WidgetCarouselChrome />
-      <DealsCarouselDialog
-        open={dealsDialogOpen}
-        onOpenChange={(next) => {
-          setDealsDialogOpen(next);
-          if (!next) setDealsInitialView(undefined);
-        }}
-        initialView={dealsInitialView}
-      />
+      {/* Lazy-loaded modal shells. fallback={null} keeps the dashboard
+          paint instant; each modal renders its own skeleton/loader once
+          its chunk arrives. */}
+      <Suspense fallback={null}>
+        {isWidgetActive('calendar') && (
+          <FullCalendarView open onOpenChange={handleCarouselDialogOpenChange} />
+        )}
+        {isWidgetActive('email') && (
+          <InboxDialog open onOpenChange={handleCarouselDialogOpenChange} />
+        )}
+        {isJTurner && isWidgetActive('daily-briefing') && (
+          <DailyBriefingModal open onOpenChange={handleCarouselDialogOpenChange} />
+        )}
+        {canSeeNiki && isWidgetActive('niki-briefing') && (
+          <DailyBriefingModal
+            open
+            onOpenChange={handleCarouselDialogOpenChange}
+            title={isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
+            targetUserId={NIKI_USER_ID}
+            targetAssigneeName={NIKI_ASSIGNEE_NAME}
+            excludeTabs={['financial']}
+          />
+        )}
+        {is5thLine && isWidgetActive('deal-rundown') && (
+          <DailyBriefingModal
+            open
+            onOpenChange={handleCarouselDialogOpenChange}
+            title="Deal Rundown"
+            initialTab="pipeline"
+          />
+        )}
+        <WidgetCarouselChrome />
+        {dealsDialogOpen && (
+          <DealsCarouselDialog
+            open={dealsDialogOpen}
+            onOpenChange={(next) => {
+              setDealsDialogOpen(next);
+              if (!next) setDealsInitialView(undefined);
+            }}
+            initialView={dealsInitialView}
+          />
+        )}
+      </Suspense>
       <Dialog open={actionQueueOpen} onOpenChange={setActionQueueOpen}>
         <DialogContent className="sm:max-w-[640px] p-0 overflow-hidden flex flex-col max-h-[80vh]">
           <DialogHeader className="sr-only">
