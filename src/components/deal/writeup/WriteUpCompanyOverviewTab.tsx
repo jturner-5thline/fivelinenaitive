@@ -81,13 +81,13 @@ function SortableTeamMember({
         <Input
           value={member.name}
           onChange={(e) => onUpdate(member.id, 'name', e.target.value)}
-          placeholder="Name *"
+          placeholder="Full Name *"
           className="h-8 text-sm"
         />
         <Input
           value={member.title}
           onChange={(e) => onUpdate(member.id, 'title', e.target.value)}
-          placeholder="Title *"
+          placeholder="Job Title *"
           className="h-8 text-sm"
         />
         <div className="flex items-center gap-1">
