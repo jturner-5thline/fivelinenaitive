@@ -154,6 +154,10 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   weeksFuture: weeksFutureProp,
   onWeeksFutureChange,
   onAddOneTimeEntry,
+  customReceiptRows,
+  customDisbursementRows,
+  onAddCustomRow,
+  onRemoveCustomRow,
 }: WeeklyReportTabProps) {
   const { user } = useAuth();
   const { comments: cellComments, byCell: cellCommentsByCell, addComment: addCellComment, deleteComment: deleteCellComment } =
