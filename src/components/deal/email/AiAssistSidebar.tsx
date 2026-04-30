@@ -502,6 +502,13 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
    */
   const applyIntent = useCallback(
     async (option: DraftIntentOption) => {
+      // ── Special-case: "Request a meeting" upgrades to the full scheduling
+      //    workspace instead of regenerating the draft text. The chip is the
+      //    same chip the user already knows; the behavior is upgraded.
+      if (option.key === 'request_meeting') {
+        setSchedulerOpen(true);
+        return;
+      }
       // Block re-entry while another intent or regen is mid-flight on the
       // selected tone — keeps state predictable.
       if (loadingTones[selected]) return;
