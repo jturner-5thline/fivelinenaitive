@@ -440,6 +440,14 @@ export function MeetingSchedulerCard({
   const [confirmedIdx, setConfirmedIdx] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
 
+  // Calendar events that knocked out one or more candidate working-hour
+  // slots — surfaced in the "Why these times?" explanation panel.
+  const [blockingEvents, setBlockingEvents] = useState<BlockingEvent[]>([]);
+  // Total count of working-hour candidate slots BEFORE busy filtering.
+  // Powers the "X of Y working-hour slots are taken" headline.
+  const [totalCandidates, setTotalCandidates] = useState(0);
+  const [showWhyPanel, setShowWhyPanel] = useState(false);
+
   // ── Load free/busy from connected Google Calendar (via Nylas) ───────────
   useEffect(() => {
     let cancelled = false;
@@ -464,10 +472,19 @@ export function MeetingSchedulerCard({
           start: e.start,
           end: e.end,
           all_day: !!e.all_day,
+          // Nylas/Google return the title under different keys depending
+          // on provider mapping — fall back through the common ones.
+          title: e.title || e.summary || e.subject || null,
         }));
         const candidates = buildCandidateSlots(now, timezone, durationMinutes);
         const free = filterFreeSlots(candidates, events);
         const picked = pickThreeSpread(free);
+        // Capture conflict metadata for the explanation panel BEFORE we
+        // narrow down to the picked top-3 — we want to explain blockers
+        // across the entire working-hour window, not just the offered
+        // slots.
+        setBlockingEvents(computeBlockingEvents(candidates, events));
+        setTotalCandidates(candidates.length);
         setProposedSlots(picked);
         // Reconcile the persisted index preference against the freshly
         // proposed slot count. Drop anything out of range; if nothing
