@@ -393,6 +393,7 @@ function SuggestionCard({
 }: SuggestionCardProps) {
   const [editing, setEditing] = useState(false);
   const [working, setWorking] = useState(false);
+  const enqueueAiAction = useEnqueueAiAction();
   const contactPayload = suggestion.payload as PendingDealSuggestionPayload;
   const [draft, setDraft] = useState<PendingDealSuggestionPayload>({
     ...contactPayload,
@@ -491,6 +492,32 @@ function SuggestionCard({
           Dismiss
         </Button>
         <div className="flex-1" />
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 text-[11px] gap-1 px-2"
+          title="Add to Action Queue for batch review"
+          disabled={working || !draft.email}
+          onClick={async () => {
+            setWorking(true);
+            try {
+              await enqueueAiAction({
+                action_type: 'log_note',
+                title: `Add ${draft.contactName || draft.email} to ${dealName || 'deal'} notes`,
+                description: draft.contextSnippet || null,
+                deal_id: (suggestion as any).deal_id || null,
+                deal_name: dealName || null,
+                payload: { ...draft, activity_type: 'contact_added_from_email' },
+                source: { thread_subject: suggestion.source_thread_subject || null },
+              });
+              await onDismiss();
+            } finally {
+              setWorking(false);
+            }
+          }}
+        >
+          <InboxIcon className="h-3 w-3" /> Queue
+        </Button>
         <Button
           size="sm"
           className="h-7 text-[11px] gap-1.5 bg-[hsl(160,60%,40%)] hover:bg-[hsl(160,60%,35%)] text-white"
