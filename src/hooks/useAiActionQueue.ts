@@ -181,6 +181,27 @@ export function useDismissAiAction() {
   );
 }
 
+/** Dismiss many queued actions at once (used for per-deal group dismiss). */
+export function useDismissManyAiActions() {
+  const qc = useQueryClient();
+  return useCallback(
+    async (ids: string[]) => {
+      if (!ids.length) return;
+      const { error } = await supabase
+        .from('ai_action_queue')
+        .update({ status: 'dismissed', dismissed_at: new Date().toISOString() })
+        .in('id', ids);
+      if (error) {
+        toast.error('Could not dismiss items');
+        return;
+      }
+      qc.invalidateQueries({ queryKey: QUEUE_KEY });
+      toast.success(`Dismissed ${ids.length} item${ids.length !== 1 ? 's' : ''}`);
+    },
+    [qc],
+  );
+}
+
 export function useUpdateAiAction() {
   const qc = useQueryClient();
   return useCallback(
