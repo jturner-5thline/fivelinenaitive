@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Inbox as InboxIcon, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useAiActionQueue, useAiActionQueueCount } from '@/hooks/useAiActionQueue';
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
