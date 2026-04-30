@@ -67,6 +67,14 @@ interface WeeklyReportTabProps {
     amount: number;
     description: string;
   }) => Promise<boolean> | boolean;
+  /** User-defined custom row labels appended to Cash Receipts. */
+  customReceiptRows?: string[];
+  /** User-defined custom row labels appended to Cash Disbursements. */
+  customDisbursementRows?: string[];
+  /** Persist a new custom row label. Return false to indicate rejection (e.g. duplicate). */
+  onAddCustomRow?: (section: 'receipts' | 'disbursements', name: string) => boolean;
+  /** Remove a previously added custom row. */
+  onRemoveCustomRow?: (section: 'receipts' | 'disbursements', name: string) => void;
 }
 
 const DEBT_ADV_PARENT_KEY = 'Debt Advisory Revenue';
