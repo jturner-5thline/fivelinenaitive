@@ -64,33 +64,143 @@ const SLOT_MINUTES = 45;
 const WORK_START_HOUR = 9;   // 9 AM local
 const WORK_END_HOUR = 17;    // 5 PM local
 
-function fmtSlot(s: Slot): string {
-  const day = s.start.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
-  const start = s.start.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-  const end = s.end.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  return `${day}, ${start}–${end} (${tz})`;
+const BROWSER_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+const TZ_PREF_KEY = 'naitive.meetingScheduler.tz';
+
+/**
+ * Curated timezone shortlist — covers the common 5th Line counterparties
+ * (US East/West, London, Continental EU, India, Singapore, Tokyo, AU)
+ * plus the user's detected browser TZ if it isn't already in the list.
+ * The full IANA list is huge; this keeps the picker scannable while
+ * still allowing arbitrary IANA strings (the saved pref is honored even
+ * if it's not one of the presets).
+ */
+const TZ_PRESETS: { id: string; label: string }[] = [
+  { id: 'America/New_York',    label: 'New York (ET)' },
+  { id: 'America/Chicago',     label: 'Chicago (CT)' },
+  { id: 'America/Denver',      label: 'Denver (MT)' },
+  { id: 'America/Los_Angeles', label: 'Los Angeles (PT)' },
+  { id: 'America/Toronto',     label: 'Toronto (ET)' },
+  { id: 'America/Sao_Paulo',   label: 'São Paulo (BRT)' },
+  { id: 'Europe/London',       label: 'London (GMT/BST)' },
+  { id: 'Europe/Dublin',       label: 'Dublin (GMT/IST)' },
+  { id: 'Europe/Paris',        label: 'Paris (CET)' },
+  { id: 'Europe/Berlin',       label: 'Berlin (CET)' },
+  { id: 'Europe/Madrid',       label: 'Madrid (CET)' },
+  { id: 'Asia/Dubai',          label: 'Dubai (GST)' },
+  { id: 'Asia/Kolkata',        label: 'Mumbai (IST)' },
+  { id: 'Asia/Singapore',      label: 'Singapore (SGT)' },
+  { id: 'Asia/Hong_Kong',      label: 'Hong Kong (HKT)' },
+  { id: 'Asia/Tokyo',          label: 'Tokyo (JST)' },
+  { id: 'Australia/Sydney',    label: 'Sydney (AEST)' },
+  { id: 'UTC',                 label: 'UTC' },
+];
+
+/** Short label for a TZ chip, e.g. "ET", "PT", "BST". Falls back to the
+ *  full IANA id if the runtime can't resolve a short name. */
+function shortTzLabel(tz: string, ref: Date = new Date()): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      timeZoneName: 'short',
+    }).formatToParts(ref);
+    const tzPart = parts.find((p) => p.type === 'timeZoneName');
+    return tzPart?.value || tz;
+  } catch {
+    return tz;
+  }
 }
 
-/** Build candidate working-hour slots across the next 5 business days. */
-function buildCandidateSlots(now: Date): Slot[] {
+function fmtSlot(s: Slot, tz: string): string {
+  const day = s.start.toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+    timeZone: tz,
+  });
+  const start = s.start.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: tz,
+  });
+  const end = s.end.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: tz,
+  });
+  return `${day}, ${start}–${end} (${shortTzLabel(tz, s.start)})`;
+}
+
+/**
+ * Build candidate working-hour slots across the next 5 business days,
+ * anchored in the user-selected timezone. We compute the wall-clock
+ * date/hour in `tz`, then resolve back to a real UTC instant — that way
+ * "10:00 in London" lands at the right absolute moment regardless of the
+ * browser locale running this code.
+ */
+function buildCandidateSlots(now: Date, tz: string): Slot[] {
   const slots: Slot[] = [];
-  const d = new Date(now);
-  d.setMinutes(0, 0, 0);
+  // Get the calendar date "today" as seen in `tz` (so a user in NY at 11pm
+  // doesn't accidentally schedule for "tomorrow" in London terms).
+  const todayInTz = new Date(now.toLocaleString('en-US', { timeZone: tz }));
   let days = 0;
-  while (days < 5) {
-    d.setDate(d.getDate() + 1);
-    const dow = d.getDay();
+  let dayOffset = 0;
+  while (days < 5 && dayOffset < 14) {
+    dayOffset += 1;
+    const candidateDay = new Date(todayInTz);
+    candidateDay.setDate(candidateDay.getDate() + dayOffset);
+    const dow = candidateDay.getDay();
     if (dow === 0 || dow === 6) continue; // skip weekends
     days += 1;
+    const y = candidateDay.getFullYear();
+    const m = candidateDay.getMonth() + 1;
+    const d = candidateDay.getDate();
     for (let h = WORK_START_HOUR; h + SLOT_MINUTES / 60 <= WORK_END_HOUR; h += 1) {
-      const start = new Date(d);
-      start.setHours(h, 0, 0, 0);
+      const start = zonedDateToUtc(y, m, d, h, 0, tz);
       const end = new Date(start.getTime() + SLOT_MINUTES * 60 * 1000);
       slots.push({ start, end });
     }
   }
   return slots;
+}
+
+/**
+ * Resolve a wall-clock (Y/M/D h:m) inside an IANA timezone to an absolute
+ * UTC `Date`. Uses the round-trip trick: format the same instant in both
+ * UTC and the target tz, measure the offset, then subtract.
+ */
+function zonedDateToUtc(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  tz: string,
+): Date {
+  // Start with the naive UTC instant for those wall-clock numbers.
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute, 0));
+  // What does that instant look like in the target tz?
+  const tzParts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(utcGuess);
+  const get = (t: string) => Number(tzParts.find((p) => p.type === t)?.value || '0');
+  const asTz = Date.UTC(
+    get('year'),
+    get('month') - 1,
+    get('day'),
+    get('hour') % 24,
+    get('minute'),
+    get('second'),
+  );
+  const offsetMs = asTz - utcGuess.getTime();
+  return new Date(utcGuess.getTime() - offsetMs);
 }
 
 /** Filter out slots that overlap any busy event. */
@@ -142,6 +252,32 @@ export function MeetingSchedulerCard({
   const { user } = useAuth();
   const teamMembers = useTeamMembers();
 
+  // ── Timezone preference ───────────────────────────────────────────────
+  // Persisted in localStorage so the user's choice sticks across sessions
+  // (e.g. a London-based partner manager always wants Europe/London even
+  // if their browser temporarily reports a different IANA value).
+  const [timezone, setTimezone] = useState<string>(() => {
+    try {
+      return localStorage.getItem(TZ_PREF_KEY) || BROWSER_TZ;
+    } catch {
+      return BROWSER_TZ;
+    }
+  });
+
+  // Build the dropdown options once — include the persisted/browser tz at
+  // the top if it isn't part of the curated list.
+  const tzOptions = useMemo(() => {
+    const ids = new Set(TZ_PRESETS.map((p) => p.id));
+    const extras: { id: string; label: string }[] = [];
+    if (!ids.has(BROWSER_TZ)) {
+      extras.push({ id: BROWSER_TZ, label: `${BROWSER_TZ} (your computer)` });
+    }
+    if (!ids.has(timezone) && timezone !== BROWSER_TZ) {
+      extras.push({ id: timezone, label: timezone });
+    }
+    return [...extras, ...TZ_PRESETS];
+  }, [timezone]);
+
   const [loadingBusy, setLoadingBusy] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [proposedSlots, setProposedSlots] = useState<Slot[]>([]);
@@ -169,6 +305,7 @@ export function MeetingSchedulerCard({
             time_min: now.toISOString(),
             time_max: horizon.toISOString(),
             max_results: 200,
+            timezone,
           },
         });
         if (cancelled) return;
@@ -178,7 +315,7 @@ export function MeetingSchedulerCard({
           end: e.end,
           all_day: !!e.all_day,
         }));
-        const candidates = buildCandidateSlots(now);
+        const candidates = buildCandidateSlots(now, timezone);
         const free = filterFreeSlots(candidates, events);
         const picked = pickThreeSpread(free);
         setProposedSlots(picked);
@@ -191,6 +328,14 @@ export function MeetingSchedulerCard({
       }
     })();
     return () => { cancelled = true; };
+    // Re-run whenever the user changes timezone — slot wall-clock anchors
+    // shift, so the proposed list must rebuild to match what the recipient
+    // will actually see in the email.
+  }, [timezone]);
+
+  const handleTimezoneChange = useCallback((next: string) => {
+    setTimezone(next);
+    try { localStorage.setItem(TZ_PREF_KEY, next); } catch { /* ignore */ }
   }, []);
 
   const toggleSlot = (i: number) => {
@@ -220,14 +365,14 @@ export function MeetingSchedulerCard({
       toast.error('Pick at least one slot to offer.');
       return;
     }
-    const lines = chosen.map((s) => `• ${fmtSlot(s)}`).join('\n');
+    const lines = chosen.map((s) => `• ${fmtSlot(s, timezone)}`).join('\n');
     const block =
       `${partiesLine === 'I' ? 'I have' : `${partiesLine} have`} the following times available:\n` +
       `${lines}\n\n` +
       `Please reply with your preference and I will send a formal invite.`;
     onInsert(block);
     toast.success('Proposed times added to your reply.');
-  }, [proposedSlots, selectedSlotIdx, partiesLine, onInsert]);
+  }, [proposedSlots, selectedSlotIdx, partiesLine, timezone, onInsert]);
 
   // ── Stage 2: confirm one slot → create the calendar event ──────────────
   const confirmAndCreate = useCallback(async () => {
@@ -258,6 +403,10 @@ export function MeetingSchedulerCard({
         body: {
           action: 'create',
           calendar_id: 'primary',
+          // Forwarded to Nylas as start_timezone/end_timezone so the
+          // Google Calendar event (and its Meet invite email) renders in
+          // the user's preferred zone for every attendee.
+          timezone,
           event_data: {
             summary,
             description: dealName ? `Discussion re: ${dealName}` : undefined,
@@ -271,7 +420,7 @@ export function MeetingSchedulerCard({
       if (error) throw error;
       const meetLink: string | null = data?.event?.hangout_link || null;
       const lines = [
-        `Confirmed for ${fmtSlot(slot)}.`,
+        `Confirmed for ${fmtSlot(slot, timezone)}.`,
         meetLink ? `Google Meet: ${meetLink}` : null,
         `Calendar invite sent — looking forward to it.`,
       ].filter(Boolean) as string[];
@@ -284,7 +433,7 @@ export function MeetingSchedulerCard({
     } finally {
       setCreating(false);
     }
-  }, [confirmedIdx, proposedSlots, recipientEmail, recipientName, partiesMode, extraMember, dealName, threadSubject, onInsert, onClose]);
+  }, [confirmedIdx, proposedSlots, recipientEmail, recipientName, partiesMode, extraMember, dealName, threadSubject, timezone, onInsert, onClose]);
 
   return (
     <div className="rounded-lg border border-white/10 bg-card/60 p-3 space-y-3">
@@ -301,6 +450,31 @@ export function MeetingSchedulerCard({
         >
           <X className="h-3.5 w-3.5" />
         </button>
+      </div>
+
+      {/* Timezone selector — controls both slot wall-clock anchoring and
+          the timezone written onto the Google Calendar event. Persists to
+          localStorage so the choice carries across sessions. */}
+      <div className="flex items-center gap-2">
+        <Label htmlFor="meeting-tz" className="text-[10.5px] uppercase tracking-wide text-muted-foreground/70 shrink-0">
+          Time zone
+        </Label>
+        <Select value={timezone} onValueChange={handleTimezoneChange}>
+          <SelectTrigger
+            id="meeting-tz"
+            className="h-7 text-[11px] flex-1 min-w-0"
+            aria-label="Time zone for proposed slots and calendar invite"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="max-h-72">
+            {tzOptions.map((opt) => (
+              <SelectItem key={opt.id} value={opt.id} className="text-[11.5px]">
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Slots list */}
