@@ -49,6 +49,12 @@ export type EmailDraft = {
   isCcEdited?: boolean;
   isBccEdited?: boolean;
   errorMessage?: string;
+  /**
+   * One-line explanation of why the AI personalized this draft to the lender
+   * (e.g. "Tailored to Founderpath's SaaS focus and $1–10MM range"). Empty
+   * when "Personalize per lender" was off and the same draft was broadcast.
+   */
+  personalizationRationale?: string;
 };
 
 type AppliedField = 'subject' | 'body' | 'cc' | 'bcc' | null;
