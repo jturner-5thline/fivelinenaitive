@@ -7,6 +7,7 @@ import { AiAssistInlinePanel } from './AiAssistInlinePanel';
 import { AiAssistSidebar } from './AiAssistSidebar';
 import { YourReplyComposer } from './YourReplyComposer';
 import { LinkToDealPopover } from './LinkToDealPopover';
+import { ThreadSummaryCard } from './ThreadSummaryCard';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
