@@ -1,7 +1,13 @@
 // Helpers and types for scheduled cash flow entries
 import type { WeeklyData } from './types';
 
-export type FrequencyType = 'one_time' | 'weekly' | 'monthly_first' | 'monthly_last' | 'monthly_day';
+export type FrequencyType =
+  | 'one_time'
+  | 'weekly'
+  | 'bi_weekly'
+  | 'monthly_first'
+  | 'monthly_last'
+  | 'monthly_day';
 export type FlowType = 'cash_in' | 'cash_out';
 
 export interface FrequencyConfig {
@@ -9,6 +15,8 @@ export interface FrequencyConfig {
   day_of_week?: number;         // 0=Sun..6=Sat
   ordinal_day_of_week?: number; // for monthly_first / monthly_last (0..6)
   day_of_month?: number;        // 1..31 for monthly_day
+  /** Optional ± variance percentage applied per occurrence (e.g. 10 = ±10%). */
+  variance_pct?: number;
 }
 
 export interface ScheduledCashFlow {
