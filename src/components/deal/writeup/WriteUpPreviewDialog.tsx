@@ -48,6 +48,25 @@ const CHART_COLORS = [
   'hsl(200,80%,50%)', 'hsl(280,65%,55%)', 'hsl(20,85%,55%)', 'hsl(175,70%,40%)',
 ];
 
+/* ── Formatters ── */
+const fmtPct = (n: number): string => {
+  if (!Number.isFinite(n)) return '0';
+  return Number(n.toFixed(1)).toString();
+};
+const fmtEquityRaised = (raw: string): string => {
+  if (!raw) return '';
+  const trimmed = raw.trim();
+  // If user already provided formatting (e.g. "$7M", "7MM"), keep as-is
+  if (/[a-zA-Z$,]/.test(trimmed) && !/^\$?\s*[\d.,]+\s*$/.test(trimmed)) return trimmed;
+  const numeric = Number(trimmed.replace(/[$,\s]/g, ''));
+  if (!Number.isFinite(numeric) || numeric <= 0) return trimmed;
+  if (numeric >= 1_000_000) {
+    const mm = numeric / 1_000_000;
+    return `$${mm.toFixed(1)}MM`;
+  }
+  return `$${numeric.toLocaleString('en-US')}`;
+};
+
 /* ── Props ── */
 interface WriteUpPreviewDialogProps {
   open: boolean;
