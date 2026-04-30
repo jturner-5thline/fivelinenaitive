@@ -675,6 +675,32 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                   );
                 }
 
+                // "+ Add Row" footer for Cash Receipts / Disbursements sections.
+                // Honor the same section-collapsed rule as detail rows.
+                if ((rowDef as WeeklyRow).isAddRowFooter) {
+                  if (collapsedSections[rowDef.section]) return null;
+                  const section = rowDef.section as 'receipts' | 'disbursements';
+                  return (
+                    <tr key={rowDef.key} className="cf-add-row-footer">
+                      <td className="cf-label-col" style={{ paddingLeft: 16 }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAddRowName('');
+                            setAddRowPrompt({ section });
+                          }}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                          title={`Add a custom ${section === 'receipts' ? 'Cash Receipts' : 'Cash Disbursements'} row`}
+                        >
+                          <Plus size={12} strokeWidth={2.5} />
+                          Add Row
+                        </button>
+                      </td>
+                      <td colSpan={visibleWeeks.length} />
+                    </tr>
+                  );
+                }
+
                 // NET CHANGE row — computed per week as TOTAL RECEIPTS - TOTAL DISBURSEMENTS
                 if ((rowDef as WeeklyRow).isNetChange) {
                   return (
