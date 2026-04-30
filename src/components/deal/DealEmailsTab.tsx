@@ -1879,6 +1879,17 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
               ))}
             </div>
 
+            {/* Label filter chips — DB labels + system auto-tag labels.
+                Inbox-scope only; on a deal page the existing labels are
+                managed inline via the thread bar. */}
+            {isInboxScope && (
+              <LabelFilterChipsRow
+                labels={[...SYSTEM_LABELS, ...userLabels]}
+                selectedLabelId={selectedLabelFilterId}
+                onSelect={setSelectedLabelFilterId}
+              />
+            )}
+
             {/* Deal filter chips — only shown in the inbox-dialog scope.
                 Uses the same matching engine that powers inline "Likely: …"
                 badges so chip membership and badge labels stay consistent. */}
