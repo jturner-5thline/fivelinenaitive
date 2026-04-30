@@ -296,6 +296,37 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
           )}
         </div>
 
+        {/* Personalize per lender — when ON, the AI tailors each draft to
+            the lender's stated focus areas (deal types, size, industry).
+            When OFF, one standard draft is generated and broadcast. */}
+        <div className="flex items-start gap-3 rounded-md border border-primary/20 bg-primary/[0.04] px-3 py-2">
+          <Sparkles className="h-3.5 w-3.5 mt-0.5 text-primary flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <label
+              htmlFor="personalize-toggle"
+              className="text-xs font-medium cursor-pointer flex items-center gap-2"
+            >
+              Personalize per lender
+              {personalize && (
+                <Badge variant="outline" className="text-[9px] py-0 h-4 border-primary/40 text-primary">
+                  AI tailoring
+                </Badge>
+              )}
+            </label>
+            <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+              {personalize
+                ? 'Each lender gets a unique draft that references their focus areas, deal-size range, and prior interaction on this deal.'
+                : 'One standard draft will be sent to every selected lender.'}
+            </p>
+          </div>
+          <Switch
+            id="personalize-toggle"
+            checked={personalize}
+            onCheckedChange={setPersonalize}
+            aria-label="Personalize each draft per lender"
+          />
+        </div>
+
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={confirming}>
             Cancel
