@@ -651,7 +651,23 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
           onDelete={onDelete}
           evaluateAutoLabels={evaluateAutoLabels}
           priorityFlag={flagsByThread[thread.threadId]}
-          userLabels={threadLabelMap.get(thread.provider_thread_id || thread.threadId)}
+          userLabels={(() => {
+            const dbLabels =
+              threadLabelMap.get(thread.provider_thread_id || thread.threadId) ?? [];
+            // Auto-tag system labels (e.g. jturner@5thline.co) — derived from
+            // the latest message's sender/recipient, no DB rows required.
+            const sysLabels = systemLabelsForEmail(thread.latestEmail);
+            if (sysLabels.length === 0) return dbLabels;
+            // De-dupe by id; system labels first so they paint the row stripe.
+            const seen = new Set<string>();
+            const merged: EmailLabel[] = [];
+            for (const l of [...sysLabels, ...dbLabels]) {
+              if (seen.has(l.id)) continue;
+              seen.add(l.id);
+              merged.push(l);
+            }
+            return merged;
+          })()}
         />
       ))}
     </div>
