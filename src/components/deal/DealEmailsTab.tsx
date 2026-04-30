@@ -1881,6 +1881,19 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 this is the sole scroller; that lets the IO pagination
                 sentinel observe the right element and lets the browser
                 composite this column independently. */}
+            {isInboxScope && selectedDealFilterId && (() => {
+              const deal = allDeals.find(d => d.id === selectedDealFilterId);
+              if (!deal) return null;
+              const lastActivityAt = filteredEmails[0]?.received_at || null;
+              return (
+                <DealFilterSummaryCard
+                  deal={deal}
+                  lastActivityAt={lastActivityAt}
+                  matchedCount={filteredEmails.length}
+                  onClear={() => setSelectedDealFilterId(null)}
+                />
+              );
+            })()}
             <div
               ref={inboxScrollRef}
               className="flex-1 min-h-0 min-w-0 overflow-auto"
