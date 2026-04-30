@@ -40,23 +40,22 @@ export function useScheduledCashFlows(companyId: string | undefined) {
    * Diff-based persistence — never wipes the whole table.
    *
    *  - Entries with no `id` (or an empty/placeholder id) → INSERT
-   *  - Entries with an existing `id` whose values changed → UPDATE
-   *  - Entries that existed previously but are not in `entries` → DELETE by id
+   *  - Entries with an existing `id` → UPDATE
+   *  - Only ids passed in `deleteIds` are removed
    *
-   * This guarantees that an entry persisted in the database will NEVER be
-   * dropped just because the caller passed an out-of-date snapshot (e.g. a
-   * stale closure after another component re-rendered). The caller must
-   * intentionally omit an id from `entries` for that id to be deleted.
+   * Critically, an entry NEVER gets deleted just because it's missing from
+   * `entries`. Callers must explicitly opt in to deletion via `deleteIds`.
+   * This protects against stale snapshots — e.g. the Configure modal loaded
+   * its drafts before a separate inline-add added a new row; saving the
+   * modal must not erase that new row.
    */
-  const saveAll = useCallback(async (entries: ScheduledCashFlow[]) => {
+  const saveAll = useCallback(async (
+    entries: ScheduledCashFlow[],
+    deleteIds: string[] = [],
+  ) => {
     if (!companyId) return false;
     const { data: userResp } = await supabase.auth.getUser();
     const userId = userResp?.user?.id ?? null;
-
-    const existingById = new Map(
-      itemsRef.current.filter((e) => e.id).map((e) => [e.id, e]),
-    );
-    const incomingIds = new Set(entries.filter((e) => e.id).map((e) => e.id));
 
     const toInsert: any[] = [];
     const toUpdate: { id: string; row: any }[] = [];
@@ -73,16 +72,14 @@ export function useScheduledCashFlows(companyId: string | undefined) {
         end_date: e.end_date,
         notes: e.notes,
       };
-      if (e.id && existingById.has(e.id)) {
+      if (e.id) {
         toUpdate.push({ id: e.id, row });
       } else {
         toInsert.push({ company_id: companyId, created_by: userId, ...row });
       }
     }
 
-    const toDeleteIds = Array.from(existingById.keys()).filter(
-      (id) => !incomingIds.has(id),
-    );
+    const toDeleteIds = deleteIds.filter(Boolean);
 
     // INSERTs
     if (toInsert.length > 0) {
