@@ -259,7 +259,7 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
                       className="cursor-pointer hover:text-primary"
                       onClick={() => startEditing(owner)}
                     >
-                      {owner.ownership_percentage.toFixed(2)}%
+                       {Number(owner.ownership_percentage.toFixed(1)).toString()}%
                     </span>
                   )}
                 </TableCell>
