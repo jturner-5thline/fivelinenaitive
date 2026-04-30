@@ -198,9 +198,14 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
           break;
         }
         if (page.messages.length === 0 && !page.nextPageToken) break;
-        setInboxMessages(prev => mergeUniqueById(prev, page.messages));
+        setInboxMessages(prev => {
+          const next = mergeUniqueById(prev, page.messages);
+          useInboxCacheStore.setState({ inboxMessages: next });
+          return next;
+        });
         token = page.nextPageToken;
         setInboxNextToken(token);
+        useInboxCacheStore.setState({ inboxNextToken: token });
         setHasMoreInbox(!!token);
         totalLoaded += page.messages.length;
       }
@@ -213,9 +218,14 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
         await new Promise(r => setTimeout(r, AUTO_LOAD_DELAY_MS));
         const firstSent = await fetchPage({ labelIds: ['SENT'] });
         if (isMountedRef.current && !firstSent.rateLimited) {
-          setSentMessages(prev => mergeUniqueById(prev, firstSent.messages));
+          setSentMessages(prev => {
+            const next = mergeUniqueById(prev, firstSent.messages);
+            useInboxCacheStore.setState({ sentMessages: next });
+            return next;
+          });
           sentToken = firstSent.nextPageToken;
           setSentNextToken(sentToken);
+          useInboxCacheStore.setState({ sentNextToken: sentToken });
           setHasMoreSent(!!sentToken);
           sentLoaded = firstSent.messages.length;
         }
@@ -227,9 +237,14 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
         if (!isMountedRef.current) break;
         if (page.rateLimited) break;
         if (page.messages.length === 0 && !page.nextPageToken) break;
-        setSentMessages(prev => mergeUniqueById(prev, page.messages));
+        setSentMessages(prev => {
+          const next = mergeUniqueById(prev, page.messages);
+          useInboxCacheStore.setState({ sentMessages: next });
+          return next;
+        });
         sentToken = page.nextPageToken;
         setSentNextToken(sentToken);
+        useInboxCacheStore.setState({ sentNextToken: sentToken });
         setHasMoreSent(!!sentToken);
         sentLoaded += page.messages.length;
       }
