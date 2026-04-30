@@ -1,4 +1,4 @@
-import { Paperclip, Sparkles, FolderOpen, X } from 'lucide-react';
+import { Paperclip, Sparkles, FolderOpen, X, Inbox as InboxIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -11,6 +11,8 @@ interface Props {
   loading: boolean;
   onConfirm: () => void;
   onDismiss: () => void;
+  /** Optional — defer this suggestion to the AI Action Queue. */
+  onAddToQueue?: () => void;
 }
 
 const CONFIDENCE_TONE: Record<string, string> = {
@@ -34,6 +36,7 @@ export function DataRoomSuggestionCard({
   loading,
   onConfirm,
   onDismiss,
+  onAddToQueue,
 }: Props) {
   const targetName = suggestion?.suggested_deal_name || dealName;
   const targetLabel = targetName ? `${targetName} Data Room — Internal` : 'a deal data room';
@@ -87,6 +90,18 @@ export function DataRoomSuggestionCard({
         >
           <FolderOpen className="h-3 w-3" /> Review &amp; upload
         </Button>
+        {onAddToQueue && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-[11px] gap-1"
+            onClick={onAddToQueue}
+            disabled={loading}
+            title="Add to Action Queue for batch review"
+          >
+            <InboxIcon className="h-3 w-3" /> Add to Queue
+          </Button>
+        )}
         <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={onDismiss}>
           Not now
         </Button>
