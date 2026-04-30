@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useSearchParams } from 'react-router-dom';
-import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Briefcase, LayoutTemplate, Newspaper, Handshake } from 'lucide-react';
+import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Briefcase, LayoutTemplate, Newspaper, Handshake, Inbox as InboxIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
 import { InboxDialog } from '@/components/dashboard/InboxDialog';
@@ -22,6 +22,10 @@ import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { AddWidgetDialog } from '@/components/dashboard/AddWidgetDialog';
 import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
 import { EmailIntelligenceWidget } from '@/components/dashboard/EmailIntelligenceWidget';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
+import { useAiActionQueue, useAiActionQueueCount } from '@/hooks/useAiActionQueue';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 /**
