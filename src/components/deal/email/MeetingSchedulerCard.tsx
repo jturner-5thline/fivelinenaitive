@@ -530,7 +530,7 @@ export function MeetingSchedulerCard({
                     className="h-3 w-3 accent-primary"
                   />
                 )}
-                <span className="text-foreground/85">{fmtSlot(slot)}</span>
+                <span className="text-foreground/85">{fmtSlot(slot, timezone)}</span>
               </label>
             );
           })}
