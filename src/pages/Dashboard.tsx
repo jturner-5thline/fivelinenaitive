@@ -407,6 +407,11 @@ export default function Dashboard() {
   const [pendingRemoval, setPendingRemoval] = useState<{ widgetId: string; widget: WidgetConfig; gridItem: GridItem } | null>(null);
   const [dealsDialogOpen, setDealsDialogOpen] = useState(false);
   const [dealsInitialView, setDealsInitialView] = useState<DealsCarouselView | undefined>(undefined);
+  // Action Queue modal — opened from the top-row quick-action tile so the
+  // queue stays a first-class shortcut rather than a sibling card.
+  const [actionQueueOpen, setActionQueueOpen] = useState(false);
+  const actionQueueCount = useAiActionQueueCount();
+  const { data: actionQueueItems = [] } = useAiActionQueue();
 
   // Sync tab from URL query params
   useEffect(() => {
