@@ -542,7 +542,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
 
     const files = e.dataTransfer.files;
     if (files.length > 0) {
-      setPendingFiles(Array.from(files));
+      void startUpload(Array.from(files));
     }
   };
 
