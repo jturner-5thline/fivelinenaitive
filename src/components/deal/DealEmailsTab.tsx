@@ -1963,6 +1963,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 onArchive={handleArchiveEmail}
                 onDelete={handleDeleteEmail}
                 isLoading={aiSearch.isSearching}
+                scrollParent={isInboxScope ? inboxScrollRef.current : null}
               />
               {/*
                 Screen-reader-only announcer for search progress + result counts.
