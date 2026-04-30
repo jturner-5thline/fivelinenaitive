@@ -1,5 +1,7 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { useState, useMemo } from 'react';
 import {
   Search as SearchIcon,
   Activity,
@@ -96,6 +98,18 @@ const CATALOG: CatalogAgent[] = [
 ];
 
 export function AgentCatalog() {
+  const [query, setQuery] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return CATALOG;
+    return CATALOG.filter(
+      (a) =>
+        a.name.toLowerCase().includes(q) ||
+        a.subtitle.toLowerCase().includes(q),
+    );
+  }, [query]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4">
@@ -110,8 +124,18 @@ export function AgentCatalog() {
         </div>
       </div>
 
+      <div className="relative max-w-sm">
+        <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search agents by name or subtitle..."
+          className="pl-8 h-9"
+        />
+      </div>
+
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-        {CATALOG.map((agent) => {
+        {filtered.map((agent) => {
           const Icon = agent.icon;
           return (
             <Card
@@ -159,6 +183,12 @@ export function AgentCatalog() {
           );
         })}
       </div>
+
+      {filtered.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-8">
+          No agents match "{query}".
+        </p>
+      )}
     </div>
   );
 }
