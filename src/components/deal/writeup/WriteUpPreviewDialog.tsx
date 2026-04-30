@@ -723,7 +723,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                           </text>
                           <text x="50%" y="58%" textAnchor="middle" dominantBaseline="central"
                             style={{ fontSize: 14, fontWeight: 700, fill: T.primary, fontFamily: T.font }}>
-                            {activeOwnerIdx !== null ? `${owners[activeOwnerIdx].ownership_percentage}%` : `${owners.reduce((s, o) => s + o.ownership_percentage, 0)}%`}
+                            {activeOwnerIdx !== null ? `${fmtPct(owners[activeOwnerIdx].ownership_percentage)}%` : `${fmtPct(owners.reduce((s, o) => s + o.ownership_percentage, 0))}%`}
                           </text>
                         </PieChart>
                       </ResponsiveContainer>
@@ -763,7 +763,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: CHART_COLORS[i % CHART_COLORS.length], flexShrink: 0 }} />
                                 {o.owner_name}
                               </td>
-                              <td style={{ padding: 12, textAlign: 'right', fontWeight: 500, color: T.fg }}>{o.ownership_percentage}%</td>
+                              <td style={{ padding: 12, textAlign: 'right', fontWeight: 500, color: T.fg }}>{fmtPct(o.ownership_percentage)}%</td>
                             </tr>
                           ))}
                         </tbody>
@@ -772,7 +772,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                     {totalEquityRaised && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', marginTop: 8 }}>
                         <span style={{ fontSize: 14, fontWeight: 600, color: T.fg }}>Total Equity Raised</span>
-                        <span style={{ fontSize: 16, fontWeight: 700, color: T.fg }}>{totalEquityRaised}</span>
+                        <span style={{ fontSize: 16, fontWeight: 700, color: T.fg }}>{fmtEquityRaised(totalEquityRaised)}</span>
                       </div>
                     )}
                   </div>
