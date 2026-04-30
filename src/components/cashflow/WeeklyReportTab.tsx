@@ -1160,6 +1160,72 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
           </div>
         </div>
       )}
+
+      {/* "+ Add Row" prompt for custom Cash Receipts / Disbursements rows */}
+      {addRowPrompt && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40"
+          onClick={closeAddRowPrompt}
+        >
+          <div
+            className="w-[360px] rounded-xl border border-border bg-card shadow-2xl p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <div className="text-sm font-semibold text-foreground">Add Custom Row</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {addRowPrompt.section === 'receipts' ? 'Cash Receipts' : 'Cash Disbursements'} · appears in Configure modal
+                </div>
+              </div>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={closeAddRowPrompt}
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-[11px] uppercase tracking-wide text-muted-foreground font-medium mb-1">
+                Row Name
+              </label>
+              <input
+                type="text"
+                className="w-full h-9 rounded-md border border-border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                placeholder="e.g. Equipment Sales"
+                value={addRowName}
+                autoFocus
+                onChange={(e) => setAddRowName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') submitAddRow();
+                  if (e.key === 'Escape') closeAddRowPrompt();
+                }}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                type="button"
+                className="h-8 px-3 rounded-md text-xs text-muted-foreground hover:bg-muted/40"
+                onClick={closeAddRowPrompt}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="h-8 px-3 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                onClick={submitAddRow}
+                disabled={!addRowName.trim()}
+              >
+                Add Row
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
