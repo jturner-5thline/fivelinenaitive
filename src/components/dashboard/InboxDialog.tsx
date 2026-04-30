@@ -6,6 +6,7 @@ import { useGmail } from '@/hooks/useGmail';
 import { useNavigate } from 'react-router-dom';
 import { DealEmailsTab } from '@/components/deal/DealEmailsTab';
 import { MockEmail } from '@/components/deal/email/mockEmailData';
+import { EmailPaneErrorBoundary } from '@/components/deal/email/EmailListAndDetail';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
@@ -453,17 +454,27 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
         style={{ width: '94vw' }}
       >
         <div className="flex-1 min-h-0 overflow-hidden">
-          <DealEmailsTab
-            dealId=""
-            externalEmails={mappedEmails}
-            onRefresh={handleRefresh}
-            isRefreshingExternal={isInitialLoading}
-            onGmailSend={sendEmail}
-            onLoadMore={loadMore}
-            hasMore={hasMore}
-            isLoadingMore={isLoadingMore}
-            isAutoPaginating={isPaginatingRef.current}
-          />
+          {/* Error boundary so a single bad message / thread / attachment
+              cannot crash the entire inbox popup. Reset key tied to
+              `mappedEmails.length` lets the boundary auto-recover when the
+              underlying data set changes (new fetch, refresh, retry). */}
+          <EmailPaneErrorBoundary
+            fallbackTitle="Inbox failed to load"
+            fallbackMessage="One of your emails couldn't be displayed. Try refreshing — if it keeps happening, the failing message will be skipped automatically."
+            resetKey={`inbox-${mappedEmails.length}`}
+          >
+            <DealEmailsTab
+              dealId=""
+              externalEmails={mappedEmails}
+              onRefresh={handleRefresh}
+              isRefreshingExternal={isInitialLoading}
+              onGmailSend={sendEmail}
+              onLoadMore={loadMore}
+              hasMore={hasMore}
+              isLoadingMore={isLoadingMore}
+              isAutoPaginating={isPaginatingRef.current}
+            />
+          </EmailPaneErrorBoundary>
         </div>
       </DialogContent>
     </Dialog>
