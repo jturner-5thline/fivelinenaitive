@@ -866,11 +866,13 @@ export default function Dashboard() {
                     onApplyToCurrentDashboard={handleApplyTemplateToCurrentDashboard}
                   />
                   {isEditing && activePreset && (
-                    <AddWidgetDialog
-                      existingWidgetIds={activePreset.widgets_config.map(w => w.id)}
-                      onAddBuiltIn={handleAddBuiltIn}
-                      onAddCustom={handleAddCustom}
-                    />
+                    <Suspense fallback={null}>
+                      <AddWidgetDialog
+                        existingWidgetIds={activePreset.widgets_config.map(w => w.id)}
+                        onAddBuiltIn={handleAddBuiltIn}
+                        onAddCustom={handleAddCustom}
+                      />
+                    </Suspense>
                   )}
                   <HintTooltip
                     hint="Click 'Edit' to customize your dashboard — add, remove, or rearrange widgets to match your workflow."
