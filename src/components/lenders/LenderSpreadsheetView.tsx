@@ -206,24 +206,24 @@ export function LenderSpreadsheetView({
     
     if (sortState.column === columnKey) {
       if (sortState.direction === 'asc') {
-        return <ArrowUp className="h-3 w-3 ml-1 text-primary" />;
+        return <ArrowUp className="h-3 w-3 ml-1 text-[hsl(292,46%,72%)]" />;
       }
       if (sortState.direction === 'desc') {
-        return <ArrowDown className="h-3 w-3 ml-1 text-primary" />;
+        return <ArrowDown className="h-3 w-3 ml-1 text-[hsl(292,46%,72%)]" />;
       }
     }
-    return <ArrowUpDown className="h-3 w-3 ml-1 text-muted-foreground/50" />;
+    return <ArrowUpDown className="h-3 w-3 ml-1 text-muted-foreground/30 group-hover:text-muted-foreground/60" />;
   };
 
   return (
-    <div className="border border-border rounded-md bg-background overflow-hidden">
+    <div className="rounded-lg border border-white/10 bg-white/[0.02] overflow-hidden shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset]">
       <ScrollArea className="w-full" style={{ height: 'calc(100vh - 280px)' }}>
         <div style={{ minWidth: TOTAL_WIDTH }}>
           {/* Header Row */}
-          <div className="flex sticky top-0 z-10 bg-muted border-b border-border">
+          <div className="flex sticky top-0 z-10 bg-white/[0.04] backdrop-blur-sm border-b border-white/10">
             {/* Checkbox header */}
             {onToggleSelect && (
-              <div className="flex-shrink-0 w-[40px] px-2 py-2 border-r border-border bg-muted sticky left-0 z-20 flex items-center justify-center">
+              <div className="flex-shrink-0 w-[40px] px-2 py-2.5 border-r border-white/5 bg-white/[0.04] sticky left-0 z-20 flex items-center justify-center">
                 <Checkbox
                   checked={selectedIds && selectedIds.size === lenders.length && lenders.length > 0}
                   onCheckedChange={(checked) => {
@@ -237,15 +237,15 @@ export function LenderSpreadsheetView({
               </div>
             )}
             {/* Row number header */}
-            <div className={`flex-shrink-0 w-[50px] px-2 py-2 text-xs font-semibold text-muted-foreground border-r border-border bg-muted ${onToggleSelect ? '' : 'sticky left-0'} z-20`}>
+            <div className={`flex-shrink-0 w-[50px] px-2 py-2.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70 border-r border-white/5 bg-white/[0.04] ${onToggleSelect ? '' : 'sticky left-0'} z-20`}>
               #
             </div>
             {COLUMNS.map((col) => (
               <div
                 key={col.key}
-                className={`flex-shrink-0 px-2 py-2 text-xs font-semibold text-foreground border-r border-border bg-muted flex items-center ${
-                  col.sortable ? 'cursor-pointer hover:bg-muted/80 select-none' : ''
-                }`}
+                className={`flex-shrink-0 px-3 py-2.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground border-r border-white/5 bg-white/[0.04] flex items-center transition-colors ${
+                  col.sortable ? 'cursor-pointer hover:text-foreground hover:bg-white/[0.06] select-none' : ''
+                } ${col.key === 'name' ? 'text-foreground/90' : ''}`}
                 style={{ width: col.width }}
                 title={col.sortable ? `Click to sort by ${col.label}` : col.label}
                 onClick={() => handleHeaderClick(col.key, col.sortable)}
@@ -266,13 +266,17 @@ export function LenderSpreadsheetView({
               const isSelected = selectedIds?.has(lender.id) ?? false;
               return (
                 <div
-                  className={`flex border-b border-border/50 hover:bg-muted/50 cursor-pointer transition-colors ${isSelected ? 'bg-primary/5' : ''}`}
+                  className={`flex border-b border-white/[0.04] cursor-pointer transition-colors duration-150 ${
+                    isSelected
+                      ? 'bg-[hsl(272,100%,70%)]/[0.08] hover:bg-[hsl(272,100%,70%)]/[0.12]'
+                      : 'hover:bg-white/[0.03]'
+                  }`}
                   onClick={() => onRowClick?.(lender)}
                 >
                   {/* Checkbox */}
                   {onToggleSelect && (
                     <div 
-                      className="flex-shrink-0 w-[40px] px-2 py-1.5 border-r border-border/50 bg-muted/30 sticky left-0 z-10 flex items-center justify-center"
+                      className="flex-shrink-0 w-[40px] px-2 py-2 border-r border-white/[0.04] bg-background/40 backdrop-blur-sm sticky left-0 z-10 flex items-center justify-center"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Checkbox
@@ -282,17 +286,21 @@ export function LenderSpreadsheetView({
                     </div>
                   )}
                   {/* Row number */}
-                  <div className={`flex-shrink-0 w-[50px] px-2 py-1.5 text-xs text-muted-foreground border-r border-border/50 bg-muted/30 ${onToggleSelect ? '' : 'sticky left-0'} z-10`}>
+                  <div className={`flex-shrink-0 w-[50px] px-2 py-2 text-xs text-muted-foreground/60 border-r border-white/[0.04] bg-background/40 backdrop-blur-sm flex items-center ${onToggleSelect ? '' : 'sticky left-0'} z-10`} style={{ fontVariantNumeric: 'tabular-nums' }}>
                     {index + 1}
                   </div>
                   {COLUMNS.map((col) => (
                     <div
                       key={col.key}
-                      className="flex-shrink-0 px-2 py-1.5 text-xs text-foreground border-r border-border/50 truncate"
+                      className={`flex-shrink-0 px-3 py-2 text-xs border-r border-white/[0.04] truncate flex items-center ${
+                        col.key === 'name'
+                          ? 'text-foreground font-medium'
+                          : 'text-foreground/75'
+                      }`}
                       style={{ width: col.width }}
                       title={formatCellValue(lender, col.key)}
                     >
-                      {formatCellValue(lender, col.key)}
+                      {formatCellValue(lender, col.key) || <span className="text-muted-foreground/30">—</span>}
                     </div>
                   ))}
                 </div>
@@ -300,7 +308,7 @@ export function LenderSpreadsheetView({
             }}
             components={{
               Footer: () => (
-                <div className="py-4 px-4 text-center text-sm text-muted-foreground border-t border-border/50">
+                <div className="py-4 px-4 text-center text-xs text-muted-foreground/70 border-t border-white/[0.05] bg-white/[0.02]">
                   {loadingMore ? (
                     <span className="inline-flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
