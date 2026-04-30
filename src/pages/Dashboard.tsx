@@ -232,13 +232,20 @@ function EmailTileWithIntelligence({
     const wrapperRect = wrapper.getBoundingClientRect();
     const vw = window.innerWidth;
 
+    // Always anchor BENEATH the Email tile so the popover never overlaps
+    // the neighboring Action Queue / Deals tiles. Falls back to side
+    // placements only if there's truly no vertical room (rare on desktop).
+    const spaceBelow = window.innerHeight - tileRect.bottom - VIEWPORT_PAD;
     const spaceRight = vw - tileRect.right - VIEWPORT_PAD;
     const spaceLeft = tileRect.left - VIEWPORT_PAD;
 
-    let next: Placement = 'right';
-    if (spaceRight >= PANEL_WIDTH + GAP) next = 'right';
-    else if (spaceLeft >= PANEL_WIDTH + GAP) next = 'left';
-    else next = 'bottom';
+    let next: Placement = 'bottom';
+    if (spaceBelow < 220) {
+      // Not enough vertical room — fall back to a side that fits.
+      if (spaceRight >= PANEL_WIDTH + GAP) next = 'right';
+      else if (spaceLeft >= PANEL_WIDTH + GAP) next = 'left';
+      else next = 'bottom';
+    }
 
     // Position relative to wrapper (which is position: relative).
     const tileTopInWrapper = tileRect.top - wrapperRect.top;
@@ -370,7 +377,44 @@ function EmailTileWithIntelligence({
         aria-label="Email Intelligence"
         aria-hidden={!isHovering}
       >
-        <div className="rounded-xl border border-border/60 bg-card shadow-2xl shadow-black/40 ring-1 ring-black/5 flex flex-col max-h-[360px] overflow-hidden">
+        {/*
+          Invisible hover bridge — covers the GAP between the tile and the
+          panel so the cursor doesn't briefly land on dead space (which
+          would trigger onMouseLeave → close flicker). Only present when
+          the panel is open. Sized per placement.
+        */}
+        {isHovering && (
+          <div
+            aria-hidden
+            className="absolute"
+            style={
+              placement === 'bottom'
+                ? { left: 0, right: 0, top: -GAP, height: GAP }
+                : placement === 'right'
+                  ? { top: 0, bottom: 0, left: -GAP, width: GAP }
+                  : { top: 0, bottom: 0, right: -GAP, width: GAP }
+            }
+          />
+        )}
+        {/*
+          Glass surface — matches the dashboard's existing glass language
+          (translucent background + blur + soft border + inner highlight),
+          consistent with WidgetCarouselChrome / InboxDialog / OperationalDashboard.
+        */}
+        <div
+          className={cn(
+            'flex flex-col max-h-[360px] overflow-hidden rounded-xl',
+            'bg-background/70 backdrop-blur-2xl',
+            'glass-border-soft',
+            'shadow-2xl shadow-black/30',
+            'ring-1 ring-white/[0.04]',
+          )}
+          style={{
+            // Subtle inner top highlight for the "liquid glass" feel.
+            boxShadow:
+              'inset 0 1px 0 hsl(0 0% 100% / 0.06), 0 20px 40px -12px hsl(0 0% 0% / 0.45)',
+          }}
+        >
           <EmailIntelligenceWidget />
         </div>
       </div>
