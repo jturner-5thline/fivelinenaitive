@@ -362,6 +362,9 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
   const reconcileStates = useCallback((states: Array<{ id: string; is_read: boolean; is_starred: boolean; missing?: boolean }>) => {
     if (!states.length || !isMountedRef.current) return;
     const stateMap = new Map(states.map(s => [s.id, s]));
+    // Push deltas into the shared cache too so the unread badge updates
+    // even when the dialog is closed on the next render.
+    useInboxCacheStore.getState().applyStateDeltas(states);
     setInboxMessages(prev => {
       let changed = false;
       const next = prev
