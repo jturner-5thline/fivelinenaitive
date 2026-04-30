@@ -281,6 +281,17 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
           title={`Priority signal: ${priorityFlag.label} — "${priorityFlag.quote}"`}
         />
       )}
+      {/* Label color stripe — only when no higher-priority bar (selected /
+          urgency signal) is already painted. Uses the first (highest-
+          ranked) label's color so the row at-a-glance reads as that label. */}
+      {!isSelected && !priorityFlag && userLabels && userLabels.length > 0 && (
+        <div
+          className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full"
+          style={{ backgroundColor: labelSwatch(userLabels[0].color) }}
+          aria-label={`Label: ${userLabels[0].name}`}
+          title={userLabels.map((l) => l.name).join(', ')}
+        />
+      )}
       <div className="flex items-start gap-2.5 px-3 py-2 min-w-0">
         {/* Checkbox or avatar area */}
         <div className="relative flex items-center justify-center shrink-0 mt-0.5" style={{ width: 24, height: 24 }}>
