@@ -585,7 +585,10 @@ export function WorkflowIntelligenceCard({
                         deal_name: analysis.likely_deal?.name || null,
                         payload: {
                           kind: rec.kind,
-                          new_status: confirmedStatus,
+                          // Stage id from Settings → Lender Stages (single
+                          // source of truth). Persisted to deal_lenders.stage.
+                          new_stage_id: confirmedStatus,
+                          new_tracking_status: selectedStage?.group || null,
                           deal_lender_id: rec.lender_id || null,
                           lender_name: rec.lender_name,
                           pass_reasons: selectedReasonLabels,
