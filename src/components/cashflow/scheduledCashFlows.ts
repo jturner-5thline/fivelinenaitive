@@ -44,15 +44,19 @@ export const ACCOUNT_OPTIONS = [
 
 // Sub-categories nested under "Advisors Revenue" (the parent row in the
 // historical-seed weekly grid).
+// IMPORTANT: these labels MUST match the corresponding row keys in the Weekly
+// Report grid (see WEEKLY_ROW_ORDER in WeeklyReportTab.tsx) so that an entry
+// saved with category "Retainers" lands in the visible "Retainers" row — the
+// same direct mapping FinServ Revenue uses.
 export const DEBT_ADVISORY_SUBCATEGORIES = [
-  'Retainer',
-  'Milestone',
+  'Retainers',
+  'Milestones',
   'Closing Fees',
   'Referral Fees',
 ] as const;
 
 // Default fallback when a legacy entry is on the parent without a sub-category
-export const DEBT_ADVISORY_DEFAULT_SUBCATEGORY = 'Retainer';
+export const DEBT_ADVISORY_DEFAULT_SUBCATEGORY = 'Retainers';
 
 // Flat selectable Cash-In categories — these MUST match the row titles in
 // `weeklyHistoricalSeed.ts` (CASH_IN_ROWS) so Configure entries roll into
@@ -77,7 +81,9 @@ export const CASH_IN_GROUPED_OPTIONS: ReadonlyArray<{
 // Map child category -> parent for weekly grid roll-up.
 export const CASH_IN_PARENT_MAP: Record<string, string> = {
   Retainer: 'Advisors Revenue',
+  Retainers: 'Advisors Revenue',
   Milestone: 'Advisors Revenue',
+  Milestones: 'Advisors Revenue',
   'Closing Fees': 'Advisors Revenue',
   'Referral Fees': 'Advisors Revenue',
 };
@@ -103,12 +109,13 @@ export const CASH_OUT_CATEGORIES = [
 // row keys above. This protects entries created before the schema change and
 // also accepts the friendlier names users may type ("Other", etc.).
 export const CATEGORY_ALIASES: Record<string, string> = {
-  // Cash-In aliases
-  Retainers: 'Retainer',
-  Milestones: 'Milestone',
+  // Cash-In aliases — fold legacy singular labels into the canonical plural
+  // labels that match the Weekly Report row keys directly.
+  Retainer: 'Retainers',
+  Milestone: 'Milestones',
   'Technology Revenue': 'Tech Revenue',
   'Other Receipts': 'Other Cash In',
-  'Debt Advisory Revenue': 'Retainer',
+  'Debt Advisory Revenue': 'Retainers',
   // Cash-Out aliases
   'Advertising & Marketing': 'Advertising Bank Fees',
   'Payroll - Salaries': 'Payroll Expense',
@@ -137,10 +144,9 @@ export function resolveCategoryAlias(category: string): string {
  * and the entry would silently disappear from the visible row.
  */
 export const CANONICAL_TO_GRID_ROW: Record<string, string> = {
-  // Cash-In
-  Retainer: 'Retainers',
-  Milestone: 'Milestones',
-  // Closing Fees keeps the same key on both sides.
+  // Cash-In — Retainers / Milestones / Closing Fees / Referral Fees all use
+  // the same key on both sides (fall-through in resolveCategoryToGridRow),
+  // mirroring how "FinServ Revenue" maps directly to its grid row.
   'Tech Revenue': 'Technology Revenue',
   'Other Cash In': 'Other Receipts',
   // Cash-Out
