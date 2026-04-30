@@ -131,6 +131,7 @@ export function WorkflowIntelligenceCard({
   // Source of truth for pass-reason options — same list shown in the
   // deal-detail Lenders tab "Confirm Pass" dialog so the two stay in sync.
   const { passReasons: passReasonOptions } = useLenderStages();
+  const enqueueAiAction = useEnqueueAiAction();
 
   const rec = analysis.recommended_update;
   const hasUpdate = rec.kind !== 'none' && !!rec.title;
