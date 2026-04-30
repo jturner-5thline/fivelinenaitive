@@ -437,6 +437,14 @@ export function MeetingSchedulerCard({
   });
 
   const [stage, setStage] = useState<'propose' | 'confirm'>('propose');
+  // ── Editable attendee overlay (confirm stage) ──────────────────────────
+  // Defaults are derived from recipient + current user + selected teammates.
+  // The user can remove any default by adding a key to `removedKeys`, or add
+  // custom guests via `customAttendees`. Both reset when re-entering the
+  // confirm stage so the list always starts from the current proposal.
+  const [removedKeys, setRemovedKeys] = useState<Set<string>>(new Set());
+  const [customAttendees, setCustomAttendees] = useState<Array<{ email: string; name?: string }>>([]);
+  const [newAttendeeEmail, setNewAttendeeEmail] = useState('');
   const [confirmedIdx, setConfirmedIdx] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
 
