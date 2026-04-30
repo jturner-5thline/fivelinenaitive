@@ -38,6 +38,8 @@ import {
   signatureFirstLine,
   bodyContainsSignature,
 } from './signatureHtml';
+import { PolishWithAiDialog } from './PolishWithAiDialog';
+import { htmlToPlainText } from '@/lib/htmlToPlainText';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Public surface
