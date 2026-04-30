@@ -1059,51 +1059,74 @@ export function MeetingSchedulerCard({
       {/* Actions */}
       {!loadingBusy && !errorMsg && proposedSlots.length > 0 && (
         <>
-        {/* Attendee preview — compact list of who will be invited, shown
-            right before the user confirms the slot so there are no
-            surprises when the calendar event is created. Mirrors the
-            exact attendees sent to Nylas in `confirmAndCreate`. */}
+        {/* Editable attendee chips — final invite list. The user can
+            remove any default (recipient/you/teammate) and add ad-hoc
+            guests by email before confirming. Whatever sits here is what
+            Nylas receives in `confirmAndCreate`. */}
         {stage === 'confirm' && (
-          <div className="rounded-md border border-white/10 bg-card/40 p-2 text-[11px]">
-            <div className="text-[10px] font-medium text-muted-foreground mb-1">
-              Attendees ({1 + (recipientEmail ? 1 : 0) + (partiesMode === 'me_plus' ? extraMembers.length : 0)})
+          <div className="rounded-md border border-white/10 bg-card/40 p-2 space-y-1.5">
+            <div className="text-[10px] font-medium text-muted-foreground">
+              Attendees ({finalAttendees.length})
             </div>
-            <ul className="space-y-0.5">
-              {recipientEmail && (
-                <li className="flex items-center justify-between gap-2 min-w-0">
-                  <span className="truncate text-foreground/90">
-                    {recipientName || recipientEmail}
-                  </span>
-                  {recipientName && (
-                    <span className="truncate text-muted-foreground/80 text-[10px]">
-                      {recipientEmail}
+            {finalAttendees.length === 0 ? (
+              <div className="text-[11px] text-amber-300/90">
+                No attendees — add at least one before confirming.
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-1">
+                {finalAttendees.map((a) => (
+                  <span
+                    key={a.key}
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] max-w-full',
+                      a.role === 'recipient' && 'border-primary/40 bg-primary/10 text-primary',
+                      a.role === 'me' && 'border-white/15 bg-white/5 text-foreground/90',
+                      a.role === 'teammate' && 'border-white/15 bg-white/5 text-foreground/90',
+                      a.role === 'custom' && 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200',
+                    )}
+                    title={a.email}
+                  >
+                    <span className="truncate max-w-[180px]">
+                      {a.name && a.name !== a.email ? `${a.name} · ${a.email}` : a.email}
                     </span>
-                  )}
-                </li>
-              )}
-              <li className="flex items-center justify-between gap-2 min-w-0">
-                <span className="truncate text-foreground/90">
-                  {user?.email ? 'You' : 'You'}
-                </span>
-                {user?.email && (
-                  <span className="truncate text-muted-foreground/80 text-[10px]">
-                    {user.email}
+                    {a.removable && (
+                      <button
+                        type="button"
+                        onClick={() => removeAttendee(a.key)}
+                        className="rounded-full p-0.5 hover:bg-white/10"
+                        aria-label={`Remove ${a.email}`}
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    )}
                   </span>
-                )}
-              </li>
-              {partiesMode === 'me_plus' && extraMembers.map((m) => (
-                <li key={m.id} className="flex items-center justify-between gap-2 min-w-0">
-                  <span className="truncate text-foreground/90">
-                    {m.display_name || m.email}
-                  </span>
-                  {m.email && (
-                    <span className="truncate text-muted-foreground/80 text-[10px]">
-                      {m.email}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-1 pt-0.5">
+              <Input
+                value={newAttendeeEmail}
+                onChange={(e) => setNewAttendeeEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addCustomAttendee();
+                  }
+                }}
+                placeholder="Add attendee email…"
+                className="h-6 text-[11px] flex-1"
+                type="email"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 text-[11px] px-2"
+                onClick={addCustomAttendee}
+                disabled={!newAttendeeEmail.trim()}
+              >
+                Add
+              </Button>
+            </div>
           </div>
         )}
         <div className="flex items-center gap-2 pt-1">
