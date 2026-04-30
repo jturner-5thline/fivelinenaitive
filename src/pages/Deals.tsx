@@ -873,52 +873,7 @@ export default function Dashboard() {
                 />
               )}
             </div>
-          </div>
-        </main>
-
-        {/* Dismiss all hints floating button */}
-        {isFirstTimeUser && (
-          <button
-            onClick={() => {
-              dismissAllHints();
-              toast({ title: "Hints dismissed", description: "All hints have been hidden." });
-            }}
-            className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full bg-primary/90 px-3 py-1.5 text-xs text-primary-foreground shadow-lg hover:bg-primary transition-colors"
-          >
-            <X className="h-3 w-3" />
-            Dismiss all hints
-          </button>
-        )}
-
-        {/* Flagged Deals Carousel */}
-        <FlaggedDealsCarousel
-          deals={allDeals}
-          isOpen={flaggedCarouselOpen}
-          onClose={() => {
-            setFlaggedCarouselOpen(false);
-            updateFilters({ flaggedOnly: false });
-          }}
-        />
-
-
-        {/* Deal Size Confirmation Dialog (5th Line only) */}
-        {sizeConfirm && (
-          <DealSizeConfirmDialog
-            open={!!sizeConfirm}
-            dealName={sizeConfirm.dealName}
-            currentValue={sizeConfirm.currentValue}
-            newStage={sizeConfirm.newStageLabel}
-            onConfirm={handleSizeConfirm}
-            onCancel={() => setSizeConfirm(null)}
-          />
-        )}
-
-        <DealMergeDrawer
-          cluster={mergeCluster}
-          open={mergeDrawerOpen}
-          onOpenChange={setMergeDrawerOpen}
-        />
-      </div>
+      </WorkspacePage>
     </>
   );
 }
