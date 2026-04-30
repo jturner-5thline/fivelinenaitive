@@ -162,7 +162,40 @@ export function AppSidebar() {
                 </SidebarMenuItem>
                 );
               })}
-              
+
+              {/* AI Action Queue — deferred AI suggestions awaiting bulk review */}
+              <SidebarMenuItem>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <SidebarMenuButton
+                      tooltip={`Action Queue${queueCount > 0 ? ` · ${queueCount}` : ''}`}
+                      className="hover:bg-sidebar-accent/50"
+                    >
+                      <div className="relative">
+                        <InboxIcon className="h-4 w-4" />
+                        {queueCount > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 h-3.5 min-w-3.5 px-0.5 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
+                            {queueCount}
+                          </span>
+                        )}
+                      </div>
+                      {showExpanded && (
+                        <span className="flex items-center gap-1.5">
+                          Action Queue
+                        </span>
+                      )}
+                    </SidebarMenuButton>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    side="right"
+                    align="start"
+                    className="w-[420px] p-0 max-h-[80vh] overflow-hidden flex flex-col"
+                  >
+                    <ActionQueuePanel items={queueItems} />
+                  </PopoverContent>
+                </Popover>
+              </SidebarMenuItem>
+
               {isAdmin && (
                 <SidebarMenuItem>
                   <SidebarMenuButton 
