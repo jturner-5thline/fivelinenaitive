@@ -1067,8 +1067,8 @@ export function VdrThreeColumnWorkspace({
     // Custom folders are only shown in the Data Room column.
     const order =
       column === 'dataroom'
-        ? [...categoryNames, ...customFolderNames, UNCATEGORIZED]
-        : [...categoryNames, UNCATEGORIZED];
+        ? [...dataroomCategoryNames, ...dataroomCustomFolderNames, UNCATEGORIZED]
+        : [...internalCategoryNames, UNCATEGORIZED];
     return (
       <div className="space-y-1">
         {order.map(cat => {
