@@ -69,6 +69,7 @@ import { EmailIntelligenceDialog } from './email/EmailIntelligenceDialog';
 import { InlineComposePanel } from './email/InlineComposePanel';
 import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
 import { useAIEmailSearch } from '@/hooks/useAIEmailSearch';
+import { useGmailAllMailSearch } from '@/hooks/useGmailAllMailSearch';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { useGmail } from '@/hooks/useGmail';
 import { logSentReplyToDeal } from '@/lib/logSentReplyToDeal';
