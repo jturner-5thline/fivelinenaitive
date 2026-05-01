@@ -1221,7 +1221,16 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         // Activity tab so the timeline reflects outbound work — same
         // contract as the reply path. Fire-and-forget; never block sends.
         const resolvedDealId = dealId || null;
-        if (!resolvedDealId) return;
+        if (!resolvedDealId) {
+          toast.message('Reply sent. Link to a deal to log activity.', {
+            duration: 4000,
+            action: {
+              label: 'Link Deal',
+              onClick: () => setComposeOpen(false),
+            },
+          });
+          return;
+        }
         (async () => {
           const logResult = await logSentReplyToDeal({
             dealId: resolvedDealId,
@@ -1237,7 +1246,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             toast.error(`Email sent, but couldn't log to ${dealLabel} activity`);
             return;
           }
-          toast.success(`Email logged to ${dealLabel} activity.`);
+          toast.success(`✓ Reply sent and logged to ${dealLabel} activity.`, {
+            duration: 4000,
+          });
         })();
       },
       onUndo: () => {
