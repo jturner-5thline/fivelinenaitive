@@ -866,7 +866,7 @@ export function VdrThreeColumnWorkspace({
           const isActive = activeCategory === cat || (cat === UNCATEGORIZED && activeCategory === UNCATEGORIZED);
           const label = cat === UNCATEGORIZED ? 'Uncategorized' : cat;
           const isCustom = column === 'dataroom' && customFolderNameSet.has(cat);
-          const isDropFolder = column === 'dataroom' && dropFolderTarget === cat;
+          const isDropFolder = dropFolderTarget === `${column}:${cat}`;
           const draggableHeader = column === 'internal' && cat !== UNCATEGORIZED && docs.length > 0;
           const customFolderRecord = isCustom ? customFolders.find(f => f.name === cat) : undefined;
           return (
@@ -879,16 +879,16 @@ export function VdrThreeColumnWorkspace({
                     : undefined
                 }
                 onDragOver={
-                  column === 'dataroom' && cat !== UNCATEGORIZED
-                    ? (e) => allowFolderDrop(e, cat)
+                  cat !== UNCATEGORIZED
+                    ? (e) => allowFolderDrop(e, cat, column)
                     : undefined
                 }
                 onDragLeave={
-                  column === 'dataroom' ? () => setDropFolderTarget(null) : undefined
+                  cat !== UNCATEGORIZED ? () => setDropFolderTarget(null) : undefined
                 }
                 onDrop={
-                  column === 'dataroom' && cat !== UNCATEGORIZED
-                    ? (e) => handleFolderDrop(e, cat)
+                  cat !== UNCATEGORIZED
+                    ? (e) => handleFolderDrop(e, cat, column)
                     : undefined
                 }
                 className={cn(
