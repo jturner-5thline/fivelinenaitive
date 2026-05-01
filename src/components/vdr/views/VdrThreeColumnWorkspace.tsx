@@ -454,6 +454,9 @@ export function VdrThreeColumnWorkspace({
     }
     if (column === 'internal') setInternalSelected(new Set());
     else setDataroomSelected(new Set());
+    // Track the last-used drop target so it surfaces at the top of menus.
+    if (column === 'internal') internalFolderPrefs.recordRecent(categoryName);
+    else dataroomFolderPrefs.recordRecent(categoryName);
     toast.success(
       categoryName
         ? `Moved to ${categoryName}`
@@ -478,7 +481,7 @@ export function VdrThreeColumnWorkspace({
         },
       },
     );
-  }, [vdrDocs, documents]);
+  }, [vdrDocs, documents, internalFolderPrefs, dataroomFolderPrefs]);
 
   // Copy/share file(s) to the Data Room and drop them into a specific
   // Data Room folder. Internal `folder_path` is left untouched so the
@@ -497,6 +500,7 @@ export function VdrThreeColumnWorkspace({
       });
       await vdrDocs.bulkShareToDataroom(ids, true, newPath);
       setInternalSelected(new Set());
+      dataroomFolderPrefs.recordRecent(folderName);
       toast.success(
         folderName
           ? `Shared ${ids.length} file${ids.length === 1 ? '' : 's'} to ${folderName}`
@@ -521,7 +525,7 @@ export function VdrThreeColumnWorkspace({
         },
       );
     },
-    [vdrDocs, documents],
+    [vdrDocs, documents, dataroomFolderPrefs],
   );
 
   // Move within Internal: drag a file onto an Internal folder header.
@@ -537,6 +541,7 @@ export function VdrThreeColumnWorkspace({
         await vdrDocs.moveDocument(id, newPath);
       }
       setInternalSelected(new Set());
+      internalFolderPrefs.recordRecent(folderName);
       toast.success(
         folderName
           ? `Moved ${ids.length} file${ids.length === 1 ? '' : 's'} to ${folderName}`
@@ -558,7 +563,7 @@ export function VdrThreeColumnWorkspace({
         },
       );
     },
-    [vdrDocs, documents],
+    [vdrDocs, documents, internalFolderPrefs],
   );
 
   // Move within Data Room: drag a file onto a Data Room folder header.
@@ -578,6 +583,7 @@ export function VdrThreeColumnWorkspace({
         await vdrDocs.moveDocumentInDataroom(id, newPath);
       }
       setDataroomSelected(new Set());
+      dataroomFolderPrefs.recordRecent(folderName);
       toast.success(
         folderName
           ? `Moved ${ids.length} file${ids.length === 1 ? '' : 's'} to ${folderName}`
