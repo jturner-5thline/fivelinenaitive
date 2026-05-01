@@ -605,7 +605,7 @@ export function VdrThreeColumnWorkspace({
         },
       );
     },
-    [vdrDocs, documents],
+    [vdrDocs, documents, dataroomFolderPrefs],
   );
 
   // Drag & drop
