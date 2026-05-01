@@ -44,6 +44,12 @@ interface Props {
   enableImages?: boolean;
   /** Storage bucket name for image uploads. Defaults to 'email-signatures'. */
   uploadBucket?: string;
+  /**
+   * Optional content rendered at the right edge of the editor's formatting
+   * toolbar (e.g. a "Polish with AI" button). Kept inside the editor frame
+   * so it stays visible while the user is typing.
+   */
+  toolbarTrailing?: React.ReactNode;
 }
 
 const FONT_COLORS = [
@@ -73,6 +79,7 @@ export function EmailRichTextEditor({
   placeholder = 'Compose your email…',
   enableImages = true,
   uploadBucket = 'email-signatures',
+  toolbarTrailing,
 }: Props) {
   const editor = useEditor({
     extensions: [
@@ -127,7 +134,13 @@ export function EmailRichTextEditor({
 
   return (
     <div className={cn('border rounded-md overflow-hidden bg-background flex flex-col', className)}>
-      <Toolbar editor={editor} dataRoomUrl={dataRoomUrl} enableImages={enableImages} uploadBucket={uploadBucket} />
+      <Toolbar
+        editor={editor}
+        dataRoomUrl={dataRoomUrl}
+        enableImages={enableImages}
+        uploadBucket={uploadBucket}
+        trailing={toolbarTrailing}
+      />
       <div className="flex-1 overflow-auto">
         <EditorContent editor={editor} />
       </div>
@@ -140,7 +153,8 @@ function Toolbar({
   dataRoomUrl,
   enableImages,
   uploadBucket,
-}: { editor: any; dataRoomUrl?: string | null; enableImages?: boolean; uploadBucket?: string }) {
+  trailing,
+}: { editor: any; dataRoomUrl?: string | null; enableImages?: boolean; uploadBucket?: string; trailing?: React.ReactNode }) {
   const [linkUrl, setLinkUrl] = useState('');
   const [linkOpen, setLinkOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
