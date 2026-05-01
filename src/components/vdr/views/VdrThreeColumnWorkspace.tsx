@@ -1246,6 +1246,23 @@ export function VdrThreeColumnWorkspace({
             <Lock className="h-3.5 w-3.5 text-muted-foreground" />
             <h2 className="text-sm font-semibold">Internal</h2>
             <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{internalCount}</Badge>
+            <TooltipProvider delayDuration={150}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="How sorting works"
+                    className="inline-flex items-center justify-center text-muted-foreground/70 hover:text-foreground transition-colors"
+                  >
+                    <Info className="h-3 w-3" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[240px] text-[11px] leading-snug">
+                  Files are auto-sorted into folders on upload. You can override
+                  any placement afterward by dragging files between folders.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             {processingCount > 0 && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/30 text-amber-400 gap-1">
                 <Loader2 className="h-2.5 w-2.5 animate-spin" />
