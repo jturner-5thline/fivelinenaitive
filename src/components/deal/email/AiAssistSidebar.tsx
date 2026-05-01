@@ -478,17 +478,29 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
         const ac = new AbortController();
         const timer = setTimeout(() => ac.abort(), timeoutMs);
 
+        const dealContextHint = buildDealContextHint();
+        const invokeBody = {
+          action: 'generate_draft_options' as const,
+          dealId,
+          threadData: buildThreadData(),
+          draftType: 'reply' as const,
+          singleTone: tone,
+          fastModel: !opts?.regenerate,
+          dealContextHint,
+          customInstructions: opts?.customInstructions,
+        };
+        // DEBUG: surface exactly what Deal Space context (if any) is being
+        // forwarded to the smart-email-ai edge function for draft generation.
+        console.log('[AiAssist] draft_reply context payload', {
+          tone,
+          dealId,
+          hasDealContextHint: !!dealContextHint,
+          dealContextHint,
+          dealContextSummary,
+          fullInvokeBody: invokeBody,
+        });
         const invokePromise = supabase.functions.invoke('smart-email-ai', {
-          body: {
-            action: 'generate_draft_options',
-            dealId,
-            threadData: buildThreadData(),
-            draftType: 'reply',
-            singleTone: tone,
-            fastModel: !opts?.regenerate,
-            dealContextHint: buildDealContextHint(),
-            customInstructions: opts?.customInstructions,
-          },
+          body: invokeBody,
         });
         const timeoutPromise = new Promise<never>((_, reject) => {
           ac.signal.addEventListener('abort', () =>
