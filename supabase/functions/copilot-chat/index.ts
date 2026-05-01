@@ -499,6 +499,23 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "link_contact_to_deal",
+      description: "Associate an existing contact with a deal so the contact appears on the deal's people list. Requires user confirmation before writing. Pass contact_id (preferred) or contact_search (name/email) plus deal_id (preferred) or deal_search.",
+      parameters: {
+        type: "object",
+        properties: {
+          contact_id: { type: "string", description: "Contact UUID. Preferred." },
+          contact_search: { type: "string", description: "Contact name or email if contact_id is unknown." },
+          deal_id: { type: "string", description: "Deal UUID. Preferred." },
+          deal_search: { type: "string", description: "Deal name if deal_id is unknown." },
+          role: { type: "string", description: "Optional role on the deal (e.g. 'Borrower CFO', 'Sponsor', 'Counsel')." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
