@@ -194,6 +194,45 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
 
   const total = useMemo(() => rows.reduce((s, r) => s + r.signedAmount, 0), [rows]);
 
+  const startEdit = (r: DrilldownRow) => {
+    setEditingEntryId(r.entryId);
+    setEditDraft({
+      description: r.entry.notes || '',
+      amount: String(Math.abs(Number(r.entry.amount) || 0)),
+      category: r.entry.category,
+      frequency_type: r.entry.frequency_type,
+      flow_type: r.entry.flow_type,
+    });
+  };
+  const cancelEdit = () => {
+    setEditingEntryId(null);
+    setEditDraft(null);
+  };
+  const saveEdit = async (entryId: string) => {
+    if (!onUpdateEntry || !editDraft) return;
+    const amt = Number(editDraft.amount);
+    if (!Number.isFinite(amt) || amt < 0) return;
+    setBusyId(entryId);
+    const ok = await onUpdateEntry(entryId, {
+      notes: editDraft.description.trim() || null,
+      amount: amt,
+      category: editDraft.category,
+      frequency_type: editDraft.frequency_type,
+      flow_type: editDraft.flow_type,
+    });
+    setBusyId(null);
+    if (ok) cancelEdit();
+  };
+  const handleDelete = async (entryId: string) => {
+    if (!onDeleteEntry) return;
+    if (!window.confirm('Delete this entry? This will remove all of its occurrences from the table.')) return;
+    setBusyId(entryId);
+    await onDeleteEntry(entryId);
+    setBusyId(null);
+  };
+
+  const canMutate = !!onUpdateEntry || !!onDeleteEntry;
+
   const toggleCategory = (cat: string) => {
     setActiveCategories((prev) => {
       const next = new Set(prev);
