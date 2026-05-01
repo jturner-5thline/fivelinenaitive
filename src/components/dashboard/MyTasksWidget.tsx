@@ -35,7 +35,26 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
   // the full company task pool (matches /tasks "all"); 'mine' uses the same
   // assignee + collaborator semantics as the Tasks page.
   const ownerFilter: TaskOwnerFilter = scope === 'mine' ? 'mine' : 'all';
-  const { tasks: allTasks, isLoading } = useMyTasks(ownerFilter);
+  const { tasks: allTasks, isLoading, updateTask } = useMyTasks(ownerFilter);
+  const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
+
+  const handleComplete = async (e: React.MouseEvent | React.KeyboardEvent, taskId: string) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (completingIds.has(taskId)) return;
+    setCompletingIds(prev => new Set(prev).add(taskId));
+    try {
+      await updateTask.mutateAsync({ id: taskId, status: 'complete' });
+    } catch {
+      // hook surfaces toast on error; nothing else to do
+    } finally {
+      setCompletingIds(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+    }
+  };
 
   // Treat tasks as "completed" using the EXACT same rule as the Tasks page
   // (status === 'complete'). `completed_at` is also a positive signal.
@@ -245,17 +264,37 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
                           // Route to the canonical Task detail in /tasks (matches
                           // the Tasks page query param contract used elsewhere).
                           const onOpen = () => navigate(`/tasks?task=${task.id}`);
+                          const isCompleting = completingIds.has(task.id);
                           return (
-                            <button
+                            <div
                               key={task.id}
-                              onClick={onOpen}
                               className={cn(
-                                "w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left",
-                                isOverdue && "border-l-2 border-destructive"
+                                "w-full flex items-center gap-2 p-2.5 rounded-lg hover:bg-muted/50 transition-colors",
+                                isOverdue && "border-l-2 border-destructive",
+                                isCompleting && "opacity-60"
                               )}
                             >
-                              <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
-                              <div className="flex-1 min-w-0">
+                              <button
+                                type="button"
+                                role="checkbox"
+                                aria-checked={false}
+                                aria-label={`Mark "${task.title}" complete`}
+                                disabled={isCompleting}
+                                onClick={(e) => handleComplete(e, task.id)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    handleComplete(e, task.id);
+                                  }
+                                }}
+                                className="shrink-0 h-7 w-7 -m-1.5 inline-flex items-center justify-center rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 active:scale-95 transition-all disabled:cursor-not-allowed"
+                              >
+                                <Circle className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={onOpen}
+                                className="flex-1 min-w-0 text-left"
+                              >
                                 <p className="text-sm text-foreground truncate">{task.title}</p>
                                 <div className="flex items-center gap-2 mt-0.5">
                                   {dealLabel && (
@@ -267,8 +306,8 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
                                     </span>
                                   )}
                                 </div>
-                              </div>
-                            </button>
+                              </button>
+                            </div>
                           );
                         })}
                       </div>
