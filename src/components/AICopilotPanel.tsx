@@ -429,7 +429,7 @@ function MessageActions({ msg, conversationId }: { msg: { id: string; content: s
 }
 
 export function AICopilotPanel() {
-  const { isOpen, closePanel, messages, addMessage, setMessages, isProcessing, setProcessing, conversationId, setConversationId, conversationMutations } = useCopilotStore();
+  const { isOpen, closePanel, messages, addMessage, setMessages, isProcessing, setProcessing, conversationId, setConversationId, conversationMutations, pendingPrompt, setPendingPrompt } = useCopilotStore();
   const { user } = useAuth();
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
