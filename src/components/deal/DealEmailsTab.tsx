@@ -1250,7 +1250,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             toast.error(`Email sent, but couldn't log to ${dealLabel} activity`);
             return;
           }
-          toast.success(`✓ Reply sent and logged to ${dealLabel} activity.`, {
+          toast.success(`✓ Sent — ${dealLabel} Activity log updated.`, {
             duration: 4000,
           });
         })();
@@ -2242,7 +2242,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                           ? ` • ${logResult.matchedLenderName} last-contact updated`
                           : '';
 
-                        const baseToast = `✓ Reply sent and logged to ${dealLabel} activity.`;
+                        const baseToast = `✓ Sent — ${dealLabel} Activity log updated.`;
 
                         // If the reply commits to a next step, offer one-click
                         // follow-up task creation right from the toast.
