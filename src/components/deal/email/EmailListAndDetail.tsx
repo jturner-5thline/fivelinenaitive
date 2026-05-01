@@ -318,8 +318,18 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
 
   // True when the most recent message in the thread is one we sent.
   // Used to surface a "Responded" pill in the inbox row.
-  const responded =
-    thread.emails.length > 0 && thread.emails[0]?.from_name === 'You';
+  // For staleness purposes the spec treats the thread as "handled" only
+  // when jturner@5thline.co is the latest sender — matches the live email
+  // ownership model in this workspace.
+  const HANDLER_EMAIL = 'jturner@5thline.co';
+  const newest = thread.emails[0];
+  const respondedByHandler =
+    !!newest && (
+      (newest.from_email || '').trim().toLowerCase() === HANDLER_EMAIL ||
+      // Fallback for the existing "You" placeholder used in mock/sent rows
+      newest.from_name === 'You'
+    );
+  const responded = respondedByHandler;
 
   // Age-based staleness dot — only rendered for threads that classify as
   // "Clients & Deals" so it doesn't clutter Asana / calendar / marketing
@@ -335,7 +345,7 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
     }
   }, [latest, classifierEntities, orgCtx]);
   const staleBucket: StaleBucket | null = isClientsAndDeals
-    ? computeStaleBucket(latest.received_at, responded)
+    ? computeStaleBucket(latest.received_at, respondedByHandler)
     : null;
 
   const rowContent = (
