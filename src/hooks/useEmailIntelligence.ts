@@ -71,6 +71,48 @@ const DEFAULT_SETTINGS: EmailIntelligenceSettings = {
 
 const SYNC_INTERVAL_MS = 3 * 60 * 1000; // 3 minutes
 
+/**
+ * Owner mailbox used to determine whether a thread has already been
+ * "handled" (i.e. James has sent a reply more recently than the inbound
+ * email). Emails whose most recent thread message was sent by this address
+ * are filtered out of the dashboard hover panel.
+ */
+const OWNER_EMAIL = 'jturner@5thline.co';
+
+/**
+ * Returns true if `email` should appear in the dashboard "Email
+ * Intelligence" hover panel. Rules:
+ *   • Always exclude messages sent BY the owner — those are outbound.
+ *   • Include if the email is unread.
+ *   • Include if read AND no later message in the same thread was sent by
+ *     the owner (i.e. James hasn't replied since this came in).
+ *   • Exclude if the most recent message in the thread is from the owner.
+ */
+function isUnhandled(email: CachedEmail, allByThread: Map<string, CachedEmail[]>): boolean {
+  const fromSelf = (email.from_email || '').toLowerCase() === OWNER_EMAIL;
+  if (fromSelf) return false;
+
+  const tid = email.thread_id;
+  const thread = (tid && allByThread.get(tid)) || [email];
+  // Sort newest-first by received_at
+  const sorted = [...thread].sort(
+    (a, b) => new Date(b.received_at || 0).getTime() - new Date(a.received_at || 0).getTime(),
+  );
+  const latest = sorted[0];
+  const latestFromOwner = (latest?.from_email || '').toLowerCase() === OWNER_EMAIL;
+  if (latestFromOwner) return false;
+
+  if (!email.is_read) return true;
+
+  // Read inbound: only show if there is no owner reply AFTER this email.
+  const thisTime = new Date(email.received_at || 0).getTime();
+  const ownerReplyAfter = thread.some((m) => {
+    if ((m.from_email || '').toLowerCase() !== OWNER_EMAIL) return false;
+    return new Date(m.received_at || 0).getTime() > thisTime;
+  });
+  return !ownerReplyAfter;
+}
+
 export function useEmailIntelligence() {
   const { user } = useAuth();
   const { status: gmailStatus, listMessages } = useGmail();
@@ -216,7 +258,7 @@ export function useEmailIntelligence() {
         .select('*')
         .eq('user_id', user.id)
         .order('received_at', { ascending: false })
-        .limit(50);
+        .limit(200);
 
       if (cacheErr) throw cacheErr;
       if (!cached || cached.length === 0) {
@@ -237,10 +279,33 @@ export function useEmailIntelligence() {
         (analyses || []).map(a => [a.email_cache_id, a])
       );
 
-      const enriched: EnrichedEmail[] = cached.map(c => ({
-        ...c,
-        analysis: analysisMap.get(c.id) as EmailAnalysis | undefined,
-      }));
+      // Build a thread map across the entire fetched window so we can tell
+      // whether the owner (James) has already replied in any thread —
+      // including replies he sent that are still inside the working set.
+      const byThread = new Map<string, CachedEmail[]>();
+      for (const c of cached) {
+        const tid = c.thread_id;
+        if (!tid) continue;
+        const arr = byThread.get(tid) || [];
+        arr.push(c as CachedEmail);
+        byThread.set(tid, arr);
+      }
+
+      // Keep one row per thread (the most recent inbound). Filter out
+      // anything the owner already handled (latest message from owner) or
+      // that is read AND has an owner reply after it.
+      const seenThreads = new Set<string>();
+      const enriched: EnrichedEmail[] = [];
+      for (const c of cached) {
+        if (!isUnhandled(c as CachedEmail, byThread)) continue;
+        const tid = c.thread_id || c.id;
+        if (seenThreads.has(tid)) continue;
+        seenThreads.add(tid);
+        enriched.push({
+          ...(c as CachedEmail),
+          analysis: analysisMap.get(c.id) as EmailAnalysis | undefined,
+        });
+      }
 
       setEmails(enriched);
     } catch (err) {
@@ -385,6 +450,26 @@ export function useEmailIntelligence() {
       }
     };
   }, [gmailStatus.connected, user, syncEmails]);
+
+  // Realtime: when the owner sends a reply (any new email_cache row from
+  // jturner) or marks something as read, refresh the panel so handled
+  // threads disappear immediately without waiting for the 3-minute sync.
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`email-intel-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'email_cache', filter: `user_id=eq.${user.id}` },
+        () => {
+          loadEnrichedEmails();
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, loadEnrichedEmails]);
 
   return {
     emails,
