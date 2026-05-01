@@ -84,24 +84,38 @@ function categoriesForRow(rowKey: string): { categories: Set<string>; flowFilter
 
 interface DrilldownRow {
   id: string;
+  entryId: string;
   date: string;
   account: string;
   category: string;
   notes: string | null;
   flow_type: 'cash_in' | 'cash_out';
   signedAmount: number;
+  /** Underlying scheduled entry — for inline edit pre-fill. */
+  entry: ScheduledCashFlow;
 }
 
-export function CashFlowDrilldownModal({ open, onClose, context, items }: Props) {
+export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdateEntry, onDeleteEntry }: Props) {
   const [search, setSearch] = useState('');
   const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set());
   const [dateRange, setDateRange] = useState<'week' | 'before' | 'after' | 'all'>('week');
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<{
+    description: string;
+    amount: string;
+    category: string;
+    frequency_type: FrequencyType;
+    flow_type: FlowType;
+  } | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   // Reset filters when context changes
   useEffect(() => {
     setSearch('');
     setActiveCategories(new Set());
     setDateRange('week');
+    setEditingEntryId(null);
+    setEditDraft(null);
   }, [context?.rowKey, context?.weekKey]);
 
   const allRows = useMemo<DrilldownRow[]>(() => {
@@ -144,12 +158,14 @@ export function CashFlowDrilldownModal({ open, onClose, context, items }: Props)
         );
         out.push({
           id: `${entry.id}-${occ}`,
+          entryId: entry.id,
           date: occ,
           account: entry.account,
           category: cat,
           notes: entry.notes,
           flow_type: entry.flow_type,
           signedAmount: entry.flow_type === 'cash_in' ? amt : -amt,
+          entry,
         });
       }
     }
