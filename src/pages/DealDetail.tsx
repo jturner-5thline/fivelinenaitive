@@ -597,6 +597,14 @@ export default function DealDetail() {
   // Get deal from context
   const contextDeal = getDealById(id || '');
   const [deal, setDeal] = useState<Deal | undefined>(contextDeal);
+
+  // Track that this user opened this deal so the Deals sidebar dropdown can
+  // surface the 5 most recently opened deals (per user, most recent first).
+  const recordDealOpened = useRecordDealOpened();
+  useEffect(() => {
+    if (id) recordDealOpened(id);
+  }, [id, recordDealOpened]);
+
   const formatRenderedLenderStage = useCallback(
     (value: string | null | undefined) => resolveLenderActivityLabel(value, 'stage'),
     [resolveLenderActivityLabel],
