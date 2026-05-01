@@ -318,8 +318,18 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
 
   // True when the most recent message in the thread is one we sent.
   // Used to surface a "Responded" pill in the inbox row.
-  const responded =
-    thread.emails.length > 0 && thread.emails[0]?.from_name === 'You';
+  // For staleness purposes the spec treats the thread as "handled" only
+  // when jturner@5thline.co is the latest sender — matches the live email
+  // ownership model in this workspace.
+  const HANDLER_EMAIL = 'jturner@5thline.co';
+  const newest = thread.emails[0];
+  const respondedByHandler =
+    !!newest && (
+      (newest.from_email || '').trim().toLowerCase() === HANDLER_EMAIL ||
+      // Fallback for the existing "You" placeholder used in mock/sent rows
+      newest.from_name === 'You'
+    );
+  const responded = respondedByHandler;
 
   // Age-based staleness dot — only rendered for threads that classify as
   // "Clients & Deals" so it doesn't clutter Asana / calendar / marketing
@@ -335,7 +345,7 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
     }
   }, [latest, classifierEntities, orgCtx]);
   const staleBucket: StaleBucket | null = isClientsAndDeals
-    ? computeStaleBucket(latest.received_at, responded)
+    ? computeStaleBucket(latest.received_at, respondedByHandler)
     : null;
 
   const rowContent = (
@@ -354,6 +364,23 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
       {/* Selected accent bar */}
       {isSelected && (
         <div className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-[hsl(var(--outlook-blue))]" />
+      )}
+      {/* Staleness dot — left edge, vertically centered. Only rendered for
+          rows classified as "Clients & Deals" so other tabs (Asana,
+          Calendar, marketing) stay clean. Red bucket pulses to draw the
+          eye to 11+-day-old unanswered threads. Sits inset from the very
+          edge so it doesn't collide with the selected/priority accent
+          bars. */}
+      {staleBucket && (
+        <span
+          className={cn(
+            'absolute left-1 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full z-10 shrink-0',
+            STALE_DOT_CLASSES[staleBucket],
+          )}
+          aria-label={STALE_DOT_TITLES[staleBucket]}
+          title={STALE_DOT_TITLES[staleBucket]}
+          data-stale-bucket={staleBucket}
+        />
       )}
       {/* Priority signal accent bar — red for urgent, yellow for action.
           Hidden when the row is selected so the blue selection bar wins. */}
@@ -409,17 +436,6 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
           {/* Row 1: Sender + date on same line */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
-              {staleBucket && (
-                <span
-                  className={cn(
-                    'inline-block h-2 w-2 rounded-full shrink-0',
-                    STALE_DOT_CLASSES[staleBucket],
-                  )}
-                  aria-label={STALE_DOT_TITLES[staleBucket]}
-                  title={STALE_DOT_TITLES[staleBucket]}
-                  data-stale-bucket={staleBucket}
-                />
-              )}
               <span className={cn(
                 'text-[13px] truncate',
                 isUnread
