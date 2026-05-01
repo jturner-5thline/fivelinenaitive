@@ -16,7 +16,6 @@ import {
   User as UserIcon,
   Building2,
   Database,
-  CalendarClock,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { cn } from '@/lib/utils';
@@ -32,7 +31,6 @@ import { SendToDataRoomDialog } from './SendToDataRoomDialog';
 import { useFullEmailMessage } from './useFullEmailMessage';
 import { useEmailToDataRoom, type DataRoomDestinationSuggestion } from '@/hooks/useEmailToDataRoom';
 import { SuggestedDealUpdatesSection } from './SuggestedDealUpdatesSection';
-import { CreateTaskInlineCard } from './CreateTaskInlineCard';
 import { DataRoomUploadSuggestionCard } from './DataRoomUploadSuggestionCard';
 import { DealContextCard } from './DealContextCard';
 import { UnmatchedEmailContextCard } from './UnmatchedEmailContextCard';
@@ -41,6 +39,7 @@ import { SaveToDealCard } from './SaveToDealCard';
 import { LenderDataAnswerCard } from './LenderDataAnswerCard';
 import { OutstandingItemMatchCard } from './OutstandingItemMatchCard';
 import { MeetingSchedulerCard } from './MeetingSchedulerCard';
+import { EmailQuickActionsToolbar } from './EmailQuickActionsToolbar';
 import type { DealContextSummary } from '@/hooks/useDealContextSummary';
 import { toast } from 'sonner';
 import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
@@ -753,6 +752,31 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             );
           })()}
 
+          {/* Quick Actions toolbar — pinned directly below the entity chip
+              row. Always visible without scrolling; consolidates the panel's
+              5 primary actions (Save to Data Room, Update Lender Status,
+              Draft Reply, Create Task, Schedule Meeting) into a single
+              horizontally scrollable pill row. Each pill (except Draft
+              Reply, which expands the dedicated Draft Reply module below)
+              expands an inline card directly under the toolbar. */}
+          <EmailQuickActionsToolbar
+            thread={thread}
+            dealId={dealId}
+            dealName={dealName}
+            likelyLenderName={workflowAnalysis?.likely_lender_firm?.name || null}
+            attachments={drAttachments}
+            latestMessageId={latestId}
+            fallbackDealId={workflowAnalysis?.likely_deal?.id || null}
+            fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
+            onOpenDraft={() => {
+              setDraftOpen(true);
+              if (!result?.options[selected] && !loadingTones[selected]) {
+                void generateTone(selected);
+              }
+            }}
+            onInsertDraft={onInsertDraft}
+          />
+
           {/* Deal Context — collapsed by default; the chip row above is the
               primary at-a-glance summary. Still renders so the deal-context
               hint is forwarded to the AI draft generator. */}
@@ -969,67 +993,21 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             );
           })()}
 
-          {/* Always-visible Create Task entry point. Replaces the legacy
-              "Suggested Tasks" section — a single, consistent task creation
-              affordance that pre-links the matched deal + sender contact. */}
-          <CreateTaskInlineCard
-            dealId={
-              dealId
-              || workflowAnalysis?.recommended_update?.deal_id
-              || workflowAnalysis?.likely_deal?.id
-              || null
-            }
-            dealName={
-              dealName
-              || workflowAnalysis?.recommended_update?.deal_name
-              || workflowAnalysis?.likely_deal?.name
-              || null
-            }
-            threadId={thread.threadId}
-            subject={thread.subject}
-            senderEmail={thread.latestEmail?.from_email}
-            senderName={thread.latestEmail?.from_name || undefined}
-          />
-
-          {/* Top-level Schedule Meeting action — peer of Draft Reply.
-              Surfaces the scheduling workspace at panel-level (instead of
-              hiding it behind the Draft Reply chip row) so the user can
-              propose times even when they don't intend to draft a reply
-              first. The card itself is still the existing
-              MeetingSchedulerCard — same two-stage flow:
-                1. Insert proposal text into the composer.
-                2. After recipient confirms, click "Create Event" to write
-                   the calendar event + Google Meet link.
-              We never auto-create events. */}
-          <div className="space-y-2">
-            <Button
-              type="button"
-              variant={schedulerOpen ? 'secondary' : 'outline'}
-              size="sm"
-              className="w-full justify-start gap-2 h-8 text-[12px] font-semibold uppercase tracking-[0.12em]"
-              onClick={() => setSchedulerOpen((v) => !v)}
-              aria-expanded={schedulerOpen}
-            >
-              <CalendarClock className="h-3.5 w-3.5 text-primary" />
-              <span className="text-muted-foreground group-hover:text-foreground">
-                Schedule Meeting
-              </span>
-              <div className="flex-1" />
-              <ChevronDown
-                className={cn('h-3 w-3 text-muted-foreground transition-transform', !schedulerOpen && '-rotate-90')}
-              />
-            </Button>
-            {schedulerOpen && (
-              <MeetingSchedulerCard
-                recipientEmail={thread.latestEmail?.from_email}
-                recipientName={thread.latestEmail?.from_name || undefined}
-                threadSubject={thread.subject}
-                dealName={dealName}
-                onInsert={(text) => onInsertDraft(text)}
-                onClose={() => setSchedulerOpen(false)}
-              />
-            )}
-          </div>
+          {/* Schedule Meeting + Create Task moved into the Quick Actions
+              toolbar above. We still render the scheduler card inline here
+              when the "Request a meeting" intent chip in the Draft Reply
+              card triggers it (legacy entry point) — keeps that flow
+              working without re-introducing the standalone button. */}
+          {schedulerOpen && (
+            <MeetingSchedulerCard
+              recipientEmail={thread.latestEmail?.from_email}
+              recipientName={thread.latestEmail?.from_name || undefined}
+              threadSubject={thread.subject}
+              dealName={dealName}
+              onInsert={(text) => onInsertDraft(text)}
+              onClose={() => setSchedulerOpen(false)}
+            />
+          )}
 
           {/* Unified Draft reply module — single card containing the section
               header, variant selector, one shared draft preview, and (in the
