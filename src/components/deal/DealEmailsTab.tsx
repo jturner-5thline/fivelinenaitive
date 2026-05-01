@@ -1250,7 +1250,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             toast.error(`Email sent, but couldn't log to ${dealLabel} activity`);
             return;
           }
+          const recipientLabel = emailData.to_name || emailData.to_email || 'recipient';
           toast.success(`✓ Sent — ${dealLabel} Activity log updated.`, {
+            description: `To ${recipientLabel} • "${emailData.subject || '(no subject)'}"`,
             duration: 4000,
           });
         })();
