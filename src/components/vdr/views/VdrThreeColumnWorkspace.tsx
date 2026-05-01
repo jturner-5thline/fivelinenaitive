@@ -1439,6 +1439,24 @@ export function VdrThreeColumnWorkspace({
             <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/30 text-primary">
               {dataroomCount} shared
             </Badge>
+            <TooltipProvider delayDuration={150}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="How sorting works"
+                    className="inline-flex items-center justify-center text-muted-foreground/70 hover:text-foreground transition-colors"
+                  >
+                    <Info className="h-3 w-3" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[260px] text-[11px] leading-snug">
+                  Shared files land in matching Data Room folders automatically.
+                  Drag any file between folders here to override — Internal
+                  placement stays unchanged.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <div className="ml-auto flex items-center gap-1">
               <VdrExportButton
                 dealId={dealId}
