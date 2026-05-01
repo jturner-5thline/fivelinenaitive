@@ -41,7 +41,7 @@ export function CopilotToggleButton() {
       className={cn(
         "group relative overflow-hidden",
         "h-11 rounded-full",
-        "w-[280px] sm:w-[640px]",
+        "w-[280px] sm:w-[430px]",
         "flex items-center gap-3 pl-1.5 pr-4",
         "text-left",
         "transition-all duration-200",
