@@ -19,6 +19,14 @@ export interface VdrDocument {
   chunk_count: number;
   entity_count: number;
   shared_to_dataroom: boolean;
+  /**
+   * Optional Data Room folder location. When set, the file appears in this
+   * folder in the Data Room column. When null and shared_to_dataroom=true,
+   * the Data Room view falls back to `folder_path`. Tracked separately from
+   * `folder_path` (Internal location) so the two columns can be reorganized
+   * independently after a file has been shared.
+   */
+  dataroom_folder_path: string | null;
   created_at: string;
   updated_at: string;
 }

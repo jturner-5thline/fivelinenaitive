@@ -205,11 +205,15 @@ export function VdrThreeColumnWorkspace({
     fetchMaps();
   }, [dealId, uploadedItems.mappings, mappingRefreshKey]);
 
-  // Split documents into Internal vs Data Room
+  // Internal lists EVERY non-folder file. Files that have also been shared
+  // to the Data Room are intentionally still shown here — sharing is a
+  // copy/share, not a move, so the Internal source workspace always shows
+  // the file even after it appears in the external Data Room.
   const internalDocs = useMemo(
-    () => documents.filter(d => !d.is_folder && !d.shared_to_dataroom),
+    () => documents.filter(d => !d.is_folder),
     [documents]
   );
+  // Data Room lists files that have been explicitly shared to the external workspace.
   const dataroomDocs = useMemo(
     () => documents.filter(d => !d.is_folder && d.shared_to_dataroom),
     [documents]
@@ -240,22 +244,32 @@ export function VdrThreeColumnWorkspace({
   const customFolderNameSet = useMemo(() => new Set(customFolderNames), [customFolderNames]);
   const UNCATEGORIZED = '__uncategorized__';
 
-  /** Derive the category bucket for a document from its folder_path. */
-  const docCategory = useCallback((doc: VdrDocument): string => {
-    const fp = (doc.folder_path || '/').replace(/^\/+|\/+$/g, '');
+  /**
+   * Derive the category bucket for a document. Internal uses `folder_path`.
+   * Data Room uses `dataroom_folder_path` when present (so files can be
+   * reorganized in the Data Room independently of their Internal location)
+   * and falls back to `folder_path` otherwise.
+   */
+  const docCategory = useCallback((doc: VdrDocument, column: 'internal' | 'dataroom'): string => {
+    const raw = column === 'dataroom'
+      ? ((doc as any).dataroom_folder_path ?? doc.folder_path ?? '/')
+      : (doc.folder_path || '/');
+    const fp = (raw || '/').replace(/^\/+|\/+$/g, '');
     if (!fp) return UNCATEGORIZED;
     const top = fp.split('/')[0];
     return categoryNameSet.has(top) ? top : UNCATEGORIZED;
   }, [categoryNameSet]);
 
   /** Group an array of docs by category (preserving Settings order, then Uncategorized). */
-  const groupByCategory = useCallback((docs: VdrDocument[]) => {
+  const groupByCategory = useCallback((docs: VdrDocument[], column: 'internal' | 'dataroom') => {
     const map = new Map<string, VdrDocument[]>();
     for (const cat of categoryNames) map.set(cat, []);
-    for (const cat of customFolderNames) map.set(cat, []);
+    if (column === 'dataroom') {
+      for (const cat of customFolderNames) map.set(cat, []);
+    }
     map.set(UNCATEGORIZED, []);
     for (const d of docs) {
-      const k = docCategory(d);
+      const k = docCategory(d, column);
       const arr = map.get(k) || [];
       arr.push(d);
       map.set(k, arr);
@@ -263,8 +277,8 @@ export function VdrThreeColumnWorkspace({
     return map;
   }, [categoryNames, customFolderNames, docCategory]);
 
-  const internalGrouped = useMemo(() => groupByCategory(visibleInternal), [groupByCategory, visibleInternal]);
-  const dataroomGrouped = useMemo(() => groupByCategory(visibleDataroom), [groupByCategory, visibleDataroom]);
+  const internalGrouped = useMemo(() => groupByCategory(visibleInternal, 'internal'), [groupByCategory, visibleInternal]);
+  const dataroomGrouped = useMemo(() => groupByCategory(visibleDataroom, 'dataroom'), [groupByCategory, visibleDataroom]);
 
   /** "Active" folder path for new uploads, based on selected category. */
   const uploadFolderPath = useMemo(() => {
@@ -312,30 +326,46 @@ export function VdrThreeColumnWorkspace({
     );
   }, [visibleDataroom]);
 
-  // Move actions
-  const moveToDataroom = useCallback(async (ids: string[]) => {
+  // Sharing action: Internal → Data Room is a COPY. The file remains in
+  // Internal and additionally appears in the Data Room column.
+  const copyToDataroom = useCallback(async (ids: string[]) => {
     if (!ids.length) return;
     await vdrDocs.bulkShareToDataroom(ids, true);
     setInternalSelected(new Set());
-    toast.success(`Moved ${ids.length} file${ids.length === 1 ? '' : 's'} to Data Room`);
+    toast.success(
+      `Shared ${ids.length} file${ids.length === 1 ? '' : 's'} to Data Room`,
+    );
   }, [vdrDocs]);
 
-  const moveToInternal = useCallback(async (ids: string[]) => {
+  // Removing a file from the external Data Room. The file stays in Internal.
+  const removeFromDataroom = useCallback(async (ids: string[]) => {
     if (!ids.length) return;
     await vdrDocs.bulkShareToDataroom(ids, false);
     setDataroomSelected(new Set());
-    toast.success(`Moved ${ids.length} file${ids.length === 1 ? '' : 's'} to Internal`);
+    toast.success(
+      `Removed ${ids.length} file${ids.length === 1 ? '' : 's'} from Data Room`,
+    );
   }, [vdrDocs]);
 
-  // Move file(s) to a category folder (just changes folder_path)
-  const moveToCategory = useCallback(async (ids: string[], categoryName: string | null) => {
+  // Move within a single column (Internal or Data Room) into a category folder.
+  // Internal moves change folder_path. Data Room moves change ONLY
+  // dataroom_folder_path so the Internal placement is preserved.
+  const moveToCategory = useCallback(async (
+    ids: string[],
+    categoryName: string | null,
+    column: 'internal' | 'dataroom' = 'internal',
+  ) => {
     if (!ids.length) return;
     const newPath = !categoryName ? '/' : `/${categoryName}/`;
     for (const id of ids) {
-      await vdrDocs.moveDocument(id, newPath);
+      if (column === 'dataroom') {
+        await vdrDocs.moveDocumentInDataroom(id, newPath);
+      } else {
+        await vdrDocs.moveDocument(id, newPath);
+      }
     }
-    setInternalSelected(new Set());
-    setDataroomSelected(new Set());
+    if (column === 'internal') setInternalSelected(new Set());
+    else setDataroomSelected(new Set());
     toast.success(
       categoryName
         ? `Moved to ${categoryName}`
@@ -343,21 +373,56 @@ export function VdrThreeColumnWorkspace({
     );
   }, [vdrDocs]);
 
-  // Share file(s) to the Data Room AND drop them into a specific folder in one go.
-  // Used by drag-onto-folder-header and the bulk "Move to Data Room → <folder>" menu.
+  // Copy/share file(s) to the Data Room and drop them into a specific
+  // Data Room folder. Internal `folder_path` is left untouched so the
+  // Internal source workspace placement is preserved.
   const shareToDataroomFolder = useCallback(
     async (ids: string[], folderName: string | null) => {
       if (!ids.length) return;
       const newPath = folderName ? `/${folderName}/` : '/';
-      await Promise.all([
-        vdrDocs.bulkShareToDataroom(ids, true),
-        ...ids.map((id: string) => vdrDocs.moveDocument(id, newPath)),
-      ]);
+      await vdrDocs.bulkShareToDataroom(ids, true, newPath);
       setInternalSelected(new Set());
       toast.success(
         folderName
           ? `Shared ${ids.length} file${ids.length === 1 ? '' : 's'} to ${folderName}`
           : `Shared ${ids.length} file${ids.length === 1 ? '' : 's'} to Data Room`,
+      );
+    },
+    [vdrDocs],
+  );
+
+  // Move within Internal: drag a file onto an Internal folder header.
+  const moveToInternalFolder = useCallback(
+    async (ids: string[], folderName: string | null) => {
+      if (!ids.length) return;
+      const newPath = folderName ? `/${folderName}/` : '/';
+      for (const id of ids) {
+        await vdrDocs.moveDocument(id, newPath);
+      }
+      setInternalSelected(new Set());
+      toast.success(
+        folderName
+          ? `Moved ${ids.length} file${ids.length === 1 ? '' : 's'} to ${folderName}`
+          : `Moved ${ids.length} file${ids.length === 1 ? '' : 's'} to Uncategorized`,
+      );
+    },
+    [vdrDocs],
+  );
+
+  // Move within Data Room: drag a file onto a Data Room folder header.
+  // Only updates dataroom_folder_path so Internal placement is preserved.
+  const moveToDataroomFolderOnly = useCallback(
+    async (ids: string[], folderName: string | null) => {
+      if (!ids.length) return;
+      const newPath = folderName ? `/${folderName}/` : '/';
+      for (const id of ids) {
+        await vdrDocs.moveDocumentInDataroom(id, newPath);
+      }
+      setDataroomSelected(new Set());
+      toast.success(
+        folderName
+          ? `Moved ${ids.length} file${ids.length === 1 ? '' : 's'} to ${folderName}`
+          : `Moved ${ids.length} file${ids.length === 1 ? '' : 's'} to Uncategorized`,
       );
     },
     [vdrDocs],
@@ -417,23 +482,42 @@ export function VdrThreeColumnWorkspace({
     try {
       const { ids, source } = JSON.parse(raw) as { ids: string[]; source: 'internal' | 'dataroom' };
       if (source === dest) return;
-      if (dest === 'dataroom') await moveToDataroom(ids);
-      else await moveToInternal(ids);
+      if (dest === 'dataroom') {
+        // Internal → Data Room: copy/share. File stays in Internal.
+        await copyToDataroom(ids);
+      } else {
+        // Data Room → Internal: remove from external Data Room.
+        await removeFromDataroom(ids);
+      }
     } catch { /* ignore */ }
   };
 
-  // Drop onto a specific Data Room folder header → share + move into that folder.
-  const handleFolderDrop = async (e: React.DragEvent, folderName: string) => {
+  // Drop onto a specific folder header.
+  //   • Data Room target column: copy/share from Internal, or move within
+  //     Data Room (when the source is also Data Room).
+  //   • Internal target column: move within Internal (Internal → Internal
+  //     reorganization). Drops from the Data Room column are ignored —
+  //     unsharing has its own explicit action.
+  const handleFolderDrop = async (
+    e: React.DragEvent,
+    folderName: string,
+    column: 'internal' | 'dataroom',
+  ) => {
     e.preventDefault();
     e.stopPropagation();
     setDropTarget(null);
     setDropFolderTarget(null);
+    const targetFolder = folderName === UNCATEGORIZED ? null : folderName;
     const catRaw = e.dataTransfer.getData(DRAG_CATEGORY_MIME);
     if (catRaw) {
       try {
         const { ids } = JSON.parse(catRaw) as { ids: string[] };
         if (ids?.length) {
-          await shareToDataroomFolder(ids, folderName === UNCATEGORIZED ? null : folderName);
+          if (column === 'dataroom') {
+            await shareToDataroomFolder(ids, targetFolder);
+          } else {
+            await moveToInternalFolder(ids, targetFolder);
+          }
           return;
         }
       } catch { /* fall through */ }
@@ -441,9 +525,21 @@ export function VdrThreeColumnWorkspace({
     const raw = e.dataTransfer.getData(DRAG_MIME);
     if (!raw) return;
     try {
-      const { ids } = JSON.parse(raw) as { ids: string[]; source: 'internal' | 'dataroom' };
-      if (ids?.length) {
-        await shareToDataroomFolder(ids, folderName === UNCATEGORIZED ? null : folderName);
+      const { ids, source } = JSON.parse(raw) as { ids: string[]; source: 'internal' | 'dataroom' };
+      if (!ids?.length) return;
+      if (column === 'dataroom') {
+        if (source === 'dataroom') {
+          // Reorder within Data Room: only update dataroom_folder_path.
+          await moveToDataroomFolderOnly(ids, targetFolder);
+        } else {
+          // Internal → Data Room folder: copy/share.
+          await shareToDataroomFolder(ids, targetFolder);
+        }
+      } else {
+        // Internal target — only meaningful for Internal-source drags.
+        if (source === 'internal') {
+          await moveToInternalFolder(ids, targetFolder);
+        }
       }
     } catch { /* ignore */ }
   };
@@ -459,14 +555,20 @@ export function VdrThreeColumnWorkspace({
     }
   };
 
-  const allowFolderDrop = (e: React.DragEvent, folderName: string) => {
+  const allowFolderDrop = (
+    e: React.DragEvent,
+    folderName: string,
+    column: 'internal' | 'dataroom',
+  ) => {
     if (
       e.dataTransfer.types.includes(DRAG_MIME) ||
       e.dataTransfer.types.includes(DRAG_CATEGORY_MIME)
     ) {
       e.preventDefault();
       e.stopPropagation();
-      setDropFolderTarget(folderName);
+      // Namespace the drop target by column so the same category name in
+      // both columns doesn't share highlight state.
+      setDropFolderTarget(`${column}:${folderName}`);
     }
   };
 
@@ -706,21 +808,31 @@ export function VdrThreeColumnWorkspace({
           <ContextMenuItem onClick={() => onPreview(doc)}>Preview</ContextMenuItem>
           <ContextMenuItem onClick={() => handleDownload(doc)}>Download</ContextMenuItem>
           {column === 'internal' ? (
-            <ContextMenuItem onClick={() => moveToDataroom([doc.id])}>Move to Data Room</ContextMenuItem>
+            <ContextMenuItem onClick={() => copyToDataroom([doc.id])}>Copy to Data Room</ContextMenuItem>
           ) : (
-            <ContextMenuItem onClick={() => moveToInternal([doc.id])}>Move to Internal</ContextMenuItem>
+            <ContextMenuItem onClick={() => removeFromDataroom([doc.id])}>Remove from Data Room</ContextMenuItem>
           )}
           {categoryNames.length > 0 && (
             <ContextMenuSub>
-              <ContextMenuSubTrigger>Move to category</ContextMenuSubTrigger>
+              <ContextMenuSubTrigger>
+                {column === 'dataroom' ? 'Move to Data Room folder' : 'Move to category'}
+              </ContextMenuSubTrigger>
               <ContextMenuSubContent>
                 {categoryNames.map(cat => (
-                  <ContextMenuItem key={cat} onClick={() => moveToCategory([doc.id], cat)}>
+                  <ContextMenuItem key={cat} onClick={() => moveToCategory([doc.id], cat, column)}>
+                    {cat}
+                  </ContextMenuItem>
+                ))}
+                {column === 'dataroom' && customFolderNames.length > 0 && (
+                  <ContextMenuSeparator />
+                )}
+                {column === 'dataroom' && customFolderNames.map(cat => (
+                  <ContextMenuItem key={`cust-${cat}`} onClick={() => moveToCategory([doc.id], cat, column)}>
                     {cat}
                   </ContextMenuItem>
                 ))}
                 <ContextMenuSeparator />
-                <ContextMenuItem onClick={() => moveToCategory([doc.id], null)}>
+                <ContextMenuItem onClick={() => moveToCategory([doc.id], null, column)}>
                   Uncategorized
                 </ContextMenuItem>
               </ContextMenuSubContent>
@@ -760,7 +872,7 @@ export function VdrThreeColumnWorkspace({
           const isActive = activeCategory === cat || (cat === UNCATEGORIZED && activeCategory === UNCATEGORIZED);
           const label = cat === UNCATEGORIZED ? 'Uncategorized' : cat;
           const isCustom = column === 'dataroom' && customFolderNameSet.has(cat);
-          const isDropFolder = column === 'dataroom' && dropFolderTarget === cat;
+          const isDropFolder = dropFolderTarget === `${column}:${cat}`;
           const draggableHeader = column === 'internal' && cat !== UNCATEGORIZED && docs.length > 0;
           const customFolderRecord = isCustom ? customFolders.find(f => f.name === cat) : undefined;
           return (
@@ -773,16 +885,16 @@ export function VdrThreeColumnWorkspace({
                     : undefined
                 }
                 onDragOver={
-                  column === 'dataroom' && cat !== UNCATEGORIZED
-                    ? (e) => allowFolderDrop(e, cat)
+                  cat !== UNCATEGORIZED
+                    ? (e) => allowFolderDrop(e, cat, column)
                     : undefined
                 }
                 onDragLeave={
-                  column === 'dataroom' ? () => setDropFolderTarget(null) : undefined
+                  cat !== UNCATEGORIZED ? () => setDropFolderTarget(null) : undefined
                 }
                 onDrop={
-                  column === 'dataroom' && cat !== UNCATEGORIZED
-                    ? (e) => handleFolderDrop(e, cat)
+                  cat !== UNCATEGORIZED
+                    ? (e) => handleFolderDrop(e, cat, column)
                     : undefined
                 }
                 className={cn(
@@ -1012,23 +1124,23 @@ export function VdrThreeColumnWorkspace({
                 <Button
                   size="sm" variant="outline"
                   className="h-6 gap-1 text-[10px] px-2 border-primary/40 text-primary hover:bg-primary/10"
-                  onClick={() => moveToDataroom(Array.from(internalSelected))}
+                  onClick={() => copyToDataroom(Array.from(internalSelected))}
                 >
-                  <ArrowRight className="h-3 w-3" /> Move to Data Room
+                  <ArrowRight className="h-3 w-3" /> Copy to Data Room
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       size="sm" variant="outline"
                       className="h-6 w-6 p-0 border-primary/40 text-primary hover:bg-primary/10"
-                      title="Move to a specific Data Room folder"
+                      title="Copy to a specific Data Room folder"
                     >
                       <ChevronDown className="h-3 w-3" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56 max-h-72 overflow-auto">
                     <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                      Move to Data Room folder
+                      Copy to Data Room folder
                     </DropdownMenuLabel>
                     <DropdownMenuItem
                       className="text-xs"
@@ -1219,9 +1331,9 @@ export function VdrThreeColumnWorkspace({
                 <Button
                   size="sm" variant="outline"
                   className="h-6 gap-1 text-[10px] px-2"
-                  onClick={() => moveToInternal(Array.from(dataroomSelected))}
+                  onClick={() => removeFromDataroom(Array.from(dataroomSelected))}
                 >
-                  <ArrowLeft className="h-3 w-3" /> Move to Internal
+                  <ArrowLeft className="h-3 w-3" /> Remove from Data Room
                 </Button>
                 <Button
                   size="sm" variant="ghost"
@@ -1260,7 +1372,7 @@ export function VdrThreeColumnWorkspace({
                 <Globe className="h-6 w-6 text-muted-foreground/25" />
                 <p>{dataroomCount === 0 ? 'No files in Data Room yet.' : 'No matches for current filter.'}</p>
                 <p className="text-[10px] text-muted-foreground/60">
-                  Drag files from Internal, or use “Move to Data Room”.
+                  Drag files from Internal, or use “Copy to Data Room”.
                 </p>
               </div>
             ) : (

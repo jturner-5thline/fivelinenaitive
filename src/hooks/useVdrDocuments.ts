@@ -301,24 +301,101 @@ export function useVdrDocuments(dealId: string) {
     });
   }, [fetchDocuments, documents, logAudit]);
 
+  /**
+   * Update only the Data Room folder location. Internal `folder_path` is
+   * untouched so the file's Internal placement is preserved (copy/share
+   * semantics — the two columns are reorganized independently).
+   */
+  const moveDocumentInDataroom = useCallback(async (id: string, newFolderPath: string) => {
+    const doc = documents.find(d => d.id === id);
+    await (supabase as any)
+      .from('vdr_documents')
+      .update({ dataroom_folder_path: newFolderPath })
+      .eq('id', id);
+    setDocuments(prev =>
+      prev.map(d => d.id === id ? { ...d, dataroom_folder_path: newFolderPath } : d),
+    );
+    logAudit('file_moved', 'file', id, doc?.filename, {
+      old_folder: (doc as any)?.dataroom_folder_path ?? doc?.folder_path,
+      new_folder: newFolderPath,
+      column: 'dataroom',
+    });
+  }, [documents, logAudit]);
+
   const getDownloadUrl = useCallback(async (filePath: string) => {
     const { data } = await supabase.storage.from('vdr-files').createSignedUrl(filePath, 3600);
     return data?.signedUrl || null;
   }, []);
 
-  const toggleShareToDataroom = useCallback(async (docId: string, shared: boolean) => {
+  const toggleShareToDataroom = useCallback(async (
+    docId: string,
+    shared: boolean,
+    dataroomFolderPath?: string | null,
+  ) => {
     const doc = documents.find(d => d.id === docId);
-    await (supabase as any).from('vdr_documents').update({ shared_to_dataroom: shared }).eq('id', docId);
-    setDocuments(prev => prev.map(d => d.id === docId ? { ...d, shared_to_dataroom: shared } : d));
+    const update: Record<string, any> = { shared_to_dataroom: shared };
+    if (shared) {
+      // When sharing, set the Data Room folder (defaults to the file's
+      // current Internal folder so it lands in the matching category).
+      update.dataroom_folder_path =
+        dataroomFolderPath !== undefined
+          ? dataroomFolderPath
+          : (doc?.folder_path ?? '/');
+    } else {
+      // Unshare clears the Data Room placement so a future re-share starts fresh.
+      update.dataroom_folder_path = null;
+    }
+    await (supabase as any).from('vdr_documents').update(update).eq('id', docId);
+    setDocuments(prev => prev.map(d => d.id === docId ? { ...d, ...update } : d));
     logAudit(
       shared ? 'file_shared_to_dataroom' : 'file_unshared_from_dataroom',
       'file', docId, doc?.filename,
     );
   }, [documents, logAudit]);
 
-  const bulkShareToDataroom = useCallback(async (docIds: string[], shared: boolean) => {
-    await (supabase as any).from('vdr_documents').update({ shared_to_dataroom: shared }).in('id', docIds);
-    setDocuments(prev => prev.map(d => docIds.includes(d.id) ? { ...d, shared_to_dataroom: shared } : d));
+  const bulkShareToDataroom = useCallback(async (
+    docIds: string[],
+    shared: boolean,
+    dataroomFolderPath?: string | null,
+  ) => {
+    if (shared && dataroomFolderPath !== undefined) {
+      // Bulk path with an explicit target folder — a single update is fine.
+      await (supabase as any)
+        .from('vdr_documents')
+        .update({ shared_to_dataroom: true, dataroom_folder_path: dataroomFolderPath })
+        .in('id', docIds);
+      setDocuments(prev => prev.map(d =>
+        docIds.includes(d.id)
+          ? { ...d, shared_to_dataroom: true, dataroom_folder_path: dataroomFolderPath }
+          : d,
+      ));
+    } else if (shared) {
+      // Default: each file lands in the Data Room folder matching its current
+      // Internal folder. Issue per-row updates so each gets its own value.
+      await Promise.all(docIds.map(id => {
+        const d = documents.find(x => x.id === id);
+        const target = d?.folder_path ?? '/';
+        return (supabase as any)
+          .from('vdr_documents')
+          .update({ shared_to_dataroom: true, dataroom_folder_path: target })
+          .eq('id', id);
+      }));
+      setDocuments(prev => prev.map(d =>
+        docIds.includes(d.id)
+          ? { ...d, shared_to_dataroom: true, dataroom_folder_path: d.dataroom_folder_path ?? d.folder_path ?? '/' }
+          : d,
+      ));
+    } else {
+      await (supabase as any)
+        .from('vdr_documents')
+        .update({ shared_to_dataroom: false, dataroom_folder_path: null })
+        .in('id', docIds);
+      setDocuments(prev => prev.map(d =>
+        docIds.includes(d.id)
+          ? { ...d, shared_to_dataroom: false, dataroom_folder_path: null }
+          : d,
+      ));
+    }
     for (const docId of docIds) {
       const doc = documents.find(d => d.id === docId);
       logAudit(
@@ -349,6 +426,7 @@ export function useVdrDocuments(dealId: string) {
     restoreDocument,
     renameDocument,
     moveDocument,
+    moveDocumentInDataroom,
     getDownloadUrl,
     toggleShareToDataroom,
     bulkShareToDataroom,
