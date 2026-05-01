@@ -1215,6 +1215,381 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         calls: results,
       };
     }
+    case "get_deal_full": {
+      // Resolve deal id (by id or by name search)
+      let dealId: string | null = args.deal_id || null;
+      if (!dealId && args.search) {
+        const { data: matches } = await supabase
+          .from("deals")
+          .select("id, company")
+          .ilike("company", `%${args.search}%`)
+          .limit(5);
+        if (!matches || matches.length === 0) {
+          return { error: `No deal found matching "${args.search}"` };
+        }
+        if (matches.length > 1) {
+          return {
+            error: "Multiple deals match — please be more specific or pass deal_id",
+            candidates: matches.map((m: any) => ({ id: m.id, company: m.company })),
+          };
+        }
+        dealId = matches[0].id;
+      }
+      if (!dealId) return { error: "Provide deal_id or search" };
+
+      const activityLimit = Math.min(Math.max(Number(args.activity_limit) || 30, 1), 100);
+
+      const [
+        dealRes, writeupRes, lendersRes, milestonesRes, outstandingRes,
+        activityRes, memoRes, attachmentsRes, spaceDocsRes, pipelineRes,
+      ] = await Promise.all([
+        supabase.from("deals").select("*").eq("id", dealId).single(),
+        supabase.from("deal_writeups").select("*").eq("deal_id", dealId).maybeSingle(),
+        supabase.from("deal_lenders")
+          .select("id, name, stage, notes, tracking_status, created_at, updated_at, lender_id")
+          .eq("deal_id", dealId).order("updated_at", { ascending: false }),
+        supabase.from("deal_milestones")
+          .select("id, title, completed, completed_at, due_date, status, position")
+          .eq("deal_id", dealId).order("position", { ascending: true }),
+        supabase.from("outstanding_items")
+          .select("id, description, status, priority, assigned_to, due_date, eta, notes, lender_id, created_at")
+          .eq("deal_id", dealId).order("position", { ascending: true }),
+        supabase.from("activity_logs")
+          .select("id, activity_type, description, created_at, user_display_name")
+          .eq("deal_id", dealId).order("created_at", { ascending: false }).limit(activityLimit),
+        supabase.from("deal_memos")
+          .select("narrative, highlights, hurdles, analyst_notes, lender_notes, other_notes, approval_state, submitted_at, approved_at, rejected_at, rejection_reason, updated_at")
+          .eq("deal_id", dealId).maybeSingle(),
+        supabase.from("deal_attachments")
+          .select("id, name, category, content_type, size_bytes, created_at, source")
+          .eq("deal_id", dealId).order("created_at", { ascending: false }),
+        supabase.from("deal_space_documents")
+          .select("id, name, content_type, size_bytes, created_at")
+          .eq("deal_id", dealId).order("created_at", { ascending: false }),
+        // Pipeline label resolution
+        supabase.from("deal_pipelines").select("id, name, is_default, stages"),
+      ]);
+
+      const deal = dealRes.data;
+      if (!deal) return { error: "Deal not found" };
+
+      // Resolve pipeline + stage label
+      const pipelines = pipelineRes.data || [];
+      const dealPipeline = pipelines.find((p: any) => p.id === deal.pipeline_id)
+        || pipelines.find((p: any) => p.is_default);
+      const stageLabel = (() => {
+        const stages = Array.isArray(dealPipeline?.stages) ? dealPipeline.stages : [];
+        const m = stages.find((s: any) => s.id === deal.stage);
+        return m?.label || deal.stage;
+      })();
+
+      const writeup = writeupRes.data || null;
+
+      return {
+        deal: {
+          id: deal.id,
+          company: deal.company,
+          stage_id: deal.stage,
+          stage_label: stageLabel,
+          status: deal.status,
+          pipeline: dealPipeline ? { id: dealPipeline.id, name: dealPipeline.name } : null,
+          deal_type: deal.deal_type,
+          engagement_type: deal.engagement_type,
+          value: deal.value,
+          closing_date: deal.closing_date,
+          manager: deal.manager,
+          referred_by: deal.referred_by,
+          is_flagged: deal.is_flagged,
+          flag_reason: deal.flag_reason,
+          created_at: deal.created_at,
+          updated_at: deal.updated_at,
+        },
+        financials: writeup ? {
+          arr_or_revenue_last_year: writeup.last_year_revenue,
+          revenue_this_year: writeup.this_year_revenue,
+          gross_margins: writeup.gross_margins,
+          profitability: writeup.profitability,
+          revenue_type: writeup.revenue_type,
+          billing_model: writeup.billing_model,
+          b2b_b2c: writeup.b2b_b2c,
+          capital_ask: writeup.capital_ask,
+          use_of_funds: writeup.use_of_funds,
+          existing_debt_details: writeup.existing_debt_details,
+          collateral_available: writeup.collateral_available,
+          sponsorship: writeup.sponsorship,
+          total_equity_raised: writeup.total_equity_raised,
+          financial_comments: writeup.financial_comments,
+        } : null,
+        company_profile: writeup ? {
+          name: writeup.company_name,
+          description: writeup.description,
+          industry: writeup.industry,
+          location: writeup.location,
+          year_founded: writeup.year_founded,
+          headcount: writeup.headcount,
+          customer_base: writeup.customer_base,
+          team: writeup.team,
+          highlights: writeup.company_highlights,
+          key_items: writeup.key_items,
+          website: writeup.company_url,
+          linkedin: writeup.linkedin_url,
+        } : null,
+        lenders: (lendersRes.data || []).map((l: any) => ({
+          id: l.id,
+          name: l.name,
+          master_lender_id: l.lender_id,
+          stage: l.stage,
+          tracking_status: l.tracking_status,
+          notes: l.notes,
+          created_at: l.created_at,
+          updated_at: l.updated_at,
+        })),
+        outstanding_items: outstandingRes.data || [],
+        milestones: milestonesRes.data || [],
+        recent_activity: activityRes.data || [],
+        memo: memoRes.data || null,
+        documents: {
+          data_room: (attachmentsRes.data || []).map((a: any) => ({
+            name: a.name, category: a.category, type: a.content_type,
+            uploaded: a.created_at?.slice(0, 10), source: a.source,
+          })),
+          deal_space: (spaceDocsRes.data || []).map((d: any) => ({
+            name: d.name, type: d.content_type, uploaded: d.created_at?.slice(0, 10),
+          })),
+        },
+      };
+    }
+    case "get_lender_full": {
+      let lenderId: string | null = args.lender_id || null;
+      if (!lenderId && args.search) {
+        const { data: matches } = await supabase
+          .from("master_lenders")
+          .select("id, name")
+          .ilike("name", `%${args.search}%`)
+          .limit(5);
+        if (!matches || matches.length === 0) {
+          return { error: `No lender found matching "${args.search}"` };
+        }
+        if (matches.length > 1) {
+          return {
+            error: "Multiple lenders match — please be more specific or pass lender_id",
+            candidates: matches.map((m: any) => ({ id: m.id, name: m.name })),
+          };
+        }
+        lenderId = matches[0].id;
+      }
+      if (!lenderId) return { error: "Provide lender_id or search" };
+
+      const { data: lender } = await supabase
+        .from("master_lenders").select("*").eq("id", lenderId).maybeSingle();
+      if (!lender) return { error: "Lender not found" };
+
+      // All deals this lender is on (match by master_lender_id when present, else by name)
+      const { data: byId } = await supabase
+        .from("deal_lenders")
+        .select("id, deal_id, name, stage, tracking_status, notes, created_at, updated_at")
+        .eq("lender_id", lenderId)
+        .order("updated_at", { ascending: false });
+
+      let dealLenderRows = byId || [];
+      if (dealLenderRows.length === 0 && lender.name) {
+        const { data: byName } = await supabase
+          .from("deal_lenders")
+          .select("id, deal_id, name, stage, tracking_status, notes, created_at, updated_at")
+          .ilike("name", lender.name)
+          .order("updated_at", { ascending: false });
+        dealLenderRows = byName || [];
+      }
+
+      // Hydrate deal company names for each row
+      const dealIds = Array.from(new Set(dealLenderRows.map((r: any) => r.deal_id).filter(Boolean)));
+      const dealsById = new Map<string, any>();
+      if (dealIds.length) {
+        const { data: deals } = await supabase
+          .from("deals").select("id, company, stage, status").in("id", dealIds);
+        for (const d of deals || []) dealsById.set(d.id, d);
+      }
+
+      const lastContact = dealLenderRows[0]?.updated_at || null;
+
+      return {
+        lender: {
+          id: lender.id,
+          name: lender.name,
+          email: lender.email,
+          contact_name: lender.contact_name,
+          contact_title: lender.contact_title,
+          contact_phone: lender.contact_phone,
+          lender_type: lender.lender_type,
+          tier: lender.tier,
+          geo: lender.geo,
+          loan_types: lender.loan_types,
+          industries: lender.industries,
+          industries_to_avoid: lender.industries_to_avoid,
+          min_revenue: lender.min_revenue,
+          ebitda_min: lender.ebitda_min,
+          min_deal: lender.min_deal,
+          max_deal: lender.max_deal,
+          sub_debt: lender.sub_debt,
+          cash_burn: lender.cash_burn,
+          sponsorship: lender.sponsorship,
+          b2b_b2c: lender.b2b_b2c,
+          refinancing: lender.refinancing,
+          company_requirements: lender.company_requirements,
+          deal_structure_notes: lender.deal_structure_notes,
+          relationship_owners: lender.relationship_owners,
+          active: lender.active,
+        },
+        deal_count: dealLenderRows.length,
+        last_contact_at: lastContact,
+        deals: dealLenderRows.map((r: any) => {
+          const d = dealsById.get(r.deal_id);
+          return {
+            deal_id: r.deal_id,
+            deal_company: d?.company || null,
+            deal_stage: d?.stage || null,
+            deal_status: d?.status || null,
+            lender_stage: r.stage,
+            lender_tracking_status: r.tracking_status,
+            lender_notes: r.notes,
+            last_updated: r.updated_at,
+          };
+        }),
+      };
+    }
+    case "get_contact_full": {
+      let contactId: string | null = args.contact_id || null;
+      if (!contactId && args.search) {
+        const term = args.search;
+        const { data: matches } = await supabase
+          .from("contacts")
+          .select("id, full_name, email")
+          .or(`full_name.ilike.%${term}%,email.ilike.%${term}%`)
+          .limit(5);
+        if (!matches || matches.length === 0) {
+          return { error: `No contact found matching "${term}"` };
+        }
+        if (matches.length > 1) {
+          return {
+            error: "Multiple contacts match — please be more specific or pass contact_id",
+            candidates: matches.map((m: any) => ({ id: m.id, name: m.full_name, email: m.email })),
+          };
+        }
+        contactId = matches[0].id;
+      }
+      if (!contactId) return { error: "Provide contact_id or search" };
+
+      const { data: contact } = await supabase
+        .from("contacts").select("*").eq("id", contactId).maybeSingle();
+      if (!contact) return { error: "Contact not found" };
+
+      const [companyRes, dealsRes, activitiesRes] = await Promise.all([
+        contact.company_id || contact.primary_company_id
+          ? supabase.from("crm_companies").select("id, name, domain, industry, lifecycle_stage").eq("id", contact.company_id || contact.primary_company_id).maybeSingle()
+          : Promise.resolve({ data: null } as any),
+        supabase.from("contact_deals").select("deal_id").eq("contact_id", contactId),
+        supabase.from("contact_activities")
+          .select("activity_type, description, occurred_at, created_at")
+          .eq("contact_id", contactId)
+          .order("created_at", { ascending: false }).limit(20),
+      ]);
+
+      const dealIds = (dealsRes.data || []).map((d: any) => d.deal_id).filter(Boolean);
+      let deals: any[] = [];
+      if (dealIds.length) {
+        const { data } = await supabase
+          .from("deals").select("id, company, stage, status, value, updated_at").in("id", dealIds);
+        deals = data || [];
+      }
+
+      return {
+        contact: {
+          id: contact.id,
+          full_name: contact.full_name,
+          first_name: contact.first_name,
+          last_name: contact.last_name,
+          email: contact.email,
+          additional_emails: contact.additional_emails,
+          phone_work: contact.phone_work,
+          phone_mobile: contact.phone_mobile,
+          job_title: contact.job_title,
+          department: contact.department,
+          seniority: contact.seniority,
+          lifecycle_stage: contact.lifecycle_stage,
+          status: contact.status,
+          buying_role: contact.buying_role,
+          owner_user_id: contact.owner_user_id,
+          lead_source: contact.lead_source,
+        },
+        company: companyRes?.data || null,
+        deals,
+        recent_activities: activitiesRes.data || [],
+      };
+    }
+    case "get_company_full": {
+      let companyId: string | null = args.company_id || null;
+      if (!companyId && args.domain) {
+        const { data } = await supabase
+          .from("crm_companies").select("id").eq("domain", args.domain).maybeSingle();
+        companyId = data?.id || null;
+      }
+      if (!companyId && args.search) {
+        const { data: matches } = await supabase
+          .from("crm_companies").select("id, name").ilike("name", `%${args.search}%`).limit(5);
+        if (!matches || matches.length === 0) {
+          return { error: `No company found matching "${args.search}"` };
+        }
+        if (matches.length > 1) {
+          return {
+            error: "Multiple companies match — please be more specific or pass company_id",
+            candidates: matches.map((m: any) => ({ id: m.id, name: m.name })),
+          };
+        }
+        companyId = matches[0].id;
+      }
+      if (!companyId) return { error: "Provide company_id, domain, or search" };
+
+      const { data: company } = await supabase
+        .from("crm_companies").select("*").eq("id", companyId).maybeSingle();
+      if (!company) return { error: "Company not found" };
+
+      const [contactsRes, dealsRes] = await Promise.all([
+        supabase.from("contacts")
+          .select("id, full_name, email, job_title, seniority, lifecycle_stage")
+          .or(`company_id.eq.${companyId},primary_company_id.eq.${companyId}`)
+          .limit(50),
+        supabase.from("deals")
+          .select("id, company, stage, status, value, deal_type, updated_at")
+          .ilike("company", company.name)
+          .order("updated_at", { ascending: false }),
+      ]);
+
+      return {
+        company: {
+          id: company.id,
+          name: company.name,
+          domain: company.domain,
+          industry: company.industry,
+          sub_industry: company.sub_industry,
+          employee_count: company.employee_count,
+          employee_range: company.employee_range,
+          annual_revenue: company.annual_revenue,
+          arr: company.arr,
+          mrr: company.mrr,
+          lifecycle_stage: company.lifecycle_stage,
+          customer_tier: company.customer_tier,
+          segment: company.segment,
+          hq_city: company.hq_city,
+          hq_state: company.hq_state,
+          hq_country: company.hq_country,
+          description: company.description,
+          website_url: company.website_url,
+          linkedin_url: company.linkedin_url,
+        },
+        contacts: contactsRes.data || [],
+        deals: dealsRes.data || [],
+      };
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
