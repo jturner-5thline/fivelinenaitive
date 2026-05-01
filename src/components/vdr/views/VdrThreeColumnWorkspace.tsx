@@ -33,6 +33,7 @@ import { useUploadedItems } from '@/hooks/useUploadedItems';
 import { useChecklistCategories } from '@/hooks/useChecklistCategories';
 import { useDealOutstandingItemsByKey } from '@/hooks/useDealOutstandingItemsByKey';
 import { useDealCustomFolders } from '@/hooks/useDealCustomFolders';
+import { useVdrFolderPreferences } from '@/hooks/useVdrFolderPreferences';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
@@ -77,6 +78,9 @@ const DRAG_MIME = 'application/x-vdr-doc-ids';
 // category name + the IDs of every file currently visible in it so a drop
 // can bulk-share + (optionally) re-categorise into a Data Room folder.
 const DRAG_CATEGORY_MIME = 'application/x-vdr-category';
+// Drag a folder header to reorder it within the same column. Distinct from
+// DRAG_CATEGORY_MIME (which moves files), so reorder drops are unambiguous.
+const DRAG_FOLDER_REORDER_MIME = 'application/x-vdr-folder-reorder';
 
 export function VdrThreeColumnWorkspace({
   dealId, documents, documentsLoading, onPreview, vdrDocs,
@@ -128,6 +132,11 @@ export function VdrThreeColumnWorkspace({
     createFolder: createCustomFolder,
     deleteFolder: deleteCustomFolder,
   } = useDealCustomFolders(dealId);
+
+  // Per-user, per-deal folder ordering + last-used drop targets.
+  // Internal and Data Room are stored under separate keys.
+  const internalFolderPrefs = useVdrFolderPreferences(dealId, 'internal');
+  const dataroomFolderPrefs = useVdrFolderPreferences(dealId, 'dataroom');
 
   // Checklist
   const uploadedItems = useUploadedItems(dealId, bulkBatchId);
@@ -236,6 +245,20 @@ export function VdrThreeColumnWorkspace({
   // Build the ordered list of category names from settings (source of truth)
   const categoryNames = useMemo(() => categories.map(c => c.name), [categories]);
   const customFolderNames = useMemo(() => customFolders.map(f => f.name), [customFolders]);
+  // Per-column ordered names (user preference applied on top of the natural
+  // settings/custom-folder order). Internal vs Data Room order independently.
+  const internalCategoryNames = useMemo(
+    () => internalFolderPrefs.applyOrder(categoryNames),
+    [internalFolderPrefs, categoryNames],
+  );
+  const dataroomCategoryNames = useMemo(
+    () => dataroomFolderPrefs.applyOrder(categoryNames),
+    [dataroomFolderPrefs, categoryNames],
+  );
+  const dataroomCustomFolderNames = useMemo(
+    () => dataroomFolderPrefs.applyOrder(customFolderNames),
+    [dataroomFolderPrefs, customFolderNames],
+  );
   // Categories shown in BOTH columns. Custom folders are per-deal so they are
   // appended to the default company taxonomy.
   const categoryNameSet = useMemo(
@@ -264,9 +287,10 @@ export function VdrThreeColumnWorkspace({
   /** Group an array of docs by category (preserving Settings order, then Uncategorized). */
   const groupByCategory = useCallback((docs: VdrDocument[], column: 'internal' | 'dataroom') => {
     const map = new Map<string, VdrDocument[]>();
-    for (const cat of categoryNames) map.set(cat, []);
+    const cats = column === 'internal' ? internalCategoryNames : dataroomCategoryNames;
+    for (const cat of cats) map.set(cat, []);
     if (column === 'dataroom') {
-      for (const cat of customFolderNames) map.set(cat, []);
+      for (const cat of dataroomCustomFolderNames) map.set(cat, []);
     }
     map.set(UNCATEGORIZED, []);
     for (const d of docs) {
@@ -276,7 +300,7 @@ export function VdrThreeColumnWorkspace({
       map.set(k, arr);
     }
     return map;
-  }, [categoryNames, customFolderNames, docCategory]);
+  }, [internalCategoryNames, dataroomCategoryNames, dataroomCustomFolderNames, docCategory]);
 
   const internalGrouped = useMemo(() => groupByCategory(visibleInternal, 'internal'), [groupByCategory, visibleInternal]);
   const dataroomGrouped = useMemo(() => groupByCategory(visibleDataroom, 'dataroom'), [groupByCategory, visibleDataroom]);
@@ -430,6 +454,9 @@ export function VdrThreeColumnWorkspace({
     }
     if (column === 'internal') setInternalSelected(new Set());
     else setDataroomSelected(new Set());
+    // Track the last-used drop target so it surfaces at the top of menus.
+    if (column === 'internal') internalFolderPrefs.recordRecent(categoryName);
+    else dataroomFolderPrefs.recordRecent(categoryName);
     toast.success(
       categoryName
         ? `Moved to ${categoryName}`
@@ -454,7 +481,7 @@ export function VdrThreeColumnWorkspace({
         },
       },
     );
-  }, [vdrDocs, documents]);
+  }, [vdrDocs, documents, internalFolderPrefs, dataroomFolderPrefs]);
 
   // Copy/share file(s) to the Data Room and drop them into a specific
   // Data Room folder. Internal `folder_path` is left untouched so the
@@ -473,6 +500,7 @@ export function VdrThreeColumnWorkspace({
       });
       await vdrDocs.bulkShareToDataroom(ids, true, newPath);
       setInternalSelected(new Set());
+      dataroomFolderPrefs.recordRecent(folderName);
       toast.success(
         folderName
           ? `Shared ${ids.length} file${ids.length === 1 ? '' : 's'} to ${folderName}`
@@ -497,7 +525,7 @@ export function VdrThreeColumnWorkspace({
         },
       );
     },
-    [vdrDocs, documents],
+    [vdrDocs, documents, dataroomFolderPrefs],
   );
 
   // Move within Internal: drag a file onto an Internal folder header.
@@ -513,6 +541,7 @@ export function VdrThreeColumnWorkspace({
         await vdrDocs.moveDocument(id, newPath);
       }
       setInternalSelected(new Set());
+      internalFolderPrefs.recordRecent(folderName);
       toast.success(
         folderName
           ? `Moved ${ids.length} file${ids.length === 1 ? '' : 's'} to ${folderName}`
@@ -534,7 +563,7 @@ export function VdrThreeColumnWorkspace({
         },
       );
     },
-    [vdrDocs, documents],
+    [vdrDocs, documents, internalFolderPrefs],
   );
 
   // Move within Data Room: drag a file onto a Data Room folder header.
@@ -554,6 +583,7 @@ export function VdrThreeColumnWorkspace({
         await vdrDocs.moveDocumentInDataroom(id, newPath);
       }
       setDataroomSelected(new Set());
+      dataroomFolderPrefs.recordRecent(folderName);
       toast.success(
         folderName
           ? `Moved ${ids.length} file${ids.length === 1 ? '' : 's'} to ${folderName}`
@@ -575,7 +605,7 @@ export function VdrThreeColumnWorkspace({
         },
       );
     },
-    [vdrDocs, documents],
+    [vdrDocs, documents, dataroomFolderPrefs],
   );
 
   // Drag & drop
@@ -658,6 +688,27 @@ export function VdrThreeColumnWorkspace({
     setDropTarget(null);
     setDropFolderTarget(null);
     const targetFolder = folderName === UNCATEGORIZED ? null : folderName;
+    // Folder header reorder (same column only).
+    const reorderRaw = e.dataTransfer.getData(DRAG_FOLDER_REORDER_MIME);
+    if (reorderRaw) {
+      try {
+        const { name, source, kind } = JSON.parse(reorderRaw) as {
+          name: string; source: 'internal' | 'dataroom'; kind: 'category' | 'custom';
+        };
+        if (source !== column || name === folderName) return;
+        // Reorder within the matching list (categories vs custom folders).
+        if (column === 'internal') {
+          internalFolderPrefs.reorder(categoryNames, name, folderName);
+        } else {
+          if (kind === 'custom') {
+            dataroomFolderPrefs.reorder(customFolderNames, name, folderName);
+          } else {
+            dataroomFolderPrefs.reorder(categoryNames, name, folderName);
+          }
+        }
+        return;
+      } catch { /* fall through */ }
+    }
     const catRaw = e.dataTransfer.getData(DRAG_CATEGORY_MIME);
     if (catRaw) {
       try {
@@ -712,7 +763,8 @@ export function VdrThreeColumnWorkspace({
   ) => {
     if (
       e.dataTransfer.types.includes(DRAG_MIME) ||
-      e.dataTransfer.types.includes(DRAG_CATEGORY_MIME)
+      e.dataTransfer.types.includes(DRAG_CATEGORY_MIME) ||
+      e.dataTransfer.types.includes(DRAG_FOLDER_REORDER_MIME)
     ) {
       e.preventDefault();
       e.stopPropagation();
@@ -1001,7 +1053,29 @@ export function VdrThreeColumnWorkspace({
                 {column === 'dataroom' ? 'Move to Data Room folder' : 'Move to category'}
               </ContextMenuSubTrigger>
               <ContextMenuSubContent>
-                {categoryNames.map(cat => (
+                {(() => {
+                  const prefs = column === 'internal' ? internalFolderPrefs : dataroomFolderPrefs;
+                  const allowed = new Set<string>([
+                    ...categoryNames,
+                    ...(column === 'dataroom' ? customFolderNames : []),
+                  ]);
+                  const recent = prefs.recents.filter(n => allowed.has(n)).slice(0, 5);
+                  if (!recent.length) return null;
+                  return (
+                    <>
+                      {recent.map(name => (
+                        <ContextMenuItem
+                          key={`recent-${name}`}
+                          onClick={() => moveToCategory([doc.id], name, column)}
+                        >
+                          ↻ {name}
+                        </ContextMenuItem>
+                      ))}
+                      <ContextMenuSeparator />
+                    </>
+                  );
+                })()}
+                {(column === 'internal' ? internalCategoryNames : dataroomCategoryNames).map(cat => (
                   <ContextMenuItem key={cat} onClick={() => moveToCategory([doc.id], cat, column)}>
                     {cat}
                   </ContextMenuItem>
@@ -1009,7 +1083,7 @@ export function VdrThreeColumnWorkspace({
                 {column === 'dataroom' && customFolderNames.length > 0 && (
                   <ContextMenuSeparator />
                 )}
-                {column === 'dataroom' && customFolderNames.map(cat => (
+                {column === 'dataroom' && dataroomCustomFolderNames.map(cat => (
                   <ContextMenuItem key={`cust-${cat}`} onClick={() => moveToCategory([doc.id], cat, column)}>
                     {cat}
                   </ContextMenuItem>
@@ -1043,8 +1117,8 @@ export function VdrThreeColumnWorkspace({
     // Custom folders are only shown in the Data Room column.
     const order =
       column === 'dataroom'
-        ? [...categoryNames, ...customFolderNames, UNCATEGORIZED]
-        : [...categoryNames, UNCATEGORIZED];
+        ? [...dataroomCategoryNames, ...dataroomCustomFolderNames, UNCATEGORIZED]
+        : [...internalCategoryNames, UNCATEGORIZED];
     return (
       <div className="space-y-1">
         {order.map(cat => {
@@ -1056,7 +1130,12 @@ export function VdrThreeColumnWorkspace({
           const label = cat === UNCATEGORIZED ? 'Uncategorized' : cat;
           const isCustom = column === 'dataroom' && customFolderNameSet.has(cat);
           const isDropFolder = dropFolderTarget === `${column}:${cat}`;
-          const draggableHeader = column === 'internal' && cat !== UNCATEGORIZED && docs.length > 0;
+          // Headers are always draggable (except Uncategorized) so users can
+          // reorder folders within a column. Internal headers with files
+          // additionally carry the category-share payload for cross-column
+          // bulk-share via DRAG_CATEGORY_MIME.
+          const draggableHeader = cat !== UNCATEGORIZED;
+          const canShareCategory = column === 'internal' && docs.length > 0;
           const customFolderRecord = isCustom ? customFolders.find(f => f.name === cat) : undefined;
           return (
             <div key={cat} className="">
@@ -1064,7 +1143,22 @@ export function VdrThreeColumnWorkspace({
                 draggable={draggableHeader}
                 onDragStart={
                   draggableHeader
-                    ? (e) => handleCategoryDragStart(e, cat, docs.map(d => d.id))
+                    ? (e) => {
+                        // Always set the reorder payload.
+                        e.dataTransfer.setData(
+                          DRAG_FOLDER_REORDER_MIME,
+                          JSON.stringify({
+                            name: cat,
+                            source: column,
+                            kind: isCustom ? 'custom' : 'category',
+                          }),
+                        );
+                        e.dataTransfer.effectAllowed = 'move';
+                        // Internal-with-files: also enable cross-column share.
+                        if (canShareCategory) {
+                          handleCategoryDragStart(e, cat, docs.map(d => d.id));
+                        }
+                      }
                     : undefined
                 }
                 onDragOver={
@@ -1342,6 +1436,28 @@ export function VdrThreeColumnWorkspace({
                     <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">
                       Copy to Data Room folder
                     </DropdownMenuLabel>
+                    {dataroomFolderPrefs.recents.length > 0 && (
+                      <>
+                        <DropdownMenuLabel className="text-[9px] uppercase tracking-wide text-muted-foreground/70 pt-1 pb-0">
+                          Recent
+                        </DropdownMenuLabel>
+                        {dataroomFolderPrefs.recents
+                          .filter(name =>
+                            categoryNames.includes(name) || customFolderNames.includes(name))
+                          .slice(0, 5)
+                          .map(name => (
+                            <DropdownMenuItem
+                              key={`recent-${name}`}
+                              className="text-xs"
+                              onClick={() => shareToDataroomFolder(Array.from(internalSelected), name)}
+                            >
+                              <FolderClosed className="h-3.5 w-3.5 mr-2 text-primary/70" />
+                              {name}
+                            </DropdownMenuItem>
+                          ))}
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
                     <DropdownMenuItem
                       className="text-xs"
                       onClick={() => shareToDataroomFolder(Array.from(internalSelected), null)}
@@ -1350,7 +1466,7 @@ export function VdrThreeColumnWorkspace({
                       Data Room (root)
                     </DropdownMenuItem>
                     {categoryNames.length > 0 && <DropdownMenuSeparator />}
-                    {categoryNames.map(name => (
+                    {dataroomCategoryNames.map(name => (
                       <DropdownMenuItem
                         key={`std-${name}`}
                         className="text-xs"
@@ -1361,7 +1477,7 @@ export function VdrThreeColumnWorkspace({
                       </DropdownMenuItem>
                     ))}
                     {customFolderNames.length > 0 && <DropdownMenuSeparator />}
-                    {customFolderNames.map(name => (
+                    {dataroomCustomFolderNames.map(name => (
                       <DropdownMenuItem
                         key={`cust-${name}`}
                         className="text-xs"
