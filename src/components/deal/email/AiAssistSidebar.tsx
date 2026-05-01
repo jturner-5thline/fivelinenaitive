@@ -15,7 +15,6 @@ import {
   Briefcase,
   User as UserIcon,
   Building2,
-  Database,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { cn } from '@/lib/utils';
@@ -400,6 +399,12 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
     const f = dealContextSummary.financials;
     const fmt = (n: number | null) =>
       n == null ? null : n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `$${Math.round(n / 1_000)}k` : `$${Math.round(n)}`;
+    // Resolve the matched lender's stage on this deal (if any) so the AI can
+    // reference where this specific lender sits in our process.
+    const matchedLenderName = workflowAnalysis?.likely_lender_firm?.name || null;
+    const matchedLenderStage = matchedLenderName
+      ? dealContextSummary.lenderStagesByName[matchedLenderName.trim().toLowerCase()] || null
+      : null;
     return {
       deal_name: dealContextSummary.dealName || undefined,
       status: dealContextSummary.status,
@@ -420,8 +425,11 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
         ebitda: f.ebitda,
         ebitda_display: fmt(f.ebitda),
       },
+      use_of_proceeds: dealContextSummary.useOfProceeds || null,
       active_lenders: dealContextSummary.lenderCounts.active,
       total_lenders: dealContextSummary.lenderCounts.total,
+      matched_lender: matchedLenderName,
+      matched_lender_stage: matchedLenderStage,
       open_outstanding_items: dealContextSummary.outstanding.openCount,
       most_overdue_item: dealContextSummary.outstanding.mostOverdue
         ? {
@@ -436,6 +444,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
         description: it.description,
         due_date: it.dueDate,
         days_overdue: it.daysOverdue,
+        assignee: it.assignee || null,
       })),
       last_status_note: dealContextSummary.lastStatusNote
         ? {
@@ -445,7 +454,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
           }
         : null,
     };
-  }, [dealContextSummary]);
+  }, [dealContextSummary, workflowAnalysis?.likely_lender_firm?.name]);
 
   /**
    * Generate a single tone (Concise or Balanced). Fast model by default;
@@ -1080,27 +1089,24 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                   <Loader2 className="h-2.5 w-2.5 animate-spin text-primary/60" />
                 )}
                 <div className="flex-1" />
-                {/* Deal-context indicator — surfaces when the draft was
-                    generated using Deal Space data so the user knows the AI
-                    referenced real financials/outstanding items. */}
-                {(result?.used_deal_context
-                  || (result?.cited_context_sources || []).some((s) =>
-                    s === 'deal_state_snapshot' || s === 'deal_space_financials' || s === 'deal_metadata')
-                ) && dealContextSummary?.dealName && (
-                  <span
-                    className="hidden sm:inline-flex items-center gap-1 mr-1 px-1.5 py-0.5 rounded text-[10px] text-primary/80 bg-primary/[0.06] border border-primary/15"
-                    title={`Generated using ${dealContextSummary.dealName} deal data.`}
-                  >
-                    <Database className="h-2.5 w-2.5" />
-                    <span className="truncate max-w-[140px]">
-                      Generated using <span className="font-medium">{dealContextSummary.dealName}</span> deal data
-                    </span>
-                  </span>
-                )}
                 <ChevronDown
                   className={cn('h-3 w-3 text-muted-foreground transition-transform', !draftOpen && '-rotate-90')}
                 />
               </button>
+              {/* Attribution label — small italic muted line directly below
+                  the DRAFT REPLY heading. Only renders when Deal Space data
+                  was actually fetched + used by the AI; otherwise omitted. */}
+              {(result?.used_deal_context
+                || (result?.cited_context_sources || []).some((s) =>
+                  s === 'deal_state_snapshot' || s === 'deal_space_financials' || s === 'deal_metadata')
+              ) && dealContextSummary?.dealName && (
+                <p
+                  className="px-2 italic text-muted-foreground/80"
+                  style={{ fontSize: 11, marginTop: -4 }}
+                >
+                  Generated using {dealContextSummary.dealName} deal data
+                </p>
+              )}
               {draftOpen && (
               <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-3 space-y-2.5 overflow-hidden max-w-full min-w-0 w-full">
               {/* Header — title + optional helper. No counter, no chevrons:

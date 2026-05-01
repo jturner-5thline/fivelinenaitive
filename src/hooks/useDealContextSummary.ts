@@ -15,7 +15,7 @@ export interface DealContextSummary {
     openCount: number;
     mostOverdue: { description: string; dueDate: string; daysOverdue: number } | null;
     /** Up to 5 currently-open items (description + due date), most overdue first. */
-    openItems: Array<{ description: string; dueDate: string | null; daysOverdue: number | null }>;
+    openItems: Array<{ description: string; dueDate: string | null; daysOverdue: number | null; assignee: string | null }>;
   };
   /** Snapshot of headline financials sourced from Deal Space. All numbers in USD. */
   financials: {
@@ -30,6 +30,10 @@ export interface DealContextSummary {
     /** Most recent EBITDA value from Deal Space (currently inferred from financial data; null if absent). */
     ebitda: number | null;
   };
+  /** Free-text "Use of Proceeds" — sourced from `deals.narrative` when populated. */
+  useOfProceeds: string | null;
+  /** Per-lender stage on this deal, keyed by lowercased lender name. */
+  lenderStagesByName: Record<string, string>;
 }
 
 const NEUTRAL_STATUSES = new Set(['passed']);
@@ -68,7 +72,7 @@ export function useDealContextSummary(dealId: string | undefined) {
       const [dealRes, stageActivityRes, statusNoteRes, lendersRes, outstandingRes] = await Promise.all([
         supabase
           .from('deals')
-          .select('id, company, stage, status, pipeline_id, updated_at, created_at, value, mrr')
+          .select('id, company, stage, status, pipeline_id, updated_at, created_at, value, mrr, narrative')
           .eq('id', dealId)
           .maybeSingle(),
         supabase
@@ -86,11 +90,11 @@ export function useDealContextSummary(dealId: string | undefined) {
           .limit(1),
         supabase
           .from('deal_lenders')
-          .select('id, tracking_status, stage')
+          .select('id, name, tracking_status, stage')
           .eq('deal_id', dealId),
         supabase
           .from('outstanding_items')
-          .select('description, status, due_date, eta')
+          .select('description, status, due_date, eta, assigned_to')
           .eq('deal_id', dealId),
       ]);
 
@@ -145,7 +149,28 @@ export function useDealContextSummary(dealId: string | undefined) {
       });
       let mostOverdue: DealContextSummary['outstanding']['mostOverdue'] = null;
       const today = Date.now();
-      const enriched = open.map((i) => {
+      // Resolve assignee user IDs → display names in one batch lookup.
+      const assigneeIds = Array.from(
+        new Set(
+          open
+            .map((i: any) => i.assigned_to)
+            .filter((v: any): v is string => typeof v === 'string' && v.length > 0),
+        ),
+      );
+      const assigneeMap = new Map<string, string>();
+      if (assigneeIds.length > 0) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, first_name, last_name')
+          .in('user_id', assigneeIds);
+        for (const p of profs || []) {
+          const name = (p as any).display_name
+            || `${(p as any).first_name || ''} ${(p as any).last_name || ''}`.trim()
+            || null;
+          if (name) assigneeMap.set((p as any).user_id, name);
+        }
+      }
+      const enriched = open.map((i: any) => {
         const dueIso = i.due_date || i.eta || null;
         let daysOverdue: number | null = null;
         if (dueIso) {
@@ -154,7 +179,8 @@ export function useDealContextSummary(dealId: string | undefined) {
             daysOverdue = Math.floor((today - due) / 86_400_000);
           }
         }
-        return { description: i.description as string, dueDate: dueIso, daysOverdue };
+        const assignee = i.assigned_to ? assigneeMap.get(i.assigned_to) || null : null;
+        return { description: i.description as string, dueDate: dueIso, daysOverdue, assignee };
       });
       const openItems = enriched
         .slice()
@@ -212,6 +238,17 @@ export function useDealContextSummary(dealId: string | undefined) {
       const mrr = (deal as any).mrr != null ? Number((deal as any).mrr) : null;
       const arr = arrFromData ?? (mrr != null ? mrr * 12 : null);
 
+      // Per-lender stage map (case-insensitive name → stage) so the AI panel
+      // can surface the matched lender's current stage on this deal.
+      const lenderStagesByName: Record<string, string> = {};
+      for (const l of lenders as any[]) {
+        const nm = (l?.name || '').toString().trim().toLowerCase();
+        if (nm && l?.stage) lenderStagesByName[nm] = String(l.stage);
+      }
+
+      const narrativeText = ((deal as any).narrative || '').toString().trim();
+      const useOfProceeds = narrativeText.length > 0 ? narrativeText : null;
+
       setSummary({
         dealId: deal.id,
         dealName: (deal as any).company || '',
@@ -224,6 +261,8 @@ export function useDealContextSummary(dealId: string | undefined) {
         lenderCounts,
         outstanding: { openCount: open.length, mostOverdue, openItems },
         financials: { dealSize, mrr, arr, ttmRevenue, ebitda },
+        useOfProceeds,
+        lenderStagesByName,
       });
     } catch (err: any) {
       console.error('[useDealContextSummary]', err);
