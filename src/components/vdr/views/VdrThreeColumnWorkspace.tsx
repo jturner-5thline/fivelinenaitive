@@ -357,7 +357,7 @@ export function VdrThreeColumnWorkspace({
                 })
                 .eq('id', s.id)
             ));
-            await vdrDocs.fetchDocuments?.();
+            await vdrDocs.refetch?.();
             toast.success('Reverted share');
           },
         },
@@ -393,7 +393,7 @@ export function VdrThreeColumnWorkspace({
                 })
                 .eq('id', s.id)
             ));
-            await vdrDocs.fetchDocuments?.();
+            await vdrDocs.refetch?.();
             toast.success('Restored to Data Room');
           },
         },
@@ -447,7 +447,7 @@ export function VdrThreeColumnWorkspace({
                 )
                 .eq('id', s.id)
             ));
-            await vdrDocs.fetchDocuments?.();
+            await vdrDocs.refetch?.();
             toast.success('Move undone');
           },
         },
@@ -489,7 +489,7 @@ export function VdrThreeColumnWorkspace({
                   })
                   .eq('id', s.id)
               ));
-              await vdrDocs.fetchDocuments?.();
+              await vdrDocs.refetch?.();
               toast.success('Reverted share');
             },
           },
@@ -526,7 +526,7 @@ export function VdrThreeColumnWorkspace({
                   .update({ folder_path: s.folder_path })
                   .eq('id', s.id)
               ));
-              await vdrDocs.fetchDocuments?.();
+              await vdrDocs.refetch?.();
               toast.success('Move undone');
             },
           },
@@ -567,7 +567,7 @@ export function VdrThreeColumnWorkspace({
                   .update({ dataroom_folder_path: s.dataroom_folder_path })
                   .eq('id', s.id)
               ));
-              await vdrDocs.fetchDocuments?.();
+              await vdrDocs.refetch?.();
               toast.success('Move undone');
             },
           },
