@@ -1346,18 +1346,28 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     !isMockLatest,
     !!(thread.latestEmail.body_html || thread.latestEmail.body_text),
   );
-  const latestAttachments = (latestFullData?.attachments && latestFullData.attachments.length > 0)
-    ? latestFullData.attachments
+  // Resolve the latest message's attachments STRICTLY from the per-message
+  // fetch once available. Falling back to thread-level `latestEmail.attachments`
+  // can leak sibling-message attachments into a message that has none of its
+  // own. Only use the fallback before the per-message data has loaded.
+  const latestAttachments = latestFullData
+    ? (latestFullData.attachments || [])
     : (thread.latestEmail.attachments || []);
   const hasUploadableAttachments = latestAttachments.some(a => !a.is_inline && !!a.id);
   const attachmentFallbackReason = detectAttachmentFallbackReason(thread.emails);
+  // Only render the thread-header attachments strip when the CURRENTLY VIEWED
+  // (latest) message itself has attachments. Previously this surfaced sibling
+  // attachments from earlier messages in the thread, which confused users
+  // reading a reply that had no attachments of its own.
+  const latestHasOwnAttachments = latestFullData
+    ? (latestFullData.attachments?.length ?? 0) > 0
+    : !!thread.latestEmail.has_attachments || (thread.latestEmail.attachments?.length ?? 0) > 0;
   const shouldRenderAttachmentsRow =
-    thread.hasAttachments ||
-    thread.emails.some((email) => email.has_attachments || (email.attachments?.length ?? 0) > 0) ||
-    !!attachmentFallbackReason ||
-    // Keep the row mounted during initial thread hydration so the user sees a
-    // loading state instead of an empty header band that silently snaps in.
-    latestFullLoading;
+    latestHasOwnAttachments ||
+    // Keep the row mounted during initial hydration of the latest message so
+    // the user sees a loading state instead of an empty band that snaps in,
+    // but only when we have a signal the latest message likely has attachments.
+    (latestFullLoading && !!thread.latestEmail.has_attachments);
   
   // Reply state
   const [replyTo, setReplyTo] = useState<{ subject: string; to_email: string; to_name: string; threadId: string } | null>(null);
