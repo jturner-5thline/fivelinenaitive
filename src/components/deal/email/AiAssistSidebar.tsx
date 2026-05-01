@@ -40,6 +40,7 @@ import { LenderDataAnswerCard } from './LenderDataAnswerCard';
 import { OutstandingItemMatchCard } from './OutstandingItemMatchCard';
 import { MeetingSchedulerCard } from './MeetingSchedulerCard';
 import { EmailQuickActionsToolbar } from './EmailQuickActionsToolbar';
+import { CadenceInsightCard } from './CadenceInsightCard';
 import type { DealContextSummary } from '@/hooks/useDealContextSummary';
 import { toast } from 'sonner';
 import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
@@ -775,6 +776,22 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               }
             }}
             onInsertDraft={onInsertDraft}
+          />
+
+          {/* Cadence-based follow-up nudge — surfaces only when the sender
+              has an established cadence profile (built via Settings →
+              Email → Learn My Cadence) and the user is on/off rhythm.
+              The "Draft a follow-up" CTA reuses the same draft pipeline
+              as the Quick Actions Draft Reply button. */}
+          <CadenceInsightCard
+            contactEmail={thread.latestEmail.from_email}
+            contactName={thread.latestEmail.from_name}
+            onDraftFollowUp={() => {
+              setDraftOpen(true);
+              if (!result?.options[selected] && !loadingTones[selected]) {
+                void generateTone(selected);
+              }
+            }}
           />
 
           {/* Deal Context — collapsed by default; the chip row above is the
