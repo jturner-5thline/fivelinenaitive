@@ -409,6 +409,17 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
           {/* Row 1: Sender + date on same line */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
+              {staleBucket && (
+                <span
+                  className={cn(
+                    'inline-block h-2 w-2 rounded-full shrink-0',
+                    STALE_DOT_CLASSES[staleBucket],
+                  )}
+                  aria-label={STALE_DOT_TITLES[staleBucket]}
+                  title={STALE_DOT_TITLES[staleBucket]}
+                  data-stale-bucket={staleBucket}
+                />
+              )}
               <span className={cn(
                 'text-[13px] truncate',
                 isUnread
