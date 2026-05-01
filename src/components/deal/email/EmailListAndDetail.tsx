@@ -228,6 +228,24 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
   const isUnread = thread.hasUnread;
   const showCheckbox = hovered || isChecked;
 
+  // Location chip — surfaces where the email actually lives in Gmail when
+  // it's NOT in the user's inbox. The all-mail search can return archived
+  // mail and emails moved to user labels (Censys, Lenders, …); without this
+  // chip the user has no way to tell why a result isn't in their inbox.
+  const locationChip = (() => {
+    const rawLabels = Array.isArray(latest.labels) ? latest.labels : [];
+    const upper = new Set(rawLabels.map((l) => String(l).toUpperCase()));
+    if (upper.has('INBOX')) return null; // Lives in inbox — no chip needed
+    if (latest.folder === 'sent' || upper.has('SENT')) return null; // Sent has its own visual
+    if (upper.has('TRASH')) return { label: 'Trash', tone: 'muted' as const };
+    if (upper.has('SPAM')) return { label: 'Spam', tone: 'muted' as const };
+    // Prefer a user-defined label name over the generic "Archived" chip.
+    const SYSTEM = new Set(['INBOX','SENT','DRAFT','TRASH','SPAM','UNREAD','STARRED','IMPORTANT','CATEGORY_PERSONAL','CATEGORY_SOCIAL','CATEGORY_PROMOTIONS','CATEGORY_UPDATES','CATEGORY_FORUMS']);
+    const userLabel = rawLabels.find((l) => !SYSTEM.has(String(l).toUpperCase()));
+    if (userLabel) return { label: String(userLabel), tone: 'label' as const };
+    return { label: 'Archived', tone: 'muted' as const };
+  })();
+
   // Runtime deal-match against in-memory deals. Returns null when no
   // candidate clears the medium-confidence threshold so unmatched emails
   // render with no badge (per spec).
