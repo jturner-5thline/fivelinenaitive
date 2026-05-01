@@ -410,6 +410,56 @@ ${financialsBlock ? "- When the recipient asks about financials, deal size, ARR/
       console.warn("[smart-email-ai] Failed to load company email style guide:", e);
     }
 
+    // ─── Load per-contact cadence profile (Learn My Cadence) ────
+    // The cadence profile is computed by the on-demand `learn-email-cadence`
+    // edge function from the user's own email_cache. We feed it into the
+    // draft prompt so generated replies match the user's historical tone
+    // and pacing for this specific contact. The card in the AI panel uses
+    // the same data to surface the "you typically follow up every N days"
+    // nudge — keeping the two surfaces in sync.
+    let cadenceBlock = "";
+    try {
+      const latestForCadence =
+        emailData ||
+        (threadData && (threadData.latestEmail || threadData.emails?.[0])) ||
+        null;
+      const cadenceContact = (latestForCadence?.from_email || "").toLowerCase();
+      if (cadenceContact) {
+        const { data: cadence } = await supabase
+          .from("email_cadence_profiles")
+          .select(
+            "contact_email, contact_name, avg_followup_interval_days, median_followup_interval_days, avg_response_time_hours, last_outbound_at, outbound_count, tone, relationship_type",
+          )
+          .eq("user_id", user.id)
+          .eq("contact_email", cadenceContact)
+          .maybeSingle();
+        if (cadence && cadence.outbound_count >= 3) {
+          const lines: string[] = [];
+          const c = cadence as any;
+          if (c.avg_followup_interval_days != null) {
+            lines.push(`- You typically follow up with this contact every ${Number(c.avg_followup_interval_days).toFixed(1)} days.`);
+          }
+          if (c.avg_response_time_hours != null) {
+            lines.push(`- Your typical response time to them: ${Number(c.avg_response_time_hours).toFixed(1)} hours.`);
+          }
+          const tone = (c.tone || {}) as any;
+          if (tone.formality) lines.push(`- Tone you usually use with them: ${tone.formality}.`);
+          if (tone.common_greeting) lines.push(`- Greeting you most often open with: "${tone.common_greeting}".`);
+          if (tone.avg_length_words) lines.push(`- Your typical message length to them: ~${tone.avg_length_words} words.`);
+          if (c.relationship_type) lines.push(`- Relationship type: ${c.relationship_type}.`);
+          if (c.last_outbound_at) {
+            const days = (Date.now() - new Date(c.last_outbound_at).getTime()) / 86400000;
+            lines.push(`- Days since your last outbound to them: ${days.toFixed(1)}.`);
+          }
+          if (lines.length > 0) {
+            cadenceBlock = `\nCONTACT CADENCE (learned from your past emails — match this rhythm and tone, do NOT call attention to it):\n${lines.join("\n")}\n`;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[smart-email-ai] Failed to load cadence profile:", e);
+    }
+
     let systemPrompt = "";
     let userPrompt = "";
 
