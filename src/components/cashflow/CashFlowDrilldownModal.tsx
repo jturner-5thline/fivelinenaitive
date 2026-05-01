@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, X } from 'lucide-react';
+import { Search, X, Pencil, Trash2, Check } from 'lucide-react';
 import {
   generateOccurrences,
   resolveCategoryToGridRow,
@@ -11,6 +11,8 @@ import {
   CANONICAL_TO_GRID_ROW,
   applyVariance,
   type ScheduledCashFlow,
+  type FrequencyType,
+  type FlowType,
 } from './scheduledCashFlows';
 import { fmt } from './formatters';
 
@@ -37,6 +39,10 @@ interface Props {
   onClose: () => void;
   context: DrilldownContext | null;
   items: ScheduledCashFlow[];
+  /** Optional inline-edit hook. When provided, each row shows an Edit button. */
+  onUpdateEntry?: (id: string, patch: Partial<ScheduledCashFlow>) => Promise<boolean> | boolean;
+  /** Optional delete hook. When provided, each row shows a Delete button. */
+  onDeleteEntry?: (id: string) => Promise<boolean> | boolean;
 }
 
 function parseDate(s: string): Date {
