@@ -263,7 +263,7 @@ export function DealsFlyoutMenu() {
                 onClick={handleChevronClick}
                 aria-haspopup="menu"
                 aria-expanded={open}
-                aria-label="Open active deals submenu"
+                aria-label="Open recently opened deals submenu"
                 className={cn(
                   'absolute right-1 top-1/2 -translate-y-1/2 z-10',
                   'flex h-6 w-6 items-center justify-center rounded-sm',
