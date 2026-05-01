@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, ArrowRight, Inbox, RefreshCw, AlertCircle, Clock, TrendingUp, Zap } from 'lucide-react';
+import { Mail, ArrowRight, Inbox, RefreshCw, AlertCircle, Clock, TrendingUp, Zap, CheckCircle2 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -344,8 +344,11 @@ export function EmailIntelligenceWidget() {
 
         <CardContent className="space-y-1.5 overflow-auto flex-1">
           {displayEmails.length === 0 ? (
-            <div className="text-center py-6">
-              <p className="text-sm text-muted-foreground">No recent emails found.</p>
+            <div className="h-full min-h-[140px] flex flex-col items-center justify-center gap-2 text-center px-4">
+              <CheckCircle2 className="h-6 w-6 text-emerald-400/80" />
+              <p className="text-sm font-medium text-foreground/90">
+                No updates — you're all caught up.
+              </p>
             </div>
           ) : (
             displayEmails.map(email => (
