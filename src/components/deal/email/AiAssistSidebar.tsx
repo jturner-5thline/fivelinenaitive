@@ -187,7 +187,6 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   // is collapsed by default so the chip row above stays the primary
   // at-a-glance summary.
   const [draftOpen, setDraftOpen] = useState(false);
-  const [tasksOpen, setTasksOpen] = useState(false);
   const [dealDetailsOpen, setDealDetailsOpen] = useState(false);
   // Snapshot of the slim deal-context summary surfaced in the sidebar header
   // card. Forwarded to the edge function so the draft tone reflects whether
