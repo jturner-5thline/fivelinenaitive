@@ -67,14 +67,14 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
           .select('*')
           .eq('deal_id', dealId)
           .order('created_at', { ascending: false }),
-        // Internal column of the Data Room: vdr_documents that have NOT
-        // been shared to the external data room and are real files (not
-        // folders) and have not been soft-deleted.
+        // Internal column of the Data Room: vdr_documents that are real
+        // files (not folders) and have not been soft-deleted. Files that
+        // have ALSO been shared to the external Data Room still live in
+        // Internal (copy/share semantics) and are therefore included here.
         supabase
           .from('vdr_documents')
           .select('id, deal_id, filename, file_path, file_size, file_type, folder_path, uploaded_by, created_at, shared_to_dataroom, is_folder, deleted_at')
           .eq('deal_id', dealId)
-          .eq('shared_to_dataroom', false)
           .eq('is_folder', false)
           .is('deleted_at', null)
           .order('created_at', { ascending: false }),
