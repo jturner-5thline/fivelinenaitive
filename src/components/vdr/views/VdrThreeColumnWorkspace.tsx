@@ -33,6 +33,7 @@ import { useUploadedItems } from '@/hooks/useUploadedItems';
 import { useChecklistCategories } from '@/hooks/useChecklistCategories';
 import { useDealOutstandingItemsByKey } from '@/hooks/useDealOutstandingItemsByKey';
 import { useDealCustomFolders } from '@/hooks/useDealCustomFolders';
+import { useVdrFolderPreferences } from '@/hooks/useVdrFolderPreferences';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
@@ -77,6 +78,9 @@ const DRAG_MIME = 'application/x-vdr-doc-ids';
 // category name + the IDs of every file currently visible in it so a drop
 // can bulk-share + (optionally) re-categorise into a Data Room folder.
 const DRAG_CATEGORY_MIME = 'application/x-vdr-category';
+// Drag a folder header to reorder it within the same column. Distinct from
+// DRAG_CATEGORY_MIME (which moves files), so reorder drops are unambiguous.
+const DRAG_FOLDER_REORDER_MIME = 'application/x-vdr-folder-reorder';
 
 export function VdrThreeColumnWorkspace({
   dealId, documents, documentsLoading, onPreview, vdrDocs,
