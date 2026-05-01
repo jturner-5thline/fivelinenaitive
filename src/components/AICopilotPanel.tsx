@@ -444,7 +444,7 @@ export function AICopilotPanel() {
   const liveRegionRef = useRef<HTMLDivElement>(null);
   const messageQueueRef = useRef<string[]>([]);
   const isProcessingRef = useRef(false);
-  const { nudges, dismissNudge } = useProactiveNudges();
+  const { nudges, dismissNudge, dismissAllNudges } = useProactiveNudges();
   const isMobile = useIsMobile();
   const isOnline = useOnlineStatus();
   const location = useLocation();
@@ -1049,7 +1049,16 @@ export function AICopilotPanel() {
           <textarea
             ref={textareaRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value;
+              // Auto-dismiss any visible proactive nudges / suggestion bar as
+              // soon as the user starts typing so the input is never blocked
+              // or visually crowded by the suggestion stack.
+              if (v && !input && nudges.length > 0) {
+                dismissAllNudges();
+              }
+              setInput(v);
+            }}
             onKeyDown={handleKeyDown}
             placeholder="Ask anything..."
             rows={1}
