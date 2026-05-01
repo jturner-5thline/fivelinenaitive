@@ -168,6 +168,45 @@ export function resolveCategoryToGridRow(category: string): string {
   return CANONICAL_TO_GRID_ROW[canonical] || canonical;
 }
 
+/**
+ * Reverse of CANONICAL_TO_GRID_ROW: maps a Weekly-Report grid row key (which
+ * is what the inline "+ Add" cell popover uses for `category`) back to the
+ * canonical category that the Configure modal's Category <Select> can render.
+ *
+ * Without this, an inline-add saves `category: "Payroll - Salaries"` and the
+ * Configure modal shows the row with an empty Category field (because that
+ * label isn't in CASH_OUT_CATEGORIES). After resolving, we save the canonical
+ * `"Payroll Expense"` instead — which is in the dropdown — and
+ * `resolveCategoryToGridRow` still resolves it back to the correct row at
+ * render time.
+ */
+const GRID_ROW_TO_CANONICAL: Record<string, string> = (() => {
+  const out: Record<string, string> = {};
+  for (const [canonical, gridRow] of Object.entries(CANONICAL_TO_GRID_ROW)) {
+    // Only set if not already present so the first canonical wins on collisions.
+    if (!out[gridRow]) out[gridRow] = canonical;
+  }
+  // Aliases that share a target grid row but should map back to a single
+  // canonical for the dropdown. The CANONICAL_TO_GRID_ROW pass above already
+  // covers most cases; explicit overrides go here.
+  out['Payroll - Taxes & Benefits'] = 'Payroll Expense';
+  out['Office & Admin'] = 'Other Cash Out';
+  out['Travel & Entertainment'] = 'Other Cash Out';
+  out['Rent & Occupancy'] = 'Other Cash Out';
+  out['Insurance'] = 'Other Cash Out';
+  return out;
+})();
+
+/**
+ * Given a category as it would appear in the Weekly Report grid (e.g. an
+ * inline-add row key like "Payroll - Salaries" or "Retainers"), return the
+ * canonical category that matches an option in the Configure modal's
+ * Category dropdown. Falls back to the input if no mapping is needed.
+ */
+export function gridRowToCanonicalCategory(gridRowKey: string): string {
+  return GRID_ROW_TO_CANONICAL[gridRowKey] || gridRowKey;
+}
+
 export const DAY_OF_WEEK_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /**
