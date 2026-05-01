@@ -391,10 +391,29 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
    */
   const buildDealContextHint = useCallback(() => {
     if (!dealContextSummary) return undefined;
+    const f = dealContextSummary.financials;
+    const fmt = (n: number | null) =>
+      n == null ? null : n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `$${Math.round(n / 1_000)}k` : `$${Math.round(n)}`;
     return {
+      deal_name: dealContextSummary.dealName || undefined,
       status: dealContextSummary.status,
       stage: dealContextSummary.stage,
       days_in_stage: dealContextSummary.daysInStage,
+      // Headline financials sourced from Deal Space — let the AI cite real
+      // numbers instead of leaving placeholders when the lender asks about
+      // size, ARR, or margins.
+      financials: {
+        deal_size: f.dealSize,
+        deal_size_display: fmt(f.dealSize),
+        arr: f.arr,
+        arr_display: fmt(f.arr),
+        mrr: f.mrr,
+        mrr_display: fmt(f.mrr),
+        ttm_revenue: f.ttmRevenue,
+        ttm_revenue_display: fmt(f.ttmRevenue),
+        ebitda: f.ebitda,
+        ebitda_display: fmt(f.ebitda),
+      },
       active_lenders: dealContextSummary.lenderCounts.active,
       total_lenders: dealContextSummary.lenderCounts.total,
       open_outstanding_items: dealContextSummary.outstanding.openCount,
@@ -404,6 +423,14 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             days_overdue: dealContextSummary.outstanding.mostOverdue.daysOverdue,
           }
         : null,
+      // Up to 5 open items so the AI can match against email topic
+      // keywords (e.g. lender asks about "cap table" → AI sees the
+      // matching outstanding item and can promise a concrete ETA).
+      open_items: dealContextSummary.outstanding.openItems.map((it) => ({
+        description: it.description,
+        due_date: it.dueDate,
+        days_overdue: it.daysOverdue,
+      })),
       last_status_note: dealContextSummary.lastStatusNote
         ? {
             note: dealContextSummary.lastStatusNote.note,
