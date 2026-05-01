@@ -770,6 +770,12 @@ export function VdrThreeColumnWorkspace({
   ) => {
     const isSelected = column === 'internal' ? internalSelected.has(doc.id) : dataroomSelected.has(doc.id);
     const toggle = column === 'internal' ? toggleInternal : toggleDataroom;
+    const dataroomFolderRaw =
+      ((doc as any).dataroom_folder_path ?? doc.folder_path ?? '/') as string;
+    const dataroomFolderLabel =
+      !dataroomFolderRaw || dataroomFolderRaw === '/' ? 'Uncategorized' : dataroomFolderRaw;
+    const internalFolderLabel =
+      !doc.folder_path || doc.folder_path === '/' ? 'Uncategorized' : doc.folder_path;
     return (
       <ContextMenu key={doc.id}>
         <ContextMenuTrigger>
@@ -799,6 +805,33 @@ export function VdrThreeColumnWorkspace({
             {getIngestionIcon((doc as any).ingestion_status)}
             {getFileIcon(doc.filename)}
             <span className="flex-1 min-w-0 truncate font-medium">{doc.filename}</span>
+            {column === 'internal' ? (
+              doc.shared_to_dataroom ? (
+                <Badge
+                  variant="green"
+                  className="flex-shrink-0 text-[9px] px-1.5 py-0 leading-tight max-w-[140px] truncate"
+                  title={`Shared to Data Room → ${dataroomFolderLabel}`}
+                >
+                  In Data Room · {dataroomFolderLabel}
+                </Badge>
+              ) : (
+                <Badge
+                  variant="gray"
+                  className="flex-shrink-0 text-[9px] px-1.5 py-0 leading-tight opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Internal only"
+                >
+                  Internal only
+                </Badge>
+              )
+            ) : (
+              <Badge
+                variant="blue"
+                className="flex-shrink-0 text-[9px] px-1.5 py-0 leading-tight max-w-[140px] truncate"
+                title={`Data Room folder: ${dataroomFolderLabel}`}
+              >
+                {dataroomFolderLabel}
+              </Badge>
+            )}
             <span className="text-[10px] text-muted-foreground tabular-nums flex-shrink-0 opacity-60 group-hover:opacity-100">
               {formatSize(doc.file_size)}
             </span>
