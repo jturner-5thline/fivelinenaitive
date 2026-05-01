@@ -605,6 +605,39 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   );
   const isSelectedLoading = loadingTones[selected];
 
+  /**
+   * Render the draft body as plain text for the preview pane. The body may
+   * contain an HTML signature (e.g. "<p><strong>James H. Turner V…</strong></p>")
+   * because the user's stored signature is rich-text. We strip tags and
+   * decode common entities for display only — the raw body (with HTML
+   * preserved) is what gets inserted into the composer so the outgoing
+   * email renders the signature properly.
+   */
+  const selectedPreviewText = useMemo(() => {
+    const raw = selectedOption?.body ?? '';
+    if (!raw) return '';
+    // Skip work if the body has no tags / entities at all.
+    if (!/[<&]/.test(raw)) return raw;
+    return raw
+      // Block-level breaks → newline so the signature stays multi-line.
+      .replace(/<\s*br\s*\/?>/gi, '\n')
+      .replace(/<\/\s*(p|div|li|tr|h[1-6])\s*>/gi, '\n')
+      .replace(/<\s*(p|div|li|tr|h[1-6])(\s[^>]*)?>/gi, '')
+      // Strip remaining tags.
+      .replace(/<[^>]+>/g, '')
+      // Decode common HTML entities.
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
+      // Trim trailing spaces on each line, collapse 3+ blank lines to 2.
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }, [selectedOption]);
+
   const handleInsert = () => {
     if (!selectedOption) return;
     // Drafts are body-only — the reply lives in the existing thread, so the
@@ -1149,7 +1182,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                     className="max-w-full break-words text-[12px] leading-relaxed text-foreground/85"
                     style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'normal', minHeight: 96 }}
                   >
-                    {selectedOption.body ?? ''}
+                    {selectedPreviewText}
                   </div>
                 </div>
               ) : (
