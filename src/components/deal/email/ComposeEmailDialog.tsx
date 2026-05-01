@@ -697,6 +697,8 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
       is_follow_up: false,
       needs_response: false,
       category: 'deal',
+      _cc: ccRecipients.length > 0 ? ccRecipients : undefined,
+      _bcc: bccRecipients.length > 0 ? bccRecipients : undefined,
     };
   };
 
