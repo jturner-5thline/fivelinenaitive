@@ -499,6 +499,23 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "link_contact_to_deal",
+      description: "Associate an existing contact with a deal so the contact appears on the deal's people list. Requires user confirmation before writing. Pass contact_id (preferred) or contact_search (name/email) plus deal_id (preferred) or deal_search.",
+      parameters: {
+        type: "object",
+        properties: {
+          contact_id: { type: "string", description: "Contact UUID. Preferred." },
+          contact_search: { type: "string", description: "Contact name or email if contact_id is unknown." },
+          deal_id: { type: "string", description: "Deal UUID. Preferred." },
+          deal_search: { type: "string", description: "Deal name if deal_id is unknown." },
+          role: { type: "string", description: "Optional role on the deal (e.g. 'Borrower CFO', 'Sponsor', 'Counsel')." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
@@ -512,6 +529,8 @@ function selectTools(page: string, entityType?: string) {
     "get_pipelines", "move_deal_pipeline",
     // Always-available kitchen-sink reads so the model never says "I don't have that data".
     "get_deal_full", "get_lender_full", "get_contact_full", "get_company_full",
+    // Always-available link/write actions (still gated by confirmation card).
+    "link_contact_to_deal",
   ]);
 
   if (page.includes("lender")) {
@@ -1590,6 +1609,65 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         deals: dealsRes.data || [],
       };
     }
+    case "link_contact_to_deal": {
+      // Resolve contact
+      let contactId = args.contact_id as string | undefined;
+      let contactName = "";
+      if (!contactId && args.contact_search) {
+        const term = String(args.contact_search).trim();
+        const { data: matches } = await supabase
+          .from("contacts")
+          .select("id, first_name, last_name, email")
+          .or(`email.ilike.%${term}%,first_name.ilike.%${term}%,last_name.ilike.%${term}%`)
+          .limit(5);
+        if (!matches?.length) return { error: `No contact found matching "${term}".` };
+        if (matches.length > 1) {
+          return {
+            error: "Multiple contacts match — ask the user which one.",
+            candidates: matches.map((c: any) => ({ id: c.id, name: `${c.first_name || ""} ${c.last_name || ""}`.trim(), email: c.email })),
+          };
+        }
+        contactId = matches[0].id;
+        contactName = `${matches[0].first_name || ""} ${matches[0].last_name || ""}`.trim() || matches[0].email;
+      } else if (contactId) {
+        const { data: c } = await supabase.from("contacts").select("first_name, last_name, email").eq("id", contactId).single();
+        contactName = c ? (`${c.first_name || ""} ${c.last_name || ""}`.trim() || c.email) : "Unknown contact";
+      }
+      if (!contactId) return { error: "Provide contact_id or contact_search." };
+
+      // Resolve deal
+      let dealId = args.deal_id as string | undefined;
+      let dealName = "";
+      if (!dealId && args.deal_search) {
+        const { data: matches } = await supabase
+          .from("deals").select("id, company").ilike("company", `%${args.deal_search}%`).limit(5);
+        if (!matches?.length) return { error: `No deal found matching "${args.deal_search}".` };
+        if (matches.length > 1) {
+          return {
+            error: "Multiple deals match — ask the user which one.",
+            candidates: matches.map((d: any) => ({ id: d.id, name: d.company })),
+          };
+        }
+        dealId = matches[0].id;
+        dealName = matches[0].company;
+      } else if (dealId) {
+        const { data: d } = await supabase.from("deals").select("company").eq("id", dealId).single();
+        dealName = d?.company || "Unknown deal";
+      }
+      if (!dealId) return { error: "Provide deal_id or deal_search." };
+
+      // Already linked?
+      const { data: existing } = await supabase
+        .from("contact_deals").select("id").eq("contact_id", contactId).eq("deal_id", dealId).maybeSingle();
+      if (existing) return { info: `${contactName} is already linked to ${dealName}.` };
+
+      return {
+        action: "confirm_required",
+        action_type: "link_contact_to_deal",
+        params: { contact_id: contactId, deal_id: dealId, role: args.role || null, contact_name: contactName, deal_name: dealName },
+        preview: `Link ${contactName} to ${dealName}${args.role ? ` as ${args.role}` : ""}?`,
+      };
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -1719,6 +1797,26 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         user_id: userId,
       });
       return { success: true, message: `Updated ${params.deal_name}: ${changes.join(', ')}`, actionType: "update_deal_fields", params: { deal_id: params.deal_id } };
+    }
+    case "link_contact_to_deal": {
+      const { error } = await supabase.from("contact_deals").insert({
+        contact_id: params.contact_id,
+        deal_id: params.deal_id,
+        role: params.role || null,
+      });
+      if (error) return { success: false, error: error.message };
+      await supabase.from("activity_logs").insert({
+        deal_id: params.deal_id,
+        activity_type: "contact_linked",
+        description: `Contact "${params.contact_name}" linked to deal${params.role ? ` as ${params.role}` : ""} via AI Copilot`,
+        user_id: userId,
+      });
+      return {
+        success: true,
+        message: `Linked ${params.contact_name} to ${params.deal_name}`,
+        actionType: "link_contact_to_deal",
+        params: { deal_id: params.deal_id, contact_id: params.contact_id },
+      };
     }
     default:
       return { success: false, error: `Unknown action: ${actionType}` };

@@ -58,7 +58,7 @@ export function DealsProvider({ children }: { children: ReactNode }) {
         'update_deal_stage', 'update_lender_status', 'toggle_milestone',
         'add_milestone', 'create_outstanding_item', 'complete_outstanding_item',
         'delete_outstanding_item', 'add_deal_note', 'update_deal_flag',
-        'update_deal_fields', 'move_deal_pipeline',
+        'update_deal_fields', 'move_deal_pipeline', 'link_contact_to_deal',
       ];
       if (detail?.actionType && refreshTypes.includes(detail.actionType)) {
         fetchDeals();
