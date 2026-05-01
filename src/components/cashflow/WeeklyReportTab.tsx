@@ -1321,6 +1321,31 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
           </div>
         </div>
       )}
+
+      {/* Floating sticky horizontal scrollbar — pinned to viewport bottom while
+          the grid is in view and overflows horizontally. Mirrors grid scroll. */}
+      {stickyScroll.visible && (
+        <div
+          className="fixed left-0 right-0 z-40 pointer-events-none"
+          style={{ bottom: 0 }}
+          aria-hidden="true"
+        >
+          <div
+            ref={stickyScrollRef}
+            onScroll={handleStickyScroll}
+            className="pointer-events-auto overflow-x-auto overflow-y-hidden bg-background/80 backdrop-blur border-t border-border"
+            style={{
+              width: `${stickyScroll.viewportWidth}px`,
+              maxWidth: '100vw',
+              marginLeft: 'auto',
+              marginRight: 'auto',
+              height: 14,
+            }}
+          >
+            <div style={{ width: stickyScroll.contentWidth, height: 1 }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 });
