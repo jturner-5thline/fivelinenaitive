@@ -1108,7 +1108,12 @@ export function VdrThreeColumnWorkspace({
           const label = cat === UNCATEGORIZED ? 'Uncategorized' : cat;
           const isCustom = column === 'dataroom' && customFolderNameSet.has(cat);
           const isDropFolder = dropFolderTarget === `${column}:${cat}`;
-          const draggableHeader = column === 'internal' && cat !== UNCATEGORIZED && docs.length > 0;
+          // Headers are always draggable (except Uncategorized) so users can
+          // reorder folders within a column. Internal headers with files
+          // additionally carry the category-share payload for cross-column
+          // bulk-share via DRAG_CATEGORY_MIME.
+          const draggableHeader = cat !== UNCATEGORIZED;
+          const canShareCategory = column === 'internal' && docs.length > 0;
           const customFolderRecord = isCustom ? customFolders.find(f => f.name === cat) : undefined;
           return (
             <div key={cat} className="">
@@ -1116,7 +1121,22 @@ export function VdrThreeColumnWorkspace({
                 draggable={draggableHeader}
                 onDragStart={
                   draggableHeader
-                    ? (e) => handleCategoryDragStart(e, cat, docs.map(d => d.id))
+                    ? (e) => {
+                        // Always set the reorder payload.
+                        e.dataTransfer.setData(
+                          DRAG_FOLDER_REORDER_MIME,
+                          JSON.stringify({
+                            name: cat,
+                            source: column,
+                            kind: isCustom ? 'custom' : 'category',
+                          }),
+                        );
+                        e.dataTransfer.effectAllowed = 'move';
+                        // Internal-with-files: also enable cross-column share.
+                        if (canShareCategory) {
+                          handleCategoryDragStart(e, cat, docs.map(d => d.id));
+                        }
+                      }
                     : undefined
                 }
                 onDragOver={
