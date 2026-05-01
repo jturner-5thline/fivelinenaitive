@@ -568,6 +568,29 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     if (q && q !== searchQuery) setSearchQuery(q);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Apply the inbox deal filter from (a) the ?inboxDeal=<id> URL param when
+  // the inbox is opened from the sidebar Deals flyout, and (b) a window
+  // event broadcast by the same flyout when the inbox is already mounted.
+  // Both paths ultimately set the same selectedDealFilterId state that the
+  // legacy chips row used to control.
+  useEffect(() => {
+    if (!isInboxScope) return;
+    const id = searchParams.get('inboxDeal');
+    if (id && id !== selectedDealFilterId) setSelectedDealFilterId(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, isInboxScope]);
+
+  useEffect(() => {
+    if (!isInboxScope) return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { dealId?: string } | undefined;
+      if (!detail?.dealId) return;
+      setSelectedDealFilterId(detail.dealId);
+    };
+    window.addEventListener('naitive:select-inbox-deal', handler);
+    return () => window.removeEventListener('naitive:select-inbox-deal', handler);
+  }, [isInboxScope]);
   // Persist q to URL (debounced via the same debounce that runs search).
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
