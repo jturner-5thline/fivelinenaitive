@@ -18221,6 +18221,7 @@ export type Database = {
           chunk_count: number | null
           company_id: string | null
           created_at: string
+          dataroom_folder_path: string | null
           deal_id: string
           deleted_at: string | null
           deleted_by: string | null
@@ -18243,6 +18244,7 @@ export type Database = {
           chunk_count?: number | null
           company_id?: string | null
           created_at?: string
+          dataroom_folder_path?: string | null
           deal_id: string
           deleted_at?: string | null
           deleted_by?: string | null
@@ -18265,6 +18267,7 @@ export type Database = {
           chunk_count?: number | null
           company_id?: string | null
           created_at?: string
+          dataroom_folder_path?: string | null
           deal_id?: string
           deleted_at?: string | null
           deleted_by?: string | null
