@@ -436,6 +436,69 @@ const tools = [
       },
     },
   },
+  // ── Kitchen-sink read tools ─────────────────────────────────
+  // These return EVERYTHING the AI could need about an entity in
+  // a single round-trip. Use them whenever the user asks any
+  // specific data question about a deal / lender / contact /
+  // company so we never reply "I don't have that data."
+  {
+    type: "function",
+    function: {
+      name: "get_deal_full",
+      description: "Fetch the COMPLETE record for a deal in one call: core deal fields, full deal write-up (ARR, revenue, EBITDA, gross margins, use of proceeds, existing debt, business model, customer base, team, highlights), all lenders with stages and notes, all outstanding items, all milestones, recent activity log entries, deal memo, financial comments, all attached documents (data room + deal space), and pipeline info. Always prefer this tool over get_deal / get_deal_writeup / get_deal_lenders when the user asks any specific question about a deal — it guarantees you have the answer in context. Pass either deal_id (preferred) or search (company name).",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID. Preferred." },
+          search: { type: "string", description: "Company name (or partial). Used only if deal_id is not provided. Returns the single best match." },
+          activity_limit: { type: "number", description: "Max activity log entries to include. Default 30, max 100." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_lender_full",
+      description: "Fetch the COMPLETE record for a lender from the master lender directory in one call: full profile (type, tier, geo, loan types, industries, deal size, sponsorship/cash burn/sub-debt criteria, contact info), every deal they are on with current stage and last update, recent interaction history, and tracking notes. Always prefer this over search_lenders when the user asks specific questions about a single lender. Pass either lender_id or search (lender name).",
+      parameters: {
+        type: "object",
+        properties: {
+          lender_id: { type: "string", description: "Master lender UUID. Preferred." },
+          search: { type: "string", description: "Lender name (or partial). Used only if lender_id is not provided." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_contact_full",
+      description: "Fetch the COMPLETE record for a contact in one call: profile (name, title, emails, phones, seniority, owner), associated company, all deals they are linked to, recent activities, and lifecycle/lead source. Pass either contact_id or search (name or email).",
+      parameters: {
+        type: "object",
+        properties: {
+          contact_id: { type: "string", description: "Contact UUID. Preferred." },
+          search: { type: "string", description: "Contact name OR email (or partial). Used only if contact_id is not provided." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_company_full",
+      description: "Fetch the COMPLETE record for a CRM company in one call: profile (industry, employees, revenue, ARR, location, lifecycle stage), all contacts at the company, all deals associated with the company, and recent activity. Pass either company_id, domain, or search (name).",
+      parameters: {
+        type: "object",
+        properties: {
+          company_id: { type: "string", description: "CRM company UUID. Preferred." },
+          domain: { type: "string", description: "Company domain (e.g. 'acme.com'). Used if company_id not provided." },
+          search: { type: "string", description: "Company name (or partial). Used if neither company_id nor domain is provided." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
