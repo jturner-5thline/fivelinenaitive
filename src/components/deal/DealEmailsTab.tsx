@@ -1705,7 +1705,12 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                       <Filter className="h-3.5 w-3.5" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent side="bottom" align="start" className="w-64 p-3 space-y-3">
+                  <PopoverContent
+                    side="bottom"
+                    align="start"
+                    className="w-64 p-3 space-y-3 z-[80] pointer-events-auto"
+                    onOpenAutoFocus={(e) => e.preventDefault()}
+                  >
                     <p className="text-xs font-semibold">Filters</p>
                     <div>
                       <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Sender</label>
