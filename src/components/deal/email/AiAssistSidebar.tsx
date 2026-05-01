@@ -976,6 +976,46 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             </div>
           )}
 
+          {/* Top-level Schedule Meeting action — peer of Draft Reply.
+              Surfaces the scheduling workspace at panel-level (instead of
+              hiding it behind the Draft Reply chip row) so the user can
+              propose times even when they don't intend to draft a reply
+              first. The card itself is still the existing
+              MeetingSchedulerCard — same two-stage flow:
+                1. Insert proposal text into the composer.
+                2. After recipient confirms, click "Create Event" to write
+                   the calendar event + Google Meet link.
+              We never auto-create events. */}
+          <div className="space-y-2">
+            <Button
+              type="button"
+              variant={schedulerOpen ? 'secondary' : 'outline'}
+              size="sm"
+              className="w-full justify-start gap-2 h-8 text-[12px] font-semibold uppercase tracking-[0.12em]"
+              onClick={() => setSchedulerOpen((v) => !v)}
+              aria-expanded={schedulerOpen}
+            >
+              <CalendarClock className="h-3.5 w-3.5 text-primary" />
+              <span className="text-muted-foreground group-hover:text-foreground">
+                Schedule Meeting
+              </span>
+              <div className="flex-1" />
+              <ChevronDown
+                className={cn('h-3 w-3 text-muted-foreground transition-transform', !schedulerOpen && '-rotate-90')}
+              />
+            </Button>
+            {schedulerOpen && (
+              <MeetingSchedulerCard
+                recipientEmail={thread.latestEmail?.from_email}
+                recipientName={thread.latestEmail?.from_name || undefined}
+                threadSubject={thread.subject}
+                dealName={dealName}
+                onInsert={(text) => onInsertDraft(text)}
+                onClose={() => setSchedulerOpen(false)}
+              />
+            )}
+          </div>
+
           {/* Unified Draft reply module — single card containing the section
               header, variant selector, one shared draft preview, and (in the
               footer below) the action row. Replaces the legacy "Draft AI
