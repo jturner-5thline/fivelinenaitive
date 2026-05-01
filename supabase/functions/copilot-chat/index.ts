@@ -2119,6 +2119,11 @@ Other tools when the question is broader / not entity-specific:
 - Tasks → get_tasks
 - Activity feed across deals → get_activity_log
 - Find deals/lenders by keyword → search_deals / search_lenders
+
+Communications context (use whenever the question references emails, calls, meetings, or scheduling):
+- "What did X say", "find emails about/from", "recent messages with Y" → search_emails (synced inbox)
+- "What's on my calendar", "do I have a meeting with X", "next call with Y" → get_upcoming_events
+- "What did we discuss with X", "summary of the call", "last meeting on this deal" → get_recent_meetings (Claap recordings with summaries + transcripts)
 ${entityType === "deal" && entityId ? `\nThe user is viewing deal ID: ${entityId}. Use this ID when calling deal-specific tools.` : ''}
 
 CORE RESPONSIBILITIES:
