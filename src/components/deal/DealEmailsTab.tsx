@@ -83,8 +83,8 @@ import {
 } from '@/hooks/useEmailLabels';
 import { EmailLabelsManageDialog, labelSwatch } from './email/EmailLabelsManageDialog';
 import { Tag, Plus as PlusIcon } from 'lucide-react';
-import { DealFilterChipsRow } from '@/components/dashboard/inbox/DealFilterChipsRow';
 import { DealFilterSummaryCard } from '@/components/dashboard/inbox/DealFilterSummaryCard';
+import { SIDEBAR_DEAL_FILTER_EVENT } from '@/components/sidebar/DealsFlyoutMenu';
 import { LabelFilterChipsRow } from '@/components/dashboard/inbox/LabelFilterChipsRow';
 import {
   SYSTEM_LABELS,
