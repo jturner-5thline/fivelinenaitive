@@ -547,12 +547,12 @@ TRACKING:
 `;
 
         const optionsBlock = wantSingle
-          ? `  "option_1_body": "string — ONLY the email body text the user will send. No subject. No greeting like 'Subject:'. No labels. No meta-commentary about the draft (do NOT say things like 'this draft acknowledges…', 'polished and professional', 'warm tone'). Just the email body, ready to paste into the reply composer.",
+          ? `  "option_1_body": "string — ONLY the email body text the user will send. No subject. No greeting like 'Subject:'. No labels. No meta-commentary about the draft (do NOT say things like 'this draft acknowledges…', 'polished and professional', 'warm tone'). NEVER include any disclaimer about the AI, the deal data source, or phrases like 'Generated using …', 'based on Deal Space', 'using deal data', or '[Deal Name] data' — that label is rendered separately in the UI, never in the email body. Just the email body, ready to paste into the reply composer.",
   "option_1_tone_label": "${tone === "concise" ? "Concise" : "Balanced"}",
   "recommended_option": 1,`
-          : `  "option_1_body": "string — ONLY the email body text the user will send. No subject. No labels. No meta-commentary about the draft. Just the email body.",
+          : `  "option_1_body": "string — ONLY the email body text the user will send. No subject. No labels. No meta-commentary about the draft. NEVER include 'Generated using …' or any deal-data-source disclaimer in the body. Just the email body.",
   "option_1_tone_label": "Concise",
-  "option_2_body": "string — ONLY the email body text the user will send. No subject. No labels. No meta-commentary about the draft. Just the email body.",
+  "option_2_body": "string — ONLY the email body text the user will send. No subject. No labels. No meta-commentary about the draft. NEVER include 'Generated using …' or any deal-data-source disclaimer in the body. Just the email body.",
   "option_2_tone_label": "Balanced",
   "recommended_option": 2,`;
 

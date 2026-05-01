@@ -495,8 +495,18 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
         const r = data?.result;
         if (!r || r.raw) throw new Error('Invalid response from AI');
 
-        const body = r.option_1_body;
+        let body = r.option_1_body as string | undefined;
         if (!body) throw new Error('No draft returned');
+        // Defensive scrub: the prompt forbids it, but if a model ever leaks
+        // a "Generated using <Deal> deal data" / "based on Deal Space" style
+        // disclaimer into the body, strip those lines so they never appear
+        // in the user's outgoing email. The label only belongs in the UI.
+        body = body
+          .split('\n')
+          .filter((ln) => !/^(?:\s*[\[(]?\s*)?(?:generated using|based on (?:the )?deal space|using deal[- ]space data|using\s+[\w'’&.\- ]+?\s+deal data)\b/i.test(ln))
+          .join('\n')
+          .replace(/\n{3,}/g, '\n\n')
+          .trim();
 
         const newOpt: DraftOption = {
           index: 1,
