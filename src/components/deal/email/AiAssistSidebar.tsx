@@ -233,8 +233,13 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
     !isMock,
     !!(thread.latestEmail.body_html || thread.latestEmail.body_text),
   );
-  const drAttachments = (latestFull?.attachments && latestFull.attachments.length > 0)
-    ? latestFull.attachments
+  // Strictly use attachments from the specific message being viewed (the
+  // latest message in this thread). Once the per-message fetch resolves,
+  // trust it as the only source of truth — never inherit attachments from
+  // sibling messages via the thread-level prop, which can leak older
+  // attachments into a reply that has none of its own.
+  const drAttachments = latestFull
+    ? (latestFull.attachments || [])
     : (thread.latestEmail.attachments || []);
   const drUploadable = drAttachments.filter(a => !a.is_inline && !!a.id);
   const { suggest: drSuggest, suggesting: drSuggesting, commitUpload: drCommitUpload, uploading: drUploading } = useEmailToDataRoom();
