@@ -881,6 +881,14 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                 const labelText = isTransferAccount
                   ? (rowDef as WeeklyRow).transferAccount || rowDef.key
                   : rowDef.key;
+                // For Debt Advisory subcategory rows, detect whether the row
+                // is completely empty across every visible week. When so,
+                // surface a subtle inline hint so users know how to populate
+                // it instead of seeing a blank row with no explanation.
+                const isDebtAdvChild = isChild && rowDef.parent === DEBT_ADV_PARENT_KEY;
+                const debtAdvChildEmpty = isDebtAdvChild && visibleWeeks.every(
+                  ([, entry]) => !Number(entry?.[rowDef.key] as number),
+                );
                 return (
                   <tr
                     key={rowDef.key}
@@ -900,6 +908,15 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                     >
                       {isParent && (parentCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />)}
                       {labelText}
+                      {debtAdvChildEmpty && (
+                        <span
+                          className="ml-2 italic text-muted-foreground/70"
+                          style={{ fontSize: '0.6875rem', fontWeight: 400 }}
+                          title={`Add Configure entries with Category = ${labelText} to populate this row.`}
+                        >
+                          Add Configure entries with Category = {labelText} to populate.
+                        </span>
+                      )}
                     </td>
                     {visibleWeeks.map(([weekKey, entry]) => {
                       const transferAcc = (rowDef as WeeklyRow).transferAccount;
