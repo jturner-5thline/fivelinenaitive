@@ -735,13 +735,30 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     return set;
   }, [emailDealIdMap]);
 
+  // Merge live all-mail search hits (archived + labeled mail) into the
+  // pool of emails fed to filtering / AI ranking so search can return mail
+  // that lives outside the INBOX label.
+  const emailsWithSearchHits = useMemo<MockEmail[]>(() => {
+    if (!isInboxScope || !searchQuery.trim() || allMailSearch.results.length === 0) {
+      return emails;
+    }
+    const seen = new Set(emails.map((e) => e.id));
+    const additions = allMailSearch.results.filter((e) => !seen.has(e.id));
+    if (additions.length === 0) return emails;
+    return [...emails, ...additions];
+  }, [emails, allMailSearch.results, isInboxScope, searchQuery]);
+
   const filteredEmails = useMemo(() => {
     // When a deal chip is active, span the entire loaded mailbox (inbox + sent)
     // chronologically — the user is following a specific deal conversation,
     // not a folder. Otherwise honor the active sidebar item.
-    let filtered = (isInboxScope && selectedDealFilterId)
-      ? [...emails]
-      : emails.filter(activeItem.filterFn);
+    // While searching in inbox scope, bypass the sidebar item filter so
+    // results from outside INBOX (archived / labeled mail) aren't dropped.
+    const isSearching = isInboxScope && !!searchQuery.trim();
+    const pool = isSearching ? emailsWithSearchHits : emails;
+    let filtered = isSearching || (isInboxScope && selectedDealFilterId)
+      ? [...pool]
+      : pool.filter(activeItem.filterFn);
 
     // Deal filter (inbox scope only)
     if (isInboxScope && selectedDealFilterId) {
@@ -830,7 +847,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       );
     }
     return filtered;
-  }, [emails, activeItem, viewFilter, chipFilter, categoryTab, searchQuery, searchFilters, classifierEntities, aiSearchActive, aiSearch.result, isInboxScope, selectedDealFilterId, emailDealIdMap, orgCtx, selectedLabelFilterId, labelAssignments]);
+  }, [emails, emailsWithSearchHits, activeItem, viewFilter, chipFilter, categoryTab, searchQuery, searchFilters, classifierEntities, aiSearchActive, aiSearch.result, isInboxScope, selectedDealFilterId, emailDealIdMap, orgCtx, selectedLabelFilterId, labelAssignments]);
 
   // Candidate set for AI search = the same list pre-search (so categories/folders
   // narrow the AI search scope as the spec requires).
