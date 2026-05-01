@@ -83,8 +83,8 @@ import {
 } from '@/hooks/useEmailLabels';
 import { EmailLabelsManageDialog, labelSwatch } from './email/EmailLabelsManageDialog';
 import { Tag, Plus as PlusIcon } from 'lucide-react';
-import { DealFilterChipsRow } from '@/components/dashboard/inbox/DealFilterChipsRow';
 import { DealFilterSummaryCard } from '@/components/dashboard/inbox/DealFilterSummaryCard';
+import { SIDEBAR_DEAL_FILTER_EVENT } from '@/components/sidebar/DealsFlyoutMenu';
 import { LabelFilterChipsRow } from '@/components/dashboard/inbox/LabelFilterChipsRow';
 import {
   SYSTEM_LABELS,
@@ -568,6 +568,35 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     if (q && q !== searchQuery) setSearchQuery(q);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Apply the inbox deal filter from (a) the ?inboxDeal=<id> URL param when
+  // the inbox is opened from the sidebar Deals flyout, and (b) a window
+  // event broadcast by the same flyout when the inbox is already mounted.
+  // Both paths ultimately set the same selectedDealFilterId state that the
+  // legacy chips row used to control.
+  useEffect(() => {
+    if (!isInboxScope) return;
+    const id = searchParams.get('inboxDeal');
+    if (id) {
+      if (id !== selectedDealFilterId) setSelectedDealFilterId(id);
+      // Strip from the URL so reloads / back-button don't re-apply it.
+      const next = new URLSearchParams(searchParams);
+      next.delete('inboxDeal');
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, isInboxScope]);
+
+  useEffect(() => {
+    if (!isInboxScope) return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { dealId?: string } | undefined;
+      if (!detail?.dealId) return;
+      setSelectedDealFilterId(detail.dealId);
+    };
+    window.addEventListener('naitive:select-inbox-deal', handler);
+    return () => window.removeEventListener('naitive:select-inbox-deal', handler);
+  }, [isInboxScope]);
   // Persist q to URL (debounced via the same debounce that runs search).
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
@@ -1975,16 +2004,10 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
               ))}
             </div>
 
-            {/* Deal filter chips — inbox-only secondary row that filters
-                the loaded mailbox to a single naitive deal using the same
-                deal-match engine that powers the "Likely: …" labels. */}
-            {isInboxScope && (
-              <DealFilterChipsRow
-                selectedDealId={selectedDealFilterId}
-                onSelect={setSelectedDealFilterId}
-                dealIdsWithEmails={dealIdsWithEmails}
-              />
-            )}
+            {/* Deal filter has moved to the left sidebar (DealsFlyoutMenu).
+                The active selection is reflected here by DealFilterSummaryCard
+                below. The chips row has been removed to keep the inbox header
+                free of redundant tag clutter. */}
 
             {activeFilterChips.length > 0 && (
               <div className="flex flex-wrap gap-1 px-3 py-1.5 border-b border-border/30">
