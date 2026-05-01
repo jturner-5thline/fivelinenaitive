@@ -321,6 +321,23 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
   const responded =
     thread.emails.length > 0 && thread.emails[0]?.from_name === 'You';
 
+  // Age-based staleness dot — only rendered for threads that classify as
+  // "Clients & Deals" so it doesn't clutter Asana / calendar / marketing
+  // rows. Computed from the most recent inbound message; resets to green
+  // the moment we send a reply.
+  const { entities: classifierEntities, orgCtx } = useEmailClassifierData();
+  const isClientsAndDeals = useMemo(() => {
+    try {
+      const cats = classifyEmail(latest as any, classifierEntities, orgCtx);
+      return cats.includes('clients_deals');
+    } catch {
+      return false;
+    }
+  }, [latest, classifierEntities, orgCtx]);
+  const staleBucket: StaleBucket | null = isClientsAndDeals
+    ? computeStaleBucket(latest.received_at, responded)
+    : null;
+
   const rowContent = (
     <div
       className={cn(
