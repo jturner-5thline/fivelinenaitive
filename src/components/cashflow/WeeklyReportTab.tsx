@@ -1135,6 +1135,8 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
         onClose={() => setDrilldown(null)}
         context={drilldown}
         items={scheduledItems || []}
+        onUpdateEntry={onUpdateScheduledEntry}
+        onDeleteEntry={onDeleteScheduledEntry}
       />
 
       {/* Inline Add One-Time Entry popover (cell click on receipts/disbursements) */}
