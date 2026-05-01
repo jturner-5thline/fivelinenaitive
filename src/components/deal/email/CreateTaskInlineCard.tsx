@@ -24,6 +24,14 @@ interface Props {
   subject?: string | null;
   senderEmail?: string | null;
   senderName?: string | null;
+  /**
+   * When true, the card renders fully expanded on mount (no collapsed
+   * "Create Task" trigger). Used when the parent (e.g. the Quick Actions
+   * toolbar) is itself the trigger and just wants the form to appear.
+   */
+  defaultOpen?: boolean;
+  /** Called when the user dismisses the card (Cancel). */
+  onCancel?: () => void;
 }
 
 function nextBusinessDay(): Date {
@@ -74,6 +82,8 @@ export function CreateTaskInlineCard({
   subject,
   senderEmail,
   senderName,
+  defaultOpen = false,
+  onCancel,
 }: Props) {
   const { user } = useAuth();
   const { company } = useCompany();
@@ -95,7 +105,7 @@ export function CreateTaskInlineCard({
       : `Follow up with ${senderFirstName}`;
   }, [senderFirstName, subject]);
 
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [title, setTitle] = useState(defaultTitle);
   const [dueDate, setDueDate] = useState<Date>(() => nextBusinessDay());
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -103,6 +113,7 @@ export function CreateTaskInlineCard({
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<{ taskId: string; dealName: string | null } | null>(null);
   const [assigneeLabel, setAssigneeLabel] = useState<string>('You');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Re-sync default title if the email/deal context shifts before opening.
   useEffect(() => {
@@ -134,13 +145,14 @@ export function CreateTaskInlineCard({
 
   const handleCreate = async () => {
     if (!user?.id) {
-      toast.error('Sign in required to create tasks');
+      setErrorMsg('Sign in required to create tasks');
       return;
     }
     if (!title.trim()) {
-      toast.error('Task name is required');
+      setErrorMsg('Task name is required');
       return;
     }
+    setErrorMsg(null);
     setBusy(true);
     try {
       let ownerId: string | null = user.id;
@@ -210,7 +222,7 @@ export function CreateTaskInlineCard({
       }
     } catch (e: any) {
       console.error('[CreateTaskInlineCard] create failed', e);
-      toast.error(e?.message || 'Failed to create task');
+      setErrorMsg('Failed to create task — try again.');
     } finally {
       setBusy(false);
     }
@@ -264,7 +276,15 @@ export function CreateTaskInlineCard({
         <div className="flex-1" />
         <button
           type="button"
-          onClick={() => setOpen(false)}
+          onClick={() => {
+            setErrorMsg(null);
+            if (defaultOpen) {
+              // Parent owns visibility — let it close us.
+              onCancel?.();
+            } else {
+              setOpen(false);
+            }
+          }}
           className="text-[11px] text-muted-foreground hover:text-foreground"
         >
           Cancel
@@ -334,6 +354,12 @@ export function CreateTaskInlineCard({
           Create Task
         </Button>
       </div>
+
+      {errorMsg && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-1.5 text-[11px] text-destructive">
+          {errorMsg}
+        </div>
+      )}
     </div>
   );
 }
