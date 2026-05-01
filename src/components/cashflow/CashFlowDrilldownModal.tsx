@@ -359,24 +359,139 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                   <th className="px-3 py-2 font-medium">Category</th>
                   <th className="px-3 py-2 font-medium">Description</th>
                   <th className="px-3 py-2 font-medium text-right">Amount</th>
+                  {canMutate && <th className="px-3 py-2 font-medium text-right w-[80px]">Actions</th>}
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
-                  <tr key={r.id} className="border-t border-border hover:bg-muted/40">
-                    <td className="px-3 py-2 whitespace-nowrap">{formatNiceDate(r.date)}</td>
-                    <td className="px-3 py-2">{r.account}</td>
-                    <td className="px-3 py-2">{r.category}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{r.notes || '—'}</td>
-                    <td
-                      className={`px-3 py-2 text-right tabular-nums ${
-                        r.signedAmount > 0 ? 'text-emerald-500' : r.signedAmount < 0 ? 'text-red-500' : ''
-                      }`}
-                    >
-                      {fmt(r.signedAmount)}
-                    </td>
-                  </tr>
-                ))}
+                {rows.map((r) => {
+                  const isEditing = editingEntryId === r.entryId && !!editDraft;
+                  const isBusy = busyId === r.entryId;
+                  if (isEditing && editDraft) {
+                    const categoryOptions = editDraft.flow_type === 'cash_in'
+                      ? CASH_IN_CATEGORIES
+                      : CASH_OUT_CATEGORIES;
+                    return (
+                      <tr key={r.id} className="border-t border-border bg-muted/30">
+                        <td className="px-3 py-2 whitespace-nowrap align-top">{formatNiceDate(r.date)}</td>
+                        <td className="px-3 py-2 align-top">{r.account}</td>
+                        <td className="px-3 py-2 align-top">
+                          <select
+                            value={editDraft.category}
+                            onChange={(e) => setEditDraft((d) => d && { ...d, category: e.target.value })}
+                            className="h-8 w-full rounded-md border border-border bg-background px-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                          >
+                            {(categoryOptions as readonly string[]).map((c) => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                            {!(categoryOptions as readonly string[]).includes(editDraft.category) && (
+                              <option value={editDraft.category}>{editDraft.category}</option>
+                            )}
+                          </select>
+                          <select
+                            value={editDraft.frequency_type}
+                            onChange={(e) => setEditDraft((d) => d && { ...d, frequency_type: e.target.value as FrequencyType })}
+                            className="mt-1 h-8 w-full rounded-md border border-border bg-background px-1 text-[11px] text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                          >
+                            <option value="one_time">One-time</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="bi_weekly">Bi-weekly</option>
+                            <option value="monthly_first">Monthly (first weekday)</option>
+                            <option value="monthly_last">Monthly (last weekday)</option>
+                            <option value="monthly_day">Monthly (day of month)</option>
+                          </select>
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          <input
+                            type="text"
+                            value={editDraft.description}
+                            onChange={(e) => setEditDraft((d) => d && { ...d, description: e.target.value })}
+                            placeholder="Description"
+                            className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={editDraft.amount}
+                            onChange={(e) => setEditDraft((d) => d && { ...d, amount: e.target.value })}
+                            className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                        </td>
+                        <td className="px-3 py-2 align-top text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0"
+                              onClick={() => saveEdit(r.entryId)}
+                              disabled={isBusy}
+                              title="Save"
+                            >
+                              <Check className="h-3.5 w-3.5 text-emerald-500" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0"
+                              onClick={cancelEdit}
+                              disabled={isBusy}
+                              title="Cancel"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  return (
+                    <tr key={r.id} className="border-t border-border hover:bg-muted/40">
+                      <td className="px-3 py-2 whitespace-nowrap">{formatNiceDate(r.date)}</td>
+                      <td className="px-3 py-2">{r.account}</td>
+                      <td className="px-3 py-2">{r.category}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{r.notes || '—'}</td>
+                      <td
+                        className={`px-3 py-2 text-right tabular-nums ${
+                          r.signedAmount > 0 ? 'text-emerald-500' : r.signedAmount < 0 ? 'text-red-500' : ''
+                        }`}
+                      >
+                        {fmt(r.signedAmount)}
+                      </td>
+                      {canMutate && (
+                        <td className="px-3 py-2 text-right">
+                          <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100">
+                            {onUpdateEntry && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0"
+                                onClick={() => startEdit(r)}
+                                disabled={isBusy}
+                                title="Edit entry"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            {onDeleteEntry && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                                onClick={() => handleDelete(r.entryId)}
+                                disabled={isBusy}
+                                title="Delete entry"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
               <tfoot className="sticky bottom-0 bg-muted/60 backdrop-blur">
                 <tr className="border-t border-border">
@@ -390,6 +505,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                   >
                     {fmt(total)}
                   </td>
+                  {canMutate && <td />}
                 </tr>
               </tfoot>
             </table>
