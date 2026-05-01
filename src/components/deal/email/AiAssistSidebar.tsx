@@ -1090,27 +1090,24 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                   <Loader2 className="h-2.5 w-2.5 animate-spin text-primary/60" />
                 )}
                 <div className="flex-1" />
-                {/* Deal-context indicator — surfaces when the draft was
-                    generated using Deal Space data so the user knows the AI
-                    referenced real financials/outstanding items. */}
-                {(result?.used_deal_context
-                  || (result?.cited_context_sources || []).some((s) =>
-                    s === 'deal_state_snapshot' || s === 'deal_space_financials' || s === 'deal_metadata')
-                ) && dealContextSummary?.dealName && (
-                  <span
-                    className="hidden sm:inline-flex items-center gap-1 mr-1 px-1.5 py-0.5 rounded text-[10px] text-primary/80 bg-primary/[0.06] border border-primary/15"
-                    title={`Generated using ${dealContextSummary.dealName} deal data.`}
-                  >
-                    <Database className="h-2.5 w-2.5" />
-                    <span className="truncate max-w-[140px]">
-                      Generated using <span className="font-medium">{dealContextSummary.dealName}</span> deal data
-                    </span>
-                  </span>
-                )}
                 <ChevronDown
                   className={cn('h-3 w-3 text-muted-foreground transition-transform', !draftOpen && '-rotate-90')}
                 />
               </button>
+              {/* Attribution label — small italic muted line directly below
+                  the DRAFT REPLY heading. Only renders when Deal Space data
+                  was actually fetched + used by the AI; otherwise omitted. */}
+              {(result?.used_deal_context
+                || (result?.cited_context_sources || []).some((s) =>
+                  s === 'deal_state_snapshot' || s === 'deal_space_financials' || s === 'deal_metadata')
+              ) && dealContextSummary?.dealName && (
+                <p
+                  className="px-2 italic text-muted-foreground/80"
+                  style={{ fontSize: 11, marginTop: -4 }}
+                >
+                  Generated using {dealContextSummary.dealName} deal data
+                </p>
+              )}
               {draftOpen && (
               <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-3 space-y-2.5 overflow-hidden max-w-full min-w-0 w-full">
               {/* Header — title + optional helper. No counter, no chevrons:
