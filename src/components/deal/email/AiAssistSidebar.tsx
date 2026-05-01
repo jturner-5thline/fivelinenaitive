@@ -1024,15 +1024,15 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                     referenced real financials/outstanding items. */}
                 {(result?.used_deal_context
                   || (result?.cited_context_sources || []).some((s) =>
-                    s === 'deal_state_snapshot' || s === 'deal_space_financials')
+                    s === 'deal_state_snapshot' || s === 'deal_space_financials' || s === 'deal_metadata')
                 ) && dealContextSummary?.dealName && (
                   <span
                     className="hidden sm:inline-flex items-center gap-1 mr-1 px-1.5 py-0.5 rounded text-[10px] text-primary/80 bg-primary/[0.06] border border-primary/15"
-                    title={`Draft generated using ${dealContextSummary.dealName} deal data`}
+                    title={`Generated using ${dealContextSummary.dealName} deal data.`}
                   >
                     <Database className="h-2.5 w-2.5" />
                     <span className="truncate max-w-[140px]">
-                      Using {dealContextSummary.dealName} data
+                      Generated using <span className="font-medium">{dealContextSummary.dealName}</span> deal data
                     </span>
                   </span>
                 )}
