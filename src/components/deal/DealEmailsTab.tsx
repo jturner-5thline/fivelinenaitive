@@ -1250,7 +1250,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             toast.error(`Email sent, but couldn't log to ${dealLabel} activity`);
             return;
           }
+          const recipientLabel = emailData.to_name || emailData.to_email || 'recipient';
           toast.success(`✓ Sent — ${dealLabel} Activity log updated.`, {
+            description: `To ${recipientLabel} • "${emailData.subject || '(no subject)'}"`,
             duration: 4000,
           });
         })();
@@ -2243,12 +2245,14 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                           : '';
 
                         const baseToast = `✓ Sent — ${dealLabel} Activity log updated.`;
+                        const recipientLabel = emailData.to_name || emailData.to_email || 'recipient';
+                        const sendDetail = `To ${recipientLabel} • "${emailData.subject || '(no subject)'}"`;
 
                         // If the reply commits to a next step, offer one-click
                         // follow-up task creation right from the toast.
                         if (logResult.nextStep.hasNextStep && user?.id) {
                           toast.success(baseToast, {
-                            description: `${lenderSuffix ? lenderSuffix.replace(/^ • /, '') + '. ' : ''}Next step detected: "${logResult.nextStep.trigger}". Create a follow-up task?`,
+                            description: `${sendDetail}\n${lenderSuffix ? lenderSuffix.replace(/^ • /, '') + '. ' : ''}Next step detected: "${logResult.nextStep.trigger}". Create a follow-up task?`,
                             duration: 12000,
                             action: {
                               label: 'Create task',
@@ -2289,7 +2293,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                           });
                         } else {
                           toast.success(baseToast, {
-                            description: lenderSuffix ? lenderSuffix.replace(/^ • /, '') : undefined,
+                            description: lenderSuffix
+                              ? `${sendDetail}\n${lenderSuffix.replace(/^ • /, '')}`
+                              : sendDetail,
                             duration: 4000,
                           });
                         }
