@@ -482,23 +482,42 @@ export function VdrThreeColumnWorkspace({
     try {
       const { ids, source } = JSON.parse(raw) as { ids: string[]; source: 'internal' | 'dataroom' };
       if (source === dest) return;
-      if (dest === 'dataroom') await moveToDataroom(ids);
-      else await moveToInternal(ids);
+      if (dest === 'dataroom') {
+        // Internal → Data Room: copy/share. File stays in Internal.
+        await copyToDataroom(ids);
+      } else {
+        // Data Room → Internal: remove from external Data Room.
+        await removeFromDataroom(ids);
+      }
     } catch { /* ignore */ }
   };
 
-  // Drop onto a specific Data Room folder header → share + move into that folder.
-  const handleFolderDrop = async (e: React.DragEvent, folderName: string) => {
+  // Drop onto a specific folder header.
+  //   • Data Room target column: copy/share from Internal, or move within
+  //     Data Room (when the source is also Data Room).
+  //   • Internal target column: move within Internal (Internal → Internal
+  //     reorganization). Drops from the Data Room column are ignored —
+  //     unsharing has its own explicit action.
+  const handleFolderDrop = async (
+    e: React.DragEvent,
+    folderName: string,
+    column: 'internal' | 'dataroom',
+  ) => {
     e.preventDefault();
     e.stopPropagation();
     setDropTarget(null);
     setDropFolderTarget(null);
+    const targetFolder = folderName === UNCATEGORIZED ? null : folderName;
     const catRaw = e.dataTransfer.getData(DRAG_CATEGORY_MIME);
     if (catRaw) {
       try {
         const { ids } = JSON.parse(catRaw) as { ids: string[] };
         if (ids?.length) {
-          await shareToDataroomFolder(ids, folderName === UNCATEGORIZED ? null : folderName);
+          if (column === 'dataroom') {
+            await shareToDataroomFolder(ids, targetFolder);
+          } else {
+            await moveToInternalFolder(ids, targetFolder);
+          }
           return;
         }
       } catch { /* fall through */ }
@@ -506,9 +525,21 @@ export function VdrThreeColumnWorkspace({
     const raw = e.dataTransfer.getData(DRAG_MIME);
     if (!raw) return;
     try {
-      const { ids } = JSON.parse(raw) as { ids: string[]; source: 'internal' | 'dataroom' };
-      if (ids?.length) {
-        await shareToDataroomFolder(ids, folderName === UNCATEGORIZED ? null : folderName);
+      const { ids, source } = JSON.parse(raw) as { ids: string[]; source: 'internal' | 'dataroom' };
+      if (!ids?.length) return;
+      if (column === 'dataroom') {
+        if (source === 'dataroom') {
+          // Reorder within Data Room: only update dataroom_folder_path.
+          await moveToDataroomFolderOnly(ids, targetFolder);
+        } else {
+          // Internal → Data Room folder: copy/share.
+          await shareToDataroomFolder(ids, targetFolder);
+        }
+      } else {
+        // Internal target — only meaningful for Internal-source drags.
+        if (source === 'internal') {
+          await moveToInternalFolder(ids, targetFolder);
+        }
       }
     } catch { /* ignore */ }
   };
