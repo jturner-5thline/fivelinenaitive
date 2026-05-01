@@ -325,6 +325,13 @@ export function mergeScheduledIntoWeekly(
   const sortedKeys = Object.keys(weekly).sort();
   if (sortedKeys.length === 0) return weekly;
 
+  // DEV trace — surface exactly which Configure entries are being routed and to
+  // which weekly grid row. Critical for debugging Debt Advisory subcategories
+  // (Retainers / Milestones / Closing Fees / Referral Fees) silently failing
+  // to render. Only logged in dev builds.
+  const traceRows: Array<{ id: string; category: string; resolvedRow: string; flow: string; occ: string; week: string | null; amount: number }> = [];
+  const isDev = typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV === true;
+
   // Build week ranges
   const weekRanges = sortedKeys.map((k) => {
     const entry = weekly[k];
@@ -372,6 +379,17 @@ export function mergeScheduledIntoWeekly(
         `${entry.id || entry.category}:${occ}`,
       );
       target[cat] = (Number(target[cat]) || 0) + amt;
+      if (isDev) {
+        traceRows.push({
+          id: entry.id || '(unsaved)',
+          category: entry.category,
+          resolvedRow: cat,
+          flow: entry.flow_type,
+          occ,
+          week: wk,
+          amount: amt,
+        });
+      }
       // Note: parent "Advisors Revenue" value is computed in the weekly view as
       // the sum of its sub-categories, so we do NOT write to the parent key here.
       if (entry.flow_type === 'cash_in') {
@@ -388,6 +406,19 @@ export function mergeScheduledIntoWeekly(
         target['TOTAL NET CASH CHANGE'] = (Number(target['TOTAL NET CASH CHANGE']) || 0) - amt;
       }
     }
+  }
+
+  if (isDev && traceRows.length > 0) {
+    // Group by resolved row so it's easy to spot Debt Advisory subcategories.
+    const byRow: Record<string, number> = {};
+    for (const r of traceRows) byRow[r.resolvedRow] = (byRow[r.resolvedRow] || 0) + r.amount;
+    // eslint-disable-next-line no-console
+    console.log('[cashflow] mergeScheduledIntoWeekly routed entries', {
+      totalEntries: (entries || []).length,
+      totalOccurrences: traceRows.length,
+      perRowTotals: byRow,
+      sample: traceRows.slice(0, 20),
+    });
   }
 
   // Recompute Ending Cash + Total Cash on Hand using roll-forward
