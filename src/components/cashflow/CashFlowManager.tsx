@@ -20,7 +20,7 @@ import { useCashFlowImport } from './useCashFlowImport';
 import { useCashInItems } from './useCashInItems';
 import { useScheduledCashFlows } from './useScheduledCashFlows';
 import { useCustomCashFlowRows } from './useCustomCashFlowRows';
-import { mergeScheduledIntoWeekly, ACCOUNT_OPTIONS, resolveCategoryToGridRow, DEBT_ADVISORY_DEFAULT_SUBCATEGORY, generateOccurrences, applyVariance } from './scheduledCashFlows';
+import { mergeScheduledIntoWeekly, ACCOUNT_OPTIONS, resolveCategoryToGridRow, DEBT_ADVISORY_DEFAULT_SUBCATEGORY, generateOccurrences, applyVariance, gridRowToCanonicalCategory, type ScheduledCashFlow } from './scheduledCashFlows';
 import { WEEKLY_HISTORICAL_SEED, LAST_HISTORICAL_WEEK_ENDING } from './weeklyHistoricalSeed';
 import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
@@ -1220,7 +1220,11 @@ export function CashFlowManager() {
             // a render concern and never deletes underlying entries.
             const ok = await addScheduledItem({
               account: ACCOUNT_OPTIONS[0],
-              category: rowKey, // grid-row key passes through resolveCategoryToGridRow as-is
+              // Persist the canonical category so the Configure modal's
+              // dropdown shows the correct value (e.g. "Payroll Expense"
+              // instead of the grid label "Payroll - Salaries"). At render
+              // time, resolveCategoryToGridRow maps it back to the right row.
+              category: gridRowToCanonicalCategory(rowKey),
               amount,
               frequency_type: 'one_time',
               frequency_config: { one_time_date: occDate },
