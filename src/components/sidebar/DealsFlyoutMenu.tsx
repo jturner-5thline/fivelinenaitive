@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, KeyboardEvent } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { flushSync } from 'react-dom';
+import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { Briefcase, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -34,6 +35,7 @@ export const SIDEBAR_DEAL_FILTER_EVENT = 'naitive:select-inbox-deal';
 export function DealsFlyoutMenu() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { state, isHovering } = useSidebar();
   const isMobile = useIsMobile();
   const { deals } = useDealsContext();
@@ -90,7 +92,7 @@ export function DealsFlyoutMenu() {
       setOpen(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
+  }, [location.pathname, searchParams]);
 
   useEffect(() => {
     itemRefs.current = itemRefs.current.slice(0, activeDeals.length);
@@ -159,7 +161,9 @@ export function DealsFlyoutMenu() {
   const handleSubItemClick = (dealId: string) => {
     clearTimers();
     openedViaKeyboardRef.current = false;
-    setOpen(false);
+    // Force synchronous unmount of the popover BEFORE navigation kicks off
+    // so the menu visibly dismisses on the same frame as the click.
+    flushSync(() => setOpen(false));
     setSelectedDealId(dealId);
     // Broadcast the selection so any inbox view (open or about to mount)
     // can sync its deal filter chip without prop drilling.
