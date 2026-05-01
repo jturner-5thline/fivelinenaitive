@@ -842,12 +842,23 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       if (f.hasAttachments === false) filtered = filtered.filter(e => !e.has_attachments);
     } else if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        e => e.subject.toLowerCase().includes(q) || e.from_name.toLowerCase().includes(q) || e.from_email.toLowerCase().includes(q) || e.snippet.toLowerCase().includes(q)
-      );
+      // Emails sourced from the Gmail "all-mail" search backfill have already
+      // been matched server-side (full body + headers, broader than substring),
+      // so we accept them unconditionally. Locally-loaded inbox mail still
+      // needs to pass the substring check.
+      const allMailHitIds = new Set(allMailSearch.results.map((e) => e.id));
+      filtered = filtered.filter((e) => {
+        if (allMailHitIds.has(e.id)) return true;
+        return (
+          e.subject.toLowerCase().includes(q) ||
+          e.from_name.toLowerCase().includes(q) ||
+          e.from_email.toLowerCase().includes(q) ||
+          e.snippet.toLowerCase().includes(q)
+        );
+      });
     }
     return filtered;
-  }, [emails, emailsWithSearchHits, activeItem, viewFilter, chipFilter, categoryTab, searchQuery, searchFilters, classifierEntities, aiSearchActive, aiSearch.result, isInboxScope, selectedDealFilterId, emailDealIdMap, orgCtx, selectedLabelFilterId, labelAssignments]);
+  }, [emails, emailsWithSearchHits, activeItem, viewFilter, chipFilter, categoryTab, searchQuery, searchFilters, classifierEntities, aiSearchActive, aiSearch.result, isInboxScope, selectedDealFilterId, emailDealIdMap, orgCtx, selectedLabelFilterId, labelAssignments, allMailSearch.results]);
 
   // Candidate set for AI search = the same list pre-search (so categories/folders
   // narrow the AI search scope as the spec requires).
