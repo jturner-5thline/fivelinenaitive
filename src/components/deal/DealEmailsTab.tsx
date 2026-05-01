@@ -863,12 +863,16 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   // Candidate set for AI search = the same list pre-search (so categories/folders
   // narrow the AI search scope as the spec requires).
   const aiSearchCandidates = useMemo(() => {
-    let base = emails.filter(activeItem.filterFn);
+    // While searching in inbox scope, include all-mail search hits so the AI
+    // can rank archived / labeled mail alongside inbox mail.
+    const isSearching = isInboxScope && !!searchQuery.trim();
+    const pool = isSearching ? emailsWithSearchHits : emails;
+    let base = isSearching ? [...pool] : pool.filter(activeItem.filterFn);
     if (categoryTab !== 'all') {
       base = filterEmailsByCategory(base, categoryTab, classifierEntities, orgCtx);
     }
     return base;
-  }, [emails, activeItem, categoryTab, classifierEntities, orgCtx]);
+  }, [emails, emailsWithSearchHits, activeItem, categoryTab, classifierEntities, orgCtx, isInboxScope, searchQuery]);
 
   const runAISearch = useCallback(async () => {
     const q = searchQuery.trim();
