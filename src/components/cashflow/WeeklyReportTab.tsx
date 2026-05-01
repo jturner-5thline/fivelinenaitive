@@ -101,6 +101,7 @@ type WeeklyRow = {
 const WEEKLY_ROW_ORDER: Array<WeeklyRow> = [
   { key: 'BEGINNING CASH', section: 'position', isTotal: true },
   { key: 'ENDING CASH', section: 'position', isTotal: true },
+  { key: 'NET CHANGE', section: 'position', isTotal: true, isNetChange: true },
   { key: "Add'l Liquidity (Delayed Draw)", section: 'position', isTotal: false },
   { key: 'TOTAL CASH ON HAND', section: 'position', isTotal: true },
   { key: '__sep_receipts', section: 'receipts', label: '( + ) CASH RECEIPTS', isHeader: true },
@@ -126,7 +127,6 @@ const WEEKLY_ROW_ORDER: Array<WeeklyRow> = [
   { key: 'Office & Admin', section: 'disbursements', isTotal: false },
   { key: 'Loan Payments', section: 'disbursements', isTotal: false },
   { key: 'Other Disbursements', section: 'disbursements', isTotal: false },
-  { key: 'NET CHANGE', section: 'summary', isTotal: true, isNetChange: true },
   { key: '__spacer_transfers', section: 'spacer', isSpacer: true },
   { key: INTERNAL_TRANSFERS_PARENT_KEY, section: 'transfers', isTotal: false, isParent: true },
   ...ACCOUNT_OPTIONS.map((acc) => ({
