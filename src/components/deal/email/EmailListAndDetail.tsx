@@ -939,12 +939,18 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
     ? { main: '', quoted: null }
     : splitQuotedContent(resolvedText);
 
-  // Resolve attachments from either the freshly fetched message or the original prop.
-  const attachments = (fullData?.attachments && fullData.attachments.length > 0)
-    ? fullData.attachments
+  // Resolve attachments strictly for THIS message. Once the per-message fetch
+  // resolves, trust it as the source of truth — never fall back to
+  // `email.attachments` from props, since list/thread-level aggregation can
+  // leak attachments from sibling messages in the same thread. Only use the
+  // prop attachments while we haven't fetched yet (e.g. before expand or for
+  // mock messages without a real Gmail id).
+  const attachments = fullData
+    ? (fullData.attachments || [])
     : (email.attachments || []);
   const hasRealAttachments = attachments.length > 0;
-  const showAttachmentsLoading = expanded && fullLoading && !hasRealAttachments && email.has_attachments;
+  const showAttachmentsLoading =
+    expanded && fullLoading && !fullData && !!email.has_attachments;
 
   const toggleExpand = () => {
     const next = !expanded;
