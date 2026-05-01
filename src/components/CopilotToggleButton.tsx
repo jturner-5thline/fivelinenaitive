@@ -52,11 +52,12 @@ export function CopilotToggleButton() {
         bottom: 'max(16px, env(safe-area-inset-bottom))',
         right: '16px',
         zIndex: 99999,
-        background: 'rgba(14, 16, 24, 0.55)',
-        backdropFilter: 'blur(16px) saturate(1.4)',
-        WebkitBackdropFilter: 'blur(16px) saturate(1.4)',
-        border: '1px solid rgba(255, 255, 255, 0.16)',
-        boxShadow: '0 6px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
+        background: 'rgba(14, 16, 24, 0.6)',
+        backdropFilter: 'blur(18px) saturate(1.4)',
+        WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
+        border: '1px solid rgba(255, 255, 255, 0.22)',
+        boxShadow:
+          '0 10px 32px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.25)',
       }}
       onClick={() => inputRef.current?.focus()}
     >
