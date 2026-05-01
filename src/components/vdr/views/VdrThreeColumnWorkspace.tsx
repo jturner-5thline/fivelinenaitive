@@ -555,14 +555,20 @@ export function VdrThreeColumnWorkspace({
     }
   };
 
-  const allowFolderDrop = (e: React.DragEvent, folderName: string) => {
+  const allowFolderDrop = (
+    e: React.DragEvent,
+    folderName: string,
+    column: 'internal' | 'dataroom',
+  ) => {
     if (
       e.dataTransfer.types.includes(DRAG_MIME) ||
       e.dataTransfer.types.includes(DRAG_CATEGORY_MIME)
     ) {
       e.preventDefault();
       e.stopPropagation();
-      setDropFolderTarget(folderName);
+      // Namespace the drop target by column so the same category name in
+      // both columns doesn't share highlight state.
+      setDropFolderTarget(`${column}:${folderName}`);
     }
   };
 
