@@ -316,16 +316,32 @@ serve(async (req: Request): Promise<Response> => {
       case "list": {
         const { max_results = 20, page_token, query } = requestData;
         const labelIds = (requestData as any).label_ids as string[] | undefined;
+        // When the caller explicitly passes `search_all_mail: true`, OR is
+        // running a free-text search WITHOUT specifying a folder, we drop
+        // the default INBOX restriction so the query matches archived mail
+        // and any user labels (Censys, Lenders, etc.) — same behavior as
+        // typing the query into the Gmail search bar.
+        const searchAllMail = (requestData as any).search_all_mail === true;
 
         const params = new URLSearchParams({
           limit: String(max_results),
         });
         if (page_token) params.set("page_token", page_token);
         if (query) params.set("search_query_native", query);
-        
-        // Filter by folder/label — default to INBOX to exclude spam/trash/sent
-        const folder = labelIds?.[0] || "INBOX";
-        params.set("in", folder);
+
+        // Folder/label filter:
+        //   • If caller supplied an explicit label_ids[0], honor it.
+        //   • Else if caller asked to search across all mail (search), omit
+        //     `in=` entirely so Gmail returns matches from every label
+        //     (including archived mail and user labels).
+        //   • Otherwise default to INBOX so the inbox view stays clean
+        //     (no spam/trash/sent).
+        const explicitFolder = labelIds?.[0];
+        if (explicitFolder) {
+          params.set("in", explicitFolder);
+        } else if (!searchAllMail) {
+          params.set("in", "INBOX");
+        }
 
         const listResponse = await fetch(
           `${baseUrl}/messages?${params}`,
