@@ -264,6 +264,11 @@ export function useThreadWorkflowAnalysis({
             canonical,
             reason: dealId ? 'parent_linked_deal' : 'subject_literal_match',
           });
+          // Capture the AI's previously nominated deal name BEFORE we
+          // overwrite likely_deal so we can rewrite any title that still
+          // references it (e.g. "Update SG Credit on Back Bar Project").
+          const previousAiDealName =
+            result.recommended_update?.deal_name || result.likely_deal?.name || '';
           result.likely_deal = {
             id: canonical.id,
             name: canonical.name,
@@ -277,10 +282,27 @@ export function useThreadWorkflowAnalysis({
             result.recommended_update.deal_name = canonical.name;
             // Rewrite the title so the rendered card matches the real
             // deal name instead of the AI's misidentified one.
-            const oldName = result.recommended_update.deal_name;
-            if (result.recommended_update.title && oldName) {
+            if (result.recommended_update.title && previousAiDealName) {
+              const escaped = previousAiDealName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
               result.recommended_update.title = result.recommended_update.title
-                .replace(new RegExp(oldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), canonical.name);
+                .replace(new RegExp(escaped, 'gi'), canonical.name);
+            }
+            // The AI's lender_id was resolved against the WRONG deal —
+            // discard it so the downstream resolver re-matches the lender
+            // by name against the canonical deal's deal_lenders rows.
+            // Keep lender_name + master_lender_id (directory-level, deal-
+            // agnostic) so the resolver still has something to match on.
+            result.recommended_update.lender_id = '';
+            // Ensure the title always carries the canonical deal name,
+            // even if the AI never mentioned the AI-picked name verbatim
+            // (e.g. it used a nickname). Append when missing.
+            if (
+              result.recommended_update.title &&
+              !result.recommended_update.title.toLowerCase().includes(canonical.name.toLowerCase())
+            ) {
+              const lender = result.recommended_update.lender_name || 'lender';
+              const stage = result.recommended_update.new_stage || 'updated';
+              result.recommended_update.title = `Update ${lender} status on ${canonical.name} → ${stage}`;
             }
           }
         }

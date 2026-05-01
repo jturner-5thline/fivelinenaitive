@@ -463,6 +463,22 @@ export function WorkflowIntelligenceCard({
                   {rec.title}
                 </p>
 
+                {/* Explicit deal-name confirmation chip — guarantees the
+                    user sees which deal the suggestion will write to,
+                    matching the deal in the AI panel header. */}
+                {(rec.deal_name || analysis.likely_deal.name) && (
+                  <div className="flex items-center gap-1.5 min-w-0 text-[11px] text-muted-foreground">
+                    <Briefcase className="h-3 w-3 shrink-0" />
+                    <span className="shrink-0">on</span>
+                    <span
+                      className="text-foreground/90 font-medium truncate min-w-0"
+                      title={rec.deal_name || analysis.likely_deal.name}
+                    >
+                      {rec.deal_name || analysis.likely_deal.name}
+                    </span>
+                  </div>
+                )}
+
                 {isLenderStatus && (
                   lenderStageOptions.length === 0 ? (
                     // No Lender Stages configured — surface a clear inline
