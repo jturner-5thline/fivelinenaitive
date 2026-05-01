@@ -31,7 +31,7 @@ export function CopilotToggleButton() {
       className={cn(
         "group relative cursor-pointer overflow-hidden",
         "h-11 rounded-full",
-        "w-[min(320px,calc(100vw-3rem))] sm:w-[340px]",
+        "w-[200px] sm:w-[340px]",
         "flex items-center gap-2 pl-4 pr-3",
         "text-left",
         "transition-all duration-200",
@@ -40,8 +40,8 @@ export function CopilotToggleButton() {
       )}
       style={{
         position: 'fixed',
-        bottom: '24px',
-        right: '24px',
+        bottom: 'max(16px, env(safe-area-inset-bottom))',
+        right: '16px',
         zIndex: 99999,
         background: 'rgba(14, 16, 24, 0.45)',
         backdropFilter: 'blur(16px) saturate(1.4)',
