@@ -52,6 +52,8 @@ interface WeeklyReportTabProps {
   onCellCommentCountChange?: (count: number) => void;
   weeksFuture?: number;
   onWeeksFutureChange?: (n: number) => void;
+  weeksPast?: number;
+  onWeeksPastChange?: (n: number) => void;
   /**
    * Add a one-time scheduled cash flow entry for a specific row + week.
    * Used by inline cell "+ Add" popover so users can quickly add ad-hoc
