@@ -330,22 +330,76 @@ export function VdrThreeColumnWorkspace({
   // Internal and additionally appears in the Data Room column.
   const copyToDataroom = useCallback(async (ids: string[]) => {
     if (!ids.length) return;
+    // Snapshot prior share/folder state for undo.
+    const snapshot = ids.map(id => {
+      const d = documents.find(x => x.id === id);
+      return {
+        id,
+        shared: !!d?.shared_to_dataroom,
+        dataroom_folder_path: (d as any)?.dataroom_folder_path ?? null,
+      };
+    });
     await vdrDocs.bulkShareToDataroom(ids, true);
     setInternalSelected(new Set());
     toast.success(
       `Shared ${ids.length} file${ids.length === 1 ? '' : 's'} to Data Room`,
+      {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            // Restore each file's prior shared state and Data Room folder.
+            await Promise.all(snapshot.map(s =>
+              (supabase as any)
+                .from('vdr_documents')
+                .update({
+                  shared_to_dataroom: s.shared,
+                  dataroom_folder_path: s.shared ? s.dataroom_folder_path : null,
+                })
+                .eq('id', s.id)
+            ));
+            await vdrDocs.fetchDocuments?.();
+            toast.success('Reverted share');
+          },
+        },
+      },
     );
-  }, [vdrDocs]);
+  }, [vdrDocs, documents]);
 
   // Removing a file from the external Data Room. The file stays in Internal.
   const removeFromDataroom = useCallback(async (ids: string[]) => {
     if (!ids.length) return;
+    const snapshot = ids.map(id => {
+      const d = documents.find(x => x.id === id);
+      return {
+        id,
+        shared: !!d?.shared_to_dataroom,
+        dataroom_folder_path: (d as any)?.dataroom_folder_path ?? null,
+      };
+    });
     await vdrDocs.bulkShareToDataroom(ids, false);
     setDataroomSelected(new Set());
     toast.success(
       `Removed ${ids.length} file${ids.length === 1 ? '' : 's'} from Data Room`,
+      {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            await Promise.all(snapshot.map(s =>
+              (supabase as any)
+                .from('vdr_documents')
+                .update({
+                  shared_to_dataroom: s.shared,
+                  dataroom_folder_path: s.shared ? s.dataroom_folder_path : null,
+                })
+                .eq('id', s.id)
+            ));
+            await vdrDocs.fetchDocuments?.();
+            toast.success('Restored to Data Room');
+          },
+        },
+      },
     );
-  }, [vdrDocs]);
+  }, [vdrDocs, documents]);
 
   // Move within a single column (Internal or Data Room) into a category folder.
   // Internal moves change folder_path. Data Room moves change ONLY
@@ -357,6 +411,15 @@ export function VdrThreeColumnWorkspace({
   ) => {
     if (!ids.length) return;
     const newPath = !categoryName ? '/' : `/${categoryName}/`;
+    // Snapshot prior folder paths for undo.
+    const snapshot = ids.map(id => {
+      const d = documents.find(x => x.id === id);
+      return {
+        id,
+        folder_path: d?.folder_path ?? '/',
+        dataroom_folder_path: (d as any)?.dataroom_folder_path ?? null,
+      };
+    });
     for (const id of ids) {
       if (column === 'dataroom') {
         await vdrDocs.moveDocumentInDataroom(id, newPath);
@@ -369,9 +432,28 @@ export function VdrThreeColumnWorkspace({
     toast.success(
       categoryName
         ? `Moved to ${categoryName}`
-        : 'Moved to Uncategorized'
+        : 'Moved to Uncategorized',
+      {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            await Promise.all(snapshot.map(s =>
+              (supabase as any)
+                .from('vdr_documents')
+                .update(
+                  column === 'dataroom'
+                    ? { dataroom_folder_path: s.dataroom_folder_path }
+                    : { folder_path: s.folder_path },
+                )
+                .eq('id', s.id)
+            ));
+            await vdrDocs.fetchDocuments?.();
+            toast.success('Move undone');
+          },
+        },
+      },
     );
-  }, [vdrDocs]);
+  }, [vdrDocs, documents]);
 
   // Copy/share file(s) to the Data Room and drop them into a specific
   // Data Room folder. Internal `folder_path` is left untouched so the
@@ -380,15 +462,41 @@ export function VdrThreeColumnWorkspace({
     async (ids: string[], folderName: string | null) => {
       if (!ids.length) return;
       const newPath = folderName ? `/${folderName}/` : '/';
+      const snapshot = ids.map(id => {
+        const d = documents.find(x => x.id === id);
+        return {
+          id,
+          shared: !!d?.shared_to_dataroom,
+          dataroom_folder_path: (d as any)?.dataroom_folder_path ?? null,
+        };
+      });
       await vdrDocs.bulkShareToDataroom(ids, true, newPath);
       setInternalSelected(new Set());
       toast.success(
         folderName
           ? `Shared ${ids.length} file${ids.length === 1 ? '' : 's'} to ${folderName}`
           : `Shared ${ids.length} file${ids.length === 1 ? '' : 's'} to Data Room`,
+        {
+          action: {
+            label: 'Undo',
+            onClick: async () => {
+              await Promise.all(snapshot.map(s =>
+                (supabase as any)
+                  .from('vdr_documents')
+                  .update({
+                    shared_to_dataroom: s.shared,
+                    dataroom_folder_path: s.shared ? s.dataroom_folder_path : null,
+                  })
+                  .eq('id', s.id)
+              ));
+              await vdrDocs.fetchDocuments?.();
+              toast.success('Reverted share');
+            },
+          },
+        },
       );
     },
-    [vdrDocs],
+    [vdrDocs, documents],
   );
 
   // Move within Internal: drag a file onto an Internal folder header.
@@ -396,6 +504,10 @@ export function VdrThreeColumnWorkspace({
     async (ids: string[], folderName: string | null) => {
       if (!ids.length) return;
       const newPath = folderName ? `/${folderName}/` : '/';
+      const snapshot = ids.map(id => {
+        const d = documents.find(x => x.id === id);
+        return { id, folder_path: d?.folder_path ?? '/' };
+      });
       for (const id of ids) {
         await vdrDocs.moveDocument(id, newPath);
       }
@@ -404,9 +516,24 @@ export function VdrThreeColumnWorkspace({
         folderName
           ? `Moved ${ids.length} file${ids.length === 1 ? '' : 's'} to ${folderName}`
           : `Moved ${ids.length} file${ids.length === 1 ? '' : 's'} to Uncategorized`,
+        {
+          action: {
+            label: 'Undo',
+            onClick: async () => {
+              await Promise.all(snapshot.map(s =>
+                (supabase as any)
+                  .from('vdr_documents')
+                  .update({ folder_path: s.folder_path })
+                  .eq('id', s.id)
+              ));
+              await vdrDocs.fetchDocuments?.();
+              toast.success('Move undone');
+            },
+          },
+        },
       );
     },
-    [vdrDocs],
+    [vdrDocs, documents],
   );
 
   // Move within Data Room: drag a file onto a Data Room folder header.
@@ -415,6 +542,13 @@ export function VdrThreeColumnWorkspace({
     async (ids: string[], folderName: string | null) => {
       if (!ids.length) return;
       const newPath = folderName ? `/${folderName}/` : '/';
+      const snapshot = ids.map(id => {
+        const d = documents.find(x => x.id === id);
+        return {
+          id,
+          dataroom_folder_path: (d as any)?.dataroom_folder_path ?? null,
+        };
+      });
       for (const id of ids) {
         await vdrDocs.moveDocumentInDataroom(id, newPath);
       }
@@ -423,9 +557,24 @@ export function VdrThreeColumnWorkspace({
         folderName
           ? `Moved ${ids.length} file${ids.length === 1 ? '' : 's'} to ${folderName}`
           : `Moved ${ids.length} file${ids.length === 1 ? '' : 's'} to Uncategorized`,
+        {
+          action: {
+            label: 'Undo',
+            onClick: async () => {
+              await Promise.all(snapshot.map(s =>
+                (supabase as any)
+                  .from('vdr_documents')
+                  .update({ dataroom_folder_path: s.dataroom_folder_path })
+                  .eq('id', s.id)
+              ));
+              await vdrDocs.fetchDocuments?.();
+              toast.success('Move undone');
+            },
+          },
+        },
       );
     },
-    [vdrDocs],
+    [vdrDocs, documents],
   );
 
   // Drag & drop
