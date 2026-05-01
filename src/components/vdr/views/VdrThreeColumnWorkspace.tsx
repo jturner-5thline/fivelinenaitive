@@ -1414,6 +1414,28 @@ export function VdrThreeColumnWorkspace({
                     <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">
                       Copy to Data Room folder
                     </DropdownMenuLabel>
+                    {dataroomFolderPrefs.recents.length > 0 && (
+                      <>
+                        <DropdownMenuLabel className="text-[9px] uppercase tracking-wide text-muted-foreground/70 pt-1 pb-0">
+                          Recent
+                        </DropdownMenuLabel>
+                        {dataroomFolderPrefs.recents
+                          .filter(name =>
+                            categoryNames.includes(name) || customFolderNames.includes(name))
+                          .slice(0, 5)
+                          .map(name => (
+                            <DropdownMenuItem
+                              key={`recent-${name}`}
+                              className="text-xs"
+                              onClick={() => shareToDataroomFolder(Array.from(internalSelected), name)}
+                            >
+                              <FolderClosed className="h-3.5 w-3.5 mr-2 text-primary/70" />
+                              {name}
+                            </DropdownMenuItem>
+                          ))}
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
                     <DropdownMenuItem
                       className="text-xs"
                       onClick={() => shareToDataroomFolder(Array.from(internalSelected), null)}
@@ -1422,7 +1444,7 @@ export function VdrThreeColumnWorkspace({
                       Data Room (root)
                     </DropdownMenuItem>
                     {categoryNames.length > 0 && <DropdownMenuSeparator />}
-                    {categoryNames.map(name => (
+                    {dataroomCategoryNames.map(name => (
                       <DropdownMenuItem
                         key={`std-${name}`}
                         className="text-xs"
@@ -1433,7 +1455,7 @@ export function VdrThreeColumnWorkspace({
                       </DropdownMenuItem>
                     ))}
                     {customFolderNames.length > 0 && <DropdownMenuSeparator />}
-                    {customFolderNames.map(name => (
+                    {dataroomCustomFolderNames.map(name => (
                       <DropdownMenuItem
                         key={`cust-${name}`}
                         className="text-xs"
