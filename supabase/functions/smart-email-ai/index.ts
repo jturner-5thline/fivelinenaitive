@@ -544,6 +544,11 @@ SPECIFICITY RULES (this is what makes the draft sound like the sender knows the 
 - If a relevant data point is genuinely missing, say "I'll confirm and revert" — do NOT invent it. But first check OUTSTANDING ITEMS, LENDERS, NOTES, and ACTIVITY before claiming you don't have it.
 - Never just describe a category ("the diligence checklist", "the lender list", "next steps"). Always name the actual items, lenders, or actions when the structured context provides them.
 
+FINANCIAL-QUESTION RULES (when the recipient asks about money — deal size, ARR, MRR, revenue, EBITDA, margins, run-rate, growth):
+- Cite numbers ONLY from the DEAL SPACE FINANCIALS block (deal size / capital ask, ARR, MRR, TTM revenue, EBITDA). Never invent or estimate.
+- For each financial figure the recipient asks about: if it IS in the block, cite it verbatim using the display value. If it is NOT in the block, write "not on file" (or "not currently on file" / "I don't have that on file yet — will confirm and revert") for that specific metric. Do NOT silently skip a directly-asked metric, and do NOT use "$X" / "[amount]" placeholders.
+- Do not fabricate deal-specific references (stage names, outstanding items, lender names, status notes) that are absent from the structured context. Omit or use "not on file" instead.
+
 CONFIRMING-DETAILS RULE (use when the deal context is thin or specific facts you'd normally cite are missing):
 - If you cannot find a concrete fact you would otherwise reference (e.g., the recipient asks about a number, date, lender stage, outstanding item, or counterparty detail and the structured context does NOT contain it), include exactly ONE short "Confirming details" line near the end of the body — before the closing — written naturally, e.g.:
   • "Confirming details on the latest [topic] and will revert shortly."
