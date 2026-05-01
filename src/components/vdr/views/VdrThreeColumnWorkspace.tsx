@@ -688,6 +688,27 @@ export function VdrThreeColumnWorkspace({
     setDropTarget(null);
     setDropFolderTarget(null);
     const targetFolder = folderName === UNCATEGORIZED ? null : folderName;
+    // Folder header reorder (same column only).
+    const reorderRaw = e.dataTransfer.getData(DRAG_FOLDER_REORDER_MIME);
+    if (reorderRaw) {
+      try {
+        const { name, source, kind } = JSON.parse(reorderRaw) as {
+          name: string; source: 'internal' | 'dataroom'; kind: 'category' | 'custom';
+        };
+        if (source !== column || name === folderName) return;
+        // Reorder within the matching list (categories vs custom folders).
+        if (column === 'internal') {
+          internalFolderPrefs.reorder(categoryNames, name, folderName);
+        } else {
+          if (kind === 'custom') {
+            dataroomFolderPrefs.reorder(customFolderNames, name, folderName);
+          } else {
+            dataroomFolderPrefs.reorder(categoryNames, name, folderName);
+          }
+        }
+        return;
+      } catch { /* fall through */ }
+    }
     const catRaw = e.dataTransfer.getData(DRAG_CATEGORY_MIME);
     if (catRaw) {
       try {
