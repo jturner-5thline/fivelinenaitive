@@ -510,6 +510,8 @@ function selectTools(page: string, entityType?: string) {
     "get_deal", "search_deals", "get_pipeline_summary", "get_activity_log",
     "draft_email", "create_task", "get_tasks", "search_team_members",
     "get_pipelines", "move_deal_pipeline",
+    // Always-available kitchen-sink reads so the model never says "I don't have that data".
+    "get_deal_full", "get_lender_full", "get_contact_full", "get_company_full",
   ]);
 
   if (page.includes("lender")) {
