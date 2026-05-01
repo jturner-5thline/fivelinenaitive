@@ -1558,13 +1558,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   )}
                   <Input
-                    placeholder={
-                      searchMode === 'literal'
-                        ? 'Search mail (keyword)…'
-                        : searchMode === 'ai'
-                          ? 'Ask AI… e.g. "signed NDAs from lenders last week"'
-                          : 'Search mail with AI… e.g. "calendar invites I declined"'
-                    }
+                    placeholder='Search mail with AI… e.g. "calendar invites I declined"'
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => {
@@ -1584,88 +1578,6 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                   />
                   {/* Inline AI / clear controls */}
                   <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                    {/* Effective-mode indicator: shows how the current query is actually being interpreted */}
-                    {(() => {
-                      const trimmed = searchQuery.trim();
-                      if (!trimmed) return null;
-                      const wordCount = trimmed.split(/\s+/).filter(Boolean).length;
-                      const autoWouldUseAI =
-                        trimmed.length >= AI_SEARCH_MIN_LENGTH && wordCount >= 2;
-                      const effective: 'literal' | 'ai' =
-                        searchMode === 'ai' || (searchMode === 'auto' && autoWouldUseAI)
-                          ? 'ai'
-                          : 'literal';
-                      const isAi = effective === 'ai';
-                      const label =
-                        searchMode === 'auto'
-                          ? isAi ? 'Auto · AI' : 'Auto · Literal'
-                          : isAi ? 'AI' : 'Literal';
-                      const tip =
-                        searchMode === 'auto'
-                          ? isAi
-                            ? 'Auto mode: query is long enough — interpreting with AI'
-                            : `Auto mode: too short for AI (need ≥${AI_SEARCH_MIN_LENGTH} chars & 2+ words) — using keyword match`
-                          : isAi
-                            ? aiSearch.isSearching
-                              ? 'AI is interpreting your query…'
-                              : aiSearchActive
-                                ? 'Showing AI-ranked results'
-                                : 'AI mode: query will be interpreted with AI'
-                            : 'Literal mode: keyword match only';
-                      return (
-                        <span
-                          title={tip}
-                          aria-label={`Search interpretation: ${label}`}
-                          className={cn(
-                            'inline-flex items-center gap-1 h-5 px-1.5 rounded text-[9px] font-semibold uppercase tracking-wide border',
-                            isAi
-                              ? 'bg-primary/15 text-primary border-primary/30'
-                              : 'bg-white/[0.04] text-muted-foreground border-white/[0.08]'
-                          )}
-                        >
-                          {isAi ? (
-                            aiSearch.isSearching ? (
-                              <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                            ) : (
-                              <Sparkles className="h-2.5 w-2.5" />
-                            )
-                          ) : (
-                            <Search className="h-2.5 w-2.5" />
-                          )}
-                          {label}
-                        </span>
-                      );
-                    })()}
-                    {/* Mode toggle: Literal | Auto | AI */}
-                    <div
-                      className="inline-flex items-center rounded border border-white/[0.08] bg-white/[0.03] overflow-hidden"
-                      role="group"
-                      aria-label="Search mode"
-                    >
-                      {(['literal', 'auto', 'ai'] as const).map((m) => (
-                        <button
-                          key={m}
-                          type="button"
-                          onClick={() => setSearchMode(m)}
-                          aria-pressed={searchMode === m}
-                          title={
-                            m === 'literal'
-                              ? 'Literal: keyword match only'
-                              : m === 'ai'
-                                ? 'AI: always interpret with AI'
-                                : 'Auto: AI on long queries'
-                          }
-                          className={cn(
-                            'px-1.5 h-5 text-[9px] font-semibold uppercase tracking-wide transition-colors',
-                            searchMode === m
-                              ? 'bg-primary/20 text-primary'
-                              : 'text-muted-foreground hover:text-foreground'
-                          )}
-                        >
-                          {m === 'literal' ? 'Lit' : m === 'auto' ? 'Auto' : 'AI'}
-                        </button>
-                      ))}
-                    </div>
                     {(aiSearchActive || searchQuery) && (
                       <button
                         type="button"
