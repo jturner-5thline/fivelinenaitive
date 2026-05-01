@@ -1124,23 +1124,23 @@ export function VdrThreeColumnWorkspace({
                 <Button
                   size="sm" variant="outline"
                   className="h-6 gap-1 text-[10px] px-2 border-primary/40 text-primary hover:bg-primary/10"
-                  onClick={() => moveToDataroom(Array.from(internalSelected))}
+                  onClick={() => copyToDataroom(Array.from(internalSelected))}
                 >
-                  <ArrowRight className="h-3 w-3" /> Move to Data Room
+                  <ArrowRight className="h-3 w-3" /> Copy to Data Room
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       size="sm" variant="outline"
                       className="h-6 w-6 p-0 border-primary/40 text-primary hover:bg-primary/10"
-                      title="Move to a specific Data Room folder"
+                      title="Copy to a specific Data Room folder"
                     >
                       <ChevronDown className="h-3 w-3" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56 max-h-72 overflow-auto">
                     <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                      Move to Data Room folder
+                      Copy to Data Room folder
                     </DropdownMenuLabel>
                     <DropdownMenuItem
                       className="text-xs"
@@ -1331,9 +1331,9 @@ export function VdrThreeColumnWorkspace({
                 <Button
                   size="sm" variant="outline"
                   className="h-6 gap-1 text-[10px] px-2"
-                  onClick={() => moveToInternal(Array.from(dataroomSelected))}
+                  onClick={() => removeFromDataroom(Array.from(dataroomSelected))}
                 >
-                  <ArrowLeft className="h-3 w-3" /> Move to Internal
+                  <ArrowLeft className="h-3 w-3" /> Remove from Data Room
                 </Button>
                 <Button
                   size="sm" variant="ghost"
