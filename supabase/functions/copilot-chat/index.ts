@@ -516,6 +516,56 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "search_emails",
+      description: "Search the user's synced inbox (Gmail via Nylas v3 sync) for messages. Use when the user asks 'what did X say', 'find emails from/about', 'recent messages with', or needs email context for a deal/contact/lender. Searches across the user's whole synced inbox by sender, recipient, subject, snippet, and body.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Free-text search across subject, snippet, and body." },
+          from_email: { type: "string", description: "Filter to messages from this email address (partial match ok)." },
+          to_email: { type: "string", description: "Filter to messages sent to this email address (partial match ok)." },
+          since_days: { type: "number", description: "Only include messages from the last N days. Default 30, max 365." },
+          unread_only: { type: "boolean", description: "If true, only return unread messages." },
+          limit: { type: "number", description: "Max results to return. Default 15, max 50." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_upcoming_events",
+      description: "Get the user's upcoming calendar events (live from Google Calendar via Nylas v3). Use when the user asks 'what's on my calendar', 'do I have a meeting with X', 'next call with', or needs scheduling context. Requires the user has connected their calendar.",
+      parameters: {
+        type: "object",
+        properties: {
+          days_ahead: { type: "number", description: "How many days into the future to look. Default 7, max 60." },
+          limit: { type: "number", description: "Max events to return. Default 20, max 50." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_recent_meetings",
+      description: "Get recent recorded/transcribed meetings (Claap) with summaries, key decisions, next steps, and transcripts. Use when the user asks about a past call, 'what did we discuss with X', or wants meeting context for a deal/company.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Filter to meetings linked to this deal UUID." },
+          company_id: { type: "string", description: "Filter to meetings linked to this company UUID." },
+          query: { type: "string", description: "Free-text search across title, ai_summary, and transcript." },
+          since_days: { type: "number", description: "Only include meetings from the last N days. Default 30, max 365." },
+          limit: { type: "number", description: "Max meetings to return. Default 10, max 30." },
+          include_transcript: { type: "boolean", description: "If true, include the full transcript text. Default false (summary + key_decisions + next_steps only)." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
@@ -531,6 +581,8 @@ function selectTools(page: string, entityType?: string) {
     "get_deal_full", "get_lender_full", "get_contact_full", "get_company_full",
     // Always-available link/write actions (still gated by confirmation card).
     "link_contact_to_deal",
+    // Always-available comms context (synced inbox, calendar, recorded meetings).
+    "search_emails", "get_upcoming_events", "get_recent_meetings",
   ]);
 
   if (page.includes("lender")) {
@@ -1668,6 +1720,108 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         preview: `Link ${contactName} to ${dealName}${args.role ? ` as ${args.role}` : ""}?`,
       };
     }
+    case "search_emails": {
+      const limit = Math.min(Math.max(Number(args.limit) || 15, 1), 50);
+      const sinceDays = Math.min(Math.max(Number(args.since_days) || 30, 1), 365);
+      const sinceIso = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000).toISOString();
+
+      let q = supabase
+        .from("gmail_messages")
+        .select("id, gmail_message_id, thread_id, subject, from_email, from_name, to_emails, snippet, body_text, is_read, received_at")
+        .eq("user_id", userId)
+        .gte("received_at", sinceIso)
+        .order("received_at", { ascending: false })
+        .limit(limit);
+
+      if (args.from_email) q = q.ilike("from_email", `%${args.from_email}%`);
+      if (args.unread_only) q = q.eq("is_read", false);
+      if (args.query) {
+        const escaped = String(args.query).replace(/[%,()]/g, " ").trim();
+        if (escaped) q = q.or(`subject.ilike.%${escaped}%,snippet.ilike.%${escaped}%,body_text.ilike.%${escaped}%`);
+      }
+
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      if (args.to_email) {
+        const needle = String(args.to_email).toLowerCase();
+        const filtered = (data || []).filter((m: any) => (m.to_emails || []).some((e: string) => (e || "").toLowerCase().includes(needle)));
+        return { count: filtered.length, messages: filtered.map((m: any) => ({ ...m, body_text: (m.body_text || "").slice(0, 1500) })) };
+      }
+      return {
+        count: (data || []).length,
+        messages: (data || []).map((m: any) => ({ ...m, body_text: (m.body_text || "").slice(0, 1500) })),
+      };
+    }
+    case "get_upcoming_events": {
+      const daysAhead = Math.min(Math.max(Number(args.days_ahead) || 7, 1), 60);
+      const limit = Math.min(Math.max(Number(args.limit) || 20, 1), 50);
+
+      const { data: tokenRow } = await supabase
+        .from("gmail_tokens").select("grant_id").eq("user_id", userId).maybeSingle();
+      if (!tokenRow?.grant_id) {
+        return { error: "Calendar not connected. Ask the user to connect their Google account in Settings → Integrations." };
+      }
+      const NYLAS_API_KEY = Deno.env.get("NYLAS_API_KEY");
+      if (!NYLAS_API_KEY) return { error: "Calendar service not configured." };
+
+      const now = Math.floor(Date.now() / 1000);
+      const future = now + daysAhead * 24 * 60 * 60;
+      const url = `https://api.us.nylas.com/v3/grants/${tokenRow.grant_id}/events?calendar_id=primary&start=${now}&end=${future}&limit=${limit}&expand_recurring=true`;
+
+      try {
+        const resp = await fetch(url, {
+          headers: { Authorization: `Bearer ${NYLAS_API_KEY}`, Accept: "application/json" },
+        });
+        const json = await resp.json();
+        if (!resp.ok) return { error: json?.message || "Failed to fetch calendar events" };
+        const events = (json.data || []).map((e: any) => ({
+          id: e.id,
+          title: e.title || "(no title)",
+          description: (e.description || "").slice(0, 500) || null,
+          location: e.location || null,
+          start: e.when?.start_time ? new Date(e.when.start_time * 1000).toISOString() : (e.when?.start_date || null),
+          end: e.when?.end_time ? new Date(e.when.end_time * 1000).toISOString() : (e.when?.end_date || null),
+          all_day: !e.when?.start_time && !!e.when?.start_date,
+          organizer: e.organizer || null,
+          attendees: (e.participants || []).map((p: any) => ({ email: p.email, name: p.name || null, status: p.status || null })),
+          conference_link: e.conferencing?.details?.url || null,
+          status: e.status || null,
+        }));
+        events.sort((a: any, b: any) => String(a.start || "").localeCompare(String(b.start || "")));
+        return { count: events.length, events };
+      } catch (err: any) {
+        return { error: `Calendar fetch failed: ${err?.message || String(err)}` };
+      }
+    }
+    case "get_recent_meetings": {
+      const limit = Math.min(Math.max(Number(args.limit) || 10, 1), 30);
+      const sinceDays = Math.min(Math.max(Number(args.since_days) || 30, 1), 365);
+      const sinceIso = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000).toISOString();
+      const includeTranscript = !!args.include_transcript;
+
+      const fields = `id, claap_id, title, ai_summary, key_decisions, next_steps, topics, sentiment, organizer_email, duration_seconds, started_at, deal_id, company_id${includeTranscript ? ", transcript" : ""}`;
+      let q = supabase
+        .from("claap_meetings")
+        .select(fields)
+        .gte("started_at", sinceIso)
+        .order("started_at", { ascending: false })
+        .limit(limit);
+
+      if (args.deal_id) q = q.eq("deal_id", args.deal_id);
+      if (args.company_id) q = q.eq("company_id", args.company_id);
+      if (args.query) {
+        const needle = String(args.query).replace(/[%,()]/g, " ").trim();
+        if (needle) q = q.or(`title.ilike.%${needle}%,ai_summary.ilike.%${needle}%,transcript.ilike.%${needle}%`);
+      }
+
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const meetings = (data || []).map((m: any) => ({
+        ...m,
+        transcript: includeTranscript ? (m.transcript || "").slice(0, 8000) : undefined,
+      }));
+      return { count: meetings.length, meetings };
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -1965,6 +2119,11 @@ Other tools when the question is broader / not entity-specific:
 - Tasks → get_tasks
 - Activity feed across deals → get_activity_log
 - Find deals/lenders by keyword → search_deals / search_lenders
+
+Communications context (use whenever the question references emails, calls, meetings, or scheduling):
+- "What did X say", "find emails about/from", "recent messages with Y" → search_emails (synced inbox)
+- "What's on my calendar", "do I have a meeting with X", "next call with Y" → get_upcoming_events
+- "What did we discuss with X", "summary of the call", "last meeting on this deal" → get_recent_meetings (Claap recordings with summaries + transcripts)
 ${entityType === "deal" && entityId ? `\nThe user is viewing deal ID: ${entityId}. Use this ID when calling deal-specific tools.` : ''}
 
 CORE RESPONSIBILITIES:
