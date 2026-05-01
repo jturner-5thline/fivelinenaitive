@@ -1199,6 +1199,32 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
             </Tooltip>
           )}
           <SnippetPicker onInsert={insertAtCursor} tokenContext={tokenContext} />
+          <Tooltip open={polishTooltipOpen || undefined}>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="gap-1 h-7 text-xs text-muted-foreground hover:text-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/10"
+                onClick={handlePolishInPlace}
+                onMouseEnter={() => { if (polishTooltipOpen) setPolishTooltipOpen(false); }}
+                disabled={polishPending}
+                aria-label="Polish with AI"
+              >
+                {polishPending ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3 w-3" />
+                )}
+                Polish ✨
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              {polishTooltipOpen
+                ? 'Type your draft first, then polish it'
+                : 'Rewrite your draft in 5th Line voice — facts preserved'}
+            </TooltipContent>
+          </Tooltip>
           <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" disabled aria-label="Insert image"><ImageIcon className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent side="top" className="text-xs">Insert image (soon)</TooltipContent></Tooltip>
         </ToolbarZone>
 
@@ -1225,6 +1251,19 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
 
         {SplitSend}
       </div>
+
+      {prePolishBody !== null && (
+        <div className="flex items-center justify-end gap-2 px-4 pb-2 -mt-1 text-[11px] text-muted-foreground animate-in fade-in-0 slide-in-from-top-1">
+          <span>Polished with AI.</span>
+          <button
+            type="button"
+            onClick={handleUndoPolish}
+            className="text-[hsl(var(--outlook-blue))] hover:underline font-medium"
+          >
+            Undo polish
+          </button>
+        </div>
+      )}
 
       <PolishWithAiDialog
         open={polishOpen}
