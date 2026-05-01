@@ -153,9 +153,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
               </span>
             </div>
           )}
-        </div>
-      ) : (
-        <ScrollArea className="flex-1 max-h-[60vh]">
+          <ScrollArea className="flex-1 max-h-[60vh]">
           <div className="p-2 space-y-3">
             {grouped.map(group => {
               const groupKey = group.dealId || '__none__';
