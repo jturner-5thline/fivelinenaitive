@@ -32,7 +32,7 @@ import { SendToDataRoomDialog } from './SendToDataRoomDialog';
 import { useFullEmailMessage } from './useFullEmailMessage';
 import { useEmailToDataRoom, type DataRoomDestinationSuggestion } from '@/hooks/useEmailToDataRoom';
 import { SuggestedDealUpdatesSection } from './SuggestedDealUpdatesSection';
-import { SuggestedTaskCards } from './SuggestedTaskCards';
+import { CreateTaskInlineCard } from './CreateTaskInlineCard';
 import { DataRoomUploadSuggestionCard } from './DataRoomUploadSuggestionCard';
 import { DealContextCard } from './DealContextCard';
 import { UnmatchedEmailContextCard } from './UnmatchedEmailContextCard';
@@ -187,7 +187,6 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   // is collapsed by default so the chip row above stays the primary
   // at-a-glance summary.
   const [draftOpen, setDraftOpen] = useState(false);
-  const [tasksOpen, setTasksOpen] = useState(false);
   const [dealDetailsOpen, setDealDetailsOpen] = useState(false);
   // Snapshot of the slim deal-context summary surfaced in the sidebar header
   // card. Forwarded to the edge function so the draft tone reflects whether
@@ -932,49 +931,27 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             );
           })()}
 
-          {/* Suggested Tasks — collapsible section. Collapsed by default
-              when a Suggested Update is also visible to reduce double-stack
-              noise; expanded automatically when it's the only suggestion
-              we have for the user. */}
-          {workflowAnalysis?.suggested_tasks && workflowAnalysis.suggested_tasks.length > 0 && (
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => setTasksOpen((v) => !v)}
-                className="flex items-center gap-2 group"
-                aria-expanded={tasksOpen}
-              >
-                <ChevronDown
-                  className={cn(
-                    'h-3 w-3 text-muted-foreground transition-transform',
-                    !tasksOpen && '-rotate-90',
-                  )}
-                />
-                <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground group-hover:text-foreground transition-colors">
-                  Suggested Tasks
-                </span>
-                <span className="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-primary/15 px-1.5 text-[10px] font-semibold text-primary">
-                  {workflowAnalysis.suggested_tasks.length}
-                </span>
-              </button>
-              {tasksOpen && (
-                <SuggestedTaskCards
-                  suggestions={workflowAnalysis.suggested_tasks}
-                  dealId={
-                    workflowAnalysis.recommended_update?.deal_id
-                    || workflowAnalysis.likely_deal?.id
-                    || null
-                  }
-                  dealName={
-                    workflowAnalysis.recommended_update?.deal_name
-                    || workflowAnalysis.likely_deal?.name
-                    || null
-                  }
-                  threadId={thread.threadId}
-                />
-              )}
-            </div>
-          )}
+          {/* Always-visible Create Task entry point. Replaces the legacy
+              "Suggested Tasks" section — a single, consistent task creation
+              affordance that pre-links the matched deal + sender contact. */}
+          <CreateTaskInlineCard
+            dealId={
+              dealId
+              || workflowAnalysis?.recommended_update?.deal_id
+              || workflowAnalysis?.likely_deal?.id
+              || null
+            }
+            dealName={
+              dealName
+              || workflowAnalysis?.recommended_update?.deal_name
+              || workflowAnalysis?.likely_deal?.name
+              || null
+            }
+            threadId={thread.threadId}
+            subject={thread.subject}
+            senderEmail={thread.latestEmail?.from_email}
+            senderName={thread.latestEmail?.from_name || undefined}
+          />
 
           {/* Top-level Schedule Meeting action — peer of Draft Reply.
               Surfaces the scheduling workspace at panel-level (instead of
