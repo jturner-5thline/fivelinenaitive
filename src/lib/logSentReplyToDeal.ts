@@ -133,6 +133,10 @@ export interface SentReplyLogInput {
   fromDisplayName?: string | null;
   /** Caller can pre-resolve to skip the lookup; otherwise we fetch by id. */
   dealName?: string | null;
+  /** Full CC distribution. Recorded on the activity log for the deal. */
+  cc?: string[];
+  /** Full BCC distribution. Recorded on the activity log for the deal. */
+  bcc?: string[];
 }
 
 export interface SentReplyLogResult {
@@ -188,7 +192,13 @@ export async function logSentReplyToDeal(input: SentReplyLogInput): Promise<Sent
     result.dealName = dealName;
 
     const preview = (input.body || '').replace(/\s+/g, ' ').trim().slice(0, 150);
-    const description = `Sent reply to ${input.toName || input.toEmail}: "${input.subject}" — ${preview}${(input.body || '').length > 150 ? '…' : ''}`;
+    const ccList = (input.cc || []).filter(Boolean);
+    const bccList = (input.bcc || []).filter(Boolean);
+    const distributionSuffix = [
+      ccList.length ? `cc: ${ccList.join(', ')}` : null,
+      bccList.length ? `bcc: ${bccList.join(', ')}` : null,
+    ].filter(Boolean).join(' • ');
+    const description = `Sent reply to ${input.toName || input.toEmail}${distributionSuffix ? ` (${distributionSuffix})` : ''}: "${input.subject}" — ${preview}${(input.body || '').length > 150 ? '…' : ''}`;
 
     // 1) Activity log
     await supabase.from('activity_logs').insert({
@@ -203,6 +213,9 @@ export async function logSentReplyToDeal(input: SentReplyLogInput): Promise<Sent
         subject: input.subject,
         to_name: input.toName,
         to_email: input.toEmail,
+        cc: ccList,
+        bcc: bccList,
+        recipient_count: 1 + ccList.length + bccList.length,
         body_preview: preview,
         body_length: (input.body || '').length,
         sent_at: new Date().toISOString(),
