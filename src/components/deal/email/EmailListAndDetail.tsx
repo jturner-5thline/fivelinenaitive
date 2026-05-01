@@ -365,6 +365,23 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
       {isSelected && (
         <div className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-[hsl(var(--outlook-blue))]" />
       )}
+      {/* Staleness dot — left edge, vertically centered. Only rendered for
+          rows classified as "Clients & Deals" so other tabs (Asana,
+          Calendar, marketing) stay clean. Red bucket pulses to draw the
+          eye to 11+-day-old unanswered threads. Sits inset from the very
+          edge so it doesn't collide with the selected/priority accent
+          bars. */}
+      {staleBucket && (
+        <span
+          className={cn(
+            'absolute left-1 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full z-10 shrink-0',
+            STALE_DOT_CLASSES[staleBucket],
+          )}
+          aria-label={STALE_DOT_TITLES[staleBucket]}
+          title={STALE_DOT_TITLES[staleBucket]}
+          data-stale-bucket={staleBucket}
+        />
+      )}
       {/* Priority signal accent bar — red for urgent, yellow for action.
           Hidden when the row is selected so the blue selection bar wins. */}
       {priorityFlag && !isSelected && (
@@ -419,17 +436,6 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
           {/* Row 1: Sender + date on same line */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
-              {staleBucket && (
-                <span
-                  className={cn(
-                    'inline-block h-2 w-2 rounded-full shrink-0',
-                    STALE_DOT_CLASSES[staleBucket],
-                  )}
-                  aria-label={STALE_DOT_TITLES[staleBucket]}
-                  title={STALE_DOT_TITLES[staleBucket]}
-                  data-stale-bucket={staleBucket}
-                />
-              )}
               <span className={cn(
                 'text-[13px] truncate',
                 isUnread
