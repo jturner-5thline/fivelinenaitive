@@ -1798,6 +1798,26 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       });
       return { success: true, message: `Updated ${params.deal_name}: ${changes.join(', ')}`, actionType: "update_deal_fields", params: { deal_id: params.deal_id } };
     }
+    case "link_contact_to_deal": {
+      const { error } = await supabase.from("contact_deals").insert({
+        contact_id: params.contact_id,
+        deal_id: params.deal_id,
+        role: params.role || null,
+      });
+      if (error) return { success: false, error: error.message };
+      await supabase.from("activity_logs").insert({
+        deal_id: params.deal_id,
+        activity_type: "contact_linked",
+        description: `Contact "${params.contact_name}" linked to deal${params.role ? ` as ${params.role}` : ""} via AI Copilot`,
+        user_id: userId,
+      });
+      return {
+        success: true,
+        message: `Linked ${params.contact_name} to ${params.deal_name}`,
+        actionType: "link_contact_to_deal",
+        params: { deal_id: params.deal_id, contact_id: params.contact_id },
+      };
+    }
     default:
       return { success: false, error: `Unknown action: ${actionType}` };
   }
