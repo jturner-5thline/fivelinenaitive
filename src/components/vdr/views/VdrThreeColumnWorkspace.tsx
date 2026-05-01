@@ -1372,7 +1372,7 @@ export function VdrThreeColumnWorkspace({
                 <Globe className="h-6 w-6 text-muted-foreground/25" />
                 <p>{dataroomCount === 0 ? 'No files in Data Room yet.' : 'No matches for current filter.'}</p>
                 <p className="text-[10px] text-muted-foreground/60">
-                  Drag files from Internal, or use “Move to Data Room”.
+                  Drag files from Internal, or use “Copy to Data Room”.
                 </p>
               </div>
             ) : (
