@@ -14,7 +14,7 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import { useRecentDealIds } from '@/hooks/useRecentDeals';
-import type { Deal, DealStage, DealStatus } from '@/types/deal';
+import type { Deal } from '@/types/deal';
 
 const OPEN_DELAY = 120;
 const CLOSE_DELAY = 180;
