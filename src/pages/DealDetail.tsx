@@ -47,6 +47,7 @@ import { PipelineSpecificFields } from '@/components/deal/PipelineSpecificFields
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRecordDealOpened } from '@/hooks/useRecentDeals';
 import { useCompany } from '@/hooks/useCompany';
 import { useProfile } from '@/hooks/useProfile';
 import { Deal, DealStatus, DealStage, EngagementType, ExclusivityType, LenderStatus, LenderStage, LenderSubstage, LenderTrackingStatus, DealLender, DealMilestone, Referrer, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG } from '@/types/deal';
@@ -596,6 +597,14 @@ export default function DealDetail() {
   // Get deal from context
   const contextDeal = getDealById(id || '');
   const [deal, setDeal] = useState<Deal | undefined>(contextDeal);
+
+  // Track that this user opened this deal so the Deals sidebar dropdown can
+  // surface the 5 most recently opened deals (per user, most recent first).
+  const recordDealOpened = useRecordDealOpened();
+  useEffect(() => {
+    if (id) recordDealOpened(id);
+  }, [id, recordDealOpened]);
+
   const formatRenderedLenderStage = useCallback(
     (value: string | null | undefined) => resolveLenderActivityLabel(value, 'stage'),
     [resolveLenderActivityLabel],

@@ -13,15 +13,14 @@ import { useCloseOnRouteChange } from '@/hooks/useCloseOnRouteChange';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { isExcludedDealName } from '@/utils/excludedDeals';
-import type { Deal, DealStage, DealStatus } from '@/types/deal';
+import { useRecentDealIds } from '@/hooks/useRecentDeals';
+import type { Deal } from '@/types/deal';
 
 const OPEN_DELAY = 120;
 const CLOSE_DELAY = 180;
 
-/** Stages considered "closed" (won/lost/parked) — never appear in the filter. */
-const CLOSED_STAGES: DealStage[] = ['closed-won', 'closed-lost', 'on-hold'];
-/** Statuses considered closed/won/archived — never appear in the filter. */
-const CLOSED_STATUSES: DealStatus[] = ['archived', 'on-hold'];
+/** Maximum number of recently opened deals to surface in the dropdown. */
+const MAX_RECENT_IN_MENU = 5;
 
 /** Custom event consumed by the inbox view (see DealEmailsTab) to apply the
  * inbox-level deal filter selected from the sidebar flyout. */
@@ -39,6 +38,7 @@ export function DealsFlyoutMenu() {
   const isMobile = useIsMobile();
   const { deals } = useDealsContext();
   const { activePipelineId, activePipeline } = usePipelineContext();
+  const recentDealIds = useRecentDealIds();
 
   const [open, setOpen] = useState(false);
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
@@ -54,22 +54,22 @@ export function DealsFlyoutMenu() {
   const showExpanded = state === 'expanded' || (state === 'collapsed' && isHovering);
   const isDealsRoute = location.pathname === '/deals';
 
-  /** Active-pipeline open deals only.
-   *  Filter rule: pipelineId === activePipelineId AND stage NOT IN
-   *  (closed-won / closed-lost / on-hold) AND status NOT IN
-   *  (archived / on-hold). Excluded test deals are also removed. */
+  /** The user's 5 most recently opened deals (most recent first), resolved
+   *  against the loaded deals list. Excluded test deals and deals the user
+   *  no longer has access to are skipped. */
   const activeDeals = useMemo<Deal[]>(() => {
-    if (!activePipelineId) return [];
-    return (deals || [])
-      .filter((d) => {
-        if (isExcludedDealName(d.name)) return false;
-        if (d.pipelineId !== activePipelineId) return false;
-        if (CLOSED_STAGES.includes(d.stage as DealStage)) return false;
-        if (CLOSED_STATUSES.includes(d.status as DealStatus)) return false;
-        return true;
-      })
-      .sort((a, b) => (a.company || a.name).localeCompare(b.company || b.name));
-  }, [deals, activePipelineId]);
+    if (!recentDealIds.length || !deals?.length) return [];
+    const byId = new Map(deals.map((d) => [d.id, d]));
+    const out: Deal[] = [];
+    for (const dealId of recentDealIds) {
+      const d = byId.get(dealId);
+      if (!d) continue;
+      if (isExcludedDealName(d.name)) continue;
+      out.push(d);
+      if (out.length >= MAX_RECENT_IN_MENU) break;
+    }
+    return out;
+  }, [recentDealIds, deals]);
 
   const hasDeals = activeDeals.length > 0;
 
@@ -263,7 +263,7 @@ export function DealsFlyoutMenu() {
                 onClick={handleChevronClick}
                 aria-haspopup="menu"
                 aria-expanded={open}
-                aria-label="Open active deals submenu"
+                aria-label="Open recently opened deals submenu"
                 className={cn(
                   'absolute right-1 top-1/2 -translate-y-1/2 z-10',
                   'flex h-6 w-6 items-center justify-center rounded-sm',
@@ -302,13 +302,13 @@ export function DealsFlyoutMenu() {
               onOpenAutoFocus={(e) => e.preventDefault()}
               onCloseAutoFocus={(e) => e.preventDefault()}
             >
-              <div role="menu" aria-label="Active deals">
+              <div role="menu" aria-label="Recently opened deals">
                 <div className="flex items-center justify-between px-2 pb-1.5 pt-1">
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-                    Active deals
+                    Recently opened
                   </span>
                   <span className="text-[10px] text-muted-foreground/70 truncate max-w-[110px]" title={activePipeline?.name || ''}>
-                    {activePipeline?.name || 'Active pipeline'}
+                    Last {activeDeals.length}
                   </span>
                 </div>
                 {/* Scrollable list — caps height so long pipelines don't
