@@ -1215,6 +1215,30 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       }),
       onSent: () => {
         setEmails(prev => [{ ...emailData, id: `mock-sent-${Date.now()}`, threadId }, ...prev]);
+        // ─── Activity log writeback ───
+        // If this compose is matched to a deal (via the AI Assist deal chip
+        // / page-level dealId), write an "Email Sent" entry to that deal's
+        // Activity tab so the timeline reflects outbound work — same
+        // contract as the reply path. Fire-and-forget; never block sends.
+        const resolvedDealId = dealId || null;
+        if (!resolvedDealId) return;
+        (async () => {
+          const logResult = await logSentReplyToDeal({
+            dealId: resolvedDealId,
+            threadId,
+            subject: emailData.subject,
+            body: emailData.body_preview || '',
+            toName: emailData.to_name || emailData.to_email,
+            toEmail: emailData.to_email,
+            fromDisplayName: emailData.from_name,
+          });
+          const dealLabel = logResult.dealName || 'deal';
+          if (!logResult.ok) {
+            toast.error(`Email sent, but couldn't log to ${dealLabel} activity`);
+            return;
+          }
+          toast.success(`Email logged to ${dealLabel} activity.`);
+        })();
       },
       onUndo: () => {
         // Re-open composer with the original draft preloaded.
@@ -1227,7 +1251,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         setComposeOpen(true);
       },
     });
-  }, [onGmailSend, composeReplyTo, queueSend]);
+  }, [onGmailSend, composeReplyTo, queueSend, dealId]);
 
   const responseCount = filteredEmails.filter(e => e.needs_response).length;
   const filteredUnread = filteredEmails.filter(e => !e.is_read).length;
