@@ -452,6 +452,8 @@ export function CashFlowManager() {
   const [cellCommentCount, setCellCommentCount] = useState(0);
   // Lifted from WeeklyReportTab so headline KPIs can scope to (current week → +weeksFuture).
   const [weeksFuture, setWeeksFuture] = useState<number>(12);
+  // Lifted so the PDF export can scope to the same (weeksPast .. weeksFuture) viewport.
+  const [weeksPast, setWeeksPast] = useState<number>(4);
 
   // Entity (account) and Category filters for Configure-driven KPIs/charts/grid
   const [filterEntities, setFilterEntities] = useState<string[]>([]);
