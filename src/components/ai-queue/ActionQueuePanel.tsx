@@ -79,6 +79,17 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
     });
   }, [items]);
 
+  // Items within 6h of their 48h expiry — surfaces a reminder banner so the
+  // user knows to act before they auto-drop.
+  const expiringSoon = useMemo(() => {
+    const now = Date.now();
+    const sixHoursMs = 6 * 60 * 60 * 1000;
+    return items.filter((it) => {
+      const left = new Date(it.expires_at).getTime() - now;
+      return left > 0 && left <= sixHoursMs;
+    });
+  }, [items]);
+
   const startEdit = (item: QueuedAiAction) => {
     setEditingId(item.id);
     setEditTitle(item.title);
@@ -128,6 +139,20 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
           <p className="text-xs">
             Use “Add to Queue” on any AI suggestion to defer it for batch review.
           </p>
+        </div>
+      ) : (
+        <>
+          {expiringSoon.length > 0 && (
+            <div className="mx-3 mt-2 mb-1 flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/[0.08] px-2.5 py-1.5 text-[11px] text-amber-300">
+              <Clock className="h-3 w-3 shrink-0" />
+              <span>
+                {expiringSoon.length === 1
+                  ? '1 queued action expires within 6 hours.'
+                  : `${expiringSoon.length} queued actions expire within 6 hours.`}
+                {' '}Approve or dismiss before they auto-drop at 48h.
+              </span>
+            </div>
+          )}
         </div>
       ) : (
         <ScrollArea className="flex-1 max-h-[60vh]">
