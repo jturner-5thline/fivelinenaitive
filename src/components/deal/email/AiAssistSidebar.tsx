@@ -754,6 +754,31 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             );
           })()}
 
+          {/* Quick Actions toolbar — pinned directly below the entity chip
+              row. Always visible without scrolling; consolidates the panel's
+              5 primary actions (Save to Data Room, Update Lender Status,
+              Draft Reply, Create Task, Schedule Meeting) into a single
+              horizontally scrollable pill row. Each pill (except Draft
+              Reply, which expands the dedicated Draft Reply module below)
+              expands an inline card directly under the toolbar. */}
+          <EmailQuickActionsToolbar
+            thread={thread}
+            dealId={dealId}
+            dealName={dealName}
+            likelyLenderName={workflowAnalysis?.likely_lender_firm?.name || null}
+            attachments={drAttachments}
+            latestMessageId={latestId}
+            fallbackDealId={workflowAnalysis?.likely_deal?.id || null}
+            fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
+            onOpenDraft={() => {
+              setDraftOpen(true);
+              if (!result?.options[selected] && !loadingTones[selected]) {
+                void generateTone(selected);
+              }
+            }}
+            onInsertDraft={onInsertDraft}
+          />
+
           {/* Deal Context — collapsed by default; the chip row above is the
               primary at-a-glance summary. Still renders so the deal-context
               hint is forwarded to the AI draft generator. */}
