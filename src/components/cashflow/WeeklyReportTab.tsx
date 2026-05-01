@@ -164,6 +164,8 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   customDisbursementRows,
   onAddCustomRow,
   onRemoveCustomRow,
+  onUpdateScheduledEntry,
+  onDeleteScheduledEntry,
 }: WeeklyReportTabProps) {
   const { user } = useAuth();
   const { comments: cellComments, byCell: cellCommentsByCell, addComment: addCellComment, deleteComment: deleteCellComment } =
