@@ -1240,6 +1240,22 @@ export function CashFlowManager() {
             }
             return ok;
           }}
+          onUpdateScheduledEntry={async (id, patch) => {
+            const existing = (scheduledItems || []).find((e) => e.id === id);
+            if (!existing) return false;
+            pushUndo(`Edit entry: ${existing.category}`);
+            const updated: ScheduledCashFlow = { ...existing, ...patch };
+            const ok = await saveScheduledItems([updated], []);
+            if (ok) logAction(`Edited scheduled entry: ${updated.category} ($${Number(updated.amount).toLocaleString()})`);
+            return ok;
+          }}
+          onDeleteScheduledEntry={async (id) => {
+            const existing = (scheduledItems || []).find((e) => e.id === id);
+            pushUndo(`Delete entry: ${existing?.category || id}`);
+            const ok = await saveScheduledItems([], [id]);
+            if (ok && existing) logAction(`Deleted scheduled entry: ${existing.category} ($${Number(existing.amount).toLocaleString()})`);
+            return ok;
+          }}
         />
       )}
 
