@@ -44,7 +44,8 @@ export function CopilotToggleButton() {
         "w-[280px] sm:w-[430px]",
         "flex items-center gap-3 pl-1.5 pr-4",
         "text-left",
-        "transition-all duration-200",
+        "transition-shadow duration-200 ease-out",
+        "hover:shadow-[0_16px_40px_rgba(0,0,0,0.55),0_4px_10px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.10),0_0_0_1px_rgba(0,0,0,0.28)]",
         "animate-in fade-in duration-150"
       )}
       style={{
