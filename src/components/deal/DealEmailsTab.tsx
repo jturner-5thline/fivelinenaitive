@@ -1572,7 +1572,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                       }
                     }}
                     className={cn(
-                      'pl-8 pr-[120px] h-8 text-xs bg-white/[0.03] border-white/[0.08] rounded focus:border-white/[0.15]',
+                      'pl-8 pr-8 h-8 text-xs bg-white/[0.03] border-white/[0.08] rounded focus:border-white/[0.15]',
                       aiSearchActive && 'border-primary/40 focus:border-primary/60'
                     )}
                   />
