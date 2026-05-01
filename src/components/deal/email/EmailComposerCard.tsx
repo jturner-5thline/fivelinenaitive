@@ -981,6 +981,28 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
           dataRoomUrl={resolvedDataRoomUrl}
           minHeight={bodyMinHeight}
           className="border-0 shadow-none"
+          toolbarTrailing={
+            canPolish ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 gap-1 text-xs text-muted-foreground hover:text-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/10"
+                    onClick={() => setPolishOpen(true)}
+                    aria-label="Polish with AI"
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    Polish with AI
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  Rewrite your draft in 5th Line voice — facts preserved
+                </TooltipContent>
+              </Tooltip>
+            ) : null
+          }
         />
         {shouldShowSignatureGhost(signatureToPlainText(signature), signatureToPlainText(body)) && (
           <div
@@ -1124,24 +1146,6 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs">Draft with AI (⌘J)</TooltipContent>
           </Tooltip>
-          {canPolish && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="gap-1 h-7 text-xs text-muted-foreground hover:text-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/10"
-                  onClick={() => setPolishOpen(true)}
-                  aria-label="Polish with AI"
-                >
-                  <Sparkles className="h-3 w-3" />Polish with AI
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">
-                Rewrite your draft in 5th Line voice — facts preserved
-              </TooltipContent>
-            </Tooltip>
-          )}
         </ToolbarZone>
 
         <div className="flex-1" />
