@@ -545,6 +545,12 @@ function Toolbar({
           </Button>
         </>
       )}
+      {trailing && (
+        <>
+          <div className="flex-1 min-w-2" />
+          <div className="flex items-center gap-1">{trailing}</div>
+        </>
+      )}
     </div>
   );
 }
