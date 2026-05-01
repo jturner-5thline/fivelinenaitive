@@ -400,6 +400,12 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
     const f = dealContextSummary.financials;
     const fmt = (n: number | null) =>
       n == null ? null : n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `$${Math.round(n / 1_000)}k` : `$${Math.round(n)}`;
+    // Resolve the matched lender's stage on this deal (if any) so the AI can
+    // reference where this specific lender sits in our process.
+    const matchedLenderName = workflowAnalysis?.likely_lender_firm?.name || null;
+    const matchedLenderStage = matchedLenderName
+      ? dealContextSummary.lenderStagesByName[matchedLenderName.trim().toLowerCase()] || null
+      : null;
     return {
       deal_name: dealContextSummary.dealName || undefined,
       status: dealContextSummary.status,
@@ -420,8 +426,11 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
         ebitda: f.ebitda,
         ebitda_display: fmt(f.ebitda),
       },
+      use_of_proceeds: dealContextSummary.useOfProceeds || null,
       active_lenders: dealContextSummary.lenderCounts.active,
       total_lenders: dealContextSummary.lenderCounts.total,
+      matched_lender: matchedLenderName,
+      matched_lender_stage: matchedLenderStage,
       open_outstanding_items: dealContextSummary.outstanding.openCount,
       most_overdue_item: dealContextSummary.outstanding.mostOverdue
         ? {
@@ -436,6 +445,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
         description: it.description,
         due_date: it.dueDate,
         days_overdue: it.daysOverdue,
+        assignee: it.assignee || null,
       })),
       last_status_note: dealContextSummary.lastStatusNote
         ? {
@@ -445,7 +455,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
           }
         : null,
     };
-  }, [dealContextSummary]);
+  }, [dealContextSummary, workflowAnalysis?.likely_lender_firm?.name]);
 
   /**
    * Generate a single tone (Concise or Balanced). Fast model by default;
