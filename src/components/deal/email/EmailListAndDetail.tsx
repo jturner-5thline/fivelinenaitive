@@ -410,6 +410,20 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
                 Responded
               </Badge>
             )}
+            {locationChip && (
+              <Badge
+                variant="outline"
+                title={`Stored in: ${locationChip.label}`}
+                className={cn(
+                  'text-[9px] h-[16px] px-1 gap-0.5 shrink-0 border',
+                  locationChip.tone === 'muted'
+                    ? 'bg-muted/40 text-muted-foreground border-border/60'
+                    : 'bg-foreground/[0.04] text-foreground/80 border-foreground/15',
+                )}
+              >
+                <span className="truncate max-w-[90px]">{locationChip.label}</span>
+              </Badge>
+            )}
             {userLabels && userLabels.length > 0 && (
               <div className="flex items-center gap-1 shrink-0 min-w-0 max-w-[55%] overflow-hidden">
                 {userLabels.slice(0, 3).map((l) => {
