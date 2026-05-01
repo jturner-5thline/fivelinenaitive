@@ -8422,6 +8422,114 @@ export type Database = {
         }
         Relationships: []
       }
+      email_cadence_jobs: {
+        Row: {
+          contacts_processed: number
+          created_at: string
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          messages_scanned: number
+          scope: string
+          started_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contacts_processed?: number
+          created_at?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          messages_scanned?: number
+          scope?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contacts_processed?: number
+          created_at?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          messages_scanned?: number
+          scope?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      email_cadence_profiles: {
+        Row: {
+          avg_followup_interval_days: number | null
+          avg_response_time_hours: number | null
+          computed_at: string
+          contact_email: string
+          contact_name: string | null
+          created_at: string
+          first_contact_at: string | null
+          id: string
+          inbound_count: number
+          last_contact_at: string | null
+          last_inbound_at: string | null
+          last_outbound_at: string | null
+          median_followup_interval_days: number | null
+          outbound_count: number
+          relationship_type: string | null
+          sample_size: number
+          tone: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avg_followup_interval_days?: number | null
+          avg_response_time_hours?: number | null
+          computed_at?: string
+          contact_email: string
+          contact_name?: string | null
+          created_at?: string
+          first_contact_at?: string | null
+          id?: string
+          inbound_count?: number
+          last_contact_at?: string | null
+          last_inbound_at?: string | null
+          last_outbound_at?: string | null
+          median_followup_interval_days?: number | null
+          outbound_count?: number
+          relationship_type?: string | null
+          sample_size?: number
+          tone?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avg_followup_interval_days?: number | null
+          avg_response_time_hours?: number | null
+          computed_at?: string
+          contact_email?: string
+          contact_name?: string | null
+          created_at?: string
+          first_contact_at?: string | null
+          id?: string
+          inbound_count?: number
+          last_contact_at?: string | null
+          last_inbound_at?: string | null
+          last_outbound_at?: string | null
+          median_followup_interval_days?: number | null
+          outbound_count?: number
+          relationship_type?: string | null
+          sample_size?: number
+          tone?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_distribution_stats: {
         Row: {
           clean_bounces: number | null

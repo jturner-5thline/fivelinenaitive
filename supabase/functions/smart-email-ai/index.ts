@@ -410,6 +410,56 @@ ${financialsBlock ? "- When the recipient asks about financials, deal size, ARR/
       console.warn("[smart-email-ai] Failed to load company email style guide:", e);
     }
 
+    // ─── Load per-contact cadence profile (Learn My Cadence) ────
+    // The cadence profile is computed by the on-demand `learn-email-cadence`
+    // edge function from the user's own email_cache. We feed it into the
+    // draft prompt so generated replies match the user's historical tone
+    // and pacing for this specific contact. The card in the AI panel uses
+    // the same data to surface the "you typically follow up every N days"
+    // nudge — keeping the two surfaces in sync.
+    let cadenceBlock = "";
+    try {
+      const latestForCadence =
+        emailData ||
+        (threadData && (threadData.latestEmail || threadData.emails?.[0])) ||
+        null;
+      const cadenceContact = (latestForCadence?.from_email || "").toLowerCase();
+      if (cadenceContact) {
+        const { data: cadence } = await supabase
+          .from("email_cadence_profiles")
+          .select(
+            "contact_email, contact_name, avg_followup_interval_days, median_followup_interval_days, avg_response_time_hours, last_outbound_at, outbound_count, tone, relationship_type",
+          )
+          .eq("user_id", user.id)
+          .eq("contact_email", cadenceContact)
+          .maybeSingle();
+        if (cadence && cadence.outbound_count >= 3) {
+          const lines: string[] = [];
+          const c = cadence as any;
+          if (c.avg_followup_interval_days != null) {
+            lines.push(`- You typically follow up with this contact every ${Number(c.avg_followup_interval_days).toFixed(1)} days.`);
+          }
+          if (c.avg_response_time_hours != null) {
+            lines.push(`- Your typical response time to them: ${Number(c.avg_response_time_hours).toFixed(1)} hours.`);
+          }
+          const tone = (c.tone || {}) as any;
+          if (tone.formality) lines.push(`- Tone you usually use with them: ${tone.formality}.`);
+          if (tone.common_greeting) lines.push(`- Greeting you most often open with: "${tone.common_greeting}".`);
+          if (tone.avg_length_words) lines.push(`- Your typical message length to them: ~${tone.avg_length_words} words.`);
+          if (c.relationship_type) lines.push(`- Relationship type: ${c.relationship_type}.`);
+          if (c.last_outbound_at) {
+            const days = (Date.now() - new Date(c.last_outbound_at).getTime()) / 86400000;
+            lines.push(`- Days since your last outbound to them: ${days.toFixed(1)}.`);
+          }
+          if (lines.length > 0) {
+            cadenceBlock = `\nCONTACT CADENCE (learned from your past emails — match this rhythm and tone, do NOT call attention to it):\n${lines.join("\n")}\n`;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[smart-email-ai] Failed to load cadence profile:", e);
+    }
+
     let systemPrompt = "";
     let userPrompt = "";
 
@@ -518,6 +568,7 @@ TRACKING:
 
         systemPrompt = `You are drafting emails on behalf of the user — a debt advisory and capital markets professional. Your voice is warm, human, and conversational while still polished and appropriate for lenders, borrowers, investors, and other professional counterparties. Think "smart colleague firing off a quick deal email," not "corporate memo."
 ${styleGuideBlock}
+${cadenceBlock}
 
 TONE & STYLE (apply to ALL draft options by default):
 - Slightly informal, friendly, and natural — never stiff or legalistic.
@@ -610,6 +661,7 @@ Generate ${wantSingle ? 1 : 2} draft ${effectiveDraftType} option${wantSingle ? 
       case "draft_reply": {
         systemPrompt = `You are an expert debt advisory professional at a capital advisory firm. Draft a professional reply email based on the deal context and conversation. Be concise, professional, and action-oriented. Output ONLY the email body text (no subject, no "From:", etc.).`;
         if (styleGuideBlock) systemPrompt += `\n${styleGuideBlock}`;
+        if (cadenceBlock) systemPrompt += `\n${cadenceBlock}`;
         {
           const sig = userSignature || companySignature;
           if (sig) systemPrompt += `\nAlways end the email body with this exact signature on its own lines (do NOT modify it, do NOT add any other closing line before it):\n${sig}`;
@@ -632,6 +684,7 @@ Draft a professional reply to the most recent email in this thread. Consider the
       case "auto_draft": {
         systemPrompt = `You are an expert debt advisory professional at a capital advisory firm. You proactively draft reply emails when a response is needed. Your drafts should be concise, professional, and address any questions or requests in the latest email. Consider the full deal context for accuracy. Output ONLY the email body text (no subject, no "From:", etc.). Keep replies under 150 words unless the complexity requires more.`;
         if (styleGuideBlock) systemPrompt += `\n${styleGuideBlock}`;
+        if (cadenceBlock) systemPrompt += `\n${cadenceBlock}`;
         {
           const sig = userSignature || companySignature;
           if (sig) systemPrompt += `\nAlways end the email body with this exact signature on its own lines (do NOT modify it, do NOT add any other closing line before it):\n${sig}`;

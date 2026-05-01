@@ -36,6 +36,7 @@ import { AIConfigurationSettings } from '@/components/settings/AIConfigurationSe
 import { OutboundEmailTemplatesSettings } from '@/components/settings/OutboundEmailTemplatesSettings';
 import { EmailWorkflowsSettings } from '@/components/settings/EmailWorkflowsSettings';
 import { EmailStyleGuideSettings } from '@/components/settings/EmailStyleGuideSettings';
+import { EmailCadenceSettings } from '@/components/settings/EmailCadenceSettings';
 import { useCompany } from '@/hooks/useCompany';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
@@ -71,6 +72,7 @@ const SETTINGS_SECTIONS = [
   { id: 'email-signature', keywords: ['email', 'signature', 'sign', 'off', 'closing', 'best', 'regards', 'name'] },
   { id: 'email-templates-outbound', keywords: ['email', 'templates', 'outbound', 'lender', 'submission', 'sequence', 'body', 'compose'] },
   { id: 'email-style-guide', keywords: ['email', 'style', 'guide', 'voice', 'tone', 'signature', 'greeting', 'closing', 'ai', 'draft', 'reply', '5th line'] },
+  { id: 'email-cadence', keywords: ['email', 'cadence', 'learn', 'follow', 'up', 'frequency', 'tone', 'rhythm', 'history', 'inbox', 'scan', 'ai'] },
   { id: 'distribution-stats', keywords: ['distribution', 'stats', 'tracking', 'internal', 'ip', 'bot', 'clean', 'filter', 'opens', 'clicks'] },
   { id: 'kpi-card-settings', keywords: ['kpi', 'summary', 'card', 'metrics', 'dashboard', 'format', 'trend', 'comparison'] },
   { id: 'field-layout', keywords: ['field', 'layout', 'editor', 'hubspot', 'contacts', 'companies', 'crm', 'fields', 'sections'] },
@@ -83,7 +85,7 @@ const TABS = [
   { id: 'deals', label: 'Deals', sectionIds: ['deal-types', 'pipelines', 'deal-info-fields', 'writeup-fields', 'deal-stages', 'default-milestones', 'referral-sources', 'data-room-checklist', 'gamma-templates', 'agreement-templates'] },
   { id: 'lenders', label: 'Lenders', sectionIds: ['lender-stages', 'lender-milestones', 'pass-reasons', 'lender-matching'] },
   { id: 'automation', label: 'Automation', sectionIds: ['workflows', 'suggestions', 'scheduled-reports', 'sla-rules', 'stale-alerts', 'zapier'] },
-  { id: 'email', label: 'Email', sectionIds: ['email-snippets', 'email-labels', 'email-signature', 'email-templates-outbound', 'email-style-guide', 'distribution-stats'] },
+  { id: 'email', label: 'Email', sectionIds: ['email-snippets', 'email-labels', 'email-signature', 'email-templates-outbound', 'email-style-guide', 'email-cadence', 'distribution-stats'] },
   { id: 'metrics', label: 'Metrics', sectionIds: ['kpi-card-settings'] },
   { id: 'crm', label: 'CRM', sectionIds: ['field-layout'] },
   { id: 'ai', label: 'AI', sectionIds: ['ai-configuration'] },
@@ -296,6 +298,7 @@ export default function Settings() {
                   {isVisible('email-labels') && <EmailLabelsSettings />}
                   {isVisible('email-templates-outbound') && <OutboundEmailTemplatesSettings isAdmin={isAdmin} />}
                   {isVisible('email-style-guide') && <EmailStyleGuideSettings isAdmin={isAdmin} />}
+                  {isVisible('email-cadence') && <EmailCadenceSettings />}
                   <EmailWorkflowsSettings isAdmin={isAdmin} />
                   {isVisible('distribution-stats') && <DistributionStatsSettings />}
                 </TabsContent>
