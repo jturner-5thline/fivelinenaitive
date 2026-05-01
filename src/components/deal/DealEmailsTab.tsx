@@ -789,6 +789,24 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     if (chipFilter === 'recent') filtered = filtered.sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime());
     if (chipFilter === 'important') filtered = filtered.filter(e => e.is_starred || e.labels.includes('Important'));
     if (chipFilter === 'attachments') filtered = filtered.filter(e => e.has_attachments);
+    if (chipFilter === 'stale') {
+      // Keep only emails belonging to threads that classify as
+      // "Clients & Deals" AND whose newest message is 6+ days old without
+      // a reply from us — i.e. the orange + red dots in the row UI.
+      const cdEmails = filterEmailsByCategory(filtered, 'clients_deals', classifierEntities, orgCtx);
+      const threads = groupEmailsByThread(cdEmails);
+      const keepThreadIds = new Set<string>();
+      const now = Date.now();
+      for (const t of threads) {
+        const responded = t.emails.length > 0 && t.emails[0]?.from_name === 'You';
+        if (responded) continue;
+        const ts = new Date(t.latestEmail.received_at).getTime();
+        if (!isFinite(ts)) continue;
+        const days = (now - ts) / 86_400_000;
+        if (days >= 6) keepThreadIds.add(t.threadId);
+      }
+      filtered = filtered.filter(e => keepThreadIds.has(e.threadId || e.id));
+    }
     if (searchFilters.sender) {
       const s = searchFilters.sender.toLowerCase();
       filtered = filtered.filter(e => e.from_name.toLowerCase().includes(s) || e.from_email.toLowerCase().includes(s));
