@@ -13,15 +13,14 @@ import { useCloseOnRouteChange } from '@/hooks/useCloseOnRouteChange';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { isExcludedDealName } from '@/utils/excludedDeals';
+import { useRecentDealIds } from '@/hooks/useRecentDeals';
 import type { Deal, DealStage, DealStatus } from '@/types/deal';
 
 const OPEN_DELAY = 120;
 const CLOSE_DELAY = 180;
 
-/** Stages considered "closed" (won/lost/parked) — never appear in the filter. */
-const CLOSED_STAGES: DealStage[] = ['closed-won', 'closed-lost', 'on-hold'];
-/** Statuses considered closed/won/archived — never appear in the filter. */
-const CLOSED_STATUSES: DealStatus[] = ['archived', 'on-hold'];
+/** Maximum number of recently opened deals to surface in the dropdown. */
+const MAX_RECENT_IN_MENU = 5;
 
 /** Custom event consumed by the inbox view (see DealEmailsTab) to apply the
  * inbox-level deal filter selected from the sidebar flyout. */
@@ -39,6 +38,7 @@ export function DealsFlyoutMenu() {
   const isMobile = useIsMobile();
   const { deals } = useDealsContext();
   const { activePipelineId, activePipeline } = usePipelineContext();
+  const recentDealIds = useRecentDealIds();
 
   const [open, setOpen] = useState(false);
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
@@ -54,22 +54,22 @@ export function DealsFlyoutMenu() {
   const showExpanded = state === 'expanded' || (state === 'collapsed' && isHovering);
   const isDealsRoute = location.pathname === '/deals';
 
-  /** Active-pipeline open deals only.
-   *  Filter rule: pipelineId === activePipelineId AND stage NOT IN
-   *  (closed-won / closed-lost / on-hold) AND status NOT IN
-   *  (archived / on-hold). Excluded test deals are also removed. */
+  /** The user's 5 most recently opened deals (most recent first), resolved
+   *  against the loaded deals list. Excluded test deals and deals the user
+   *  no longer has access to are skipped. */
   const activeDeals = useMemo<Deal[]>(() => {
-    if (!activePipelineId) return [];
-    return (deals || [])
-      .filter((d) => {
-        if (isExcludedDealName(d.name)) return false;
-        if (d.pipelineId !== activePipelineId) return false;
-        if (CLOSED_STAGES.includes(d.stage as DealStage)) return false;
-        if (CLOSED_STATUSES.includes(d.status as DealStatus)) return false;
-        return true;
-      })
-      .sort((a, b) => (a.company || a.name).localeCompare(b.company || b.name));
-  }, [deals, activePipelineId]);
+    if (!recentDealIds.length || !deals?.length) return [];
+    const byId = new Map(deals.map((d) => [d.id, d]));
+    const out: Deal[] = [];
+    for (const dealId of recentDealIds) {
+      const d = byId.get(dealId);
+      if (!d) continue;
+      if (isExcludedDealName(d.name)) continue;
+      out.push(d);
+      if (out.length >= MAX_RECENT_IN_MENU) break;
+    }
+    return out;
+  }, [recentDealIds, deals]);
 
   const hasDeals = activeDeals.length > 0;
 
