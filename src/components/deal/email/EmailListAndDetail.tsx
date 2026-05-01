@@ -372,15 +372,33 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
           edge so it doesn't collide with the selected/priority accent
           bars. */}
       {staleBucket && (
-        <span
-          className={cn(
-            'absolute left-1 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full z-10 shrink-0',
-            STALE_DOT_CLASSES[staleBucket],
-          )}
-          aria-label={STALE_DOT_TITLES[staleBucket]}
-          title={STALE_DOT_TITLES[staleBucket]}
-          data-stale-bucket={staleBucket}
-        />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span
+              className={cn(
+                'absolute left-1 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full z-10 shrink-0 cursor-help',
+                STALE_DOT_CLASSES[staleBucket],
+              )}
+              aria-label={STALE_DOT_TITLES[staleBucket]}
+              data-stale-bucket={staleBucket}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </TooltipTrigger>
+          <TooltipContent side="right" className="max-w-[240px] text-xs leading-relaxed">
+            <div className="font-medium">{STALE_DOT_TITLES[staleBucket]}</div>
+            <div className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
+              <div className="flex items-center gap-1.5"><span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" /> Fresh — &lt;24h or replied</div>
+              <div className="flex items-center gap-1.5"><span className="inline-block h-1.5 w-1.5 rounded-full bg-yellow-400" /> Aging — 2–5 days, no reply</div>
+              <div className="flex items-center gap-1.5"><span className="inline-block h-1.5 w-1.5 rounded-full bg-orange-500" /> Stale — 6–10 days, no reply</div>
+              <div className="flex items-center gap-1.5"><span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500" /> Urgent — 11+ days, no reply</div>
+            </div>
+            {latest.received_at && (
+              <div className="mt-1.5 pt-1.5 border-t border-border/50 text-[11px] text-muted-foreground">
+                Calculated {format(new Date(), 'MMM d, h:mm a')} · last msg {formatDistanceToNow(new Date(latest.received_at), { addSuffix: true })}
+              </div>
+            )}
+          </TooltipContent>
+        </Tooltip>
       )}
       {/* Priority signal accent bar — red for urgent, yellow for action.
           Hidden when the row is selected so the blue selection bar wins. */}
