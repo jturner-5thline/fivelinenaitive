@@ -1,0 +1,122 @@
+/**
+ * Gmail "all mail" search hook.
+ *
+ * Default inbox loading is intentionally restricted to the INBOX label so the
+ * inbox view stays clean (no spam/trash/sent). But that means archived mail
+ * and emails moved to user labels (e.g. "Censys", "Lenders", "Deals") become
+ * invisible to the in-memory keyword/AI search.
+ *
+ * When the user types a search query, this hook fires a single Gmail list
+ * request with `search_all_mail=true` (no INBOX restriction). The returned
+ * messages are mapped to `MockEmail` and merged into the search candidate set
+ * so labeled / archived mail surfaces in results — exactly what would happen
+ * if the same query were typed into Gmail's own search bar.
+ *
+ * The fetch is debounced and de-duplicated per query string. Failures are
+ * silent: if the search fetch fails or rate-limits, we just fall back to the
+ * already-loaded inbox candidates.
+ */
+import { useEffect, useRef, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import type { MockEmail } from '@/components/deal/email/mockEmailData';
+
+const DEBOUNCE_MS = 300;
+const MAX_RESULTS = 50;
+
+function mapToMockEmail(msg: any): MockEmail | null {
+  if (!msg || !msg.id) return null;
+  const labels: string[] = Array.isArray(msg.labels) ? msg.labels : [];
+  // Reflect the email's actual storage location so the inbox row can render
+  // a small chip (Archived / <Label>) when this came from a search hit
+  // outside the INBOX folder.
+  let folder: MockEmail['folder'] = 'inbox';
+  const labelSet = new Set(labels.map((l) => String(l).toUpperCase()));
+  if (labelSet.has('TRASH')) folder = 'trash';
+  else if (labelSet.has('SPAM')) folder = 'junk';
+  else if (labelSet.has('DRAFT')) folder = 'drafts';
+  else if (labelSet.has('SENT') && !labelSet.has('INBOX')) folder = 'sent';
+  return {
+    id: msg.id,
+    threadId: msg.thread_id || msg.id,
+    provider_thread_id: msg.thread_id || null,
+    subject: msg.subject || '(No subject)',
+    from_name: msg.from_name || msg.from_email || 'Unknown',
+    from_email: msg.from_email || '',
+    to_name: (msg.to_names || msg.to_emails || [])[0] || 'You',
+    to_email: (msg.to_emails || [])[0] || '',
+    snippet: msg.snippet || '',
+    body_preview: msg.body_text || msg.body_html || msg.snippet || '',
+    body_html: msg.body_html || undefined,
+    body_text: msg.body_text || undefined,
+    body_loaded: !!(msg.body_html || msg.body_text),
+    received_at: msg.received_at || new Date().toISOString(),
+    is_read: msg.is_read ?? true,
+    is_starred: msg.is_starred ?? false,
+    folder,
+    labels,
+    has_attachments: !!msg.has_attachments,
+    attachments: Array.isArray(msg.attachments) ? msg.attachments : undefined,
+    is_linked_to_deal: false,
+    is_follow_up: false,
+    needs_response: false,
+    category: 'deal' as const,
+  };
+}
+
+export function useGmailAllMailSearch(query: string, enabled: boolean) {
+  const [results, setResults] = useState<MockEmail[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const lastQueryRef = useRef<string>('');
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (!enabled || !trimmed) {
+      if (lastQueryRef.current) {
+        lastQueryRef.current = '';
+        setResults([]);
+      }
+      return;
+    }
+    if (trimmed === lastQueryRef.current) return;
+
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
+    const handle = window.setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('gmail-messages', {
+          body: {
+            action: 'list',
+            max_results: MAX_RESULTS,
+            query: trimmed,
+            search_all_mail: true,
+          },
+        });
+        if (ctrl.signal.aborted) return;
+        if (error || data?.fallback) {
+          // Silent failure — keep showing in-memory results.
+          return;
+        }
+        const mapped = (data?.messages || [])
+          .map(mapToMockEmail)
+          .filter((e: MockEmail | null): e is MockEmail => !!e);
+        lastQueryRef.current = trimmed;
+        setResults(mapped);
+      } catch {
+        /* network blip — keep prior results */
+      } finally {
+        if (!ctrl.signal.aborted) setIsSearching(false);
+      }
+    }, DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(handle);
+      ctrl.abort();
+    };
+  }, [query, enabled]);
+
+  return { results, isSearching };
+}
