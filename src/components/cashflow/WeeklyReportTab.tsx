@@ -247,9 +247,12 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   // users can scroll left/right at any vertical position without reaching the
   // page footer.
   const stickyScrollRef = useRef<HTMLDivElement | null>(null);
-  const [stickyScroll, setStickyScroll] = useState<{ visible: boolean; contentWidth: number; viewportWidth: number }>(
-    { visible: false, contentWidth: 0, viewportWidth: 0 },
-  );
+  const [stickyScroll, setStickyScroll] = useState<{
+    visible: boolean;
+    contentWidth: number;
+    viewportWidth: number;
+    left: number;
+  }>({ visible: false, contentWidth: 0, viewportWidth: 0, left: 0 });
   // Re-entrancy guard so the two scroll handlers don't ping-pong.
   const syncingRef = useRef<'grid' | 'sticky' | null>(null);
 
@@ -272,11 +275,13 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
           visible: overflows && inViewport && nativeBarBelowFold,
           contentWidth,
           viewportWidth,
+          left: Math.max(0, rect.left),
         };
         if (
           prev.visible === next.visible &&
           prev.contentWidth === next.contentWidth &&
-          prev.viewportWidth === next.viewportWidth
+          prev.viewportWidth === next.viewportWidth &&
+          prev.left === next.left
         ) {
           return prev;
         }
