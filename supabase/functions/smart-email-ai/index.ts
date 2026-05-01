@@ -278,12 +278,34 @@ ${statusNotes.map((n: any) => `- "${(n.note || "").replace(/\s+/g, " ").substrin
       const lastNote = h.last_status_note
         ? `"${(h.last_status_note.note || "").substring(0, 200)}" — ${h.last_status_note.author || "unknown"}`
         : "none";
+      // Financials + open-items rendering. Only emit lines we actually have
+      // numbers for, so the AI doesn't see blank/placeholder values.
+      const fin = h.financials || {};
+      const finLines: string[] = [];
+      if (fin.deal_size_display) finLines.push(`- Deal size / capital ask: ${fin.deal_size_display}`);
+      if (fin.arr_display) finLines.push(`- ARR: ${fin.arr_display}`);
+      if (fin.mrr_display && !fin.arr_display) finLines.push(`- MRR: ${fin.mrr_display}`);
+      if (fin.ttm_revenue_display) finLines.push(`- TTM revenue: ${fin.ttm_revenue_display}`);
+      if (fin.ebitda_display) finLines.push(`- EBITDA: ${fin.ebitda_display}`);
+      const financialsBlock = finLines.length > 0
+        ? `\nDEAL SPACE FINANCIALS (cite verbatim — DO NOT round, DO NOT leave $X placeholders):\n${finLines.join("\n")}`
+        : "";
+      if (financialsBlock) dealContextSources.push("deal_space_financials");
+      const openItems = Array.isArray(h.open_items) ? h.open_items.slice(0, 5) : [];
+      const openItemsBlock = openItems.length > 0
+        ? `\nOPEN OUTSTANDING ITEMS (match against the email topic — if the lender's question maps to one, reference it by name and a concrete ETA):\n${openItems
+            .map((it: any) => `- ${it.description}${it.days_overdue != null ? ` (${it.days_overdue}d overdue)` : it.due_date ? ` (due ${it.due_date})` : ""}`)
+            .join("\n")}`
+        : "";
       dealContext += `\nDEAL STATE SNAPSHOT (live from AI panel):
+${h.deal_name ? `- Deal: ${h.deal_name}\n` : ""}\
 - Status: ${h.status || "unknown"}
 - Stage: ${h.stage || "unknown"} (${h.days_in_stage ?? "?"} days in stage)
 - Lenders: ${h.active_lenders ?? 0} active of ${h.total_lenders ?? 0} total
 - Open outstanding items: ${h.open_outstanding_items ?? 0} (most overdue: ${overdue})
 - Last status note: ${lastNote}
+${financialsBlock}
+${openItemsBlock}
 
 TONE GUIDANCE FROM DEAL STATE:
 ${h.status === "at-risk" || h.status === "off-track"
@@ -294,6 +316,7 @@ ${h.status === "at-risk" || h.status === "off-track"
 ${h.most_overdue_item && (h.most_overdue_item.days_overdue ?? 0) >= 3
   ? "- There is a meaningfully overdue outstanding item; if it's relevant to this thread, gently surface it."
   : ""}
+${financialsBlock ? "- When the recipient asks about financials, deal size, ARR/MRR, revenue, or EBITDA, reference the exact numbers above. NEVER write '$X' or '[amount]' placeholders." : ""}
 `;
     }
 
