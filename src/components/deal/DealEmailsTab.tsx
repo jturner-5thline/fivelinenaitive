@@ -577,7 +577,13 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   useEffect(() => {
     if (!isInboxScope) return;
     const id = searchParams.get('inboxDeal');
-    if (id && id !== selectedDealFilterId) setSelectedDealFilterId(id);
+    if (id) {
+      if (id !== selectedDealFilterId) setSelectedDealFilterId(id);
+      // Strip from the URL so reloads / back-button don't re-apply it.
+      const next = new URLSearchParams(searchParams);
+      next.delete('inboxDeal');
+      setSearchParams(next, { replace: true });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, isInboxScope]);
 
