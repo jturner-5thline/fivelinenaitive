@@ -1212,6 +1212,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         body: p.body,
         bodyHtml: emailData.body_html,
         attachments: emailData._outgoing_files,
+        cc: emailData._cc,
+        bcc: emailData._bcc,
       }),
       onSent: () => {
         setEmails(prev => [{ ...emailData, id: `mock-sent-${Date.now()}`, threadId }, ...prev]);
@@ -1240,6 +1242,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             toName: emailData.to_name || emailData.to_email,
             toEmail: emailData.to_email,
             fromDisplayName: emailData.from_name,
+            cc: emailData._cc,
+            bcc: emailData._bcc,
           });
           const dealLabel = logResult.dealName || 'deal';
           if (!logResult.ok) {
@@ -2182,6 +2186,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                       bodyHtml: emailData.body_html,
                       attachments: emailData._outgoing_files,
                       replyToMessageId: emailData._reply_to_message_id,
+                      cc: emailData._cc,
+                      bcc: emailData._bcc,
                     }),
                     onSent: () => {
                       setEmails(prev => [{ ...emailData, id: `mock-sent-${Date.now()}`, threadId }, ...prev]);
@@ -2221,6 +2227,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                           toEmail: emailData.to_email,
                           fromDisplayName: emailData.from_name,
                           dealName: resolvedDealName,
+                          cc: emailData._cc,
+                          bcc: emailData._bcc,
                         });
 
                         const dealLabel = logResult.dealName || resolvedDealName || 'deal';

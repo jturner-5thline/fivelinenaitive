@@ -67,6 +67,14 @@ export interface MockEmail {
    * Used for Nylas threading (In-Reply-To/References).
    */
   _reply_to_message_id?: string;
+  /**
+   * Transient: full CC recipient list for an outbound send. Not persisted
+   * to mock data — used by the send pipeline to forward to Nylas/Gmail
+   * and to record the full distribution on the deal activity log.
+   */
+  _cc?: string[];
+  /** Transient: full BCC recipient list for an outbound send. */
+  _bcc?: string[];
 }
 
 const now = new Date();

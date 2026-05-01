@@ -63,6 +63,8 @@ export function InlineComposePanel({ onSend, onClose, replyTo, dealName, dealId,
       needs_response: false,
       category: 'deal',
       _outgoing_files: files.length > 0 ? files : undefined,
+      _cc: recipients.cc.length > 0 ? recipients.cc : undefined,
+      _bcc: recipients.bcc.length > 0 ? recipients.bcc : undefined,
     }, opts);
     resetForm();
     onClose();
