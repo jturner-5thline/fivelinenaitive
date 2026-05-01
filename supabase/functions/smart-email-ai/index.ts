@@ -1258,6 +1258,18 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
       // Also expose the explicit injected-fields array for any UI that wants it.
       parsed.deal_context_used = modelInjected;
 
+      // If we actually injected the live Deal Space snapshot or financials,
+      // force used_deal_context=true so the UI's "Generated using <Deal Name>
+      // deal data" label is reliably shown — don't depend on the model's
+      // self-report which can be inconsistent.
+      if (
+        dealContextSources.includes("deal_state_snapshot") ||
+        dealContextSources.includes("deal_space_financials") ||
+        dealContextSources.includes("deal_metadata")
+      ) {
+        parsed.used_deal_context = true;
+      }
+
       // ─── Append the user's configured signature to each draft body ───
       // The model is instructed not to add any sign-off; we append the user's
       // Settings → Email signature (or, as fallback, the company style-guide
