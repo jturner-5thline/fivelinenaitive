@@ -195,7 +195,13 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
 
   // Clamp to >=0 so that edge cases (empty initial weeklyData, current week at edge)
   // never produce negative state that silently collapses the visible window.
-  const [weeksPast, setWeeksPast] = useState(() => Math.max(0, Math.min(Math.max(0, effectiveCurrentIndex), 4)));
+  const [weeksPastLocal, setWeeksPastLocal] = useState(() => Math.max(0, Math.min(Math.max(0, effectiveCurrentIndex), 4)));
+  const weeksPast = weeksPastProp ?? weeksPastLocal;
+  const setWeeksPast = useCallback((n: number) => {
+    const clamped = Math.max(0, n);
+    if (onWeeksPastChange) onWeeksPastChange(clamped);
+    if (weeksPastProp === undefined) setWeeksPastLocal(clamped);
+  }, [onWeeksPastChange, weeksPastProp]);
   const [weeksFutureLocal, setWeeksFutureLocal] = useState(() =>
     Math.max(0, Math.min(Math.max(0, totalWeeks - effectiveCurrentIndex - 1), 12)),
   );
