@@ -1609,6 +1609,65 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         deals: dealsRes.data || [],
       };
     }
+    case "link_contact_to_deal": {
+      // Resolve contact
+      let contactId = args.contact_id as string | undefined;
+      let contactName = "";
+      if (!contactId && args.contact_search) {
+        const term = String(args.contact_search).trim();
+        const { data: matches } = await supabase
+          .from("contacts")
+          .select("id, first_name, last_name, email")
+          .or(`email.ilike.%${term}%,first_name.ilike.%${term}%,last_name.ilike.%${term}%`)
+          .limit(5);
+        if (!matches?.length) return { error: `No contact found matching "${term}".` };
+        if (matches.length > 1) {
+          return {
+            error: "Multiple contacts match — ask the user which one.",
+            candidates: matches.map((c: any) => ({ id: c.id, name: `${c.first_name || ""} ${c.last_name || ""}`.trim(), email: c.email })),
+          };
+        }
+        contactId = matches[0].id;
+        contactName = `${matches[0].first_name || ""} ${matches[0].last_name || ""}`.trim() || matches[0].email;
+      } else if (contactId) {
+        const { data: c } = await supabase.from("contacts").select("first_name, last_name, email").eq("id", contactId).single();
+        contactName = c ? (`${c.first_name || ""} ${c.last_name || ""}`.trim() || c.email) : "Unknown contact";
+      }
+      if (!contactId) return { error: "Provide contact_id or contact_search." };
+
+      // Resolve deal
+      let dealId = args.deal_id as string | undefined;
+      let dealName = "";
+      if (!dealId && args.deal_search) {
+        const { data: matches } = await supabase
+          .from("deals").select("id, company").ilike("company", `%${args.deal_search}%`).limit(5);
+        if (!matches?.length) return { error: `No deal found matching "${args.deal_search}".` };
+        if (matches.length > 1) {
+          return {
+            error: "Multiple deals match — ask the user which one.",
+            candidates: matches.map((d: any) => ({ id: d.id, name: d.company })),
+          };
+        }
+        dealId = matches[0].id;
+        dealName = matches[0].company;
+      } else if (dealId) {
+        const { data: d } = await supabase.from("deals").select("company").eq("id", dealId).single();
+        dealName = d?.company || "Unknown deal";
+      }
+      if (!dealId) return { error: "Provide deal_id or deal_search." };
+
+      // Already linked?
+      const { data: existing } = await supabase
+        .from("contact_deals").select("id").eq("contact_id", contactId).eq("deal_id", dealId).maybeSingle();
+      if (existing) return { info: `${contactName} is already linked to ${dealName}.` };
+
+      return {
+        action: "confirm_required",
+        action_type: "link_contact_to_deal",
+        params: { contact_id: contactId, deal_id: dealId, role: args.role || null, contact_name: contactName, deal_name: dealName },
+        preview: `Link ${contactName} to ${dealName}${args.role ? ` as ${args.role}` : ""}?`,
+      };
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
