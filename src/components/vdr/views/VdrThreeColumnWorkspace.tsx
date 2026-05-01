@@ -1053,7 +1053,29 @@ export function VdrThreeColumnWorkspace({
                 {column === 'dataroom' ? 'Move to Data Room folder' : 'Move to category'}
               </ContextMenuSubTrigger>
               <ContextMenuSubContent>
-                {categoryNames.map(cat => (
+                {(() => {
+                  const prefs = column === 'internal' ? internalFolderPrefs : dataroomFolderPrefs;
+                  const allowed = new Set<string>([
+                    ...categoryNames,
+                    ...(column === 'dataroom' ? customFolderNames : []),
+                  ]);
+                  const recent = prefs.recents.filter(n => allowed.has(n)).slice(0, 5);
+                  if (!recent.length) return null;
+                  return (
+                    <>
+                      {recent.map(name => (
+                        <ContextMenuItem
+                          key={`recent-${name}`}
+                          onClick={() => moveToCategory([doc.id], name, column)}
+                        >
+                          ↻ {name}
+                        </ContextMenuItem>
+                      ))}
+                      <ContextMenuSeparator />
+                    </>
+                  );
+                })()}
+                {(column === 'internal' ? internalCategoryNames : dataroomCategoryNames).map(cat => (
                   <ContextMenuItem key={cat} onClick={() => moveToCategory([doc.id], cat, column)}>
                     {cat}
                   </ContextMenuItem>
@@ -1061,7 +1083,7 @@ export function VdrThreeColumnWorkspace({
                 {column === 'dataroom' && customFolderNames.length > 0 && (
                   <ContextMenuSeparator />
                 )}
-                {column === 'dataroom' && customFolderNames.map(cat => (
+                {column === 'dataroom' && dataroomCustomFolderNames.map(cat => (
                   <ContextMenuItem key={`cust-${cat}`} onClick={() => moveToCategory([doc.id], cat, column)}>
                     {cat}
                   </ContextMenuItem>
