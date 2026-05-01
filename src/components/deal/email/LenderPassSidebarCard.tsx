@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Loader2, Check, X, AlertCircle, Pencil } from 'lucide-react';
+import { Loader2, Check, X, AlertCircle, Pencil, Inbox } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,8 @@ interface Props {
   onSetAutoCommit: (v: boolean) => void;
   onConfirm: (reasonOverride?: string) => void;
   onDismiss: () => void;
+  /** Defer the suggestion to the dashboard Action Queue instead of confirming now. */
+  onAddToQueue?: (reasonOverride?: string) => void;
 }
 
 const CONFIDENCE_TONE: Record<string, string> = {
@@ -34,6 +36,7 @@ export function LenderPassSidebarCard({
   onSetAutoCommit,
   onConfirm,
   onDismiss,
+  onAddToQueue,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [reason, setReason] = useState(detection.reason_summary || '');
@@ -114,6 +117,19 @@ export function LenderPassSidebarCard({
           {committing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
           Confirm
         </Button>
+        {onAddToQueue && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 px-2 text-[11px] gap-1"
+            disabled={committing || noLenderMatch}
+            onClick={() => onAddToQueue(editing ? reason : undefined)}
+            title="Add to Action Queue — review later from the dashboard"
+          >
+            <Inbox className="h-3 w-3" />
+            Queue
+          </Button>
+        )}
         <Button
           size="sm"
           variant="outline"

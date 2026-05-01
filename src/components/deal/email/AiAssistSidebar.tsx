@@ -943,6 +943,29 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                     onSetAutoCommit={setPassAutoCommit}
                     onConfirm={(reason) => confirmPass(reason)}
                     onDismiss={dismissPass}
+                    onAddToQueue={async (reason) => {
+                      await enqueueAiAction({
+                        action_type: 'update_lender_status',
+                        title: `Mark ${passDetection.lender_name} as Passed`,
+                        description: reason || passDetection.reason_summary || null,
+                        deal_id: dealId || null,
+                        deal_name: dealName || null,
+                        payload: {
+                          deal_lender_id: passDetection.deal_lender_id,
+                          new_status: 'passed',
+                          tracking_status: 'passed',
+                          reason: reason || passDetection.reason_summary || null,
+                          lender_name: passDetection.lender_name,
+                        },
+                        source: {
+                          thread_id: thread.threadId,
+                          subject: thread.subject || null,
+                          quote: passDetection.source_quote || null,
+                          confidence: passDetection.confidence,
+                        },
+                      });
+                      dismissPass();
+                    }}
                   />
                 )}
 
