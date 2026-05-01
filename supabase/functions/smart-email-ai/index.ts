@@ -114,14 +114,106 @@ serve(async (req) => {
 
       if (writeup) {
         dealContextSources.push("deal_writeup");
-        dealContext += `\nWRITEUP:
-- Industry: ${writeup.industry || "N/A"}
-- Capital Ask: ${writeup.capital_ask || "N/A"}
-- Revenue (This Year): ${writeup.this_year_revenue || "N/A"}
-- Revenue (Last Year): ${writeup.last_year_revenue || "N/A"}
-- Use of Funds: ${writeup.use_of_funds || "N/A"}
-- Description: ${(writeup.description || "N/A").substring(0, 500)}
-`;
+        // Build a rich writeup block — pull every field that's likely to
+        // come up in a lender/banker reply (financials, business model,
+        // team, highlights, key items). Skip blanks so the AI never sees
+        // empty placeholders it might echo back.
+        const wuLines: string[] = [];
+        const push = (label: string, val: any, max = 400) => {
+          const s = (val == null ? "" : String(val)).trim();
+          if (s) wuLines.push(`- ${label}: ${s.substring(0, max)}`);
+        };
+        push("Company", writeup.company_name);
+        push("Website", writeup.company_url);
+        push("Headquarters", writeup.location);
+        push("Year Founded", writeup.year_founded);
+        push("Headcount", writeup.headcount);
+        push("Industry", writeup.industry);
+        push("Deal Type", writeup.deal_type);
+        push("Business Model", writeup.billing_model);
+        push("Revenue Type", writeup.revenue_type);
+        push("B2B / B2C", writeup.b2b_b2c);
+        push("Customer Base", writeup.customer_base, 600);
+        push("Profitability", writeup.profitability);
+        push("Gross Margins", writeup.gross_margins);
+        push("Capital Ask", writeup.capital_ask);
+        push("Revenue (This Year)", writeup.this_year_revenue);
+        push("Revenue (Last Year)", writeup.last_year_revenue);
+        push("Total Equity Raised", writeup.total_equity_raised);
+        push("Sponsorship", writeup.sponsorship);
+        push("Existing Debt", writeup.existing_debt_details, 600);
+        push("Collateral Available", writeup.collateral_available, 400);
+        push("Use of Funds", writeup.use_of_funds, 600);
+        push("Description", writeup.description, 800);
+
+        // Financial years — show the most recent 3 rows so the model can
+        // cite ARR / revenue / EBITDA / GM trajectory accurately.
+        try {
+          const fy = Array.isArray(writeup.financial_years) ? writeup.financial_years : [];
+          if (fy.length > 0) {
+            const recent = fy.slice(-3);
+            const fyLines = recent.map((row: any) => {
+              const bits: string[] = [];
+              const yr = row.year || row.label || row.period;
+              if (yr) bits.push(String(yr));
+              const tag = row.is_actual === false || row.actual_or_projected === "P" ? "P" : "A";
+              bits.push(`(${tag})`);
+              if (row.revenue != null && row.revenue !== "") bits.push(`rev=${row.revenue}`);
+              if (row.arr != null && row.arr !== "") bits.push(`arr=${row.arr}`);
+              if (row.ebitda != null && row.ebitda !== "") bits.push(`ebitda=${row.ebitda}`);
+              if (row.gross_margin != null && row.gross_margin !== "") bits.push(`gm=${row.gross_margin}`);
+              return `    · ${bits.join(" ")}`;
+            });
+            wuLines.push(`- Financial Years (last ${recent.length}):\n${fyLines.join("\n")}`);
+          }
+        } catch { /* ignore malformed financial_years */ }
+
+        // Key Items (write-up bullets the analyst tagged as important).
+        try {
+          const ki = Array.isArray(writeup.key_items) ? writeup.key_items : [];
+          const cleanKi = ki
+            .map((k: any) => (typeof k === "string" ? k : k?.text || k?.label || ""))
+            .map((s: string) => String(s || "").replace(/\s+/g, " ").trim())
+            .filter(Boolean)
+            .slice(0, 8);
+          if (cleanKi.length > 0) {
+            wuLines.push(`- Key Items:\n${cleanKi.map((s: string) => `    · ${s.substring(0, 220)}`).join("\n")}`);
+          }
+        } catch { /* ignore */ }
+
+        // Company Highlights (analyst-tagged highlights).
+        try {
+          const hl = Array.isArray(writeup.company_highlights) ? writeup.company_highlights : [];
+          const cleanHl = hl
+            .map((h: any) => (typeof h === "string" ? h : h?.text || h?.label || h?.title || ""))
+            .map((s: string) => String(s || "").replace(/\s+/g, " ").trim())
+            .filter(Boolean)
+            .slice(0, 6);
+          if (cleanHl.length > 0) {
+            wuLines.push(`- Company Highlights:\n${cleanHl.map((s: string) => `    · ${s.substring(0, 220)}`).join("\n")}`);
+          }
+        } catch { /* ignore */ }
+
+        // Team — name + title only (keep prompt small).
+        try {
+          const team = Array.isArray(writeup.team) ? writeup.team : [];
+          const cleanTeam = team
+            .map((t: any) => {
+              const name = (t?.name || t?.full_name || "").toString().trim();
+              const title = (t?.title || t?.role || t?.position || "").toString().trim();
+              if (!name && !title) return "";
+              return [name, title].filter(Boolean).join(" — ");
+            })
+            .filter(Boolean)
+            .slice(0, 8);
+          if (cleanTeam.length > 0) {
+            wuLines.push(`- Team:\n${cleanTeam.map((s: string) => `    · ${s}`).join("\n")}`);
+          }
+        } catch { /* ignore */ }
+
+        if (wuLines.length > 0) {
+          dealContext += `\nDEAL SPACE WRITEUP (cite these facts verbatim — do NOT make up numbers):\n${wuLines.join("\n")}\n`;
+        }
       }
 
       if (lenders.length > 0) {
