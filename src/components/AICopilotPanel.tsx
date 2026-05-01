@@ -444,7 +444,7 @@ export function AICopilotPanel() {
   const liveRegionRef = useRef<HTMLDivElement>(null);
   const messageQueueRef = useRef<string[]>([]);
   const isProcessingRef = useRef(false);
-  const { nudges, dismissNudge } = useProactiveNudges();
+  const { nudges, dismissNudge, dismissAllNudges } = useProactiveNudges();
   const isMobile = useIsMobile();
   const isOnline = useOnlineStatus();
   const location = useLocation();
