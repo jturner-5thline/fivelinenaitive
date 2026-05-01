@@ -152,6 +152,8 @@ export function EmailQuickActionsToolbar({
           subject={thread.subject}
           senderEmail={thread.latestEmail?.from_email}
           senderName={thread.latestEmail?.from_name || undefined}
+          defaultOpen
+          onCancel={() => setActive(null)}
         />
       )}
       {active === 'meeting' && (
