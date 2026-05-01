@@ -536,6 +536,15 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const [aiSearchActive, setAiSearchActive] = useState(false);
   const lastAiQueryRef = useRef<string>('');
 
+  // ── All-mail search backfill ────────────────────────────────
+  // The inbox view loads only the INBOX label (kept clean: no spam/trash/
+  // sent). When the user types a search, we additionally hit Gmail with
+  // `search_all_mail=true` so archived mail and user-labeled mail (Censys,
+  // Lenders, Deals, …) surface in results. Disabled when not searching.
+  // Disabled inside a deal-scope view where `emails` is already the
+  // pre-fetched per-deal thread set.
+  const allMailSearch = useGmailAllMailSearch(searchQuery, isInboxScope);
+
   // ── Search routing ─────────────────────────────────────────
   // No visible mode toggle. We classify the query silently:
   //   • short keywords / entity names → keyword (lexical) only
