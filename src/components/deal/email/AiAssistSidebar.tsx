@@ -995,10 +995,21 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             );
           })()}
 
-          {/* Schedule Meeting + Create Task were moved into the Quick
-              Actions toolbar above (consolidation per product spec). The
-              toolbar's Schedule Meeting / Create Task pills expand the
-              same inline cards directly under the toolbar. */}
+          {/* Schedule Meeting + Create Task moved into the Quick Actions
+              toolbar above. We still render the scheduler card inline here
+              when the "Request a meeting" intent chip in the Draft Reply
+              card triggers it (legacy entry point) — keeps that flow
+              working without re-introducing the standalone button. */}
+          {schedulerOpen && (
+            <MeetingSchedulerCard
+              recipientEmail={thread.latestEmail?.from_email}
+              recipientName={thread.latestEmail?.from_name || undefined}
+              threadSubject={thread.subject}
+              dealName={dealName}
+              onInsert={(text) => onInsertDraft(text)}
+              onClose={() => setSchedulerOpen(false)}
+            />
+          )}
 
           {/* Unified Draft reply module — single card containing the section
               header, variant selector, one shared draft preview, and (in the
