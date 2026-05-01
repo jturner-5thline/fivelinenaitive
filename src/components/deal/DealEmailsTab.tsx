@@ -535,27 +535,35 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const [aiSearchActive, setAiSearchActive] = useState(false);
   const lastAiQueryRef = useRef<string>('');
 
-  // ── Search mode (Phase 3) ──────────────────────────────────
-  // 'literal' = keyword only (never call AI)
-  // 'ai'      = always run AI when query meets min length
-  // 'auto'    = keyword by default, escalate to AI on long queries (≥ MIN length)
-  type SearchMode = 'literal' | 'ai' | 'auto';
-  const [searchMode, setSearchMode] = useState<SearchMode>(() => {
-    const m = searchParams.get('mode');
-    return m === 'literal' || m === 'ai' || m === 'auto' ? m : 'auto';
-  });
+  // ── Search routing ─────────────────────────────────────────
+  // No visible mode toggle. We classify the query silently:
+  //   • short keywords / entity names → keyword (lexical) only
+  //   • natural-language / relational queries → AI semantic search
+  // Heuristic signals for "natural-language": relational/operator words
+  // (cc, from, to, before, after, since, between, about, mention(s|ed),
+  // that, with, regarding, re:), or 4+ words.
+  const isNaturalLanguageQuery = useCallback((q: string): boolean => {
+    const trimmed = q.trim();
+    if (!trimmed) return false;
+    const lower = trimmed.toLowerCase();
+    const NL_TOKEN = /(^|\s)(cc|bcc|from|to|before|after|since|between|about|mention(?:s|ed)?|that|with|regarding|re:|find|show|emails?|messages?|invites?|attachments?|signed|unread|starred|last|this|past|next|today|yesterday|week|month|year)(\s|$|[?.!,])/;
+    if (NL_TOKEN.test(lower)) return true;
+    const wordCount = trimmed.split(/\s+/).filter(Boolean).length;
+    if (wordCount >= 4) return true;
+    return false;
+  }, []);
   // Hydrate query from ?q=
   useEffect(() => {
     const q = searchParams.get('q');
     if (q && q !== searchQuery) setSearchQuery(q);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // Persist q + mode to URL (debounced via the same debounce that runs search).
+  // Persist q to URL (debounced via the same debounce that runs search).
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
     const trimmed = searchQuery.trim();
     if (trimmed) next.set('q', trimmed); else next.delete('q');
-    if (searchMode !== 'auto') next.set('mode', searchMode); else next.delete('mode');
+    next.delete('mode');
     // Only write when something actually changed to avoid history spam.
     const cur = searchParams.toString();
     const nxt = next.toString();
