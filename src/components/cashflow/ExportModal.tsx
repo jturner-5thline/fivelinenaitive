@@ -1,4 +1,4 @@
-import { useState, memo, useCallback } from 'react';
+import { useState, memo, useCallback, useMemo } from 'react';
 import type { WeeklyData, ExportFlag } from './types';
 import { fmtAbbrev } from './formatters';
 import jsPDF from 'jspdf';
@@ -14,17 +14,82 @@ const PRESET_FLAGS: ExportFlag[] = [
 interface ExportModalProps {
   open: boolean;
   weeklyData: WeeklyData;
+  /** Current viewport: weeks before the current week visible in the table. */
+  weeksPast?: number;
+  /** Current viewport: weeks after the current week visible in the table. */
+  weeksFuture?: number;
   onClose: () => void;
   onArchive: (entry: { title: string; flags: ExportFlag[]; notes: string; weekCount: number; dateRange: string }) => void;
 }
 
-export const ExportModal = memo(function ExportModal({ open, weeklyData, onClose, onArchive }: ExportModalProps) {
+// Mirror of the on-screen Weekly Report row layout. Headers are non-data
+// section breaks; line-item rows look up `key` on each week's row object.
+type ExportRow =
+  | { type: 'header'; label: string }
+  | { type: 'line'; key: string; label: string; bold?: boolean };
+
+const EXPORT_ROWS: ExportRow[] = [
+  { type: 'line', key: 'BEGINNING CASH', label: 'BEGINNING CASH', bold: true },
+  { type: 'line', key: 'ENDING CASH', label: 'ENDING CASH', bold: true },
+  { type: 'line', key: 'NET CHANGE', label: 'NET CHANGE', bold: true },
+  { type: 'line', key: "Add'l Liquidity (Delayed Draw)", label: "Add'l Liquidity (Delayed Draw)" },
+  { type: 'line', key: 'TOTAL CASH ON HAND', label: 'TOTAL CASH ON HAND', bold: true },
+  { type: 'header', label: '( + ) CASH RECEIPTS' },
+  { type: 'line', key: 'Retainers', label: '  Retainers' },
+  { type: 'line', key: 'Milestones', label: '  Milestones' },
+  { type: 'line', key: 'Closing Fees', label: '  Closing Fees' },
+  { type: 'line', key: 'Referral Fees', label: '  Referral Fees' },
+  { type: 'line', key: 'FinServ Revenue', label: 'FinServ Revenue' },
+  { type: 'line', key: 'Technology Revenue', label: 'Technology Revenue' },
+  { type: 'line', key: 'Loan Proceeds', label: 'Loan Proceeds' },
+  { type: 'line', key: 'Other Receipts', label: 'Other Receipts' },
+  { type: 'line', key: 'TOTAL RECEIPTS', label: 'TOTAL RECEIPTS', bold: true },
+  { type: 'header', label: '( – ) CASH DISBURSEMENTS' },
+  { type: 'line', key: 'Advertising & Marketing', label: 'Advertising & Marketing' },
+  { type: 'line', key: 'Insurance', label: 'Insurance' },
+  { type: 'line', key: 'Payroll - Salaries', label: 'Payroll - Salaries' },
+  { type: 'line', key: 'Payroll - Taxes & Benefits', label: 'Payroll - Taxes & Benefits' },
+  { type: 'line', key: 'Contractors & Consultants', label: 'Contractors & Consultants' },
+  { type: 'line', key: 'Rent & Occupancy', label: 'Rent & Occupancy' },
+  { type: 'line', key: 'Software & Technology', label: 'Software & Technology' },
+  { type: 'line', key: 'Legal & Professional', label: 'Legal & Professional' },
+  { type: 'line', key: 'Travel & Entertainment', label: 'Travel & Entertainment' },
+  { type: 'line', key: 'Office & Admin', label: 'Office & Admin' },
+  { type: 'line', key: 'Loan Payments', label: 'Loan Payments' },
+  { type: 'line', key: 'Other Disbursements', label: 'Other Disbursements' },
+  { type: 'line', key: 'TOTAL DISBURSEMENTS', label: 'TOTAL DISBURSEMENTS', bold: true },
+];
+
+export const ExportModal = memo(function ExportModal({
+  open,
+  weeklyData,
+  weeksPast = 4,
+  weeksFuture = 12,
+  onClose,
+  onArchive,
+}: ExportModalProps) {
   const [title, setTitle] = useState('5th Line Capital — Weekly Cash Flow Report');
   const [flags, setFlags] = useState<ExportFlag[]>([]);
   const [notes, setNotes] = useState('');
   const [customFlag, setCustomFlag] = useState('');
 
-  const weeks = Object.entries(weeklyData || {}).sort(([a], [b]) => a.localeCompare(b));
+  // Compute the viewport slice the user is actually looking at — same logic
+  // as WeeklyReportTab so the PDF matches the on-screen Weeks Past/Future.
+  const visibleWeeks = useMemo(() => {
+    const sorted = Object.entries(weeklyData || {}).sort(([a], [b]) => a.localeCompare(b));
+    if (sorted.length === 0) return sorted;
+    const today = new Date().toISOString().split('T')[0];
+    let currentIdx = sorted.findIndex(([dateKey, entry]) => {
+      const we = typeof entry.week_ending === 'string' ? entry.week_ending : dateKey;
+      return we >= today;
+    });
+    if (currentIdx < 0) currentIdx = sorted.length - 1;
+    const startIdx = Math.max(0, currentIdx - Math.max(0, weeksPast));
+    const endIdx = Math.min(sorted.length, currentIdx + 1 + Math.max(0, weeksFuture));
+    return sorted.slice(startIdx, endIdx);
+  }, [weeklyData, weeksPast, weeksFuture]);
+
+  const weeks = visibleWeeks;
   const dateRange = weeks.length > 0
     ? `${new Date(weeks[0][0]).toLocaleDateString()} — ${new Date(weeks[weeks.length - 1][1].week_ending).toLocaleDateString()}`
     : '';
@@ -36,7 +101,11 @@ export const ExportModal = memo(function ExportModal({ open, weeklyData, onClose
     doc.text(title, 40, 40);
     doc.setFontSize(9);
     doc.setTextColor(100, 116, 139);
-    doc.text(`Generated: ${new Date().toLocaleString()} | ${dateRange}`, 40, 58);
+    doc.text(
+      `Generated: ${new Date().toLocaleString()} | ${dateRange} | ${weeks.length} weeks (Past ${weeksPast} / Future ${weeksFuture})`,
+      40,
+      58,
+    );
     if (flags.length > 0) {
       let x = 40;
       flags.forEach(flag => {
@@ -47,19 +116,38 @@ export const ExportModal = memo(function ExportModal({ open, weeklyData, onClose
         x += doc.getTextWidth(flag.label) + 24;
       });
     }
-    const headers = ['Line Item', ...weeks.slice(0, 12).map(([, v]) => `Wk ${v.week_num}`)];
-    const rowKeys = ['BEGINNING CASH', 'ENDING CASH', 'TOTAL RECEIPTS', 'TOTAL DISBURSEMENTS', 'NET CHANGE'];
-    const body = rowKeys.map(key => [
-      key,
-      ...weeks.slice(0, 12).map(([, v]) => fmtAbbrev((v[key] as number) || 0)),
-    ]);
+    const headers = ['Line Item', ...weeks.map(([, v]) => `Wk ${v.week_num}`)];
+    const body: any[] = [];
+    const rowStyles: Record<number, any> = {};
+    EXPORT_ROWS.forEach((row, idx) => {
+      if (row.type === 'header') {
+        const headerRow = [
+          { content: row.label, colSpan: weeks.length + 1, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } },
+        ];
+        body.push(headerRow);
+      } else {
+        const cells = [row.label, ...weeks.map(([, v]) => fmtAbbrev((v[row.key] as number) || 0))];
+        body.push(cells);
+        if (row.bold) rowStyles[body.length - 1] = { fontStyle: 'bold', fillColor: [241, 245, 249] };
+      }
+    });
     autoTable(doc, {
       startY: flags.length > 0 ? 95 : 70,
       head: [headers],
       body,
-      styles: { fontSize: 8, cellPadding: 3, textColor: [51, 65, 85] },
+      styles: { fontSize: 7, cellPadding: 2.5, textColor: [51, 65, 85] },
       headStyles: { fillColor: [232, 237, 243], textColor: [30, 41, 59], fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: { 0: { cellWidth: 130, halign: 'left' } },
+      didParseCell: (data) => {
+        const styles = rowStyles[data.row.index];
+        if (styles && data.section === 'body') {
+          Object.assign(data.cell.styles, styles);
+        }
+        // Right-align numeric value cells
+        if (data.section === 'body' && data.column.index > 0) {
+          data.cell.styles.halign = 'right';
+        }
+      },
       theme: 'grid',
     });
     if (notes.trim()) {
@@ -79,7 +167,7 @@ export const ExportModal = memo(function ExportModal({ open, weeklyData, onClose
     doc.save(`Advisory_CashFlow_Report.pdf`);
     onArchive({ title, flags: [...flags], notes, weekCount: weeks.length, dateRange });
     onClose();
-  }, [title, flags, notes, weeks, dateRange, onArchive, onClose]);
+  }, [title, flags, notes, weeks, dateRange, weeksPast, weeksFuture, onArchive, onClose]);
 
   if (!open) return null;
 
