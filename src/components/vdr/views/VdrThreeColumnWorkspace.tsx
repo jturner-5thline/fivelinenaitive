@@ -742,7 +742,8 @@ export function VdrThreeColumnWorkspace({
   ) => {
     if (
       e.dataTransfer.types.includes(DRAG_MIME) ||
-      e.dataTransfer.types.includes(DRAG_CATEGORY_MIME)
+      e.dataTransfer.types.includes(DRAG_CATEGORY_MIME) ||
+      e.dataTransfer.types.includes(DRAG_FOLDER_REORDER_MIME)
     ) {
       e.preventDefault();
       e.stopPropagation();
