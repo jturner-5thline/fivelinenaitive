@@ -16,6 +16,7 @@ import {
   User as UserIcon,
   Building2,
   Database,
+  CalendarClock,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { cn } from '@/lib/utils';
