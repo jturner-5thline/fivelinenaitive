@@ -133,6 +133,11 @@ export function VdrThreeColumnWorkspace({
     deleteFolder: deleteCustomFolder,
   } = useDealCustomFolders(dealId);
 
+  // Per-user, per-deal folder ordering + last-used drop targets.
+  // Internal and Data Room are stored under separate keys.
+  const internalFolderPrefs = useVdrFolderPreferences(dealId, 'internal');
+  const dataroomFolderPrefs = useVdrFolderPreferences(dealId, 'dataroom');
+
   // Checklist
   const uploadedItems = useUploadedItems(dealId, bulkBatchId);
   const { config: checklistConfig, loading: checklistLoading } = useDefaultChecklistConfig(companyId ?? undefined);
