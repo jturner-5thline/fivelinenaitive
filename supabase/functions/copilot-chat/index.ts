@@ -516,6 +516,56 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "search_emails",
+      description: "Search the user's synced inbox (Gmail via Nylas v3 sync) for messages. Use when the user asks 'what did X say', 'find emails from/about', 'recent messages with', or needs email context for a deal/contact/lender. Searches across the user's whole synced inbox by sender, recipient, subject, snippet, and body.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Free-text search across subject, snippet, and body." },
+          from_email: { type: "string", description: "Filter to messages from this email address (partial match ok)." },
+          to_email: { type: "string", description: "Filter to messages sent to this email address (partial match ok)." },
+          since_days: { type: "number", description: "Only include messages from the last N days. Default 30, max 365." },
+          unread_only: { type: "boolean", description: "If true, only return unread messages." },
+          limit: { type: "number", description: "Max results to return. Default 15, max 50." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_upcoming_events",
+      description: "Get the user's upcoming calendar events (live from Google Calendar via Nylas v3). Use when the user asks 'what's on my calendar', 'do I have a meeting with X', 'next call with', or needs scheduling context. Requires the user has connected their calendar.",
+      parameters: {
+        type: "object",
+        properties: {
+          days_ahead: { type: "number", description: "How many days into the future to look. Default 7, max 60." },
+          limit: { type: "number", description: "Max events to return. Default 20, max 50." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_recent_meetings",
+      description: "Get recent recorded/transcribed meetings (Claap) with summaries, key decisions, next steps, and transcripts. Use when the user asks about a past call, 'what did we discuss with X', or wants meeting context for a deal/company.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Filter to meetings linked to this deal UUID." },
+          company_id: { type: "string", description: "Filter to meetings linked to this company UUID." },
+          query: { type: "string", description: "Free-text search across title, ai_summary, and transcript." },
+          since_days: { type: "number", description: "Only include meetings from the last N days. Default 30, max 365." },
+          limit: { type: "number", description: "Max meetings to return. Default 10, max 30." },
+          include_transcript: { type: "boolean", description: "If true, include the full transcript text. Default false (summary + key_decisions + next_steps only)." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
