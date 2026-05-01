@@ -69,6 +69,7 @@ import { EmailIntelligenceDialog } from './email/EmailIntelligenceDialog';
 import { InlineComposePanel } from './email/InlineComposePanel';
 import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
 import { useAIEmailSearch } from '@/hooks/useAIEmailSearch';
+import { useGmailAllMailSearch } from '@/hooks/useGmailAllMailSearch';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { useGmail } from '@/hooks/useGmail';
 import { logSentReplyToDeal } from '@/lib/logSentReplyToDeal';
@@ -535,6 +536,15 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const [aiSearchActive, setAiSearchActive] = useState(false);
   const lastAiQueryRef = useRef<string>('');
 
+  // ── All-mail search backfill ────────────────────────────────
+  // The inbox view loads only the INBOX label (kept clean: no spam/trash/
+  // sent). When the user types a search, we additionally hit Gmail with
+  // `search_all_mail=true` so archived mail and user-labeled mail (Censys,
+  // Lenders, Deals, …) surface in results. Disabled when not searching.
+  // Disabled inside a deal-scope view where `emails` is already the
+  // pre-fetched per-deal thread set.
+  const allMailSearch = useGmailAllMailSearch(searchQuery, isInboxScope);
+
   // ── Search routing ─────────────────────────────────────────
   // No visible mode toggle. We classify the query silently:
   //   • short keywords / entity names → keyword (lexical) only
@@ -725,13 +735,30 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     return set;
   }, [emailDealIdMap]);
 
+  // Merge live all-mail search hits (archived + labeled mail) into the
+  // pool of emails fed to filtering / AI ranking so search can return mail
+  // that lives outside the INBOX label.
+  const emailsWithSearchHits = useMemo<MockEmail[]>(() => {
+    if (!isInboxScope || !searchQuery.trim() || allMailSearch.results.length === 0) {
+      return emails;
+    }
+    const seen = new Set(emails.map((e) => e.id));
+    const additions = allMailSearch.results.filter((e) => !seen.has(e.id));
+    if (additions.length === 0) return emails;
+    return [...emails, ...additions];
+  }, [emails, allMailSearch.results, isInboxScope, searchQuery]);
+
   const filteredEmails = useMemo(() => {
     // When a deal chip is active, span the entire loaded mailbox (inbox + sent)
     // chronologically — the user is following a specific deal conversation,
     // not a folder. Otherwise honor the active sidebar item.
-    let filtered = (isInboxScope && selectedDealFilterId)
-      ? [...emails]
-      : emails.filter(activeItem.filterFn);
+    // While searching in inbox scope, bypass the sidebar item filter so
+    // results from outside INBOX (archived / labeled mail) aren't dropped.
+    const isSearching = isInboxScope && !!searchQuery.trim();
+    const pool = isSearching ? emailsWithSearchHits : emails;
+    let filtered = isSearching || (isInboxScope && selectedDealFilterId)
+      ? [...pool]
+      : pool.filter(activeItem.filterFn);
 
     // Deal filter (inbox scope only)
     if (isInboxScope && selectedDealFilterId) {
@@ -815,22 +842,37 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       if (f.hasAttachments === false) filtered = filtered.filter(e => !e.has_attachments);
     } else if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        e => e.subject.toLowerCase().includes(q) || e.from_name.toLowerCase().includes(q) || e.from_email.toLowerCase().includes(q) || e.snippet.toLowerCase().includes(q)
-      );
+      // Emails sourced from the Gmail "all-mail" search backfill have already
+      // been matched server-side (full body + headers, broader than substring),
+      // so we accept them unconditionally. Locally-loaded inbox mail still
+      // needs to pass the substring check.
+      const allMailHitIds = new Set(allMailSearch.results.map((e) => e.id));
+      filtered = filtered.filter((e) => {
+        if (allMailHitIds.has(e.id)) return true;
+        return (
+          e.subject.toLowerCase().includes(q) ||
+          e.from_name.toLowerCase().includes(q) ||
+          e.from_email.toLowerCase().includes(q) ||
+          e.snippet.toLowerCase().includes(q)
+        );
+      });
     }
     return filtered;
-  }, [emails, activeItem, viewFilter, chipFilter, categoryTab, searchQuery, searchFilters, classifierEntities, aiSearchActive, aiSearch.result, isInboxScope, selectedDealFilterId, emailDealIdMap, orgCtx, selectedLabelFilterId, labelAssignments]);
+  }, [emails, emailsWithSearchHits, activeItem, viewFilter, chipFilter, categoryTab, searchQuery, searchFilters, classifierEntities, aiSearchActive, aiSearch.result, isInboxScope, selectedDealFilterId, emailDealIdMap, orgCtx, selectedLabelFilterId, labelAssignments, allMailSearch.results]);
 
   // Candidate set for AI search = the same list pre-search (so categories/folders
   // narrow the AI search scope as the spec requires).
   const aiSearchCandidates = useMemo(() => {
-    let base = emails.filter(activeItem.filterFn);
+    // While searching in inbox scope, include all-mail search hits so the AI
+    // can rank archived / labeled mail alongside inbox mail.
+    const isSearching = isInboxScope && !!searchQuery.trim();
+    const pool = isSearching ? emailsWithSearchHits : emails;
+    let base = isSearching ? [...pool] : pool.filter(activeItem.filterFn);
     if (categoryTab !== 'all') {
       base = filterEmailsByCategory(base, categoryTab, classifierEntities, orgCtx);
     }
     return base;
-  }, [emails, activeItem, categoryTab, classifierEntities, orgCtx]);
+  }, [emails, emailsWithSearchHits, activeItem, categoryTab, classifierEntities, orgCtx, isInboxScope, searchQuery]);
 
   const runAISearch = useCallback(async () => {
     const q = searchQuery.trim();
