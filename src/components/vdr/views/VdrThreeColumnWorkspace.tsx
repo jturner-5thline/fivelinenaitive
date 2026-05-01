@@ -802,21 +802,31 @@ export function VdrThreeColumnWorkspace({
           <ContextMenuItem onClick={() => onPreview(doc)}>Preview</ContextMenuItem>
           <ContextMenuItem onClick={() => handleDownload(doc)}>Download</ContextMenuItem>
           {column === 'internal' ? (
-            <ContextMenuItem onClick={() => moveToDataroom([doc.id])}>Move to Data Room</ContextMenuItem>
+            <ContextMenuItem onClick={() => copyToDataroom([doc.id])}>Copy to Data Room</ContextMenuItem>
           ) : (
-            <ContextMenuItem onClick={() => moveToInternal([doc.id])}>Move to Internal</ContextMenuItem>
+            <ContextMenuItem onClick={() => removeFromDataroom([doc.id])}>Remove from Data Room</ContextMenuItem>
           )}
           {categoryNames.length > 0 && (
             <ContextMenuSub>
-              <ContextMenuSubTrigger>Move to category</ContextMenuSubTrigger>
+              <ContextMenuSubTrigger>
+                {column === 'dataroom' ? 'Move to Data Room folder' : 'Move to category'}
+              </ContextMenuSubTrigger>
               <ContextMenuSubContent>
                 {categoryNames.map(cat => (
-                  <ContextMenuItem key={cat} onClick={() => moveToCategory([doc.id], cat)}>
+                  <ContextMenuItem key={cat} onClick={() => moveToCategory([doc.id], cat, column)}>
+                    {cat}
+                  </ContextMenuItem>
+                ))}
+                {column === 'dataroom' && customFolderNames.length > 0 && (
+                  <ContextMenuSeparator />
+                )}
+                {column === 'dataroom' && customFolderNames.map(cat => (
+                  <ContextMenuItem key={`cust-${cat}`} onClick={() => moveToCategory([doc.id], cat, column)}>
                     {cat}
                   </ContextMenuItem>
                 ))}
                 <ContextMenuSeparator />
-                <ContextMenuItem onClick={() => moveToCategory([doc.id], null)}>
+                <ContextMenuItem onClick={() => moveToCategory([doc.id], null, column)}>
                   Uncategorized
                 </ContextMenuItem>
               </ContextMenuSubContent>
