@@ -298,6 +298,7 @@ export default function Settings() {
                   {isVisible('email-labels') && <EmailLabelsSettings />}
                   {isVisible('email-templates-outbound') && <OutboundEmailTemplatesSettings isAdmin={isAdmin} />}
                   {isVisible('email-style-guide') && <EmailStyleGuideSettings isAdmin={isAdmin} />}
+                  {isVisible('email-cadence') && <EmailCadenceSettings />}
                   <EmailWorkflowsSettings isAdmin={isAdmin} />
                   {isVisible('distribution-stats') && <DistributionStatsSettings />}
                 </TabsContent>
