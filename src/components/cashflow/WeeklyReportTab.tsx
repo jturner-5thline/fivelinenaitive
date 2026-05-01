@@ -241,6 +241,96 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   });
   const gridWrapRef = useGridWheelPassthrough<HTMLDivElement>();
 
+  // ===== Floating sticky horizontal scrollbar =====
+  // Mirrors the grid's horizontal scroll. Pinned to the bottom of the viewport
+  // while the table is in view AND its content is wider than the viewport, so
+  // users can scroll left/right at any vertical position without reaching the
+  // page footer.
+  const stickyScrollRef = useRef<HTMLDivElement | null>(null);
+  const [stickyScroll, setStickyScroll] = useState<{
+    visible: boolean;
+    contentWidth: number;
+    viewportWidth: number;
+    left: number;
+  }>({ visible: false, contentWidth: 0, viewportWidth: 0, left: 0 });
+  // Re-entrancy guard so the two scroll handlers don't ping-pong.
+  const syncingRef = useRef<'grid' | 'sticky' | null>(null);
+
+  useEffect(() => {
+    const grid = gridWrapRef.current?.querySelector<HTMLDivElement>('.cf-grid-wrap');
+    if (!grid) return;
+
+    const measure = () => {
+      const contentWidth = grid.scrollWidth;
+      const viewportWidth = grid.clientWidth;
+      const overflows = contentWidth > viewportWidth + 1;
+      // Only show when the grid is at least partially in the viewport AND
+      // its bottom edge is below the viewport bottom (otherwise the native
+      // bar is already visible right at the table's edge).
+      const rect = grid.getBoundingClientRect();
+      const inViewport = rect.top < window.innerHeight && rect.bottom > 0;
+      const nativeBarBelowFold = rect.bottom > window.innerHeight;
+      setStickyScroll((prev) => {
+        const next = {
+          visible: overflows && inViewport && nativeBarBelowFold,
+          contentWidth,
+          viewportWidth,
+          left: Math.max(0, rect.left),
+        };
+        if (
+          prev.visible === next.visible &&
+          prev.contentWidth === next.contentWidth &&
+          prev.viewportWidth === next.viewportWidth &&
+          prev.left === next.left
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(grid);
+    window.addEventListener('scroll', measure, { passive: true });
+    window.addEventListener('resize', measure);
+
+    const onGridScroll = () => {
+      if (syncingRef.current === 'sticky') {
+        syncingRef.current = null;
+        return;
+      }
+      const sticky = stickyScrollRef.current;
+      if (!sticky) return;
+      if (sticky.scrollLeft !== grid.scrollLeft) {
+        syncingRef.current = 'grid';
+        sticky.scrollLeft = grid.scrollLeft;
+      }
+    };
+    grid.addEventListener('scroll', onGridScroll, { passive: true });
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('scroll', measure);
+      window.removeEventListener('resize', measure);
+      grid.removeEventListener('scroll', onGridScroll);
+    };
+  }, [gridWrapRef, tableMinWidth]);
+
+  const handleStickyScroll = useCallback(() => {
+    if (syncingRef.current === 'grid') {
+      syncingRef.current = null;
+      return;
+    }
+    const sticky = stickyScrollRef.current;
+    const grid = gridWrapRef.current?.querySelector<HTMLDivElement>('.cf-grid-wrap');
+    if (!sticky || !grid) return;
+    if (grid.scrollLeft !== sticky.scrollLeft) {
+      syncingRef.current = 'sticky';
+      grid.scrollLeft = sticky.scrollLeft;
+    }
+  }, [gridWrapRef]);
+
   // Inline "+ Add" popover state for receipts/disbursements cells.
   const [addCellPopover, setAddCellPopover] = useState<null | {
     rowKey: string;
@@ -1234,6 +1324,25 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Floating sticky horizontal scrollbar — pinned to viewport bottom while
+          the grid is in view and overflows horizontally. Mirrors grid scroll. */}
+      {stickyScroll.visible && (
+        <div
+          ref={stickyScrollRef}
+          onScroll={handleStickyScroll}
+          className="fixed z-40 overflow-x-auto overflow-y-hidden bg-background/85 backdrop-blur border-t border-border"
+          style={{
+            bottom: 0,
+            left: stickyScroll.left,
+            width: stickyScroll.viewportWidth,
+            height: 14,
+          }}
+          aria-hidden="true"
+        >
+          <div style={{ width: stickyScroll.contentWidth, height: 1 }} />
         </div>
       )}
     </div>
