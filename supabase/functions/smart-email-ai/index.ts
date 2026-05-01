@@ -544,6 +544,11 @@ SPECIFICITY RULES (this is what makes the draft sound like the sender knows the 
 - If a relevant data point is genuinely missing, say "I'll confirm and revert" — do NOT invent it. But first check OUTSTANDING ITEMS, LENDERS, NOTES, and ACTIVITY before claiming you don't have it.
 - Never just describe a category ("the diligence checklist", "the lender list", "next steps"). Always name the actual items, lenders, or actions when the structured context provides them.
 
+FINANCIAL-QUESTION RULES (when the recipient asks about money — deal size, ARR, MRR, revenue, EBITDA, margins, run-rate, growth):
+- Cite numbers ONLY from the DEAL SPACE FINANCIALS block (deal size / capital ask, ARR, MRR, TTM revenue, EBITDA). Never invent or estimate.
+- For each financial figure the recipient asks about: if it IS in the block, cite it verbatim using the display value. If it is NOT in the block, write "not on file" (or "not currently on file" / "I don't have that on file yet — will confirm and revert") for that specific metric. Do NOT silently skip a directly-asked metric, and do NOT use "$X" / "[amount]" placeholders.
+- Do not fabricate deal-specific references (stage names, outstanding items, lender names, status notes) that are absent from the structured context. Omit or use "not on file" instead.
+
 CONFIRMING-DETAILS RULE (use when the deal context is thin or specific facts you'd normally cite are missing):
 - If you cannot find a concrete fact you would otherwise reference (e.g., the recipient asks about a number, date, lender stage, outstanding item, or counterparty detail and the structured context does NOT contain it), include exactly ONE short "Confirming details" line near the end of the body — before the closing — written naturally, e.g.:
   • "Confirming details on the latest [topic] and will revert shortly."
@@ -1252,6 +1257,18 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
       parsed.cited_context_sources = merged.length > 0 ? merged : ["email_thread_only"];
       // Also expose the explicit injected-fields array for any UI that wants it.
       parsed.deal_context_used = modelInjected;
+
+      // If we actually injected the live Deal Space snapshot or financials,
+      // force used_deal_context=true so the UI's "Generated using <Deal Name>
+      // deal data" label is reliably shown — don't depend on the model's
+      // self-report which can be inconsistent.
+      if (
+        dealContextSources.includes("deal_state_snapshot") ||
+        dealContextSources.includes("deal_space_financials") ||
+        dealContextSources.includes("deal_metadata")
+      ) {
+        parsed.used_deal_context = true;
+      }
 
       // ─── Append the user's configured signature to each draft body ───
       // The model is instructed not to add any sign-off; we append the user's
