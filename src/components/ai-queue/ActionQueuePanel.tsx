@@ -303,6 +303,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
             })}
           </div>
         </ScrollArea>
+        </>
       )}
     </>
   );
