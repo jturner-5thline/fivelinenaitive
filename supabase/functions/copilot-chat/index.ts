@@ -2268,6 +2268,10 @@ Communications context (use whenever the question references emails, calls, meet
 - "What did X say", "find emails about/from", "recent messages with Y" → search_emails (synced inbox)
 - "What's on my calendar", "do I have a meeting with X", "next call with Y" → get_upcoming_events
 - "What did we discuss with X", "summary of the call", "last meeting on this deal" → get_recent_meetings (Claap recordings with summaries + transcripts)
+
+History / audit context (use for "track record", "lifecycle", "why did X happen"):
+- "What's our history with <lender>", "has <lender> done deals like this before", "why did <lender> pass last time" → get_lender_deal_history
+- "How did this deal progress", "when did it move to <stage>", "how long in <stage>" → get_deal_stage_history
 ${entityType === "deal" && entityId ? `\nThe user is viewing deal ID: ${entityId}. Use this ID when calling deal-specific tools.` : ''}
 
 CORE RESPONSIBILITIES:
