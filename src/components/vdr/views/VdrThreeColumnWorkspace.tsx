@@ -245,6 +245,20 @@ export function VdrThreeColumnWorkspace({
   // Build the ordered list of category names from settings (source of truth)
   const categoryNames = useMemo(() => categories.map(c => c.name), [categories]);
   const customFolderNames = useMemo(() => customFolders.map(f => f.name), [customFolders]);
+  // Per-column ordered names (user preference applied on top of the natural
+  // settings/custom-folder order). Internal vs Data Room order independently.
+  const internalCategoryNames = useMemo(
+    () => internalFolderPrefs.applyOrder(categoryNames),
+    [internalFolderPrefs, categoryNames],
+  );
+  const dataroomCategoryNames = useMemo(
+    () => dataroomFolderPrefs.applyOrder(categoryNames),
+    [dataroomFolderPrefs, categoryNames],
+  );
+  const dataroomCustomFolderNames = useMemo(
+    () => dataroomFolderPrefs.applyOrder(customFolderNames),
+    [dataroomFolderPrefs, customFolderNames],
+  );
   // Categories shown in BOTH columns. Custom folders are per-deal so they are
   // appended to the default company taxonomy.
   const categoryNameSet = useMemo(
