@@ -1932,7 +1932,10 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                           : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
                       )}
                     >
-                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-orange-500" />
+                        <span className={cn(
+                          'inline-block h-1.5 w-1.5 rounded-full',
+                          chipFilter === 'stale' ? 'bg-white' : 'bg-orange-500'
+                        )} />
                       Stale Emails
                     </button>
                     {(['all', 'unread', 'needs_response'] as ViewFilter[]).map(vf => (
