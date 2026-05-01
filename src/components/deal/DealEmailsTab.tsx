@@ -1922,6 +1922,19 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                     )}
                   </div>
                   <div className="flex gap-0.5">
+                    <button
+                      onClick={() => setChipFilter(chipFilter === 'stale' ? null : 'stale')}
+                      title="Show only Clients & Deals threads with no reply for 6+ days (orange + red)"
+                      className={cn(
+                        'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium transition-colors mr-1',
+                        chipFilter === 'stale'
+                          ? 'bg-orange-500 text-white'
+                          : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                      )}
+                    >
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-orange-500" />
+                      Stale Emails
+                    </button>
                     {(['all', 'unread', 'needs_response'] as ViewFilter[]).map(vf => (
                       <button
                         key={vf}
