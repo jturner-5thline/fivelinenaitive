@@ -3,7 +3,7 @@ import {
   Search, FolderOpen, FolderClosed, ChevronRight, ChevronDown, Plus, FileText,
   FileSpreadsheet, Presentation, Eye, Loader2, CheckCircle2, AlertCircle,
   ClipboardList, PackagePlus, Send, FolderPlus, Trash2, Download,
-  ArrowRight, ArrowLeft, Lock, Globe, MoreHorizontal, Upload,
+  ArrowRight, ArrowLeft, Lock, Globe, MoreHorizontal, Upload, Info,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { VdrDocument } from '../types';
