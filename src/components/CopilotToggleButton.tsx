@@ -29,36 +29,48 @@ export function CopilotToggleButton() {
       onClick={togglePanel}
       aria-label="Toggle naitive AI"
       className={cn(
-        "h-12 w-12 rounded-full",
-        "flex items-center justify-center",
-        "shadow-lg cursor-pointer",
-        "hover:scale-105 active:scale-95 transition-all duration-200",
-        "border-0 overflow-visible relative group",
-        "animate-in fade-in duration-150",
-        "shadow-[0_4px_20px_hsl(270_65%_55%/0.4)]"
+        "group relative cursor-pointer overflow-hidden",
+        "h-11 rounded-full",
+        "w-[min(320px,calc(100vw-3rem))] sm:w-[340px]",
+        "flex items-center gap-2 pl-4 pr-3",
+        "text-left",
+        "transition-all duration-200",
+        "hover:border-white/15 active:scale-[0.99]",
+        "animate-in fade-in duration-150"
       )}
       style={{
         position: 'fixed',
         bottom: '24px',
         right: '24px',
         zIndex: 99999,
-        background: 'linear-gradient(to right, hsl(270, 65%, 55%), hsl(220, 70%, 62%))',
+        background: 'rgba(14, 16, 24, 0.45)',
+        backdropFilter: 'blur(16px) saturate(1.4)',
+        WebkitBackdropFilter: 'blur(16px) saturate(1.4)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.04)',
       }}
     >
-      {/* Shimmer overlay */}
-      <span className="absolute inset-0 rounded-full overflow-hidden pointer-events-none">
-        <span
-          className="absolute -inset-full animate-[shimmer_5s_ease-in-out_infinite]"
-          style={{
-            background: 'linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.25) 50%, transparent 60%)',
-          }}
+      {/* Centered watermark emblem */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 flex items-center justify-center"
+      >
+        <img
+          src={naitiveAiIcon}
+          alt=""
+          className="h-5 w-5 brightness-0 invert opacity-[0.06] transition-opacity duration-200 group-hover:opacity-[0.09]"
         />
       </span>
-      <img
-        src={naitiveAiIcon}
-        alt="naitive AI"
-        className="h-7 w-7 shrink-0 brightness-0 invert relative z-10"
-      />
+
+      {/* Placeholder text */}
+      <span className="relative z-10 flex-1 truncate text-[13px] font-normal text-white/45 group-hover:text-white/60 transition-colors">
+        Ask naitive AI…
+      </span>
+
+      {/* Keyboard hint */}
+      <kbd className="relative z-10 hidden sm:inline-flex items-center gap-0.5 rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-medium text-white/40 group-hover:text-white/55 transition-colors">
+        ⌘J
+      </kbd>
     </button>,
     document.body
   );
