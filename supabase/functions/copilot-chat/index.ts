@@ -566,6 +566,37 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_lender_deal_history",
+      description: "Cross-deal history for a single lender: every deal they've been engaged on, their stage/status, quote terms (amount/rate/term), pass reasons, and free-text notes from lender_notes. Use when the user asks 'what's our history with <lender>', 'has <lender> done deals like this before', 'why did <lender> pass last time', or wants to compare a lender's behavior across deals.",
+      parameters: {
+        type: "object",
+        properties: {
+          lender_name: { type: "string", description: "Lender name or partial name. Required if lender_id not provided." },
+          lender_id: { type: "string", description: "Master lender UUID. Optional." },
+          limit: { type: "number", description: "Max deal rows to return. Default 25, max 100." },
+          include_notes: { type: "boolean", description: "If true, include free-text lender_notes entries. Default true." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_deal_stage_history",
+      description: "Chronological stage-change timeline for a single deal (deal_stage_history): from_stage → to_stage, who changed it, when, and which pipeline. Use when the user asks 'how did this deal progress', 'when did we move it to <stage>', 'how long has it been in <stage>', or wants a deal lifecycle audit trail.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID. Required." },
+          limit: { type: "number", description: "Max history entries. Default 50, max 200." },
+        },
+        required: ["deal_id"],
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
@@ -586,9 +617,9 @@ function selectTools(page: string, entityType?: string) {
   ]);
 
   if (page.includes("lender")) {
-    ["get_deal_lenders", "search_lenders", "update_lender_status", "get_deal_call_transcripts"].forEach(n => coreNames.add(n));
+    ["get_deal_lenders", "search_lenders", "update_lender_status", "get_deal_call_transcripts", "get_lender_deal_history"].forEach(n => coreNames.add(n));
   } else if (page.includes("deals") || page.includes("pipeline")) {
-    ["get_deal_lenders", "get_deal_health", "get_deal_milestones", "get_outstanding_items", "get_deal_call_transcripts"].forEach(n => coreNames.add(n));
+    ["get_deal_lenders", "get_deal_health", "get_deal_milestones", "get_outstanding_items", "get_deal_call_transcripts", "get_deal_stage_history", "get_lender_deal_history"].forEach(n => coreNames.add(n));
   } else if (page.includes("task")) {
     // Tasks page: core + task tools only
   } else {
@@ -1821,6 +1852,119 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         transcript: includeTranscript ? (m.transcript || "").slice(0, 8000) : undefined,
       }));
       return { count: meetings.length, meetings };
+    }
+    case "get_lender_deal_history": {
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      const includeNotes = args.include_notes !== false;
+      const name = (args.lender_name || "").trim();
+      if (!name && !args.lender_id) return { error: "lender_name or lender_id required" };
+
+      // Resolve master lender id (best effort)
+      let masterId = args.lender_id || null;
+      let resolvedName = name;
+      if (!masterId && name) {
+        const { data: matches } = await supabase
+          .from("master_lenders")
+          .select("id, name")
+          .ilike("name", `%${name}%`)
+          .limit(5);
+        if (matches && matches.length === 1) {
+          masterId = matches[0].id;
+          resolvedName = matches[0].name;
+        } else if (matches && matches.length > 1) {
+          return { needs_disambiguation: true, candidates: matches.map((m: any) => ({ id: m.id, name: m.name })) };
+        }
+      }
+
+      // deal_lenders matches by free-text name; pull every row with matching name
+      let dlQ = supabase
+        .from("deal_lenders")
+        .select("id, deal_id, name, stage, substage, tracking_status, notes, pass_reason, quote_amount, quote_rate, quote_term, score, last_contact_at, updated_at, created_at")
+        .order("updated_at", { ascending: false })
+        .limit(limit);
+      if (resolvedName) dlQ = dlQ.ilike("name", `%${resolvedName}%`);
+      const { data: dealLenders, error: dlErr } = await dlQ;
+      if (dlErr) return { error: dlErr.message };
+
+      // Hydrate deal company names
+      const dealIds = Array.from(new Set((dealLenders || []).map((r: any) => r.deal_id).filter(Boolean)));
+      let dealMap: Record<string, any> = {};
+      if (dealIds.length) {
+        const { data: deals } = await supabase
+          .from("deals")
+          .select("id, company, stage, deal_size, deal_type")
+          .in("id", dealIds);
+        for (const d of deals || []) dealMap[d.id] = d;
+      }
+
+      let notes: any[] = [];
+      if (includeNotes) {
+        let nQ = supabase
+          .from("lender_notes")
+          .select("id, lender_name, master_lender_id, body, is_flag, tags, created_at")
+          .order("created_at", { ascending: false })
+          .limit(50);
+        if (masterId) nQ = nQ.eq("master_lender_id", masterId);
+        else if (resolvedName) nQ = nQ.ilike("lender_name", `%${resolvedName}%`);
+        const { data: nData } = await nQ;
+        notes = nData || [];
+      }
+
+      return {
+        lender: { id: masterId, name: resolvedName || name },
+        deal_count: dealIds.length,
+        engagements: (dealLenders || []).map((r: any) => ({
+          deal_id: r.deal_id,
+          deal: dealMap[r.deal_id] ? { name: dealMap[r.deal_id].company, current_stage: dealMap[r.deal_id].stage, deal_size: dealMap[r.deal_id].deal_size, deal_type: dealMap[r.deal_id].deal_type } : null,
+          lender_stage: r.stage,
+          substage: r.substage,
+          tracking_status: r.tracking_status,
+          quote: (r.quote_amount || r.quote_rate || r.quote_term) ? { amount: r.quote_amount, rate: r.quote_rate, term: r.quote_term } : null,
+          pass_reason: r.pass_reason || null,
+          notes: r.notes || null,
+          score: r.score,
+          last_contact_at: r.last_contact_at,
+          updated_at: r.updated_at,
+        })),
+        notes: notes.map((n: any) => ({ body: (n.body || "").slice(0, 1000), is_flag: n.is_flag, tags: n.tags, created_at: n.created_at })),
+      };
+    }
+    case "get_deal_stage_history": {
+      if (!args.deal_id) return { error: "deal_id required" };
+      const limit = Math.min(Math.max(Number(args.limit) || 50, 1), 200);
+      const { data, error } = await supabase
+        .from("deal_stage_history")
+        .select("id, deal_id, pipeline_id, from_stage, to_stage, changed_at, changed_by")
+        .eq("deal_id", args.deal_id)
+        .order("changed_at", { ascending: false })
+        .limit(limit);
+      if (error) return { error: error.message };
+
+      // Resolve user names + pipeline names
+      const userIds = Array.from(new Set((data || []).map((r: any) => r.changed_by).filter(Boolean)));
+      const pipelineIds = Array.from(new Set((data || []).map((r: any) => r.pipeline_id).filter(Boolean)));
+      const userMap: Record<string, string> = {};
+      const pipelineMap: Record<string, string> = {};
+      if (userIds.length) {
+        const { data: users } = await supabase.from("profiles").select("id, display_name, first_name, last_name").in("id", userIds);
+        for (const u of users || []) userMap[u.id] = u.display_name || `${u.first_name || ""} ${u.last_name || ""}`.trim() || "Unknown";
+      }
+      if (pipelineIds.length) {
+        const { data: pipes } = await supabase.from("deal_pipelines").select("id, name").in("id", pipelineIds);
+        for (const p of pipes || []) pipelineMap[p.id] = p.name;
+      }
+
+      return {
+        deal_id: args.deal_id,
+        count: (data || []).length,
+        history: (data || []).map((r: any) => ({
+          from_stage: r.from_stage,
+          to_stage: r.to_stage,
+          pipeline: r.pipeline_id ? pipelineMap[r.pipeline_id] || null : null,
+          changed_at: r.changed_at,
+          changed_by: r.changed_by ? userMap[r.changed_by] || null : null,
+        })),
+      };
     }
     default:
       return { error: `Unknown tool: ${name}` };
