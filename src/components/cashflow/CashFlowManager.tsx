@@ -1198,6 +1198,8 @@ export function CashFlowManager() {
           onCellCommentCountChange={setCellCommentCount}
           weeksFuture={weeksFuture}
           onWeeksFutureChange={setWeeksFuture}
+          weeksPast={weeksPast}
+          onWeeksPastChange={setWeeksPast}
           customReceiptRows={customRows.receipts}
           customDisbursementRows={customRows.disbursements}
           onAddCustomRow={(section, name) => addCustomRow(section, name)}
@@ -1271,7 +1273,9 @@ export function CashFlowManager() {
       {exportOpen && (
         <ExportModal
           open={exportOpen}
-          weeklyData={rawWeekly}
+          weeklyData={filteredWeekly}
+          weeksPast={weeksPast}
+          weeksFuture={weeksFuture}
           onClose={handleCloseExport}
           onArchive={handleArchive}
         />
