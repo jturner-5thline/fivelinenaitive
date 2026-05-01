@@ -135,7 +135,7 @@ interface DealEmailsTabProps {
 }
 
 type ViewFilter = 'all' | 'unread' | 'needs_response';
-type ChipFilter = 'recent' | 'important' | 'attachments' | null;
+type ChipFilter = 'recent' | 'important' | 'attachments' | 'stale' | null;
 
 interface SearchFilters {
   sender: string;
