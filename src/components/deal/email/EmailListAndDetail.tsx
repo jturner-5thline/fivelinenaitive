@@ -1838,6 +1838,20 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             {/* Command bar buttons with icons + labels */}
             <Tooltip>
               <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onBack}
+                  aria-label="Close email"
+                  className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <X className="h-4 w-4 text-[hsl(var(--email-text-secondary))]" />
+                  <span className="text-[10px] text-[hsl(var(--email-text-secondary))]">Close</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">Close (Esc)</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <button onClick={handleReply} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded hover:bg-muted/40 transition-colors">
                   <Reply className="h-4 w-4 text-[hsl(var(--email-text-secondary))]" />
                   <span className="text-[10px] text-[hsl(var(--email-text-secondary))]">Reply</span>
