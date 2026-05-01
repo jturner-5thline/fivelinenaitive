@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Loader2, Check, X, Quote, AlertCircle, Briefcase, User, Building2, Zap, Link2, Plus, Inbox as InboxIcon } from 'lucide-react';
+import { Loader2, Check, X, Quote, AlertCircle, Briefcase, User, Building2, Zap, Link2, Plus, Inbox as InboxIcon, Info } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -367,6 +367,85 @@ export function WorkflowIntelligenceCard({
           Suggested Update
         </span>
         {loading && <Loader2 className="h-2.5 w-2.5 animate-spin text-primary/60" />}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label="Why this was suggested"
+              className="ml-auto shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground hover:bg-primary/10 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 transition-colors"
+            >
+              <Info className="h-3 w-3" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            side="bottom"
+            align="end"
+            sideOffset={6}
+            className="w-72 max-w-[80vw] p-3 space-y-2.5"
+          >
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+              Why this was suggested
+            </div>
+            <div className="space-y-1.5 text-[11px]">
+              <div className="flex items-start gap-1.5 min-w-0">
+                <Briefcase className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
+                <span className="text-muted-foreground shrink-0">Deal:</span>
+                <span className="text-foreground/90 font-medium min-w-0 flex-1" style={{ overflowWrap: 'anywhere' }}>
+                  {analysis.likely_deal.name || <em className="text-muted-foreground">unknown</em>}
+                </span>
+                {analysis.likely_deal.confidence && analysis.likely_deal.name && (
+                  <Badge variant="outline" className={cn('ml-auto shrink-0 text-[9px] h-3.5 px-1 border', CONFIDENCE_TONE[analysis.likely_deal.confidence])}>
+                    {analysis.likely_deal.confidence}
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-start gap-1.5 min-w-0">
+                <User className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
+                <span className="text-muted-foreground shrink-0">Contact:</span>
+                <span className="text-foreground/90 min-w-0 flex-1" style={{ overflowWrap: 'anywhere' }}>
+                  {analysis.likely_contact.name || <em className="text-muted-foreground">unknown</em>}
+                </span>
+              </div>
+              <div className="flex items-start gap-1.5 min-w-0">
+                <Building2 className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
+                <span className="text-muted-foreground shrink-0">Lender:</span>
+                <span className="text-foreground/90 min-w-0 flex-1" style={{ overflowWrap: 'anywhere' }}>
+                  {analysis.likely_lender_firm.name || <em className="text-muted-foreground">unknown</em>}
+                </span>
+                {analysis.likely_lender_firm.confidence && analysis.likely_lender_firm.name && (
+                  <Badge variant="outline" className={cn('ml-auto shrink-0 text-[9px] h-3.5 px-1 border', CONFIDENCE_TONE[analysis.likely_lender_firm.confidence])}>
+                    {analysis.likely_lender_firm.confidence}
+                  </Badge>
+                )}
+              </div>
+            </div>
+            {analysis.signal.type !== 'no_signal' && (
+              <div className="space-y-1.5 min-w-0 pt-2 border-t border-border/40">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Zap className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground truncate min-w-0">
+                    Detected signal
+                  </span>
+                  <Badge variant="outline" className={cn('ml-auto shrink-0 text-[9px] h-4 px-1.5 border', SIGNAL_TONE[analysis.signal.type] || CONFIDENCE_TONE.low)}>
+                    {analysis.signal.label || analysis.signal.type}
+                  </Badge>
+                </div>
+                {analysis.signal.supporting_quote && (
+                  <blockquote className="text-[11px] text-muted-foreground italic border-l-2 border-primary/30 pl-2 leading-relaxed" style={{ overflowWrap: 'anywhere' }}>
+                    <Quote className="h-2.5 w-2.5 inline mr-1 text-primary/40" />
+                    {analysis.signal.supporting_quote}
+                  </blockquote>
+                )}
+                {analysis.signal.nuance && (
+                  <p className="text-[10px] text-amber-300/90 leading-relaxed" style={{ overflowWrap: 'anywhere' }}>
+                    <AlertCircle className="h-2.5 w-2.5 inline mr-1" />
+                    {analysis.signal.nuance}
+                  </p>
+                )}
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Stacked vertical layout — Suggested Update on top, Workflow
@@ -653,89 +732,6 @@ export function WorkflowIntelligenceCard({
             )}
         </div>
 
-        {/* SECTION 2 — Workflow Intelligence (entities + detected signal).
-            Shown beneath the action as the "why" context. */}
-        <div className="min-w-0 space-y-3 pt-2 border-t border-primary/10">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80 min-w-0 truncate">
-              Why this was suggested
-            </span>
-          </div>
-          <div className="space-y-1.5 text-[11px]">
-        <div className="flex items-start gap-1.5 min-w-0">
-          <Briefcase className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
-          <span className="text-muted-foreground shrink-0">Deal:</span>
-          <span
-            className="text-foreground/90 font-medium min-w-0 flex-1"
-            style={{ overflowWrap: 'anywhere', whiteSpace: 'normal' }}
-          >
-            {analysis.likely_deal.name || <em className="text-muted-foreground">unknown</em>}
-          </span>
-          {analysis.likely_deal.confidence && analysis.likely_deal.name && (
-            <Badge variant="outline" className={cn('ml-auto shrink-0 text-[9px] h-3.5 px-1 border', CONFIDENCE_TONE[analysis.likely_deal.confidence])}>
-              {analysis.likely_deal.confidence}
-            </Badge>
-          )}
-        </div>
-        <div className="flex items-start gap-1.5 min-w-0">
-          <User className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
-          <span className="text-muted-foreground shrink-0">Contact:</span>
-          <span
-            className="text-foreground/90 min-w-0 flex-1"
-            style={{ overflowWrap: 'anywhere', whiteSpace: 'normal' }}
-          >
-            {analysis.likely_contact.name || <em className="text-muted-foreground">unknown</em>}
-          </span>
-        </div>
-        <div className="flex items-start gap-1.5 min-w-0">
-          <Building2 className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
-          <span className="text-muted-foreground shrink-0">Lender:</span>
-          <span
-            className="text-foreground/90 min-w-0 flex-1"
-            style={{ overflowWrap: 'anywhere', whiteSpace: 'normal' }}
-          >
-            {analysis.likely_lender_firm.name || <em className="text-muted-foreground">unknown</em>}
-          </span>
-          {analysis.likely_lender_firm.confidence && analysis.likely_lender_firm.name && (
-            <Badge variant="outline" className={cn('ml-auto shrink-0 text-[9px] h-3.5 px-1 border', CONFIDENCE_TONE[analysis.likely_lender_firm.confidence])}>
-              {analysis.likely_lender_firm.confidence}
-            </Badge>
-          )}
-        </div>
-      </div>
-
-            {analysis.signal.type !== 'no_signal' && (
-              <div className="space-y-1.5 min-w-0">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <Zap className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground truncate min-w-0">
-                    Detected signal
-                  </span>
-                  <Badge variant="outline" className={cn('ml-auto shrink-0 text-[9px] h-4 px-1.5 border', SIGNAL_TONE[analysis.signal.type] || CONFIDENCE_TONE.low)}>
-                    {analysis.signal.label || analysis.signal.type}
-                  </Badge>
-                </div>
-                {analysis.signal.supporting_quote && (
-                  <blockquote
-                    className="text-[11px] text-muted-foreground italic border-l-2 border-primary/30 pl-2 leading-relaxed max-w-full"
-                    style={{ overflowWrap: 'anywhere', whiteSpace: 'normal' }}
-                  >
-                    <Quote className="h-2.5 w-2.5 inline mr-1 text-primary/40" />
-                    {analysis.signal.supporting_quote}
-                  </blockquote>
-                )}
-                {analysis.signal.nuance && (
-                  <p
-                    className="text-[10px] text-amber-300/90 leading-relaxed max-w-full"
-                    style={{ overflowWrap: 'anywhere', whiteSpace: 'normal' }}
-                  >
-                    <AlertCircle className="h-2.5 w-2.5 inline mr-1" />
-                    {analysis.signal.nuance}
-                  </p>
-                )}
-              </div>
-            )}
-        </div>
       </div>
     </div>
   );
