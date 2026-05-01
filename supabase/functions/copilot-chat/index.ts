@@ -581,6 +581,8 @@ function selectTools(page: string, entityType?: string) {
     "get_deal_full", "get_lender_full", "get_contact_full", "get_company_full",
     // Always-available link/write actions (still gated by confirmation card).
     "link_contact_to_deal",
+    // Always-available comms context (synced inbox, calendar, recorded meetings).
+    "search_emails", "get_upcoming_events", "get_recent_meetings",
   ]);
 
   if (page.includes("lender")) {
