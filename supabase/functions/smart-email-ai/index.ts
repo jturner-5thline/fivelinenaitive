@@ -294,8 +294,20 @@ ${statusNotes.map((n: any) => `- "${(n.note || "").replace(/\s+/g, " ").substrin
       const openItems = Array.isArray(h.open_items) ? h.open_items.slice(0, 5) : [];
       const openItemsBlock = openItems.length > 0
         ? `\nOPEN OUTSTANDING ITEMS (match against the email topic — if the lender's question maps to one, reference it by name and a concrete ETA):\n${openItems
-            .map((it: any) => `- ${it.description}${it.days_overdue != null ? ` (${it.days_overdue}d overdue)` : it.due_date ? ` (due ${it.due_date})` : ""}`)
+            .map((it: any) => {
+              const timing = it.days_overdue != null
+                ? ` (${it.days_overdue}d overdue)`
+                : it.due_date ? ` (due ${it.due_date})` : "";
+              const owner = it.assignee ? ` — owner: ${it.assignee}` : "";
+              return `- ${it.description}${timing}${owner}`;
+            })
             .join("\n")}`
+        : "";
+      const useOfProceedsBlock = h.use_of_proceeds
+        ? `\nUSE OF PROCEEDS (cite when the lender asks "what's the money for"):\n"${String(h.use_of_proceeds).slice(0, 600)}"`
+        : "";
+      const matchedLenderBlock = (h.matched_lender && h.matched_lender_stage)
+        ? `\nMATCHED LENDER ON THIS DEAL: ${h.matched_lender} — current stage: ${h.matched_lender_stage}. Tailor pacing/asks to where THIS lender is in our process.`
         : "";
       dealContext += `\nDEAL STATE SNAPSHOT (live from AI panel):
 ${h.deal_name ? `- Deal: ${h.deal_name}\n` : ""}\
@@ -305,6 +317,8 @@ ${h.deal_name ? `- Deal: ${h.deal_name}\n` : ""}\
 - Open outstanding items: ${h.open_outstanding_items ?? 0} (most overdue: ${overdue})
 - Last status note: ${lastNote}
 ${financialsBlock}
+${useOfProceedsBlock}
+${matchedLenderBlock}
 ${openItemsBlock}
 
 TONE GUIDANCE FROM DEAL STATE:
