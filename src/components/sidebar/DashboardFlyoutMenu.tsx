@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, KeyboardEvent } from 'react';
+import { flushSync } from 'react-dom';
 import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { LayoutDashboard, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -151,7 +152,7 @@ export function DashboardFlyoutMenu() {
     // never hangs on screen during the route transition.
     clearTimers();
     openedViaKeyboardRef.current = false;
-    setOpen(false);
+    flushSync(() => setOpen(false));
     navigate(`/dashboard?widget=${encodeURIComponent(id)}`);
   };
 
