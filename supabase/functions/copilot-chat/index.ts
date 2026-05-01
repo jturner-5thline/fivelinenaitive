@@ -1720,6 +1720,108 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         preview: `Link ${contactName} to ${dealName}${args.role ? ` as ${args.role}` : ""}?`,
       };
     }
+    case "search_emails": {
+      const limit = Math.min(Math.max(Number(args.limit) || 15, 1), 50);
+      const sinceDays = Math.min(Math.max(Number(args.since_days) || 30, 1), 365);
+      const sinceIso = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000).toISOString();
+
+      let q = supabase
+        .from("gmail_messages")
+        .select("id, gmail_message_id, thread_id, subject, from_email, from_name, to_emails, snippet, body_text, is_read, received_at")
+        .eq("user_id", userId)
+        .gte("received_at", sinceIso)
+        .order("received_at", { ascending: false })
+        .limit(limit);
+
+      if (args.from_email) q = q.ilike("from_email", `%${args.from_email}%`);
+      if (args.unread_only) q = q.eq("is_read", false);
+      if (args.query) {
+        const escaped = String(args.query).replace(/[%,()]/g, " ").trim();
+        if (escaped) q = q.or(`subject.ilike.%${escaped}%,snippet.ilike.%${escaped}%,body_text.ilike.%${escaped}%`);
+      }
+
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      if (args.to_email) {
+        const needle = String(args.to_email).toLowerCase();
+        const filtered = (data || []).filter((m: any) => (m.to_emails || []).some((e: string) => (e || "").toLowerCase().includes(needle)));
+        return { count: filtered.length, messages: filtered.map((m: any) => ({ ...m, body_text: (m.body_text || "").slice(0, 1500) })) };
+      }
+      return {
+        count: (data || []).length,
+        messages: (data || []).map((m: any) => ({ ...m, body_text: (m.body_text || "").slice(0, 1500) })),
+      };
+    }
+    case "get_upcoming_events": {
+      const daysAhead = Math.min(Math.max(Number(args.days_ahead) || 7, 1), 60);
+      const limit = Math.min(Math.max(Number(args.limit) || 20, 1), 50);
+
+      const { data: tokenRow } = await supabase
+        .from("gmail_tokens").select("grant_id").eq("user_id", userId).maybeSingle();
+      if (!tokenRow?.grant_id) {
+        return { error: "Calendar not connected. Ask the user to connect their Google account in Settings → Integrations." };
+      }
+      const NYLAS_API_KEY = Deno.env.get("NYLAS_API_KEY");
+      if (!NYLAS_API_KEY) return { error: "Calendar service not configured." };
+
+      const now = Math.floor(Date.now() / 1000);
+      const future = now + daysAhead * 24 * 60 * 60;
+      const url = `https://api.us.nylas.com/v3/grants/${tokenRow.grant_id}/events?calendar_id=primary&start=${now}&end=${future}&limit=${limit}&expand_recurring=true`;
+
+      try {
+        const resp = await fetch(url, {
+          headers: { Authorization: `Bearer ${NYLAS_API_KEY}`, Accept: "application/json" },
+        });
+        const json = await resp.json();
+        if (!resp.ok) return { error: json?.message || "Failed to fetch calendar events" };
+        const events = (json.data || []).map((e: any) => ({
+          id: e.id,
+          title: e.title || "(no title)",
+          description: (e.description || "").slice(0, 500) || null,
+          location: e.location || null,
+          start: e.when?.start_time ? new Date(e.when.start_time * 1000).toISOString() : (e.when?.start_date || null),
+          end: e.when?.end_time ? new Date(e.when.end_time * 1000).toISOString() : (e.when?.end_date || null),
+          all_day: !e.when?.start_time && !!e.when?.start_date,
+          organizer: e.organizer || null,
+          attendees: (e.participants || []).map((p: any) => ({ email: p.email, name: p.name || null, status: p.status || null })),
+          conference_link: e.conferencing?.details?.url || null,
+          status: e.status || null,
+        }));
+        events.sort((a: any, b: any) => String(a.start || "").localeCompare(String(b.start || "")));
+        return { count: events.length, events };
+      } catch (err: any) {
+        return { error: `Calendar fetch failed: ${err?.message || String(err)}` };
+      }
+    }
+    case "get_recent_meetings": {
+      const limit = Math.min(Math.max(Number(args.limit) || 10, 1), 30);
+      const sinceDays = Math.min(Math.max(Number(args.since_days) || 30, 1), 365);
+      const sinceIso = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000).toISOString();
+      const includeTranscript = !!args.include_transcript;
+
+      const fields = `id, claap_id, title, ai_summary, key_decisions, next_steps, topics, sentiment, organizer_email, duration_seconds, started_at, deal_id, company_id${includeTranscript ? ", transcript" : ""}`;
+      let q = supabase
+        .from("claap_meetings")
+        .select(fields)
+        .gte("started_at", sinceIso)
+        .order("started_at", { ascending: false })
+        .limit(limit);
+
+      if (args.deal_id) q = q.eq("deal_id", args.deal_id);
+      if (args.company_id) q = q.eq("company_id", args.company_id);
+      if (args.query) {
+        const needle = String(args.query).replace(/[%,()]/g, " ").trim();
+        if (needle) q = q.or(`title.ilike.%${needle}%,ai_summary.ilike.%${needle}%,transcript.ilike.%${needle}%`);
+      }
+
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const meetings = (data || []).map((m: any) => ({
+        ...m,
+        transcript: includeTranscript ? (m.transcript || "").slice(0, 8000) : undefined,
+      }));
+      return { count: meetings.length, meetings };
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
