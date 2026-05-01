@@ -161,6 +161,8 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   onCellCommentCountChange,
   weeksFuture: weeksFutureProp,
   onWeeksFutureChange,
+  weeksPast: weeksPastProp,
+  onWeeksPastChange,
   onAddOneTimeEntry,
   customReceiptRows,
   customDisbursementRows,
