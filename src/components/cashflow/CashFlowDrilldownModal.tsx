@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, X } from 'lucide-react';
+import { Search, X, Pencil, Trash2, Check } from 'lucide-react';
 import {
   generateOccurrences,
   resolveCategoryToGridRow,
@@ -11,6 +11,8 @@ import {
   CANONICAL_TO_GRID_ROW,
   applyVariance,
   type ScheduledCashFlow,
+  type FrequencyType,
+  type FlowType,
 } from './scheduledCashFlows';
 import { fmt } from './formatters';
 
@@ -37,6 +39,10 @@ interface Props {
   onClose: () => void;
   context: DrilldownContext | null;
   items: ScheduledCashFlow[];
+  /** Optional inline-edit hook. When provided, each row shows an Edit button. */
+  onUpdateEntry?: (id: string, patch: Partial<ScheduledCashFlow>) => Promise<boolean> | boolean;
+  /** Optional delete hook. When provided, each row shows a Delete button. */
+  onDeleteEntry?: (id: string) => Promise<boolean> | boolean;
 }
 
 function parseDate(s: string): Date {
@@ -78,24 +84,38 @@ function categoriesForRow(rowKey: string): { categories: Set<string>; flowFilter
 
 interface DrilldownRow {
   id: string;
+  entryId: string;
   date: string;
   account: string;
   category: string;
   notes: string | null;
   flow_type: 'cash_in' | 'cash_out';
   signedAmount: number;
+  /** Underlying scheduled entry — for inline edit pre-fill. */
+  entry: ScheduledCashFlow;
 }
 
-export function CashFlowDrilldownModal({ open, onClose, context, items }: Props) {
+export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdateEntry, onDeleteEntry }: Props) {
   const [search, setSearch] = useState('');
   const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set());
   const [dateRange, setDateRange] = useState<'week' | 'before' | 'after' | 'all'>('week');
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<{
+    description: string;
+    amount: string;
+    category: string;
+    frequency_type: FrequencyType;
+    flow_type: FlowType;
+  } | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   // Reset filters when context changes
   useEffect(() => {
     setSearch('');
     setActiveCategories(new Set());
     setDateRange('week');
+    setEditingEntryId(null);
+    setEditDraft(null);
   }, [context?.rowKey, context?.weekKey]);
 
   const allRows = useMemo<DrilldownRow[]>(() => {
@@ -138,12 +158,14 @@ export function CashFlowDrilldownModal({ open, onClose, context, items }: Props)
         );
         out.push({
           id: `${entry.id}-${occ}`,
+          entryId: entry.id,
           date: occ,
           account: entry.account,
           category: cat,
           notes: entry.notes,
           flow_type: entry.flow_type,
           signedAmount: entry.flow_type === 'cash_in' ? amt : -amt,
+          entry,
         });
       }
     }
@@ -171,6 +193,45 @@ export function CashFlowDrilldownModal({ open, onClose, context, items }: Props)
   }, [allRows, search, activeCategories]);
 
   const total = useMemo(() => rows.reduce((s, r) => s + r.signedAmount, 0), [rows]);
+
+  const startEdit = (r: DrilldownRow) => {
+    setEditingEntryId(r.entryId);
+    setEditDraft({
+      description: r.entry.notes || '',
+      amount: String(Math.abs(Number(r.entry.amount) || 0)),
+      category: r.entry.category,
+      frequency_type: r.entry.frequency_type,
+      flow_type: r.entry.flow_type,
+    });
+  };
+  const cancelEdit = () => {
+    setEditingEntryId(null);
+    setEditDraft(null);
+  };
+  const saveEdit = async (entryId: string) => {
+    if (!onUpdateEntry || !editDraft) return;
+    const amt = Number(editDraft.amount);
+    if (!Number.isFinite(amt) || amt < 0) return;
+    setBusyId(entryId);
+    const ok = await onUpdateEntry(entryId, {
+      notes: editDraft.description.trim() || null,
+      amount: amt,
+      category: editDraft.category,
+      frequency_type: editDraft.frequency_type,
+      flow_type: editDraft.flow_type,
+    });
+    setBusyId(null);
+    if (ok) cancelEdit();
+  };
+  const handleDelete = async (entryId: string) => {
+    if (!onDeleteEntry) return;
+    if (!window.confirm('Delete this entry? This will remove all of its occurrences from the table.')) return;
+    setBusyId(entryId);
+    await onDeleteEntry(entryId);
+    setBusyId(null);
+  };
+
+  const canMutate = !!onUpdateEntry || !!onDeleteEntry;
 
   const toggleCategory = (cat: string) => {
     setActiveCategories((prev) => {
@@ -298,24 +359,139 @@ export function CashFlowDrilldownModal({ open, onClose, context, items }: Props)
                   <th className="px-3 py-2 font-medium">Category</th>
                   <th className="px-3 py-2 font-medium">Description</th>
                   <th className="px-3 py-2 font-medium text-right">Amount</th>
+                  {canMutate && <th className="px-3 py-2 font-medium text-right w-[80px]">Actions</th>}
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
-                  <tr key={r.id} className="border-t border-border hover:bg-muted/40">
-                    <td className="px-3 py-2 whitespace-nowrap">{formatNiceDate(r.date)}</td>
-                    <td className="px-3 py-2">{r.account}</td>
-                    <td className="px-3 py-2">{r.category}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{r.notes || '—'}</td>
-                    <td
-                      className={`px-3 py-2 text-right tabular-nums ${
-                        r.signedAmount > 0 ? 'text-emerald-500' : r.signedAmount < 0 ? 'text-red-500' : ''
-                      }`}
-                    >
-                      {fmt(r.signedAmount)}
-                    </td>
-                  </tr>
-                ))}
+                {rows.map((r) => {
+                  const isEditing = editingEntryId === r.entryId && !!editDraft;
+                  const isBusy = busyId === r.entryId;
+                  if (isEditing && editDraft) {
+                    const categoryOptions = editDraft.flow_type === 'cash_in'
+                      ? CASH_IN_CATEGORIES
+                      : CASH_OUT_CATEGORIES;
+                    return (
+                      <tr key={r.id} className="border-t border-border bg-muted/30">
+                        <td className="px-3 py-2 whitespace-nowrap align-top">{formatNiceDate(r.date)}</td>
+                        <td className="px-3 py-2 align-top">{r.account}</td>
+                        <td className="px-3 py-2 align-top">
+                          <select
+                            value={editDraft.category}
+                            onChange={(e) => setEditDraft((d) => d && { ...d, category: e.target.value })}
+                            className="h-8 w-full rounded-md border border-border bg-background px-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                          >
+                            {(categoryOptions as readonly string[]).map((c) => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                            {!(categoryOptions as readonly string[]).includes(editDraft.category) && (
+                              <option value={editDraft.category}>{editDraft.category}</option>
+                            )}
+                          </select>
+                          <select
+                            value={editDraft.frequency_type}
+                            onChange={(e) => setEditDraft((d) => d && { ...d, frequency_type: e.target.value as FrequencyType })}
+                            className="mt-1 h-8 w-full rounded-md border border-border bg-background px-1 text-[11px] text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                          >
+                            <option value="one_time">One-time</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="bi_weekly">Bi-weekly</option>
+                            <option value="monthly_first">Monthly (first weekday)</option>
+                            <option value="monthly_last">Monthly (last weekday)</option>
+                            <option value="monthly_day">Monthly (day of month)</option>
+                          </select>
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          <input
+                            type="text"
+                            value={editDraft.description}
+                            onChange={(e) => setEditDraft((d) => d && { ...d, description: e.target.value })}
+                            placeholder="Description"
+                            className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={editDraft.amount}
+                            onChange={(e) => setEditDraft((d) => d && { ...d, amount: e.target.value })}
+                            className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                        </td>
+                        <td className="px-3 py-2 align-top text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0"
+                              onClick={() => saveEdit(r.entryId)}
+                              disabled={isBusy}
+                              title="Save"
+                            >
+                              <Check className="h-3.5 w-3.5 text-emerald-500" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0"
+                              onClick={cancelEdit}
+                              disabled={isBusy}
+                              title="Cancel"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  return (
+                    <tr key={r.id} className="border-t border-border hover:bg-muted/40">
+                      <td className="px-3 py-2 whitespace-nowrap">{formatNiceDate(r.date)}</td>
+                      <td className="px-3 py-2">{r.account}</td>
+                      <td className="px-3 py-2">{r.category}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{r.notes || '—'}</td>
+                      <td
+                        className={`px-3 py-2 text-right tabular-nums ${
+                          r.signedAmount > 0 ? 'text-emerald-500' : r.signedAmount < 0 ? 'text-red-500' : ''
+                        }`}
+                      >
+                        {fmt(r.signedAmount)}
+                      </td>
+                      {canMutate && (
+                        <td className="px-3 py-2 text-right">
+                          <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100">
+                            {onUpdateEntry && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0"
+                                onClick={() => startEdit(r)}
+                                disabled={isBusy}
+                                title="Edit entry"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            {onDeleteEntry && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                                onClick={() => handleDelete(r.entryId)}
+                                disabled={isBusy}
+                                title="Delete entry"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
               <tfoot className="sticky bottom-0 bg-muted/60 backdrop-blur">
                 <tr className="border-t border-border">
@@ -329,6 +505,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items }: Props)
                   >
                     {fmt(total)}
                   </td>
+                  {canMutate && <td />}
                 </tr>
               </tfoot>
             </table>

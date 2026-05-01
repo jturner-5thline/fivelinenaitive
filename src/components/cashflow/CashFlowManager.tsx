@@ -20,7 +20,7 @@ import { useCashFlowImport } from './useCashFlowImport';
 import { useCashInItems } from './useCashInItems';
 import { useScheduledCashFlows } from './useScheduledCashFlows';
 import { useCustomCashFlowRows } from './useCustomCashFlowRows';
-import { mergeScheduledIntoWeekly, ACCOUNT_OPTIONS, resolveCategoryToGridRow, DEBT_ADVISORY_DEFAULT_SUBCATEGORY, generateOccurrences, applyVariance } from './scheduledCashFlows';
+import { mergeScheduledIntoWeekly, ACCOUNT_OPTIONS, resolveCategoryToGridRow, DEBT_ADVISORY_DEFAULT_SUBCATEGORY, generateOccurrences, applyVariance, gridRowToCanonicalCategory, type ScheduledCashFlow } from './scheduledCashFlows';
 import { WEEKLY_HISTORICAL_SEED, LAST_HISTORICAL_WEEK_ENDING } from './weeklyHistoricalSeed';
 import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
@@ -1220,7 +1220,11 @@ export function CashFlowManager() {
             // a render concern and never deletes underlying entries.
             const ok = await addScheduledItem({
               account: ACCOUNT_OPTIONS[0],
-              category: rowKey, // grid-row key passes through resolveCategoryToGridRow as-is
+              // Persist the canonical category so the Configure modal's
+              // dropdown shows the correct value (e.g. "Payroll Expense"
+              // instead of the grid label "Payroll - Salaries"). At render
+              // time, resolveCategoryToGridRow maps it back to the right row.
+              category: gridRowToCanonicalCategory(rowKey),
               amount,
               frequency_type: 'one_time',
               frequency_config: { one_time_date: occDate },
@@ -1234,6 +1238,22 @@ export function CashFlowManager() {
                 `Added one-time ${flowType === 'cash_in' ? 'cash-in' : 'cash-out'} entry: ${rowLabel} ($${amount.toLocaleString()})`,
               );
             }
+            return ok;
+          }}
+          onUpdateScheduledEntry={async (id, patch) => {
+            const existing = (scheduledItems || []).find((e) => e.id === id);
+            if (!existing) return false;
+            pushUndo(`Edit entry: ${existing.category}`);
+            const updated: ScheduledCashFlow = { ...existing, ...patch };
+            const ok = await saveScheduledItems([updated], []);
+            if (ok) logAction(`Edited scheduled entry: ${updated.category} ($${Number(updated.amount).toLocaleString()})`);
+            return ok;
+          }}
+          onDeleteScheduledEntry={async (id) => {
+            const existing = (scheduledItems || []).find((e) => e.id === id);
+            pushUndo(`Delete entry: ${existing?.category || id}`);
+            const ok = await saveScheduledItems([], [id]);
+            if (ok && existing) logAction(`Deleted scheduled entry: ${existing.category} ($${Number(existing.amount).toLocaleString()})`);
             return ok;
           }}
         />

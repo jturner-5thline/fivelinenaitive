@@ -75,6 +75,10 @@ interface WeeklyReportTabProps {
   onAddCustomRow?: (section: 'receipts' | 'disbursements', name: string) => boolean;
   /** Remove a previously added custom row. */
   onRemoveCustomRow?: (section: 'receipts' | 'disbursements', name: string) => void;
+  /** Patch fields on an existing scheduled entry (used by drilldown row Edit). */
+  onUpdateScheduledEntry?: (id: string, patch: Partial<ScheduledCashFlow>) => Promise<boolean> | boolean;
+  /** Delete a scheduled entry by id (used by drilldown row Delete). */
+  onDeleteScheduledEntry?: (id: string) => Promise<boolean> | boolean;
 }
 
 const DEBT_ADV_PARENT_KEY = 'Debt Advisory Revenue';
@@ -160,6 +164,8 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
   customDisbursementRows,
   onAddCustomRow,
   onRemoveCustomRow,
+  onUpdateScheduledEntry,
+  onDeleteScheduledEntry,
 }: WeeklyReportTabProps) {
   const { user } = useAuth();
   const { comments: cellComments, byCell: cellCommentsByCell, addComment: addCellComment, deleteComment: deleteCellComment } =
@@ -1129,6 +1135,8 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
         onClose={() => setDrilldown(null)}
         context={drilldown}
         items={scheduledItems || []}
+        onUpdateEntry={onUpdateScheduledEntry}
+        onDeleteEntry={onDeleteScheduledEntry}
       />
 
       {/* Inline Add One-Time Entry popover (cell click on receipts/disbursements) */}
