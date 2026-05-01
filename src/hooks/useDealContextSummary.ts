@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface DealContextSummary {
   dealId: string;
+  dealName: string;
   stage: string;
   status: string;
   pipelineId?: string | null;
@@ -13,6 +14,21 @@ export interface DealContextSummary {
   outstanding: {
     openCount: number;
     mostOverdue: { description: string; dueDate: string; daysOverdue: number } | null;
+    /** Up to 5 currently-open items (description + due date), most overdue first. */
+    openItems: Array<{ description: string; dueDate: string | null; daysOverdue: number | null }>;
+  };
+  /** Snapshot of headline financials sourced from Deal Space. All numbers in USD. */
+  financials: {
+    /** `deals.value` — engagement / capital ask. */
+    dealSize: number | null;
+    /** `deals.mrr`. */
+    mrr: number | null;
+    /** Annualized recurring revenue: prefers TTM recurring, falls back to mrr * 12. */
+    arr: number | null;
+    /** TTM total revenue from Deal Space financial data (recurring + non-recurring). */
+    ttmRevenue: number | null;
+    /** Most recent EBITDA value from Deal Space (currently inferred from financial data; null if absent). */
+    ebitda: number | null;
   };
 }
 
@@ -52,7 +68,7 @@ export function useDealContextSummary(dealId: string | undefined) {
       const [dealRes, stageActivityRes, statusNoteRes, lendersRes, outstandingRes] = await Promise.all([
         supabase
           .from('deals')
-          .select('id, stage, status, pipeline_id, updated_at, created_at')
+          .select('id, company, stage, status, pipeline_id, updated_at, created_at, value, mrr')
           .eq('id', dealId)
           .maybeSingle(),
         supabase
@@ -129,6 +145,21 @@ export function useDealContextSummary(dealId: string | undefined) {
       });
       let mostOverdue: DealContextSummary['outstanding']['mostOverdue'] = null;
       const today = Date.now();
+      const enriched = open.map((i) => {
+        const dueIso = i.due_date || i.eta || null;
+        let daysOverdue: number | null = null;
+        if (dueIso) {
+          const due = new Date(dueIso).getTime();
+          if (!Number.isNaN(due) && due <= today) {
+            daysOverdue = Math.floor((today - due) / 86_400_000);
+          }
+        }
+        return { description: i.description as string, dueDate: dueIso, daysOverdue };
+      });
+      const openItems = enriched
+        .slice()
+        .sort((a, b) => (b.daysOverdue ?? -1) - (a.daysOverdue ?? -1))
+        .slice(0, 5);
       for (const i of open) {
         const dueIso = i.due_date || i.eta;
         if (!dueIso) continue;
@@ -140,8 +171,50 @@ export function useDealContextSummary(dealId: string | undefined) {
         }
       }
 
+      // ─── Financials snapshot (Deal Space) ─────────────────────────
+      // Pull TTM recurring + non-recurring revenue from deal_financial_data.
+      // We compute it best-effort — if the table is empty for this deal we
+      // still fall back to deals.value and deals.mrr so the email AI always
+      // has *something* concrete to reference.
+      let ttmRevenue: number | null = null;
+      let arrFromData: number | null = null;
+      let ebitda: number | null = null;
+      try {
+        const since = new Date();
+        since.setMonth(since.getMonth() - 12);
+        const sinceYm = `${since.getFullYear()}-${String(since.getMonth() + 1).padStart(2, '0')}`;
+        const { data: fin } = await supabase
+          .from('deal_financial_data')
+          .select('account_key, value, year_month')
+          .eq('deal_id', dealId)
+          .gte('year_month', sinceYm);
+        if (fin && fin.length > 0) {
+          let recurring = 0;
+          let nonRecurring = 0;
+          let ebitdaSum = 0;
+          let ebitdaSeen = false;
+          for (const row of fin) {
+            const v = Number(row.value) || 0;
+            const k = (row.account_key || '').toLowerCase();
+            if (k === 'revenue.recurring') recurring += v;
+            else if (k === 'revenue.nonrecurring') nonRecurring += v;
+            else if (k.includes('ebitda')) { ebitdaSum += v; ebitdaSeen = true; }
+          }
+          ttmRevenue = recurring + nonRecurring || null;
+          arrFromData = recurring || null;
+          ebitda = ebitdaSeen ? ebitdaSum : null;
+        }
+      } catch (finErr) {
+        console.warn('[useDealContextSummary] financial snapshot failed', finErr);
+      }
+
+      const dealSize = deal.value != null ? Number(deal.value) : null;
+      const mrr = (deal as any).mrr != null ? Number((deal as any).mrr) : null;
+      const arr = arrFromData ?? (mrr != null ? mrr * 12 : null);
+
       setSummary({
         dealId: deal.id,
+        dealName: (deal as any).company || '',
         stage: deal.stage || '',
         status: deal.status || 'on-track',
         pipelineId: deal.pipeline_id,
@@ -149,7 +222,8 @@ export function useDealContextSummary(dealId: string | undefined) {
         stageEnteredAt,
         lastStatusNote,
         lenderCounts,
-        outstanding: { openCount: open.length, mostOverdue },
+        outstanding: { openCount: open.length, mostOverdue, openItems },
+        financials: { dealSize, mrr, arr, ttmRevenue, ebitda },
       });
     } catch (err: any) {
       console.error('[useDealContextSummary]', err);

@@ -15,6 +15,7 @@ import {
   Briefcase,
   User as UserIcon,
   Building2,
+  Database,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { cn } from '@/lib/utils';
@@ -391,10 +392,29 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
    */
   const buildDealContextHint = useCallback(() => {
     if (!dealContextSummary) return undefined;
+    const f = dealContextSummary.financials;
+    const fmt = (n: number | null) =>
+      n == null ? null : n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `$${Math.round(n / 1_000)}k` : `$${Math.round(n)}`;
     return {
+      deal_name: dealContextSummary.dealName || undefined,
       status: dealContextSummary.status,
       stage: dealContextSummary.stage,
       days_in_stage: dealContextSummary.daysInStage,
+      // Headline financials sourced from Deal Space — let the AI cite real
+      // numbers instead of leaving placeholders when the lender asks about
+      // size, ARR, or margins.
+      financials: {
+        deal_size: f.dealSize,
+        deal_size_display: fmt(f.dealSize),
+        arr: f.arr,
+        arr_display: fmt(f.arr),
+        mrr: f.mrr,
+        mrr_display: fmt(f.mrr),
+        ttm_revenue: f.ttmRevenue,
+        ttm_revenue_display: fmt(f.ttmRevenue),
+        ebitda: f.ebitda,
+        ebitda_display: fmt(f.ebitda),
+      },
       active_lenders: dealContextSummary.lenderCounts.active,
       total_lenders: dealContextSummary.lenderCounts.total,
       open_outstanding_items: dealContextSummary.outstanding.openCount,
@@ -404,6 +424,14 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             days_overdue: dealContextSummary.outstanding.mostOverdue.daysOverdue,
           }
         : null,
+      // Up to 5 open items so the AI can match against email topic
+      // keywords (e.g. lender asks about "cap table" → AI sees the
+      // matching outstanding item and can promise a concrete ETA).
+      open_items: dealContextSummary.outstanding.openItems.map((it) => ({
+        description: it.description,
+        due_date: it.dueDate,
+        days_overdue: it.daysOverdue,
+      })),
       last_status_note: dealContextSummary.lastStatusNote
         ? {
             note: dealContextSummary.lastStatusNote.note,
@@ -968,6 +996,23 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                   <Loader2 className="h-2.5 w-2.5 animate-spin text-primary/60" />
                 )}
                 <div className="flex-1" />
+                {/* Deal-context indicator — surfaces when the draft was
+                    generated using Deal Space data so the user knows the AI
+                    referenced real financials/outstanding items. */}
+                {(result?.used_deal_context
+                  || (result?.cited_context_sources || []).some((s) =>
+                    s === 'deal_state_snapshot' || s === 'deal_space_financials')
+                ) && dealContextSummary?.dealName && (
+                  <span
+                    className="hidden sm:inline-flex items-center gap-1 mr-1 px-1.5 py-0.5 rounded text-[10px] text-primary/80 bg-primary/[0.06] border border-primary/15"
+                    title={`Draft generated using ${dealContextSummary.dealName} deal data`}
+                  >
+                    <Database className="h-2.5 w-2.5" />
+                    <span className="truncate max-w-[140px]">
+                      Using {dealContextSummary.dealName} data
+                    </span>
+                  </span>
+                )}
                 <ChevronDown
                   className={cn('h-3 w-3 text-muted-foreground transition-transform', !draftOpen && '-rotate-90')}
                 />
