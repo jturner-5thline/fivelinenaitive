@@ -569,7 +569,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     const nxt = next.toString();
     if (cur !== nxt) setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, searchMode]);
+  }, [searchQuery]);
 
   // Counts
   const needsResponseCount = emails.filter(e => e.needs_response && e.folder === 'inbox').length;
@@ -834,12 +834,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
   const runAISearch = useCallback(async () => {
     const q = searchQuery.trim();
-    if (q.length < AI_SEARCH_MIN_LENGTH) {
-      toast.message('AI search needs a longer query', {
-        description: `Try at least ${AI_SEARCH_MIN_LENGTH} characters, e.g. "calendar invites I declined".`,
-      });
-      return;
-    }
+    if (!q) return;
     if (aiSearchCandidates.length === 0) {
       toast.message('No emails to search yet');
       return;
@@ -856,42 +851,23 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   }, [aiSearch]);
 
   // ── Lifecycle: debounce + cancel + auto-trigger ────────────
-  // 150ms for literal (cheap, just a re-render); 500ms for AI (network).
-  // When the query changes, cancel any in-flight AI call and either:
-  //   - mode==='literal': just clear AI state and rely on keyword filter
-  //   - mode==='ai':      auto-run AI when query meets min length
-  //   - mode==='auto':    auto-run AI when query meets min length, else keyword
+  // No visible mode toggle. We classify silently:
+  //   • natural-language / relational queries → AI semantic search
+  //   • short keywords / entity names → keyword (lexical) only
+  // Keyword filtering always runs in parallel via the filteredEmails memo,
+  // so AI augments rather than replaces results when it's invoked.
   useEffect(() => {
     const trimmed = searchQuery.trim();
 
-    // Mode change or empty query → kill any active AI search.
     if (!trimmed) {
       if (aiSearchActive) clearAISearch();
-      return;
-    }
-
-    // Literal mode never escalates to AI.
-    if (searchMode === 'literal') {
-      if (aiSearchActive) {
-        aiSearch.cancel();
-        setAiSearchActive(false);
-        lastAiQueryRef.current = '';
-      }
       return;
     }
 
     // If we already ran AI for this exact query, do nothing.
     if (aiSearchActive && trimmed === lastAiQueryRef.current) return;
 
-    // Routing:
-    //   • ai   → always interpret with AI (any non-empty query)
-    //   • auto → escalate only for natural-language queries
-    //            (≥ AI_SEARCH_MIN_LENGTH chars AND ≥ 2 whitespace-separated tokens)
-    const wordCount = trimmed.split(/\s+/).filter(Boolean).length;
-    const shouldRunAI =
-      searchMode === 'ai'
-        ? true
-        : trimmed.length >= AI_SEARCH_MIN_LENGTH && wordCount >= 2;
+    const shouldRunAI = isNaturalLanguageQuery(trimmed);
 
     // Cancel any in-flight request before scheduling a new one.
     aiSearch.cancel();
@@ -903,7 +879,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         setAiSearchActive(true);
         void aiSearch.search(trimmed, aiSearchCandidates);
       } else if (aiSearchActive) {
-        // Query too short for AI now (auto mode) — drop back to keyword.
+        // No longer NL — drop back to keyword-only.
         setAiSearchActive(false);
         lastAiQueryRef.current = '';
       }
@@ -911,7 +887,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
     return () => window.clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, searchMode, aiSearchCandidates]);
+  }, [searchQuery, aiSearchCandidates, isNaturalLanguageQuery]);
 
 
   // ─── Selected message resolution (per-message inbox rows) ──────────────
