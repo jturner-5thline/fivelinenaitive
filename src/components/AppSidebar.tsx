@@ -17,6 +17,7 @@ import { useCompany } from "@/hooks/useCompany";
 import { useNaitivePipelineAccess } from "@/hooks/useNaitivePipelineAccess";
 import { useCanAccessInsights } from "@/hooks/useCanAccessInsights";
 import { DashboardFlyoutMenu } from "@/components/sidebar/DashboardFlyoutMenu";
+import { DealsFlyoutMenu } from "@/components/sidebar/DealsFlyoutMenu";
 
 
 import {
@@ -125,6 +126,9 @@ export function AppSidebar() {
               {visibleMenuItems.map((item) => {
                 if (item.url === "/dashboard") {
                   return <DashboardFlyoutMenu key={item.title} />;
+                }
+                if (item.url === "/deals") {
+                  return <DealsFlyoutMenu key={item.title} />;
                 }
                 return (
                 <SidebarMenuItem key={item.title}>
