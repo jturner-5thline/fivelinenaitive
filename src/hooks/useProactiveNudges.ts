@@ -170,7 +170,15 @@ export function useProactiveNudges() {
     setDismissed((prev) => new Set(prev).add(nudgeId));
   }, []);
 
+  const dismissAllNudges = useCallback(() => {
+    setDismissed((prev) => {
+      const next = new Set(prev);
+      for (const n of nudges) next.add(n.id);
+      return next;
+    });
+  }, [nudges]);
+
   const visibleNudges = nudges.filter((n) => !dismissed.has(n.id));
 
-  return { nudges: visibleNudges, dismissNudge };
+  return { nudges: visibleNudges, dismissNudge, dismissAllNudges };
 }
