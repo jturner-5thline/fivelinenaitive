@@ -1975,16 +1975,10 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
               ))}
             </div>
 
-            {/* Deal filter chips — inbox-only secondary row that filters
-                the loaded mailbox to a single naitive deal using the same
-                deal-match engine that powers the "Likely: …" labels. */}
-            {isInboxScope && (
-              <DealFilterChipsRow
-                selectedDealId={selectedDealFilterId}
-                onSelect={setSelectedDealFilterId}
-                dealIdsWithEmails={dealIdsWithEmails}
-              />
-            )}
+            {/* Deal filter has moved to the left sidebar (DealsFlyoutMenu).
+                The active selection is reflected here by DealFilterSummaryCard
+                below. The chips row has been removed to keep the inbox header
+                free of redundant tag clutter. */}
 
             {activeFilterChips.length > 0 && (
               <div className="flex flex-wrap gap-1 px-3 py-1.5 border-b border-border/30">
