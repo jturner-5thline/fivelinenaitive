@@ -16,6 +16,7 @@ interface CopilotStore {
   isProcessing: boolean;
   conversationId: string | null;
   conversationMutations: ConversationMutation[];
+  pendingPrompt: string | null;
   togglePanel: () => void;
   openPanel: () => void;
   closePanel: () => void;
@@ -25,6 +26,8 @@ interface CopilotStore {
   clearMessages: () => void;
   setConversationId: (id: string | null) => void;
   addMutation: (mutation: ConversationMutation) => void;
+  setPendingPrompt: (prompt: string | null) => void;
+  openPanelWithPrompt: (prompt: string) => void;
 }
 
 export const useCopilotStore = create<CopilotStore>((set) => ({
@@ -33,6 +36,7 @@ export const useCopilotStore = create<CopilotStore>((set) => ({
   isProcessing: false,
   conversationId: null,
   conversationMutations: [],
+  pendingPrompt: null,
   togglePanel: () => set((s) => {
     console.log('[Copilot] togglePanel →', !s.isOpen);
     return { isOpen: !s.isOpen };
@@ -45,4 +49,6 @@ export const useCopilotStore = create<CopilotStore>((set) => ({
   clearMessages: () => set({ messages: [], conversationId: null, conversationMutations: [] }),
   setConversationId: (id) => set({ conversationId: id }),
   addMutation: (mutation) => set((s) => ({ conversationMutations: [...s.conversationMutations, mutation] })),
+  setPendingPrompt: (prompt) => set({ pendingPrompt: prompt }),
+  openPanelWithPrompt: (prompt) => set({ isOpen: true, pendingPrompt: prompt }),
 }));

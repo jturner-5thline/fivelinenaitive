@@ -429,7 +429,7 @@ function MessageActions({ msg, conversationId }: { msg: { id: string; content: s
 }
 
 export function AICopilotPanel() {
-  const { isOpen, closePanel, messages, addMessage, setMessages, isProcessing, setProcessing, conversationId, setConversationId, conversationMutations } = useCopilotStore();
+  const { isOpen, closePanel, messages, addMessage, setMessages, isProcessing, setProcessing, conversationId, setConversationId, conversationMutations, pendingPrompt, setPendingPrompt } = useCopilotStore();
   const { user } = useAuth();
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
@@ -806,6 +806,15 @@ export function AICopilotPanel() {
     setMessages(withoutLastUser);
     handleSend(lastFailedMessage);
   }, [lastFailedMessage, handleSend, setMessages]);
+
+  // When the collapsed composer hands off a typed prompt, auto-send it
+  // once the panel is open.
+  useEffect(() => {
+    if (!isOpen || !pendingPrompt) return;
+    const text = pendingPrompt;
+    setPendingPrompt(null);
+    handleSend(text);
+  }, [isOpen, pendingPrompt, setPendingPrompt, handleSend]);
 
   const handleNudgeAction = useCallback((prompt: string) => {
     handleSend(prompt);
