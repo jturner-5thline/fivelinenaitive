@@ -204,10 +204,18 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
                 <div className="text-center py-8">
                   <CheckCircle2 className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">
-                    {filter === 'today' ? 'No tasks due today.' : 'No tasks match this filter.'}
+                    {filter === 'today'
+                      ? 'No tasks due today.'
+                      : filter === 'all'
+                        ? 'No open tasks.'
+                        : 'No tasks match this filter.'}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {filter === 'today' ? 'Try Overdue, Next 3 days, or All — or create a new task.' : 'Try a different filter or scope.'}
+                    {filter === 'all'
+                      ? 'Create one to get started.'
+                      : filter === 'today'
+                        ? 'Try Overdue, Next 3 Days, or All Tasks — or create a new task.'
+                        : 'Try a different filter or scope.'}
                   </p>
                   <Button
                     variant="outline"
