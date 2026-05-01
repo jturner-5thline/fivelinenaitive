@@ -82,6 +82,54 @@ import { useThreadWorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
 import { useEmailPrioritySignals } from '@/hooks/useEmailPrioritySignals';
 import type { DetectedSignal, EmailPrioritySignalType, PrioritySignalSeverity } from '@/lib/emailPrioritySignals';
 import { getSignalDef, getSignalSeverity } from '@/lib/emailPrioritySignals';
+import { useEmailClassifierData } from '@/hooks/useEmailClassifierData';
+import { classifyEmail } from '@/utils/emailClassifier';
+
+/**
+ * Staleness bucket for "Clients & Deals" rows. Computed from the age of the
+ * newest inbound message in the thread (when nothing has been replied to)
+ * vs. the time since our last outbound reply.
+ *
+ *  - fresh   green   < 24h
+ *  - aging   yellow  2–5 days no reply
+ *  - stale   orange  6–10 days no reply
+ *  - urgent  red     11+ days no reply (pulses)
+ *
+ * If the most recent message in the thread is one we sent, the bucket is
+ * always reset to "fresh" (green) — the ball's back in their court.
+ */
+export type StaleBucket = 'fresh' | 'aging' | 'stale' | 'urgent';
+
+export function computeStaleBucket(
+  latestReceivedAt: string | Date | undefined | null,
+  alreadyResponded: boolean,
+  now: Date = new Date(),
+): StaleBucket {
+  if (alreadyResponded) return 'fresh';
+  if (!latestReceivedAt) return 'fresh';
+  const ts = typeof latestReceivedAt === 'string' ? new Date(latestReceivedAt) : latestReceivedAt;
+  if (!ts || isNaN(ts.getTime())) return 'fresh';
+  const hours = (now.getTime() - ts.getTime()) / 36e5;
+  if (hours < 24) return 'fresh';
+  const days = hours / 24;
+  if (days < 6) return 'aging';   // 1–5 full days
+  if (days < 11) return 'stale';  // 6–10 full days
+  return 'urgent';                // 11+ days
+}
+
+const STALE_DOT_CLASSES: Record<StaleBucket, string> = {
+  fresh: 'bg-emerald-500',
+  aging: 'bg-yellow-400',
+  stale: 'bg-orange-500',
+  urgent: 'bg-red-500 animate-pulse ring-2 ring-red-500/30',
+};
+
+const STALE_DOT_TITLES: Record<StaleBucket, string> = {
+  fresh: 'Fresh — replied or under 24h',
+  aging: 'Aging — 2–5 days without reply',
+  stale: 'Stale — 6–10 days without reply',
+  urgent: 'Urgent — 11+ days without reply',
+};
 
 // Visual styling for the inbox-row priority indicator. Red = urgent
 // (pass / decline / wire / funded / not_a_fit). Yellow = action
@@ -273,6 +321,23 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
   const responded =
     thread.emails.length > 0 && thread.emails[0]?.from_name === 'You';
 
+  // Age-based staleness dot — only rendered for threads that classify as
+  // "Clients & Deals" so it doesn't clutter Asana / calendar / marketing
+  // rows. Computed from the most recent inbound message; resets to green
+  // the moment we send a reply.
+  const { entities: classifierEntities, orgCtx } = useEmailClassifierData();
+  const isClientsAndDeals = useMemo(() => {
+    try {
+      const cats = classifyEmail(latest as any, classifierEntities, orgCtx);
+      return cats.includes('clients_deals');
+    } catch {
+      return false;
+    }
+  }, [latest, classifierEntities, orgCtx]);
+  const staleBucket: StaleBucket | null = isClientsAndDeals
+    ? computeStaleBucket(latest.received_at, responded)
+    : null;
+
   const rowContent = (
     <div
       className={cn(
@@ -344,6 +409,17 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
           {/* Row 1: Sender + date on same line */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
+              {staleBucket && (
+                <span
+                  className={cn(
+                    'inline-block h-2 w-2 rounded-full shrink-0',
+                    STALE_DOT_CLASSES[staleBucket],
+                  )}
+                  aria-label={STALE_DOT_TITLES[staleBucket]}
+                  title={STALE_DOT_TITLES[staleBucket]}
+                  data-stale-bucket={staleBucket}
+                />
+              )}
               <span className={cn(
                 'text-[13px] truncate',
                 isUnread
