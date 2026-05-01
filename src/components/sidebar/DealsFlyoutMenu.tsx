@@ -302,13 +302,13 @@ export function DealsFlyoutMenu() {
               onOpenAutoFocus={(e) => e.preventDefault()}
               onCloseAutoFocus={(e) => e.preventDefault()}
             >
-              <div role="menu" aria-label="Active deals">
+              <div role="menu" aria-label="Recently opened deals">
                 <div className="flex items-center justify-between px-2 pb-1.5 pt-1">
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-                    Active deals
+                    Recently opened
                   </span>
                   <span className="text-[10px] text-muted-foreground/70 truncate max-w-[110px]" title={activePipeline?.name || ''}>
-                    {activePipeline?.name || 'Active pipeline'}
+                    Last {activeDeals.length}
                   </span>
                 </div>
                 {/* Scrollable list — caps height so long pipelines don't
