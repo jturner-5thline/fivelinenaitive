@@ -628,7 +628,50 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
           weeklyData={safeWeeklyData}
           theme={theme}
           visibleWeekKeys={visibleWeekKeys}
+          peakWeekKey={peakCash?.weekKey ?? null}
+          lowWeekKey={lowCash?.weekKey ?? null}
+          lowWeekBelowCaution={!!lowCash && lowCash.value < cautionThreshold}
         />
+
+        {lowCash && lowCash.value < cautionThreshold && (
+          <div
+            role="alert"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 14px',
+              margin: '8px 0',
+              borderRadius: 'var(--radius-md, 8px)',
+              background: 'color-mix(in srgb, var(--color-warning) 15%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--color-warning) 50%, transparent)',
+              color: 'var(--color-warning)',
+              fontSize: 13,
+              fontWeight: 500,
+            }}
+          >
+            <span aria-hidden>⚠️</span>
+            <span>
+              Projected cash drops to{' '}
+              <strong>
+                {lowCash.value >= 1_000_000
+                  ? `$${(lowCash.value / 1_000_000).toFixed(1)}M`
+                  : `$${Math.round(lowCash.value / 1_000).toLocaleString()}K`}
+              </strong>{' '}
+              on{' '}
+              <strong>
+                {(() => {
+                  const iso = lowCash.weekEnding;
+                  const d = new Date(iso + (iso?.length === 10 ? 'T00:00:00' : ''));
+                  return isNaN(d.getTime())
+                    ? iso
+                    : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                })()}
+              </strong>{' '}
+              — review Cash Disbursements for that week.
+            </span>
+          </div>
+        )}
 
         {/* Table card */}
         <div ref={gridWrapRef} className="cf-table-card">
