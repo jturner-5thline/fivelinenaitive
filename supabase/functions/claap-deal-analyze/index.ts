@@ -344,14 +344,93 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 4. Return suggested tasks (NOT auto-created — UI confirms each one).
-    const suggested_tasks = insights.action_items.map((a, i) => ({
-      key: `${activityRow.id}:${i}`,
-      title: a.title.length > 200 ? a.title.slice(0, 197) + "…" : a.title,
-      owner_label: a.owner,
-      due_hint: a.due_hint || null,
-      priority: a.priority || "medium",
-    }));
+    // 4. Auto-create tasks (default) or return suggestions for UI confirm.
+    const autoCreate = body.auto_create_tasks !== false; // default true
+    const truncate = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
+
+    // Naive due-date heuristic from due_hint — never invent dates.
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const addDays = (n: number) => {
+      const d = new Date(today); d.setDate(d.getDate() + n);
+      return d.toISOString().slice(0, 10);
+    };
+    const inferDueDate = (hint?: string | null): string | null => {
+      const h = (hint || "").toLowerCase();
+      if (!h) return null;
+      if (/\btomorrow\b|\beod tomorrow\b/.test(h)) return addDays(1);
+      if (/\btoday\b|\beod\b/.test(h)) return addDays(0);
+      if (/\bnext week\b/.test(h)) return addDays(7);
+      if (/\bthis week\b|\bby friday\b|\bend of week\b/.test(h)) {
+        const dow = today.getDay();
+        const toFri = (5 - dow + 7) % 7 || 5;
+        return addDays(toFri);
+      }
+      if (/\bnext month\b/.test(h)) return addDays(30);
+      return null;
+    };
+
+    let created_tasks: Array<{ id: string; title: string; due_date: string | null; priority: string; owner_label: string }> = [];
+    let suggested_tasks: Array<{ key: string; title: string; owner_label: string; due_hint: string | null; priority: string }> = [];
+
+    if (autoCreate && insights.action_items.length > 0) {
+      // Idempotency: skip action items already created from this recording.
+      const { data: existingTasks } = await supabaseUser
+        .from("tasks")
+        .select("id, title")
+        .eq("deal_id", body.deal_id)
+        .contains("metadata", { source: "claap_deal_analyze", recording_id: body.recording_id });
+
+      const existingTitles = new Set((existingTasks || []).map((t: any) => (t.title || "").trim().toLowerCase()));
+
+      const rowsToInsert = insights.action_items
+        .filter((a) => !existingTitles.has(truncate(a.title, 200).trim().toLowerCase()))
+        .map((a) => ({
+          deal_id: body.deal_id,
+          assigned_to: user.id,
+          assigned_by: user.id,
+          title: truncate(a.title, 200),
+          description: `Auto-created by naitive AI from Claap recording: ${title}${a.owner ? `\nOriginal owner mentioned: ${a.owner}` : ""}${a.due_hint ? `\nDue hint: ${a.due_hint}` : ""}\n\nYou can delete this task if it isn't relevant.`,
+          priority: a.priority || "medium",
+          status: "not_started",
+          task_type: "task",
+          due_date: inferDueDate(a.due_hint),
+          metadata: {
+            source: "claap_deal_analyze",
+            recording_id: body.recording_id,
+            recording_title: title,
+            activity_log_id: activityRow.id,
+            original_owner: a.owner,
+            due_hint: a.due_hint || null,
+            auto_created: true,
+          },
+        }));
+
+      if (rowsToInsert.length > 0) {
+        const { data: inserted, error: taskErr } = await supabaseUser
+          .from("tasks")
+          .insert(rowsToInsert)
+          .select("id, title, due_date, priority");
+        if (taskErr) {
+          console.warn("Auto-create tasks failed (continuing):", taskErr);
+        } else {
+          created_tasks = (inserted || []).map((t: any, i: number) => ({
+            id: t.id,
+            title: t.title,
+            due_date: t.due_date,
+            priority: t.priority,
+            owner_label: rowsToInsert[i]?.metadata?.original_owner || "Team",
+          }));
+        }
+      }
+    } else {
+      suggested_tasks = insights.action_items.map((a, i) => ({
+        key: `${activityRow.id}:${i}`,
+        title: truncate(a.title, 200),
+        owner_label: a.owner,
+        due_hint: a.due_hint || null,
+        priority: a.priority || "medium",
+      }));
+    }
 
     return new Response(JSON.stringify({
       ok: true,
@@ -360,6 +439,8 @@ Deno.serve(async (req) => {
       activity_log_id: activityRow.id,
       summary_markdown: markdown,
       insights,
+      auto_created: autoCreate,
+      created_tasks,
       suggested_tasks,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
