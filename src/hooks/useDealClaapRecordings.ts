@@ -71,30 +71,10 @@ export function useDealClaapRecordings(dealId: string) {
 
       fetchLinkedRecordings();
 
-      // Fire-and-forget: trigger the deal-scoped analysis pipeline.
-      // Per product spec for Claap recordings: the summary is auto-posted to
-      // Activity AND tasks are auto-created from action items (users can
-      // delete unwanted ones from the Tasks tab).
-      supabase.functions.invoke('claap-deal-analyze', {
-        body: {
-          deal_id: dealId,
-          recording_id: recording.id,
-          recording_title: recording.title,
-          recording_url: recording.url,
-          recorded_at: recording.createdAt,
-          skip_if_exists: true,
-          auto_create_tasks: true,
-        },
-      }).then(({ error: invokeErr }) => {
-        if (invokeErr) {
-          console.warn('[claap] auto-analyze failed:', invokeErr);
-          return;
-        }
-        // Notify any open ClaapRecordingsPanel/DealActivityTab to refresh.
-        window.dispatchEvent(new CustomEvent('claap-recording-analyzed', {
-          detail: { dealId, recordingId: recording.id },
-        }));
-      }).catch((err) => console.warn('[claap] auto-analyze invoke threw:', err));
+      // NOTE: Per project memory ("AI writes require explicit human approval"),
+      // we do NOT auto-run analysis or auto-post summaries / tasks here.
+      // The user opens "Analyze Recording" on the Data Room entry to review
+      // and confirm the AI draft before anything is written to the deal.
     } catch (err: any) {
       console.error('Error linking recording:', err);
       toast({
