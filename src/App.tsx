@@ -272,6 +272,9 @@ const App = () => (
                           <Route path="/lenders/sync-history" element={
                             <ProtectedRoute><AppLayout><LenderSyncHistory /></AppLayout></ProtectedRoute>
                           } />
+                          <Route path="/lenders/:lenderName/history" element={
+                            <ProtectedRoute><AppLayout><LenderDealHistory /></AppLayout></ProtectedRoute>
+                          } />
                           <Route path="/preferences" element={
                             <ProtectedRoute><AppLayout><Preferences /></AppLayout></ProtectedRoute>
                           } />
