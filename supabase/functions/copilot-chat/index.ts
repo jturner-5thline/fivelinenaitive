@@ -887,6 +887,8 @@ function selectTools(page: string, entityType?: string) {
     "get_pipelines", "move_deal_pipeline",
     // Always-available kitchen-sink reads so the model never says "I don't have that data".
     "get_deal_full", "get_lender_full", "get_contact_full", "get_company_full",
+    // Always-available CRM list/search (contacts, companies, recent activities).
+    "search_contacts", "search_crm_companies", "get_recent_crm_activities",
     // Always-available link/write actions (still gated by confirmation card).
     "link_contact_to_deal",
     // Always-available comms context (synced inbox, calendar, recorded meetings).
