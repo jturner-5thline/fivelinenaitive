@@ -1128,6 +1128,27 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 </Tooltip>
               </TooltipProvider>
               )}
+              {canGenerateMemo && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowBrandedStudio(true)}
+                      className="gap-2"
+                    >
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      Branded Document
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Generate a styled, branded document (memo, teaser, one-pager…)</p>
+                    <p className="text-[10px] opacity-70 mt-0.5">Style by image, URL, or saved template</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              )}
               {autoFilledFields.size > 0 && (
                 <Badge variant="secondary" className="gap-1 text-xs bg-primary/10 text-primary border-primary/20">
                   <Sparkles className="h-3 w-3" />
