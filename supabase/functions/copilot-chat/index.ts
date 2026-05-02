@@ -605,6 +605,36 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_task_details",
+      description: "Get the full record for a single task: description, subtasks, comments, watchers, time entries, parent/children, deal/contact/company linkage, and recent activity. Use when the user asks 'what's the status of <task>', 'who is on <task>', 'what was discussed on <task>'.",
+      parameters: {
+        type: "object",
+        properties: {
+          task_id: { type: "string", description: "Task UUID. Required." },
+        },
+        required: ["task_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_scheduled_followups",
+      description: "List scheduled follow-up actions queued for deals (scheduled_followup_actions): trigger_key, scheduled_for, status, deal context. Use for 'what follow-ups are coming up', 'pending follow-ups for <deal>', 'what got fired today/this week'.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string" },
+          status: { type: "string", enum: ["pending", "fired", "skipped", "failed", "all"], description: "Default: pending." },
+          window_days: { type: "number", description: "How many days ahead (pending) or back (fired/skipped/failed). Default 14, max 90." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
