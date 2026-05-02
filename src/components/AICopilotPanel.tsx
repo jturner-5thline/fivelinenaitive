@@ -10,6 +10,8 @@ import { toast } from 'sonner';
 import { format, isToday, isYesterday } from 'date-fns';
 import naitiveFavicon from '@/assets/naitive-favicon.png';
 import { CopilotActionConfirm } from '@/components/copilot/CopilotActionConfirm';
+import { DealAiSettingsPopover } from '@/components/copilot/DealAiSettingsPopover';
+import { useDealCopilotMemory } from '@/hooks/useDealCopilotMemory';
 import { CopilotAutoExecuted } from '@/components/copilot/CopilotAutoExecuted';
 import { CopilotEmailDraft } from '@/components/copilot/CopilotEmailDraft';
 import { CopilotDealCard } from '@/components/copilot/CopilotDealCard';
@@ -460,6 +462,15 @@ export function AICopilotPanel() {
   const isOnline = useOnlineStatus();
   const location = useLocation();
   const isDealDetail = isDealDetailPath(location.pathname);
+
+  // Per-deal AI memory (loads last ~10 exchanges; persists new ones).
+  const dealIdFromPath = (() => {
+    const parts = location.pathname.split('/').filter(Boolean);
+    if ((parts[0] === 'deal' || parts[0] === 'deals') && parts[1]) return parts[1];
+    return null;
+  })();
+  const dealMemory = useDealCopilotMemory(dealIdFromPath);
+  const [showPrevious, setShowPrevious] = useState(false);
 
   // ── Auto-detected page context: resolved entity label for the chip ──
   // The chip shows e.g. "Context: Censys Technologies" or "Context: Finance — Cash Flow".
