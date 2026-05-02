@@ -461,6 +461,74 @@ export function AICopilotPanel() {
   const location = useLocation();
   const isDealDetail = isDealDetailPath(location.pathname);
 
+  // ── Auto-detected page context: resolved entity label for the chip ──
+  // The chip shows e.g. "Context: Censys Technologies" or "Context: Finance — Cash Flow".
+  // We resolve a friendly label client-side so the user sees it before any AI call.
+  const [autoContextLabel, setAutoContextLabel] = useState<string | null>(null);
+
+  // ── @-mention deal override ──
+  // When the user types "@…", we open a small autocomplete that searches deals.
+  // Selecting one sets `contextOverride`, which is sent to the edge function and
+  // takes precedence over the URL-detected entity.
+  const [contextOverride, setContextOverride] = useState<{ entityType: 'deal'; entityId: string; entityName: string } | null>(null);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionMatches, setMentionMatches] = useState<Array<{ id: string; company: string }>>([]);
+  const mentionAbortRef = useRef<AbortController | null>(null);
+
+  // Resolve the URL into a friendly chip label.
+  useEffect(() => {
+    let cancelled = false;
+    async function resolve() {
+      const ctx = getPageContext();
+      // Deal detail → fetch the company name
+      if (ctx.page === 'deal-detail' && ctx.entityId) {
+        const { data } = await supabase.from('deals').select('company').eq('id', ctx.entityId).maybeSingle();
+        if (cancelled) return;
+        setAutoContextLabel(data?.company ? `Deal — ${data.company}` : 'Deal');
+        return;
+      }
+      if (ctx.page === 'lender-detail' && ctx.entityId) {
+        if (cancelled) return;
+        setAutoContextLabel(`Lender — ${ctx.entityId}`);
+        return;
+      }
+      if (ctx.page === 'lenders') { if (!cancelled) setAutoContextLabel('Lenders directory'); return; }
+      if (ctx.page === 'finance') { if (!cancelled) setAutoContextLabel('Finance — Cash Flow'); return; }
+      if (ctx.page === 'tasks') { if (!cancelled) setAutoContextLabel('Tasks'); return; }
+      if (ctx.page === 'pipeline' || ctx.page === 'deals') { if (!cancelled) setAutoContextLabel('Pipeline'); return; }
+      if (ctx.page === 'dashboard') { if (!cancelled) setAutoContextLabel('Pipeline overview'); return; }
+      if (!cancelled) setAutoContextLabel(ctx.page ? ctx.page.replace(/-/g, ' ') : null);
+    }
+    resolve();
+    return () => { cancelled = true; };
+  }, [location.pathname]);
+
+  // Watch the input for an "@..." token at the cursor and run a deal search.
+  useEffect(() => {
+    if (mentionAbortRef.current) mentionAbortRef.current.abort();
+    if (!mentionQuery || mentionQuery.length < 1) {
+      setMentionMatches([]);
+      return;
+    }
+    const ctrl = new AbortController();
+    mentionAbortRef.current = ctrl;
+    const timer = setTimeout(async () => {
+      const { data } = await supabase
+        .from('deals')
+        .select('id, company')
+        .ilike('company', `%${mentionQuery}%`)
+        .limit(8);
+      if (ctrl.signal.aborted) return;
+      setMentionMatches((data || []) as any);
+    }, 150);
+    return () => { clearTimeout(timer); ctrl.abort(); };
+  }, [mentionQuery]);
+
+  /** Visible chip label — override > auto-detected. */
+  const effectiveContextLabel = contextOverride
+    ? `${contextOverride.entityName} (override)`
+    : autoContextLabel;
+
   // Focus trap
   useEffect(() => {
     if (!isOpen || !panelRef.current) return;
