@@ -695,7 +695,7 @@ function selectTools(page: string, entityType?: string) {
   if (page.includes("lender")) {
     ["get_deal_lenders", "search_lenders", "update_lender_status", "get_deal_call_transcripts", "get_lender_deal_history"].forEach(n => coreNames.add(n));
   } else if (page.includes("deals") || page.includes("pipeline")) {
-    ["get_deal_lenders", "get_deal_health", "get_deal_milestones", "get_outstanding_items", "get_deal_call_transcripts", "get_deal_stage_history", "get_lender_deal_history"].forEach(n => coreNames.add(n));
+    ["get_deal_lenders", "get_deal_health", "get_deal_milestones", "get_outstanding_items", "get_deal_call_transcripts", "get_deal_stage_history", "get_lender_deal_history", "search_vdr_documents", "list_vdr_documents"].forEach(n => coreNames.add(n));
   } else if (page.includes("task")) {
     // Tasks page: core + task tools only
   } else {
