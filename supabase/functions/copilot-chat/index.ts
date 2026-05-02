@@ -1084,6 +1084,128 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 
       return { count: docs.length, deal_id: args.deal_id, documents: docs };
     }
+    case "get_quickbooks_pnl": {
+      const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const { start, end, label } = resolvePeriod(args.period, args.start_date, args.end_date);
+
+      // Revenue from invoices (accrual basis = txn_date)
+      const { data: invoices } = await admin
+        .from("quickbooks_invoices")
+        .select("total_amt, balance, txn_date")
+        .gte("txn_date", start)
+        .lte("txn_date", end);
+      const revenue = (invoices || []).reduce((s: number, i: any) => s + Number(i.total_amt || 0), 0);
+      const ar_outstanding = (invoices || []).reduce((s: number, i: any) => s + Number(i.balance || 0), 0);
+
+      // Expenses
+      const { data: expenses } = await admin
+        .from("quickbooks_expenses")
+        .select("total_amt, txn_date")
+        .gte("txn_date", start)
+        .lte("txn_date", end);
+      const expensesTotal = (expenses || []).reduce((s: number, e: any) => s + Number(e.total_amt || 0), 0);
+
+      // Bills (txn_date is text in this table)
+      const { data: bills } = await admin
+        .from("quickbooks_bills")
+        .select("total_amt, balance, txn_date")
+        .gte("txn_date", start)
+        .lte("txn_date", end);
+      const billsTotal = (bills || []).reduce((s: number, b: any) => s + Number(b.total_amt || 0), 0);
+      const ap_outstanding = (bills || []).reduce((s: number, b: any) => s + Number(b.balance || 0), 0);
+
+      const operatingProfit = revenue - (expensesTotal + billsTotal);
+      const margin = revenue > 0 ? (operatingProfit / revenue) * 100 : null;
+
+      return {
+        period: label,
+        start_date: start,
+        end_date: end,
+        currency: "USD",
+        basis: "accrual",
+        revenue,
+        expenses: expensesTotal,
+        bills: billsTotal,
+        operating_profit_ebitda: operatingProfit,
+        margin_percent: margin,
+        ar_outstanding,
+        ap_outstanding,
+        invoice_count: invoices?.length || 0,
+        bill_count: bills?.length || 0,
+        expense_count: expenses?.length || 0,
+        formula: "Operating Profit (EBITDA) = Revenue − (Expenses + Bills)",
+        instruction: "Report figures with $ formatting. State the period explicitly. Note this is firm-level (all entities combined) accrual-basis from QuickBooks.",
+      };
+    }
+    case "get_outstanding_invoices": {
+      const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
+      let q = admin.from("quickbooks_invoices")
+        .select("doc_number, customer_name, total_amt, balance, txn_date, due_date, status")
+        .gt("balance", 0)
+        .order("due_date", { ascending: true })
+        .limit(limit);
+      if (args.customer_query) q = q.ilike("customer_name", `%${args.customer_query}%`);
+      if (args.min_balance) q = q.gte("balance", Number(args.min_balance));
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const today = new Date();
+      let invoices = (data || []).map((i: any) => {
+        const due = i.due_date ? new Date(i.due_date) : null;
+        const days_overdue = due ? Math.floor((today.getTime() - due.getTime()) / 86400000) : null;
+        return { ...i, days_overdue };
+      });
+      if (args.overdue_only) invoices = invoices.filter((i: any) => (i.days_overdue ?? -1) > 0);
+      const total_outstanding = invoices.reduce((s: number, i: any) => s + Number(i.balance || 0), 0);
+      return { count: invoices.length, total_outstanding, invoices };
+    }
+    case "get_outstanding_bills": {
+      const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
+      let q = admin.from("quickbooks_bills")
+        .select("doc_number, vendor_ref_name, total_amt, balance, txn_date, due_date")
+        .gt("balance", 0)
+        .order("due_date", { ascending: true })
+        .limit(limit);
+      if (args.vendor_query) q = q.ilike("vendor_ref_name", `%${args.vendor_query}%`);
+      if (args.min_balance) q = q.gte("balance", Number(args.min_balance));
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const today = new Date();
+      let bills = (data || []).map((b: any) => {
+        const due = b.due_date ? new Date(b.due_date) : null;
+        const days_overdue = due && !isNaN(due.getTime()) ? Math.floor((today.getTime() - due.getTime()) / 86400000) : null;
+        return { ...b, vendor: b.vendor_ref_name, days_overdue };
+      });
+      if (args.overdue_only) bills = bills.filter((b: any) => (b.days_overdue ?? -1) > 0);
+      const total_outstanding = bills.reduce((s: number, b: any) => s + Number(b.balance || 0), 0);
+      return { count: bills.length, total_outstanding, bills };
+    }
+    case "get_revenue_breakdown": {
+      const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const limit = Math.min(Math.max(args.limit ?? 10, 1), 50);
+      const period = args.period || "ytd";
+      let q = admin.from("quickbooks_invoices").select("customer_name, total_amt, txn_date");
+      if (period !== "all") {
+        const { start, end } = resolvePeriod(period);
+        q = q.gte("txn_date", start).lte("txn_date", end);
+      }
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const byCustomer: Record<string, number> = {};
+      let total = 0;
+      for (const inv of data || []) {
+        const name = inv.customer_name || "Unknown";
+        const amt = Number(inv.total_amt || 0);
+        byCustomer[name] = (byCustomer[name] || 0) + amt;
+        total += amt;
+      }
+      const top = Object.entries(byCustomer)
+        .map(([customer, revenue]) => ({ customer, revenue, percent_of_total: total > 0 ? (revenue / total) * 100 : 0 }))
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, limit);
+      return { period, total_revenue: total, top_customers: top, customer_count: Object.keys(byCustomer).length };
+    }
     case "get_pipeline_summary": {
       const { data: deals } = await supabase.from("deals").select("id, company, value, stage, status").limit(1000);
       if (!deals) return { error: "No deals" };
