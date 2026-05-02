@@ -54,6 +54,9 @@ export function AIConfigurationSettings({ isAdmin }: { isAdmin: boolean }) {
     max_tokens: 4096,
     features_enabled: { chat: true, financial_analysis: true, agents: true, workflows: true },
   });
+  const [localCopilot, setLocalCopilot] = useState<CopilotInstructions>(DEFAULT_COPILOT_INSTRUCTIONS);
+  const [copilotLoaded, setCopilotLoaded] = useState(false);
+  const [showCompiledPreview, setShowCompiledPreview] = useState(false);
 
   const { data: config, isLoading } = useQuery({
     queryKey: ['ai-configuration', company?.id],
@@ -95,8 +98,12 @@ export function AIConfigurationSettings({ isAdmin }: { isAdmin: boolean }) {
   useEffect(() => {
     if (config) {
       setLocalConfig(config);
+      if (!copilotLoaded) {
+        setLocalCopilot(normalizeCopilotInstructions((config as any).copilot_instructions));
+        setCopilotLoaded(true);
+      }
     }
-  }, [config]);
+  }, [config, copilotLoaded]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -107,6 +114,7 @@ export function AIConfigurationSettings({ isAdmin }: { isAdmin: boolean }) {
         default_temperature: localConfig.default_temperature ?? 0.7,
         max_tokens: localConfig.max_tokens ?? 4096,
         features_enabled: localConfig.features_enabled || { chat: true, financial_analysis: true, agents: true, workflows: true },
+        copilot_instructions: localCopilot as any,
       };
 
       if (config?.id) {
