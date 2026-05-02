@@ -1293,6 +1293,108 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         .slice(0, limit);
       return { period, total_revenue: total, top_customers: top, customer_count: Object.keys(byCustomer).length };
     }
+    case "get_my_notifications": {
+      const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
+      const sinceDays = Math.max(args.since_days ?? 14, 1);
+      const sinceIso = new Date(Date.now() - sinceDays * 86400000).toISOString();
+      let q = supabase.from("notification_instances")
+        .select("id, trigger_key, title, body, rendered_data, context, status, sent_at, read_at, created_at")
+        .eq("recipient_user_id", userId)
+        .eq("channel_type", "in_app")
+        .gte("created_at", sinceIso)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (args.unread_only) q = q.is("read_at", null);
+      if (args.trigger_key) q = q.eq("trigger_key", args.trigger_key);
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const notifications = data || [];
+      const unread = notifications.filter((n: any) => !n.read_at).length;
+      return {
+        count: notifications.length,
+        unread_count: unread,
+        since_days: sinceDays,
+        notifications: notifications.map((n: any) => ({
+          id: n.id,
+          trigger: n.trigger_key,
+          title: n.title,
+          body: n.body,
+          deal_id: (n.context as any)?.deal_id || (n.rendered_data as any)?.deal_id || null,
+          read: !!n.read_at,
+          created_at: n.created_at,
+        })),
+      };
+    }
+    case "get_lender_engagement_alerts": {
+      const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
+      const sinceDays = Math.max(args.since_days ?? 14, 1);
+      const sinceIso = new Date(Date.now() - sinceDays * 86400000).toISOString();
+      let q = supabase.from("flex_notifications")
+        .select("id, deal_id, alert_type, title, message, lender_name, lender_email, engagement_score, read_at, created_at")
+        .eq("user_id", userId)
+        .gte("created_at", sinceIso)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (args.deal_id) q = q.eq("deal_id", args.deal_id);
+      if (args.unread_only) q = q.is("read_at", null);
+      if (args.alert_type) q = q.eq("alert_type", args.alert_type);
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const alerts = data || [];
+      return {
+        count: alerts.length,
+        unread_count: alerts.filter((a: any) => !a.read_at).length,
+        since_days: sinceDays,
+        alerts,
+      };
+    }
+    case "get_stale_deal_alerts": {
+      const staleDays = Math.max(args.stale_days ?? 7, 1);
+      const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
+      const cutoff = Date.now() - staleDays * 86400000;
+      let dealsQ = supabase.from("deals")
+        .select("id, company, stage, status")
+        .neq("status", "archived")
+        .neq("status", "on-hold")
+        .neq("stage", "closed-lost")
+        .limit(500);
+      if (args.deal_id) dealsQ = dealsQ.eq("id", args.deal_id);
+      const { data: deals, error: dealsErr } = await dealsQ;
+      if (dealsErr) return { error: dealsErr.message };
+      if (!deals || deals.length === 0) return { count: 0, stale_deals: [] };
+      const dealIds = deals.map((d: any) => d.id);
+      const { data: lenders } = await supabase.from("deal_lenders")
+        .select("deal_id, name, stage, tracking_status, updated_at")
+        .in("deal_id", dealIds);
+      const excludedStages = new Set(["passed", "on hold", "on deck", "not a fit", "unresponsive"]);
+      const byDeal: Record<string, { stale: any[]; max_days: number }> = {};
+      for (const l of (lenders || [])) {
+        if (l.tracking_status !== "active" || !l.updated_at) continue;
+        if (excludedStages.has((l.stage || "").toLowerCase())) continue;
+        const ts = new Date(l.updated_at).getTime();
+        if (ts >= cutoff) continue;
+        const daysSince = Math.floor((Date.now() - ts) / 86400000);
+        const entry = byDeal[l.deal_id] || (byDeal[l.deal_id] = { stale: [], max_days: 0 });
+        entry.stale.push({ name: l.name, stage: l.stage, days_since_update: daysSince });
+        if (daysSince > entry.max_days) entry.max_days = daysSince;
+      }
+      const dealMap = new Map(deals.map((d: any) => [d.id, d]));
+      const stale_deals = Object.entries(byDeal)
+        .map(([deal_id, info]) => {
+          const d: any = dealMap.get(deal_id);
+          return {
+            deal_id,
+            company: d?.company,
+            stage: d?.stage,
+            stale_lender_count: info.stale.length,
+            max_days_since_update: info.max_days,
+            stale_lenders: info.stale.sort((a, b) => b.days_since_update - a.days_since_update),
+          };
+        })
+        .sort((a, b) => b.max_days_since_update - a.max_days_since_update)
+        .slice(0, limit);
+      return { count: stale_deals.length, stale_days_threshold: staleDays, stale_deals };
+    }
     case "get_pipeline_summary": {
       const { data: deals } = await supabase.from("deals").select("id, company, value, stage, status").limit(1000);
       if (!deals) return { error: "No deals" };
