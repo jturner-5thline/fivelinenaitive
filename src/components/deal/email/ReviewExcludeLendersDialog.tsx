@@ -427,6 +427,7 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
             </button>
 
             {preflightOpen && activeWarnings.length > 0 && (
+              <>
               <ul className="mt-2 space-y-2">
                 {activeWarnings.map((entry) => (
                   <li
@@ -471,6 +472,22 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
                   </li>
                 ))}
               </ul>
+              {/* Bulk-acknowledge shortcut — dismisses every active
+                  warning for this session and collapses the panel so the
+                  reviewer can move straight to Continue. */}
+              <div className="mt-2 flex justify-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={proceedWithAllLenders}
+                  className="h-7 text-[11px] border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10"
+                >
+                  <CheckCircle2 className="h-3 w-3 mr-1.5" />
+                  Proceed with all lenders
+                </Button>
+              </div>
+              </>
             )}
 
             {!preflight.loading && activeWarnings.length === 0 && (
