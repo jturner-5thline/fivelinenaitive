@@ -4803,6 +4803,47 @@ export type Database = {
           },
         ]
       }
+      copilot_deal_messages: {
+        Row: {
+          cleared_at: string | null
+          content: string
+          created_at: string
+          deal_id: string
+          id: string
+          metadata: Json
+          role: string
+          user_id: string
+        }
+        Insert: {
+          cleared_at?: string | null
+          content: string
+          created_at?: string
+          deal_id: string
+          id?: string
+          metadata?: Json
+          role: string
+          user_id: string
+        }
+        Update: {
+          cleared_at?: string | null
+          content?: string
+          created_at?: string
+          deal_id?: string
+          id?: string
+          metadata?: Json
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "copilot_deal_messages_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       copilot_user_preferences: {
         Row: {
           category: Database["public"]["Enums"]["copilot_preference_category"]
@@ -5591,6 +5632,38 @@ export type Database = {
             foreignKeyName: "data_room_share_links_deal_id_fkey"
             columns: ["deal_id"]
             isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_ai_settings: {
+        Row: {
+          created_at: string
+          data_room_context_enabled: boolean
+          deal_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          data_room_context_enabled?: boolean
+          deal_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          data_room_context_enabled?: boolean
+          deal_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_ai_settings_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
@@ -20596,6 +20669,10 @@ export type Database = {
       seed_new_company_defaults: {
         Args: { _company_id: string }
         Returns: undefined
+      }
+      user_has_deal_access: {
+        Args: { _deal_id: string; _user_id: string }
+        Returns: boolean
       }
       vdr_search_chunks: {
         Args: {
