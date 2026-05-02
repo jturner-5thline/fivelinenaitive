@@ -168,10 +168,10 @@ function buildContextString(ctx: any, companyName: string, userName: string) {
   lines.push(`## User Context\nUser: ${userName} | Company: ${companyName} | Date: ${today}`);
 
   if (deals.length > 0) {
-    lines.push(`## Deals (${deals.length} total, showing active)`);
     const isActiveStatus = (s: string) =>
       !!s && !["archived", "on-hold", "on_hold", "closed-won", "closed-lost", "lost", "won"].includes(s);
-    const activeDeals = deals.filter((d: any) => isActiveStatus(d.status)).slice(0, 30);
+    const activeDeals = deals.filter((d: any) => isActiveStatus(d.status));
+    lines.push(`## Active Deals (${activeDeals.length} total — full workspace)`);
     activeDeals.forEach((d: any) => {
       const last = new Date(d.updated_at || d.created_at);
       const daysAgo = Math.floor((Date.now() - last.getTime()) / 86_400_000);
