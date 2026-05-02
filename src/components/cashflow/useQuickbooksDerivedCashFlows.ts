@@ -2,49 +2,62 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ScheduledCashFlow } from './scheduledCashFlows';
 
+/** Admin-editable mapping rule loaded from `qb_cashflow_mapping_rules`. */
+interface MappingRule {
+  priority: number;
+  match_type: 'include' | 'exclude';
+  match_field: 'account' | 'item' | 'either';
+  pattern: string;
+  target_row: string | null;
+  categorized: boolean;
+  is_active: boolean;
+}
+
+/** Hardcoded fallback rules, used only if the DB table is empty/unreachable. */
+const FALLBACK_RULES: MappingRule[] = [
+  { priority: 10, match_type: 'exclude', match_field: 'account', pattern: 'financial services', target_row: null, categorized: true, is_active: true },
+  { priority: 11, match_type: 'exclude', match_field: 'account', pattern: 'financing programs', target_row: null, categorized: true, is_active: true },
+  { priority: 12, match_type: 'exclude', match_field: 'account', pattern: 'tech ',              target_row: null, categorized: true, is_active: true },
+  { priority: 20, match_type: 'include', match_field: 'either',  pattern: 'monthly retainer',   target_row: 'Retainers', categorized: true, is_active: true },
+  { priority: 21, match_type: 'include', match_field: 'either',  pattern: 'retainer',           target_row: 'Retainers', categorized: true, is_active: true },
+  { priority: 30, match_type: 'include', match_field: 'either',  pattern: 'milestone',          target_row: 'Milestones', categorized: true, is_active: true },
+  { priority: 40, match_type: 'include', match_field: 'either',  pattern: 'referral',           target_row: 'Referral Fees', categorized: true, is_active: true },
+  { priority: 50, match_type: 'include', match_field: 'either',  pattern: 'closing fee',        target_row: 'Closing Fees', categorized: true, is_active: true },
+  { priority: 51, match_type: 'include', match_field: 'either',  pattern: 'success fee',        target_row: 'Closing Fees', categorized: true, is_active: true },
+  { priority: 52, match_type: 'include', match_field: 'either',  pattern: 'advisory fee',       target_row: 'Closing Fees', categorized: true, is_active: true },
+  { priority: 53, match_type: 'include', match_field: 'account', pattern: 'debt fee revenue',   target_row: 'Closing Fees', categorized: true, is_active: true },
+  { priority: 54, match_type: 'include', match_field: 'either',  pattern: 'consulting fee',     target_row: 'Closing Fees', categorized: true, is_active: true },
+  { priority: 90, match_type: 'include', match_field: 'account', pattern: 'debt',               target_row: 'Debt Advisory Revenue', categorized: false, is_active: true },
+  { priority: 91, match_type: 'include', match_field: 'account', pattern: 'retainer revenue',   target_row: 'Debt Advisory Revenue', categorized: false, is_active: true },
+  { priority: 92, match_type: 'include', match_field: 'account', pattern: 'referral revenue',   target_row: 'Debt Advisory Revenue', categorized: false, is_active: true },
+];
+
+function ruleMatches(rule: MappingRule, account: string, item: string): boolean {
+  const p = rule.pattern.toLowerCase();
+  if (!p) return false;
+  if (rule.match_field === 'account') return account.includes(p);
+  if (rule.match_field === 'item') return item.includes(p);
+  return account.includes(p) || item.includes(p);
+}
+
 /**
- * Map a QuickBooks income account / item name to one of the four Debt Advisory
- * sub-rows in the Cash Flow weekly grid. Returns null when the line is clearly
- * not Debt Advisory revenue (e.g. FinServ Recurring Advisory). Returns
- * 'Debt Advisory Revenue' as the bucket-of-last-resort for Debt-tagged income
- * we can't categorize to a child row.
+ * Apply rules in priority order. First matching rule wins.
+ *  - exclude → return null (drop the line entirely)
+ *  - include → return the target row (or null if blank)
  */
-function mapQbAccountToRow(
+function applyRules(
+  rules: MappingRule[],
   accountName: string | null | undefined,
   itemName: string | null | undefined,
 ): { row: string; categorized: boolean } | null {
-  const a = (accountName || '').toLowerCase();
-  const i = (itemName || '').toLowerCase();
-  const hay = `${a} ${i}`;
-
-  // Exclude FinServ / Tech / non-Debt revenue explicitly.
-  if (a.startsWith('financial services') || a.includes('financing programs') || a.includes('tech ')) {
-    return null;
+  const account = (accountName || '').toLowerCase();
+  const item = (itemName || '').toLowerCase();
+  for (const r of rules) {
+    if (!r.is_active) continue;
+    if (!ruleMatches(r, account, item)) continue;
+    if (r.match_type === 'exclude') return null;
+    if (r.target_row) return { row: r.target_row, categorized: r.categorized };
   }
-
-  // Retainers
-  if (hay.includes('retainer')) return { row: 'Retainers', categorized: true };
-  if (hay.includes('monthly retainer')) return { row: 'Retainers', categorized: true };
-
-  // Milestones (must check before generic "fee")
-  if (hay.includes('milestone')) return { row: 'Milestones', categorized: true };
-
-  // Referral
-  if (hay.includes('referral')) return { row: 'Referral Fees', categorized: true };
-
-  // Closing / Success / Advisory fees
-  if (hay.includes('closing fee') || hay.includes('success fee') || hay.includes('advisory fee')) {
-    return { row: 'Closing Fees', categorized: true };
-  }
-  if (a.startsWith('debt fee revenue') || hay.includes('consulting fee')) {
-    return { row: 'Closing Fees', categorized: true };
-  }
-
-  // Anything else under a Debt-flagged account → bucket into parent
-  if (a.includes('debt') || a.startsWith('retainer revenue') || a.startsWith('referral revenue')) {
-    return { row: 'Debt Advisory Revenue', categorized: false };
-  }
-
   return null;
 }
 
@@ -56,6 +69,10 @@ function mapQbAccountToRow(
  *
  * The QB token table is org-wide (4 realms), and per project policy QuickBooks
  * data is shared across the workspace — so we do not filter by company_id.
+ *
+ * Mapping rules are loaded from the admin-editable `qb_cashflow_mapping_rules`
+ * table. If the table is empty/unreachable, falls back to the original
+ * hardcoded ruleset so behavior degrades gracefully.
  */
 export function useQuickbooksDerivedCashFlows(enabled: boolean) {
   const [items, setItems] = useState<ScheduledCashFlow[]>([]);
@@ -66,8 +83,14 @@ export function useQuickbooksDerivedCashFlows(enabled: boolean) {
     let cancelled = false;
     (async () => {
       setIsLoading(true);
-      // Pull recent invoices (last ~3 years through 1 year forward to capture
-      // any future-dated docs). The Cash Flow grid clamps to its own range.
+      const { data: ruleRows } = await supabase
+        .from('qb_cashflow_mapping_rules')
+        .select('priority, match_type, match_field, pattern, target_row, categorized, is_active')
+        .eq('is_active', true)
+        .order('priority', { ascending: true });
+      const rules: MappingRule[] = (ruleRows && ruleRows.length > 0)
+        ? (ruleRows as unknown as MappingRule[])
+        : FALLBACK_RULES;
       const minDate = new Date();
       minDate.setFullYear(minDate.getFullYear() - 3);
       const { data, error } = await supabase
@@ -89,7 +112,7 @@ export function useQuickbooksDerivedCashFlows(enabled: boolean) {
           const detail = line.SalesItemLineDetail || {};
           const accountName = detail?.ItemAccountRef?.name as string | undefined;
           const itemName = detail?.ItemRef?.name as string | undefined;
-          const mapped = mapQbAccountToRow(accountName, itemName);
+          const mapped = applyRules(rules, accountName, itemName);
           if (!mapped) continue;
           const amount = Number(line.Amount);
           if (!Number.isFinite(amount) || amount === 0) continue;

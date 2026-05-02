@@ -14442,6 +14442,54 @@ export type Database = {
           },
         ]
       }
+      qb_cashflow_mapping_rules: {
+        Row: {
+          categorized: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          match_field: string
+          match_type: string
+          notes: string | null
+          pattern: string
+          priority: number
+          target_row: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          categorized?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          match_field?: string
+          match_type?: string
+          notes?: string | null
+          pattern: string
+          priority?: number
+          target_row?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          categorized?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          match_field?: string
+          match_type?: string
+          notes?: string | null
+          pattern?: string
+          priority?: number
+          target_row?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       quickbooks_accounts: {
         Row: {
           account_sub_type: string | null
