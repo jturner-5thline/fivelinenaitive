@@ -162,6 +162,13 @@ export function CashFlowManager() {
   const { importedDailyData, importedRowStructure, isImported, isImportLoading, importFile } = useCashFlowImport(company?.id);
   const { items: cashInDbItems, fetchItems: refreshCashInItems, removeItem: removeCashInDbItem, toSidebarItems } = useCashInItems();
   const { items: scheduledItems, saveAll: saveScheduledItems, addItem: addScheduledItem } = useScheduledCashFlows(company?.id);
+  // Auto-populated entries — read-only, stacked on top of manual Configure rows.
+  const { items: qbDerivedItems } = useQuickbooksDerivedCashFlows(!!company?.id);
+  const { items: dealProjectedItems } = useDealProjectedCashFlows(company?.id, !!company?.id);
+  const combinedScheduledItems = useMemo(
+    () => [...(qbDerivedItems || []), ...(dealProjectedItems || []), ...(scheduledItems || [])],
+    [qbDerivedItems, dealProjectedItems, scheduledItems],
+  );
   const { rows: customRows, addRow: addCustomRow, removeRow: removeCustomRow } = useCustomCashFlowRows(company?.id);
   const [addCashInOpen, setAddCashInOpen] = useState(false);
   const [scheduledModalOpen, setScheduledModalOpen] = useState(false);
