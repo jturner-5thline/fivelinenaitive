@@ -2441,6 +2441,48 @@ export type Database = {
         }
         Relationships: []
       }
+      client_error_log: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          error_type: string
+          feature_area: string | null
+          id: string
+          message: string
+          metadata: Json | null
+          stack: string | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          error_type: string
+          feature_area?: string | null
+          id?: string
+          message: string
+          metadata?: Json | null
+          stack?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          error_type?: string
+          feature_area?: string | null
+          id?: string
+          message?: string
+          metadata?: Json | null
+          stack?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       client_request_audit_log: {
         Row: {
           action: string
@@ -15500,6 +15542,117 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_report_runs: {
+        Row: {
+          ai_summary: Json | null
+          created_at: string
+          data_snapshot: Json | null
+          error_message: string | null
+          id: string
+          period_end: string | null
+          period_start: string | null
+          recipient: string
+          rendered_html: string | null
+          rendered_text: string | null
+          report_key: string
+          status: string
+          subject: string | null
+          triggered_by: string
+          triggered_by_user: string | null
+        }
+        Insert: {
+          ai_summary?: Json | null
+          created_at?: string
+          data_snapshot?: Json | null
+          error_message?: string | null
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+          recipient: string
+          rendered_html?: string | null
+          rendered_text?: string | null
+          report_key: string
+          status: string
+          subject?: string | null
+          triggered_by?: string
+          triggered_by_user?: string | null
+        }
+        Update: {
+          ai_summary?: Json | null
+          created_at?: string
+          data_snapshot?: Json | null
+          error_message?: string | null
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+          recipient?: string
+          rendered_html?: string | null
+          rendered_text?: string | null
+          report_key?: string
+          status?: string
+          subject?: string | null
+          triggered_by?: string
+          triggered_by_user?: string | null
+        }
+        Relationships: []
+      }
+      recurring_reports: {
+        Row: {
+          created_at: string
+          description: string | null
+          enabled: boolean
+          frequency: string
+          id: string
+          last_error: string | null
+          last_preview_html: string | null
+          last_preview_text: string | null
+          last_run_at: string | null
+          last_status: string | null
+          last_subject: string | null
+          name: string
+          next_run_at: string | null
+          recipient: string
+          report_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          frequency: string
+          id?: string
+          last_error?: string | null
+          last_preview_html?: string | null
+          last_preview_text?: string | null
+          last_run_at?: string | null
+          last_status?: string | null
+          last_subject?: string | null
+          name: string
+          next_run_at?: string | null
+          recipient: string
+          report_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          frequency?: string
+          id?: string
+          last_error?: string | null
+          last_preview_html?: string | null
+          last_preview_text?: string | null
+          last_run_at?: string | null
+          last_status?: string | null
+          last_subject?: string | null
+          name?: string
+          next_run_at?: string | null
+          recipient?: string
+          report_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       referral_sources: {
         Row: {
           company: string | null
@@ -15632,8 +15785,6 @@ export type Database = {
       }
       report_runs: {
         Row: {
-          ai_narrative: string | null
-          ai_sources: Json | null
           completed_at: string | null
           created_at: string
           delivery_response: Json | null
@@ -15642,7 +15793,6 @@ export type Database = {
           error_message: string | null
           id: string
           report_data: Json | null
-          run_type: string | null
           scheduled_report_id: string
           started_at: string | null
           status: string
@@ -15650,8 +15800,6 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          ai_narrative?: string | null
-          ai_sources?: Json | null
           completed_at?: string | null
           created_at?: string
           delivery_response?: Json | null
@@ -15660,7 +15808,6 @@ export type Database = {
           error_message?: string | null
           id?: string
           report_data?: Json | null
-          run_type?: string | null
           scheduled_report_id: string
           started_at?: string | null
           status?: string
@@ -15668,8 +15815,6 @@ export type Database = {
           user_id: string
         }
         Update: {
-          ai_narrative?: string | null
-          ai_sources?: Json | null
           completed_at?: string | null
           created_at?: string
           delivery_response?: Json | null
@@ -15678,7 +15823,6 @@ export type Database = {
           error_message?: string | null
           id?: string
           report_data?: Json | null
-          run_type?: string | null
           scheduled_report_id?: string
           started_at?: string | null
           status?: string
