@@ -13,9 +13,16 @@ import { supabase } from '@/integrations/supabase/client';
  *     [min_deal, max_deal] range from the lender directory.
  *  3. GEOGRAPHY MISMATCH — company HQ does not appear in the lender's
  *     stated geographic preference (`master_lenders.geo`).
+ *  4. INDUSTRY MISMATCH — the deal's industry / sub-industry is on the
+ *     lender's `industries_to_avoid` list, OR the lender publishes an
+ *     `industries` allow-list that the deal's industry is not on.
  */
 
-export type LenderPreflightWarningKind = 'pass_history' | 'size_mismatch' | 'geography_mismatch';
+export type LenderPreflightWarningKind =
+  | 'pass_history'
+  | 'size_mismatch'
+  | 'geography_mismatch'
+  | 'industry_mismatch';
 
 export interface LenderPreflightWarning {
   kind: LenderPreflightWarningKind;
@@ -58,6 +65,29 @@ function geographyCovers(geo: string | null | undefined, hq: { city?: string | n
   const candidates = [hq.city, hq.state, hq.country].map((s) => (s || '').trim().toLowerCase()).filter(Boolean);
   if (candidates.length === 0) return true; // no HQ on file → can't judge
   return candidates.some((c) => g.includes(c));
+}
+
+/** Normalize an industry label for fuzzy comparison. */
+function industryKey(s: string | null | undefined): string {
+  return (s || '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/**
+ * Loose match between a deal industry token and a lender's industry-list
+ * entry. Matches when either string contains the other (token-aware), so
+ * "SaaS" matches "Software / SaaS" and "Healthcare" matches "Healthcare IT".
+ */
+function industryMatches(dealIndustry: string, lenderEntry: string): boolean {
+  const a = industryKey(dealIndustry);
+  const b = industryKey(lenderEntry);
+  if (!a || !b) return false;
+  if (a === b) return true;
+  // Token containment in either direction.
+  return a.includes(b) || b.includes(a);
 }
 
 interface UseLenderPreflightChecksParams {
