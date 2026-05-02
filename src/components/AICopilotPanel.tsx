@@ -1008,8 +1008,38 @@ export function AICopilotPanel() {
         </div>
       </div>
 
-      {/* Context Badge placeholder */}
-      <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--glass-border)', flexShrink: 0 }} />
+      {/* Context Badge — shows what the AI will treat as focus this turn */}
+      <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--glass-border)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, minHeight: 36 }}>
+        {effectiveContextLabel ? (
+          <div
+            title={contextOverride ? 'Overridden via @mention. Click × to clear.' : 'Auto-detected from current page. Type @ to override with a different deal.'}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '3px 8px', borderRadius: 999, fontSize: 11,
+              background: contextOverride ? 'rgba(126,184,247,0.15)' : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${contextOverride ? 'rgba(126,184,247,0.4)' : 'var(--glass-border)'}`,
+              color: 'var(--foreground)',
+            }}
+          >
+            <span style={{ color: 'hsl(var(--muted-foreground))' }}>Context:</span>
+            <strong style={{ fontWeight: 600 }}>{effectiveContextLabel}</strong>
+            {contextOverride && (
+              <button
+                onClick={() => setContextOverride(null)}
+                aria-label="Clear context override"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 0, display: 'inline-flex' }}
+              >
+                <X size={11} />
+              </button>
+            )}
+          </div>
+        ) : null}
+        {!contextOverride && (
+          <span style={{ fontSize: 10, color: 'hsl(var(--muted-foreground))', marginLeft: 'auto' }}>
+            Type <kbd style={{ background: 'rgba(255,255,255,0.06)', padding: '0 4px', borderRadius: 3 }}>@</kbd> to switch deal
+          </span>
+        )}
+      </div>
 
       {/* Proactive Nudges */}
       {nudges.length > 0 && messages.length === 0 && (
