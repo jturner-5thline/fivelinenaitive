@@ -378,20 +378,20 @@ interface SourceRef {
   detail?: string;
 }
 
-async function buildDealContext(supabase: any, dealId: string, opts?: { includeDocContent?: boolean; supabaseService?: any; scope?: string }) {
+async function buildDealContext(supabase: any, dealId: string, opts?: { includeDocContent?: boolean; supabaseService?: any; scope?: string; includeDataRoom?: boolean }) {
   const [
     dealResult, writeupResult, lendersResult, milestonesResult,
     activityResult, memoResult, dealSpaceDocsResult, dataRoomDocsResult, flagNotesResult,
     notesResult, outstandingResult, transcriptsResult, checklistResult,
   ] = await Promise.all([
-    supabase.from("deals").select("company, value, stage, status, deal_type, business_model, contact, contact_info, company_url, deal_owner, manager, referred_by, engagement_type, exclusivity, created_at, updated_at, is_flagged, flag_notes, notes, pre_signing_hours, post_signing_hours, retainer_fee, milestone_fee, success_fee_percent, total_fee").eq("id", dealId).single(),
+    supabase.from("deals").select("company, value, stage, status, deal_type, business_model, contact, contact_info, company_url, deal_owner, manager, referred_by, engagement_type, exclusivity, created_at, updated_at, is_flagged, flag_notes, notes, pre_signing_hours, post_signing_hours, retainer_fee, milestone_fee, success_fee_percent, total_fee, ai_custom_instructions").eq("id", dealId).single(),
     supabase.from("deal_writeups").select("company_name, description, industry, location, year_founded, headcount, capital_ask, use_of_funds, deal_type, b2b_b2c, revenue_type, billing_model, gross_margins, profitability, last_year_revenue, this_year_revenue, total_equity_raised, sponsorship, collateral_available, existing_debt_details, accounting_system, company_url, linkedin_url, data_room_url, company_highlights, key_items, financial_years, financial_comments").eq("deal_id", dealId).single(),
     supabase.from("deal_lenders").select("name, stage, substage, tracking_status, quote_amount, quote_rate, quote_term, notes, pass_reason").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(30),
     supabase.from("deal_milestones").select("title, completed, due_date, completed_at").eq("deal_id", dealId).order("position").limit(20),
     supabase.from("activity_logs").select("activity_type, description, user_display_name, created_at").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(30),
     supabase.from("deal_memos").select("narrative, highlights, hurdles, analyst_notes, lender_notes, other_notes").eq("deal_id", dealId).single(),
-    supabase.from("deal_space_documents").select("id, name, file_path, content_type, size_bytes, created_at").eq("deal_id", dealId),
-    supabase.from("deal_attachments").select("id, name, file_path, content_type, category, size_bytes, created_at").eq("deal_id", dealId),
+    supabase.from("deal_space_documents").select("id, name, file_path, content_type, size_bytes, created_at, extracted_text, extraction_status").eq("deal_id", dealId),
+    supabase.from("deal_attachments").select("id, name, file_path, content_type, category, size_bytes, created_at, extracted_text, extraction_status").eq("deal_id", dealId),
     supabase.from("deal_flag_notes").select("note, created_at").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(10),
     // New: deal space notes
     supabase.from("deal_space_notes").select("id, title, content, created_at, linked_lender_id").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(20),
@@ -639,15 +639,19 @@ ${Object.entries(byCategory).map(([cat, items]) => `  ${cat}:\n${(items as strin
 
   // ── Fetch actual document content if requested (limited to avoid CPU timeout) ──
   let docContentBlock = '';
-  if (opts?.includeDocContent && opts?.supabaseService) {
-    const allDocs = [...dealSpaceDocs, ...dataRoomDocs];
+  if (opts?.includeDocContent) {
+    const includeDataRoom = opts.includeDataRoom !== false;
+    const allDocs: any[] = [
+      ...dealSpaceDocs.map((d: any) => ({ ...d, _origin: 'deal_space' })),
+      ...(includeDataRoom ? dataRoomDocs.map((d: any) => ({ ...d, _origin: 'data_room' })) : []),
+    ];
     let docsToFetch = allDocs;
     if (opts.scope === 'financial') {
       const { data: financialFiles } = await supabase
         .from('deal_space_financials')
-        .select('id, name, file_path, content_type')
+        .select('id, name, file_path, content_type, extracted_text')
         .eq('deal_id', dealId);
-      docsToFetch = financialFiles || [];
+      docsToFetch = (financialFiles || []).map((f: any) => ({ ...f, _origin: 'deal_space' }));
     } else if (opts.scope === 'transcripts') {
       docsToFetch = allDocs.filter((d: any) => {
         const name = (d.name || '').toLowerCase();
@@ -657,47 +661,26 @@ ${Object.entries(byCategory).map(([cat, items]) => `  ${cat}:\n${(items as strin
       });
     }
 
-    // Limit to 2 smallest plain-text docs to stay within 2s CPU budget.
-    // PDF/DOCX/XLSX/PPTX parsing in-runtime is too CPU-heavy and causes WORKER_RESOURCE_LIMIT.
-    const extractableDocs = docsToFetch
-      .filter((d: any) => {
-        const name = (d.name || '').toLowerCase();
-        const ct = (d.content_type || '').toLowerCase();
-        const isText = ct.includes('text/') || ct.includes('csv') || ct.includes('json') ||
-               name.endsWith('.txt') || name.endsWith('.csv') || name.endsWith('.md') || name.endsWith('.json');
-        // Skip files larger than 200KB even if text
-        const sizeOk = !d.size_bytes || d.size_bytes < 200_000;
-        return isText && sizeOk;
-      })
-      .sort((a: any, b: any) => (a.size_bytes || 0) - (b.size_bytes || 0))
-      .slice(0, 2);
-
+    // Use pre-extracted text from the database (populated by deal-document-extract).
+    // This lets us inject PDF/DOCX/XLSX content without runtime CPU pressure.
+    const docsWithText = docsToFetch.filter((d: any) => d.extracted_text && d.extracted_text.length > 50);
     const chunks: string[] = [];
     let totalChars = 0;
-
-    for (const doc of extractableDocs) {
+    for (const doc of docsWithText) {
       if (totalChars >= MAX_DOC_CONTENT_CHARS) break;
-      try {
-        const bucket = dealSpaceDocs.find((d: any) => d.id === doc.id) ? "deal-space" : "deal-attachments";
-        const { data: fileData, error: downloadError } = await opts.supabaseService.storage.from(bucket).download(doc.file_path);
-        if (downloadError || !fileData) continue;
-        const extracted = await extractContent(fileData, doc.name);
-        if (extracted.text && !extracted.text.startsWith("[Binary file:")) {
-          const content = truncate(buildEnhancedContext(doc.name, extracted), MAX_SINGLE_DOC_CHARS);
-          chunks.push(content);
-          totalChars += content.length;
-          sourcesUsed.push({ type: 'document_content', name: doc.name });
-        }
-      } catch (err) {
-        console.error(`Error extracting ${doc.name}:`, err);
-      }
+      const remaining = MAX_DOC_CONTENT_CHARS - totalChars;
+      const slice = truncate(doc.extracted_text, Math.min(MAX_SINGLE_DOC_CHARS, remaining));
+      const origin = doc._origin === 'data_room' ? 'Data Room' : 'Deal Space';
+      chunks.push(`### ${doc.name}  _(${origin})_\n${slice}`);
+      totalChars += slice.length;
+      sourcesUsed.push({ type: 'document_content', name: doc.name });
     }
-
     if (chunks.length > 0) {
-      docContentBlock = `\n**DOCUMENT CONTENT (${chunks.length} files extracted):**\n\n${chunks.join('\n\n---\n\n')}`;
+      docContentBlock = `\n**DOCUMENT CONTENT (${chunks.length} file${chunks.length === 1 ? '' : 's'} from knowledge base):**\n\n${chunks.join('\n\n---\n\n')}`;
     }
-    if (docsToFetch.length > extractableDocs.length) {
-      docContentBlock += `\n[${docsToFetch.length - extractableDocs.length} additional documents available but not extracted to stay within compute limits]`;
+    const pendingCount = docsToFetch.length - docsWithText.length;
+    if (pendingCount > 0) {
+      docContentBlock += `\n[${pendingCount} additional document${pendingCount === 1 ? '' : 's'} attached but text not yet extracted — they will become searchable shortly after upload.]`;
     }
   }
 
