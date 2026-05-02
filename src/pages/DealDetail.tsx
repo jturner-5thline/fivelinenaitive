@@ -7,6 +7,7 @@ import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { BetaBadge } from '@/components/ui/beta-badge';
 import { HubSpotDealBadge } from '@/components/integrations/hubspot/HubSpotDealBadge';
 import { LenderFlagIndicator, LenderNotesPopover } from '@/components/lenders/LenderNotesPopover';
+import { LenderCommsTimeline } from '@/components/lenders/LenderCommsTimeline';
 import { LenderHistoryHint } from '@/components/deal/LenderHistoryHint';
 import { LenderNotesField } from '@/components/deal/LenderNotesField';
 import { LenderHistoryDrawer } from '@/components/deal/LenderHistoryDrawer';
@@ -4679,8 +4680,9 @@ export default function DealDetail() {
             const dealLender = deal?.lenders?.find(l => l.name === selectedLenderName);
             return (
               <Tabs defaultValue="this-deal" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="this-deal">This Deal</TabsTrigger>
+                  <TabsTrigger value="comms">Comms Timeline</TabsTrigger>
                   <TabsTrigger value="about">About {selectedLenderName}</TabsTrigger>
                 </TabsList>
                 
@@ -4802,7 +4804,17 @@ export default function DealDetail() {
                     )}
                   </div>
                 </TabsContent>
-                
+
+                <TabsContent value="comms" className="mt-4">
+                  {deal && (
+                    <LenderCommsTimeline
+                      dealId={deal.id}
+                      lenderName={selectedLenderName}
+                      masterLenderId={masterLender?.id}
+                    />
+                  )}
+                </TabsContent>
+
                 <TabsContent value="about" className="space-y-6 mt-4">
                   {/* Internal Lender Notes */}
                   <div>
