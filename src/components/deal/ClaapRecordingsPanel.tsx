@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Video, Clock, User, Users, Mail, ExternalLink, Search, RefreshCw, Link2, FileText, Play, Unlink } from 'lucide-react';
+import { Video, Clock, User, Users, Mail, ExternalLink, Search, RefreshCw, Link2, FileText, Play, Unlink, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +27,7 @@ import { useClaapIntegration } from '@/hooks/useClaapIntegration';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { ClaapAnalyzeDialog } from './ClaapAnalyzeDialog';
 
 interface ClaapRecordingsPanelProps {
   dealId: string;
@@ -54,6 +55,7 @@ export function ClaapRecordingsPanel({ dealId }: ClaapRecordingsPanelProps) {
   const [loadingTranscript, setLoadingTranscript] = useState(false);
   const [loadingParticipants, setLoadingParticipants] = useState<Record<string, boolean>>({});
   const [participantsCache, setParticipantsCache] = useState<Record<string, ClaapParticipant[]>>({});
+  const [analyzeRecording, setAnalyzeRecording] = useState<ClaapRecording | null>(null);
 
   useEffect(() => {
     if (isEnabled) {
@@ -240,6 +242,21 @@ export function ClaapRecordingsPanel({ dealId }: ClaapRecordingsPanelProps) {
                         </TooltipTrigger>
                         <TooltipContent>View Transcript</TooltipContent>
                       </Tooltip>
+                      {isLinked && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => setAnalyzeRecording(recording)}
+                            >
+                              <Sparkles className="h-4 w-4 text-primary" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Analyze Recording (AI summary + tasks)</TooltipContent>
+                        </Tooltip>
+                      )}
                       <Popover>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -373,6 +390,18 @@ export function ClaapRecordingsPanel({ dealId }: ClaapRecordingsPanelProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {analyzeRecording && (
+        <ClaapAnalyzeDialog
+          open={!!analyzeRecording}
+          onClose={() => setAnalyzeRecording(null)}
+          dealId={dealId}
+          recordingId={analyzeRecording.id}
+          recordingTitle={analyzeRecording.title || 'Claap Recording'}
+          recordingUrl={analyzeRecording.url || null}
+          recordedAt={analyzeRecording.createdAt || null}
+        />
+      )}
     </div>
   );
 }
