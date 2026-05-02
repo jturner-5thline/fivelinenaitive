@@ -767,6 +767,54 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_my_notifications",
+      description: "List the current user's in-app notifications (the bell-icon feed). Returns titles, bodies, related deal/lender context, read state, and timestamps. Use for 'what notifications do I have', 'show my alerts', 'unread notifications', 'recent alerts', 'what was I notified about'.",
+      parameters: {
+        type: "object",
+        properties: {
+          unread_only: { type: "boolean", description: "Only return unread notifications. Default false." },
+          trigger_key: { type: "string", description: "Optional: filter by trigger key (e.g. 'deal_stage_changed', 'task_assigned')." },
+          since_days: { type: "number", description: "Only notifications from the last N days. Default 14." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_lender_engagement_alerts",
+      description: "List FLEx lender-engagement notifications for the current user (lender opened the writeup, downloaded files, requested access, etc.). Returns deal, lender, alert type, engagement score. Use for 'which lenders engaged', 'who opened the deck', 'lender activity alerts', 'flex notifications'.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Optional: scope to a single deal." },
+          unread_only: { type: "boolean", description: "Only unread alerts. Default false." },
+          alert_type: { type: "string", description: "Optional: filter (e.g. 'document_viewed', 'access_requested', 'high_engagement')." },
+          since_days: { type: "number", description: "Only alerts from the last N days. Default 14." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_stale_deal_alerts",
+      description: "Find post-submission deals where active lenders haven't been updated in N days (the red 'stale deal' warning bar). Returns deal, count of stale lenders, and max days since last update per lender. Use for 'which deals need attention', 'stale lender updates', 'deals with no recent lender activity', 'who haven't I followed up with'.",
+      parameters: {
+        type: "object",
+        properties: {
+          stale_days: { type: "number", description: "Threshold in days since last lender update. Default 7." },
+          deal_id: { type: "string", description: "Optional: limit to one deal." },
+          limit: { type: "number", description: "Max deals to return. Default 50, max 200." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
@@ -788,6 +836,8 @@ function selectTools(page: string, entityType?: string) {
     "get_task_details", "get_scheduled_followups",
     // Always-available finance / QuickBooks context (firm-level, shared org-wide).
     "get_quickbooks_pnl", "get_outstanding_invoices", "get_outstanding_bills", "get_revenue_breakdown",
+    // Always-available notifications & alerts (user-scoped).
+    "get_my_notifications", "get_lender_engagement_alerts", "get_stale_deal_alerts",
   ]);
 
   if (page.includes("lender")) {
@@ -1242,6 +1292,108 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         .sort((a, b) => b.revenue - a.revenue)
         .slice(0, limit);
       return { period, total_revenue: total, top_customers: top, customer_count: Object.keys(byCustomer).length };
+    }
+    case "get_my_notifications": {
+      const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
+      const sinceDays = Math.max(args.since_days ?? 14, 1);
+      const sinceIso = new Date(Date.now() - sinceDays * 86400000).toISOString();
+      let q = supabase.from("notification_instances")
+        .select("id, trigger_key, title, body, rendered_data, context, status, sent_at, read_at, created_at")
+        .eq("recipient_user_id", userId)
+        .eq("channel_type", "in_app")
+        .gte("created_at", sinceIso)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (args.unread_only) q = q.is("read_at", null);
+      if (args.trigger_key) q = q.eq("trigger_key", args.trigger_key);
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const notifications = data || [];
+      const unread = notifications.filter((n: any) => !n.read_at).length;
+      return {
+        count: notifications.length,
+        unread_count: unread,
+        since_days: sinceDays,
+        notifications: notifications.map((n: any) => ({
+          id: n.id,
+          trigger: n.trigger_key,
+          title: n.title,
+          body: n.body,
+          deal_id: (n.context as any)?.deal_id || (n.rendered_data as any)?.deal_id || null,
+          read: !!n.read_at,
+          created_at: n.created_at,
+        })),
+      };
+    }
+    case "get_lender_engagement_alerts": {
+      const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
+      const sinceDays = Math.max(args.since_days ?? 14, 1);
+      const sinceIso = new Date(Date.now() - sinceDays * 86400000).toISOString();
+      let q = supabase.from("flex_notifications")
+        .select("id, deal_id, alert_type, title, message, lender_name, lender_email, engagement_score, read_at, created_at")
+        .eq("user_id", userId)
+        .gte("created_at", sinceIso)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (args.deal_id) q = q.eq("deal_id", args.deal_id);
+      if (args.unread_only) q = q.is("read_at", null);
+      if (args.alert_type) q = q.eq("alert_type", args.alert_type);
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const alerts = data || [];
+      return {
+        count: alerts.length,
+        unread_count: alerts.filter((a: any) => !a.read_at).length,
+        since_days: sinceDays,
+        alerts,
+      };
+    }
+    case "get_stale_deal_alerts": {
+      const staleDays = Math.max(args.stale_days ?? 7, 1);
+      const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
+      const cutoff = Date.now() - staleDays * 86400000;
+      let dealsQ = supabase.from("deals")
+        .select("id, company, stage, status")
+        .neq("status", "archived")
+        .neq("status", "on-hold")
+        .neq("stage", "closed-lost")
+        .limit(500);
+      if (args.deal_id) dealsQ = dealsQ.eq("id", args.deal_id);
+      const { data: deals, error: dealsErr } = await dealsQ;
+      if (dealsErr) return { error: dealsErr.message };
+      if (!deals || deals.length === 0) return { count: 0, stale_deals: [] };
+      const dealIds = deals.map((d: any) => d.id);
+      const { data: lenders } = await supabase.from("deal_lenders")
+        .select("deal_id, name, stage, tracking_status, updated_at")
+        .in("deal_id", dealIds);
+      const excludedStages = new Set(["passed", "on hold", "on deck", "not a fit", "unresponsive"]);
+      const byDeal: Record<string, { stale: any[]; max_days: number }> = {};
+      for (const l of (lenders || [])) {
+        if (l.tracking_status !== "active" || !l.updated_at) continue;
+        if (excludedStages.has((l.stage || "").toLowerCase())) continue;
+        const ts = new Date(l.updated_at).getTime();
+        if (ts >= cutoff) continue;
+        const daysSince = Math.floor((Date.now() - ts) / 86400000);
+        const entry = byDeal[l.deal_id] || (byDeal[l.deal_id] = { stale: [], max_days: 0 });
+        entry.stale.push({ name: l.name, stage: l.stage, days_since_update: daysSince });
+        if (daysSince > entry.max_days) entry.max_days = daysSince;
+      }
+      const dealMap = new Map(deals.map((d: any) => [d.id, d]));
+      const stale_deals = Object.entries(byDeal)
+        .map(([deal_id, info]) => {
+          const d: any = dealMap.get(deal_id);
+          return {
+            deal_id,
+            company: d?.company,
+            stage: d?.stage,
+            stale_lender_count: info.stale.length,
+            max_days_since_update: info.max_days,
+            stale_lenders: info.stale.sort((a, b) => b.days_since_update - a.days_since_update),
+          };
+        })
+        .sort((a, b) => b.max_days_since_update - a.max_days_since_update)
+        .slice(0, limit);
+      return { count: stale_deals.length, stale_days_threshold: staleDays, stale_deals };
     }
     case "get_pipeline_summary": {
       const { data: deals } = await supabase.from("deals").select("id, company, value, stage, status").limit(1000);
@@ -2794,6 +2946,11 @@ Finance / QuickBooks context (firm-level, accrual basis, all 5th Line entities c
 - "What do we owe", "AP aging", "upcoming bills", "vendor payables" → get_outstanding_bills
 - "Top customers", "revenue concentration", "biggest clients by revenue" → get_revenue_breakdown
 - Always state the period explicitly and format dollars as $X,XXX.
+
+Notifications & alerts context (use whenever the user asks what they were alerted about, who needs follow-up, or which deals are slipping):
+- "What notifications do I have", "show my alerts", "what's unread", "recent notifications" → get_my_notifications
+- "Which lenders engaged", "who opened the deck", "lender activity alerts", "FLEx notifications" → get_lender_engagement_alerts
+- "Stale deals", "which deals need attention", "lenders I haven't followed up with", "deals with no recent updates" → get_stale_deal_alerts (default 7 days)
 
 Communications context (use whenever the question references emails, calls, meetings, or scheduling):
 - "What did X say", "find emails about/from", "recent messages with Y" → search_emails (synced inbox)
