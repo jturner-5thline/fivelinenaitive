@@ -734,7 +734,24 @@ export function AICopilotPanel() {
       const resp = await fetch(COPILOT_CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ message: text, context: { page: ctx.page, entityType: ctx.entityType, entityId: ctx.entityId, activeTab: ctx.activeTab, banners: ctx.banners, userRole: 'member', companyId: '' }, history, conversationMutations: useCopilotStore.getState().conversationMutations }),
+          body: JSON.stringify({
+            message: text,
+            context: {
+              page: ctx.page,
+              entityType: ctx.entityType,
+              entityId: ctx.entityId,
+              activeTab: ctx.activeTab,
+              banners: ctx.banners,
+              userRole: 'member',
+              companyId: '',
+              // @-mention override takes precedence on the server.
+              contextOverride: contextOverride
+                ? { entityType: contextOverride.entityType, entityId: contextOverride.entityId, entityName: contextOverride.entityName }
+                : null,
+            },
+            history,
+            conversationMutations: useCopilotStore.getState().conversationMutations,
+          }),
         signal: abortRef.current.signal,
       });
 
