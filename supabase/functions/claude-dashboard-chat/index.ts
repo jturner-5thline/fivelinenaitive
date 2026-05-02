@@ -203,11 +203,12 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
     deals, tasks, lenders, milestones, activities,
     lenderStats: lenderStatsRes?.data || [],
     staleDeals,
+    lastLenderTouchByDeal: Object.fromEntries(lastLenderTouchByDeal),
   };
 }
 
 function buildContextString(ctx: any, companyName: string, userName: string) {
-  const { deals, tasks, lenders, milestones, activities, lenderStats, staleDeals } = ctx;
+  const { deals, tasks, lenders, milestones, activities, lenderStats, staleDeals, lastLenderTouchByDeal = {} } = ctx;
   const today = new Date().toISOString().slice(0, 10);
   const lines: string[] = [];
 
@@ -222,7 +223,10 @@ function buildContextString(ctx: any, companyName: string, userName: string) {
       const last = new Date(d.updated_at || d.created_at);
       const daysAgo = Math.floor((Date.now() - last.getTime()) / 86_400_000);
       const valueM = d.value ? `$${(d.value / 1e6).toFixed(1)}M` : "n/a";
-      lines.push(`- ${d.company}: ${valueM} | stage: ${d.stage}${d.business_model ? ` | ${d.business_model}` : ""} | last update: ${daysAgo}d ago`);
+      const lenderTs = lastLenderTouchByDeal[d.id];
+      const lenderDays = lenderTs ? Math.floor((Date.now() - lenderTs) / 86_400_000) : null;
+      const lenderLabel = lenderDays === null ? "no lender activity" : `last lender touch: ${lenderDays}d ago`;
+      lines.push(`- ${d.company}: ${valueM} | stage: ${d.stage}${d.business_model ? ` | ${d.business_model}` : ""} | last update: ${daysAgo}d ago | ${lenderLabel}`);
     });
   }
 
