@@ -635,6 +635,42 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "search_vdr_documents",
+      description: "Semantic + keyword RAG search across a deal's VDR documents. Returns text chunks WITH source filename, page metadata, and similarity score so you can cite. Use whenever the user asks 'what does the <document> say', 'find where <topic> is mentioned', 'pull the covenant/EBITDA/use-of-proceeds language from the docs'. ALWAYS cite the source filename in your answer.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID. Required." },
+          query: { type: "string", description: "Natural-language question or keywords to find in the documents. Required." },
+          document_id: { type: "string", description: "Optional: restrict search to a single VDR document." },
+          limit: { type: "number", description: "Max chunks to return. Default 8, max 20." },
+        },
+        required: ["deal_id", "query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_vdr_documents",
+      description: "List VDR documents on a deal with filename, type, folder path, ingestion status, chunk count, and AI summary if available. Use to inventory what's in the data room before searching, or to answer 'what docs do we have on <deal>'.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID. Required." },
+          folder_path: { type: "string", description: "Optional: filter to a folder (prefix match)." },
+          file_type: { type: "string", description: "Optional: filter by extension (e.g. 'pdf', 'xlsx', 'docx')." },
+          query: { type: "string", description: "Optional: filename keyword filter." },
+          include_summaries: { type: "boolean", description: "Include AI-generated document summaries when available. Default false." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+        required: ["deal_id"],
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
@@ -659,7 +695,7 @@ function selectTools(page: string, entityType?: string) {
   if (page.includes("lender")) {
     ["get_deal_lenders", "search_lenders", "update_lender_status", "get_deal_call_transcripts", "get_lender_deal_history"].forEach(n => coreNames.add(n));
   } else if (page.includes("deals") || page.includes("pipeline")) {
-    ["get_deal_lenders", "get_deal_health", "get_deal_milestones", "get_outstanding_items", "get_deal_call_transcripts", "get_deal_stage_history", "get_lender_deal_history"].forEach(n => coreNames.add(n));
+    ["get_deal_lenders", "get_deal_health", "get_deal_milestones", "get_outstanding_items", "get_deal_call_transcripts", "get_deal_stage_history", "get_lender_deal_history", "search_vdr_documents", "list_vdr_documents"].forEach(n => coreNames.add(n));
   } else if (page.includes("task")) {
     // Tasks page: core + task tools only
   } else {
@@ -869,6 +905,123 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       }
       const followups = rows.map((r: any) => ({ ...r, deal: r.deal_id ? dealMap[r.deal_id] : null }));
       return { count: followups.length, status, window_days: windowDays, followups };
+    }
+    case "search_vdr_documents": {
+      if (!args.deal_id || !args.query) return { error: "deal_id and query are required" };
+      const limit = Math.min(Math.max(args.limit ?? 8, 1), 20);
+      const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+
+      // Try semantic search via embedding
+      let chunks: Array<{ chunk_text: string; metadata: any; document_id: string; similarity?: number }> = [];
+      if (lovableApiKey) {
+        try {
+          const embResponse = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${lovableApiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ model: "text-embedding-3-small", input: String(args.query).substring(0, 8000) }),
+          });
+          if (embResponse.ok) {
+            const embData = await embResponse.json();
+            const queryEmbedding = embData.data?.[0]?.embedding;
+            if (queryEmbedding) {
+              const { data: vectorResults } = await supabase.rpc("vdr_search_chunks", {
+                _deal_id: args.deal_id,
+                _query_embedding: JSON.stringify(queryEmbedding),
+                _match_count: args.document_id ? Math.max(limit * 3, 20) : limit,
+              });
+              if (vectorResults) {
+                chunks = vectorResults.map((r: any) => ({
+                  chunk_text: r.chunk_text,
+                  metadata: r.metadata,
+                  document_id: r.document_id,
+                  similarity: r.similarity,
+                }));
+              }
+            }
+          }
+        } catch (e) {
+          console.error("VDR embedding error:", e);
+        }
+      }
+
+      // Filter to a single document if requested
+      if (args.document_id) {
+        chunks = chunks.filter(c => c.document_id === args.document_id).slice(0, limit);
+      }
+
+      // Keyword fallback
+      if (chunks.length === 0) {
+        const keywords = String(args.query).split(/\s+/).filter(w => w.length > 3).slice(0, 5);
+        if (keywords.length) {
+          let kq = supabase.from("vdr_document_chunks")
+            .select("chunk_text, metadata, document_id")
+            .eq("deal_id", args.deal_id)
+            .or(keywords.map(k => `chunk_text.ilike.%${k.replace(/[%_,]/g, "")}%`).join(","))
+            .limit(limit);
+          if (args.document_id) kq = kq.eq("document_id", args.document_id);
+          const { data: kwResults } = await kq;
+          chunks = (kwResults || []).map((r: any) => ({ chunk_text: r.chunk_text, metadata: r.metadata, document_id: r.document_id }));
+        }
+      }
+
+      if (chunks.length === 0) return { count: 0, chunks: [], note: "No relevant document content found for this query." };
+
+      // Hydrate document filenames for citations
+      const docIds = [...new Set(chunks.map(c => c.document_id))];
+      const { data: docs } = await supabase.from("vdr_documents")
+        .select("id, filename, file_type, folder_path")
+        .in("id", docIds);
+      const docMap: Record<string, any> = {};
+      for (const d of docs || []) docMap[d.id] = d;
+
+      const results = chunks.slice(0, limit).map(c => ({
+        document_id: c.document_id,
+        filename: docMap[c.document_id]?.filename || "(unknown)",
+        file_type: docMap[c.document_id]?.file_type || null,
+        folder_path: docMap[c.document_id]?.folder_path || null,
+        page: c.metadata?.page ?? c.metadata?.page_number ?? null,
+        chunk_index: c.metadata?.chunk_index ?? null,
+        similarity: c.similarity ?? null,
+        // Cap chunk size to control context window
+        text: (c.chunk_text || "").substring(0, 1500),
+      }));
+
+      return {
+        count: results.length,
+        query: args.query,
+        chunks: results,
+        instruction: "Cite the filename (and page if present) for each fact you use.",
+      };
+    }
+    case "list_vdr_documents": {
+      if (!args.deal_id) return { error: "deal_id is required" };
+      const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
+      let q = supabase.from("vdr_documents")
+        .select("id, filename, file_type, file_size, folder_path, ingestion_status, chunk_count, source, shared_to_dataroom, created_at, uploaded_by")
+        .eq("deal_id", args.deal_id)
+        .is("deleted_at", null)
+        .eq("is_folder", false)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (args.folder_path) q = q.ilike("folder_path", `${args.folder_path}%`);
+      if (args.file_type) q = q.ilike("file_type", `%${args.file_type}%`);
+      if (args.query) q = q.ilike("filename", `%${args.query}%`);
+
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      let docs = data || [];
+
+      if (args.include_summaries && docs.length) {
+        const { data: summaries } = await supabase
+          .from("deal_space_document_summaries")
+          .select("document_id, summary, key_points")
+          .in("document_id", docs.map((d: any) => d.id));
+        const sumMap: Record<string, any> = {};
+        for (const s of summaries || []) sumMap[s.document_id] = { summary: s.summary, key_points: s.key_points };
+        docs = docs.map((d: any) => ({ ...d, ai_summary: sumMap[d.id] || null }));
+      }
+
+      return { count: docs.length, deal_id: args.deal_id, documents: docs };
     }
     case "get_pipeline_summary": {
       const { data: deals } = await supabase.from("deals").select("id, company, value, stage, status").limit(1000);
@@ -2408,6 +2561,10 @@ Other tools when the question is broader / not entity-specific:
 - Tasks (mine, delegated, by deal/contact, overdue, starred, recently completed) → get_tasks
 - Full detail on one task (subtasks, comments, watchers, activity) → get_task_details
 - Scheduled deal follow-ups (pending or recently fired) → get_scheduled_followups
+
+Document context (VDR / data room — use whenever the question references the actual contents of uploaded docs, term sheets, financial statements, agreements):
+- "What does the <doc> say about X", "find the covenant/EBITDA/use-of-proceeds language", "show me where Y is mentioned" → search_vdr_documents (returns text chunks WITH filename + page; ALWAYS cite the source)
+- "What docs do we have", "list the financials in the data room", "do we have a term sheet" → list_vdr_documents
 - Activity feed across deals → get_activity_log
 - Find deals/lenders by keyword → search_deals / search_lenders
 
