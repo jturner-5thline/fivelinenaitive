@@ -42,12 +42,19 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
     };
   }
 
+  // Fetch ALL workspace deals (not user-scoped) so admins/users see the full
+  // pipeline. We filter to pipeline-active statuses in SQL so a single deal
+  // like Infillion can't be pushed out by a high-volume `updated_at` ordering
+  // limit. Closed/archived/on-hold deals are excluded — they're not relevant
+  // to "active deals" questions and are not surfaced in the dashboard widgets.
+  const ACTIVE_STATUSES = ["on-track", "at-risk", "off-track", "active"];
   const [dealsRes, tasksRes] = await Promise.all([
     supabase.from("deals")
       .select("id, company, value, stage, status, deal_type, business_model, created_at, updated_at, user_id, deal_owner, manager, next_follow_up_at, notes_updated_at")
       .eq("company_id", companyId)
+      .in("status", ACTIVE_STATUSES)
       .order("updated_at", { ascending: false })
-      .limit(80),
+      .limit(2000),
     supabase.from("tasks")
       .select("id, title, status, priority, due_date, description, assigned_to, created_at, deal_id")
       .eq("assigned_to", userId)
@@ -161,10 +168,10 @@ function buildContextString(ctx: any, companyName: string, userName: string) {
   lines.push(`## User Context\nUser: ${userName} | Company: ${companyName} | Date: ${today}`);
 
   if (deals.length > 0) {
-    lines.push(`## Deals (${deals.length} total, showing active)`);
     const isActiveStatus = (s: string) =>
       !!s && !["archived", "on-hold", "on_hold", "closed-won", "closed-lost", "lost", "won"].includes(s);
-    const activeDeals = deals.filter((d: any) => isActiveStatus(d.status)).slice(0, 30);
+    const activeDeals = deals.filter((d: any) => isActiveStatus(d.status));
+    lines.push(`## Active Deals (${activeDeals.length} total — full workspace)`);
     activeDeals.forEach((d: any) => {
       const last = new Date(d.updated_at || d.created_at);
       const daysAgo = Math.floor((Date.now() - last.getTime()) / 86_400_000);
