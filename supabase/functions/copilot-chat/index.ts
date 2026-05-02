@@ -786,6 +786,8 @@ function selectTools(page: string, entityType?: string) {
     "search_emails", "get_upcoming_events", "get_recent_meetings",
     // Always-available task & follow-up context.
     "get_task_details", "get_scheduled_followups",
+    // Always-available finance / QuickBooks context (firm-level, shared org-wide).
+    "get_quickbooks_pnl", "get_outstanding_invoices", "get_outstanding_bills", "get_revenue_breakdown",
   ]);
 
   if (page.includes("lender")) {
