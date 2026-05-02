@@ -307,7 +307,11 @@ async function enrichDraftsWithLenderContacts(drafts: EmailDraft[]): Promise<Ema
 export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const { documents, getDownloadUrl } = useDealSpaceDocuments(dealId);
   const { financials } = useDealSpaceFinancials(dealId);
-  const { messages, sendMessage, clearMessages, isLoading: isAILoading, setMessages, scope, setScope } = useDealSpaceAI(dealId);
+  const {
+    messages, sendMessage, clearMessages, isLoading: isAILoading,
+    setMessages, scope, setScope,
+    includeDataRoom, setIncludeDataRoom,
+  } = useDealSpaceAI(dealId);
   const { 
     conversations, 
     isLoading: isConversationsLoading,
@@ -317,6 +321,14 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
     loadConversationMessages,
     saveMessage,
   } = useDealSpaceConversations(dealId);
+  const {
+    instructions: savedInstructions,
+    isSaving: isSavingInstructions,
+    save: saveInstructions,
+  } = useDealAiInstructions(dealId);
+  const [draftInstructions, setDraftInstructions] = useState('');
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
+  useEffect(() => { setDraftInstructions(savedInstructions); }, [savedInstructions]);
   
   const [question, setQuestion] = useState('');
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
