@@ -4596,6 +4596,21 @@ serve(async (req) => {
     const { data: memberData } = await supabaseUser.from("company_members").select("company_id").eq("user_id", userId).limit(1).single();
     const companyId = memberData?.company_id;
 
+    // Load firm-level Copilot Instructions (Settings → AI) for this company.
+    let copilotPrefix = "";
+    if (companyId) {
+      try {
+        const { data: aiCfg } = await supabaseAdmin
+          .from("ai_configuration")
+          .select("copilot_instructions")
+          .eq("company_id", companyId)
+          .maybeSingle();
+        copilotPrefix = compileCopilotInstructions((aiCfg as any)?.copilot_instructions);
+      } catch (e) {
+        console.warn("[copilot-chat] copilot instructions load failed", e);
+      }
+    }
+
     // Fetch active org preferences/rules
     let orgPreferencesSection = "";
     if (companyId) {
