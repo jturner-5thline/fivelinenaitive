@@ -97,10 +97,15 @@ const tools = [
     type: "function",
     function: {
       name: "get_deal_lenders",
-      description: "Get all lenders on a specific deal with stage and notes.",
+      description: "Get all lenders engaged on a specific deal — current stage, tracking_status, last_contact_at (with auto-computed days_since_last_contact + is_stale flag), pass_reason, quote terms (amount/rate/term), and notes. Always returns the deal name so the answer can cite it. Use for: 'Who are the lenders on <Deal>', 'What stage is <Lender> on <Deal>' (set lender_name), 'Which lenders haven't we heard back from on <Deal>' (set stale_days, default 7).",
       parameters: {
         type: "object",
-        properties: { deal_id: { type: "string" } },
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID. Resolve from deal name via search_deals first if needed." },
+          lender_name: { type: "string", description: "Optional. Filter to a specific lender on the deal (case-insensitive partial match)." },
+          stale_days: { type: "number", description: "Optional. Only return lenders with no contact in the last N days OR no last_contact_at recorded. Use 7 as the default for 'haven't heard back' queries." },
+          status: { type: "string", description: "Optional. Filter by tracking_status (e.g. 'active', 'passed', 'no_response')." },
+        },
         required: ["deal_id"],
       },
     },
