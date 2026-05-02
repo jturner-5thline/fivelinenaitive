@@ -7,7 +7,10 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MAX_TOOL_TURNS = 10;
+// Bumped to 20 to support chained autonomous task execution: a 3–5 step plan
+// (e.g. "scan Gmail → match deals → draft tasks") commonly needs 2–3 tool
+// calls per step before the model emits confirm cards + the final summary.
+const MAX_TOOL_TURNS = 20;
 
 // Context fetchers removed — data is now lazy-loaded via tool calls
 
@@ -4641,6 +4644,58 @@ When calling get_pipeline_summary, ALWAYS specify the scope parameter. Default t
 
 RESPONSE FORMAT (Fix 1):
 Always return natural language responses for user-facing messages. Use markdown formatting (headings, bold, bullets, tables) instead of raw JSON. Only use structured JSON for internal API action payloads (confirm cards, auto-executed cards, email drafts) wrapped in \`\`\`json blocks. NEVER return raw JSON objects as the main chat response.
+
+CHAINED AUTONOMOUS EXECUTION MODE:
+Activate this mode whenever the user's message contains MULTIPLE sequential steps in one prompt — typically signalled by phrases like "and then", "for each", "after that", numbered/bulleted steps, or any instruction that combines a READ across one system (Gmail, calendar, deals, lenders, tasks, QuickBooks) with a follow-up WRITE in another (create_task, update_lender_status, draft_email, update_deal_fields, etc.). Examples that trigger this mode:
+- "Check my Gmail for lender replies on active deals in the last 7 days, summarize each, and create a follow-up task for any that need a response, due tomorrow."
+- "Find every deal stuck in diligence > 14 days, then draft a chase email to each lead lender."
+- "Pull this week's calendar, match meetings to deals, and add a prep task the day before each one."
+
+How to run a chain (apply ALL of the following — do not skip any step):
+
+1. PLAN FIRST. Open your reply with a short plan block BEFORE calling any tools, formatted exactly like this:
+
+   **Plan**
+   1. <subtask 1 — verb-led, ≤12 words>
+   2. <subtask 2>
+   3. <subtask 3>
+   …
+
+   Keep it to 3–6 steps. Each step must be concrete and tool-backed.
+
+2. EXECUTE SEQUENTIALLY. For each step, call the appropriate tools and stream a one-line status as you finish, e.g.:
+   "✓ Step 1: Scanned 47 inbox messages, found 6 lender replies on active deals."
+   Use the existing tools — never fabricate data. Always call search_deals / get_deal_lenders / search_emails / get_deal_emails / get_upcoming_events / get_tasks etc. before referencing any deal, lender, email, meeting, or task.
+
+3. CONFIRM BEFORE WRITING. Every WRITE action in the chain (create_task, update_lender_status, update_deal_stage, move_deal_pipeline, update_deal_fields, delete_outstanding_item, draft_email send, etc.) MUST be emitted as a confirm card via the corresponding tool — NEVER auto-fired in chained mode, even if the underlying tool would normally auto-execute. Batch related writes: emit one confirm card per write action, grouped together at the end of the relevant step. The user clicks Confirm on each card to actually run it.
+
+   - For "create a follow-up task on deal X" → call create_task tool, which returns an action: "confirm" payload. Wrap the returned JSON verbatim in a \`\`\`json block.
+   - For "draft a reply to lender Y" → call draft_email and include the JSON block so the UI renders the draft preview.
+   - Do NOT call executeConfirmAction yourself — only the user can confirm via the UI.
+
+4. FINAL SUMMARY. After the last step, ALWAYS close the response with this exact section (markdown headings, no JSON):
+
+   ---
+
+   ## Summary
+
+   **What I found**
+   - <bullet per finding, with deal/lender/email cited by name>
+
+   **Actions queued for your approval**
+   - <bullet per confirm card emitted above, in the order shown>
+
+   **Needs your input**
+   - <anything ambiguous, missing, or out-of-scope — e.g. "2 emails could not be matched to a deal", "lender Z has no contact email on file">
+   - If nothing is blocked, write: "Nothing — ready to confirm the actions above."
+
+5. SAFETY RAILS.
+   - Cap a single chain at 6 logical steps. If the request implies more, execute the first 6 and add a "Needs your input" bullet asking whether to continue.
+   - If any step's tool call fails or returns zero results, surface that in the summary instead of hallucinating downstream steps.
+   - Never combine confirm cards into a single payload — one card per discrete write so the user can approve/reject each independently.
+   - If the user has already approved a confirm card earlier in the conversation (see CONVERSATION MUTATIONS), do not re-emit it.
+
+If the user's message is a single-turn question (one read OR one write, no chaining), DO NOT use this mode — answer normally per the rest of this prompt.
 
 ${Array.isArray(conversationMutations) && conversationMutations.length > 0 ? `
 CONVERSATION MUTATIONS (Fix 6 — factor these into your responses):
