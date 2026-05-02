@@ -64,12 +64,22 @@ export function useDealActivityStats(dealId: string | undefined) {
       if (!dealId) return null;
 
       try {
+        // Ensure we have an active session before invoking the protected edge function
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData?.session?.access_token) {
+          return null;
+        }
+
         const { data, error } = await supabase.functions.invoke("fetch-flex-engagement", {
           body: { deal_id: dealId },
         });
 
         if (error) {
-          console.error("Error fetching FLEx engagement:", error);
+          // 401s during session hydration are expected; swallow quietly
+          const msg = (error as any)?.message || '';
+          if (!/non-2xx|401|Unauthorized/i.test(msg)) {
+            console.error("Error fetching FLEx engagement:", error);
+          }
           return null;
         }
 
@@ -81,7 +91,11 @@ export function useDealActivityStats(dealId: string | undefined) {
     },
     enabled: !!dealId,
     staleTime: 60_000, // Cache for 1 minute
-    retry: 1,
+    retry: (failureCount, error: any) => {
+      const msg = error?.message || '';
+      if (/401|Unauthorized|non-2xx/i.test(msg)) return false;
+      return failureCount < 1;
+    },
   });
 
   // Fetch local activity stats (non-FLEx)
