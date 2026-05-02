@@ -13,9 +13,16 @@ import { supabase } from '@/integrations/supabase/client';
  *     [min_deal, max_deal] range from the lender directory.
  *  3. GEOGRAPHY MISMATCH — company HQ does not appear in the lender's
  *     stated geographic preference (`master_lenders.geo`).
+ *  4. INDUSTRY MISMATCH — the deal's industry / sub-industry is on the
+ *     lender's `industries_to_avoid` list, OR the lender publishes an
+ *     `industries` allow-list that the deal's industry is not on.
  */
 
-export type LenderPreflightWarningKind = 'pass_history' | 'size_mismatch' | 'geography_mismatch';
+export type LenderPreflightWarningKind =
+  | 'pass_history'
+  | 'size_mismatch'
+  | 'geography_mismatch'
+  | 'industry_mismatch';
 
 export interface LenderPreflightWarning {
   kind: LenderPreflightWarningKind;
@@ -58,6 +65,29 @@ function geographyCovers(geo: string | null | undefined, hq: { city?: string | n
   const candidates = [hq.city, hq.state, hq.country].map((s) => (s || '').trim().toLowerCase()).filter(Boolean);
   if (candidates.length === 0) return true; // no HQ on file → can't judge
   return candidates.some((c) => g.includes(c));
+}
+
+/** Normalize an industry label for fuzzy comparison. */
+function industryKey(s: string | null | undefined): string {
+  return (s || '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/**
+ * Loose match between a deal industry token and a lender's industry-list
+ * entry. Matches when either string contains the other (token-aware), so
+ * "SaaS" matches "Software / SaaS" and "Healthcare" matches "Healthcare IT".
+ */
+function industryMatches(dealIndustry: string, lenderEntry: string): boolean {
+  const a = industryKey(dealIndustry);
+  const b = industryKey(lenderEntry);
+  if (!a || !b) return false;
+  if (a === b) return true;
+  // Token containment in either direction.
+  return a.includes(b) || b.includes(a);
 }
 
 interface UseLenderPreflightChecksParams {
@@ -115,31 +145,49 @@ export function useLenderPreflightChecks({
 
         // 2) Company HQ — best effort via crm_companies when linked.
         let hq: { city?: string | null; state?: string | null; country?: string | null } = {};
+        let dealIndustries: string[] = [];
         if (deal?.crm_company_id) {
           const { data: crm } = await supabase
             .from('crm_companies')
-            .select('hq_city, hq_state, hq_country')
+            .select('hq_city, hq_state, hq_country, industry, sub_industry')
             .eq('id', deal.crm_company_id)
             .maybeSingle();
-          if (crm) hq = { city: crm.hq_city, state: crm.hq_state, country: crm.hq_country };
+          if (crm) {
+            hq = { city: crm.hq_city, state: crm.hq_state, country: crm.hq_country };
+            dealIndustries = [crm.industry, crm.sub_industry]
+              .map((s) => (s || '').toString().trim())
+              .filter(Boolean);
+          }
         }
 
         // 3) Master lender directory rows for the included lenders.
         const { data: masters } = await supabase
           .from('master_lenders')
-          .select('id, name, min_deal, max_deal, geo')
+          .select('id, name, min_deal, max_deal, geo, industries, industries_to_avoid')
           .in(
             'name',
             // pull a generous superset; we'll match case-insensitively below
             Array.from(new Set(lenderNames.map((n) => n.trim()))).filter(Boolean)
           );
-        const masterByName: Record<string, { id: string; min_deal: number | null; max_deal: number | null; geo: string | null }> = {};
+        const masterByName: Record<
+          string,
+          {
+            id: string;
+            min_deal: number | null;
+            max_deal: number | null;
+            geo: string | null;
+            industries: string[];
+            industries_to_avoid: string[];
+          }
+        > = {};
         (masters || []).forEach((m: any) => {
           masterByName[nameKey(m.name)] = {
             id: m.id,
             min_deal: typeof m.min_deal === 'number' ? m.min_deal : m.min_deal != null ? Number(m.min_deal) : null,
             max_deal: typeof m.max_deal === 'number' ? m.max_deal : m.max_deal != null ? Number(m.max_deal) : null,
             geo: m.geo ?? null,
+            industries: Array.isArray(m.industries) ? m.industries.filter(Boolean) : [],
+            industries_to_avoid: Array.isArray(m.industries_to_avoid) ? m.industries_to_avoid.filter(Boolean) : [],
           };
         });
 
@@ -214,6 +262,37 @@ export function useLenderPreflightChecks({
                 severity: 'warning',
                 message: `${original} prefers ${master.geo} — this company is HQ'd in ${hqLabel}.`,
               });
+            }
+          }
+
+          // Industry / sector fit. Two failure modes:
+          //  (a) deal industry is on the lender's `industries_to_avoid`
+          //      list → strong signal, surface the offending tag.
+          //  (b) lender publishes an `industries` allow-list and none of
+          //      the deal's industry tags appear on it.
+          if (master && dealIndustries.length > 0) {
+            const avoided = master.industries_to_avoid.find((entry) =>
+              dealIndustries.some((di) => industryMatches(di, entry))
+            );
+            if (avoided) {
+              warnings.push({
+                kind: 'industry_mismatch',
+                severity: 'warning',
+                message: `${original} avoids ${avoided} — this deal's industry is ${dealIndustries.join(' / ')}.`,
+              });
+            } else if (master.industries.length > 0) {
+              const onAllowList = master.industries.some((entry) =>
+                dealIndustries.some((di) => industryMatches(di, entry))
+              );
+              if (!onAllowList) {
+                const preview = master.industries.slice(0, 3).join(', ');
+                const more = master.industries.length > 3 ? `, +${master.industries.length - 3} more` : '';
+                warnings.push({
+                  kind: 'industry_mismatch',
+                  severity: 'warning',
+                  message: `${original} focuses on ${preview}${more} — this deal's industry is ${dealIndustries.join(' / ')}.`,
+                });
+              }
             }
           }
 
