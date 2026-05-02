@@ -3338,6 +3338,69 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         notes: notes.map((n: any) => ({ body: (n.body || "").slice(0, 1000), is_flag: n.is_flag, tags: n.tags, created_at: n.created_at })),
       };
     }
+    case "get_lenders_by_pass_filter": {
+      const months = Math.min(Math.max(Number(args.months) || 6, 1), 36);
+      const limit = Math.min(Math.max(Number(args.limit) || 100, 1), 300);
+      const cutoff = new Date(Date.now() - months * 30 * 86_400_000).toISOString();
+
+      // 1) Find candidate deals matching the segment.
+      let dealQ = supabase.from("deals").select("id, company, deal_type").limit(500);
+      if (args.deal_type_keyword) {
+        // deal_type can be JSON array text or a free string — substring match handles both.
+        dealQ = dealQ.ilike("deal_type", `%${args.deal_type_keyword}%`);
+      }
+      if (args.deal_keyword) {
+        dealQ = dealQ.ilike("company", `%${args.deal_keyword}%`);
+      }
+      const { data: deals, error: dErr } = await dealQ;
+      if (dErr) return { error: dErr.message };
+      const dealIds = (deals || []).map((d: any) => d.id);
+      if (dealIds.length === 0) {
+        return { window_months: months, count: 0, lenders: [], note: "No deals match the segment filters." };
+      }
+      const dealMap: Record<string, any> = {};
+      for (const d of deals || []) dealMap[d.id] = d;
+
+      // 2) Pull passed deal_lenders rows in the window for those deals.
+      const { data: passes, error: pErr } = await supabase
+        .from("deal_lenders")
+        .select("id, deal_id, name, pass_reason, updated_at, last_contact_at, quote_amount, quote_rate, quote_term")
+        .eq("tracking_status", "passed")
+        .in("deal_id", dealIds)
+        .gte("updated_at", cutoff)
+        .order("updated_at", { ascending: false })
+        .limit(limit);
+      if (pErr) return { error: pErr.message };
+
+      // 3) Group by lender name.
+      const grouped: Record<string, any> = {};
+      for (const r of passes || []) {
+        const key = String(r.name || "(unknown)");
+        if (!grouped[key]) grouped[key] = { lender_name: key, pass_count: 0, deals: [] };
+        const deal = dealMap[r.deal_id];
+        grouped[key].pass_count += 1;
+        grouped[key].deals.push({
+          deal_id: r.deal_id,
+          deal_name: deal?.company || null,
+          deal_type: deal?.deal_type || null,
+          pass_reason: r.pass_reason || null,
+          passed_at: r.updated_at,
+          last_contact_at: r.last_contact_at,
+          quote: (r.quote_amount || r.quote_rate || r.quote_term)
+            ? { amount: r.quote_amount, rate: r.quote_rate, term: r.quote_term }
+            : null,
+        });
+      }
+      const lenders = Object.values(grouped).sort((a: any, b: any) => b.pass_count - a.pass_count);
+      return {
+        window_months: months,
+        deal_type_keyword: args.deal_type_keyword || null,
+        deal_keyword: args.deal_keyword || null,
+        deals_searched: dealIds.length,
+        count: lenders.length,
+        lenders,
+      };
+    }
     case "get_deal_stage_history": {
       if (!args.deal_id) return { error: "deal_id required" };
       const limit = Math.min(Math.max(Number(args.limit) || 50, 1), 200);
