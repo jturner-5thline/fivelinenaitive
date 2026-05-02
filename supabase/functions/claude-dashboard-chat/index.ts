@@ -263,6 +263,237 @@ Critical rules:
   return "";
 }
 
+// -------------------- Lender Intelligence Enrichment --------------------
+// On-demand enrichment that fires when the user's prompt looks like a
+// lender / deal-lender question. Pulls targeted data from master_lenders,
+// deal_lenders, lender_notes — scoped to the user's company — and returns
+// a markdown block to inject into the system prompt. Always cites the
+// source deal where relevant (per project rule).
+
+const LENDER_KEYWORDS = [
+  "lender", "lenders", "founderpath", "triplepoint", "passed on", "pass on",
+  "haven't responded", "havent responded", "haven't heard", "havent heard",
+  "stale lender", "no response", "what stage", "who are the lenders",
+  "what do we know about",
+];
+
+function looksLikeLenderQuery(text: string): boolean {
+  const t = text.toLowerCase();
+  return LENDER_KEYWORDS.some((k) => t.includes(k));
+}
+
+function fmtMoney(n: number | null | undefined) {
+  if (n == null) return "n/a";
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `$${(n / 1e3).toFixed(0)}K`;
+  return `$${n}`;
+}
+
+function daysSince(ts: string | null | undefined): number | null {
+  if (!ts) return null;
+  const t = new Date(ts).getTime();
+  if (isNaN(t)) return null;
+  return Math.floor((Date.now() - t) / 86_400_000);
+}
+
+// Try to identify a deal name referenced in the user prompt. We match
+// against the user's deals (already loaded in ctx) using case-insensitive
+// substring — longest match wins to avoid 'Cart' matching 'Cartwheel Inc'.
+function detectDeal(text: string, deals: any[]): any | null {
+  const t = text.toLowerCase();
+  let best: { d: any; len: number } | null = null;
+  for (const d of deals) {
+    const name = (d.company || "").toLowerCase().trim();
+    if (!name || name.length < 3) continue;
+    if (t.includes(name)) {
+      if (!best || name.length > best.len) best = { d, len: name.length };
+    }
+  }
+  return best?.d || null;
+}
+
+// Detect a lender name mentioned in the prompt, by matching the user's
+// master lender directory. Returns the best (longest) match.
+function detectLenderName(text: string, masterNames: string[]): string | null {
+  const t = text.toLowerCase();
+  let best: { n: string; len: number } | null = null;
+  for (const raw of masterNames) {
+    const name = (raw || "").toLowerCase().trim();
+    if (!name || name.length < 3) continue;
+    if (t.includes(name)) {
+      if (!best || name.length > best.len) best = { n: raw, len: name.length };
+    }
+  }
+  return best?.n || null;
+}
+
+function detectStaleIntent(text: string): boolean {
+  const t = text.toLowerCase();
+  return /haven'?t responded|haven'?t heard|no response|stale|not responded|silent/.test(t);
+}
+
+function detectPassFilterIntent(text: string): { segment?: string; months: number } | null {
+  const t = text.toLowerCase();
+  if (!/passed?\s+on/.test(t)) return null;
+  // months window: "last 6 months", "past 3 months"
+  const m = t.match(/(?:last|past)\s+(\d+)\s+month/);
+  const months = m ? parseInt(m[1], 10) : 6;
+  // segment: SaaS, ABL, growth, ecommerce, fintech, etc — capture first known token
+  const segs = ["saas", "abl", "growth", "ecommerce", "e-commerce", "fintech", "consumer", "healthcare", "marketplace", "subscription", "real estate"];
+  const segment = segs.find((s) => t.includes(s));
+  return { segment, months };
+}
+
+async function fetchLenderEnrichment(
+  supabase: any,
+  companyId: string,
+  ctx: any,
+  userText: string,
+): Promise<string> {
+  if (!companyId || !looksLikeLenderQuery(userText)) return "";
+
+  // Load master lender directory (scoped to company) — names only, for matching
+  const { data: masterAll } = await supabase
+    .from("master_lenders")
+    .select("id, name, lender_type, loan_types, industries, min_deal, max_deal, min_revenue, ebitda_min, sub_debt, cash_burn, sponsorship, geo, b2b_b2c, contact_name, contact_title")
+    .eq("company_id", companyId)
+    .limit(1500);
+  const masters = masterAll || [];
+  const masterNames = masters.map((m: any) => m.name);
+
+  const dealMatch = detectDeal(userText, ctx.deals || []);
+  const lenderName = detectLenderName(userText, masterNames);
+  const staleIntent = detectStaleIntent(userText);
+  const passFilter = detectPassFilterIntent(userText);
+
+  const sections: string[] = [];
+  sections.push(`\n## Lender Intelligence (live query — ${masters.length} lenders in directory)`);
+
+  // 1. Deal-scoped queries: lenders on a specific deal
+  if (dealMatch) {
+    const { data: dealLenders } = await supabase
+      .from("deal_lenders")
+      .select("id, name, stage, substage, tracking_status, last_contact_at, quote_amount, quote_rate, quote_term, pass_reason, notes, updated_at, created_at")
+      .eq("deal_id", dealMatch.id)
+      .order("updated_at", { ascending: false })
+      .limit(200);
+    const list = dealLenders || [];
+    let filtered = list;
+    if (lenderName) {
+      const ln = lenderName.toLowerCase();
+      filtered = list.filter((l: any) => (l.name || "").toLowerCase().includes(ln));
+    } else if (staleIntent) {
+      filtered = list.filter((l: any) => {
+        const d = daysSince(l.last_contact_at);
+        return l.tracking_status !== "passed" && (d == null || d >= 7);
+      });
+    }
+    sections.push(`\n### Lenders on **${dealMatch.company}** (source deal: ${dealMatch.company})`);
+    if (filtered.length === 0) {
+      sections.push(`_No matching lenders on ${dealMatch.company}._`);
+    } else {
+      filtered.slice(0, 60).forEach((l: any) => {
+        const dsl = daysSince(l.last_contact_at);
+        const lastTouch = dsl == null ? "no recorded contact" : `${dsl}d ago`;
+        const stale = dsl == null || dsl >= 7;
+        const quote = l.quote_amount ? ` | quote ${fmtMoney(l.quote_amount)}${l.quote_rate ? ` @ ${l.quote_rate}%` : ""}${l.quote_term ? ` / ${l.quote_term}` : ""}` : "";
+        const pass = l.pass_reason ? ` | PASSED: ${l.pass_reason}` : "";
+        const status = l.tracking_status && l.tracking_status !== "active" ? ` [${l.tracking_status}]` : "";
+        sections.push(`- **${l.name}** — stage: ${l.stage}${l.substage ? `/${l.substage}` : ""}${status} | last contact: ${lastTouch}${stale && l.tracking_status !== "passed" ? " ⚠️ stale" : ""}${quote}${pass}`);
+      });
+    }
+  }
+
+  // 2. Lender profile lookup (no specific deal, or as supplement)
+  if (lenderName) {
+    const masterMatch = masters.find((m: any) => (m.name || "").toLowerCase() === lenderName.toLowerCase());
+    if (masterMatch) {
+      sections.push(`\n### Lender Profile: **${masterMatch.name}**`);
+      const lines = [
+        masterMatch.lender_type ? `Type: ${masterMatch.lender_type}` : null,
+        masterMatch.loan_types?.length ? `Deal types: ${masterMatch.loan_types.join(", ")}` : null,
+        masterMatch.industries?.length ? `Industry focus: ${masterMatch.industries.join(", ")}` : null,
+        (masterMatch.min_deal || masterMatch.max_deal) ? `Size range: ${fmtMoney(masterMatch.min_deal)} – ${fmtMoney(masterMatch.max_deal)}` : null,
+        masterMatch.min_revenue ? `Min revenue: ${fmtMoney(masterMatch.min_revenue)}` : null,
+        masterMatch.ebitda_min ? `EBITDA min: ${fmtMoney(masterMatch.ebitda_min)}` : null,
+        masterMatch.sub_debt ? `Sub-debt: ${masterMatch.sub_debt}` : null,
+        masterMatch.cash_burn ? `Cash burn ok: ${masterMatch.cash_burn}` : null,
+        masterMatch.sponsorship ? `Sponsorship: ${masterMatch.sponsorship}` : null,
+        masterMatch.b2b_b2c ? `B2B/B2C: ${masterMatch.b2b_b2c}` : null,
+        masterMatch.geo ? `Geo: ${masterMatch.geo}` : null,
+        masterMatch.contact_name ? `Primary contact: ${masterMatch.contact_name}${masterMatch.contact_title ? ` (${masterMatch.contact_title})` : ""}` : null,
+      ].filter(Boolean);
+      lines.forEach((l) => sections.push(`- ${l}`));
+
+      // Cross-deal interaction history — every deal_lenders row matching this lender across this company's deals.
+      const dealIds = (ctx.deals || []).map((d: any) => d.id);
+      if (dealIds.length) {
+        const { data: history } = await supabase
+          .from("deal_lenders")
+          .select("id, name, stage, tracking_status, last_contact_at, quote_amount, pass_reason, updated_at, deal_id, deals(company)")
+          .in("deal_id", dealIds)
+          .ilike("name", `%${masterMatch.name}%`)
+          .order("updated_at", { ascending: false })
+          .limit(50);
+        const hist = history || [];
+        if (hist.length) {
+          sections.push(`\n**Interaction history for ${masterMatch.name}** (${hist.length} deal engagements):`);
+          hist.forEach((h: any) => {
+            const dsl = daysSince(h.last_contact_at || h.updated_at);
+            sections.push(`- on **${h.deals?.company || "?"}** — stage: ${h.stage}${h.tracking_status && h.tracking_status !== "active" ? ` [${h.tracking_status}]` : ""}${h.quote_amount ? ` | quote ${fmtMoney(h.quote_amount)}` : ""}${h.pass_reason ? ` | passed: ${h.pass_reason}` : ""} | last touch ${dsl ?? "?"}d ago (source: ${h.deals?.company})`);
+          });
+        } else {
+          sections.push(`\n_No prior deal engagements with ${masterMatch.name} in this workspace._`);
+        }
+      }
+    } else if (!dealMatch) {
+      sections.push(`\n_Lender "${lenderName}" not found in master directory._`);
+    }
+  }
+
+  // 3. Cross-deal pass filter: "Which lenders have passed on SaaS deals in last 6 months"
+  if (passFilter) {
+    const sinceTs = new Date(Date.now() - passFilter.months * 30 * 86_400_000).toISOString();
+    const dealIds = (ctx.deals || [])
+      .filter((d: any) => {
+        if (!passFilter.segment) return true;
+        const blob = `${d.business_model || ""} ${d.deal_type || ""} ${d.company || ""}`.toLowerCase();
+        return blob.includes(passFilter.segment.replace("e-commerce", "ecommerce"));
+      })
+      .map((d: any) => d.id);
+    if (dealIds.length) {
+      const { data: passed } = await supabase
+        .from("deal_lenders")
+        .select("name, pass_reason, updated_at, deal_id, deals(company, business_model, deal_type)")
+        .in("deal_id", dealIds)
+        .eq("tracking_status", "passed")
+        .gte("updated_at", sinceTs)
+        .order("updated_at", { ascending: false })
+        .limit(150);
+      const rows = passed || [];
+      sections.push(`\n### Lenders who PASSED on${passFilter.segment ? ` ${passFilter.segment.toUpperCase()}` : ""} deals in last ${passFilter.months} months (${rows.length})`);
+      if (rows.length === 0) {
+        sections.push(`_No matching pass records found._`);
+      } else {
+        const grouped = new Map<string, any[]>();
+        for (const r of rows) {
+          const k = r.name;
+          if (!grouped.has(k)) grouped.set(k, []);
+          grouped.get(k)!.push(r);
+        }
+        Array.from(grouped.entries()).slice(0, 30).forEach(([name, recs]) => {
+          const dealList = recs.map((r) => `${r.deals?.company || "?"}${r.pass_reason ? ` (${r.pass_reason})` : ""}`).join("; ");
+          sections.push(`- **${name}** — passed on: ${dealList}`);
+        });
+      }
+    }
+  }
+
+  if (sections.length === 1) return ""; // only header, no real data
+  return sections.join("\n");
+}
+// -------------------- end lender intelligence --------------------
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -330,6 +561,15 @@ Deno.serve(async (req) => {
     const ctx = await fetchUserContext(supabase, user.id, companyId);
     const userContext = buildContextString(ctx, companyName, userName);
 
+    // Targeted lender enrichment based on the user's latest prompt.
+    const lastUserTextEarly = [...messages].reverse().find((m: any) => m.role === "user")?.content || "";
+    let lenderEnrichment = "";
+    try {
+      lenderEnrichment = await fetchLenderEnrichment(supabase, companyId, ctx, lastUserTextEarly);
+    } catch (e) {
+      console.error("[claude-dashboard-chat] lender enrichment failed", e);
+    }
+
     console.log("[claude-dashboard-chat] context loaded", {
       user_id: user.id,
       company_id: companyId,
@@ -342,6 +582,7 @@ Deno.serve(async (req) => {
         activities: ctx.activities?.length || 0,
         lenderStats: ctx.lenderStats?.length || 0,
         staleDeals: ctx.staleDeals?.length || 0,
+        lender_enrichment_chars: lenderEnrichment.length,
       },
       context_chars: userContext.length,
     });
@@ -359,9 +600,11 @@ The user's name is ${userName}.
 - Use markdown for lists; do not over-format.
 - Reference real entities from the data — never invent deals, lenders, or numbers.
 - If the data doesn't contain the answer, say so briefly.
+- For lender questions, ALWAYS cite the source deal (e.g. "on **Infillion**"). Use the Lender Intelligence section below when present — it is the authoritative live query.
 
 ## User's Live Data
 ${userContext}
+${lenderEnrichment}
 ${promptAddendum}`;
 
     const anthropicMessages = messages
