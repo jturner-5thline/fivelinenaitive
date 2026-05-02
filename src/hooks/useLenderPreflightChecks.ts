@@ -145,31 +145,49 @@ export function useLenderPreflightChecks({
 
         // 2) Company HQ — best effort via crm_companies when linked.
         let hq: { city?: string | null; state?: string | null; country?: string | null } = {};
+        let dealIndustries: string[] = [];
         if (deal?.crm_company_id) {
           const { data: crm } = await supabase
             .from('crm_companies')
-            .select('hq_city, hq_state, hq_country')
+            .select('hq_city, hq_state, hq_country, industry, sub_industry')
             .eq('id', deal.crm_company_id)
             .maybeSingle();
-          if (crm) hq = { city: crm.hq_city, state: crm.hq_state, country: crm.hq_country };
+          if (crm) {
+            hq = { city: crm.hq_city, state: crm.hq_state, country: crm.hq_country };
+            dealIndustries = [crm.industry, crm.sub_industry]
+              .map((s) => (s || '').toString().trim())
+              .filter(Boolean);
+          }
         }
 
         // 3) Master lender directory rows for the included lenders.
         const { data: masters } = await supabase
           .from('master_lenders')
-          .select('id, name, min_deal, max_deal, geo')
+          .select('id, name, min_deal, max_deal, geo, industries, industries_to_avoid')
           .in(
             'name',
             // pull a generous superset; we'll match case-insensitively below
             Array.from(new Set(lenderNames.map((n) => n.trim()))).filter(Boolean)
           );
-        const masterByName: Record<string, { id: string; min_deal: number | null; max_deal: number | null; geo: string | null }> = {};
+        const masterByName: Record<
+          string,
+          {
+            id: string;
+            min_deal: number | null;
+            max_deal: number | null;
+            geo: string | null;
+            industries: string[];
+            industries_to_avoid: string[];
+          }
+        > = {};
         (masters || []).forEach((m: any) => {
           masterByName[nameKey(m.name)] = {
             id: m.id,
             min_deal: typeof m.min_deal === 'number' ? m.min_deal : m.min_deal != null ? Number(m.min_deal) : null,
             max_deal: typeof m.max_deal === 'number' ? m.max_deal : m.max_deal != null ? Number(m.max_deal) : null,
             geo: m.geo ?? null,
+            industries: Array.isArray(m.industries) ? m.industries.filter(Boolean) : [],
+            industries_to_avoid: Array.isArray(m.industries_to_avoid) ? m.industries_to_avoid.filter(Boolean) : [],
           };
         });
 
