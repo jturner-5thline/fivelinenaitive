@@ -4226,6 +4226,201 @@ async function consumeToolStream(
 }
 
 // ── Main handler ──────────────────────────────────────────────────
+/**
+ * Page-aware context prefetch.
+ *
+ * Pulls a small, prompt-ready snapshot of the entity the user is currently
+ * looking at so the AI can answer without a tool round-trip. Returns a
+ * markdown block to inject into the system prompt + a short label for the
+ * client-visible "Context: …" chip and for logging.
+ *
+ * Hard caps on rows so the block never blows the prompt budget.
+ */
+async function prefetchPageContext(
+  supabase: any,
+  ctx: { page?: string; entityType?: string | null; entityId?: string | null },
+): Promise<{ block: string; label: string | null }> {
+  try {
+    const page = ctx.page || "unknown";
+    const entityType = ctx.entityType || null;
+    const entityId = ctx.entityId || null;
+
+    // ── Deal context (deal-detail OR explicit @deal override) ──
+    if ((page === "deal-detail" || entityType === "deal") && entityId) {
+      const [dealRes, writeupRes, lendersRes, outstandingRes, activityRes, docsRes, attachRes] = await Promise.all([
+        supabase.from("deals").select("id, company, value, stage, status, deal_type, manager, deal_owner, closing_date, is_flagged, flag_notes, created_at, updated_at").eq("id", entityId).maybeSingle(),
+        supabase.from("deal_writeups").select("description, industry, capital_ask, use_of_funds, last_year_revenue, this_year_revenue, gross_margins, profitability, existing_debt_details, sponsorship").eq("deal_id", entityId).maybeSingle(),
+        supabase.from("deal_lenders").select("name, stage, tracking_status, updated_at").eq("deal_id", entityId).order("updated_at", { ascending: false }).limit(20),
+        supabase.from("outstanding_items").select("description, status, priority, due_date").eq("deal_id", entityId).order("position", { ascending: true }).limit(15),
+        supabase.from("activity_logs").select("activity_type, description, created_at, user_display_name").eq("deal_id", entityId).order("created_at", { ascending: false }).limit(10),
+        supabase.from("deal_space_documents").select("name").eq("deal_id", entityId).limit(15),
+        supabase.from("deal_attachments").select("name, category").eq("deal_id", entityId).limit(15),
+      ]);
+      const deal = dealRes.data;
+      if (!deal) return { block: "", label: null };
+      const fmt = (n: any) => (n != null ? `$${Number(n).toLocaleString()}` : "N/A");
+      const w = writeupRes.data || {} as any;
+      const lenders = lendersRes.data || [];
+      const active = lenders.filter((l: any) => l.tracking_status !== "passed" && l.stage !== "Passed");
+      const passed = lenders.filter((l: any) => l.tracking_status === "passed" || l.stage === "Passed");
+      const outstanding = (outstandingRes.data || []).filter((o: any) => o.status !== "completed");
+      const activity = activityRes.data || [];
+      const docs = [
+        ...((docsRes.data || []).map((d: any) => `- ${d.name} (Deal Space)`)),
+        ...((attachRes.data || []).map((d: any) => `- ${d.name}${d.category ? ` (${d.category})` : ""}`)),
+      ];
+      const block = `
+
+PRE-LOADED DEAL CONTEXT — ${deal.company} (currently viewed; you already have this, do NOT re-fetch unless the user asks for fields you don't see):
+- Stage: ${deal.stage || "N/A"} | Status: ${deal.status || "N/A"} | Type: ${deal.deal_type || "N/A"}
+- Value: ${fmt(deal.value)} | Closing: ${deal.closing_date || "N/A"}
+- Owner: ${deal.deal_owner || "N/A"} | Manager: ${deal.manager || "N/A"}
+- Flagged: ${deal.is_flagged ? `Yes — ${deal.flag_notes || ""}` : "No"}
+${w.industry ? `- Industry: ${w.industry}` : ""}
+${w.capital_ask ? `- Capital ask: ${w.capital_ask} | Use of funds: ${w.use_of_funds || "N/A"}` : ""}
+${w.last_year_revenue || w.this_year_revenue ? `- Revenue: LY ${w.last_year_revenue || "N/A"} → TY ${w.this_year_revenue || "N/A"} | GM: ${w.gross_margins || "N/A"} | Profitability: ${w.profitability || "N/A"}` : ""}
+${w.description ? `- Description: ${String(w.description).slice(0, 600)}` : ""}
+
+Lenders (${lenders.length} — ${active.length} active, ${passed.length} passed):
+${(active.slice(0, 12)).map((l: any) => `  • ${l.name} — ${l.stage || "N/A"} (${l.tracking_status || "active"})`).join("\n") || "  (none active)"}
+${passed.length > 0 ? `Passed: ${passed.slice(0, 8).map((l: any) => l.name).join(", ")}${passed.length > 8 ? `, +${passed.length - 8} more` : ""}` : ""}
+
+Outstanding items (${outstanding.length} open):
+${outstanding.slice(0, 10).map((o: any) => `  • [${o.priority || "med"}] ${o.description}${o.due_date ? ` — due ${o.due_date}` : ""}`).join("\n") || "  (none)"}
+
+Recent activity (last ${activity.length}):
+${activity.map((a: any) => `  • ${a.created_at?.slice(0, 10)} — ${a.activity_type}: ${String(a.description || "").slice(0, 140)}${a.user_display_name ? ` (${a.user_display_name})` : ""}`).join("\n") || "  (none)"}
+
+Documents available (call get_deal_full or search_vdr_documents only if you need text inside them):
+${docs.slice(0, 15).join("\n") || "  (none)"}
+`;
+      return { block, label: `Deal — ${deal.company}` };
+    }
+
+    // ── Lender directory index page ──
+    if (page === "lenders" && !entityId) {
+      const { data: lenders } = await supabase
+        .from("master_lenders")
+        .select("name, tier, type, focus_areas, deal_size_min, deal_size_max")
+        .order("tier", { ascending: true, nullsFirst: false })
+        .limit(800);
+      const total = lenders?.length || 0;
+      const byTier: Record<string, number> = {};
+      const byType: Record<string, number> = {};
+      for (const l of lenders || []) {
+        const t = l.tier || "Untiered";
+        byTier[t] = (byTier[t] || 0) + 1;
+        const ty = l.type || "Other";
+        byType[ty] = (byType[ty] || 0) + 1;
+      }
+      const block = `
+
+PRE-LOADED LENDER DIRECTORY CONTEXT (you are on the lenders page — directory is already in context):
+- Total lenders in directory: ${total}
+- By tier: ${Object.entries(byTier).map(([k, v]) => `${k}: ${v}`).join(", ") || "N/A"}
+- By type: ${Object.entries(byType).slice(0, 10).map(([k, v]) => `${k}: ${v}`).join(", ") || "N/A"}
+- For specific lender questions, use get_lender_full / search_lenders.
+`;
+      return { block, label: "Lenders directory" };
+    }
+
+    // ── Single lender (route /lenders/:name/history) ──
+    if (entityType === "lender" && entityId) {
+      const { data: lender } = await supabase
+        .from("master_lenders")
+        .select("id, name, tier, type, focus_areas, deal_size_min, deal_size_max, contact_name, email, notes")
+        .or(`id.eq.${entityId},name.eq.${entityId}`)
+        .maybeSingle();
+      if (lender) {
+        const { data: history } = await supabase
+          .from("deal_lenders")
+          .select("deal_id, stage, tracking_status, updated_at, deals!inner(company)")
+          .eq("lender_id", lender.id)
+          .order("updated_at", { ascending: false })
+          .limit(20);
+        const block = `
+
+PRE-LOADED LENDER CONTEXT — ${lender.name}:
+- Tier: ${lender.tier || "N/A"} | Type: ${lender.type || "N/A"}
+- Deal size: ${lender.deal_size_min || "?"} – ${lender.deal_size_max || "?"}
+- Focus: ${Array.isArray(lender.focus_areas) ? lender.focus_areas.join(", ") : (lender.focus_areas || "N/A")}
+- Primary contact: ${lender.contact_name || "N/A"} (${lender.email || "no email"})
+${lender.notes ? `- Notes: ${String(lender.notes).slice(0, 400)}` : ""}
+
+Recent deal interactions (${history?.length || 0}):
+${(history || []).slice(0, 15).map((h: any) => `  • ${h.deals?.company || h.deal_id} — ${h.stage || "N/A"} (${h.tracking_status || "active"}) — ${h.updated_at?.slice(0, 10)}`).join("\n") || "  (none)"}
+`;
+        return { block, label: `Lender — ${lender.name}` };
+      }
+    }
+
+    // ── Finance / cash flow ──
+    if (page === "finance") {
+      const today = new Date();
+      const start = new Date(today.getFullYear(), today.getMonth() - 2, 1).toISOString().slice(0, 10);
+      const end = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+      const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const [invRes, expRes, billRes] = await Promise.all([
+        admin.from("quickbooks_invoices").select("total_amt, balance, txn_date").gte("txn_date", start).lte("txn_date", end),
+        admin.from("quickbooks_expenses").select("total_amt, txn_date").gte("txn_date", start).lte("txn_date", end),
+        admin.from("quickbooks_bills").select("total_amt, balance, txn_date").gte("txn_date", start).lte("txn_date", end),
+      ]);
+      const sum = (rows: any[] | null, k: string) => (rows || []).reduce((s, r) => s + Number(r[k] || 0), 0);
+      const revenue = sum(invRes.data, "total_amt");
+      const ar = sum(invRes.data, "balance");
+      const expenses = sum(expRes.data, "total_amt");
+      const bills = sum(billRes.data, "total_amt");
+      const ap = sum(billRes.data, "balance");
+      const ebitda = revenue - (expenses + bills);
+      const fmt = (n: number) => `$${Math.round(n).toLocaleString()}`;
+      const block = `
+
+PRE-LOADED FINANCE / CASH-FLOW CONTEXT (firm-level, accrual basis, last 3 months ${start} → ${end}):
+- Revenue: ${fmt(revenue)}
+- Expenses: ${fmt(expenses)} | Bills: ${fmt(bills)}
+- Operating Profit (EBITDA = Revenue − (Expenses + Bills)): ${fmt(ebitda)}
+- AR outstanding: ${fmt(ar)} | AP outstanding: ${fmt(ap)}
+- For other periods or breakdowns use get_quickbooks_pnl / get_outstanding_invoices / get_outstanding_bills.
+`;
+      return { block, label: "Finance — Cash Flow" };
+    }
+
+    // ── Dashboard / unknown — pipeline summary fallback ──
+    if (page === "dashboard" || page === "unknown" || page === "" || page === "pipeline" || page === "deals") {
+      const { data: deals } = await supabase
+        .from("deals")
+        .select("id, company, value, stage, status, updated_at")
+        .neq("status", "closed")
+        .order("updated_at", { ascending: false })
+        .limit(500);
+      const all = deals || [];
+      const active = all.filter((d: any) => d.status === "active");
+      const stageCounts: Record<string, number> = {};
+      let totalValue = 0;
+      for (const d of active) {
+        stageCounts[d.stage || "Unknown"] = (stageCounts[d.stage || "Unknown"] || 0) + 1;
+        totalValue += Number(d.value || 0);
+      }
+      const recent = all.slice(0, 8).map((d: any) => `  • ${d.company} — ${d.stage || "N/A"} — ${d.updated_at?.slice(0, 10)}`).join("\n");
+      const block = `
+
+PRE-LOADED PIPELINE CONTEXT (no specific entity in view — full active pipeline summary):
+- Total active deals: ${active.length} | Total pipeline value: $${Math.round(totalValue).toLocaleString()}
+- By stage: ${Object.entries(stageCounts).map(([k, v]) => `${k}: ${v}`).join(", ") || "N/A"}
+- Most recently updated:
+${recent || "  (none)"}
+- For deeper drill-downs use get_pipeline_summary, search_deals, or get_deal_full.
+`;
+      return { block, label: "Pipeline overview" };
+    }
+
+    return { block: "", label: null };
+  } catch (err) {
+    console.warn("[prefetchPageContext] failed:", err);
+    return { block: "", label: null };
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
