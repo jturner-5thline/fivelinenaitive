@@ -1055,6 +1055,10 @@ export function CashFlowManager() {
         cashOut={cashOut}
         netChange={netChange}
         kpiRangeLabel={kpiRangeLabel}
+        peakCash={peakCash}
+        lowCash={lowCash}
+        cautionThreshold={CAUTION_THRESHOLD}
+        approachingThreshold={APPROACHING_THRESHOLD}
         undoCount={undoStack.length}
         activityCount={activityLog.length}
         onRoleChange={handleRoleChange}
