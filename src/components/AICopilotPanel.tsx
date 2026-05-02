@@ -1184,6 +1184,11 @@ export function AICopilotPanel() {
                 dismissAllNudges();
               }
               setInput(v);
+              // Detect a trailing "@token" at cursor → drive deal autocomplete.
+              const cursor = e.target.selectionStart ?? v.length;
+              const upToCursor = v.slice(0, cursor);
+              const m = upToCursor.match(/(?:^|\s)@([^\s@]{0,40})$/);
+              setMentionQuery(m ? m[1] : null);
             }}
             onKeyDown={handleKeyDown}
             placeholder="Ask anything..."
