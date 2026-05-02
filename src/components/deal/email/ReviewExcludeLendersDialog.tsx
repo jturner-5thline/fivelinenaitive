@@ -80,6 +80,21 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
   // and matches how senior bankers actually pitch deals.
   const [personalize, setPersonalize] = useState(true);
 
+  /**
+   * Per-lender warning dismissals for this dialog session, keyed by
+   * `${lenderNameLower}::${warningKind}`. Cleared each time the dialog
+   * reopens so risk signals are always re-shown to a fresh reviewer.
+   */
+  const [dismissedWarnings, setDismissedWarnings] = useState<Set<string>>(new Set());
+  const [preflightOpen, setPreflightOpen] = useState(true);
+
+  useEffect(() => {
+    if (!open) {
+      setDismissedWarnings(new Set());
+      setPreflightOpen(true);
+    }
+  }, [open]);
+
   // Load lenders fresh every time the dialog opens so status is current.
   useEffect(() => {
     if (!open || !dealId) return;
