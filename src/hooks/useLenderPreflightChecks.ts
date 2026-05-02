@@ -132,43 +132,72 @@ export function useLenderPreflightChecks({
 
     (async () => {
       try {
-        // 1) Current deal — type, value, company name, owning company_id (for HQ join).
-        const { data: deal, error: dealErr } = await supabase
-          .from('deals')
-          .select('id, deal_type, value, company, crm_company_id, company_id')
-          .eq('id', dealId)
-          .maybeSingle();
-        if (dealErr) throw dealErr;
+        // De-duplicated, trimmed lender name list — used for both the
+        // master-directory lookup and the pass-history scan below.
+        const distinctLenderNames = Array.from(
+          new Set(lenderNames.map((n) => n.trim()).filter(Boolean))
+        );
+
+        // ── Batched fan-out ────────────────────────────────────────────
+        // The four data sources we need are independent of each other
+        // (deal+crm via PostgREST embed, master_lenders directory rows,
+        // and the pass-history scan), so fire them in parallel and wait
+        // for everything in a single round-trip window. This collapses
+        // ~4 sequential RTTs down to one.
+        const passHistorySince = new Date(
+          Date.now() - PASS_HISTORY_WINDOW_DAYS * 86_400_000
+        ).toISOString();
+
+        const [dealRes, mastersRes, passedRes] = await Promise.all([
+          // (a) deal + crm_company in one round-trip via the FK embed.
+          supabase
+            .from('deals')
+            .select(
+              'id, deal_type, value, company, crm_company_id, company_id, ' +
+                'crm_companies:crm_company_id (hq_city, hq_state, hq_country, industry, sub_industry)'
+            )
+            .eq('id', dealId)
+            .maybeSingle(),
+
+          // (b) master directory rows for the lenders in this round.
+          distinctLenderNames.length > 0
+            ? supabase
+                .from('master_lenders')
+                .select('id, name, min_deal, max_deal, geo, industries, industries_to_avoid')
+                .in('name', distinctLenderNames)
+            : Promise.resolve({ data: [] as any[], error: null } as any),
+
+          // (c) pass-history scan, scoped to the included lenders + window.
+          //     We don't yet know the deal_type, so we filter it client-side
+          //     after the deal row resolves — keeps this request parallel.
+          distinctLenderNames.length > 0
+            ? supabase
+                .from('deal_lenders')
+                .select('name, deal_id, updated_at, deals!inner(id, deal_type)')
+                .or('tracking_status.eq.passed,substage.eq.passed')
+                .gte('updated_at', passHistorySince)
+                .in('name', distinctLenderNames)
+            : Promise.resolve({ data: [] as any[], error: null } as any),
+        ]);
+
+        if (dealRes.error) throw dealRes.error;
+        const deal: any = dealRes.data;
 
         const dealType = (deal?.deal_type || '').trim();
         const dealValue = typeof deal?.value === 'number' ? deal.value : null;
 
-        // 2) Company HQ — best effort via crm_companies when linked.
-        let hq: { city?: string | null; state?: string | null; country?: string | null } = {};
-        let dealIndustries: string[] = [];
-        if (deal?.crm_company_id) {
-          const { data: crm } = await supabase
-            .from('crm_companies')
-            .select('hq_city, hq_state, hq_country, industry, sub_industry')
-            .eq('id', deal.crm_company_id)
-            .maybeSingle();
-          if (crm) {
-            hq = { city: crm.hq_city, state: crm.hq_state, country: crm.hq_country };
-            dealIndustries = [crm.industry, crm.sub_industry]
+        // Company HQ + industries pulled from the embedded join.
+        const crm: any = deal?.crm_companies || null;
+        const hq: { city?: string | null; state?: string | null; country?: string | null } = crm
+          ? { city: crm.hq_city, state: crm.hq_state, country: crm.hq_country }
+          : {};
+        const dealIndustries: string[] = crm
+          ? [crm.industry, crm.sub_industry]
               .map((s) => (s || '').toString().trim())
-              .filter(Boolean);
-          }
-        }
+              .filter(Boolean)
+          : [];
 
-        // 3) Master lender directory rows for the included lenders.
-        const { data: masters } = await supabase
-          .from('master_lenders')
-          .select('id, name, min_deal, max_deal, geo, industries, industries_to_avoid')
-          .in(
-            'name',
-            // pull a generous superset; we'll match case-insensitively below
-            Array.from(new Set(lenderNames.map((n) => n.trim()))).filter(Boolean)
-          );
+        const masters = mastersRes?.data || [];
         const masterByName: Record<
           string,
           {
@@ -191,21 +220,15 @@ export function useLenderPreflightChecks({
           };
         });
 
-        // 4) Pass-history check — count "passed" deal_lenders rows in the last
-        //    90 days, scoped to deals of the same `deal_type` (when known).
+        // Pass-history aggregation — done client-side over the rows we
+        // already fetched in parallel above. Scoped to deals matching
+        // the current `deal_type` and excluding the current deal.
         const passCounts: Record<string, number> = {};
         if (dealType) {
-          const since = new Date(Date.now() - PASS_HISTORY_WINDOW_DAYS * 86_400_000).toISOString();
-          const { data: passed } = await supabase
-            .from('deal_lenders')
-            .select('name, deal_id, updated_at, deals!inner(id, deal_type)')
-            .or('tracking_status.eq.passed,substage.eq.passed')
-            .gte('updated_at', since)
-            .in('name', Array.from(new Set(lenderNames.map((n) => n.trim()))).filter(Boolean));
-          (passed || []).forEach((row: any) => {
+          const passed = passedRes?.data || [];
+          (passed as any[]).forEach((row: any) => {
             const rowType = (row?.deals?.deal_type || '').trim();
             if (!rowType || rowType !== dealType) return;
-            // Don't count the current deal against itself.
             if (row.deal_id === dealId) return;
             const k = nameKey(row.name);
             passCounts[k] = (passCounts[k] || 0) + 1;
