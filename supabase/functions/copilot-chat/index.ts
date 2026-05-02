@@ -635,6 +635,42 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "search_vdr_documents",
+      description: "Semantic + keyword RAG search across a deal's VDR documents. Returns text chunks WITH source filename, page metadata, and similarity score so you can cite. Use whenever the user asks 'what does the <document> say', 'find where <topic> is mentioned', 'pull the covenant/EBITDA/use-of-proceeds language from the docs'. ALWAYS cite the source filename in your answer.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID. Required." },
+          query: { type: "string", description: "Natural-language question or keywords to find in the documents. Required." },
+          document_id: { type: "string", description: "Optional: restrict search to a single VDR document." },
+          limit: { type: "number", description: "Max chunks to return. Default 8, max 20." },
+        },
+        required: ["deal_id", "query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_vdr_documents",
+      description: "List VDR documents on a deal with filename, type, folder path, ingestion status, chunk count, and AI summary if available. Use to inventory what's in the data room before searching, or to answer 'what docs do we have on <deal>'.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID. Required." },
+          folder_path: { type: "string", description: "Optional: filter to a folder (prefix match)." },
+          file_type: { type: "string", description: "Optional: filter by extension (e.g. 'pdf', 'xlsx', 'docx')." },
+          query: { type: "string", description: "Optional: filename keyword filter." },
+          include_summaries: { type: "boolean", description: "Include AI-generated document summaries when available. Default false." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+        required: ["deal_id"],
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
