@@ -1222,6 +1222,9 @@ function selectTools(page: string, entityType?: string) {
     // Always-available Sales BD & referrals.
     "list_partners", "get_partner_full", "get_partner_pipeline_summary",
     "list_referral_sources", "get_referral_attribution",
+    // Always-available Claap meeting intelligence & routing.
+    "get_claap_meeting_full", "list_unmatched_claap_meetings",
+    "get_claap_routing_queue", "list_claap_skipped_calls", "get_claap_webhook_errors",
   ]);
 
   if (page.includes("lender")) {
