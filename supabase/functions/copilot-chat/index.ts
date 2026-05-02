@@ -2421,6 +2421,126 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         deals: dealsRes.data || [],
       };
     }
+    case "search_contacts": {
+      const limit = Math.min(Number(args.limit) || 25, 100);
+      let companyId: string | null = args.company_id || null;
+      if (!companyId && args.company_name) {
+        const { data: cmatch } = await supabase
+          .from("crm_companies").select("id").ilike("name", `%${args.company_name}%`).limit(1).maybeSingle();
+        companyId = cmatch?.id || null;
+        if (!companyId) return { count: 0, contacts: [], note: `No CRM company matched "${args.company_name}"` };
+      }
+      let q = supabase
+        .from("contacts")
+        .select("id, full_name, email, job_title, seniority, lifecycle_stage, owner_user_id, primary_company_id, company_id, last_activity_date")
+        .order("last_activity_date", { ascending: false, nullsFirst: false })
+        .limit(limit);
+      if (args.query) {
+        const term = String(args.query).replace(/[%,]/g, "");
+        q = q.or(`full_name.ilike.%${term}%,email.ilike.%${term}%,job_title.ilike.%${term}%`);
+      }
+      if (companyId) q = q.or(`company_id.eq.${companyId},primary_company_id.eq.${companyId}`);
+      if (args.lifecycle_stage) q = q.eq("lifecycle_stage", args.lifecycle_stage);
+      if (args.owner_user_id) q = q.eq("owner_user_id", args.owner_user_id);
+      if (args.mine_only) q = q.eq("owner_user_id", userId);
+      if (args.active_since_days) {
+        const since = new Date(Date.now() - Number(args.active_since_days) * 86400000).toISOString();
+        q = q.gte("last_activity_date", since);
+      }
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const rows = data || [];
+      const companyIds = Array.from(new Set(rows.map((r: any) => r.primary_company_id || r.company_id).filter(Boolean)));
+      let companyMap: Record<string, any> = {};
+      if (companyIds.length) {
+        const { data: cs } = await supabase
+          .from("crm_companies").select("id, name, domain").in("id", companyIds);
+        (cs || []).forEach((c: any) => { companyMap[c.id] = c; });
+      }
+      return {
+        count: rows.length,
+        contacts: rows.map((r: any) => ({
+          id: r.id,
+          name: r.full_name,
+          email: r.email,
+          job_title: r.job_title,
+          seniority: r.seniority,
+          lifecycle_stage: r.lifecycle_stage,
+          owner_user_id: r.owner_user_id,
+          last_activity_date: r.last_activity_date,
+          company: companyMap[r.primary_company_id || r.company_id] || null,
+        })),
+      };
+    }
+    case "search_crm_companies": {
+      const limit = Math.min(Number(args.limit) || 25, 100);
+      let q = supabase
+        .from("crm_companies")
+        .select("id, name, domain, industry, sub_industry, lifecycle_stage, customer_tier, employee_count, annual_revenue, arr, owner_user_id, hq_city, hq_country")
+        .order("annual_revenue", { ascending: false, nullsFirst: false })
+        .limit(limit);
+      if (args.query) {
+        const term = String(args.query).replace(/[%,]/g, "");
+        q = q.or(`name.ilike.%${term}%,domain.ilike.%${term}%`);
+      }
+      if (args.industry) q = q.ilike("industry", `%${args.industry}%`);
+      if (args.lifecycle_stage) q = q.eq("lifecycle_stage", args.lifecycle_stage);
+      if (args.customer_tier) q = q.eq("customer_tier", args.customer_tier);
+      if (args.owner_user_id) q = q.eq("owner_user_id", args.owner_user_id);
+      if (args.mine_only) q = q.eq("owner_user_id", userId);
+      if (args.min_employees) q = q.gte("employee_count", Number(args.min_employees));
+      if (args.min_annual_revenue) q = q.gte("annual_revenue", Number(args.min_annual_revenue));
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      return { count: (data || []).length, companies: data || [] };
+    }
+    case "get_recent_crm_activities": {
+      const limit = Math.min(Number(args.limit) || 30, 100);
+      const sinceDays = Number(args.since_days) || 14;
+      const since = new Date(Date.now() - sinceDays * 86400000).toISOString();
+      let contactIds: string[] | null = null;
+      if (args.company_id) {
+        const { data: cs } = await supabase
+          .from("contacts").select("id")
+          .or(`company_id.eq.${args.company_id},primary_company_id.eq.${args.company_id}`)
+          .limit(500);
+        contactIds = (cs || []).map((c: any) => c.id);
+        if (contactIds.length === 0) return { count: 0, activities: [] };
+      }
+      let q = supabase
+        .from("contact_activities")
+        .select("id, contact_id, activity_type, subject, body, occurred_at, deal_id, logged_by")
+        .gte("occurred_at", since)
+        .order("occurred_at", { ascending: false })
+        .limit(limit);
+      if (args.contact_id) q = q.eq("contact_id", args.contact_id);
+      if (args.deal_id) q = q.eq("deal_id", args.deal_id);
+      if (args.activity_type) q = q.eq("activity_type", args.activity_type);
+      if (contactIds) q = q.in("contact_id", contactIds);
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const rows = data || [];
+      const cIds = Array.from(new Set(rows.map((r: any) => r.contact_id).filter(Boolean)));
+      let cmap: Record<string, any> = {};
+      if (cIds.length) {
+        const { data: cs } = await supabase
+          .from("contacts").select("id, full_name, email").in("id", cIds);
+        (cs || []).forEach((c: any) => { cmap[c.id] = c; });
+      }
+      return {
+        count: rows.length,
+        since,
+        activities: rows.map((r: any) => ({
+          id: r.id,
+          activity_type: r.activity_type,
+          subject: r.subject,
+          body: r.body ? String(r.body).slice(0, 500) : null,
+          occurred_at: r.occurred_at,
+          deal_id: r.deal_id,
+          contact: cmap[r.contact_id] || { id: r.contact_id },
+        })),
+      };
+    }
     case "link_contact_to_deal": {
       // Resolve contact
       let contactId = args.contact_id as string | undefined;
