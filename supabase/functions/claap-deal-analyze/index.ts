@@ -2,15 +2,17 @@
 // Pipeline:
 //   1. Resolve transcript: prefer the cached one on claap_meetings, fall back
 //      to the live Claap API (action=transcript on claap-recordings).
-//   2. Run the transcript through Lovable AI with a tool-call schema that
+//   2. Run the transcript through Anthropic Claude (sonnet) with a tool-use
+//      schema that
 //      extracts: attendees, key_discussion_points, deal_terms, action_items,
 //      decisions, open_questions, next_steps.
 //   3. Render a markdown summary and insert ONE row into activity_logs
 //      (activity_type='meeting_summary') tagged
 //      "Meeting Summary — <date> — <recording title>".
-//   4. Return suggested_tasks (from action_items) so the UI can show
-//      one-click confirm cards. We do NOT auto-create tasks — per platform
-//      rule, AI writes require human approval.
+//   4. By default (auto_create_tasks=true) create one task per action_item
+//      server-side, idempotently scoped to (deal_id, recording_id), so users
+//      can delete unwanted ones. Pass auto_create_tasks=false to keep them
+//      as suggestions only. Created/suggested tasks are returned for UI use.
 //
 // Auth: requires the caller's JWT. We use a user-scoped supabase client so
 // RLS on activity_logs/deals is enforced (only deal members can attach).
@@ -31,6 +33,9 @@ interface AnalyzeBody {
   // When invoked from the auto-trigger right after linking, set true so we
   // skip if a summary already exists for (deal, recording).
   skip_if_exists?: boolean;
+  // When true (default) the function inserts one row in `tasks` per action
+  // item, idempotently keyed by recording_id so re-runs do not duplicate.
+  auto_create_tasks?: boolean;
 }
 
 interface ExtractedInsights {
