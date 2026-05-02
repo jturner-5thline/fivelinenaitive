@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Mail, AlertCircle, Sparkles, AlertTriangle, ShieldCheck, X, MinusCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Mail, AlertCircle, Sparkles, AlertTriangle, ShieldCheck, X, MinusCircle, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -181,6 +181,25 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
       next.add(`${lenderName.toLowerCase()}::${kind}`);
       return next;
     });
+  };
+
+  /**
+   * Bulk-dismiss every currently-active pre-flight warning and collapse
+   * the checklist. Used by the "Proceed with all lenders" shortcut so a
+   * reviewer who's chosen to ignore the warnings can clear the panel and
+   * hit Continue without dismissing each item by hand.
+   */
+  const proceedWithAllLenders = () => {
+    setDismissedWarnings((prev) => {
+      const next = new Set(prev);
+      activeWarnings.forEach((entry) => {
+        entry.warnings.forEach((w) => {
+          next.add(`${entry.lenderName.toLowerCase()}::${w.kind}`);
+        });
+      });
+      return next;
+    });
+    setPreflightOpen(false);
   };
 
   const removeLenderFromSubmission = (lenderName: string) => {
