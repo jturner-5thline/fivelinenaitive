@@ -51,6 +51,7 @@ import { WriteUpCompanyHighlightsTab } from './writeup/WriteUpCompanyHighlightsT
 import { WriteUpKeyItemsTab } from './writeup/WriteUpKeyItemsTab';
 import { WriteUpOwnershipTab } from './writeup/WriteUpOwnershipTab';
 import { WriteUpAutoFillDialog } from './WriteUpAutoFillDialog';
+import { BrandedDocStudioDialog } from './BrandedDocStudioDialog';
 import { WriteUpPreviewDialog } from './writeup/WriteUpPreviewDialog';
 import { OverwriteProtectionDialog } from './writeup/OverwriteProtectionDialog';
 import { UserEditedFieldWrapper } from './writeup/UserEditedFieldWrapper';
