@@ -65,7 +65,7 @@ export function AIConfigurationSettings({ isAdmin }: { isAdmin: boolean }) {
         .eq('company_id', company.id)
         .single();
       if (error && error.code !== 'PGRST116') throw error;
-      return data as AIConfig | null;
+      return (data as unknown) as AIConfig | null;
     },
     enabled: !!company?.id,
   });
