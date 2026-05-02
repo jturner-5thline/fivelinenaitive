@@ -227,9 +227,10 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
           const isUser = msg.role === 'user';
           const isPinned = pinnedContents.has(msg.content.slice(0, 100));
           const isBriefing = !isUser && isBriefingMessage(msg.content);
+          const isIntelBrief = !isUser && isIntelBriefMessage(msg.content);
           // Extract any embedded copilot confirm-action block (write actions).
           const { action: copilotAction, cleanedContent: cleanedAssistantContent } =
-            !isUser && !isBriefing
+            !isUser && !isBriefing && !isIntelBrief
               ? extractCopilotAction(msg.content)
               : { action: null, cleanedContent: msg.content };
 
@@ -263,6 +264,8 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
                 )}>
                   {isBriefing ? (
                     <MorningBriefing aiSummary={briefingAiSummary} />
+                  ) : isIntelBrief ? (
+                    <MorningIntelligenceBrief onAction={onSendAction} />
                   ) : !isUser ? (
                     <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
                       <ReactMarkdown
