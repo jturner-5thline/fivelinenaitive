@@ -140,12 +140,23 @@ function getPageContext(): { page: string; entityType: string | null; entityId: 
     }
   });
 
-  if (parts[0] === 'deals' && parts[1]) return { page: 'deal-detail', entityType: 'deal', entityId: parts[1], activeTab, banners };
+  // Deal detail — both /deal/:id (current) and legacy /deals/:id
+  if ((parts[0] === 'deal' || parts[0] === 'deals') && parts[1]) {
+    return { page: 'deal-detail', entityType: 'deal', entityId: parts[1], activeTab, banners };
+  }
   if (parts[0] === 'deals') return { page: 'deals', entityType: null, entityId: null, activeTab, banners };
   if (parts[0] === 'tasks') return { page: 'tasks', entityType: null, entityId: null, activeTab, banners };
-  if (parts[0] === 'lenders' || parts[0] === 'master-lenders') return { page: 'lenders', entityType: null, entityId: null, activeTab, banners };
+  // /lenders/:name/history → single lender; /lenders → directory
+  if (parts[0] === 'lenders' || parts[0] === 'master-lenders') {
+    if (parts[1] && parts[1] !== 'config' && parts[1] !== 'sync-history') {
+      return { page: 'lender-detail', entityType: 'lender', entityId: decodeURIComponent(parts[1]), activeTab, banners };
+    }
+    return { page: 'lenders', entityType: null, entityId: null, activeTab, banners };
+  }
   if (parts[0] === 'pipeline') return { page: 'pipeline', entityType: null, entityId: null, activeTab, banners };
-  return { page: parts[0] || 'dashboard', entityType: null, entityId: null, activeTab, banners };
+  if (parts[0] === 'finance') return { page: 'finance', entityType: null, entityId: null, activeTab, banners };
+  if (!parts[0] || parts[0] === 'dashboard') return { page: 'dashboard', entityType: null, entityId: null, activeTab, banners };
+  return { page: parts[0], entityType: null, entityId: null, activeTab, banners };
 }
 
 const DEAL_SUGGESTIONS: Array<{ prompt: string; description: string }> = [
@@ -450,6 +461,74 @@ export function AICopilotPanel() {
   const location = useLocation();
   const isDealDetail = isDealDetailPath(location.pathname);
 
+  // ── Auto-detected page context: resolved entity label for the chip ──
+  // The chip shows e.g. "Context: Censys Technologies" or "Context: Finance — Cash Flow".
+  // We resolve a friendly label client-side so the user sees it before any AI call.
+  const [autoContextLabel, setAutoContextLabel] = useState<string | null>(null);
+
+  // ── @-mention deal override ──
+  // When the user types "@…", we open a small autocomplete that searches deals.
+  // Selecting one sets `contextOverride`, which is sent to the edge function and
+  // takes precedence over the URL-detected entity.
+  const [contextOverride, setContextOverride] = useState<{ entityType: 'deal'; entityId: string; entityName: string } | null>(null);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionMatches, setMentionMatches] = useState<Array<{ id: string; company: string }>>([]);
+  const mentionAbortRef = useRef<AbortController | null>(null);
+
+  // Resolve the URL into a friendly chip label.
+  useEffect(() => {
+    let cancelled = false;
+    async function resolve() {
+      const ctx = getPageContext();
+      // Deal detail → fetch the company name
+      if (ctx.page === 'deal-detail' && ctx.entityId) {
+        const { data } = await supabase.from('deals').select('company').eq('id', ctx.entityId).maybeSingle();
+        if (cancelled) return;
+        setAutoContextLabel(data?.company ? `Deal — ${data.company}` : 'Deal');
+        return;
+      }
+      if (ctx.page === 'lender-detail' && ctx.entityId) {
+        if (cancelled) return;
+        setAutoContextLabel(`Lender — ${ctx.entityId}`);
+        return;
+      }
+      if (ctx.page === 'lenders') { if (!cancelled) setAutoContextLabel('Lenders directory'); return; }
+      if (ctx.page === 'finance') { if (!cancelled) setAutoContextLabel('Finance — Cash Flow'); return; }
+      if (ctx.page === 'tasks') { if (!cancelled) setAutoContextLabel('Tasks'); return; }
+      if (ctx.page === 'pipeline' || ctx.page === 'deals') { if (!cancelled) setAutoContextLabel('Pipeline'); return; }
+      if (ctx.page === 'dashboard') { if (!cancelled) setAutoContextLabel('Pipeline overview'); return; }
+      if (!cancelled) setAutoContextLabel(ctx.page ? ctx.page.replace(/-/g, ' ') : null);
+    }
+    resolve();
+    return () => { cancelled = true; };
+  }, [location.pathname]);
+
+  // Watch the input for an "@..." token at the cursor and run a deal search.
+  useEffect(() => {
+    if (mentionAbortRef.current) mentionAbortRef.current.abort();
+    if (!mentionQuery || mentionQuery.length < 1) {
+      setMentionMatches([]);
+      return;
+    }
+    const ctrl = new AbortController();
+    mentionAbortRef.current = ctrl;
+    const timer = setTimeout(async () => {
+      const { data } = await supabase
+        .from('deals')
+        .select('id, company')
+        .ilike('company', `%${mentionQuery}%`)
+        .limit(8);
+      if (ctrl.signal.aborted) return;
+      setMentionMatches((data || []) as any);
+    }, 150);
+    return () => { clearTimeout(timer); ctrl.abort(); };
+  }, [mentionQuery]);
+
+  /** Visible chip label — override > auto-detected. */
+  const effectiveContextLabel = contextOverride
+    ? `${contextOverride.entityName} (override)`
+    : autoContextLabel;
+
   // Focus trap
   useEffect(() => {
     if (!isOpen || !panelRef.current) return;
@@ -655,7 +734,24 @@ export function AICopilotPanel() {
       const resp = await fetch(COPILOT_CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ message: text, context: { page: ctx.page, entityType: ctx.entityType, entityId: ctx.entityId, activeTab: ctx.activeTab, banners: ctx.banners, userRole: 'member', companyId: '' }, history, conversationMutations: useCopilotStore.getState().conversationMutations }),
+          body: JSON.stringify({
+            message: text,
+            context: {
+              page: ctx.page,
+              entityType: ctx.entityType,
+              entityId: ctx.entityId,
+              activeTab: ctx.activeTab,
+              banners: ctx.banners,
+              userRole: 'member',
+              companyId: '',
+              // @-mention override takes precedence on the server.
+              contextOverride: contextOverride
+                ? { entityType: contextOverride.entityType, entityId: contextOverride.entityId, entityName: contextOverride.entityName }
+                : null,
+            },
+            history,
+            conversationMutations: useCopilotStore.getState().conversationMutations,
+          }),
         signal: abortRef.current.signal,
       });
 
@@ -929,8 +1025,38 @@ export function AICopilotPanel() {
         </div>
       </div>
 
-      {/* Context Badge placeholder */}
-      <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--glass-border)', flexShrink: 0 }} />
+      {/* Context Badge — shows what the AI will treat as focus this turn */}
+      <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--glass-border)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, minHeight: 36 }}>
+        {effectiveContextLabel ? (
+          <div
+            title={contextOverride ? 'Overridden via @mention. Click × to clear.' : 'Auto-detected from current page. Type @ to override with a different deal.'}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '3px 8px', borderRadius: 999, fontSize: 11,
+              background: contextOverride ? 'rgba(126,184,247,0.15)' : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${contextOverride ? 'rgba(126,184,247,0.4)' : 'var(--glass-border)'}`,
+              color: 'var(--foreground)',
+            }}
+          >
+            <span style={{ color: 'hsl(var(--muted-foreground))' }}>Context:</span>
+            <strong style={{ fontWeight: 600 }}>{effectiveContextLabel}</strong>
+            {contextOverride && (
+              <button
+                onClick={() => setContextOverride(null)}
+                aria-label="Clear context override"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 0, display: 'inline-flex' }}
+              >
+                <X size={11} />
+              </button>
+            )}
+          </div>
+        ) : null}
+        {!contextOverride && (
+          <span style={{ fontSize: 10, color: 'hsl(var(--muted-foreground))', marginLeft: 'auto' }}>
+            Type <kbd style={{ background: 'rgba(255,255,255,0.06)', padding: '0 4px', borderRadius: 3 }}>@</kbd> to switch deal
+          </span>
+        )}
+      </div>
 
       {/* Proactive Nudges */}
       {nudges.length > 0 && messages.length === 0 && (
@@ -1042,6 +1168,42 @@ export function AICopilotPanel() {
       {/* Input */}
       <div style={{ padding: '12px 16px', flexShrink: 0, borderTop: '1px solid var(--glass-border)' }}>
         <div style={{ position: 'relative' }}>
+          {/* @-mention deal autocomplete */}
+          {mentionQuery !== null && mentionMatches.length > 0 && (
+            <div
+              role="listbox"
+              style={{
+                position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 6,
+                background: 'rgba(8,10,18,0.98)', border: '1px solid var(--glass-border)',
+                borderRadius: 10, padding: 4, zIndex: 70, maxHeight: 220, overflowY: 'auto',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+              }}
+            >
+              {mentionMatches.map((d) => (
+                <button
+                  key={d.id}
+                  role="option"
+                  onClick={() => {
+                    setContextOverride({ entityType: 'deal', entityId: d.id, entityName: d.company });
+                    // Strip the trailing "@query" from the input.
+                    setInput((curr) => curr.replace(/(?:^|\s)@[^\s@]*$/, (m) => (m.startsWith(' ') ? ' ' : '')));
+                    setMentionQuery(null);
+                    setMentionMatches([]);
+                    textareaRef.current?.focus();
+                  }}
+                  style={{
+                    width: '100%', textAlign: 'left', background: 'none', border: 'none',
+                    cursor: 'pointer', padding: '6px 10px', borderRadius: 6,
+                    color: 'var(--foreground)', fontSize: 13,
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(126,184,247,0.08)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+                >
+                  {d.company}
+                </button>
+              ))}
+            </div>
+          )}
           {/* Shortcuts help button */}
           <div style={{ position: 'relative', display: 'inline-block' }}>
             <ShortcutsTooltip visible={showShortcuts} />
@@ -1058,6 +1220,11 @@ export function AICopilotPanel() {
                 dismissAllNudges();
               }
               setInput(v);
+              // Detect a trailing "@token" at cursor → drive deal autocomplete.
+              const cursor = e.target.selectionStart ?? v.length;
+              const upToCursor = v.slice(0, cursor);
+              const m = upToCursor.match(/(?:^|\s)@([^\s@]{0,40})$/);
+              setMentionQuery(m ? m[1] : null);
             }}
             onKeyDown={handleKeyDown}
             placeholder="Ask anything..."
