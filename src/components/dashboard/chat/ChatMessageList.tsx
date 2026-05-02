@@ -226,6 +226,11 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
           const isUser = msg.role === 'user';
           const isPinned = pinnedContents.has(msg.content.slice(0, 100));
           const isBriefing = !isUser && isBriefingMessage(msg.content);
+          // Extract any embedded copilot confirm-action block (write actions).
+          const { action: copilotAction, cleanedContent: cleanedAssistantContent } =
+            !isUser && !isBriefing
+              ? extractCopilotAction(msg.content)
+              : { action: null, cleanedContent: msg.content };
 
           // Extract optional AI summary from briefing message
           const briefingAiSummary = isBriefing
