@@ -4645,6 +4645,15 @@ export default function DealDetail() {
                   <DealStageTimeline dealId={id!} />
                 </TabsContent>
 
+                <TabsContent value="crm-search" className={cn("mt-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`crm-search-${tabDirection}`}>
+                  <DealCrmSearch
+                    dealId={id!}
+                    dealCompany={deal?.company}
+                    dealCrmCompanyId={(deal as any)?.crm_company_id ?? null}
+                    dealContactEmail={(deal as any)?.contactEmail ?? null}
+                  />
+                </TabsContent>
+
                 {hasDealSpaceAccess && (
                 <TabsContent value="deal-space" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-space-${tabDirection}`}>
                   <DealSpaceTab dealId={id!} dealData={{
