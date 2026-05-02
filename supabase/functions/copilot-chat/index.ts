@@ -104,12 +104,20 @@ const tools = [
     type: "function",
     function: {
       name: "get_tasks",
-      description: "Get tasks filtered by status, deal, or time range.",
+      description: "Get tasks for the current user (or a teammate) with rich filters. Returns task title, status, priority, due/start date, deal context, assignee, starred, and task type. Use for 'what's on my plate', 'overdue tasks', 'tasks for <deal>', 'tasks I delegated', 'tasks assigned to <person>', 'starred tasks', 'recently completed'.",
       parameters: {
         type: "object",
         properties: {
-          filter: { type: "string", enum: ["overdue", "today", "this_week", "all"] },
+          filter: { type: "string", enum: ["overdue", "today", "this_week", "next_7_days", "no_due_date", "starred", "completed_recently", "all"], description: "Time-based or attribute filter. 'completed_recently' = closed in last 14 days." },
+          scope: { type: "string", enum: ["assigned_to_me", "assigned_by_me", "all_company", "specific_user"], description: "Who owns the tasks. Default: assigned_to_me." },
+          assignee_user_id: { type: "string", description: "User UUID when scope='specific_user'. Resolve names via search_team_members first." },
           deal_id: { type: "string" },
+          contact_id: { type: "string" },
+          crm_company_id: { type: "string" },
+          lender_id: { type: "string" },
+          priority: { type: "string", enum: ["low", "medium", "high", "urgent"] },
+          include_completed: { type: "boolean", description: "Include completed/done tasks. Default false." },
+          limit: { type: "number", description: "Max tasks. Default 50, max 200." },
         },
       },
     },
@@ -597,6 +605,36 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_task_details",
+      description: "Get the full record for a single task: description, subtasks, comments, watchers, time entries, parent/children, deal/contact/company linkage, and recent activity. Use when the user asks 'what's the status of <task>', 'who is on <task>', 'what was discussed on <task>'.",
+      parameters: {
+        type: "object",
+        properties: {
+          task_id: { type: "string", description: "Task UUID. Required." },
+        },
+        required: ["task_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_scheduled_followups",
+      description: "List scheduled follow-up actions queued for deals (scheduled_followup_actions): trigger_key, scheduled_for, status, deal context. Use for 'what follow-ups are coming up', 'pending follow-ups for <deal>', 'what got fired today/this week'.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string" },
+          status: { type: "string", enum: ["pending", "fired", "skipped", "failed", "all"], description: "Default: pending." },
+          window_days: { type: "number", description: "How many days ahead (pending) or back (fired/skipped/failed). Default 14, max 90." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
@@ -614,6 +652,8 @@ function selectTools(page: string, entityType?: string) {
     "link_contact_to_deal",
     // Always-available comms context (synced inbox, calendar, recorded meetings).
     "search_emails", "get_upcoming_events", "get_recent_meetings",
+    // Always-available task & follow-up context.
+    "get_task_details", "get_scheduled_followups",
   ]);
 
   if (page.includes("lender")) {
@@ -714,16 +754,121 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       };
     }
     case "get_tasks": {
-      let q = supabase.from("tasks").select("id, title, status, priority, due_date, deal_id").eq("assigned_to", userId).in("status", ["todo", "in_progress"]).order("due_date", { ascending: true }).limit(50);
+      const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
+      const scope = args.scope || "assigned_to_me";
+      let q = supabase.from("tasks")
+        .select("id, title, status, priority, due_date, start_date, deal_id, contact_id, crm_company_id, lender_id, assigned_to, assigned_by, is_starred, task_type, completed_at, parent_task_id")
+        .order("due_date", { ascending: true, nullsFirst: false })
+        .limit(limit);
+
+      // Scope
+      if (scope === "assigned_to_me") q = q.eq("assigned_to", userId);
+      else if (scope === "assigned_by_me") q = q.eq("assigned_by", userId);
+      else if (scope === "specific_user" && args.assignee_user_id) q = q.eq("assigned_to", args.assignee_user_id);
+      else if (scope === "all_company") {
+        const { data: mem } = await supabase.from("company_members").select("company_id").eq("user_id", userId);
+        const cids = (mem || []).map((m: any) => m.company_id);
+        if (cids.length) q = q.in("company_id", cids);
+      }
+
+      // Status
+      if (!args.include_completed && args.filter !== "completed_recently") {
+        q = q.in("status", ["todo", "in_progress"]);
+      }
+
+      // Entity filters
       if (args.deal_id) q = q.eq("deal_id", args.deal_id);
-      const { data } = await q;
+      if (args.contact_id) q = q.eq("contact_id", args.contact_id);
+      if (args.crm_company_id) q = q.eq("crm_company_id", args.crm_company_id);
+      if (args.lender_id) q = q.eq("lender_id", args.lender_id);
+      if (args.priority) q = q.eq("priority", args.priority);
+      if (args.filter === "starred") q = q.eq("is_starred", true);
+
+      const { data, error } = await q;
+      if (error) return { error: error.message };
       let tasks = data || [];
+
       const todayStr = new Date().toISOString().slice(0, 10);
       const weekEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      if (args.filter === "overdue") tasks = tasks.filter((t: any) => t.due_date && t.due_date < todayStr);
+      const fortnightAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+
+      if (args.filter === "overdue") tasks = tasks.filter((t: any) => t.due_date && t.due_date < todayStr && t.status !== "done");
       else if (args.filter === "today") tasks = tasks.filter((t: any) => t.due_date === todayStr);
-      else if (args.filter === "this_week") tasks = tasks.filter((t: any) => t.due_date && t.due_date <= weekEnd);
-      return { count: tasks.length, tasks };
+      else if (args.filter === "this_week" || args.filter === "next_7_days") tasks = tasks.filter((t: any) => t.due_date && t.due_date >= todayStr && t.due_date <= weekEnd);
+      else if (args.filter === "no_due_date") tasks = tasks.filter((t: any) => !t.due_date);
+      else if (args.filter === "completed_recently") tasks = tasks.filter((t: any) => t.completed_at && t.completed_at >= fortnightAgo);
+
+      // Hydrate deal company names for context
+      const dealIds = [...new Set(tasks.map((t: any) => t.deal_id).filter(Boolean))];
+      let dealMap: Record<string, string> = {};
+      if (dealIds.length) {
+        const { data: deals } = await supabase.from("deals").select("id, company").in("id", dealIds);
+        for (const d of deals || []) dealMap[d.id] = d.company;
+      }
+      tasks = tasks.map((t: any) => ({ ...t, deal_company: t.deal_id ? dealMap[t.deal_id] : null }));
+
+      return { count: tasks.length, scope, filter: args.filter || "open", tasks };
+    }
+    case "get_task_details": {
+      if (!args.task_id) return { error: "task_id is required" };
+      const { data: task, error } = await supabase.from("tasks")
+        .select("id, title, description, status, priority, due_date, start_date, deal_id, contact_id, crm_company_id, lender_id, assigned_to, assigned_by, is_starred, task_type, completed_at, completed_by, parent_task_id, blocker_note, recurrence_rule, created_at, updated_at")
+        .eq("id", args.task_id).maybeSingle();
+      if (error) return { error: error.message };
+      if (!task) return { error: "Task not found or access denied" };
+
+      const [subtasksRes, commentsRes, watchersRes, timeRes, checklistRes, activityRes, dealRes] = await Promise.all([
+        supabase.from("tasks").select("id, title, status, priority, due_date, assigned_to").eq("parent_task_id", args.task_id).order("position", { ascending: true }).limit(50),
+        supabase.from("task_comments").select("id, comment, user_id, created_at").eq("task_id", args.task_id).order("created_at", { ascending: false }).limit(20),
+        supabase.from("task_watchers").select("user_id").eq("task_id", args.task_id),
+        supabase.from("task_time_entries").select("user_id, hours, description, entry_date").eq("task_id", args.task_id).order("entry_date", { ascending: false }).limit(20),
+        supabase.from("subtask_checklist_items").select("id, title, is_completed, position").eq("task_id", args.task_id).order("position", { ascending: true }).limit(50),
+        supabase.from("task_activity").select("activity_type, details, user_id, created_at").eq("task_id", args.task_id).order("created_at", { ascending: false }).limit(15),
+        task.deal_id ? supabase.from("deals").select("id, company, stage, status").eq("id", task.deal_id).maybeSingle() : Promise.resolve({ data: null }),
+      ]);
+
+      return {
+        task,
+        deal: dealRes.data || null,
+        subtasks: subtasksRes.data || [],
+        checklist: checklistRes.data || [],
+        comments: commentsRes.data || [],
+        watchers: (watchersRes.data || []).map((w: any) => w.user_id),
+        time_entries: timeRes.data || [],
+        recent_activity: activityRes.data || [],
+      };
+    }
+    case "get_scheduled_followups": {
+      const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
+      const status = args.status || "pending";
+      const windowDays = Math.min(Math.max(args.window_days ?? 14, 1), 90);
+      const now = new Date();
+      const horizon = new Date(now.getTime() + windowDays * 24 * 60 * 60 * 1000).toISOString();
+      const lookback = new Date(now.getTime() - windowDays * 24 * 60 * 60 * 1000).toISOString();
+
+      let q = supabase.from("scheduled_followup_actions")
+        .select("id, trigger_key, deal_id, scheduled_for, status, fired_at, error_message, created_at")
+        .limit(limit);
+
+      if (args.deal_id) q = q.eq("deal_id", args.deal_id);
+      if (status !== "all") q = q.eq("status", status);
+
+      if (status === "pending") q = q.gte("scheduled_for", now.toISOString()).lte("scheduled_for", horizon).order("scheduled_for", { ascending: true });
+      else q = q.gte("scheduled_for", lookback).order("scheduled_for", { ascending: false });
+
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const rows = data || [];
+
+      // Hydrate deal context
+      const dealIds = [...new Set(rows.map((r: any) => r.deal_id).filter(Boolean))];
+      let dealMap: Record<string, any> = {};
+      if (dealIds.length) {
+        const { data: deals } = await supabase.from("deals").select("id, company, stage").in("id", dealIds);
+        for (const d of deals || []) dealMap[d.id] = { company: d.company, stage: d.stage };
+      }
+      const followups = rows.map((r: any) => ({ ...r, deal: r.deal_id ? dealMap[r.deal_id] : null }));
+      return { count: followups.length, status, window_days: windowDays, followups };
     }
     case "get_pipeline_summary": {
       const { data: deals } = await supabase.from("deals").select("id, company, value, stage, status").limit(1000);
@@ -2260,7 +2405,9 @@ PREFERRED TOOLS (use these first for any specific question about a single entity
 
 Other tools when the question is broader / not entity-specific:
 - Pipeline overview → get_pipeline_summary
-- Tasks → get_tasks
+- Tasks (mine, delegated, by deal/contact, overdue, starred, recently completed) → get_tasks
+- Full detail on one task (subtasks, comments, watchers, activity) → get_task_details
+- Scheduled deal follow-ups (pending or recently fired) → get_scheduled_followups
 - Activity feed across deals → get_activity_log
 - Find deals/lenders by keyword → search_deals / search_lenders
 
