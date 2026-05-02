@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown, Info, FileText, Mail } from 'lucide-react';
+import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown, Info, FileText, Mail, Settings2, Database, Save } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -17,6 +17,11 @@ import { useDealSpaceAI } from '@/hooks/useDealSpaceAI';
 import { useDealSpaceConversations } from '@/hooks/useDealSpaceConversations';
 import { useDealSpaceDocuments, type DealSpaceDocument } from '@/hooks/useDealSpaceDocuments';
 import { useDealSpaceFinancials } from '@/hooks/useDealSpaceFinancials';
+import { useDealAiInstructions } from '@/hooks/useDealAiInstructions';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DealSpaceConversationHistory } from './DealSpaceConversationHistory';
 import { DealSpaceDocumentPreview } from './DealSpaceDocumentPreview';
 import { cn } from '@/lib/utils';
@@ -302,7 +307,11 @@ async function enrichDraftsWithLenderContacts(drafts: EmailDraft[]): Promise<Ema
 export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const { documents, getDownloadUrl } = useDealSpaceDocuments(dealId);
   const { financials } = useDealSpaceFinancials(dealId);
-  const { messages, sendMessage, clearMessages, isLoading: isAILoading, setMessages, scope, setScope } = useDealSpaceAI(dealId);
+  const {
+    messages, sendMessage, clearMessages, isLoading: isAILoading,
+    setMessages, scope, setScope,
+    includeDataRoom, setIncludeDataRoom,
+  } = useDealSpaceAI(dealId);
   const { 
     conversations, 
     isLoading: isConversationsLoading,
@@ -312,6 +321,14 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
     loadConversationMessages,
     saveMessage,
   } = useDealSpaceConversations(dealId);
+  const {
+    instructions: savedInstructions,
+    isSaving: isSavingInstructions,
+    save: saveInstructions,
+  } = useDealAiInstructions(dealId);
+  const [draftInstructions, setDraftInstructions] = useState('');
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
+  useEffect(() => { setDraftInstructions(savedInstructions); }, [savedInstructions]);
   
   const [question, setQuestion] = useState('');
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
@@ -771,13 +788,85 @@ CRITICAL RULES:
                 {totalDocuments} file{totalDocuments !== 1 ? 's' : ''}
               </Badge>
             )}
+            {/* Per-deal Custom AI Instructions */}
+            <Popover open={instructionsOpen} onOpenChange={setInstructionsOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn('gap-1.5 text-xs', savedInstructions && 'border-primary/40 text-primary')}
+                  title="Custom AI instructions for this deal"
+                >
+                  <Settings2 className="h-3.5 w-3.5" />
+                  Instructions
+                  {savedInstructions ? <span className="ml-0.5 inline-block w-1.5 h-1.5 rounded-full bg-primary" /> : null}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[380px]" align="end">
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-sm font-medium">Custom AI instructions</Label>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Pre-pended to every AI request on this deal. Use it for formatting templates, lender-specific guidance, or context the AI should always remember.
+                    </p>
+                  </div>
+                  <Textarea
+                    value={draftInstructions}
+                    onChange={(e) => setDraftInstructions(e.target.value)}
+                    placeholder="e.g. Always format financial outputs for TriplePoint Capital's template. This is a senior secured ABL deal."
+                    rows={6}
+                    className="text-xs"
+                  />
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setDraftInstructions(''); saveInstructions(''); }}
+                      className="text-[11px] text-muted-foreground hover:text-foreground"
+                      disabled={isSavingInstructions || !savedInstructions}
+                    >
+                      Clear
+                    </button>
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        const ok = await saveInstructions(draftInstructions);
+                        if (ok) setInstructionsOpen(false);
+                      }}
+                      disabled={isSavingInstructions || draftInstructions === savedInstructions}
+                      className="gap-1.5"
+                    >
+                      {isSavingInstructions ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* Data Room context toggle */}
+            <div
+              className="flex items-center gap-1.5 px-2 h-8 rounded-md border bg-background"
+              title="When on, files in the Data Room are included as context for AI answers."
+            >
+              <Database className={cn('h-3.5 w-3.5', includeDataRoom ? 'text-primary' : 'text-muted-foreground')} />
+              <Label htmlFor="data-room-toggle" className="text-[11px] font-medium cursor-pointer">
+                Data Room
+              </Label>
+              <Switch
+                id="data-room-toggle"
+                checked={includeDataRoom}
+                onCheckedChange={setIncludeDataRoom}
+                className="scale-75 -mr-1"
+              />
+            </div>
+
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsHistoryOpen(!isHistoryOpen)}
             >
               <History className="h-4 w-4 mr-2" />
-              History
+              Previous conversations
             </Button>
           </div>
         </div>

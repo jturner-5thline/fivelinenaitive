@@ -5533,6 +5533,10 @@ export type Database = {
           content_type: string | null
           created_at: string
           deal_id: string
+          extracted_at: string | null
+          extracted_text: string | null
+          extraction_error: string | null
+          extraction_status: string | null
           file_path: string
           id: string
           name: string
@@ -5551,6 +5555,10 @@ export type Database = {
           content_type?: string | null
           created_at?: string
           deal_id: string
+          extracted_at?: string | null
+          extracted_text?: string | null
+          extraction_error?: string | null
+          extraction_status?: string | null
           file_path: string
           id?: string
           name: string
@@ -5569,6 +5577,10 @@ export type Database = {
           content_type?: string | null
           created_at?: string
           deal_id?: string
+          extracted_at?: string | null
+          extracted_text?: string | null
+          extraction_error?: string | null
+          extraction_status?: string | null
           file_path?: string
           id?: string
           name?: string
@@ -7297,6 +7309,10 @@ export type Database = {
           content_type: string | null
           created_at: string
           deal_id: string
+          extracted_at: string | null
+          extracted_text: string | null
+          extraction_error: string | null
+          extraction_status: string | null
           file_path: string
           id: string
           name: string
@@ -7307,6 +7323,10 @@ export type Database = {
           content_type?: string | null
           created_at?: string
           deal_id: string
+          extracted_at?: string | null
+          extracted_text?: string | null
+          extraction_error?: string | null
+          extraction_status?: string | null
           file_path: string
           id?: string
           name: string
@@ -7317,6 +7337,10 @@ export type Database = {
           content_type?: string | null
           created_at?: string
           deal_id?: string
+          extracted_at?: string | null
+          extracted_text?: string | null
+          extraction_error?: string | null
+          extraction_status?: string | null
           file_path?: string
           id?: string
           name?: string
@@ -7826,6 +7850,7 @@ export type Database = {
       deals: {
         Row: {
           agreement_sent: boolean
+          ai_custom_instructions: string | null
           analyst: string | null
           business_model: string | null
           closing_date: string | null
@@ -7888,6 +7913,7 @@ export type Database = {
         }
         Insert: {
           agreement_sent?: boolean
+          ai_custom_instructions?: string | null
           analyst?: string | null
           business_model?: string | null
           closing_date?: string | null
@@ -7950,6 +7976,7 @@ export type Database = {
         }
         Update: {
           agreement_sent?: boolean
+          ai_custom_instructions?: string | null
           analyst?: string | null
           business_model?: string | null
           closing_date?: string | null

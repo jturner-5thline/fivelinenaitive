@@ -202,6 +202,19 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
       const newDoc = data as unknown as DealSpaceDocument;
       setDocuments(prev => [newDoc, ...prev]);
       toast({ title: 'Document uploaded', description: `${file.name} added to Deal Space` });
+
+      // Fire-and-forget text extraction so the AI can search this file's contents.
+      // Status is tracked on the row (extraction_status); no UI block on the upload path.
+      try {
+        supabase.functions
+          .invoke('deal-document-extract', {
+            body: { documentId: newDoc.id, source: 'deal_space' },
+          })
+          .catch((err) => console.warn('[deal-space] extract trigger failed:', err));
+      } catch (err) {
+        console.warn('[deal-space] extract invoke error:', err);
+      }
+
       return newDoc;
     } catch (error) {
       console.error('Error uploading document:', error);

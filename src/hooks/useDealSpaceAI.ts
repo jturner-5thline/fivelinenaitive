@@ -16,8 +16,13 @@ export function useDealSpaceAI(dealId: string | undefined) {
   const [isLoading, setIsLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const [scope, setScope] = useState<DocumentScope>('all');
+  const [includeDataRoom, setIncludeDataRoom] = useState<boolean>(true);
 
-  const sendMessage = useCallback(async (content: string, overrideScope?: DocumentScope) => {
+  const sendMessage = useCallback(async (
+    content: string,
+    overrideScope?: DocumentScope,
+    options?: { conversationId?: string | null },
+  ) => {
     if (!content.trim() || !dealId) return;
 
     const userMessage: Message = {
@@ -45,6 +50,8 @@ export function useDealSpaceAI(dealId: string | undefined) {
           messages: apiMessages,
           dealId,
           scope: overrideScope || scope,
+          includeDataRoom,
+          conversationId: options?.conversationId ?? null,
         },
       });
 
@@ -84,7 +91,7 @@ export function useDealSpaceAI(dealId: string | undefined) {
     } finally {
       setIsLoading(false);
     }
-  }, [messages, dealId, scope]);
+  }, [messages, dealId, scope, includeDataRoom]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
@@ -98,5 +105,7 @@ export function useDealSpaceAI(dealId: string | undefined) {
     setMessages,
     scope,
     setScope,
+    includeDataRoom,
+    setIncludeDataRoom,
   };
 }
