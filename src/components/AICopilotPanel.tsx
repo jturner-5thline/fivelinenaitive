@@ -1168,6 +1168,42 @@ export function AICopilotPanel() {
       {/* Input */}
       <div style={{ padding: '12px 16px', flexShrink: 0, borderTop: '1px solid var(--glass-border)' }}>
         <div style={{ position: 'relative' }}>
+          {/* @-mention deal autocomplete */}
+          {mentionQuery !== null && mentionMatches.length > 0 && (
+            <div
+              role="listbox"
+              style={{
+                position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 6,
+                background: 'rgba(8,10,18,0.98)', border: '1px solid var(--glass-border)',
+                borderRadius: 10, padding: 4, zIndex: 70, maxHeight: 220, overflowY: 'auto',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+              }}
+            >
+              {mentionMatches.map((d) => (
+                <button
+                  key={d.id}
+                  role="option"
+                  onClick={() => {
+                    setContextOverride({ entityType: 'deal', entityId: d.id, entityName: d.company });
+                    // Strip the trailing "@query" from the input.
+                    setInput((curr) => curr.replace(/(?:^|\s)@[^\s@]*$/, (m) => (m.startsWith(' ') ? ' ' : '')));
+                    setMentionQuery(null);
+                    setMentionMatches([]);
+                    textareaRef.current?.focus();
+                  }}
+                  style={{
+                    width: '100%', textAlign: 'left', background: 'none', border: 'none',
+                    cursor: 'pointer', padding: '6px 10px', borderRadius: 6,
+                    color: 'var(--foreground)', fontSize: 13,
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(126,184,247,0.08)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+                >
+                  {d.company}
+                </button>
+              ))}
+            </div>
+          )}
           {/* Shortcuts help button */}
           <div style={{ position: 'relative', display: 'inline-block' }}>
             <ShortcutsTooltip visible={showShortcuts} />
