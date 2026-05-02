@@ -1319,6 +1319,8 @@ function selectTools(page: string, entityType?: string) {
     "search_contacts", "search_crm_companies", "get_recent_crm_activities",
     // Always-available link/write actions (still gated by confirmation card).
     "link_contact_to_deal",
+    // Always-available deal write actions (gated by confirmation card or low-risk auto-execute).
+    "update_deal_status", "update_deal_stage", "update_deal_fields", "add_deal_note", "update_lender_status",
     // Always-available comms context (synced inbox, calendar, recorded meetings).
     "search_emails", "get_upcoming_events", "get_recent_meetings",
     // Always-available email deep-dive (threads, drafts, sent, scheduled, deal-linked).
