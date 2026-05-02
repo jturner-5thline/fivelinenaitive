@@ -65,7 +65,18 @@ export const WeeklyCharts = memo(function WeeklyCharts({
     chart1Instance.current?.destroy();
     chart2Instance.current?.destroy();
 
-    const { labels, endingCash, totalLiquidity, cashIn, cashOut } = chartData;
+    const { labels, endingCash, totalLiquidity, cashIn, cashOut, peakIdx, lowIdx } = chartData;
+
+    // Build sparse arrays so the peak/low markers render as a single point on
+    // top of the Ending Cash line at exactly the right (week, value) coordinate.
+    const peakPoints: (number | null)[] =
+      peakIdx >= 0
+        ? labels.map((_, i) => (i === peakIdx ? endingCash[i] : null))
+        : [];
+    const lowPoints: (number | null)[] =
+      lowIdx >= 0
+        ? labels.map((_, i) => (i === lowIdx ? endingCash[i] : null))
+        : [];
 
     const isDark = theme === 'dark';
     const gridColor = isDark ? 'rgba(42,51,72,0.5)' : 'rgba(209,213,219,0.5)';
@@ -153,6 +164,38 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             pointRadius: 0,
             fill: false,
           },
+          ...(peakIdx >= 0
+            ? [{
+                label: 'Peak Cash',
+                data: peakPoints,
+                borderColor: isDark ? '#22c55e' : '#16a34a',
+                backgroundColor: isDark ? '#22c55e' : '#16a34a',
+                pointStyle: 'triangle' as const,
+                pointRadius: 9,
+                pointHoverRadius: 11,
+                pointBorderWidth: 2,
+                pointBorderColor: isDark ? '#0b1020' : '#ffffff',
+                showLine: false,
+                fill: false,
+              }]
+            : []),
+          ...(lowIdx >= 0
+            ? [{
+                label: 'Low Cash',
+                data: lowPoints,
+                borderColor: isDark ? '#ef4444' : '#dc2626',
+                backgroundColor: isDark ? '#ef4444' : '#dc2626',
+                // Triangle rotated 180° = ▼
+                pointStyle: 'triangle' as const,
+                pointRotation: 180,
+                pointRadius: 9,
+                pointHoverRadius: 11,
+                pointBorderWidth: 2,
+                pointBorderColor: isDark ? '#0b1020' : '#ffffff',
+                showLine: false,
+                fill: false,
+              }]
+            : []),
         ],
       },
       options: {
