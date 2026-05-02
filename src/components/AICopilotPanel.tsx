@@ -10,6 +10,8 @@ import { toast } from 'sonner';
 import { format, isToday, isYesterday } from 'date-fns';
 import naitiveFavicon from '@/assets/naitive-favicon.png';
 import { CopilotActionConfirm } from '@/components/copilot/CopilotActionConfirm';
+import { DealAiSettingsPopover } from '@/components/copilot/DealAiSettingsPopover';
+import { useDealCopilotMemory } from '@/hooks/useDealCopilotMemory';
 import { CopilotAutoExecuted } from '@/components/copilot/CopilotAutoExecuted';
 import { CopilotEmailDraft } from '@/components/copilot/CopilotEmailDraft';
 import { CopilotDealCard } from '@/components/copilot/CopilotDealCard';
@@ -461,6 +463,15 @@ export function AICopilotPanel() {
   const location = useLocation();
   const isDealDetail = isDealDetailPath(location.pathname);
 
+  // Per-deal AI memory (loads last ~10 exchanges; persists new ones).
+  const dealIdFromPath = (() => {
+    const parts = location.pathname.split('/').filter(Boolean);
+    if ((parts[0] === 'deal' || parts[0] === 'deals') && parts[1]) return parts[1];
+    return null;
+  })();
+  const dealMemory = useDealCopilotMemory(dealIdFromPath);
+  const [showPrevious, setShowPrevious] = useState(false);
+
   // ── Auto-detected page context: resolved entity label for the chip ──
   // The chip shows e.g. "Context: Censys Technologies" or "Context: Finance — Cash Flow".
   // We resolve a friendly label client-side so the user sees it before any AI call.
@@ -751,6 +762,12 @@ export function AICopilotPanel() {
             },
             history,
             conversationMutations: useCopilotStore.getState().conversationMutations,
+            dealMemory: dealIdFromPath
+              ? {
+                  deal_id: dealIdFromPath,
+                  prior_messages: (dealMemory.recent || []).map((m) => ({ role: m.role, content: m.content })),
+                }
+              : null,
           }),
         signal: abortRef.current.signal,
       });
@@ -835,6 +852,13 @@ export function AICopilotPanel() {
 
       const allMsgs = useCopilotStore.getState().messages;
       await saveConversation(allMsgs);
+      // Persist last user + assistant turn to per-deal memory
+      if (dealIdFromPath) {
+        await dealMemory.append('user', text);
+        if (assistantContent.trim()) {
+          await dealMemory.append('assistant', assistantContent);
+        }
+      }
     } catch (err: any) {
       if (err?.name === 'AbortError') return;
       console.error('Copilot stream error:', err);
