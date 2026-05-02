@@ -7,6 +7,7 @@ import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { BetaBadge } from '@/components/ui/beta-badge';
 import { HubSpotDealBadge } from '@/components/integrations/hubspot/HubSpotDealBadge';
 import { LenderFlagIndicator, LenderNotesPopover } from '@/components/lenders/LenderNotesPopover';
+import { LenderCommsTimeline } from '@/components/lenders/LenderCommsTimeline';
 import { LenderHistoryHint } from '@/components/deal/LenderHistoryHint';
 import { LenderNotesField } from '@/components/deal/LenderNotesField';
 import { LenderHistoryDrawer } from '@/components/deal/LenderHistoryDrawer';
