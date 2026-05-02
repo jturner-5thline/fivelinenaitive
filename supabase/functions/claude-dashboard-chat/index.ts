@@ -42,12 +42,19 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
     };
   }
 
+  // Fetch ALL workspace deals (not user-scoped) so admins/users see the full
+  // pipeline. We filter to pipeline-active statuses in SQL so a single deal
+  // like Infillion can't be pushed out by a high-volume `updated_at` ordering
+  // limit. Closed/archived/on-hold deals are excluded — they're not relevant
+  // to "active deals" questions and are not surfaced in the dashboard widgets.
+  const ACTIVE_STATUSES = ["on-track", "at-risk", "off-track", "active"];
   const [dealsRes, tasksRes] = await Promise.all([
     supabase.from("deals")
       .select("id, company, value, stage, status, deal_type, business_model, created_at, updated_at, user_id, deal_owner, manager, next_follow_up_at, notes_updated_at")
       .eq("company_id", companyId)
+      .in("status", ACTIVE_STATUSES)
       .order("updated_at", { ascending: false })
-      .limit(80),
+      .limit(2000),
     supabase.from("tasks")
       .select("id, title, status, priority, due_date, description, assigned_to, created_at, deal_id")
       .eq("assigned_to", userId)
