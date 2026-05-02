@@ -765,6 +765,22 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "get_lenders_by_pass_filter",
+      description: "Find lenders that PASSED on deals matching a segment in a recent time window. Use for 'which lenders have passed on <segment> deals in the last <N> months' (e.g. SaaS, growth-capital, ABL). Returns lenders grouped with the deals they passed on, the pass_reason, and the date.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_type_keyword: { type: "string", description: "Substring match against deals.deal_type (e.g. 'growth-capital', 'abl', 'refinancing'). Optional." },
+          deal_keyword: { type: "string", description: "Substring match against the deal name / company (e.g. 'SaaS', 'health'). Optional. Combined with deal_type_keyword via AND when both set." },
+          months: { type: "number", description: "Window in months. Default 6, max 36." },
+          limit: { type: "number", description: "Max pass rows returned. Default 100, max 300." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_deal_stage_history",
       description: "Chronological stage-change timeline for a single deal (deal_stage_history): from_stage → to_stage, who changed it, when, and which pipeline. Use when the user asks 'how did this deal progress', 'when did we move it to <stage>', 'how long has it been in <stage>', or wants a deal lifecycle audit trail.",
       parameters: {
