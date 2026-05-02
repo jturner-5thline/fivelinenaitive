@@ -3366,6 +3366,127 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         })),
       };
     }
+    case "list_partners": {
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      let q = supabase.from("partners")
+        .select("id, name, firm_type, stage_id, owner_id, notes, metadata, created_at, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(limit);
+      if (args.query) q = q.ilike("name", `%${String(args.query).replace(/[%,()]/g, " ").trim()}%`);
+      if (args.firm_type) q = q.eq("firm_type", String(args.firm_type));
+      if (args.stage_id) q = q.eq("stage_id", String(args.stage_id));
+      if (args.owner_id) q = q.eq("owner_id", String(args.owner_id));
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const partners = data || [];
+      const stageIds = [...new Set(partners.map((p: any) => p.stage_id).filter(Boolean))];
+      const stageMap: Record<string, string> = {};
+      if (stageIds.length) {
+        const { data: stages } = await supabase.from("partner_pipeline_stages").select("id, name").in("id", stageIds);
+        for (const s of stages || []) stageMap[s.id] = s.name;
+      }
+      return {
+        count: partners.length,
+        partners: partners.map((p: any) => ({ ...p, stage_name: p.stage_id ? stageMap[p.stage_id] || null : null })),
+      };
+    }
+    case "get_partner_full": {
+      let partnerId = String(args.partner_id || "").trim();
+      if (!partnerId && args.partner_name) {
+        const { data } = await supabase.from("partners").select("id").ilike("name", `%${String(args.partner_name).trim()}%`).limit(1).maybeSingle();
+        partnerId = data?.id || "";
+      }
+      if (!partnerId) return { error: "partner_id or partner_name required" };
+      const { data: partner, error } = await supabase.from("partners")
+        .select("id, name, firm_type, stage_id, owner_id, notes, metadata, created_at, updated_at")
+        .eq("id", partnerId).maybeSingle();
+      if (error || !partner) return { error: error?.message || "Partner not found" };
+      const [{ data: stage }, { data: memos }, { data: pcs }, { data: pcons }] = await Promise.all([
+        partner.stage_id ? supabase.from("partner_pipeline_stages").select("id, name, definition, color").eq("id", partner.stage_id).maybeSingle() : Promise.resolve({ data: null }),
+        supabase.from("partner_memos").select("memo_type, who_are_they, icp, benefit_from_us, benefit_from_them, notes, updated_at").eq("partner_id", partnerId).order("updated_at", { ascending: false }).limit(3),
+        supabase.from("partner_companies").select("company_id").eq("partner_id", partnerId),
+        supabase.from("partner_contacts").select("contact_id").eq("partner_id", partnerId),
+      ]);
+      const companyIds = (pcs || []).map((r: any) => r.company_id).filter(Boolean);
+      const contactIds = (pcons || []).map((r: any) => r.contact_id).filter(Boolean);
+      const [{ data: companies }, { data: contacts }] = await Promise.all([
+        companyIds.length ? supabase.from("crm_companies").select("id, name, domain, industry").in("id", companyIds) : Promise.resolve({ data: [] }),
+        contactIds.length ? supabase.from("contacts").select("id, first_name, last_name, email, title").in("id", contactIds) : Promise.resolve({ data: [] }),
+      ]);
+      return {
+        partner,
+        stage: stage || null,
+        memos: memos || [],
+        linked_crm_companies: companies || [],
+        linked_contacts: contacts || [],
+      };
+    }
+    case "get_partner_pipeline_summary": {
+      const { data: stages, error: sErr } = await supabase
+        .from("partner_pipeline_stages")
+        .select("id, name, definition, color, sort_order")
+        .order("sort_order", { ascending: true });
+      if (sErr) return { error: sErr.message };
+      const { data: partners, error: pErr } = await supabase.from("partners").select("id, stage_id, name");
+      if (pErr) return { error: pErr.message };
+      const counts: Record<string, number> = {};
+      const samples: Record<string, string[]> = {};
+      for (const p of partners || []) {
+        if (!p.stage_id) continue;
+        counts[p.stage_id] = (counts[p.stage_id] || 0) + 1;
+        if (!samples[p.stage_id]) samples[p.stage_id] = [];
+        if (samples[p.stage_id].length < 5) samples[p.stage_id].push(p.name);
+      }
+      return {
+        total_partners: (partners || []).length,
+        stages: (stages || []).map((s: any) => ({
+          ...s,
+          partner_count: counts[s.id] || 0,
+          sample_partner_names: samples[s.id] || [],
+        })),
+      };
+    }
+    case "list_referral_sources": {
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      let q = supabase.from("referral_sources")
+        .select("id, name, email, contact_name, contact_email, company, type, source_type, number_of_referrals, relationship_owner_id, promoted_to_partner_id, notes, created_at")
+        .order("number_of_referrals", { ascending: false, nullsFirst: false })
+        .limit(limit);
+      if (args.query) {
+        const needle = String(args.query).replace(/[%,()]/g, " ").trim();
+        if (needle) q = q.or(`name.ilike.%${needle}%,email.ilike.%${needle}%,contact_name.ilike.%${needle}%,company.ilike.%${needle}%`);
+      }
+      if (args.source_type) q = q.eq("source_type", String(args.source_type));
+      if (args.owner_id) q = q.eq("relationship_owner_id", String(args.owner_id));
+      if (typeof args.min_referrals === "number") q = q.gte("number_of_referrals", args.min_referrals);
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      return { count: (data || []).length, sources: data || [] };
+    }
+    case "get_referral_attribution": {
+      const name = String(args.source_name || "").trim();
+      if (!name) return { error: "source_name required" };
+      const limit = Math.min(Math.max(Number(args.limit) || 50, 1), 200);
+      const escaped = name.replace(/[%,()]/g, " ").trim();
+      let q = supabase.from("deals")
+        .select("id, deal_name, stage_id, pipeline_id, deal_value, lead_source, referral_source, referred_by, sourced_via, manager_email, created_at, updated_at")
+        .or(`referral_source.ilike.%${escaped}%,referred_by.ilike.%${escaped}%,sourced_via.ilike.%${escaped}%,lead_source.ilike.%${escaped}%`)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (typeof args.since_days === "number") {
+        const since = new Date(Date.now() - Math.max(1, args.since_days) * 86400000).toISOString();
+        q = q.gte("created_at", since);
+      }
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const deals = (data || []).filter((d: any) => {
+        const lower = String(d.deal_name || "").toLowerCase();
+        if (lower.startsWith("test ") || lower === "test-niki's store" || lower === "example deal") return false;
+        return true;
+      });
+      const totalValue = deals.reduce((sum: number, d: any) => sum + (Number(d.deal_value) || 0), 0);
+      return { source_name: name, count: deals.length, total_deal_value: totalValue, deals };
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
