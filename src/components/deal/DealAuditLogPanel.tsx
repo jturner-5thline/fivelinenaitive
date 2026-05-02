@@ -189,7 +189,9 @@ export function DealAuditLogPanel({ entries, loading, hasMore, onLoadMore, onRes
           {!loading && filtered.length === 0 && (
             <div className="text-center py-8 text-xs text-muted-foreground">
               <Clock className="h-5 w-5 mx-auto mb-1 opacity-50" />
-              No activity yet
+              {activeFilter === 'stage_change'
+                ? 'No stage changes yet — stage transitions will appear here as the deal progresses.'
+                : 'No activity yet'}
             </div>
           )}
           {grouped.map(group => (
