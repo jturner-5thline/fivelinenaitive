@@ -1385,8 +1385,39 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       };
     }
     case "get_deal_lenders": {
-      const { data } = await supabase.from("deal_lenders").select("id, name, stage, notes, tracking_status, created_at").eq("deal_id", args.deal_id).order("created_at", { ascending: false });
-      return { lenders: data || [] };
+      const [{ data: deal }, { data: rows }] = await Promise.all([
+        supabase.from("deals").select("id, company, stage, deal_type").eq("id", args.deal_id).maybeSingle(),
+        supabase.from("deal_lenders")
+          .select("id, name, stage, substage, notes, tracking_status, pass_reason, quote_amount, quote_rate, quote_term, last_contact_at, created_at, updated_at")
+          .eq("deal_id", args.deal_id)
+          .order("last_contact_at", { ascending: false, nullsFirst: false }),
+      ]);
+      const now = Date.now();
+      const decorated = (rows || []).map((r: any) => {
+        const last = r.last_contact_at ? new Date(r.last_contact_at).getTime() : null;
+        const days = last ? Math.floor((now - last) / 86_400_000) : null;
+        return { ...r, days_since_last_contact: days, is_stale: days === null || days >= 7 };
+      });
+      let filtered = decorated;
+      if (args.lender_name) {
+        const needle = String(args.lender_name).toLowerCase();
+        filtered = filtered.filter((r: any) => String(r.name || "").toLowerCase().includes(needle));
+      }
+      if (args.status) {
+        const s = String(args.status).toLowerCase();
+        filtered = filtered.filter((r: any) => String(r.tracking_status || "").toLowerCase() === s);
+      }
+      if (typeof args.stale_days === "number" && args.stale_days >= 0) {
+        filtered = filtered.filter((r: any) =>
+          r.days_since_last_contact === null || r.days_since_last_contact >= args.stale_days,
+        );
+      }
+      return {
+        deal: deal ? { id: deal.id, name: deal.company, stage: deal.stage, deal_type: deal.deal_type } : null,
+        cite: deal?.company ? `Source: ${deal.company} deal` : "Source: deal record",
+        count: filtered.length,
+        lenders: filtered,
+      };
     }
     case "search_lenders": {
       const { data } = await supabase.from("master_lenders").select("id, name, lender_type, geo, tier, loan_types, industries").ilike("name", `%${args.query}%`).limit(10);
