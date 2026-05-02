@@ -210,8 +210,10 @@ serve(async (req) => {
       temperature,
       messages: body.messages.map((m) => ({ role: m.role, content: m.content })),
     };
-    if (body.system) {
-      anthropicBody.system = body.system;
+    const copilotPrefix = compileCopilotInstructions(aiConfig?.copilot_instructions);
+    const composedSystem = [copilotPrefix, body.system?.trim()].filter(Boolean).join("\n\n");
+    if (composedSystem) {
+      anthropicBody.system = composedSystem;
     }
 
     // ── Call Anthropic with timeout ──────────────────────
