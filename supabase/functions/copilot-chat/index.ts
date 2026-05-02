@@ -4197,6 +4197,52 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       });
       return { success: true, message: `Updated ${params.deal_name}: ${changes.join(', ')}`, actionType: "update_deal_fields", params: { deal_id: params.deal_id } };
     }
+    case "update_deal_status": {
+      const { error } = await supabase
+        .from("deals")
+        .update({ status: params.new_status })
+        .eq("id", params.deal_id);
+      if (error) return { success: false, error: error.message };
+      const { data: verified } = await supabase
+        .from("deals")
+        .select("status")
+        .eq("id", params.deal_id)
+        .single();
+      if (!verified || verified.status !== params.new_status) {
+        return {
+          success: false,
+          error: `Failed to update "${params.deal_name}" status to "${params.new_status}". Current status: "${verified?.status || "unknown"}".`,
+        };
+      }
+      await supabase.from("activity_logs").insert({
+        deal_id: params.deal_id,
+        activity_type: "status_change",
+        description: `Status changed from "${params.current_status || "unknown"}" to "${params.new_status}"${params.status_note ? ` — ${params.status_note}` : ""} via AI Copilot`,
+        user_id: userId,
+      });
+      return {
+        success: true,
+        message: `Done — status updated to ${params.new_status}`,
+        actionType: "update_deal_status",
+        params: { deal_id: params.deal_id },
+      };
+    }
+    case "log_note":
+    case "add_deal_note": {
+      const { error } = await supabase.from("activity_logs").insert({
+        deal_id: params.deal_id,
+        activity_type: "note",
+        description: params.note,
+        user_id: userId,
+      });
+      if (error) return { success: false, error: error.message };
+      return {
+        success: true,
+        message: `Note added to deal activity log`,
+        actionType: "add_deal_note",
+        params: { deal_id: params.deal_id },
+      };
+    }
     case "link_contact_to_deal": {
       const { error } = await supabase.from("contact_deals").insert({
         contact_id: params.contact_id,
