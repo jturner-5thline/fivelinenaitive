@@ -348,6 +348,27 @@ const tools = [
       },
     },
   },
+  // ── DEAL STATUS (on-track / at-risk / off-track / on-hold) ──
+  {
+    type: "function",
+    function: {
+      name: "update_deal_status",
+      description: "Update a deal's overall status (on-track, at-risk, off-track, on-hold, archived, closed-won, closed-lost). HIGH RISK — returns a confirmation card.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID" },
+          deal_name: { type: "string", description: "Deal company name for display" },
+          new_status: {
+            type: "string",
+            description: "New status. Common values: on-track, at-risk, off-track, on-hold, archived, closed-won, closed-lost",
+          },
+          status_note: { type: "string", description: "Optional note explaining the status change" },
+        },
+        required: ["deal_id", "deal_name", "new_status"],
+      },
+    },
+  },
   // ── MOVE DEAL BETWEEN PIPELINES ──
   {
     type: "function",
@@ -1298,6 +1319,8 @@ function selectTools(page: string, entityType?: string) {
     "search_contacts", "search_crm_companies", "get_recent_crm_activities",
     // Always-available link/write actions (still gated by confirmation card).
     "link_contact_to_deal",
+    // Always-available deal write actions (gated by confirmation card or low-risk auto-execute).
+    "update_deal_status", "update_deal_stage", "update_deal_fields", "add_deal_note", "update_lender_status",
     // Always-available comms context (synced inbox, calendar, recorded meetings).
     "search_emails", "get_upcoming_events", "get_recent_meetings",
     // Always-available email deep-dive (threads, drafts, sent, scheduled, deal-linked).
@@ -2240,6 +2263,29 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           lender_id: args.lender_id, lender_name: args.lender_name,
           stage: args.stage, tracking_status: args.tracking_status,
           pass_reason: args.pass_reason, deal_id: args.deal_id,
+        },
+      };
+    }
+
+    // ── HIGH RISK: Confirm deal status update (on-track / at-risk / off-track) ──
+    case "update_deal_status": {
+      const { data: deal } = await supabase
+        .from("deals")
+        .select("id, company, status")
+        .eq("id", args.deal_id)
+        .single();
+      if (!deal) return { error: "Deal not found" };
+      const dealName = args.deal_name || deal.company;
+      return {
+        action: "confirm",
+        action_type: "update_deal_status",
+        description: `Update ${dealName} status to "${args.new_status}"`,
+        params: {
+          deal_id: args.deal_id,
+          deal_name: dealName,
+          new_status: args.new_status,
+          current_status: deal.status,
+          status_note: args.status_note || null,
         },
       };
     }
@@ -4152,6 +4198,52 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         user_id: userId,
       });
       return { success: true, message: `Updated ${params.deal_name}: ${changes.join(', ')}`, actionType: "update_deal_fields", params: { deal_id: params.deal_id } };
+    }
+    case "update_deal_status": {
+      const { error } = await supabase
+        .from("deals")
+        .update({ status: params.new_status })
+        .eq("id", params.deal_id);
+      if (error) return { success: false, error: error.message };
+      const { data: verified } = await supabase
+        .from("deals")
+        .select("status")
+        .eq("id", params.deal_id)
+        .single();
+      if (!verified || verified.status !== params.new_status) {
+        return {
+          success: false,
+          error: `Failed to update "${params.deal_name}" status to "${params.new_status}". Current status: "${verified?.status || "unknown"}".`,
+        };
+      }
+      await supabase.from("activity_logs").insert({
+        deal_id: params.deal_id,
+        activity_type: "status_change",
+        description: `Status changed from "${params.current_status || "unknown"}" to "${params.new_status}"${params.status_note ? ` — ${params.status_note}` : ""} via AI Copilot`,
+        user_id: userId,
+      });
+      return {
+        success: true,
+        message: `Done — status updated to ${params.new_status}`,
+        actionType: "update_deal_status",
+        params: { deal_id: params.deal_id },
+      };
+    }
+    case "log_note":
+    case "add_deal_note": {
+      const { error } = await supabase.from("activity_logs").insert({
+        deal_id: params.deal_id,
+        activity_type: "note",
+        description: params.note,
+        user_id: userId,
+      });
+      if (error) return { success: false, error: error.message };
+      return {
+        success: true,
+        message: `Note added to deal activity log`,
+        actionType: "add_deal_note",
+        params: { deal_id: params.deal_id },
+      };
     }
     case "link_contact_to_deal": {
       const { error } = await supabase.from("contact_deals").insert({

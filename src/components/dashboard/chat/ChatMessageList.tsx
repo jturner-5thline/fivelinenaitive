@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { ResearchCitations } from './ResearchCitations';
 import { EmailDraftCard, extractEmailDraft } from './EmailDraftCard';
 import { MorningBriefing, isBriefingMessage, BRIEFING_MARKER } from './MorningBriefing';
+import { CopilotActionConfirm } from '@/components/copilot/CopilotActionConfirm';
 
 interface Props {
   messages: ChatMessage[];
@@ -44,6 +45,38 @@ function generateFollowUps(content: string): string[] {
   if (/match|search/i.test(content)) followUps.push("Add these lenders to my deal");
   if (followUps.length === 0) followUps.push("Tell me more", "What should I do next?");
   return followUps.slice(0, 3);
+}
+
+/**
+ * Extract a confirm-action JSON payload from the assistant message body.
+ * The Dashboard AI emits write-action requests as a fenced ```json block:
+ *   {"action":"confirm","action_type":"update_deal_status","description":"…","params":{…}}
+ * Returns { action, cleanedContent } — cleanedContent has the JSON block
+ * stripped so the markdown body renders normally and the card renders below.
+ */
+function extractCopilotAction(content: string): {
+  action: { action: 'confirm'; action_type: string; description: string; params: Record<string, any> } | null;
+  cleanedContent: string;
+} {
+  if (!content) return { action: null, cleanedContent: content };
+  const fence = /```json\s*\n([\s\S]*?)\n```/g;
+  let match;
+  let found: any = null;
+  let foundRaw = '';
+  while ((match = fence.exec(content)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      if (parsed && parsed.action === 'confirm' && typeof parsed.action_type === 'string' && parsed.params) {
+        found = parsed;
+        foundRaw = match[0];
+        break;
+      }
+    } catch {
+      // skip non-confirm JSON blocks
+    }
+  }
+  if (!found) return { action: null, cleanedContent: content };
+  return { action: found, cleanedContent: content.replace(foundRaw, '').trim() };
 }
 
 /**
@@ -193,6 +226,11 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
           const isUser = msg.role === 'user';
           const isPinned = pinnedContents.has(msg.content.slice(0, 100));
           const isBriefing = !isUser && isBriefingMessage(msg.content);
+          // Extract any embedded copilot confirm-action block (write actions).
+          const { action: copilotAction, cleanedContent: cleanedAssistantContent } =
+            !isUser && !isBriefing
+              ? extractCopilotAction(msg.content)
+              : { action: null, cleanedContent: msg.content };
 
           // Extract optional AI summary from briefing message
           const briefingAiSummary = isBriefing
@@ -278,7 +316,10 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
                           th: ({ children }) => <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{children}</th>,
                           td: ({ children }) => <td className="px-2 py-1.5">{children}</td>,
                         }}
-                      >{msg.content}</ReactMarkdown>
+                      >{cleanedAssistantContent}</ReactMarkdown>
+                      {copilotAction && (
+                        <CopilotActionConfirm action={copilotAction} />
+                      )}
                     </div>
                   ) : msg.content}
 
