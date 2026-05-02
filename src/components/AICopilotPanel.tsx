@@ -1147,7 +1147,15 @@ export function AICopilotPanel() {
                   </div>
                 )}
                 {/* Error message with retry */}
-                {msg.content === '__ERROR__' ? (
+                {msg.metadata?.kind === 'agent_run' ? (
+                  <div style={{ width: '100%', maxWidth: '95%' }}>
+                    <AgentRunCard
+                      runId={msg.metadata.runId}
+                      initialPrompt={!msg.metadata.runId ? msg.metadata.prompt : undefined}
+                      initialContext={!msg.metadata.runId ? msg.metadata.context : undefined}
+                    />
+                  </div>
+                ) : msg.content === '__ERROR__' ? (
                   <div style={{
                     maxWidth: '90%', padding: '10px 14px', borderRadius: '12px 12px 12px 2px',
                     background: 'rgba(220,53,69,0.08)', border: '1px solid rgba(220,53,69,0.25)', color: 'var(--foreground)',
@@ -1314,6 +1322,22 @@ export function AICopilotPanel() {
             }}
           >
             <ArrowUp size={16} />
+          </button>
+          <button
+            onClick={() => setAgentMode(v => !v)}
+            aria-label="Toggle Agent mode"
+            title={agentMode ? 'Agent mode ON — next message will be planned and executed as a chain' : 'Switch to Agent mode (chained autonomous tasks)'}
+            style={{
+              position: 'absolute', right: 46, bottom: 10,
+              width: 26, height: 26, borderRadius: 6,
+              background: agentMode ? 'rgba(126,184,247,0.18)' : 'transparent',
+              color: agentMode ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+              border: agentMode ? '1px solid rgba(126,184,247,0.4)' : '1px solid transparent',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+              transition: 'all 150ms',
+            }}
+          >
+            <Wand2 size={14} />
           </button>
         </div>
       </div>
