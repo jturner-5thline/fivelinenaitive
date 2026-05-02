@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter, TrendingUp, CalendarIcon, GitBranch, ListChecks, Video } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter, TrendingUp, CalendarIcon, GitBranch, ListChecks, Video, Activity } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { BetaBadge } from '@/components/ui/beta-badge';
@@ -118,6 +118,7 @@ import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel
 import { DataRoomV2 } from '@/components/deal/DataRoomV2';
 import { VdrShell } from '@/components/vdr/VdrShell';
 import { DealActivityLogTab } from '@/components/deal/DealActivityLogTab';
+import { DealStageTimeline } from '@/components/deal/DealStageTimeline';
 import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
 import { ClaapMeetingsTab } from '@/components/deal/ClaapMeetingsTab';
 import { ChecklistLinkDialog } from '@/components/deal/ChecklistLinkDialog';
@@ -2868,6 +2869,10 @@ export default function DealDetail() {
                       <History className="h-3.5 w-3.5" />
                       Activity
                     </TabsTrigger>
+                    <TabsTrigger value="stage-timeline" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
+                      <Activity className="h-3.5 w-3.5" />
+                      Stage Timeline
+                    </TabsTrigger>
                   </TabsList>
                   </HintTooltip>
                    <div className="flex items-center gap-2 ml-auto flex-shrink-0">
@@ -4630,6 +4635,10 @@ export default function DealDetail() {
                   <div className="rounded-lg overflow-hidden mt-3 bg-card border border-border/30" style={{ height: 'calc(100vh - 190px)' }}>
                     <DealActivityLogTab dealId={id!} />
                   </div>
+                </TabsContent>
+
+                <TabsContent value="stage-timeline" className={cn("mt-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`stage-timeline-${tabDirection}`}>
+                  <DealStageTimeline dealId={id!} />
                 </TabsContent>
 
                 {hasDealSpaceAccess && (
