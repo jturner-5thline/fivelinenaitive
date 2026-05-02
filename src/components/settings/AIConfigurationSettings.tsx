@@ -7,11 +7,20 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
-import { Brain, BarChart3, Loader2, Save, MessageSquare, TrendingUp, Bot, Workflow } from 'lucide-react';
+import { Brain, BarChart3, Loader2, Save, MessageSquare, TrendingUp, Bot, Workflow, Sparkles, Plus, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  DEFAULT_COPILOT_INSTRUCTIONS,
+  TONE_LABELS,
+  compileCopilotInstructions,
+  normalizeCopilotInstructions,
+  type CopilotInstructions,
+  type CopilotTone,
+} from '@/lib/copilotInstructions';
 
 const AI_MODELS = [
   { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4 (Latest)' },
@@ -33,6 +42,7 @@ interface AIConfig {
   default_temperature: number;
   max_tokens: number;
   features_enabled: Record<string, boolean>;
+  copilot_instructions?: CopilotInstructions;
 }
 
 export function AIConfigurationSettings({ isAdmin }: { isAdmin: boolean }) {
