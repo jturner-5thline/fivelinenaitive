@@ -639,6 +639,79 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "get_email_thread",
+      description: "Get all messages in a single email thread (chronological), including subject, participants, snippets, and body excerpts. Use after search_emails when the user asks 'show me the whole thread', 'what was the back-and-forth', or 'full conversation with X'.",
+      parameters: {
+        type: "object",
+        properties: {
+          thread_id: { type: "string", description: "Gmail thread_id (from search_emails results)." },
+          limit: { type: "number", description: "Max messages to return. Default 25, max 100." },
+        },
+        required: ["thread_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_deal_emails",
+      description: "Return emails explicitly linked to a deal (via the deal_emails join). Use when the user asks 'what emails are on this deal', 'show emails attached to <deal>', or wants the deal-specific email trail (separate from the broader inbox).",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID. Defaults to the current deal context if omitted." },
+          limit: { type: "number", description: "Default 25, max 100." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_email_drafts",
+      description: "List the user's pending email drafts (composed but not sent). Use when the user asks 'what drafts do I have', 'unfinished emails', 'drafts for <deal>', or needs to find a draft to send/finish.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Optional: only drafts linked to this deal." },
+          limit: { type: "number", description: "Default 25, max 100." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_sent_emails",
+      description: "Recent emails the user actually sent (with delivery status). Use for 'did I email X', 'when did I last reply to Y', 'what did I send about <topic>', or to verify a send went out. Includes status (sent/failed) and error messages.",
+      parameters: {
+        type: "object",
+        properties: {
+          to_email: { type: "string", description: "Optional: filter by recipient (partial match)." },
+          query: { type: "string", description: "Optional: free-text across subject and body." },
+          since_days: { type: "number", description: "Default 30, max 365." },
+          limit: { type: "number", description: "Default 25, max 100." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_scheduled_emails",
+      description: "Emails the user has queued to send later (scheduled_emails). Use for 'what's queued to go out', 'pending sends', 'cancel scheduled email', or to inspect scheduling status (pending / sent / failed).",
+      parameters: {
+        type: "object",
+        properties: {
+          status: { type: "string", description: "Optional filter: 'pending', 'sent', 'failed', 'cancelled'." },
+          limit: { type: "number", description: "Default 25, max 100." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_upcoming_events",
       description: "Get the user's upcoming calendar events (live from Google Calendar via Nylas v3). Use when the user asks 'what's on my calendar', 'do I have a meeting with X', 'next call with', or needs scheduling context. Requires the user has connected their calendar.",
       parameters: {
