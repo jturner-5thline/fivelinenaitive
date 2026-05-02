@@ -1275,7 +1275,7 @@ export function AICopilotPanel() {
               setMentionQuery(m ? m[1] : null);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Ask anything..."
+            placeholder={agentMode ? "Describe a multi-step task… (Agent mode)" : "Ask anything..."}
             rows={1}
             aria-label="Message input"
             style={{
