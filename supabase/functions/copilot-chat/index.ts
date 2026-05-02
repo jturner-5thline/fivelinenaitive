@@ -7,7 +7,10 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MAX_TOOL_TURNS = 10;
+// Bumped to 20 to support chained autonomous task execution: a 3–5 step plan
+// (e.g. "scan Gmail → match deals → draft tasks") commonly needs 2–3 tool
+// calls per step before the model emits confirm cards + the final summary.
+const MAX_TOOL_TURNS = 20;
 
 // Context fetchers removed — data is now lazy-loaded via tool calls
 
