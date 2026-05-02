@@ -995,6 +995,9 @@ function selectTools(page: string, entityType?: string) {
     "get_quickbooks_pnl", "get_outstanding_invoices", "get_outstanding_bills", "get_revenue_breakdown",
     // Always-available notifications & alerts (user-scoped).
     "get_my_notifications", "get_lender_engagement_alerts", "get_stale_deal_alerts",
+    // Always-available workflows & automations (user/company-scoped via RLS).
+    "list_workflows", "get_workflow_runs", "list_email_workflows", "get_email_workflow_events",
+    "list_zapier_webhooks", "get_zapier_webhook_logs",
   ]);
 
   if (page.includes("lender")) {
