@@ -145,6 +145,18 @@ export function useDealAttachments(dealId: string | null) {
 
       if (dbError) throw dbError;
 
+      // Trigger background text extraction so the AI can search this file.
+      if (data) {
+        try {
+          supabase.functions
+            .invoke('deal-document-extract', {
+              body: { documentId: (data as any).id, source: 'data_room' },
+            })
+            .catch((err) => console.warn('[data-room] extract trigger failed:', err));
+        } catch (err) {
+          console.warn('[data-room] extract invoke error:', err);
+        }
+      }
       return data;
     } catch (error) {
       console.error('Error uploading attachment:', error);
