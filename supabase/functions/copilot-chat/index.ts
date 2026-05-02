@@ -1043,6 +1043,78 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "list_partners",
+      description: "List BD partners (referral firms, banks, advisors, etc.) the company tracks in the Sales BD partner pipeline. Returns name, firm_type, stage, owner, and metadata. Use for 'who are our partners', 'list BD relationships', 'partners in <stage>', 'partners owned by <person>'.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Optional: name substring." },
+          firm_type: { type: "string", description: "Optional: filter by firm_type." },
+          stage_id: { type: "string", description: "Optional: filter by partner_pipeline_stages.id." },
+          owner_id: { type: "string", description: "Optional: filter by owner user UUID." },
+          limit: { type: "number", description: "Default 25, max 100." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_partner_full",
+      description: "Full partner profile: stage, owner, latest memo (who they are, ICP, mutual benefits), linked CRM contacts and companies. Use for 'tell me about partner <X>', 'partner profile', 'what's our angle with <partner>'.",
+      parameters: {
+        type: "object",
+        properties: {
+          partner_id: { type: "string", description: "Partner UUID." },
+          partner_name: { type: "string", description: "Or partner name (case-insensitive substring)." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_partner_pipeline_summary",
+      description: "Aggregate counts of partners per stage in the BD pipeline (with stage definitions). Use for 'BD pipeline overview', 'how many partners in each stage', 'partner funnel'.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_referral_sources",
+      description: "List referral sources (people/firms who send us deals) with attributed referral counts. Use for 'top referrers', 'who refers us deals', 'referral source list', 'referrals by <person>'.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Optional: name/email substring." },
+          source_type: { type: "string", description: "Optional: filter by source_type." },
+          owner_id: { type: "string", description: "Optional: filter by relationship_owner_id." },
+          min_referrals: { type: "number", description: "Optional: only sources with >= N referrals." },
+          limit: { type: "number", description: "Default 25, max 100." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_referral_attribution",
+      description: "Find deals attributed to a referral source/partner (matches deals.referral_source / referred_by / sourced_via / lead_source). Use for 'what deals did <X> refer', 'pipeline from <partner>', 'what came from <source>'.",
+      parameters: {
+        type: "object",
+        properties: {
+          source_name: { type: "string", description: "Name of the referral source / partner / person to attribute (case-insensitive substring)." },
+          since_days: { type: "number", description: "Optional: limit to deals created in the last N days." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+        required: ["source_name"],
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
