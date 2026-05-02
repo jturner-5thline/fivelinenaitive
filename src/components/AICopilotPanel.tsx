@@ -140,12 +140,23 @@ function getPageContext(): { page: string; entityType: string | null; entityId: 
     }
   });
 
-  if (parts[0] === 'deals' && parts[1]) return { page: 'deal-detail', entityType: 'deal', entityId: parts[1], activeTab, banners };
+  // Deal detail — both /deal/:id (current) and legacy /deals/:id
+  if ((parts[0] === 'deal' || parts[0] === 'deals') && parts[1]) {
+    return { page: 'deal-detail', entityType: 'deal', entityId: parts[1], activeTab, banners };
+  }
   if (parts[0] === 'deals') return { page: 'deals', entityType: null, entityId: null, activeTab, banners };
   if (parts[0] === 'tasks') return { page: 'tasks', entityType: null, entityId: null, activeTab, banners };
-  if (parts[0] === 'lenders' || parts[0] === 'master-lenders') return { page: 'lenders', entityType: null, entityId: null, activeTab, banners };
+  // /lenders/:name/history → single lender; /lenders → directory
+  if (parts[0] === 'lenders' || parts[0] === 'master-lenders') {
+    if (parts[1] && parts[1] !== 'config' && parts[1] !== 'sync-history') {
+      return { page: 'lender-detail', entityType: 'lender', entityId: decodeURIComponent(parts[1]), activeTab, banners };
+    }
+    return { page: 'lenders', entityType: null, entityId: null, activeTab, banners };
+  }
   if (parts[0] === 'pipeline') return { page: 'pipeline', entityType: null, entityId: null, activeTab, banners };
-  return { page: parts[0] || 'dashboard', entityType: null, entityId: null, activeTab, banners };
+  if (parts[0] === 'finance') return { page: 'finance', entityType: null, entityId: null, activeTab, banners };
+  if (!parts[0] || parts[0] === 'dashboard') return { page: 'dashboard', entityType: null, entityId: null, activeTab, banners };
+  return { page: parts[0], entityType: null, entityId: null, activeTab, banners };
 }
 
 const DEAL_SUGGESTIONS: Array<{ prompt: string; description: string }> = [
