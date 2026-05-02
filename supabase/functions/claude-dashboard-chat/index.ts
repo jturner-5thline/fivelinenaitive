@@ -807,6 +807,18 @@ Deno.serve(async (req) => {
       console.error("[claude-dashboard-chat] lender enrichment failed", e);
     }
 
+    // Targeted Gmail + Calendar enrichment (only runs when prompt looks email/calendar-related).
+    let gmailEnrichment = "";
+    let calendarEnrichment = "";
+    try {
+      [gmailEnrichment, calendarEnrichment] = await Promise.all([
+        fetchGmailEnrichment(supabase, user.id, ctx, lastUserTextEarly),
+        fetchCalendarEnrichment(supabase, user.id, ctx, lastUserTextEarly),
+      ]);
+    } catch (e) {
+      console.error("[claude-dashboard-chat] gmail/calendar enrichment failed", e);
+    }
+
     console.log("[claude-dashboard-chat] context loaded", {
       user_id: user.id,
       company_id: companyId,
@@ -820,6 +832,8 @@ Deno.serve(async (req) => {
         lenderStats: ctx.lenderStats?.length || 0,
         staleDeals: ctx.staleDeals?.length || 0,
         lender_enrichment_chars: lenderEnrichment.length,
+        gmail_enrichment_chars: gmailEnrichment.length,
+        calendar_enrichment_chars: calendarEnrichment.length,
       },
       context_chars: userContext.length,
     });
@@ -838,6 +852,7 @@ The user's name is ${userName}.
 - Reference real entities from the data — never invent deals, lenders, or numbers.
 - If the data doesn't contain the answer, say so briefly.
 - For lender questions, ALWAYS cite the source deal (e.g. "on **Infillion**"). Use the Lender Intelligence section below when present — it is the authoritative live query.
+- For email/calendar questions, ALWAYS cite the source: sender + date for emails (e.g. "Based on Song Chae's email from Apr 29..."), and the date for calendar events (e.g. "From your calendar: meeting on May 5..."). Use ONLY the Gmail / Google Calendar sections below when present — never invent senders, subjects, attendees, or times.
 
 ## Write Actions (HUMAN-IN-THE-LOOP — REQUIRED FOR EVERY WRITE)
 You can request write actions on the user's data. NEVER auto-execute. Instead emit a confirmation card by appending exactly ONE fenced JSON block at the end of your reply:
@@ -862,6 +877,8 @@ Rules:
 ## User's Live Data
 ${userContext}
 ${lenderEnrichment}
+${gmailEnrichment}
+${calendarEnrichment}
 ${promptAddendum}`;
 
     const anthropicMessages = messages
