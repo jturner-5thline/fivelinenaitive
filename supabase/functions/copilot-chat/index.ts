@@ -545,6 +545,65 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "search_contacts",
+      description: "Search/list CRM contacts by name, email, job title, company, lifecycle stage, owner, or recency. Returns a ranked list (id, name, email, title, company, lifecycle, owner, last_activity_date) — use get_contact_full for the full profile of a single contact.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Free-text match against full_name, email, or job_title." },
+          company_id: { type: "string", description: "Filter to contacts at this CRM company UUID." },
+          company_name: { type: "string", description: "Filter to contacts at a CRM company matched by name (partial)." },
+          lifecycle_stage: { type: "string", description: "Filter by lifecycle stage (e.g. 'lead', 'mql', 'sql', 'customer')." },
+          owner_user_id: { type: "string", description: "Filter to contacts owned by this user." },
+          mine_only: { type: "boolean", description: "If true, restrict to contacts owned by the current user." },
+          active_since_days: { type: "number", description: "Only include contacts with last_activity_date within this many days." },
+          limit: { type: "number", description: "Max results (default 25, max 100)." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_crm_companies",
+      description: "Search/list CRM companies by name, domain, industry, lifecycle stage, customer tier, owner, or revenue band. Returns a ranked list (id, name, domain, industry, lifecycle, tier, employees, revenue) — use get_company_full for the full profile of a single company.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Free-text match against name or domain." },
+          industry: { type: "string", description: "Filter by industry (partial match)." },
+          lifecycle_stage: { type: "string", description: "Filter by lifecycle stage (e.g. 'target', 'opportunity', 'customer')." },
+          customer_tier: { type: "string", description: "Filter by customer tier." },
+          owner_user_id: { type: "string", description: "Filter to companies owned by this user." },
+          mine_only: { type: "boolean", description: "If true, restrict to companies owned by the current user." },
+          min_employees: { type: "number", description: "Minimum employee_count." },
+          min_annual_revenue: { type: "number", description: "Minimum annual_revenue." },
+          limit: { type: "number", description: "Max results (default 25, max 100)." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_recent_crm_activities",
+      description: "List recent CRM contact activities (calls, emails, meetings, notes) across the org or scoped to a contact, company, or deal. Useful for 'what's the latest with X?' or 'who have we touched this week?'.",
+      parameters: {
+        type: "object",
+        properties: {
+          contact_id: { type: "string", description: "Scope to one contact." },
+          deal_id: { type: "string", description: "Scope to activities tied to one deal." },
+          company_id: { type: "string", description: "Scope to contacts at one CRM company." },
+          activity_type: { type: "string", description: "Filter by activity type (e.g. 'call', 'email', 'meeting', 'note')." },
+          since_days: { type: "number", description: "Look back this many days (default 14)." },
+          limit: { type: "number", description: "Max results (default 30, max 100)." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "link_contact_to_deal",
       description: "Associate an existing contact with a deal so the contact appears on the deal's people list. Requires user confirmation before writing. Pass contact_id (preferred) or contact_search (name/email) plus deal_id (preferred) or deal_search.",
       parameters: {
