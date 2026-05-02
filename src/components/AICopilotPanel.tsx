@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { X, ArrowUp, Plus, Clock, Copy, Check, ThumbsUp, ThumbsDown, HelpCircle, RefreshCw, WifiOff } from 'lucide-react';
+import { X, ArrowUp, Plus, Clock, Copy, Check, ThumbsUp, ThumbsDown, HelpCircle, RefreshCw, WifiOff, Wand2 } from 'lucide-react';
+import { AgentRunCard } from '@/components/copilot/AgentRunCard';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -443,6 +444,7 @@ function MessageActions({ msg, conversationId }: { msg: { id: string; content: s
 
 export function AICopilotPanel() {
   const { isOpen, closePanel, messages, addMessage, setMessages, isProcessing, setProcessing, conversationId, setConversationId, conversationMutations, pendingPrompt, setPendingPrompt } = useCopilotStore();
+  const [agentMode, setAgentMode] = useState(false);
   const { user } = useAuth();
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
@@ -907,6 +909,20 @@ export function AICopilotPanel() {
     addMessage(userMsg);
     setInput('');
 
+    // Agent mode: instead of streaming a chat reply, push an assistant
+    // message that mounts <AgentRunCard /> and runs the chained pipeline.
+    if (agentMode) {
+      const ctx = getPageContext();
+      addMessage({
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: '',
+        timestamp: new Date(),
+        metadata: { kind: 'agent_run', prompt: text, context: ctx },
+      });
+      return;
+    }
+
     if (isProcessingRef.current) {
       // Queue this message to be processed after current one finishes
       messageQueueRef.current.push(text);
@@ -914,7 +930,7 @@ export function AICopilotPanel() {
     }
 
     processMessage(text);
-  }, [input, addMessage, processMessage]);
+  }, [input, addMessage, processMessage, agentMode]);
 
   const handleRetry = useCallback(() => {
     if (!lastFailedMessage) return;
@@ -1131,7 +1147,15 @@ export function AICopilotPanel() {
                   </div>
                 )}
                 {/* Error message with retry */}
-                {msg.content === '__ERROR__' ? (
+                {msg.metadata?.kind === 'agent_run' ? (
+                  <div style={{ width: '100%', maxWidth: '95%' }}>
+                    <AgentRunCard
+                      runId={msg.metadata.runId}
+                      initialPrompt={!msg.metadata.runId ? msg.metadata.prompt : undefined}
+                      initialContext={!msg.metadata.runId ? msg.metadata.context : undefined}
+                    />
+                  </div>
+                ) : msg.content === '__ERROR__' ? (
                   <div style={{
                     maxWidth: '90%', padding: '10px 14px', borderRadius: '12px 12px 12px 2px',
                     background: 'rgba(220,53,69,0.08)', border: '1px solid rgba(220,53,69,0.25)', color: 'var(--foreground)',
@@ -1251,7 +1275,7 @@ export function AICopilotPanel() {
               setMentionQuery(m ? m[1] : null);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Ask anything..."
+            placeholder={agentMode ? "Describe a multi-step task… (Agent mode)" : "Ask anything..."}
             rows={1}
             aria-label="Message input"
             style={{
@@ -1298,6 +1322,22 @@ export function AICopilotPanel() {
             }}
           >
             <ArrowUp size={16} />
+          </button>
+          <button
+            onClick={() => setAgentMode(v => !v)}
+            aria-label="Toggle Agent mode"
+            title={agentMode ? 'Agent mode ON — next message will be planned and executed as a chain' : 'Switch to Agent mode (chained autonomous tasks)'}
+            style={{
+              position: 'absolute', right: 46, bottom: 10,
+              width: 26, height: 26, borderRadius: 6,
+              background: agentMode ? 'rgba(126,184,247,0.18)' : 'transparent',
+              color: agentMode ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+              border: agentMode ? '1px solid rgba(126,184,247,0.4)' : '1px solid transparent',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+              transition: 'all 150ms',
+            }}
+          >
+            <Wand2 size={14} />
           </button>
         </div>
       </div>
