@@ -4803,7 +4803,17 @@ export default function DealDetail() {
                     )}
                   </div>
                 </TabsContent>
-                
+
+                <TabsContent value="comms" className="mt-4">
+                  {deal && (
+                    <LenderCommsTimeline
+                      dealId={deal.id}
+                      lenderName={selectedLenderName}
+                      masterLenderId={masterLender?.id}
+                    />
+                  )}
+                </TabsContent>
+
                 <TabsContent value="about" className="space-y-6 mt-4">
                   {/* Internal Lender Notes */}
                   <div>
