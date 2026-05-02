@@ -72,8 +72,9 @@ export function useDealClaapRecordings(dealId: string) {
       fetchLinkedRecordings();
 
       // Fire-and-forget: trigger the deal-scoped analysis pipeline.
-      // Per platform rule, the activity-log summary is written automatically
-      // but suggested tasks still require human confirmation in the UI.
+      // Per product spec for Claap recordings: the summary is auto-posted to
+      // Activity AND tasks are auto-created from action items (users can
+      // delete unwanted ones from the Tasks tab).
       supabase.functions.invoke('claap-deal-analyze', {
         body: {
           deal_id: dealId,
@@ -82,6 +83,7 @@ export function useDealClaapRecordings(dealId: string) {
           recording_url: recording.url,
           recorded_at: recording.createdAt,
           skip_if_exists: true,
+          auto_create_tasks: true,
         },
       }).then(({ error: invokeErr }) => {
         if (invokeErr) {
