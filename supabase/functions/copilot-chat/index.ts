@@ -2405,7 +2405,9 @@ PREFERRED TOOLS (use these first for any specific question about a single entity
 
 Other tools when the question is broader / not entity-specific:
 - Pipeline overview → get_pipeline_summary
-- Tasks → get_tasks
+- Tasks (mine, delegated, by deal/contact, overdue, starred, recently completed) → get_tasks
+- Full detail on one task (subtasks, comments, watchers, activity) → get_task_details
+- Scheduled deal follow-ups (pending or recently fired) → get_scheduled_followups
 - Activity feed across deals → get_activity_log
 - Find deals/lenders by keyword → search_deals / search_lenders
 
