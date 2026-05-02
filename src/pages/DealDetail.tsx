@@ -119,6 +119,7 @@ import { DataRoomV2 } from '@/components/deal/DataRoomV2';
 import { VdrShell } from '@/components/vdr/VdrShell';
 import { DealActivityLogTab } from '@/components/deal/DealActivityLogTab';
 import { DealStageTimeline } from '@/components/deal/DealStageTimeline';
+import DealCrmSearch from '@/components/deals/DealCrmSearch';
 import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
 import { ClaapMeetingsTab } from '@/components/deal/ClaapMeetingsTab';
 import { ChecklistLinkDialog } from '@/components/deal/ChecklistLinkDialog';
@@ -2873,6 +2874,10 @@ export default function DealDetail() {
                       <Activity className="h-3.5 w-3.5" />
                       Stage Timeline
                     </TabsTrigger>
+                    <TabsTrigger value="crm-search" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
+                      <Search className="h-3.5 w-3.5" />
+                      CRM Search
+                    </TabsTrigger>
                   </TabsList>
                   </HintTooltip>
                    <div className="flex items-center gap-2 ml-auto flex-shrink-0">
@@ -4639,6 +4644,15 @@ export default function DealDetail() {
 
                 <TabsContent value="stage-timeline" className={cn("mt-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`stage-timeline-${tabDirection}`}>
                   <DealStageTimeline dealId={id!} />
+                </TabsContent>
+
+                <TabsContent value="crm-search" className={cn("mt-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`crm-search-${tabDirection}`}>
+                  <DealCrmSearch
+                    dealId={id!}
+                    dealCompany={deal?.company}
+                    dealCrmCompanyId={(deal as any)?.crm_company_id ?? null}
+                    dealContactEmail={(deal as any)?.contactEmail ?? null}
+                  />
                 </TabsContent>
 
                 {hasDealSpaceAccess && (
