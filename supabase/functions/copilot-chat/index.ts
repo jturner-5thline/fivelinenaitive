@@ -1115,6 +1115,80 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_claap_meeting_full",
+      description: "Full Claap meeting profile: transcript snippet, AI summary, key decisions, next steps, sentiment, participants (internal/external), match info (deal/lender/contact, confidence, method, reason), and ranked match suggestions. Use for 'why was this call matched to X', 'who was on this call', 'what was decided', 'show me the routing for this meeting'.",
+      parameters: {
+        type: "object",
+        properties: {
+          meeting_id: { type: "string", description: "claap_meetings.id (UUID)." },
+          claap_id: { type: "string", description: "Or claap_id (Claap's external id)." },
+          include_transcript: { type: "boolean", description: "Include first 8k chars of transcript. Default false." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_unmatched_claap_meetings",
+      description: "Recent Claap meetings that have no deal/lender/contact match yet, or whose match is pending review. Use for 'what calls need routing', 'unmatched meetings', 'Claap routing queue', 'calls without a deal'.",
+      parameters: {
+        type: "object",
+        properties: {
+          since_days: { type: "number", description: "Default 14, max 90." },
+          limit: { type: "number", description: "Default 25, max 100." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_claap_routing_queue",
+      description: "Pending Claap routing tasks (claap_routing_tasks): meetings flagged for human action (assign deal, confirm match, etc.). Use for 'what's in the Claap routing queue', 'pending Claap reviews', 'unresolved routing tasks'.",
+      parameters: {
+        type: "object",
+        properties: {
+          status: { type: "string", description: "Optional filter (e.g. 'pending', 'completed')." },
+          assigned_to: { type: "string", description: "Optional user UUID." },
+          limit: { type: "number", description: "Default 25, max 100." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_claap_skipped_calls",
+      description: "Claap calls that were skipped from sync (no internal participant, transcript missing, excluded organizer, etc.). Use for 'why didn't <call> sync', 'what calls were skipped', 'force-sync candidates'.",
+      parameters: {
+        type: "object",
+        properties: {
+          since_days: { type: "number", description: "Default 30, max 180." },
+          force_synced: { type: "boolean", description: "Optional: filter on whether the call was later force-synced." },
+          limit: { type: "number", description: "Default 25, max 100." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_claap_webhook_errors",
+      description: "Recent Claap webhook ingestion errors (claap_webhook_errors). Use for 'why isn't Claap syncing', 'Claap webhook failures', 'recent ingestion errors'.",
+      parameters: {
+        type: "object",
+        properties: {
+          unresolved_only: { type: "boolean", description: "Default true." },
+          since_days: { type: "number", description: "Default 7, max 60." },
+          limit: { type: "number", description: "Default 25, max 100." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
