@@ -823,6 +823,116 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_agent_run_steps: {
+        Row: {
+          approved_at: string | null
+          args: Json
+          completed_at: string | null
+          created_at: string
+          error: string | null
+          id: string
+          kind: string
+          output: Json | null
+          output_summary: string | null
+          requires_approval: boolean
+          run_id: string
+          status: string
+          step_index: number
+          title: string
+          tool: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          args?: Json
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind: string
+          output?: Json | null
+          output_summary?: string | null
+          requires_approval?: boolean
+          run_id: string
+          status?: string
+          step_index: number
+          title: string
+          tool: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          args?: Json
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind?: string
+          output?: Json | null
+          output_summary?: string | null
+          requires_approval?: boolean
+          run_id?: string
+          status?: string
+          step_index?: number
+          title?: string
+          tool?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_agent_run_steps_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agent_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_agent_runs: {
+        Row: {
+          completed_at: string | null
+          context: Json
+          created_at: string
+          error: string | null
+          final_summary: string | null
+          id: string
+          plan_summary: string | null
+          prompt: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          context?: Json
+          created_at?: string
+          error?: string | null
+          final_summary?: string | null
+          id?: string
+          plan_summary?: string | null
+          prompt: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          context?: Json
+          created_at?: string
+          error?: string | null
+          final_summary?: string | null
+          id?: string
+          plan_summary?: string | null
+          prompt?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_configuration: {
         Row: {
           company_id: string
