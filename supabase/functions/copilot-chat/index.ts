@@ -1189,6 +1189,74 @@ const tools = [
       },
     },
   },
+  // ── FinServ ops (5th Line internal pipeline) ─────────────────
+  {
+    type: "function",
+    function: {
+      name: "get_finserv_pipeline_summary",
+      description: "Counts and total fee value of FinServ deals per stage in the 5th Line internal FinServ pipeline. Includes stage definitions (id, label, color). Use for 'FinServ pipeline overview', 'FinServ funnel', 'how many FinServ deals per stage'. 5th Line internal only.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_finserv_deals",
+      description: "List FinServ deals (5th Line internal pipeline) with stage, owner, fees, status. Use for 'show FinServ deals', 'active FinServ engagements', 'who owns FinServ deal X'. 5th Line internal only.",
+      parameters: {
+        type: "object",
+        properties: {
+          stage: { type: "string", description: "Filter by stage id (e.g. 'fs-qualification', 'fs-proposal-sent')." },
+          owner: { type: "string", description: "Filter by deal_owner or manager (substring match)." },
+          on_hold: { type: "boolean", description: "Filter on_hold flag." },
+          status: { type: "string", description: "Filter status (on-track, at-risk, off-track)." },
+          query: { type: "string", description: "Substring search on company name." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_finserv_deal_full",
+      description: "Full FinServ deal profile including stage, fees, milestones, owner. Use for 'tell me about FinServ deal X', 'status of <FinServ engagement>'. 5th Line internal only.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID." },
+          query: { type: "string", description: "Company name substring (used if deal_id missing)." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_finserv_revenue_summary",
+      description: "Aggregated FinServ revenue summary: total fees, count of closed-won, count of in-flight, by month. Sourced from FinServ pipeline deals. Use for 'FinServ revenue', 'FinServ bookings this quarter', 'FinServ closed deals'. 5th Line internal only.",
+      parameters: {
+        type: "object",
+        properties: {
+          months: { type: "number", description: "Lookback months. Default 6, max 24." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_finserv_milestones",
+      description: "Outstanding (not completed) milestones across active FinServ deals, flagging overdue ones. Use for 'FinServ deliverables', 'overdue FinServ milestones', 'what's pending in FinServ'. 5th Line internal only.",
+      parameters: {
+        type: "object",
+        properties: {
+          overdue_only: { type: "boolean", description: "Default false." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
@@ -1225,6 +1293,9 @@ function selectTools(page: string, entityType?: string) {
     // Always-available Claap meeting intelligence & routing.
     "get_claap_meeting_full", "list_unmatched_claap_meetings",
     "get_claap_routing_queue", "list_claap_skipped_calls", "get_claap_webhook_errors",
+    // Always-available FinServ ops (5th Line internal pipeline).
+    "get_finserv_pipeline_summary", "list_finserv_deals", "get_finserv_deal_full",
+    "get_finserv_revenue_summary", "list_finserv_milestones",
   ]);
 
   if (page.includes("lender")) {
@@ -3648,6 +3719,192 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       if (error) return { error: error.message };
       return { count: (data || []).length, since_days: sinceDays, errors: data || [] };
     }
+    // ── FinServ ops (5th Line internal pipeline) ───────────────────
+    case "get_finserv_pipeline_summary": {
+      const FIFTH_LINE = "44556c46-9127-4b12-b14e-d6fee784afcf";
+      const { data: pipe, error: pErr } = await supabase
+        .from("deal_pipelines")
+        .select("id, name, stages")
+        .eq("company_id", FIFTH_LINE)
+        .eq("name", "FinServ Pipeline")
+        .maybeSingle();
+      if (pErr) return { error: pErr.message };
+      if (!pipe) return { error: "FinServ pipeline not configured for 5th Line." };
+      const stages = Array.isArray(pipe.stages) ? pipe.stages as any[] : [];
+      const { data: deals, error: dErr } = await supabase
+        .from("deals")
+        .select("id, company, stage, total_fee, value, on_hold, status")
+        .eq("pipeline_id", pipe.id)
+        .eq("company_id", FIFTH_LINE);
+      if (dErr) return { error: dErr.message };
+      const filtered = (deals || []).filter((d: any) => {
+        const lower = String(d.company || "").toLowerCase();
+        return !(lower.startsWith("test ") || lower === "test-niki's store" || lower === "example deal");
+      });
+      const summary = stages.map((s: any) => {
+        const inStage = filtered.filter((d: any) => d.stage === s.id);
+        const totalFee = inStage.reduce((sum: number, d: any) => sum + (Number(d.total_fee) || 0), 0);
+        const totalValue = inStage.reduce((sum: number, d: any) => sum + (Number(d.value) || 0), 0);
+        return {
+          stage_id: s.id,
+          label: s.label,
+          color: s.color,
+          deal_count: inStage.length,
+          total_fee: totalFee,
+          total_value: totalValue,
+        };
+      });
+      return {
+        pipeline_id: pipe.id,
+        pipeline_name: pipe.name,
+        total_deals: filtered.length,
+        stages: summary,
+      };
+    }
+    case "list_finserv_deals": {
+      const FIFTH_LINE = "44556c46-9127-4b12-b14e-d6fee784afcf";
+      const limit = Math.min(Math.max(Number(args.limit) || 50, 1), 200);
+      const { data: pipe } = await supabase
+        .from("deal_pipelines")
+        .select("id")
+        .eq("company_id", FIFTH_LINE)
+        .eq("name", "FinServ Pipeline")
+        .maybeSingle();
+      if (!pipe) return { error: "FinServ pipeline not configured." };
+      let q = supabase.from("deals")
+        .select("id, company, stage, status, on_hold, manager, deal_owner, total_fee, retainer_fee, milestone_fee, value, closing_date, created_at, updated_at")
+        .eq("pipeline_id", pipe.id)
+        .eq("company_id", FIFTH_LINE)
+        .order("updated_at", { ascending: false })
+        .limit(limit);
+      if (args.stage) q = q.eq("stage", String(args.stage));
+      if (typeof args.on_hold === "boolean") q = q.eq("on_hold", args.on_hold);
+      if (args.status) q = q.eq("status", String(args.status));
+      if (args.query) {
+        const needle = String(args.query).replace(/[%,()]/g, " ").trim();
+        if (needle) q = q.ilike("company", `%${needle}%`);
+      }
+      if (args.owner) {
+        const needle = String(args.owner).replace(/[%,()]/g, " ").trim();
+        if (needle) q = q.or(`deal_owner.ilike.%${needle}%,manager.ilike.%${needle}%`);
+      }
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const deals = (data || []).filter((d: any) => {
+        const lower = String(d.company || "").toLowerCase();
+        return !(lower.startsWith("test ") || lower === "test-niki's store" || lower === "example deal");
+      });
+      return { count: deals.length, deals };
+    }
+    case "get_finserv_deal_full": {
+      const FIFTH_LINE = "44556c46-9127-4b12-b14e-d6fee784afcf";
+      const { data: pipe } = await supabase
+        .from("deal_pipelines")
+        .select("id")
+        .eq("company_id", FIFTH_LINE)
+        .eq("name", "FinServ Pipeline")
+        .maybeSingle();
+      if (!pipe) return { error: "FinServ pipeline not configured." };
+      let q = supabase.from("deals")
+        .select("*, deal_milestones(*)")
+        .eq("pipeline_id", pipe.id)
+        .eq("company_id", FIFTH_LINE)
+        .limit(1);
+      if (args.deal_id) q = q.eq("id", String(args.deal_id));
+      else if (args.query) {
+        const needle = String(args.query).replace(/[%,()]/g, " ").trim();
+        if (!needle) return { error: "deal_id or query required" };
+        q = q.ilike("company", `%${needle}%`);
+      } else return { error: "deal_id or query required" };
+      const { data: deal, error } = await q.maybeSingle();
+      if (error) return { error: error.message };
+      if (!deal) return { error: "FinServ deal not found" };
+      return { deal };
+    }
+    case "get_finserv_revenue_summary": {
+      const FIFTH_LINE = "44556c46-9127-4b12-b14e-d6fee784afcf";
+      const months = Math.min(Math.max(Number(args.months) || 6, 1), 24);
+      const sinceIso = new Date(Date.now() - months * 30 * 86400000).toISOString();
+      const { data: pipe } = await supabase
+        .from("deal_pipelines")
+        .select("id")
+        .eq("company_id", FIFTH_LINE)
+        .eq("name", "FinServ Pipeline")
+        .maybeSingle();
+      if (!pipe) return { error: "FinServ pipeline not configured." };
+      const { data, error } = await supabase.from("deals")
+        .select("id, company, stage, total_fee, value, closing_date, created_at, updated_at")
+        .eq("pipeline_id", pipe.id)
+        .eq("company_id", FIFTH_LINE)
+        .gte("updated_at", sinceIso);
+      if (error) return { error: error.message };
+      const filtered = (data || []).filter((d: any) => {
+        const lower = String(d.company || "").toLowerCase();
+        return !(lower.startsWith("test ") || lower === "test-niki's store" || lower === "example deal");
+      });
+      const closedWon = filtered.filter((d: any) => String(d.stage || "").includes("closed-won"));
+      const closedLost = filtered.filter((d: any) => String(d.stage || "").includes("closed-lost"));
+      const inFlight = filtered.filter((d: any) => !String(d.stage || "").includes("closed-"));
+      const sumFee = (arr: any[]) => arr.reduce((s, d) => s + (Number(d.total_fee) || 0), 0);
+      const byMonth: Record<string, { count: number; total_fee: number }> = {};
+      for (const d of closedWon) {
+        const ts = d.closing_date || d.updated_at;
+        if (!ts) continue;
+        const month = String(ts).slice(0, 7);
+        if (!byMonth[month]) byMonth[month] = { count: 0, total_fee: 0 };
+        byMonth[month].count += 1;
+        byMonth[month].total_fee += Number(d.total_fee) || 0;
+      }
+      return {
+        months_lookback: months,
+        closed_won: { count: closedWon.length, total_fee: sumFee(closedWon) },
+        closed_lost: { count: closedLost.length, total_fee: sumFee(closedLost) },
+        in_flight: { count: inFlight.length, total_fee: sumFee(inFlight) },
+        by_month: byMonth,
+      };
+    }
+    case "list_finserv_milestones": {
+      const FIFTH_LINE = "44556c46-9127-4b12-b14e-d6fee784afcf";
+      const overdueOnly = !!args.overdue_only;
+      const limit = Math.min(Math.max(Number(args.limit) || 50, 1), 200);
+      const { data: pipe } = await supabase
+        .from("deal_pipelines")
+        .select("id")
+        .eq("company_id", FIFTH_LINE)
+        .eq("name", "FinServ Pipeline")
+        .maybeSingle();
+      if (!pipe) return { error: "FinServ pipeline not configured." };
+      const { data: deals } = await supabase.from("deals")
+        .select("id, company, stage, on_hold")
+        .eq("pipeline_id", pipe.id)
+        .eq("company_id", FIFTH_LINE);
+      const activeDeals = (deals || []).filter((d: any) => {
+        const lower = String(d.company || "").toLowerCase();
+        if (lower.startsWith("test ") || lower === "test-niki's store" || lower === "example deal") return false;
+        if (d.on_hold) return false;
+        return !String(d.stage || "").includes("closed-");
+      });
+      const dealMap: Record<string, any> = {};
+      for (const d of activeDeals) dealMap[d.id] = d;
+      const dealIds = activeDeals.map((d: any) => d.id);
+      if (!dealIds.length) return { count: 0, milestones: [] };
+      const { data: ms, error } = await supabase.from("deal_milestones")
+        .select("id, deal_id, title, due_date, completed, completed_at, status, position")
+        .in("deal_id", dealIds)
+        .eq("completed", false)
+        .order("due_date", { ascending: true, nullsFirst: false })
+        .limit(limit);
+      if (error) return { error: error.message };
+      const today = new Date().toISOString().slice(0, 10);
+      let milestones = (ms || []).map((m: any) => ({
+        ...m,
+        deal_company: dealMap[m.deal_id]?.company || null,
+        deal_stage: dealMap[m.deal_id]?.stage || null,
+        is_overdue: m.due_date ? String(m.due_date) < today : false,
+      }));
+      if (overdueOnly) milestones = milestones.filter((m: any) => m.is_overdue);
+      return { count: milestones.length, milestones };
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -4005,6 +4262,13 @@ Claap meeting intelligence & routing context (use for call transcripts, matching
 - "Claap routing queue", "pending Claap reviews", "unresolved routing tasks" → get_claap_routing_queue
 - "Why didn't <call> sync", "what calls were skipped", "force-sync candidates" → list_claap_skipped_calls
 - "Why isn't Claap syncing", "Claap webhook failures", "ingestion errors" → get_claap_webhook_errors
+
+FinServ ops context (5th Line internal FinServ pipeline — separate from Debt deals):
+- "FinServ pipeline overview", "FinServ funnel", "deals per FinServ stage" → get_finserv_pipeline_summary (returns stage definitions + counts)
+- "Show FinServ deals", "active FinServ engagements", "FinServ deals owned by <X>" → list_finserv_deals
+- "Tell me about FinServ deal <X>", "status of <FinServ engagement>" → get_finserv_deal_full
+- "FinServ revenue", "FinServ bookings this quarter", "FinServ closed deals by month" → get_finserv_revenue_summary
+- "FinServ deliverables", "overdue FinServ milestones", "what's pending in FinServ" → list_finserv_milestones
 ${entityType === "deal" && entityId ? `\nThe user is viewing deal ID: ${entityId}. Use this ID when calling deal-specific tools.` : ''}
 
 CORE RESPONSIBILITIES:
