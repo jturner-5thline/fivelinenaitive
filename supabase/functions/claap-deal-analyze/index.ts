@@ -210,80 +210,80 @@ Deno.serve(async (req) => {
     }
     const transcript = transcriptRaw.slice(0, 20000); // token guard
 
-    // 2. Extract via Lovable AI tool-calling.
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "AI gateway not configured" }), {
+    // 2. Extract via Anthropic Claude tool-use.
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      return new Response(JSON.stringify({ error: "Anthropic API key not configured" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `You are a senior associate at a private credit / debt advisory firm summarizing a recorded call for the deal team. Be concise, factual, and use the lender/sponsor's exact terms (rates, advance rates, sizes, dates) when present. Never invent numbers.`,
+    const extractToolSchema = {
+      name: "extract_deal_meeting",
+      description: "Structured extraction from a deal meeting transcript",
+      input_schema: {
+        type: "object",
+        properties: {
+          attendees: {
+            type: "array",
+            items: { type: "object", properties: { name: { type: "string" }, role: { type: "string" } }, required: ["name"] },
           },
+          key_discussion_points: { type: "array", items: { type: "string" } },
+          deal_terms_discussed: {
+            type: "array",
+            items: { type: "object", properties: { term: { type: "string" }, value: { type: "string" } }, required: ["term", "value"] },
+            description: "Concrete terms mentioned: rates (e.g. SOFR+450), advance rates, deal size, tenor, fees, covenants, close timeline.",
+          },
+          decisions: { type: "array", items: { type: "string" } },
+          open_questions: { type: "array", items: { type: "string" } },
+          action_items: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                owner: { type: "string", description: "Name of the person responsible (or 'Team' if unclear)." },
+                title: { type: "string", description: "Imperative task title, e.g. 'Send updated financial model to TriplePoint'." },
+                due_hint: { type: "string", description: "Natural-language due hint if mentioned, e.g. 'by Friday', 'next week', 'EOD tomorrow'. Empty if none." },
+                priority: { type: "string", enum: ["low", "medium", "high"] },
+              },
+              required: ["owner", "title"],
+            },
+          },
+          next_steps: { type: "array", items: { type: "string" } },
+        },
+        required: ["attendees", "key_discussion_points", "deal_terms_discussed", "decisions", "open_questions", "action_items", "next_steps"],
+      },
+    };
+
+    const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-5",
+        max_tokens: 4096,
+        temperature: 0.2,
+        system: `You are a senior associate at a private credit / debt advisory firm summarizing a recorded call for the deal team. Be concise, factual, and use the lender/sponsor's exact terms (rates, advance rates, sizes, dates) when present. Never invent numbers.`,
+        tools: [extractToolSchema],
+        tool_choice: { type: "tool", name: "extract_deal_meeting" },
+        messages: [
           {
             role: "user",
             content: `Recording title: "${title}"\nDeal context: an active credit/lender deal.\n\nTranscript:\n---\n${transcript}\n---\n\nExtract the structured fields using the provided tool. For deal_terms_discussed, capture every quoted rate, advance rate, deal size, tenor, fee, covenant, or timeline mentioned. For action_items, infer the owner from the speaker; if unclear, use "Team".`,
           },
         ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "extract_deal_meeting",
-            description: "Structured extraction from a deal meeting transcript",
-            parameters: {
-              type: "object",
-              properties: {
-                attendees: {
-                  type: "array",
-                  items: { type: "object", properties: { name: { type: "string" }, role: { type: "string" } }, required: ["name"] },
-                },
-                key_discussion_points: { type: "array", items: { type: "string" } },
-                deal_terms_discussed: {
-                  type: "array",
-                  items: { type: "object", properties: { term: { type: "string" }, value: { type: "string" } }, required: ["term", "value"] },
-                  description: "Concrete terms mentioned: rates (e.g. SOFR+450), advance rates, deal size, tenor, fees, covenants, close timeline.",
-                },
-                decisions: { type: "array", items: { type: "string" } },
-                open_questions: { type: "array", items: { type: "string" } },
-                action_items: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      owner: { type: "string", description: "Name of the person responsible (or 'Team' if unclear)." },
-                      title: { type: "string", description: "Imperative task title, e.g. 'Send updated financial model to TriplePoint'." },
-                      due_hint: { type: "string", description: "Natural-language due hint if mentioned, e.g. 'by Friday', 'next week', 'EOD tomorrow'. Empty if none." },
-                      priority: { type: "string", enum: ["low", "medium", "high"] },
-                    },
-                    required: ["owner", "title"],
-                  },
-                },
-                next_steps: { type: "array", items: { type: "string" } },
-              },
-              required: ["attendees", "key_discussion_points", "deal_terms_discussed", "decisions", "open_questions", "action_items", "next_steps"],
-              additionalProperties: false,
-            },
-          },
-        }],
-        tool_choice: { type: "function", function: { name: "extract_deal_meeting" } },
-        temperature: 0.2,
       }),
     });
 
     if (!aiResp.ok) {
       const errText = await aiResp.text();
-      console.error("AI gateway error", aiResp.status, errText);
+      console.error("Anthropic error", aiResp.status, errText);
       const status = aiResp.status === 429 ? 429 : aiResp.status === 402 ? 402 : 502;
-      const msg = aiResp.status === 429 ? "Rate limit exceeded, please try again later."
-        : aiResp.status === 402 ? "AI credits exhausted. Please add credits."
+      const msg = aiResp.status === 429 ? "Claude rate limit exceeded, please try again later."
+        : aiResp.status === 402 ? "Anthropic credits exhausted."
         : "AI extraction failed.";
       return new Response(JSON.stringify({ error: msg }), {
         status, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -291,22 +291,15 @@ Deno.serve(async (req) => {
     }
 
     const aiJson = await aiResp.json();
-    const toolCall = aiJson?.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall?.function?.arguments) {
-      console.error("No tool call returned", JSON.stringify(aiJson).slice(0, 500));
+    const toolUseBlock = (aiJson?.content || []).find((c: any) => c?.type === "tool_use" && c?.name === "extract_deal_meeting");
+    if (!toolUseBlock?.input || typeof toolUseBlock.input !== "object") {
+      console.error("No tool_use block returned", JSON.stringify(aiJson).slice(0, 500));
       return new Response(JSON.stringify({ error: "AI did not return structured data" }), {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    let insights: ExtractedInsights;
-    try {
-      insights = JSON.parse(toolCall.function.arguments);
-    } catch {
-      return new Response(JSON.stringify({ error: "AI returned malformed JSON" }), {
-        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const insights: ExtractedInsights = toolUseBlock.input as ExtractedInsights;
 
     // Normalize defensively.
     insights.attendees ??= [];
