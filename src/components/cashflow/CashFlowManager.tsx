@@ -1251,6 +1251,9 @@ export function CashFlowManager() {
           onWeeksFutureChange={setWeeksFuture}
           weeksPast={weeksPast}
           onWeeksPastChange={setWeeksPast}
+          peakCash={peakCash}
+          lowCash={lowCash}
+          cautionThreshold={CAUTION_THRESHOLD}
           customReceiptRows={customRows.receipts}
           customDisbursementRows={customRows.disbursements}
           onAddCustomRow={(section, name) => addCustomRow(section, name)}
