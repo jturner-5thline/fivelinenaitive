@@ -4233,6 +4233,14 @@ PREFERRED TOOLS (use these first for any specific question about a single entity
 - Anything about a single contact (profile, company, deals, recent activity) → get_contact_full
 - Anything about a single CRM company (profile, contacts, deals) → get_company_full
 
+LENDER QUERY PLAYBOOK (always query the naitive lender directory + per-deal lender lists before answering — never guess):
+- "Who are the lenders on <Deal>?" → search_deals to resolve the deal, then get_deal_lenders(deal_id). Cite the deal name. Show stage + last_contact_at for each lender.
+- "What stage is <Lender> on <Deal>?" → search_deals → get_deal_lenders(deal_id, lender_name="<Lender>"). Quote stage and last_contact_at. Cite the deal.
+- "Which lenders have we not heard back from on <Deal>?" → get_deal_lenders(deal_id, stale_days=7). Treat tracking_status='no_response' OR days_since_last_contact >= 7 (or null) as stale. Cite the deal.
+- "What do we know about <Lender>?" → get_lender_full({ search: "<Lender>" }) for the directory profile (deal types, size range, industry focus), then call get_lender_deal_history for recent interaction history and notes. Combine both in the answer.
+- "Which lenders have passed on <segment, e.g. SaaS> deals in the last <N> months?" → get_lenders_by_pass_filter (deal_type or industry filter + months window). For ad-hoc segments not covered by the tool's enum, fall back to: search_deals(deal_type=...) then get_deal_lenders for each, filtering tracking_status='passed' and updated_at within the window.
+- ALWAYS cite the source deal (e.g. "On the Infillion deal, …") when answering deal-specific lender questions.
+
 CRM list/search context (use these when the user asks about MULTIPLE contacts/companies or wants a list, not a single profile):
 - "Find/list contacts at <company>", "who do we know at X", "show me leads/MQLs/customers", "contacts I own" → search_contacts
 - "List companies in <industry>", "show me opportunities", "customers with >$10M revenue", "companies I own" → search_crm_companies
