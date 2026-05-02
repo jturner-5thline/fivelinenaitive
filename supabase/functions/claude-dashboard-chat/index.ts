@@ -88,7 +88,7 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
   const ACTIVE_STATUSES = ["on-track", "at-risk", "off-track", "active"];
   const [dealsRes, tasksRes] = await Promise.all([
     supabase.from("deals")
-      .select("id, company, value, stage, status, deal_type, business_model, created_at, updated_at, user_id, deal_owner, manager, next_follow_up_at, notes_updated_at")
+      .select("id, company, value, stage, status, deal_type, deal_class, pipeline_id, business_model, created_at, updated_at, user_id, deal_owner, manager, next_follow_up_at, notes_updated_at")
       .eq("company_id", companyId)
       .in("status", ACTIVE_STATUSES)
       .order("updated_at", { ascending: false })
@@ -121,6 +121,10 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
     if (n.startsWith("test ")) return false;
     if (n === "test-niki's store" || n === "test-niki’s store") return false;
     if (n === "example deal") return false;
+    // Match the My Deals widget: exclude naitive Pipeline & FinServ deals
+    // from the standard "active deals" view used by the Dashboard AI.
+    const dc = (d.deal_class || "standard").toLowerCase();
+    if (dc === "naitive" || dc === "finserv") return false;
     return true;
   });
 
@@ -164,10 +168,14 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
     const prev = lastActivityByDeal.get(a.deal_id) || 0;
     if (t > prev) lastActivityByDeal.set(a.deal_id, t);
   }
+  // Lender-only touch — used to answer "no lender activity in N days"
+  const lastLenderTouchByDeal = new Map<string, number>();
   for (const l of lenders) {
     const t = new Date(l.updated_at || l.created_at).getTime();
     const prev = lastActivityByDeal.get(l.deal_id) || 0;
     if (t > prev) lastActivityByDeal.set(l.deal_id, t);
+    const prevL = lastLenderTouchByDeal.get(l.deal_id) || 0;
+    if (t > prevL) lastLenderTouchByDeal.set(l.deal_id, t);
   }
 
   // "Active" for staleness = pipeline-active deals only (exclude archived,
@@ -195,11 +203,12 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
     deals, tasks, lenders, milestones, activities,
     lenderStats: lenderStatsRes?.data || [],
     staleDeals,
+    lastLenderTouchByDeal: Object.fromEntries(lastLenderTouchByDeal),
   };
 }
 
 function buildContextString(ctx: any, companyName: string, userName: string) {
-  const { deals, tasks, lenders, milestones, activities, lenderStats, staleDeals } = ctx;
+  const { deals, tasks, lenders, milestones, activities, lenderStats, staleDeals, lastLenderTouchByDeal = {} } = ctx;
   const today = new Date().toISOString().slice(0, 10);
   const lines: string[] = [];
 
@@ -214,7 +223,10 @@ function buildContextString(ctx: any, companyName: string, userName: string) {
       const last = new Date(d.updated_at || d.created_at);
       const daysAgo = Math.floor((Date.now() - last.getTime()) / 86_400_000);
       const valueM = d.value ? `$${(d.value / 1e6).toFixed(1)}M` : "n/a";
-      lines.push(`- ${d.company}: ${valueM} | stage: ${d.stage}${d.business_model ? ` | ${d.business_model}` : ""} | last update: ${daysAgo}d ago`);
+      const lenderTs = lastLenderTouchByDeal[d.id];
+      const lenderDays = lenderTs ? Math.floor((Date.now() - lenderTs) / 86_400_000) : null;
+      const lenderLabel = lenderDays === null ? "no lender activity" : `last lender touch: ${lenderDays}d ago`;
+      lines.push(`- ${d.company}: ${valueM} | stage: ${d.stage}${d.business_model ? ` | ${d.business_model}` : ""} | last update: ${daysAgo}d ago | ${lenderLabel}`);
     });
   }
 
