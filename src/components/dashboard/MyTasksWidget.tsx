@@ -168,54 +168,55 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
         </CollapsibleTrigger>
         <CollapsibleContent className="flex-1 min-h-0 flex flex-col">
           <CardContent className="pt-0 space-y-3 flex-1 min-h-0 flex flex-col">
-            {/* Primary filter row — main navigation for the widget */}
+            {/* Unified filter bar — primary + secondary controls on one row */}
             <div className="border-b border-border/40 -mx-6 px-6 pb-2">
-              <ToggleGroup
-                type="single"
-                value={filter}
-                onValueChange={(v) => v && setFilter(v as TaskFilter)}
-                className="justify-start gap-1"
-              >
-                <ToggleGroupItem value="all" className="text-xs h-8 px-3 font-medium">All Tasks</ToggleGroupItem>
-                <ToggleGroupItem value="today" className="text-xs h-8 px-3 font-medium">Today</ToggleGroupItem>
-                <ToggleGroupItem value="overdue" className="text-xs h-8 px-3 font-medium gap-1">
-                  <AlertTriangle className="h-3 w-3" />Overdue
-                </ToggleGroupItem>
-                <ToggleGroupItem value="upcoming" className="text-xs h-8 px-3 font-medium">Next 3 Days</ToggleGroupItem>
-              </ToggleGroup>
-            </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <ToggleGroup
+                  type="single"
+                  value={filter}
+                  onValueChange={(v) => v && setFilter(v as TaskFilter)}
+                  className="justify-start gap-1"
+                >
+                  <ToggleGroupItem value="all" className="text-xs h-8 px-3 font-medium">All Tasks</ToggleGroupItem>
+                  <ToggleGroupItem value="today" className="text-xs h-8 px-3 font-medium">Today</ToggleGroupItem>
+                  <ToggleGroupItem value="overdue" className="text-xs h-8 px-3 font-medium gap-1">
+                    <AlertTriangle className="h-3 w-3" />Overdue
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="upcoming" className="text-xs h-8 px-3 font-medium">Next 3 Days</ToggleGroupItem>
+                </ToggleGroup>
 
-            {/* Secondary controls — clearly subordinate, right-aligned */}
-            <div className="flex items-center justify-end gap-2">
-              <ToggleGroup
-                type="single"
-                value={scope}
-                onValueChange={(v) => v && setScope(v as Scope)}
-                size="sm"
-                className="gap-0.5"
-              >
-                <ToggleGroupItem value="mine" className="text-[11px] h-7 px-2.5 text-muted-foreground data-[state=on]:text-foreground" title="My tasks only">
-                  Mine
-                </ToggleGroupItem>
-                <ToggleGroupItem value="team" className="text-[11px] h-7 px-2.5 gap-1 text-muted-foreground data-[state=on]:text-foreground" title="All team tasks">
-                  <Users className="h-3 w-3" />Team
-                </ToggleGroupItem>
-              </ToggleGroup>
-              <div className="w-px h-5 bg-border/60" aria-hidden />
-              <ToggleGroup
-                type="single"
-                value={groupBy}
-                onValueChange={(v) => v && setGroupBy(v as GroupBy)}
-                size="sm"
-                className="gap-0.5"
-              >
-                <ToggleGroupItem value="date" className="text-[11px] h-7 px-2.5 text-muted-foreground data-[state=on]:text-foreground">
-                  By Date
-                </ToggleGroupItem>
-                <ToggleGroupItem value="deal" className="text-[11px] h-7 px-2.5 text-muted-foreground data-[state=on]:text-foreground">
-                  By Deal
-                </ToggleGroupItem>
-              </ToggleGroup>
+                <div className="ml-auto flex items-center gap-1.5 rounded-md border border-border/40 bg-muted/30 px-1 py-0.5">
+                  <ToggleGroup
+                    type="single"
+                    value={scope}
+                    onValueChange={(v) => v && setScope(v as Scope)}
+                    size="sm"
+                    className="gap-0.5"
+                  >
+                    <ToggleGroupItem value="mine" className="text-[11px] h-7 px-2.5 text-muted-foreground data-[state=on]:text-foreground" title="My tasks only">
+                      Mine
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="team" className="text-[11px] h-7 px-2.5 gap-1 text-muted-foreground data-[state=on]:text-foreground" title="All team tasks">
+                      <Users className="h-3 w-3" />Team
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                  <div className="w-px h-4 bg-border/60" aria-hidden />
+                  <ToggleGroup
+                    type="single"
+                    value={groupBy}
+                    onValueChange={(v) => v && setGroupBy(v as GroupBy)}
+                    size="sm"
+                    className="gap-0.5"
+                  >
+                    <ToggleGroupItem value="date" className="text-[11px] h-7 px-2.5 text-muted-foreground data-[state=on]:text-foreground">
+                      By Date
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="deal" className="text-[11px] h-7 px-2.5 text-muted-foreground data-[state=on]:text-foreground">
+                      By Deal
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
+              </div>
             </div>
 
             <ScrollArea className="flex-1 min-h-0">
