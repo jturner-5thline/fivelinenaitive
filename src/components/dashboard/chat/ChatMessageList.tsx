@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { ResearchCitations } from './ResearchCitations';
 import { EmailDraftCard, extractEmailDraft } from './EmailDraftCard';
 import { MorningBriefing, isBriefingMessage, BRIEFING_MARKER } from './MorningBriefing';
+import { MorningIntelligenceBrief, isIntelBriefMessage, INTEL_BRIEF_MARKER } from './MorningIntelligenceBrief';
 import { CopilotActionConfirm } from '@/components/copilot/CopilotActionConfirm';
 
 interface Props {
