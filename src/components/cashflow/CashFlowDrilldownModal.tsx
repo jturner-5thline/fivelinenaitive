@@ -469,11 +469,33 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                     );
                   }
                   return (
-                    <tr key={r.id} className="border-t border-border hover:bg-muted/40">
+                    <tr
+                      key={r.id}
+                      className={`border-t border-border hover:bg-muted/40 ${r.projected ? 'italic' : ''}`}
+                    >
                       <td className="px-3 py-2 whitespace-nowrap">{formatNiceDate(r.date)}</td>
                       <td className="px-3 py-2">{r.account}</td>
-                      <td className="px-3 py-2">{r.category}</td>
-                      <td className="px-3 py-2 text-muted-foreground">{r.notes || '—'}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1.5">
+                          <span>{r.category}</span>
+                          {r.projected && (
+                            <Badge variant="outline" className="h-4 px-1 text-[9px] font-medium border-amber-500/40 text-amber-500">
+                              P
+                            </Badge>
+                          )}
+                          {r.source === 'quickbooks' && (
+                            <Badge variant="outline" className="h-4 px-1 text-[9px] font-medium border-emerald-500/40 text-emerald-500">
+                              QB
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        <div className="truncate" title={r.notes || ''}>{r.notes || '—'}</div>
+                        <div className="text-[10px] text-muted-foreground/70 truncate" title={r.sourceLabel}>
+                          Source: {r.sourceLabel}
+                        </div>
+                      </td>
                       <td
                         className={`px-3 py-2 text-right tabular-nums ${
                           r.signedAmount > 0 ? 'text-emerald-500' : r.signedAmount < 0 ? 'text-red-500' : ''
@@ -484,7 +506,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                       {canMutate && (
                         <td className="px-3 py-2 text-right">
                           <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100">
-                            {onUpdateEntry && (
+                            {onUpdateEntry && r.source === 'manual' && (
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -496,7 +518,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                                 <Pencil className="h-3.5 w-3.5" />
                               </Button>
                             )}
-                            {onDeleteEntry && (
+                            {onDeleteEntry && r.source === 'manual' && (
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -507,6 +529,11 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
+                            )}
+                            {r.source !== 'manual' && (
+                              <span className="text-[10px] text-muted-foreground self-center pr-1">
+                                Auto
+                              </span>
                             )}
                           </div>
                         </td>
