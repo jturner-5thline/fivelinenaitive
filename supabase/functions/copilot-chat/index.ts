@@ -1293,6 +1293,9 @@ function selectTools(page: string, entityType?: string) {
     // Always-available Claap meeting intelligence & routing.
     "get_claap_meeting_full", "list_unmatched_claap_meetings",
     "get_claap_routing_queue", "list_claap_skipped_calls", "get_claap_webhook_errors",
+    // Always-available FinServ ops (5th Line internal pipeline).
+    "get_finserv_pipeline_summary", "list_finserv_deals", "get_finserv_deal_full",
+    "get_finserv_revenue_summary", "list_finserv_milestones",
   ]);
 
   if (page.includes("lender")) {
