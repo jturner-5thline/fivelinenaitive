@@ -2561,6 +2561,10 @@ Other tools when the question is broader / not entity-specific:
 - Tasks (mine, delegated, by deal/contact, overdue, starred, recently completed) → get_tasks
 - Full detail on one task (subtasks, comments, watchers, activity) → get_task_details
 - Scheduled deal follow-ups (pending or recently fired) → get_scheduled_followups
+
+Document context (VDR / data room — use whenever the question references the actual contents of uploaded docs, term sheets, financial statements, agreements):
+- "What does the <doc> say about X", "find the covenant/EBITDA/use-of-proceeds language", "show me where Y is mentioned" → search_vdr_documents (returns text chunks WITH filename + page; ALWAYS cite the source)
+- "What docs do we have", "list the financials in the data room", "do we have a term sheet" → list_vdr_documents
 - Activity feed across deals → get_activity_log
 - Find deals/lenders by keyword → search_deals / search_lenders
 
