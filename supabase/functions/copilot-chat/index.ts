@@ -104,12 +104,20 @@ const tools = [
     type: "function",
     function: {
       name: "get_tasks",
-      description: "Get tasks filtered by status, deal, or time range.",
+      description: "Get tasks for the current user (or a teammate) with rich filters. Returns task title, status, priority, due/start date, deal context, assignee, starred, and task type. Use for 'what's on my plate', 'overdue tasks', 'tasks for <deal>', 'tasks I delegated', 'tasks assigned to <person>', 'starred tasks', 'recently completed'.",
       parameters: {
         type: "object",
         properties: {
-          filter: { type: "string", enum: ["overdue", "today", "this_week", "all"] },
+          filter: { type: "string", enum: ["overdue", "today", "this_week", "next_7_days", "no_due_date", "starred", "completed_recently", "all"], description: "Time-based or attribute filter. 'completed_recently' = closed in last 14 days." },
+          scope: { type: "string", enum: ["assigned_to_me", "assigned_by_me", "all_company", "specific_user"], description: "Who owns the tasks. Default: assigned_to_me." },
+          assignee_user_id: { type: "string", description: "User UUID when scope='specific_user'. Resolve names via search_team_members first." },
           deal_id: { type: "string" },
+          contact_id: { type: "string" },
+          crm_company_id: { type: "string" },
+          lender_id: { type: "string" },
+          priority: { type: "string", enum: ["low", "medium", "high", "urgent"] },
+          include_completed: { type: "boolean", description: "Include completed/done tasks. Default false." },
+          limit: { type: "number", description: "Max tasks. Default 50, max 200." },
         },
       },
     },
