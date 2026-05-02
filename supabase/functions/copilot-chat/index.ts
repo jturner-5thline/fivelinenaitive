@@ -545,6 +545,65 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "search_contacts",
+      description: "Search/list CRM contacts by name, email, job title, company, lifecycle stage, owner, or recency. Returns a ranked list (id, name, email, title, company, lifecycle, owner, last_activity_date) — use get_contact_full for the full profile of a single contact.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Free-text match against full_name, email, or job_title." },
+          company_id: { type: "string", description: "Filter to contacts at this CRM company UUID." },
+          company_name: { type: "string", description: "Filter to contacts at a CRM company matched by name (partial)." },
+          lifecycle_stage: { type: "string", description: "Filter by lifecycle stage (e.g. 'lead', 'mql', 'sql', 'customer')." },
+          owner_user_id: { type: "string", description: "Filter to contacts owned by this user." },
+          mine_only: { type: "boolean", description: "If true, restrict to contacts owned by the current user." },
+          active_since_days: { type: "number", description: "Only include contacts with last_activity_date within this many days." },
+          limit: { type: "number", description: "Max results (default 25, max 100)." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_crm_companies",
+      description: "Search/list CRM companies by name, domain, industry, lifecycle stage, customer tier, owner, or revenue band. Returns a ranked list (id, name, domain, industry, lifecycle, tier, employees, revenue) — use get_company_full for the full profile of a single company.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Free-text match against name or domain." },
+          industry: { type: "string", description: "Filter by industry (partial match)." },
+          lifecycle_stage: { type: "string", description: "Filter by lifecycle stage (e.g. 'target', 'opportunity', 'customer')." },
+          customer_tier: { type: "string", description: "Filter by customer tier." },
+          owner_user_id: { type: "string", description: "Filter to companies owned by this user." },
+          mine_only: { type: "boolean", description: "If true, restrict to companies owned by the current user." },
+          min_employees: { type: "number", description: "Minimum employee_count." },
+          min_annual_revenue: { type: "number", description: "Minimum annual_revenue." },
+          limit: { type: "number", description: "Max results (default 25, max 100)." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_recent_crm_activities",
+      description: "List recent CRM contact activities (calls, emails, meetings, notes) across the org or scoped to a contact, company, or deal. Useful for 'what's the latest with X?' or 'who have we touched this week?'.",
+      parameters: {
+        type: "object",
+        properties: {
+          contact_id: { type: "string", description: "Scope to one contact." },
+          deal_id: { type: "string", description: "Scope to activities tied to one deal." },
+          company_id: { type: "string", description: "Scope to contacts at one CRM company." },
+          activity_type: { type: "string", description: "Filter by activity type (e.g. 'call', 'email', 'meeting', 'note')." },
+          since_days: { type: "number", description: "Look back this many days (default 14)." },
+          limit: { type: "number", description: "Max results (default 30, max 100)." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "link_contact_to_deal",
       description: "Associate an existing contact with a deal so the contact appears on the deal's people list. Requires user confirmation before writing. Pass contact_id (preferred) or contact_search (name/email) plus deal_id (preferred) or deal_search.",
       parameters: {
@@ -828,6 +887,8 @@ function selectTools(page: string, entityType?: string) {
     "get_pipelines", "move_deal_pipeline",
     // Always-available kitchen-sink reads so the model never says "I don't have that data".
     "get_deal_full", "get_lender_full", "get_contact_full", "get_company_full",
+    // Always-available CRM list/search (contacts, companies, recent activities).
+    "search_contacts", "search_crm_companies", "get_recent_crm_activities",
     // Always-available link/write actions (still gated by confirmation card).
     "link_contact_to_deal",
     // Always-available comms context (synced inbox, calendar, recorded meetings).
@@ -2362,6 +2423,126 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         deals: dealsRes.data || [],
       };
     }
+    case "search_contacts": {
+      const limit = Math.min(Number(args.limit) || 25, 100);
+      let companyId: string | null = args.company_id || null;
+      if (!companyId && args.company_name) {
+        const { data: cmatch } = await supabase
+          .from("crm_companies").select("id").ilike("name", `%${args.company_name}%`).limit(1).maybeSingle();
+        companyId = cmatch?.id || null;
+        if (!companyId) return { count: 0, contacts: [], note: `No CRM company matched "${args.company_name}"` };
+      }
+      let q = supabase
+        .from("contacts")
+        .select("id, full_name, email, job_title, seniority, lifecycle_stage, owner_user_id, primary_company_id, company_id, last_activity_date")
+        .order("last_activity_date", { ascending: false, nullsFirst: false })
+        .limit(limit);
+      if (args.query) {
+        const term = String(args.query).replace(/[%,]/g, "");
+        q = q.or(`full_name.ilike.%${term}%,email.ilike.%${term}%,job_title.ilike.%${term}%`);
+      }
+      if (companyId) q = q.or(`company_id.eq.${companyId},primary_company_id.eq.${companyId}`);
+      if (args.lifecycle_stage) q = q.eq("lifecycle_stage", args.lifecycle_stage);
+      if (args.owner_user_id) q = q.eq("owner_user_id", args.owner_user_id);
+      if (args.mine_only) q = q.eq("owner_user_id", userId);
+      if (args.active_since_days) {
+        const since = new Date(Date.now() - Number(args.active_since_days) * 86400000).toISOString();
+        q = q.gte("last_activity_date", since);
+      }
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const rows = data || [];
+      const companyIds = Array.from(new Set(rows.map((r: any) => r.primary_company_id || r.company_id).filter(Boolean)));
+      let companyMap: Record<string, any> = {};
+      if (companyIds.length) {
+        const { data: cs } = await supabase
+          .from("crm_companies").select("id, name, domain").in("id", companyIds);
+        (cs || []).forEach((c: any) => { companyMap[c.id] = c; });
+      }
+      return {
+        count: rows.length,
+        contacts: rows.map((r: any) => ({
+          id: r.id,
+          name: r.full_name,
+          email: r.email,
+          job_title: r.job_title,
+          seniority: r.seniority,
+          lifecycle_stage: r.lifecycle_stage,
+          owner_user_id: r.owner_user_id,
+          last_activity_date: r.last_activity_date,
+          company: companyMap[r.primary_company_id || r.company_id] || null,
+        })),
+      };
+    }
+    case "search_crm_companies": {
+      const limit = Math.min(Number(args.limit) || 25, 100);
+      let q = supabase
+        .from("crm_companies")
+        .select("id, name, domain, industry, sub_industry, lifecycle_stage, customer_tier, employee_count, annual_revenue, arr, owner_user_id, hq_city, hq_country")
+        .order("annual_revenue", { ascending: false, nullsFirst: false })
+        .limit(limit);
+      if (args.query) {
+        const term = String(args.query).replace(/[%,]/g, "");
+        q = q.or(`name.ilike.%${term}%,domain.ilike.%${term}%`);
+      }
+      if (args.industry) q = q.ilike("industry", `%${args.industry}%`);
+      if (args.lifecycle_stage) q = q.eq("lifecycle_stage", args.lifecycle_stage);
+      if (args.customer_tier) q = q.eq("customer_tier", args.customer_tier);
+      if (args.owner_user_id) q = q.eq("owner_user_id", args.owner_user_id);
+      if (args.mine_only) q = q.eq("owner_user_id", userId);
+      if (args.min_employees) q = q.gte("employee_count", Number(args.min_employees));
+      if (args.min_annual_revenue) q = q.gte("annual_revenue", Number(args.min_annual_revenue));
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      return { count: (data || []).length, companies: data || [] };
+    }
+    case "get_recent_crm_activities": {
+      const limit = Math.min(Number(args.limit) || 30, 100);
+      const sinceDays = Number(args.since_days) || 14;
+      const since = new Date(Date.now() - sinceDays * 86400000).toISOString();
+      let contactIds: string[] | null = null;
+      if (args.company_id) {
+        const { data: cs } = await supabase
+          .from("contacts").select("id")
+          .or(`company_id.eq.${args.company_id},primary_company_id.eq.${args.company_id}`)
+          .limit(500);
+        contactIds = (cs || []).map((c: any) => c.id);
+        if (contactIds.length === 0) return { count: 0, activities: [] };
+      }
+      let q = supabase
+        .from("contact_activities")
+        .select("id, contact_id, activity_type, subject, body, occurred_at, deal_id, logged_by")
+        .gte("occurred_at", since)
+        .order("occurred_at", { ascending: false })
+        .limit(limit);
+      if (args.contact_id) q = q.eq("contact_id", args.contact_id);
+      if (args.deal_id) q = q.eq("deal_id", args.deal_id);
+      if (args.activity_type) q = q.eq("activity_type", args.activity_type);
+      if (contactIds) q = q.in("contact_id", contactIds);
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const rows = data || [];
+      const cIds = Array.from(new Set(rows.map((r: any) => r.contact_id).filter(Boolean)));
+      let cmap: Record<string, any> = {};
+      if (cIds.length) {
+        const { data: cs } = await supabase
+          .from("contacts").select("id, full_name, email").in("id", cIds);
+        (cs || []).forEach((c: any) => { cmap[c.id] = c; });
+      }
+      return {
+        count: rows.length,
+        since,
+        activities: rows.map((r: any) => ({
+          id: r.id,
+          activity_type: r.activity_type,
+          subject: r.subject,
+          body: r.body ? String(r.body).slice(0, 500) : null,
+          occurred_at: r.occurred_at,
+          deal_id: r.deal_id,
+          contact: cmap[r.contact_id] || { id: r.contact_id },
+        })),
+      };
+    }
     case "link_contact_to_deal": {
       // Resolve contact
       let contactId = args.contact_id as string | undefined;
@@ -2927,6 +3108,11 @@ PREFERRED TOOLS (use these first for any specific question about a single entity
 - Anything about a single lender (profile, every deal they're on, stage per deal, last contact) → get_lender_full
 - Anything about a single contact (profile, company, deals, recent activity) → get_contact_full
 - Anything about a single CRM company (profile, contacts, deals) → get_company_full
+
+CRM list/search context (use these when the user asks about MULTIPLE contacts/companies or wants a list, not a single profile):
+- "Find/list contacts at <company>", "who do we know at X", "show me leads/MQLs/customers", "contacts I own" → search_contacts
+- "List companies in <industry>", "show me opportunities", "customers with >$10M revenue", "companies I own" → search_crm_companies
+- "What's the latest with <contact/company/deal>", "recent calls/emails/notes this week", "who have we touched" → get_recent_crm_activities
 
 Other tools when the question is broader / not entity-specific:
 - Pipeline overview → get_pipeline_summary
