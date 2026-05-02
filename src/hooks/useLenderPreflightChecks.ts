@@ -265,6 +265,37 @@ export function useLenderPreflightChecks({
             }
           }
 
+          // Industry / sector fit. Two failure modes:
+          //  (a) deal industry is on the lender's `industries_to_avoid`
+          //      list → strong signal, surface the offending tag.
+          //  (b) lender publishes an `industries` allow-list and none of
+          //      the deal's industry tags appear on it.
+          if (master && dealIndustries.length > 0) {
+            const avoided = master.industries_to_avoid.find((entry) =>
+              dealIndustries.some((di) => industryMatches(di, entry))
+            );
+            if (avoided) {
+              warnings.push({
+                kind: 'industry_mismatch',
+                severity: 'warning',
+                message: `${original} avoids ${avoided} — this deal's industry is ${dealIndustries.join(' / ')}.`,
+              });
+            } else if (master.industries.length > 0) {
+              const onAllowList = master.industries.some((entry) =>
+                dealIndustries.some((di) => industryMatches(di, entry))
+              );
+              if (!onAllowList) {
+                const preview = master.industries.slice(0, 3).join(', ');
+                const more = master.industries.length > 3 ? `, +${master.industries.length - 3} more` : '';
+                warnings.push({
+                  kind: 'industry_mismatch',
+                  severity: 'warning',
+                  message: `${original} focuses on ${preview}${more} — this deal's industry is ${dealIndustries.join(' / ')}.`,
+                });
+              }
+            }
+          }
+
           out[k] = {
             lenderName: original,
             masterLenderId: master?.id ?? null,
