@@ -41,12 +41,28 @@ Deno.serve(async (req) => {
     );
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    let claimsOk = false;
+    try {
+      const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+      claimsOk = !claimsError && !!claimsData?.claims;
+    } catch (e) {
+      console.warn("getClaims threw, treating as transient:", e);
+    }
+    if (!claimsOk) {
+      // Auth service may be transiently unavailable (e.g. DB connection limits).
+      // Degrade gracefully with empty engagement instead of returning 401, so the UI
+      // doesn't surface a runtime error overlay for a non-critical widget.
+      return new Response(
+        JSON.stringify({
+          success: true,
+          engagement: {
+            views: 0, downloads: 0, info_requests: 0, nda_requests: 0,
+            term_sheet_requests: 0, saves: 0, unique_lenders: 0,
+          },
+          source: "auth_unavailable",
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Parse request
