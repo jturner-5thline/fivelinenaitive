@@ -168,10 +168,14 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
     const prev = lastActivityByDeal.get(a.deal_id) || 0;
     if (t > prev) lastActivityByDeal.set(a.deal_id, t);
   }
+  // Lender-only touch — used to answer "no lender activity in N days"
+  const lastLenderTouchByDeal = new Map<string, number>();
   for (const l of lenders) {
     const t = new Date(l.updated_at || l.created_at).getTime();
     const prev = lastActivityByDeal.get(l.deal_id) || 0;
     if (t > prev) lastActivityByDeal.set(l.deal_id, t);
+    const prevL = lastLenderTouchByDeal.get(l.deal_id) || 0;
+    if (t > prevL) lastLenderTouchByDeal.set(l.deal_id, t);
   }
 
   // "Active" for staleness = pipeline-active deals only (exclude archived,
