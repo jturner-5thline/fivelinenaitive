@@ -782,6 +782,44 @@ export function CashFlowManager() {
     };
   }, [filteredWeekly, weeksFuture]);
 
+  // Peak / Low Ending Cash over the *visible* window (weeksPast → weeksFuture).
+  // Mirrors the column window used by WeeklyReportTab so the chips, chart
+  // markers, and warning banner all reflect the same forward-looking horizon.
+  const CAUTION_THRESHOLD = 100_000;
+  const APPROACHING_THRESHOLD = 150_000;
+  const { peakCash, lowCash, lowCashBelowCaution } = useMemo(() => {
+    const sortedEntries = Object.entries(filteredWeekly || {}).sort(([a], [b]) => a.localeCompare(b));
+    if (sortedEntries.length === 0) {
+      return { peakCash: null as null | { value: number; weekEnding: string; weekKey: string }, lowCash: null as null | { value: number; weekEnding: string; weekKey: string }, lowCashBelowCaution: false };
+    }
+    const todayISO = new Date().toISOString().split('T')[0];
+    let currentIdx = sortedEntries.findIndex(([dateKey, entry]: any) => {
+      const we = typeof entry?.week_ending === 'string' ? entry.week_ending : dateKey;
+      return we >= todayISO;
+    });
+    if (currentIdx < 0) currentIdx = sortedEntries.length - 1;
+    const startIdx = Math.max(0, currentIdx - Math.max(0, weeksPast));
+    const endIdx = Math.min(sortedEntries.length, currentIdx + 1 + Math.max(0, weeksFuture));
+    const win = sortedEntries.slice(startIdx, endIdx);
+    if (win.length === 0) {
+      return { peakCash: null, lowCash: null, lowCashBelowCaution: false };
+    }
+    let peak: { value: number; weekEnding: string; weekKey: string } | null = null;
+    let low: { value: number; weekEnding: string; weekKey: string } | null = null;
+    for (const [key, entry] of win) {
+      const v = Number((entry as any)?.["ENDING CASH"]);
+      if (!Number.isFinite(v)) continue;
+      const we = (entry as any)?.week_ending || key;
+      if (peak === null || v > peak.value) peak = { value: v, weekEnding: we, weekKey: key };
+      if (low === null || v < low.value) low = { value: v, weekEnding: we, weekKey: key };
+    }
+    return {
+      peakCash: peak,
+      lowCash: low,
+      lowCashBelowCaution: !!low && low.value < CAUTION_THRESHOLD,
+    };
+  }, [filteredWeekly, weeksPast, weeksFuture]);
+
   const handleCellEdit = useCallback((rowKey: string, colIdx: number, value: number) => {
     pushUndo(`Edit daily cell: ${rowKey}, col ${colIdx}`);
     setActiveData('daily', (prev: DailyData) => {
@@ -1017,6 +1055,10 @@ export function CashFlowManager() {
         cashOut={cashOut}
         netChange={netChange}
         kpiRangeLabel={kpiRangeLabel}
+        peakCash={peakCash}
+        lowCash={lowCash}
+        cautionThreshold={CAUTION_THRESHOLD}
+        approachingThreshold={APPROACHING_THRESHOLD}
         undoCount={undoStack.length}
         activityCount={activityLog.length}
         onRoleChange={handleRoleChange}
@@ -1209,6 +1251,9 @@ export function CashFlowManager() {
           onWeeksFutureChange={setWeeksFuture}
           weeksPast={weeksPast}
           onWeeksPastChange={setWeeksPast}
+          peakCash={peakCash}
+          lowCash={lowCash}
+          cautionThreshold={CAUTION_THRESHOLD}
           customReceiptRows={customRows.receipts}
           customDisbursementRows={customRows.disbursements}
           onAddCustomRow={(section, name) => addCustomRow(section, name)}

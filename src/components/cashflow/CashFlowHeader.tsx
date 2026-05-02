@@ -11,6 +11,10 @@ interface HeaderProps {
   cashOut: number;
   netChange: number;
   kpiRangeLabel?: string;
+  peakCash?: { value: number; weekEnding: string; weekKey: string } | null;
+  lowCash?: { value: number; weekEnding: string; weekKey: string } | null;
+  cautionThreshold?: number;
+  approachingThreshold?: number;
   undoCount: number;
   activityCount: number;
   onRoleChange: (role: RoleMode) => void;
@@ -80,9 +84,24 @@ function EyeIcon() {
 
 export const CashFlowHeader = memo(function CashFlowHeader({
   role, theme, activeTab, cashIn, cashOut, netChange, kpiRangeLabel,
+  peakCash, lowCash,
+  cautionThreshold = 100_000, approachingThreshold = 150_000,
   undoCount, activityCount, onRoleChange, onThemeToggle,
   onTabChange, onUndo, onOpenActivityLog, onConfigureScheduled,
 }: HeaderProps) {
+  const fmtWeekOf = (iso: string) => {
+    if (!iso) return '';
+    const d = new Date(iso + (iso.length === 10 ? 'T00:00:00' : ''));
+    if (isNaN(d.getTime())) return '';
+    return `Week of ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+  };
+  const lowColor = lowCash
+    ? (lowCash.value < cautionThreshold
+        ? 'var(--color-negative)'
+        : lowCash.value < approachingThreshold
+          ? 'var(--color-warning)'
+          : 'var(--color-positive)')
+    : 'var(--color-text-muted)';
   return (
     <>
       <div className="cf-header">
@@ -103,6 +122,27 @@ export const CashFlowHeader = memo(function CashFlowHeader({
               {fmtShort(netChange)}
             </div>
             {kpiRangeLabel && <div style={{ fontSize: 10, color: 'var(--color-text-faint)', marginTop: 2 }}>{kpiRangeLabel}</div>}
+          </div>
+          <div className="cf-kpi" title="Highest Ending Cash in the visible window (Weeks Past + Weeks Future)">
+            <div className="cf-kpi-label">Peak Cash</div>
+            <div className="cf-kpi-value" style={{ color: 'var(--color-positive)' }}>
+              {peakCash ? fmtShort(peakCash.value) : '—'}
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--color-text-faint)', marginTop: 2 }}>
+              {peakCash ? fmtWeekOf(peakCash.weekEnding) : '\u00A0'}
+            </div>
+          </div>
+          <div
+            className={`cf-kpi${lowCash && lowCash.value < cautionThreshold ? ' cf-kpi-pulse' : ''}`}
+            title="Lowest Ending Cash in the visible window (Weeks Past + Weeks Future)"
+          >
+            <div className="cf-kpi-label">Low Cash</div>
+            <div className="cf-kpi-value" style={{ color: lowColor }}>
+              {lowCash ? fmtShort(lowCash.value) : '—'}
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--color-text-faint)', marginTop: 2 }}>
+              {lowCash ? fmtWeekOf(lowCash.weekEnding) : '\u00A0'}
+            </div>
           </div>
         </div>
 

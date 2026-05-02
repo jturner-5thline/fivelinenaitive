@@ -14,13 +14,23 @@ interface WeeklyChartsProps {
    * weeks in weeklyData are plotted (legacy behavior).
    */
   visibleWeekKeys?: string[];
+  /** Week key (entry of weeklyData) of the peak Ending Cash in the visible window. */
+  peakWeekKey?: string | null;
+  /** Week key (entry of weeklyData) of the low Ending Cash in the visible window. */
+  lowWeekKey?: string | null;
+  /** When true, the low marker is rendered with a pulsing radius to draw attention. */
+  lowWeekBelowCaution?: boolean;
 }
 
-export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme, visibleWeekKeys }: WeeklyChartsProps) {
+export const WeeklyCharts = memo(function WeeklyCharts({
+  weeklyData, theme, visibleWeekKeys,
+  peakWeekKey = null, lowWeekKey = null, lowWeekBelowCaution = false,
+}: WeeklyChartsProps) {
   const chart1Ref = useRef<HTMLCanvasElement>(null);
   const chart2Ref = useRef<HTMLCanvasElement>(null);
   const chart1Instance = useRef<Chart | null>(null);
   const chart2Instance = useRef<Chart | null>(null);
+  const pulseFrame = useRef<number | null>(null);
 
   // Memoize chart data to avoid recalculation
   const chartData = useMemo(() => {
@@ -30,6 +40,9 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme, visi
       const allow = new Set(visibleWeekKeys);
       entries = all.filter(([k]) => allow.has(k));
     }
+    const orderedKeys = entries.map(([k]) => k);
+    const peakIdx = peakWeekKey ? orderedKeys.indexOf(peakWeekKey) : -1;
+    const lowIdx = lowWeekKey ? orderedKeys.indexOf(lowWeekKey) : -1;
     return {
       labels: entries.map(([, v]) => {
         const d = new Date(v.week_ending);
@@ -39,8 +52,10 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme, visi
       totalLiquidity: entries.map(([, v]) => (v["TOTAL CASH ON HAND"] as number) / 1000),
       cashIn: entries.map(([, v]) => ((v["TOTAL RECEIPTS"] as number) || 0) / 1000),
       cashOut: entries.map(([, v]) => ((v["TOTAL DISBURSEMENTS"] as number) || 0) / 1000),
+      peakIdx,
+      lowIdx,
     };
-  }, [weeklyData, visibleWeekKeys]);
+  }, [weeklyData, visibleWeekKeys, peakWeekKey, lowWeekKey]);
 
   useEffect(() => {
     const canvas1 = chart1Ref.current;
@@ -50,7 +65,18 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme, visi
     chart1Instance.current?.destroy();
     chart2Instance.current?.destroy();
 
-    const { labels, endingCash, totalLiquidity, cashIn, cashOut } = chartData;
+    const { labels, endingCash, totalLiquidity, cashIn, cashOut, peakIdx, lowIdx } = chartData;
+
+    // Build sparse arrays so the peak/low markers render as a single point on
+    // top of the Ending Cash line at exactly the right (week, value) coordinate.
+    const peakPoints: (number | null)[] =
+      peakIdx >= 0
+        ? labels.map((_, i) => (i === peakIdx ? endingCash[i] : null))
+        : [];
+    const lowPoints: (number | null)[] =
+      lowIdx >= 0
+        ? labels.map((_, i) => (i === lowIdx ? endingCash[i] : null))
+        : [];
 
     const isDark = theme === 'dark';
     const gridColor = isDark ? 'rgba(42,51,72,0.5)' : 'rgba(209,213,219,0.5)';
@@ -138,6 +164,38 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme, visi
             pointRadius: 0,
             fill: false,
           },
+          ...(peakIdx >= 0
+            ? [{
+                label: 'Peak Cash',
+                data: peakPoints,
+                borderColor: isDark ? '#22c55e' : '#16a34a',
+                backgroundColor: isDark ? '#22c55e' : '#16a34a',
+                pointStyle: 'triangle' as const,
+                pointRadius: 9,
+                pointHoverRadius: 11,
+                pointBorderWidth: 2,
+                pointBorderColor: isDark ? '#0b1020' : '#ffffff',
+                showLine: false,
+                fill: false,
+              }]
+            : []),
+          ...(lowIdx >= 0
+            ? [{
+                label: 'Low Cash',
+                data: lowPoints,
+                borderColor: isDark ? '#ef4444' : '#dc2626',
+                backgroundColor: isDark ? '#ef4444' : '#dc2626',
+                // Triangle rotated 180° = ▼
+                pointStyle: 'triangle' as const,
+                pointRotation: 180,
+                pointRadius: 9,
+                pointHoverRadius: 11,
+                pointBorderWidth: 2,
+                pointBorderColor: isDark ? '#0b1020' : '#ffffff',
+                showLine: false,
+                fill: false,
+              }]
+            : []),
         ],
       },
       options: {
@@ -201,11 +259,38 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme, visi
       },
     });
 
+    // Pulse the Low Cash marker when it's below the caution threshold so the
+    // user's eye is drawn to the at-risk week. We mutate the dataset's
+    // pointRadius/pointHoverRadius on each animation frame and re-render
+    // without animation transitions (cheap on a single point).
+    if (lowWeekBelowCaution && chartData.lowIdx >= 0) {
+      const chart = chart1Instance.current!;
+      const lowDsIdx = chart.data.datasets.findIndex((d: any) => d.label === 'Low Cash');
+      if (lowDsIdx >= 0) {
+        const start = performance.now();
+        const tick = (now: number) => {
+          const t = (now - start) / 1000;
+          // 9px → 14px sine pulse at ~1.4Hz
+          const r = 9 + (Math.sin(t * Math.PI * 1.4) + 1) * 2.5;
+          const ds: any = chart.data.datasets[lowDsIdx];
+          ds.pointRadius = r;
+          ds.pointHoverRadius = r + 2;
+          chart.update('none');
+          pulseFrame.current = requestAnimationFrame(tick);
+        };
+        pulseFrame.current = requestAnimationFrame(tick);
+      }
+    }
+
     return () => {
+      if (pulseFrame.current !== null) {
+        cancelAnimationFrame(pulseFrame.current);
+        pulseFrame.current = null;
+      }
       chart1Instance.current?.destroy();
       chart2Instance.current?.destroy();
     };
-  }, [chartData, theme]);
+  }, [chartData, theme, lowWeekBelowCaution]);
 
   return (
     <>
