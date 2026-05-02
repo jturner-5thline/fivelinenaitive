@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, X, Pencil, Trash2, Check } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import {
   generateOccurrences,
   resolveCategoryToGridRow,
@@ -93,6 +94,12 @@ interface DrilldownRow {
   signedAmount: number;
   /** Underlying scheduled entry — for inline edit pre-fill. */
   entry: ScheduledCashFlow;
+  /** Provenance for the value shown in this row. */
+  source: 'quickbooks' | 'deal' | 'manual';
+  /** Friendly source label, e.g. "QuickBooks — Retainer Revenue:Debt Advisory Retainer". */
+  sourceLabel: string;
+  /** True when the row is a projected (P) entry rather than a confirmed actual. */
+  projected: boolean;
 }
 
 export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdateEntry, onDeleteEntry }: Props) {
@@ -156,6 +163,18 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
           entry.frequency_config?.variance_pct,
           `${entry.id || entry.category}:${occ}`,
         );
+        const id = String(entry.id || '');
+        let source: 'quickbooks' | 'deal' | 'manual' = 'manual';
+        let sourceLabel = 'Manual — Configure';
+        let projected = false;
+        if (id.startsWith('qb:')) {
+          source = 'quickbooks';
+          sourceLabel = entry.notes || 'QuickBooks';
+        } else if (id.startsWith('deal:')) {
+          source = 'deal';
+          sourceLabel = entry.notes || 'naitive Deal';
+          projected = true;
+        }
         out.push({
           id: `${entry.id}-${occ}`,
           entryId: entry.id,
@@ -166,6 +185,9 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
           flow_type: entry.flow_type,
           signedAmount: entry.flow_type === 'cash_in' ? amt : -amt,
           entry,
+          source,
+          sourceLabel,
+          projected,
         });
       }
     }
