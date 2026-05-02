@@ -874,6 +874,102 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "list_workflows",
+      description: "List the user's automation workflows (the React Flow / wf_workflows automations). Returns id, name, description, trigger type, active state, action count, last update. Use for 'show my workflows', 'what automations do I have', 'which workflows are running', 'list active automations'.",
+      parameters: {
+        type: "object",
+        properties: {
+          active_only: { type: "boolean", description: "Only return is_active=true workflows. Default false." },
+          trigger_type: { type: "string", description: "Optional: filter by trigger_type (e.g. 'deal_stage_changed', 'task_created', 'webhook')." },
+          search: { type: "string", description: "Fuzzy match on workflow name or description." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_workflow_runs",
+      description: "Inspect recent executions of automation workflows — when they ran, status (queued/running/succeeded/failed), error step, duration. Use for 'did my workflow run', 'why did the automation fail', 'recent workflow executions', 'workflow run history', 'last automation run for X'.",
+      parameters: {
+        type: "object",
+        properties: {
+          workflow_id: { type: "string", description: "Optional: scope to a single workflow." },
+          status: { type: "string", description: "Optional: 'queued', 'running', 'succeeded', 'failed', 'cancelled'." },
+          since_days: { type: "number", description: "Only runs from the last N days. Default 7." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_email_workflows",
+      description: "List configured email/communication workflows (stage-triggered email sequences that prompt the user to send a templated message). Returns trigger event, pipeline+stage, template, audience, active state. Use for 'what email workflows fire on stage X', 'list email automations', 'which templates trigger when a deal moves to closing'.",
+      parameters: {
+        type: "object",
+        properties: {
+          active_only: { type: "boolean", description: "Only is_active=true. Default true." },
+          stage_name: { type: "string", description: "Optional: filter by pipeline stage (fuzzy match)." },
+          trigger_event: { type: "string", description: "Optional: filter by trigger_event (e.g. 'stage_changed', 'lender_added')." },
+          limit: { type: "number", description: "Default 100, max 200." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_email_workflow_events",
+      description: "Recent firings of email workflows — which deals had a draft prompted, which were approved/sent/dismissed/deferred. Use for 'did the closing email get sent', 'which workflow drafts are pending', 'recent email workflow activity', 'pending approvals for triggered emails'.",
+      parameter_warning: "scoped via RLS to user's company",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Optional: scope to a single deal." },
+          status: { type: "string", description: "Optional: 'pending', 'approved', 'sent', 'dismissed', 'deferred'." },
+          since_days: { type: "number", description: "Default 14." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_zapier_webhooks",
+      description: "List Zapier outbound webhooks the user/company has configured (label, URL host, subscribed event types, active state). Use for 'what Zapier integrations do I have', 'which events go to Zapier', 'list webhook subscriptions'.",
+      parameters: {
+        type: "object",
+        properties: {
+          active_only: { type: "boolean", description: "Only is_active=true. Default false." },
+          limit: { type: "number", description: "Default 50." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_zapier_webhook_logs",
+      description: "Recent Zapier webhook delivery logs (event_type, status_code, success, error_message). Use for 'did the Zapier webhook fire', 'why is Zapier failing', 'recent webhook deliveries', 'webhook errors'.",
+      parameters: {
+        type: "object",
+        properties: {
+          webhook_id: { type: "string", description: "Optional: scope to one webhook." },
+          event_type: { type: "string", description: "Optional: filter by event_type." },
+          success: { type: "boolean", description: "Optional: only successes (true) or only failures (false)." },
+          since_days: { type: "number", description: "Default 7." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
@@ -899,6 +995,9 @@ function selectTools(page: string, entityType?: string) {
     "get_quickbooks_pnl", "get_outstanding_invoices", "get_outstanding_bills", "get_revenue_breakdown",
     // Always-available notifications & alerts (user-scoped).
     "get_my_notifications", "get_lender_engagement_alerts", "get_stale_deal_alerts",
+    // Always-available workflows & automations (user/company-scoped via RLS).
+    "list_workflows", "get_workflow_runs", "list_email_workflows", "get_email_workflow_events",
+    "list_zapier_webhooks", "get_zapier_webhook_logs",
   ]);
 
   if (page.includes("lender")) {
@@ -2817,6 +2916,197 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         })),
       };
     }
+    case "list_workflows": {
+      const limit = Math.min(args.limit ?? 50, 200);
+      let q = supabase.from("workflows")
+        .select("id, name, description, trigger_type, is_active, actions, updated_at, created_at")
+        .order("updated_at", { ascending: false })
+        .limit(limit);
+      if (args.active_only) q = q.eq("is_active", true);
+      if (args.trigger_type) q = q.eq("trigger_type", args.trigger_type);
+      if (args.search) {
+        const t = args.search.replace(/[%_]/g, "");
+        q = q.or(`name.ilike.%${t}%,description.ilike.%${t}%`);
+      }
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      return {
+        count: (data || []).length,
+        workflows: (data || []).map((w: any) => ({
+          id: w.id,
+          name: w.name,
+          description: w.description,
+          trigger_type: w.trigger_type,
+          is_active: w.is_active,
+          action_count: Array.isArray(w.actions) ? w.actions.length : 0,
+          updated_at: w.updated_at,
+          created_at: w.created_at,
+        })),
+      };
+    }
+    case "get_workflow_runs": {
+      const limit = Math.min(args.limit ?? 50, 200);
+      const sinceDays = args.since_days ?? 7;
+      const since = new Date(Date.now() - sinceDays * 86400000).toISOString();
+      let q = supabase.from("workflow_runs")
+        .select("id, workflow_id, status, step, error_step, error_message, trigger_source, started_at, completed_at")
+        .gte("started_at", since)
+        .order("started_at", { ascending: false })
+        .limit(limit);
+      if (args.workflow_id) q = q.eq("workflow_id", args.workflow_id);
+      if (args.status) q = q.eq("status", args.status);
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const runs = data || [];
+      // Hydrate workflow names
+      const wfIds = [...new Set(runs.map((r: any) => r.workflow_id).filter(Boolean))];
+      const nameMap: Record<string, string> = {};
+      if (wfIds.length) {
+        const { data: wfs } = await supabase.from("workflows").select("id, name").in("id", wfIds);
+        for (const w of wfs || []) nameMap[w.id] = w.name;
+      }
+      return {
+        count: runs.length,
+        since_days: sinceDays,
+        runs: runs.map((r: any) => ({
+          id: r.id,
+          workflow_id: r.workflow_id,
+          workflow_name: nameMap[r.workflow_id] || null,
+          status: r.status,
+          step: r.step,
+          error_step: r.error_step,
+          error_message: r.error_message,
+          trigger_source: r.trigger_source,
+          started_at: r.started_at,
+          completed_at: r.completed_at,
+          duration_ms: r.started_at && r.completed_at
+            ? new Date(r.completed_at).getTime() - new Date(r.started_at).getTime()
+            : null,
+        })),
+      };
+    }
+    case "list_email_workflows": {
+      const limit = Math.min(args.limit ?? 100, 200);
+      let q = supabase.from("email_workflows")
+        .select("id, name, sequence_type, action_type, trigger_type, trigger_event, pipeline_name, stage_name, email_template_title, send_timing, audience, comm_type, requires_approval, is_active, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(limit);
+      const activeOnly = args.active_only ?? true;
+      if (activeOnly) q = q.eq("is_active", true);
+      if (args.stage_name) q = q.ilike("stage_name", `%${args.stage_name}%`);
+      if (args.trigger_event) q = q.eq("trigger_event", args.trigger_event);
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      return { count: (data || []).length, email_workflows: data || [] };
+    }
+    case "get_email_workflow_events": {
+      const limit = Math.min(args.limit ?? 50, 200);
+      const sinceDays = args.since_days ?? 14;
+      const since = new Date(Date.now() - sinceDays * 86400000).toISOString();
+      let q = supabase.from("email_workflow_events")
+        .select("id, workflow_id, deal_id, status, triggered_at, prompt_shown_at, approved_at, sent_at, dismissed_at, deferred_at, sent_by_user_id")
+        .gte("triggered_at", since)
+        .order("triggered_at", { ascending: false })
+        .limit(limit);
+      if (args.deal_id) q = q.eq("deal_id", args.deal_id);
+      if (args.status) q = q.eq("status", args.status);
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const events = data || [];
+      // Hydrate workflow + deal names
+      const wfIds = [...new Set(events.map((e: any) => e.workflow_id).filter(Boolean))];
+      const dealIds = [...new Set(events.map((e: any) => e.deal_id).filter(Boolean))];
+      const wfMap: Record<string, string> = {};
+      const dealMap: Record<string, string> = {};
+      if (wfIds.length) {
+        const { data: wfs } = await supabase.from("email_workflows").select("id, name").in("id", wfIds);
+        for (const w of wfs || []) wfMap[w.id] = w.name;
+      }
+      if (dealIds.length) {
+        const { data: ds } = await supabase.from("deals").select("id, company").in("id", dealIds);
+        for (const d of ds || []) dealMap[d.id] = d.company;
+      }
+      return {
+        count: events.length,
+        since_days: sinceDays,
+        events: events.map((e: any) => ({
+          id: e.id,
+          workflow_id: e.workflow_id,
+          workflow_name: wfMap[e.workflow_id] || null,
+          deal_id: e.deal_id,
+          deal_name: dealMap[e.deal_id] || null,
+          status: e.status,
+          triggered_at: e.triggered_at,
+          prompt_shown_at: e.prompt_shown_at,
+          approved_at: e.approved_at,
+          sent_at: e.sent_at,
+          dismissed_at: e.dismissed_at,
+          deferred_at: e.deferred_at,
+        })),
+      };
+    }
+    case "list_zapier_webhooks": {
+      const limit = Math.min(args.limit ?? 50, 200);
+      let q = supabase.from("zapier_webhooks")
+        .select("id, label, webhook_url, is_active, event_types, created_at, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(limit);
+      if (args.active_only) q = q.eq("is_active", true);
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      return {
+        count: (data || []).length,
+        webhooks: (data || []).map((w: any) => {
+          let host: string | null = null;
+          try { host = new URL(w.webhook_url).host; } catch { /* noop */ }
+          return {
+            id: w.id,
+            label: w.label,
+            url_host: host,
+            is_active: w.is_active,
+            event_types: w.event_types || [],
+            created_at: w.created_at,
+            updated_at: w.updated_at,
+          };
+        }),
+      };
+    }
+    case "get_zapier_webhook_logs": {
+      const limit = Math.min(args.limit ?? 50, 200);
+      const sinceDays = args.since_days ?? 7;
+      const since = new Date(Date.now() - sinceDays * 86400000).toISOString();
+      let q = supabase.from("zapier_webhook_logs")
+        .select("id, webhook_id, event_type, status_code, success, error_message, created_at")
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (args.webhook_id) q = q.eq("webhook_id", args.webhook_id);
+      if (args.event_type) q = q.eq("event_type", args.event_type);
+      if (typeof args.success === "boolean") q = q.eq("success", args.success);
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const logs = data || [];
+      const hookIds = [...new Set(logs.map((l: any) => l.webhook_id).filter(Boolean))];
+      const hookMap: Record<string, string> = {};
+      if (hookIds.length) {
+        const { data: hooks } = await supabase.from("zapier_webhooks").select("id, label").in("id", hookIds);
+        for (const h of hooks || []) hookMap[h.id] = h.label;
+      }
+      return {
+        count: logs.length,
+        since_days: sinceDays,
+        logs: logs.map((l: any) => ({
+          id: l.id,
+          webhook_id: l.webhook_id,
+          webhook_label: hookMap[l.webhook_id] || null,
+          event_type: l.event_type,
+          status_code: l.status_code,
+          success: l.success,
+          error_message: l.error_message,
+          created_at: l.created_at,
+        })),
+      };
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -3137,6 +3427,15 @@ Notifications & alerts context (use whenever the user asks what they were alerte
 - "What notifications do I have", "show my alerts", "what's unread", "recent notifications" → get_my_notifications
 - "Which lenders engaged", "who opened the deck", "lender activity alerts", "FLEx notifications" → get_lender_engagement_alerts
 - "Stale deals", "which deals need attention", "lenders I haven't followed up with", "deals with no recent updates" → get_stale_deal_alerts (default 7 days)
+
+Workflows & automations context (use whenever the user asks about saved automations, workflow runs, triggered emails, or Zapier webhooks — these are the wf_workflows / email_workflows / zapier_webhooks systems):
+- "List my workflows", "what automations do I have", "active workflows" → list_workflows
+- "Did my workflow run", "why did it fail", "recent workflow executions", "workflow run history" → get_workflow_runs (returns status, error_step, error_message, duration)
+- "What email automations fire on stage X", "stage-triggered emails", "list email workflows" → list_email_workflows
+- "Which workflow drafts are pending approval", "did the closing email get sent", "recent triggered emails" → get_email_workflow_events
+- "What Zapier integrations do I have", "list webhook subscriptions" → list_zapier_webhooks
+- "Did the Zapier webhook fire", "why is Zapier failing", "webhook delivery errors" → get_zapier_webhook_logs
+- When diagnosing failures, always surface error_message + error_step explicitly.
 
 Communications context (use whenever the question references emails, calls, meetings, or scheduling):
 - "What did X say", "find emails about/from", "recent messages with Y" → search_emails (synced inbox)
