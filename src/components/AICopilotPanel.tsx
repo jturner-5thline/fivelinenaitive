@@ -852,6 +852,13 @@ export function AICopilotPanel() {
 
       const allMsgs = useCopilotStore.getState().messages;
       await saveConversation(allMsgs);
+      // Persist last user + assistant turn to per-deal memory
+      if (dealIdFromPath) {
+        await dealMemory.append('user', text);
+        if (assistantContent.trim()) {
+          await dealMemory.append('assistant', assistantContent);
+        }
+      }
     } catch (err: any) {
       if (err?.name === 'AbortError') return;
       console.error('Copilot stream error:', err);
