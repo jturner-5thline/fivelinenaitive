@@ -259,11 +259,38 @@ export const WeeklyCharts = memo(function WeeklyCharts({
       },
     });
 
+    // Pulse the Low Cash marker when it's below the caution threshold so the
+    // user's eye is drawn to the at-risk week. We mutate the dataset's
+    // pointRadius/pointHoverRadius on each animation frame and re-render
+    // without animation transitions (cheap on a single point).
+    if (lowWeekBelowCaution && chartData.lowIdx >= 0) {
+      const chart = chart1Instance.current!;
+      const lowDsIdx = chart.data.datasets.findIndex((d: any) => d.label === 'Low Cash');
+      if (lowDsIdx >= 0) {
+        const start = performance.now();
+        const tick = (now: number) => {
+          const t = (now - start) / 1000;
+          // 9px → 14px sine pulse at ~1.4Hz
+          const r = 9 + (Math.sin(t * Math.PI * 1.4) + 1) * 2.5;
+          const ds: any = chart.data.datasets[lowDsIdx];
+          ds.pointRadius = r;
+          ds.pointHoverRadius = r + 2;
+          chart.update('none');
+          pulseFrame.current = requestAnimationFrame(tick);
+        };
+        pulseFrame.current = requestAnimationFrame(tick);
+      }
+    }
+
     return () => {
+      if (pulseFrame.current !== null) {
+        cancelAnimationFrame(pulseFrame.current);
+        pulseFrame.current = null;
+      }
       chart1Instance.current?.destroy();
       chart2Instance.current?.destroy();
     };
-  }, [chartData, theme]);
+  }, [chartData, theme, lowWeekBelowCaution]);
 
   return (
     <>
