@@ -7607,6 +7607,44 @@ export type Database = {
           },
         ]
       }
+      deal_stage_history_notes: {
+        Row: {
+          created_at: string
+          deal_id: string
+          id: string
+          note: string
+          stage_history_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          id?: string
+          note: string
+          stage_history_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          id?: string
+          note?: string
+          stage_history_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_stage_history_notes_stage_history_id_fkey"
+            columns: ["stage_history_id"]
+            isOneToOne: true
+            referencedRelation: "deal_stage_history"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_status_notes: {
         Row: {
           created_at: string
