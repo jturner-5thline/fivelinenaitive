@@ -70,6 +70,29 @@ export function useDealClaapRecordings(dealId: string) {
       });
 
       fetchLinkedRecordings();
+
+      // Fire-and-forget: trigger the deal-scoped analysis pipeline.
+      // Per platform rule, the activity-log summary is written automatically
+      // but suggested tasks still require human confirmation in the UI.
+      supabase.functions.invoke('claap-deal-analyze', {
+        body: {
+          deal_id: dealId,
+          recording_id: recording.id,
+          recording_title: recording.title,
+          recording_url: recording.url,
+          recorded_at: recording.createdAt,
+          skip_if_exists: true,
+        },
+      }).then(({ error: invokeErr }) => {
+        if (invokeErr) {
+          console.warn('[claap] auto-analyze failed:', invokeErr);
+          return;
+        }
+        // Notify any open ClaapRecordingsPanel/DealActivityTab to refresh.
+        window.dispatchEvent(new CustomEvent('claap-recording-analyzed', {
+          detail: { dealId, recordingId: recording.id },
+        }));
+      }).catch((err) => console.warn('[claap] auto-analyze invoke threw:', err));
     } catch (err: any) {
       console.error('Error linking recording:', err);
       toast({
