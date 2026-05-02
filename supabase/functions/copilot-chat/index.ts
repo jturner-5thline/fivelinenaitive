@@ -348,6 +348,27 @@ const tools = [
       },
     },
   },
+  // ── DEAL STATUS (on-track / at-risk / off-track / on-hold) ──
+  {
+    type: "function",
+    function: {
+      name: "update_deal_status",
+      description: "Update a deal's overall status (on-track, at-risk, off-track, on-hold, archived, closed-won, closed-lost). HIGH RISK — returns a confirmation card.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID" },
+          deal_name: { type: "string", description: "Deal company name for display" },
+          new_status: {
+            type: "string",
+            description: "New status. Common values: on-track, at-risk, off-track, on-hold, archived, closed-won, closed-lost",
+          },
+          status_note: { type: "string", description: "Optional note explaining the status change" },
+        },
+        required: ["deal_id", "deal_name", "new_status"],
+      },
+    },
+  },
   // ── MOVE DEAL BETWEEN PIPELINES ──
   {
     type: "function",
