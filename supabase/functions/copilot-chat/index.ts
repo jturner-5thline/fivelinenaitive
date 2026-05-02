@@ -836,6 +836,8 @@ function selectTools(page: string, entityType?: string) {
     "get_task_details", "get_scheduled_followups",
     // Always-available finance / QuickBooks context (firm-level, shared org-wide).
     "get_quickbooks_pnl", "get_outstanding_invoices", "get_outstanding_bills", "get_revenue_breakdown",
+    // Always-available notifications & alerts (user-scoped).
+    "get_my_notifications", "get_lender_engagement_alerts", "get_stale_deal_alerts",
   ]);
 
   if (page.includes("lender")) {
