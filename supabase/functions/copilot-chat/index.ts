@@ -11,6 +11,41 @@ const MAX_TOOL_TURNS = 10;
 
 // Context fetchers removed — data is now lazy-loaded via tool calls
 
+// ── Period resolver for finance tools ──────────────────────────
+function resolvePeriod(period?: string, customStart?: string, customEnd?: string): { start: string; end: string; label: string } {
+  const now = new Date();
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth();
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const p = (period || "ytd").toLowerCase();
+  switch (p) {
+    case "custom":
+      return { start: customStart || `${y}-01-01`, end: customEnd || fmt(now), label: `${customStart} → ${customEnd}` };
+    case "mtd":
+      return { start: fmt(new Date(Date.UTC(y, m, 1))), end: fmt(now), label: "Month-to-date" };
+    case "qtd": {
+      const qStartMonth = Math.floor(m / 3) * 3;
+      return { start: fmt(new Date(Date.UTC(y, qStartMonth, 1))), end: fmt(now), label: "Quarter-to-date" };
+    }
+    case "last_month": {
+      const lm = new Date(Date.UTC(y, m - 1, 1));
+      const lmEnd = new Date(Date.UTC(y, m, 0));
+      return { start: fmt(lm), end: fmt(lmEnd), label: "Last month" };
+    }
+    case "last_quarter": {
+      const qStartMonth = Math.floor(m / 3) * 3;
+      const lqStart = new Date(Date.UTC(y, qStartMonth - 3, 1));
+      const lqEnd = new Date(Date.UTC(y, qStartMonth, 0));
+      return { start: fmt(lqStart), end: fmt(lqEnd), label: "Last quarter" };
+    }
+    case "last_year":
+      return { start: `${y - 1}-01-01`, end: `${y - 1}-12-31`, label: `Last year (${y - 1})` };
+    case "ytd":
+    default:
+      return { start: `${y}-01-01`, end: fmt(now), label: `Year-to-date (${y})` };
+  }
+}
+
 // ── Tool definitions ──────────────────────────────────────────────
 const tools = [
   {
@@ -671,6 +706,67 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_quickbooks_pnl",
+      description: "Get a P&L / financial summary from QuickBooks for the firm. Returns Revenue, Expenses, Bills total, and Operating Profit (EBITDA = Revenue - (Expenses + Bills)) on an accrual basis. Use for any 'how much revenue / expenses / profit / EBITDA / margin' question, or 'how is the firm performing financially' / 'controller dashboard' / 'FP&A' style asks.",
+      parameters: {
+        type: "object",
+        properties: {
+          period: { type: "string", description: "Period label: 'mtd', 'qtd', 'ytd', 'last_month', 'last_quarter', 'last_year', or 'custom'. Default 'ytd'.", enum: ["mtd", "qtd", "ytd", "last_month", "last_quarter", "last_year", "custom"] },
+          start_date: { type: "string", description: "ISO date (YYYY-MM-DD). Required if period='custom'." },
+          end_date: { type: "string", description: "ISO date (YYYY-MM-DD). Required if period='custom'." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_outstanding_invoices",
+      description: "List unpaid / open QuickBooks invoices (accounts receivable). Returns customer, doc number, amounts, due date, days overdue. Use for 'who owes us money', 'AR aging', 'overdue invoices', 'outstanding receivables'.",
+      parameters: {
+        type: "object",
+        properties: {
+          customer_query: { type: "string", description: "Optional: filter by customer name (case-insensitive contains)." },
+          overdue_only: { type: "boolean", description: "Only return invoices past their due date. Default false." },
+          min_balance: { type: "number", description: "Optional: only invoices with balance >= this amount." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_outstanding_bills",
+      description: "List unpaid QuickBooks bills (accounts payable). Returns vendor, doc number, amounts, due date, days overdue. Use for 'what do we owe', 'AP aging', 'upcoming bills', 'vendor payables'.",
+      parameters: {
+        type: "object",
+        properties: {
+          vendor_query: { type: "string", description: "Optional: filter by vendor name (case-insensitive contains)." },
+          overdue_only: { type: "boolean", description: "Only return bills past their due date. Default false." },
+          min_balance: { type: "number", description: "Optional: only bills with balance >= this amount." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_revenue_breakdown",
+      description: "Get top customers by invoice revenue over a period from QuickBooks. Returns customer name and total invoiced. Use for 'top clients', 'revenue concentration', 'who are our biggest customers', 'revenue by customer'.",
+      parameters: {
+        type: "object",
+        properties: {
+          period: { type: "string", description: "Period: 'mtd', 'qtd', 'ytd', 'last_month', 'last_quarter', 'last_year', 'all'. Default 'ytd'.", enum: ["mtd", "qtd", "ytd", "last_month", "last_quarter", "last_year", "all"] },
+          limit: { type: "number", description: "Top-N customers. Default 10, max 50." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
@@ -690,6 +786,8 @@ function selectTools(page: string, entityType?: string) {
     "search_emails", "get_upcoming_events", "get_recent_meetings",
     // Always-available task & follow-up context.
     "get_task_details", "get_scheduled_followups",
+    // Always-available finance / QuickBooks context (firm-level, shared org-wide).
+    "get_quickbooks_pnl", "get_outstanding_invoices", "get_outstanding_bills", "get_revenue_breakdown",
   ]);
 
   if (page.includes("lender")) {
@@ -1022,6 +1120,128 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       }
 
       return { count: docs.length, deal_id: args.deal_id, documents: docs };
+    }
+    case "get_quickbooks_pnl": {
+      const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const { start, end, label } = resolvePeriod(args.period, args.start_date, args.end_date);
+
+      // Revenue from invoices (accrual basis = txn_date)
+      const { data: invoices } = await admin
+        .from("quickbooks_invoices")
+        .select("total_amt, balance, txn_date")
+        .gte("txn_date", start)
+        .lte("txn_date", end);
+      const revenue = (invoices || []).reduce((s: number, i: any) => s + Number(i.total_amt || 0), 0);
+      const ar_outstanding = (invoices || []).reduce((s: number, i: any) => s + Number(i.balance || 0), 0);
+
+      // Expenses
+      const { data: expenses } = await admin
+        .from("quickbooks_expenses")
+        .select("total_amt, txn_date")
+        .gte("txn_date", start)
+        .lte("txn_date", end);
+      const expensesTotal = (expenses || []).reduce((s: number, e: any) => s + Number(e.total_amt || 0), 0);
+
+      // Bills (txn_date is text in this table)
+      const { data: bills } = await admin
+        .from("quickbooks_bills")
+        .select("total_amt, balance, txn_date")
+        .gte("txn_date", start)
+        .lte("txn_date", end);
+      const billsTotal = (bills || []).reduce((s: number, b: any) => s + Number(b.total_amt || 0), 0);
+      const ap_outstanding = (bills || []).reduce((s: number, b: any) => s + Number(b.balance || 0), 0);
+
+      const operatingProfit = revenue - (expensesTotal + billsTotal);
+      const margin = revenue > 0 ? (operatingProfit / revenue) * 100 : null;
+
+      return {
+        period: label,
+        start_date: start,
+        end_date: end,
+        currency: "USD",
+        basis: "accrual",
+        revenue,
+        expenses: expensesTotal,
+        bills: billsTotal,
+        operating_profit_ebitda: operatingProfit,
+        margin_percent: margin,
+        ar_outstanding,
+        ap_outstanding,
+        invoice_count: invoices?.length || 0,
+        bill_count: bills?.length || 0,
+        expense_count: expenses?.length || 0,
+        formula: "Operating Profit (EBITDA) = Revenue − (Expenses + Bills)",
+        instruction: "Report figures with $ formatting. State the period explicitly. Note this is firm-level (all entities combined) accrual-basis from QuickBooks.",
+      };
+    }
+    case "get_outstanding_invoices": {
+      const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
+      let q = admin.from("quickbooks_invoices")
+        .select("doc_number, customer_name, total_amt, balance, txn_date, due_date, status")
+        .gt("balance", 0)
+        .order("due_date", { ascending: true })
+        .limit(limit);
+      if (args.customer_query) q = q.ilike("customer_name", `%${args.customer_query}%`);
+      if (args.min_balance) q = q.gte("balance", Number(args.min_balance));
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const today = new Date();
+      let invoices = (data || []).map((i: any) => {
+        const due = i.due_date ? new Date(i.due_date) : null;
+        const days_overdue = due ? Math.floor((today.getTime() - due.getTime()) / 86400000) : null;
+        return { ...i, days_overdue };
+      });
+      if (args.overdue_only) invoices = invoices.filter((i: any) => (i.days_overdue ?? -1) > 0);
+      const total_outstanding = invoices.reduce((s: number, i: any) => s + Number(i.balance || 0), 0);
+      return { count: invoices.length, total_outstanding, invoices };
+    }
+    case "get_outstanding_bills": {
+      const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
+      let q = admin.from("quickbooks_bills")
+        .select("doc_number, vendor_ref_name, total_amt, balance, txn_date, due_date")
+        .gt("balance", 0)
+        .order("due_date", { ascending: true })
+        .limit(limit);
+      if (args.vendor_query) q = q.ilike("vendor_ref_name", `%${args.vendor_query}%`);
+      if (args.min_balance) q = q.gte("balance", Number(args.min_balance));
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const today = new Date();
+      let bills = (data || []).map((b: any) => {
+        const due = b.due_date ? new Date(b.due_date) : null;
+        const days_overdue = due && !isNaN(due.getTime()) ? Math.floor((today.getTime() - due.getTime()) / 86400000) : null;
+        return { ...b, vendor: b.vendor_ref_name, days_overdue };
+      });
+      if (args.overdue_only) bills = bills.filter((b: any) => (b.days_overdue ?? -1) > 0);
+      const total_outstanding = bills.reduce((s: number, b: any) => s + Number(b.balance || 0), 0);
+      return { count: bills.length, total_outstanding, bills };
+    }
+    case "get_revenue_breakdown": {
+      const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const limit = Math.min(Math.max(args.limit ?? 10, 1), 50);
+      const period = args.period || "ytd";
+      let q = admin.from("quickbooks_invoices").select("customer_name, total_amt, txn_date");
+      if (period !== "all") {
+        const { start, end } = resolvePeriod(period);
+        q = q.gte("txn_date", start).lte("txn_date", end);
+      }
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const byCustomer: Record<string, number> = {};
+      let total = 0;
+      for (const inv of data || []) {
+        const name = inv.customer_name || "Unknown";
+        const amt = Number(inv.total_amt || 0);
+        byCustomer[name] = (byCustomer[name] || 0) + amt;
+        total += amt;
+      }
+      const top = Object.entries(byCustomer)
+        .map(([customer, revenue]) => ({ customer, revenue, percent_of_total: total > 0 ? (revenue / total) * 100 : 0 }))
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, limit);
+      return { period, total_revenue: total, top_customers: top, customer_count: Object.keys(byCustomer).length };
     }
     case "get_pipeline_summary": {
       const { data: deals } = await supabase.from("deals").select("id, company, value, stage, status").limit(1000);
@@ -2567,6 +2787,13 @@ Document context (VDR / data room — use whenever the question references the a
 - "What docs do we have", "list the financials in the data room", "do we have a term sheet" → list_vdr_documents
 - Activity feed across deals → get_activity_log
 - Find deals/lenders by keyword → search_deals / search_lenders
+
+Finance / QuickBooks context (firm-level, accrual basis, all 5th Line entities combined — use for ANY question about firm financials, P&L, revenue, expenses, EBITDA, AR/AP, controller / FP&A asks):
+- "Revenue / expenses / EBITDA / operating profit / margin this month/quarter/year" → get_quickbooks_pnl (formula: EBITDA = Revenue − (Expenses + Bills))
+- "Who owes us money", "AR aging", "overdue invoices", "outstanding receivables" → get_outstanding_invoices
+- "What do we owe", "AP aging", "upcoming bills", "vendor payables" → get_outstanding_bills
+- "Top customers", "revenue concentration", "biggest clients by revenue" → get_revenue_breakdown
+- Always state the period explicitly and format dollars as $X,XXX.
 
 Communications context (use whenever the question references emails, calls, meetings, or scheduling):
 - "What did X say", "find emails about/from", "recent messages with Y" → search_emails (synced inbox)
