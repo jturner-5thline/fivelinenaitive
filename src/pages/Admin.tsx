@@ -12,7 +12,7 @@ import {
 import { 
   Shield, Users, Building2, ListTodo, Mail, ClipboardList, Cloud, MessageSquare, 
   Settings, Megaphone, Lock, Webhook, AlertCircle, Database, Layout, ChevronDown,
-  ShieldCheck, Cog, Lightbulb, UserCheck, Bell, MonitorPlay, ToggleRight, Brain
+  ShieldCheck, Cog, Lightbulb, UserCheck, Bell, MonitorPlay, ToggleRight, Brain, Wallet
 } from "lucide-react";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useSystemStats } from "@/hooks/useAdminData";
@@ -42,6 +42,7 @@ import { CompanyJoinRequestsPanel } from "@/components/admin/CompanyJoinRequests
 import { ClientAccountViewer } from "@/components/admin/ClientAccountViewer";
 import { CompanyFeaturesPanel } from "@/components/admin/CompanyFeaturesPanel";
 import { AIRulesPanel } from "@/components/admin/AIRulesPanel";
+import { QbCashflowMappingPanel } from "@/components/admin/QbCashflowMappingPanel";
 
 // Sub-page configurations
 const usersSubPages = [
@@ -68,6 +69,7 @@ const dataSecuritySubPages = [
   { id: "security", label: "Security", icon: Lock },
   { id: "integrations", label: "Integrations", icon: Webhook },
   { id: "emails", label: "Emails", icon: Mail },
+  { id: "qb-mapping", label: "QB → Cash Flow Mapping", icon: Wallet },
 ];
 
 const settingsSubPages = [
@@ -418,6 +420,8 @@ const Admin = () => {
             <CardContent><AIRulesPanel /></CardContent>
           </Card>
         );
+      case "qb-mapping":
+        return <QbCashflowMappingPanel />;
       case "client-viewer":
         return <ClientAccountViewer />;
       default:
