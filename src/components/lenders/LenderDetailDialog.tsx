@@ -693,7 +693,19 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
             </DialogTitle>
             <div className="flex items-center gap-1 shrink-0">
               {!isEditMode && (
-                <LenderNotesPopover lenderName={lender.name} masterLenderId={lender.id} side="bottom" />
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1.5"
+                    onClick={() => navigate(`/lenders/${encodeURIComponent(lender.name)}/history`)}
+                    title="View deal history"
+                  >
+                    <History className="h-4 w-4" />
+                    Deal history
+                  </Button>
+                  <LenderNotesPopover lenderName={lender.name} masterLenderId={lender.id} side="bottom" />
+                </>
               )}
               {isEditMode ? (
                 <>
