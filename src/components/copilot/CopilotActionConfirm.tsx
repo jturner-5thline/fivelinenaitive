@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, Plus, Edit, Check, Loader2, CheckCircle, RefreshCw } from 'lucide-react';
+import { ArrowRight, Plus, Edit, Check, Loader2, CheckCircle, RefreshCw, AlertTriangle, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -19,12 +19,15 @@ interface Props {
 
 const iconMap: Record<string, typeof ArrowRight> = {
   update_deal_stage: ArrowRight,
+  update_deal_status: AlertTriangle,
   move_deal_pipeline: ArrowRight,
   create_task: Plus,
   update_milestone: CheckCircle,
   update_lender_status: RefreshCw,
   delete_outstanding_item: Edit,
   update_deal_fields: Edit,
+  add_deal_note: FileText,
+  log_note: FileText,
 };
 
 export function CopilotActionConfirm({ action }: Props) {
@@ -55,6 +58,15 @@ export function CopilotActionConfirm({ action }: Props) {
           queryClient.invalidateQueries({ queryKey: ['deal', dealId] });
         }
         // Dispatch custom event for non-React-Query state (DealsContext)
+        window.dispatchEvent(new CustomEvent('copilot-action-completed', { detail: { actionType, params } }));
+        break;
+
+      case 'update_deal_status':
+      case 'add_deal_note':
+      case 'log_note':
+        if (dealId) {
+          queryClient.invalidateQueries({ queryKey: ['deal', dealId] });
+        }
         window.dispatchEvent(new CustomEvent('copilot-action-completed', { detail: { actionType, params } }));
         break;
 
