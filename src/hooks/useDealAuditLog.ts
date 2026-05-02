@@ -31,7 +31,7 @@ export function useDealAuditLog(dealId: string | undefined) {
     setLoading(true);
     try {
       const from = pageNum * PAGE_SIZE;
-      const [{ data, error }, { data: callData, error: callError }] = await Promise.all([
+      const [{ data, error }, { data: callData, error: callError }, stageRes, pipelinesRes] = await Promise.all([
         (supabase as any)
           .from('deal_audit_log')
           .select('*')
@@ -45,6 +45,17 @@ export function useDealAuditLog(dealId: string | undefined) {
           .eq('activity_type', 'claap_recording_linked')
           .order('created_at', { ascending: false })
           .range(from, from + PAGE_SIZE - 1),
+        // Stage changes: history is normally small per deal, fetch all once on page 0 and ignore on subsequent pages.
+        pageNum === 0
+          ? supabase
+              .from('deal_stage_history')
+              .select('id, deal_id, pipeline_id, from_stage, to_stage, changed_at, changed_by')
+              .eq('deal_id', dealId)
+              .order('changed_at', { ascending: false })
+          : Promise.resolve({ data: [] as any[], error: null }),
+        pageNum === 0
+          ? supabase.from('deal_pipelines').select('id, name, stages')
+          : Promise.resolve({ data: [] as any[], error: null }),
       ]);
 
       if (error) throw error;
@@ -65,7 +76,47 @@ export function useDealAuditLog(dealId: string | undefined) {
         user_avatar_url: null,
       }));
 
-      const rows = [...auditRows, ...callRows].sort(
+      // Build pipeline → stage label map for friendly stage names
+      const pipelineStageLabels: Record<string, string> = {};
+      for (const p of (pipelinesRes?.data || []) as any[]) {
+        const stages = Array.isArray(p?.stages) ? p.stages : [];
+        for (const s of stages) {
+          if (s && typeof s.id === 'string') {
+            pipelineStageLabels[`${p.id}::${s.id}`] = s.label || s.id;
+            // also store an unscoped fallback
+            if (!pipelineStageLabels[s.id]) pipelineStageLabels[s.id] = s.label || s.id;
+          }
+        }
+      }
+      const labelFor = (pipelineId: string | null, stageId: string | null) => {
+        if (!stageId) return '—';
+        if (pipelineId && pipelineStageLabels[`${pipelineId}::${stageId}`]) return pipelineStageLabels[`${pipelineId}::${stageId}`];
+        return pipelineStageLabels[stageId] || stageId.replace(/-/g, ' ');
+      };
+
+      const stageRows: DealAuditEntry[] = ((stageRes?.data || []) as any[]).map((row) => {
+        const fromLabel = labelFor(row.pipeline_id, row.from_stage);
+        const toLabel = labelFor(row.pipeline_id, row.to_stage);
+        return {
+          id: `stage-${row.id}`,
+          deal_id: row.deal_id,
+          user_id: row.changed_by,
+          action_type: 'stage_changed',
+          entity_type: 'stage_change',
+          entity_id: row.id,
+          entity_name: toLabel,
+          metadata: {
+            from_stage: row.from_stage,
+            to_stage: row.to_stage,
+            from_label: fromLabel,
+            to_label: toLabel,
+            pipeline_id: row.pipeline_id,
+          },
+          created_at: row.changed_at,
+        };
+      });
+
+      const rows = [...auditRows, ...callRows, ...stageRows].sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
 
@@ -96,6 +147,7 @@ export function useDealAuditLog(dealId: string | undefined) {
       } else {
         setEntries(uniqueEntries);
       }
+      // Stage history is only fetched on page 0; pagination is driven by audit + call streams.
       setHasMore(auditRows.length === PAGE_SIZE || callRows.length === PAGE_SIZE);
     } catch (err) {
       console.error('Error fetching audit log:', err);
