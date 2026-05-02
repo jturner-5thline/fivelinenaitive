@@ -237,7 +237,19 @@ export function useDealAttachments(dealId: string | null) {
         progress.progress = 100;
         notifyProgress();
 
-        if (data) results.push(data as DealAttachment);
+        if (data) {
+          results.push(data as DealAttachment);
+          // Trigger background text extraction so the AI can search this file.
+          try {
+            supabase.functions
+              .invoke('deal-document-extract', {
+                body: { documentId: (data as any).id, source: 'data_room' },
+              })
+              .catch((err) => console.warn('[data-room] extract trigger failed:', err));
+          } catch (err) {
+            console.warn('[data-room] extract invoke error:', err);
+          }
+        }
       } catch (error) {
         console.error('Error uploading attachment:', error);
         progress.status = 'error';
