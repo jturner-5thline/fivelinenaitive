@@ -247,6 +247,48 @@ export function useDealAuditLog(dealId: string | undefined) {
           user_avatar_url: null,
         }, ...prev]);
       })
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'deal_stage_history',
+        filter: `deal_id=eq.${dealId}`,
+      }, async (payload) => {
+        const row = payload.new as {
+          id: string; deal_id: string; pipeline_id: string | null;
+          from_stage: string | null; to_stage: string;
+          changed_at: string; changed_by: string | null;
+        };
+        let displayName: string | null = null;
+        let avatar: string | null = null;
+        if (row.changed_by) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('display_name, avatar_url')
+            .eq('user_id', row.changed_by)
+            .maybeSingle();
+          displayName = profile?.display_name || null;
+          avatar = profile?.avatar_url || null;
+        }
+        setEntries(prev => [{
+          id: `stage-${row.id}`,
+          deal_id: row.deal_id,
+          user_id: row.changed_by,
+          action_type: 'stage_changed',
+          entity_type: 'stage_change',
+          entity_id: row.id,
+          entity_name: row.to_stage,
+          metadata: {
+            from_stage: row.from_stage,
+            to_stage: row.to_stage,
+            from_label: (row.from_stage || '—').replace(/-/g, ' '),
+            to_label: (row.to_stage || '').replace(/-/g, ' '),
+            pipeline_id: row.pipeline_id,
+          },
+          created_at: row.changed_at,
+          user_display_name: displayName || 'System',
+          user_avatar_url: avatar,
+        }, ...prev]);
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [dealId]);
