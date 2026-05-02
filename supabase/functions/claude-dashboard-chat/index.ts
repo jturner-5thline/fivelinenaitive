@@ -848,7 +848,22 @@ Deno.serve(async (req) => {
     const lastUserText = [...messages].reverse().find((m: any) => m.role === "user")?.content || "";
     const promptAddendum = getPromptAddendum(lastUserText);
 
-    const systemPrompt = `You are naitive Copilot — a Claude-powered deal intelligence assistant for commercial lending professionals at ${companyName}. You answer questions about deals, lenders, pipeline, tasks, and outstanding items using the user's actual data below.
+    // Load firm-level Copilot Instructions and prepend to the system prompt.
+    let copilotPrefix = "";
+    try {
+      if (companyId) {
+        const { data: aiConfigRow } = await supabase
+          .from("ai_configuration")
+          .select("copilot_instructions")
+          .eq("company_id", companyId)
+          .maybeSingle();
+        copilotPrefix = compileCopilotInstructions(aiConfigRow?.copilot_instructions);
+      }
+    } catch (e) {
+      console.warn("[claude-dashboard-chat] copilot instructions load failed", e);
+    }
+
+    const systemPrompt = `${copilotPrefix ? copilotPrefix + "\n\n" : ""}You are naitive Copilot — a Claude-powered deal intelligence assistant for commercial lending professionals at ${companyName}. You answer questions about deals, lenders, pipeline, tasks, and outstanding items using the user's actual data below.
 
 The user's name is ${userName}.
 
