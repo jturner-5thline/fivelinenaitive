@@ -374,11 +374,14 @@ Deno.serve(async (req) => {
 
     if (autoCreate && insights.action_items.length > 0) {
       // Idempotency: skip action items already created from this recording.
+      // We tag tasks via a marker line in `description` so this works even
+      // before a `metadata` column is available on `tasks`.
+      const recordingMarker = `[claap:${body.recording_id}]`;
       const { data: existingTasks } = await supabaseUser
         .from("tasks")
-        .select("id, title")
+        .select("id, title, description")
         .eq("deal_id", body.deal_id)
-        .contains("metadata", { source: "claap_deal_analyze", recording_id: body.recording_id });
+        .ilike("description", `%${recordingMarker}%`);
 
       const existingTitles = new Set((existingTasks || []).map((t: any) => (t.title || "").trim().toLowerCase()));
 
@@ -389,20 +392,11 @@ Deno.serve(async (req) => {
           assigned_to: user.id,
           assigned_by: user.id,
           title: truncate(a.title, 200),
-          description: `Auto-created by naitive AI from Claap recording: ${title}${a.owner ? `\nOriginal owner mentioned: ${a.owner}` : ""}${a.due_hint ? `\nDue hint: ${a.due_hint}` : ""}\n\nYou can delete this task if it isn't relevant.`,
+          description: `Auto-created by naitive AI from Claap recording: ${title}${a.owner ? `\nOriginal owner mentioned: ${a.owner}` : ""}${a.due_hint ? `\nDue hint: ${a.due_hint}` : ""}\n\nYou can delete this task if it isn't relevant.\n\n${recordingMarker}`,
           priority: a.priority || "medium",
           status: "not_started",
           task_type: "task",
           due_date: inferDueDate(a.due_hint),
-          metadata: {
-            source: "claap_deal_analyze",
-            recording_id: body.recording_id,
-            recording_title: title,
-            activity_log_id: activityRow.id,
-            original_owner: a.owner,
-            due_hint: a.due_hint || null,
-            auto_created: true,
-          },
         }));
 
       if (rowsToInsert.length > 0) {
@@ -418,7 +412,7 @@ Deno.serve(async (req) => {
             title: t.title,
             due_date: t.due_date,
             priority: t.priority,
-            owner_label: rowsToInsert[i]?.metadata?.original_owner || "Team",
+            owner_label: insights.action_items[i]?.owner || "Team",
           }));
         }
       }
