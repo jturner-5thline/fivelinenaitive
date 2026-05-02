@@ -347,6 +347,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   // AI Memo generation
   const { isGenerating: isMemoGenerating, isRegenerating, memoContent, memoSections, generateFullMemo, regenerateSection } = useDealSpaceMemo(dealId);
   const [showMemoDialog, setShowMemoDialog] = useState(false);
+  const [showBrandedStudio, setShowBrandedStudio] = useState(false);
   
   // Overwrite protection
   const [showOverwriteDialog, setShowOverwriteDialog] = useState(false);
