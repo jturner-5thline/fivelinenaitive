@@ -88,7 +88,7 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
   const ACTIVE_STATUSES = ["on-track", "at-risk", "off-track", "active"];
   const [dealsRes, tasksRes] = await Promise.all([
     supabase.from("deals")
-      .select("id, company, value, stage, status, deal_type, business_model, created_at, updated_at, user_id, deal_owner, manager, next_follow_up_at, notes_updated_at")
+      .select("id, company, value, stage, status, deal_type, deal_class, pipeline_id, business_model, created_at, updated_at, user_id, deal_owner, manager, next_follow_up_at, notes_updated_at")
       .eq("company_id", companyId)
       .in("status", ACTIVE_STATUSES)
       .order("updated_at", { ascending: false })
@@ -121,6 +121,10 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
     if (n.startsWith("test ")) return false;
     if (n === "test-niki's store" || n === "test-niki’s store") return false;
     if (n === "example deal") return false;
+    // Match the My Deals widget: exclude naitive Pipeline & FinServ deals
+    // from the standard "active deals" view used by the Dashboard AI.
+    const dc = (d.deal_class || "standard").toLowerCase();
+    if (dc === "naitive" || dc === "finserv") return false;
     return true;
   });
 
