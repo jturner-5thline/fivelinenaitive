@@ -919,6 +919,11 @@ CRITICAL RULES:
         {/* Chat Area */}
         <div className="flex-1 flex flex-col min-h-0 min-w-0">
           <ScrollArea className="flex-1 mb-4">
+            <DealProactiveNudgesCard
+              dealId={dealId}
+              hidden={messages.length > 0}
+              onAction={(prompt) => setQuestion(prompt)}
+            />
             {messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center py-8">
                 <Bot className="h-12 w-12 text-muted-foreground/50 mb-4" />
