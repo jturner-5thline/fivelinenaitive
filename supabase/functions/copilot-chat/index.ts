@@ -3623,6 +3623,11 @@ Workflows & automations context (use whenever the user asks about saved automati
 
 Communications context (use whenever the question references emails, calls, meetings, or scheduling):
 - "What did X say", "find emails about/from", "recent messages with Y" → search_emails (synced inbox)
+- "Show me the whole thread", "full conversation", "back-and-forth with X" → get_email_thread (after search_emails to get the thread_id)
+- "What emails are on this deal", "deal email trail", "emails attached to <deal>" → get_deal_emails
+- "What drafts do I have", "unfinished emails", "draft for <deal>" → list_email_drafts
+- "Did I email X", "when did I last reply to Y", "what did I send about Z", "did the email go out" → get_sent_emails (includes status + error_message)
+- "What's queued to send", "pending scheduled emails", "what goes out tomorrow" → get_scheduled_emails
 - "What's on my calendar", "do I have a meeting with X", "next call with Y" → get_upcoming_events
 - "What did we discuss with X", "summary of the call", "last meeting on this deal" → get_recent_meetings (Claap recordings with summaries + transcripts)
 
