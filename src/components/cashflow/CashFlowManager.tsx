@@ -19,6 +19,8 @@ import { ScheduledCashFlowsModal } from './ScheduledCashFlowsModal';
 import { useCashFlowImport } from './useCashFlowImport';
 import { useCashInItems } from './useCashInItems';
 import { useScheduledCashFlows } from './useScheduledCashFlows';
+import { useQuickbooksDerivedCashFlows } from './useQuickbooksDerivedCashFlows';
+import { useDealProjectedCashFlows } from './useDealProjectedCashFlows';
 import { useCustomCashFlowRows } from './useCustomCashFlowRows';
 import { mergeScheduledIntoWeekly, ACCOUNT_OPTIONS, resolveCategoryToGridRow, DEBT_ADVISORY_DEFAULT_SUBCATEGORY, generateOccurrences, applyVariance, gridRowToCanonicalCategory, type ScheduledCashFlow } from './scheduledCashFlows';
 import { WEEKLY_HISTORICAL_SEED, LAST_HISTORICAL_WEEK_ENDING } from './weeklyHistoricalSeed';
@@ -160,6 +162,13 @@ export function CashFlowManager() {
   const { importedDailyData, importedRowStructure, isImported, isImportLoading, importFile } = useCashFlowImport(company?.id);
   const { items: cashInDbItems, fetchItems: refreshCashInItems, removeItem: removeCashInDbItem, toSidebarItems } = useCashInItems();
   const { items: scheduledItems, saveAll: saveScheduledItems, addItem: addScheduledItem } = useScheduledCashFlows(company?.id);
+  // Auto-populated entries — read-only, stacked on top of manual Configure rows.
+  const { items: qbDerivedItems } = useQuickbooksDerivedCashFlows(!!company?.id);
+  const { items: dealProjectedItems } = useDealProjectedCashFlows(company?.id, !!company?.id);
+  const combinedScheduledItems = useMemo(
+    () => [...(qbDerivedItems || []), ...(dealProjectedItems || []), ...(scheduledItems || [])],
+    [qbDerivedItems, dealProjectedItems, scheduledItems],
+  );
   const { rows: customRows, addRow: addCustomRow, removeRow: removeCustomRow } = useCustomCashFlowRows(company?.id);
   const [addCashInOpen, setAddCashInOpen] = useState(false);
   const [scheduledModalOpen, setScheduledModalOpen] = useState(false);
@@ -528,7 +537,7 @@ export function CashFlowManager() {
       return `${y}-${m}-${day}`;
     };
     let horizonEnd = parseISO('2026-12-25');
-    for (const e of scheduledItems || []) {
+    for (const e of combinedScheduledItems || []) {
       const candidates = [
         e.frequency_config?.one_time_date,
         e.end_date,
@@ -575,21 +584,21 @@ export function CashFlowManager() {
     }
 
     return out;
-  }, [scheduledItems, weeklyOverrides]);
+  }, [combinedScheduledItems, weeklyOverrides]);
 
   // Apply Entity and Category filters to the scheduled (Configure) entries.
   // When neither filter is active, all entries pass through unchanged.
   const isConfigureFilterActive = filterEntities.length > 0 || filterCategories.length > 0;
   const filteredScheduledItems = useMemo(() => {
-    if (!isConfigureFilterActive) return scheduledItems;
-    return (scheduledItems || []).filter((e) => {
+    if (!isConfigureFilterActive) return combinedScheduledItems;
+    return (combinedScheduledItems || []).filter((e) => {
       // Migrate legacy parent storage so filtering is consistent with the grid.
       const cat = resolveCategoryToGridRow(e.category);
       const entityOk = filterEntities.length === 0 || filterEntities.includes(e.account);
       const categoryOk = filterCategories.length === 0 || filterCategories.includes(cat);
       return entityOk && categoryOk;
     });
-  }, [scheduledItems, filterEntities, filterCategories, isConfigureFilterActive]);
+  }, [combinedScheduledItems, filterEntities, filterCategories, isConfigureFilterActive]);
 
   // Build a zeroed shell of weekly entries (preserves week_ending, week_num, etc.)
   // so that when a Configure filter is active we show ONLY filtered Configure
