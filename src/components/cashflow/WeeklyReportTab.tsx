@@ -54,6 +54,12 @@ interface WeeklyReportTabProps {
   onWeeksFutureChange?: (n: number) => void;
   weeksPast?: number;
   onWeeksPastChange?: (n: number) => void;
+  /** Highest Ending Cash week within the visible window (computed by parent). */
+  peakCash?: { value: number; weekEnding: string; weekKey: string } | null;
+  /** Lowest Ending Cash week within the visible window (computed by parent). */
+  lowCash?: { value: number; weekEnding: string; weekKey: string } | null;
+  /** Threshold below which Low Cash is rendered with negative styling and the warning banner appears. */
+  cautionThreshold?: number;
   /**
    * Add a one-time scheduled cash flow entry for a specific row + week.
    * Used by inline cell "+ Add" popover so users can quickly add ad-hoc
