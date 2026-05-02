@@ -652,6 +652,8 @@ function selectTools(page: string, entityType?: string) {
     "link_contact_to_deal",
     // Always-available comms context (synced inbox, calendar, recorded meetings).
     "search_emails", "get_upcoming_events", "get_recent_meetings",
+    // Always-available task & follow-up context.
+    "get_task_details", "get_scheduled_followups",
   ]);
 
   if (page.includes("lender")) {
