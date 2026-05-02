@@ -1189,6 +1189,74 @@ const tools = [
       },
     },
   },
+  // ── FinServ ops (5th Line internal pipeline) ─────────────────
+  {
+    type: "function",
+    function: {
+      name: "get_finserv_pipeline_summary",
+      description: "Counts and total fee value of FinServ deals per stage in the 5th Line internal FinServ pipeline. Includes stage definitions (id, label, color). Use for 'FinServ pipeline overview', 'FinServ funnel', 'how many FinServ deals per stage'. 5th Line internal only.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_finserv_deals",
+      description: "List FinServ deals (5th Line internal pipeline) with stage, owner, fees, status. Use for 'show FinServ deals', 'active FinServ engagements', 'who owns FinServ deal X'. 5th Line internal only.",
+      parameters: {
+        type: "object",
+        properties: {
+          stage: { type: "string", description: "Filter by stage id (e.g. 'fs-qualification', 'fs-proposal-sent')." },
+          owner: { type: "string", description: "Filter by deal_owner or manager (substring match)." },
+          on_hold: { type: "boolean", description: "Filter on_hold flag." },
+          status: { type: "string", description: "Filter status (on-track, at-risk, off-track)." },
+          query: { type: "string", description: "Substring search on company name." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_finserv_deal_full",
+      description: "Full FinServ deal profile including stage, fees, milestones, owner. Use for 'tell me about FinServ deal X', 'status of <FinServ engagement>'. 5th Line internal only.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID." },
+          query: { type: "string", description: "Company name substring (used if deal_id missing)." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_finserv_revenue_summary",
+      description: "Aggregated FinServ revenue summary: total fees, count of closed-won, count of in-flight, by month. Sourced from FinServ pipeline deals. Use for 'FinServ revenue', 'FinServ bookings this quarter', 'FinServ closed deals'. 5th Line internal only.",
+      parameters: {
+        type: "object",
+        properties: {
+          months: { type: "number", description: "Lookback months. Default 6, max 24." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_finserv_milestones",
+      description: "Outstanding (not completed) milestones across active FinServ deals, flagging overdue ones. Use for 'FinServ deliverables', 'overdue FinServ milestones', 'what's pending in FinServ'. 5th Line internal only.",
+      parameters: {
+        type: "object",
+        properties: {
+          overdue_only: { type: "boolean", description: "Default false." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
