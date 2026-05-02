@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Mail, AlertCircle, Sparkles, AlertTriangle, ShieldCheck, X, MinusCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Mail, AlertCircle, Sparkles, AlertTriangle, ShieldCheck, X, MinusCircle, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -181,6 +181,25 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
       next.add(`${lenderName.toLowerCase()}::${kind}`);
       return next;
     });
+  };
+
+  /**
+   * Bulk-dismiss every currently-active pre-flight warning and collapse
+   * the checklist. Used by the "Proceed with all lenders" shortcut so a
+   * reviewer who's chosen to ignore the warnings can clear the panel and
+   * hit Continue without dismissing each item by hand.
+   */
+  const proceedWithAllLenders = () => {
+    setDismissedWarnings((prev) => {
+      const next = new Set(prev);
+      activeWarnings.forEach((entry) => {
+        entry.warnings.forEach((w) => {
+          next.add(`${entry.lenderName.toLowerCase()}::${w.kind}`);
+        });
+      });
+      return next;
+    });
+    setPreflightOpen(false);
   };
 
   const removeLenderFromSubmission = (lenderName: string) => {
@@ -408,6 +427,7 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
             </button>
 
             {preflightOpen && activeWarnings.length > 0 && (
+              <>
               <ul className="mt-2 space-y-2">
                 {activeWarnings.map((entry) => (
                   <li
@@ -452,6 +472,22 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
                   </li>
                 ))}
               </ul>
+              {/* Bulk-acknowledge shortcut — dismisses every active
+                  warning for this session and collapses the panel so the
+                  reviewer can move straight to Continue. */}
+              <div className="mt-2 flex justify-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={proceedWithAllLenders}
+                  className="h-7 text-[11px] border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10"
+                >
+                  <CheckCircle2 className="h-3 w-3 mr-1.5" />
+                  Proceed with all lenders
+                </Button>
+              </div>
+              </>
             )}
 
             {!preflight.loading && activeWarnings.length === 0 && (
