@@ -118,6 +118,7 @@ import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel
 import { DataRoomV2 } from '@/components/deal/DataRoomV2';
 import { VdrShell } from '@/components/vdr/VdrShell';
 import { DealActivityLogTab } from '@/components/deal/DealActivityLogTab';
+import { DealStageTimeline } from '@/components/deal/DealStageTimeline';
 import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
 import { ClaapMeetingsTab } from '@/components/deal/ClaapMeetingsTab';
 import { ChecklistLinkDialog } from '@/components/deal/ChecklistLinkDialog';
@@ -4634,6 +4635,10 @@ export default function DealDetail() {
                   <div className="rounded-lg overflow-hidden mt-3 bg-card border border-border/30" style={{ height: 'calc(100vh - 190px)' }}>
                     <DealActivityLogTab dealId={id!} />
                   </div>
+                </TabsContent>
+
+                <TabsContent value="stage-timeline" className={cn("mt-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`stage-timeline-${tabDirection}`}>
+                  <DealStageTimeline dealId={id!} />
                 </TabsContent>
 
                 {hasDealSpaceAccess && (
