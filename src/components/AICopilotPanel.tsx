@@ -762,6 +762,12 @@ export function AICopilotPanel() {
             },
             history,
             conversationMutations: useCopilotStore.getState().conversationMutations,
+            dealMemory: dealIdFromPath
+              ? {
+                  deal_id: dealIdFromPath,
+                  prior_messages: (dealMemory.recent || []).map((m) => ({ role: m.role, content: m.content })),
+                }
+              : null,
           }),
         signal: abortRef.current.signal,
       });
