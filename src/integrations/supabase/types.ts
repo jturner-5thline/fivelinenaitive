@@ -864,6 +864,110 @@ export type Database = {
           },
         ]
       }
+      ai_style_templates: {
+        Row: {
+          created_at: string
+          fonts: Json
+          id: string
+          layout_notes: string | null
+          name: string
+          palette: Json
+          preview_image_path: string | null
+          source_type: string
+          source_value: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          fonts?: Json
+          id?: string
+          layout_notes?: string | null
+          name: string
+          palette?: Json
+          preview_image_path?: string | null
+          source_type: string
+          source_value?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          fonts?: Json
+          id?: string
+          layout_notes?: string | null
+          name?: string
+          palette?: Json
+          preview_image_path?: string | null
+          source_type?: string
+          source_value?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_styled_documents: {
+        Row: {
+          created_at: string
+          deal_id: string
+          document_type: string
+          exported_at: string | null
+          exported_attachment_id: string | null
+          html: string
+          id: string
+          prompt: string | null
+          sections: Json
+          status: string
+          style: Json
+          style_template_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          document_type: string
+          exported_at?: string | null
+          exported_attachment_id?: string | null
+          html?: string
+          id?: string
+          prompt?: string | null
+          sections?: Json
+          status?: string
+          style?: Json
+          style_template_id?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          document_type?: string
+          exported_at?: string | null
+          exported_attachment_id?: string | null
+          html?: string
+          id?: string
+          prompt?: string | null
+          sections?: Json
+          status?: string
+          style?: Json
+          style_template_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_styled_documents_style_template_id_fkey"
+            columns: ["style_template_id"]
+            isOneToOne: false
+            referencedRelation: "ai_style_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_usage_logs: {
         Row: {
           company_id: string

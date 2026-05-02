@@ -51,6 +51,7 @@ import { WriteUpCompanyHighlightsTab } from './writeup/WriteUpCompanyHighlightsT
 import { WriteUpKeyItemsTab } from './writeup/WriteUpKeyItemsTab';
 import { WriteUpOwnershipTab } from './writeup/WriteUpOwnershipTab';
 import { WriteUpAutoFillDialog } from './WriteUpAutoFillDialog';
+import { BrandedDocStudioDialog } from './BrandedDocStudioDialog';
 import { WriteUpPreviewDialog } from './writeup/WriteUpPreviewDialog';
 import { OverwriteProtectionDialog } from './writeup/OverwriteProtectionDialog';
 import { UserEditedFieldWrapper } from './writeup/UserEditedFieldWrapper';
@@ -346,6 +347,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   // AI Memo generation
   const { isGenerating: isMemoGenerating, isRegenerating, memoContent, memoSections, generateFullMemo, regenerateSection } = useDealSpaceMemo(dealId);
   const [showMemoDialog, setShowMemoDialog] = useState(false);
+  const [showBrandedStudio, setShowBrandedStudio] = useState(false);
   
   // Overwrite protection
   const [showOverwriteDialog, setShowOverwriteDialog] = useState(false);
@@ -1126,6 +1128,27 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 </Tooltip>
               </TooltipProvider>
               )}
+              {canGenerateMemo && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowBrandedStudio(true)}
+                      className="gap-2"
+                    >
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      Branded Document
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Generate a styled, branded document (memo, teaser, one-pager…)</p>
+                    <p className="text-[10px] opacity-70 mt-0.5">Style by image, URL, or saved template</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              )}
               {autoFilledFields.size > 0 && (
                 <Badge variant="secondary" className="gap-1 text-xs bg-primary/10 text-primary border-primary/20">
                   <Sparkles className="h-3 w-3" />
@@ -1524,6 +1547,14 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
         onApply={handleApplyAutoFill}
         documentCount={autoFillDocumentCount}
         sourceCount={autoFillSourceCount}
+      />
+
+      {/* Branded Document Studio */}
+      <BrandedDocStudioDialog
+        open={showBrandedStudio}
+        onOpenChange={setShowBrandedStudio}
+        dealId={dealId}
+        companyName={data.companyName || 'Subject Company'}
       />
 
       {/* Empty Fields Warning Dialog */}
