@@ -11,6 +11,41 @@ const MAX_TOOL_TURNS = 10;
 
 // Context fetchers removed — data is now lazy-loaded via tool calls
 
+// ── Period resolver for finance tools ──────────────────────────
+function resolvePeriod(period?: string, customStart?: string, customEnd?: string): { start: string; end: string; label: string } {
+  const now = new Date();
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth();
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const p = (period || "ytd").toLowerCase();
+  switch (p) {
+    case "custom":
+      return { start: customStart || `${y}-01-01`, end: customEnd || fmt(now), label: `${customStart} → ${customEnd}` };
+    case "mtd":
+      return { start: fmt(new Date(Date.UTC(y, m, 1))), end: fmt(now), label: "Month-to-date" };
+    case "qtd": {
+      const qStartMonth = Math.floor(m / 3) * 3;
+      return { start: fmt(new Date(Date.UTC(y, qStartMonth, 1))), end: fmt(now), label: "Quarter-to-date" };
+    }
+    case "last_month": {
+      const lm = new Date(Date.UTC(y, m - 1, 1));
+      const lmEnd = new Date(Date.UTC(y, m, 0));
+      return { start: fmt(lm), end: fmt(lmEnd), label: "Last month" };
+    }
+    case "last_quarter": {
+      const qStartMonth = Math.floor(m / 3) * 3;
+      const lqStart = new Date(Date.UTC(y, qStartMonth - 3, 1));
+      const lqEnd = new Date(Date.UTC(y, qStartMonth, 0));
+      return { start: fmt(lqStart), end: fmt(lqEnd), label: "Last quarter" };
+    }
+    case "last_year":
+      return { start: `${y - 1}-01-01`, end: `${y - 1}-12-31`, label: `Last year (${y - 1})` };
+    case "ytd":
+    default:
+      return { start: `${y}-01-01`, end: fmt(now), label: `Year-to-date (${y})` };
+  }
+}
+
 // ── Tool definitions ──────────────────────────────────────────────
 const tools = [
   {
