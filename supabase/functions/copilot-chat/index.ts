@@ -874,6 +874,102 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "list_workflows",
+      description: "List the user's automation workflows (the React Flow / wf_workflows automations). Returns id, name, description, trigger type, active state, action count, last update. Use for 'show my workflows', 'what automations do I have', 'which workflows are running', 'list active automations'.",
+      parameters: {
+        type: "object",
+        properties: {
+          active_only: { type: "boolean", description: "Only return is_active=true workflows. Default false." },
+          trigger_type: { type: "string", description: "Optional: filter by trigger_type (e.g. 'deal_stage_changed', 'task_created', 'webhook')." },
+          search: { type: "string", description: "Fuzzy match on workflow name or description." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_workflow_runs",
+      description: "Inspect recent executions of automation workflows — when they ran, status (queued/running/succeeded/failed), error step, duration. Use for 'did my workflow run', 'why did the automation fail', 'recent workflow executions', 'workflow run history', 'last automation run for X'.",
+      parameters: {
+        type: "object",
+        properties: {
+          workflow_id: { type: "string", description: "Optional: scope to a single workflow." },
+          status: { type: "string", description: "Optional: 'queued', 'running', 'succeeded', 'failed', 'cancelled'." },
+          since_days: { type: "number", description: "Only runs from the last N days. Default 7." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_email_workflows",
+      description: "List configured email/communication workflows (stage-triggered email sequences that prompt the user to send a templated message). Returns trigger event, pipeline+stage, template, audience, active state. Use for 'what email workflows fire on stage X', 'list email automations', 'which templates trigger when a deal moves to closing'.",
+      parameters: {
+        type: "object",
+        properties: {
+          active_only: { type: "boolean", description: "Only is_active=true. Default true." },
+          stage_name: { type: "string", description: "Optional: filter by pipeline stage (fuzzy match)." },
+          trigger_event: { type: "string", description: "Optional: filter by trigger_event (e.g. 'stage_changed', 'lender_added')." },
+          limit: { type: "number", description: "Default 100, max 200." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_email_workflow_events",
+      description: "Recent firings of email workflows — which deals had a draft prompted, which were approved/sent/dismissed/deferred. Use for 'did the closing email get sent', 'which workflow drafts are pending', 'recent email workflow activity', 'pending approvals for triggered emails'.",
+      parameter_warning: "scoped via RLS to user's company",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Optional: scope to a single deal." },
+          status: { type: "string", description: "Optional: 'pending', 'approved', 'sent', 'dismissed', 'deferred'." },
+          since_days: { type: "number", description: "Default 14." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_zapier_webhooks",
+      description: "List Zapier outbound webhooks the user/company has configured (label, URL host, subscribed event types, active state). Use for 'what Zapier integrations do I have', 'which events go to Zapier', 'list webhook subscriptions'.",
+      parameters: {
+        type: "object",
+        properties: {
+          active_only: { type: "boolean", description: "Only is_active=true. Default false." },
+          limit: { type: "number", description: "Default 50." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_zapier_webhook_logs",
+      description: "Recent Zapier webhook delivery logs (event_type, status_code, success, error_message). Use for 'did the Zapier webhook fire', 'why is Zapier failing', 'recent webhook deliveries', 'webhook errors'.",
+      parameters: {
+        type: "object",
+        properties: {
+          webhook_id: { type: "string", description: "Optional: scope to one webhook." },
+          event_type: { type: "string", description: "Optional: filter by event_type." },
+          success: { type: "boolean", description: "Optional: only successes (true) or only failures (false)." },
+          since_days: { type: "number", description: "Default 7." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
