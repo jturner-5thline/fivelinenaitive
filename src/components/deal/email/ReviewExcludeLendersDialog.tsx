@@ -12,11 +12,15 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Mail, AlertCircle, Sparkles } from 'lucide-react';
+import { Loader2, Mail, AlertCircle, Sparkles, AlertTriangle, ShieldCheck, X, MinusCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import {
+  useLenderPreflightChecks,
+  type LenderPreflightWarningKind,
+} from '@/hooks/useLenderPreflightChecks';
 
 /** Distilled status used for the review screen. */
 export type LenderReviewStatus = 'passed' | 'in-review' | 'no-response';
@@ -76,6 +80,21 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
   // and matches how senior bankers actually pitch deals.
   const [personalize, setPersonalize] = useState(true);
 
+  /**
+   * Per-lender warning dismissals for this dialog session, keyed by
+   * `${lenderNameLower}::${warningKind}`. Cleared each time the dialog
+   * reopens so risk signals are always re-shown to a fresh reviewer.
+   */
+  const [dismissedWarnings, setDismissedWarnings] = useState<Set<string>>(new Set());
+  const [preflightOpen, setPreflightOpen] = useState(true);
+
+  useEffect(() => {
+    if (!open) {
+      setDismissedWarnings(new Set());
+      setPreflightOpen(true);
+    }
+  }, [open]);
+
   // Load lenders fresh every time the dialog opens so status is current.
   useEffect(() => {
     if (!open || !dealId) return;
@@ -132,6 +151,46 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
       otherSkipped,
     };
   }, [rows]);
+
+  // ── Pre-flight risk checks against currently INCLUDED lenders ───────────
+  const includedNames = useMemo(
+    () => rows.filter((r) => !r.excluded).map((r) => r.name),
+    [rows]
+  );
+  const preflight = useLenderPreflightChecks({
+    dealId,
+    lenderNames: includedNames,
+    enabled: open && !loading,
+  });
+
+  /** Active warnings = those raised by the hook minus per-session dismissals. */
+  const activeWarnings = useMemo(() => {
+    return preflight.flat
+      .map((entry) => ({
+        ...entry,
+        warnings: entry.warnings.filter(
+          (w) => !dismissedWarnings.has(`${entry.lenderName.toLowerCase()}::${w.kind}`)
+        ),
+      }))
+      .filter((entry) => entry.warnings.length > 0);
+  }, [preflight.flat, dismissedWarnings]);
+
+  const dismissWarning = (lenderName: string, kind: LenderPreflightWarningKind) => {
+    setDismissedWarnings((prev) => {
+      const next = new Set(prev);
+      next.add(`${lenderName.toLowerCase()}::${kind}`);
+      return next;
+    });
+  };
+
+  const removeLenderFromSubmission = (lenderName: string) => {
+    const target = lenderName.trim().toLowerCase();
+    setRows((prev) =>
+      prev.map((r) =>
+        r.name.trim().toLowerCase() === target ? { ...r, excluded: true } : r
+      )
+    );
+  };
 
   const toggleExcluded = (id: string, value: boolean) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, excluded: value } : r)));
@@ -295,6 +354,113 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
             </>
           )}
         </div>
+
+        {/* ── Pre-flight risk checks ─────────────────────────────────────
+            Surfaces lender-level warnings (pass history, size mismatch,
+            geography mismatch) before the user proceeds to drafts. Soft
+            warnings only — the user can dismiss any item or remove the
+            flagged lender from the round, but is never blocked. */}
+        {summary.includedCount > 0 && (preflight.loading || activeWarnings.length > 0) && (
+          <div
+            className={cn(
+              'rounded-md border px-3 py-2',
+              activeWarnings.length > 0
+                ? 'border-amber-500/30 bg-amber-500/5'
+                : 'border-border/60 bg-muted/30'
+            )}
+          >
+            <button
+              type="button"
+              onClick={() => setPreflightOpen((v) => !v)}
+              className="flex w-full items-center gap-2 text-left"
+              aria-expanded={preflightOpen}
+            >
+              {activeWarnings.length > 0 ? (
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+              ) : (
+                <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
+              )}
+              <span className="text-xs font-medium flex-1">
+                Pre-flight checks
+                {preflight.loading && (
+                  <span className="ml-2 text-[10px] font-normal text-muted-foreground inline-flex items-center gap-1">
+                    <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                    Scanning lender history…
+                  </span>
+                )}
+                {!preflight.loading && activeWarnings.length > 0 && (
+                  <Badge
+                    variant="outline"
+                    className="ml-2 text-[10px] py-0 h-4 border-amber-500/40 text-amber-600 dark:text-amber-400"
+                  >
+                    {activeWarnings.reduce((sum, e) => sum + e.warnings.length, 0)} warning
+                    {activeWarnings.reduce((sum, e) => sum + e.warnings.length, 0) === 1 ? '' : 's'}
+                  </Badge>
+                )}
+              </span>
+              {!preflight.loading && activeWarnings.length > 0 && (
+                preflightOpen ? (
+                  <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                )
+              )}
+            </button>
+
+            {preflightOpen && activeWarnings.length > 0 && (
+              <ul className="mt-2 space-y-2">
+                {activeWarnings.map((entry) => (
+                  <li
+                    key={`pf-${entry.lenderName.toLowerCase()}`}
+                    className="rounded border border-amber-500/20 bg-background/60 px-2.5 py-2"
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-[11px] font-semibold truncate">{entry.lenderName}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeLenderFromSubmission(entry.lenderName)}
+                        className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-destructive transition-colors"
+                        aria-label={`Remove ${entry.lenderName} from this submission`}
+                      >
+                        <MinusCircle className="h-3 w-3" />
+                        Remove from submission
+                      </button>
+                    </div>
+                    <ul className="space-y-1">
+                      {entry.warnings.map((w) => (
+                        <li
+                          key={`pf-${entry.lenderName.toLowerCase()}-${w.kind}`}
+                          className="flex items-start gap-2 text-[11px] text-foreground/90"
+                        >
+                          <span className="mt-0.5">⚠️</span>
+                          <span className="flex-1 leading-snug">
+                            {w.message}
+                            <span className="text-muted-foreground"> Proceed anyway?</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => dismissWarning(entry.lenderName, w.kind)}
+                            className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                            aria-label="Dismiss warning"
+                            title="Dismiss warning"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {!preflight.loading && activeWarnings.length === 0 && (
+              <p className="mt-1 text-[11px] text-muted-foreground pl-5">
+                No risk patterns detected for the selected lenders.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Personalize per lender — when ON, the AI tailors each draft to
             the lender's stated focus areas (deal types, size, industry).
