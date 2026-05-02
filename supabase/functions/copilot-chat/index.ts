@@ -3428,6 +3428,15 @@ Notifications & alerts context (use whenever the user asks what they were alerte
 - "Which lenders engaged", "who opened the deck", "lender activity alerts", "FLEx notifications" → get_lender_engagement_alerts
 - "Stale deals", "which deals need attention", "lenders I haven't followed up with", "deals with no recent updates" → get_stale_deal_alerts (default 7 days)
 
+Workflows & automations context (use whenever the user asks about saved automations, workflow runs, triggered emails, or Zapier webhooks — these are the wf_workflows / email_workflows / zapier_webhooks systems):
+- "List my workflows", "what automations do I have", "active workflows" → list_workflows
+- "Did my workflow run", "why did it fail", "recent workflow executions", "workflow run history" → get_workflow_runs (returns status, error_step, error_message, duration)
+- "What email automations fire on stage X", "stage-triggered emails", "list email workflows" → list_email_workflows
+- "Which workflow drafts are pending approval", "did the closing email get sent", "recent triggered emails" → get_email_workflow_events
+- "What Zapier integrations do I have", "list webhook subscriptions" → list_zapier_webhooks
+- "Did the Zapier webhook fire", "why is Zapier failing", "webhook delivery errors" → get_zapier_webhook_logs
+- When diagnosing failures, always surface error_message + error_step explicitly.
+
 Communications context (use whenever the question references emails, calls, meetings, or scheduling):
 - "What did X say", "find emails about/from", "recent messages with Y" → search_emails (synced inbox)
 - "What's on my calendar", "do I have a meeting with X", "next call with Y" → get_upcoming_events
