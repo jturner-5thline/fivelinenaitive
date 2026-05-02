@@ -3564,6 +3564,90 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       const totalValue = deals.reduce((sum: number, d: any) => sum + (Number(d.deal_value) || 0), 0);
       return { source_name: name, count: deals.length, total_deal_value: totalValue, deals };
     }
+    case "get_claap_meeting_full": {
+      let q = supabase.from("claap_meetings")
+        .select("id, claap_id, title, ai_summary, key_decisions, next_steps, topics, sentiment, organizer_email, duration_seconds, started_at, status, exclusion_reason, transcript_missing, no_internal_participant, deal_id, company_id, call_type, match_source, matched_lender_id, matched_contact_id, matched_crm_company_id, match_method, match_confidence, match_reason, match_status, manually_locked, matched_at, matched_by, transcript")
+        .limit(1);
+      if (args.meeting_id) q = q.eq("id", String(args.meeting_id));
+      else if (args.claap_id) q = q.eq("claap_id", String(args.claap_id));
+      else return { error: "meeting_id or claap_id required" };
+      const { data: meeting, error } = await q.maybeSingle();
+      if (error || !meeting) return { error: error?.message || "Meeting not found" };
+      const includeTranscript = !!args.include_transcript;
+      const [{ data: participants }, { data: suggestions }] = await Promise.all([
+        supabase.from("claap_meeting_participants").select("name, email, domain, is_internal, contact_id, resolved").eq("meeting_id", meeting.id),
+        supabase.from("claap_match_suggestions").select("rank, lender_name, company_name, contact_email, confidence, reason, suggestion_source, status").eq("meeting_id", meeting.id).order("rank", { ascending: true }),
+      ]);
+      return {
+        meeting: { ...meeting, transcript: includeTranscript ? (meeting.transcript || "").slice(0, 8000) : undefined },
+        participants: participants || [],
+        suggestions: suggestions || [],
+      };
+    }
+    case "list_unmatched_claap_meetings": {
+      const sinceDays = Math.min(Math.max(Number(args.since_days) || 14, 1), 90);
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      const sinceIso = new Date(Date.now() - sinceDays * 86400000).toISOString();
+      const { data, error } = await supabase.from("claap_meetings")
+        .select("id, claap_id, title, organizer_email, started_at, duration_seconds, call_type, match_status, match_confidence, match_reason, deal_id, matched_lender_id, matched_crm_company_id, suggestion_count")
+        .gte("started_at", sinceIso)
+        .or("deal_id.is.null,match_status.eq.pending,match_status.eq.unmatched")
+        .order("started_at", { ascending: false })
+        .limit(limit);
+      if (error) return { error: error.message };
+      return { count: (data || []).length, since_days: sinceDays, meetings: data || [] };
+    }
+    case "get_claap_routing_queue": {
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      let q = supabase.from("claap_routing_tasks")
+        .select("id, meeting_id, task_type, status, assigned_to, prefilled_data, expires_at, completed_at, created_at, updated_at")
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (args.status) q = q.eq("status", String(args.status));
+      else q = q.eq("status", "pending");
+      if (args.assigned_to) q = q.eq("assigned_to", String(args.assigned_to));
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const meetingIds = [...new Set((data || []).map((r: any) => r.meeting_id).filter(Boolean))];
+      const meetingMap: Record<string, any> = {};
+      if (meetingIds.length) {
+        const { data: meetings } = await supabase.from("claap_meetings").select("id, title, organizer_email, started_at").in("id", meetingIds);
+        for (const m of meetings || []) meetingMap[m.id] = m;
+      }
+      return {
+        count: (data || []).length,
+        tasks: (data || []).map((t: any) => ({ ...t, meeting: meetingMap[t.meeting_id] || null })),
+      };
+    }
+    case "list_claap_skipped_calls": {
+      const sinceDays = Math.min(Math.max(Number(args.since_days) || 30, 1), 180);
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      const sinceIso = new Date(Date.now() - sinceDays * 86400000).toISOString();
+      let q = supabase.from("claap_skipped_calls")
+        .select("id, claap_id, title, organizer_email, started_at, duration_seconds, skip_reason, force_synced, force_synced_at, force_synced_by, match_attempts, created_at")
+        .gte("created_at", sinceIso)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (typeof args.force_synced === "boolean") q = q.eq("force_synced", args.force_synced);
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      return { count: (data || []).length, since_days: sinceDays, skipped: data || [] };
+    }
+    case "get_claap_webhook_errors": {
+      const sinceDays = Math.min(Math.max(Number(args.since_days) || 7, 1), 60);
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      const unresolvedOnly = args.unresolved_only !== false;
+      const sinceIso = new Date(Date.now() - sinceDays * 86400000).toISOString();
+      let q = supabase.from("claap_webhook_errors")
+        .select("id, event_type, error_message, retry_count, resolved, created_at")
+        .gte("created_at", sinceIso)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (unresolvedOnly) q = q.eq("resolved", false);
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      return { count: (data || []).length, since_days: sinceDays, errors: data || [] };
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
