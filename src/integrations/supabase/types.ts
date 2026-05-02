@@ -15542,6 +15542,60 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_report_runs: {
+        Row: {
+          ai_summary: Json | null
+          created_at: string
+          data_snapshot: Json | null
+          error_message: string | null
+          id: string
+          period_end: string | null
+          period_start: string | null
+          recipient: string
+          rendered_html: string | null
+          rendered_text: string | null
+          report_key: string
+          status: string
+          subject: string | null
+          triggered_by: string
+          triggered_by_user: string | null
+        }
+        Insert: {
+          ai_summary?: Json | null
+          created_at?: string
+          data_snapshot?: Json | null
+          error_message?: string | null
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+          recipient: string
+          rendered_html?: string | null
+          rendered_text?: string | null
+          report_key: string
+          status: string
+          subject?: string | null
+          triggered_by?: string
+          triggered_by_user?: string | null
+        }
+        Update: {
+          ai_summary?: Json | null
+          created_at?: string
+          data_snapshot?: Json | null
+          error_message?: string | null
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+          recipient?: string
+          rendered_html?: string | null
+          rendered_text?: string | null
+          report_key?: string
+          status?: string
+          subject?: string | null
+          triggered_by?: string
+          triggered_by_user?: string | null
+        }
+        Relationships: []
+      }
       recurring_reports: {
         Row: {
           created_at: string
@@ -15731,57 +15785,59 @@ export type Database = {
       }
       report_runs: {
         Row: {
-          ai_summary: Json | null
+          completed_at: string | null
           created_at: string
-          data_snapshot: Json | null
+          delivery_response: Json | null
+          delivery_status: string | null
+          duration_ms: number | null
           error_message: string | null
           id: string
-          period_end: string | null
-          period_start: string | null
-          recipient: string
-          rendered_html: string | null
-          rendered_text: string | null
-          report_key: string
+          report_data: Json | null
+          scheduled_report_id: string
+          started_at: string | null
           status: string
-          subject: string | null
-          triggered_by: string
-          triggered_by_user: string | null
+          summary_text: string | null
+          user_id: string
         }
         Insert: {
-          ai_summary?: Json | null
+          completed_at?: string | null
           created_at?: string
-          data_snapshot?: Json | null
+          delivery_response?: Json | null
+          delivery_status?: string | null
+          duration_ms?: number | null
           error_message?: string | null
           id?: string
-          period_end?: string | null
-          period_start?: string | null
-          recipient: string
-          rendered_html?: string | null
-          rendered_text?: string | null
-          report_key: string
-          status: string
-          subject?: string | null
-          triggered_by?: string
-          triggered_by_user?: string | null
+          report_data?: Json | null
+          scheduled_report_id: string
+          started_at?: string | null
+          status?: string
+          summary_text?: string | null
+          user_id: string
         }
         Update: {
-          ai_summary?: Json | null
+          completed_at?: string | null
           created_at?: string
-          data_snapshot?: Json | null
+          delivery_response?: Json | null
+          delivery_status?: string | null
+          duration_ms?: number | null
           error_message?: string | null
           id?: string
-          period_end?: string | null
-          period_start?: string | null
-          recipient?: string
-          rendered_html?: string | null
-          rendered_text?: string | null
-          report_key?: string
+          report_data?: Json | null
+          scheduled_report_id?: string
+          started_at?: string | null
           status?: string
-          subject?: string | null
-          triggered_by?: string
-          triggered_by_user?: string | null
+          summary_text?: string | null
+          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "report_runs_scheduled_report_id_fkey"
+            columns: ["scheduled_report_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_reports"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       report_widgets: {
         Row: {
