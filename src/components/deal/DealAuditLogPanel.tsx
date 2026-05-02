@@ -207,6 +207,43 @@ export function DealAuditLogPanel({ entries, loading, hasMore, onLoadMore, onRes
                   const revertable = isRevertable(entry);
                   const isProcessing = processingId === entry.id;
 
+                  if (entry.action_type === 'stage_changed') {
+                    const meta = entry.metadata || {};
+                    const fromLabel = meta.from_label || (meta.from_stage ? String(meta.from_stage).replace(/-/g, ' ') : null);
+                    const toLabel = meta.to_label || (meta.to_stage ? String(meta.to_stage).replace(/-/g, ' ') : entry.entity_name) || 'Unknown';
+                    const hasFrom = fromLabel && fromLabel !== '—';
+                    const who = entry.user_display_name?.trim();
+                    return (
+                      <div key={entry.id} className="group flex items-start gap-2 py-1.5 px-1 -mx-1 rounded hover:bg-muted/30 transition-colors">
+                        <div className="flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center mt-0.5 bg-muted/50">
+                          <GitBranch className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs leading-relaxed">
+                            <span className="text-muted-foreground">
+                              {hasFrom ? 'Stage changed from' : 'Stage set to'}
+                            </span>
+                            {hasFrom && (
+                              <>
+                                <span className="inline-flex items-center max-w-full px-1.5 py-0.5 rounded border border-border/40 bg-muted/40 text-[11px] text-muted-foreground break-words">
+                                  {fromLabel}
+                                </span>
+                                <span className="text-muted-foreground"> to </span>
+                              </>
+                            )}
+                            <span className="inline-flex items-center max-w-full px-1.5 py-0.5 rounded border border-border/60 bg-muted/70 text-[11px] font-medium text-foreground break-words">
+                              {toLabel}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-muted-foreground">
+                            {who && <><span>{who}</span><span aria-hidden>·</span></>}
+                            <span>{formatDistanceToNow(new Date(entry.created_at), { addSuffix: true })}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div key={entry.id} className="group flex items-start gap-2 py-1.5 px-1 -mx-1 rounded hover:bg-muted/30 transition-colors">
                       <div className={cn("flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center mt-0.5 bg-muted/50")}>
