@@ -494,6 +494,243 @@ async function fetchLenderEnrichment(
 }
 // -------------------- end lender intelligence --------------------
 
+// -------------------- Gmail + Calendar enrichment --------------------
+
+const NYLAS_API_KEY_ENV = Deno.env.get("NYLAS_API_KEY");
+const NYLAS_API_URI = "https://api.us.nylas.com";
+
+function looksLikeEmailQuery(text: string): boolean {
+  const t = (text || "").toLowerCase();
+  return /\b(email|emails|inbox|gmail|wrote|said|reply|replies|replied|message|messages|sent|received|forwarded)\b/.test(t)
+    || /\b(what did .+ say|hear back|response from|heard from|any word from)\b/.test(t);
+}
+
+function looksLikeCalendarQuery(text: string): boolean {
+  const t = (text || "").toLowerCase();
+  return /\b(calendar|meeting|meetings|call|calls|schedule|scheduled|event|events|appointment|sync|standup|catchup|catch up)\b/.test(t)
+    || /\b(when is my next|do i have|next call with|do i have a)\b/.test(t);
+}
+
+function detectTimeWindowDays(text: string): number {
+  const t = (text || "").toLowerCase();
+  const m = t.match(/last\s+(\d+)\s+(day|days|week|weeks|month|months)/);
+  if (m) {
+    const n = parseInt(m[1], 10);
+    const u = m[2];
+    if (u.startsWith("week")) return n * 7;
+    if (u.startsWith("month")) return n * 30;
+    return n;
+  }
+  if (/last\s+week|past\s+week|this\s+week/.test(t)) return 7;
+  if (/yesterday|today/.test(t)) return 2;
+  if (/last\s+month|past\s+month/.test(t)) return 30;
+  return 14; // default lookback
+}
+
+function detectFutureWindowDays(text: string): number {
+  const t = (text || "").toLowerCase();
+  if (/this\s+week/.test(t)) return 7;
+  if (/next\s+week/.test(t)) return 14;
+  if (/this\s+month|next\s+month/.test(t)) return 30;
+  if (/today/.test(t)) return 1;
+  if (/tomorrow/.test(t)) return 2;
+  if (/next\s+call|next\s+meeting/.test(t)) return 60;
+  return 14;
+}
+
+// Extract candidate person/entity names from the prompt — proper-cased tokens of 2+ chars,
+// excluding common stopwords. Best-effort heuristic.
+function extractCandidateNames(text: string): string[] {
+  if (!text) return [];
+  const stop = new Set([
+    "I", "Im", "I'm", "The", "And", "Any", "Did", "What", "When", "Who", "Why", "How",
+    "Last", "Next", "This", "Week", "Month", "Day", "Today", "Tomorrow", "Yesterday",
+    "Email", "Emails", "Inbox", "Gmail", "Calendar", "Meeting", "Meetings", "Call", "Calls",
+    "From", "About", "On", "In", "At", "To", "For", "With", "Reply", "Replies", "Lender", "Lenders",
+    "Deal", "Deals",
+  ]);
+  const tokens = text.match(/\b[A-Z][a-zA-Z'’-]{1,}(?:\s+[A-Z][a-zA-Z'’-]{1,})*\b/g) || [];
+  const out: string[] = [];
+  for (const tok of tokens) {
+    if (stop.has(tok)) continue;
+    if (tok.length < 2) continue;
+    out.push(tok);
+  }
+  // dedupe preserving order
+  return Array.from(new Set(out));
+}
+
+function fmtDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  } catch { return String(iso); }
+}
+
+function fmtDay(iso: string | null | undefined): string {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  } catch { return String(iso); }
+}
+
+async function fetchGmailEnrichment(
+  supabase: any,
+  userId: string,
+  ctx: any,
+  userText: string,
+): Promise<string> {
+  if (!looksLikeEmailQuery(userText)) return "";
+
+  const days = detectTimeWindowDays(userText);
+  const sinceTs = new Date(Date.now() - days * 86_400_000).toISOString();
+
+  const candidates = extractCandidateNames(userText);
+  const dealMatch = detectDeal(userText, ctx.deals || []);
+  if (dealMatch) {
+    // Don't search by the deal company name as a "person" candidate — handled below
+    const dealTokens = (dealMatch.company || "").split(/\s+/);
+    for (const tok of dealTokens) {
+      const idx = candidates.findIndex((c) => c.toLowerCase() === tok.toLowerCase());
+      if (idx >= 0) candidates.splice(idx, 1);
+    }
+  }
+
+  // Build OR filter: subject/body/from_name/from_email LIKE any candidate, OR mentions deal company
+  const orParts: string[] = [];
+  const searchTerms = [...candidates];
+  if (dealMatch?.company) searchTerms.push(dealMatch.company);
+  for (const term of searchTerms.slice(0, 6)) {
+    const safe = term.replace(/[%,()]/g, " ").trim();
+    if (!safe) continue;
+    orParts.push(`subject.ilike.%${safe}%`);
+    orParts.push(`body_text.ilike.%${safe}%`);
+    orParts.push(`from_name.ilike.%${safe}%`);
+    orParts.push(`from_email.ilike.%${safe}%`);
+    orParts.push(`snippet.ilike.%${safe}%`);
+  }
+
+  let query = supabase
+    .from("gmail_messages")
+    .select("id, subject, from_name, from_email, snippet, body_text, received_at, thread_id")
+    .eq("user_id", userId)
+    .gte("received_at", sinceTs)
+    .order("received_at", { ascending: false })
+    .limit(15);
+
+  if (orParts.length > 0) {
+    query = query.or(orParts.join(","));
+  } else {
+    // No specific terms — return nothing (we don't want to dump the whole inbox)
+    return "";
+  }
+
+  const { data: msgs, error } = await query;
+  if (error) {
+    console.error("[claude-dashboard-chat] gmail enrichment error", error.message);
+    return "";
+  }
+  const messages = msgs || [];
+  if (messages.length === 0) return "";
+
+  const lines: string[] = [];
+  lines.push(`\n## Gmail (live query — last ${days}d, ${messages.length} match${messages.length === 1 ? "" : "es"})`);
+  if (searchTerms.length) lines.push(`_Searched for: ${searchTerms.slice(0, 6).join(", ")}_`);
+  for (const m of messages.slice(0, 12)) {
+    const sender = m.from_name ? `${m.from_name} <${m.from_email || "?"}>` : (m.from_email || "?");
+    const body = (m.body_text || m.snippet || "").replace(/\s+/g, " ").trim().slice(0, 600);
+    lines.push(`- **${m.subject || "(no subject)"}** — from ${sender} on ${fmtDate(m.received_at)}\n  > ${body}`);
+  }
+  lines.push(`\n_When citing emails, always reference the sender and date (e.g. "Based on ${messages[0].from_name || messages[0].from_email}'s email from ${fmtDay(messages[0].received_at)}...")._`);
+  return lines.join("\n");
+}
+
+async function fetchCalendarEnrichment(
+  supabase: any,
+  userId: string,
+  ctx: any,
+  userText: string,
+): Promise<string> {
+  if (!looksLikeCalendarQuery(userText)) return "";
+  if (!NYLAS_API_KEY_ENV) return "";
+
+  // Get grant_id
+  const { data: tok } = await supabase
+    .from("gmail_tokens")
+    .select("grant_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const grantId = tok?.grant_id;
+  if (!grantId) return "";
+
+  // Window: default look 1 day back to N days forward (so "today" includes earlier-today calls).
+  const futureDays = detectFutureWindowDays(userText);
+  const startUnix = Math.floor((Date.now() - 1 * 86_400_000) / 1000);
+  const endUnix = Math.floor((Date.now() + futureDays * 86_400_000) / 1000);
+
+  const url = new URL(`${NYLAS_API_URI}/v3/grants/${grantId}/events`);
+  url.searchParams.set("calendar_id", "primary");
+  url.searchParams.set("start", String(startUnix));
+  url.searchParams.set("end", String(endUnix));
+  url.searchParams.set("limit", "100");
+
+  let events: any[] = [];
+  try {
+    const resp = await fetch(url.toString(), {
+      headers: {
+        "Authorization": `Bearer ${NYLAS_API_KEY_ENV}`,
+        "Accept": "application/json",
+      },
+    });
+    if (!resp.ok) {
+      console.error("[claude-dashboard-chat] nylas events error", resp.status);
+      return "";
+    }
+    const data = await resp.json();
+    events = data.data || [];
+  } catch (e) {
+    console.error("[claude-dashboard-chat] calendar fetch failed", e);
+    return "";
+  }
+  if (events.length === 0) return "";
+
+  const candidates = extractCandidateNames(userText).map((c) => c.toLowerCase());
+  const dealMatch = detectDeal(userText, ctx.deals || []);
+  const terms = new Set<string>(candidates);
+  if (dealMatch?.company) terms.add(dealMatch.company.toLowerCase());
+
+  const filtered = events.filter((e: any) => {
+    if (terms.size === 0) return true; // generic "what's on my calendar" — return all
+    const blob = [
+      e.title || "",
+      e.description || "",
+      e.location || "",
+      ...(e.participants || []).map((p: any) => `${p.name || ""} ${p.email || ""}`),
+    ].join(" ").toLowerCase();
+    for (const t of terms) {
+      if (t && blob.includes(t)) return true;
+    }
+    return false;
+  }).sort((a: any, b: any) => (a.when?.start_time || 0) - (b.when?.start_time || 0));
+
+  if (filtered.length === 0) return "";
+
+  const lines: string[] = [];
+  lines.push(`\n## Google Calendar (live query — ${filtered.length} match${filtered.length === 1 ? "" : "es"})`);
+  if (terms.size) lines.push(`_Searched for: ${Array.from(terms).slice(0, 6).join(", ")}_`);
+  for (const e of filtered.slice(0, 15)) {
+    const startISO = e.when?.start_time ? new Date(e.when.start_time * 1000).toISOString() : (e.when?.start_date || "");
+    const attendees = (e.participants || []).slice(0, 6).map((p: any) => p.name || p.email).filter(Boolean).join(", ");
+    const loc = e.location ? ` — ${e.location}` : "";
+    lines.push(`- **${e.title || "(untitled)"}** on ${fmtDate(startISO)}${loc}${attendees ? ` | with: ${attendees}` : ""}`);
+  }
+  lines.push(`\n_When citing calendar events, reference the date (e.g. "From your calendar: meeting on ${fmtDay(filtered[0].when?.start_time ? new Date(filtered[0].when.start_time * 1000).toISOString() : "")}...")._`);
+  return lines.join("\n");
+}
+// -------------------- end gmail + calendar enrichment --------------------
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -570,6 +807,18 @@ Deno.serve(async (req) => {
       console.error("[claude-dashboard-chat] lender enrichment failed", e);
     }
 
+    // Targeted Gmail + Calendar enrichment (only runs when prompt looks email/calendar-related).
+    let gmailEnrichment = "";
+    let calendarEnrichment = "";
+    try {
+      [gmailEnrichment, calendarEnrichment] = await Promise.all([
+        fetchGmailEnrichment(supabase, user.id, ctx, lastUserTextEarly),
+        fetchCalendarEnrichment(supabase, user.id, ctx, lastUserTextEarly),
+      ]);
+    } catch (e) {
+      console.error("[claude-dashboard-chat] gmail/calendar enrichment failed", e);
+    }
+
     console.log("[claude-dashboard-chat] context loaded", {
       user_id: user.id,
       company_id: companyId,
@@ -583,6 +832,8 @@ Deno.serve(async (req) => {
         lenderStats: ctx.lenderStats?.length || 0,
         staleDeals: ctx.staleDeals?.length || 0,
         lender_enrichment_chars: lenderEnrichment.length,
+        gmail_enrichment_chars: gmailEnrichment.length,
+        calendar_enrichment_chars: calendarEnrichment.length,
       },
       context_chars: userContext.length,
     });
@@ -601,6 +852,7 @@ The user's name is ${userName}.
 - Reference real entities from the data — never invent deals, lenders, or numbers.
 - If the data doesn't contain the answer, say so briefly.
 - For lender questions, ALWAYS cite the source deal (e.g. "on **Infillion**"). Use the Lender Intelligence section below when present — it is the authoritative live query.
+- For email/calendar questions, ALWAYS cite the source: sender + date for emails (e.g. "Based on Song Chae's email from Apr 29..."), and the date for calendar events (e.g. "From your calendar: meeting on May 5..."). Use ONLY the Gmail / Google Calendar sections below when present — never invent senders, subjects, attendees, or times.
 
 ## Write Actions (HUMAN-IN-THE-LOOP — REQUIRED FOR EVERY WRITE)
 You can request write actions on the user's data. NEVER auto-execute. Instead emit a confirmation card by appending exactly ONE fenced JSON block at the end of your reply:
@@ -625,6 +877,8 @@ Rules:
 ## User's Live Data
 ${userContext}
 ${lenderEnrichment}
+${gmailEnrichment}
+${calendarEnrichment}
 ${promptAddendum}`;
 
     const anthropicMessages = messages
