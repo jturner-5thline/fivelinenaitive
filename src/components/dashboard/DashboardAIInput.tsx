@@ -152,14 +152,27 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
     });
   }, [user]);
 
-  // Auto-briefing on first load (only once per session)
+  // Auto-show Morning Intelligence Brief once per ET-day on first dashboard chat open.
+  // Triggers if it's ≥6am ET and the brief hasn't been shown today.
   useEffect(() => {
-    if (autoBriefedRef.current || messages.length > 0 || !user) return;
-    const lastBriefing = sessionStorage.getItem('lastBriefing');
-    const today = new Date().toISOString().slice(0, 10);
-    if (lastBriefing === today) return;
+    if (autoBriefedRef.current) return;
+    if (messages.length > 0) return;
+    if (!user) return;
+    if (loadingHistory) return;
+    if (!shouldAutoShowIntelBrief(user.id)) return;
     autoBriefedRef.current = true;
-  }, [user, messages.length]);
+    markIntelBriefShown(user.id);
+    const briefingMsg: ChatMessage = {
+      role: 'assistant',
+      content: INTEL_BRIEF_MARKER,
+      created_at: new Date().toISOString(),
+    };
+    setMessages([briefingMsg]);
+    // Intentionally do NOT persist to a conversation — the brief is ephemeral
+    // and rebuilds itself live from current data on each render. Persisting
+    // a marker would also rehydrate the chat on next mount and defeat the
+    // "fresh assistant on dashboard mount" reset above.
+  }, [user, messages.length, loadingHistory, setMessages]);
 
   /** Populate input and select [placeholder] if present */
   const populateInput = useCallback((text: string) => {
