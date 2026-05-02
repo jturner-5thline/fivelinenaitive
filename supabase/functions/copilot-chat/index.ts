@@ -671,6 +671,67 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_quickbooks_pnl",
+      description: "Get a P&L / financial summary from QuickBooks for the firm. Returns Revenue, Expenses, Bills total, and Operating Profit (EBITDA = Revenue - (Expenses + Bills)) on an accrual basis. Use for any 'how much revenue / expenses / profit / EBITDA / margin' question, or 'how is the firm performing financially' / 'controller dashboard' / 'FP&A' style asks.",
+      parameters: {
+        type: "object",
+        properties: {
+          period: { type: "string", description: "Period label: 'mtd', 'qtd', 'ytd', 'last_month', 'last_quarter', 'last_year', or 'custom'. Default 'ytd'.", enum: ["mtd", "qtd", "ytd", "last_month", "last_quarter", "last_year", "custom"] },
+          start_date: { type: "string", description: "ISO date (YYYY-MM-DD). Required if period='custom'." },
+          end_date: { type: "string", description: "ISO date (YYYY-MM-DD). Required if period='custom'." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_outstanding_invoices",
+      description: "List unpaid / open QuickBooks invoices (accounts receivable). Returns customer, doc number, amounts, due date, days overdue. Use for 'who owes us money', 'AR aging', 'overdue invoices', 'outstanding receivables'.",
+      parameters: {
+        type: "object",
+        properties: {
+          customer_query: { type: "string", description: "Optional: filter by customer name (case-insensitive contains)." },
+          overdue_only: { type: "boolean", description: "Only return invoices past their due date. Default false." },
+          min_balance: { type: "number", description: "Optional: only invoices with balance >= this amount." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_outstanding_bills",
+      description: "List unpaid QuickBooks bills (accounts payable). Returns vendor, doc number, amounts, due date, days overdue. Use for 'what do we owe', 'AP aging', 'upcoming bills', 'vendor payables'.",
+      parameters: {
+        type: "object",
+        properties: {
+          vendor_query: { type: "string", description: "Optional: filter by vendor name (case-insensitive contains)." },
+          overdue_only: { type: "boolean", description: "Only return bills past their due date. Default false." },
+          min_balance: { type: "number", description: "Optional: only bills with balance >= this amount." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_revenue_breakdown",
+      description: "Get top customers by invoice revenue over a period from QuickBooks. Returns customer name and total invoiced. Use for 'top clients', 'revenue concentration', 'who are our biggest customers', 'revenue by customer'.",
+      parameters: {
+        type: "object",
+        properties: {
+          period: { type: "string", description: "Period: 'mtd', 'qtd', 'ytd', 'last_month', 'last_quarter', 'last_year', 'all'. Default 'ytd'.", enum: ["mtd", "qtd", "ytd", "last_month", "last_quarter", "last_year", "all"] },
+          limit: { type: "number", description: "Top-N customers. Default 10, max 50." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
