@@ -767,6 +767,54 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_my_notifications",
+      description: "List the current user's in-app notifications (the bell-icon feed). Returns titles, bodies, related deal/lender context, read state, and timestamps. Use for 'what notifications do I have', 'show my alerts', 'unread notifications', 'recent alerts', 'what was I notified about'.",
+      parameters: {
+        type: "object",
+        properties: {
+          unread_only: { type: "boolean", description: "Only return unread notifications. Default false." },
+          trigger_key: { type: "string", description: "Optional: filter by trigger key (e.g. 'deal_stage_changed', 'task_assigned')." },
+          since_days: { type: "number", description: "Only notifications from the last N days. Default 14." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_lender_engagement_alerts",
+      description: "List FLEx lender-engagement notifications for the current user (lender opened the writeup, downloaded files, requested access, etc.). Returns deal, lender, alert type, engagement score. Use for 'which lenders engaged', 'who opened the deck', 'lender activity alerts', 'flex notifications'.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Optional: scope to a single deal." },
+          unread_only: { type: "boolean", description: "Only unread alerts. Default false." },
+          alert_type: { type: "string", description: "Optional: filter (e.g. 'document_viewed', 'access_requested', 'high_engagement')." },
+          since_days: { type: "number", description: "Only alerts from the last N days. Default 14." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_stale_deal_alerts",
+      description: "Find post-submission deals where active lenders haven't been updated in N days (the red 'stale deal' warning bar). Returns deal, count of stale lenders, and max days since last update per lender. Use for 'which deals need attention', 'stale lender updates', 'deals with no recent lender activity', 'who haven't I followed up with'.",
+      parameters: {
+        type: "object",
+        properties: {
+          stale_days: { type: "number", description: "Threshold in days since last lender update. Default 7." },
+          deal_id: { type: "string", description: "Optional: limit to one deal." },
+          limit: { type: "number", description: "Max deals to return. Default 50, max 200." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
