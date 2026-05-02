@@ -118,7 +118,6 @@ import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel
 import { DataRoomV2 } from '@/components/deal/DataRoomV2';
 import { VdrShell } from '@/components/vdr/VdrShell';
 import { DealActivityLogTab } from '@/components/deal/DealActivityLogTab';
-import { DealStageTimeline } from '@/components/deal/DealStageTimeline';
 import DealCrmSearch from '@/components/deals/DealCrmSearch';
 import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
 import { ClaapMeetingsTab } from '@/components/deal/ClaapMeetingsTab';
@@ -2870,10 +2869,6 @@ export default function DealDetail() {
                       <History className="h-3.5 w-3.5" />
                       Activity
                     </TabsTrigger>
-                    <TabsTrigger value="stage-timeline" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
-                      <Activity className="h-3.5 w-3.5" />
-                      Stage Timeline
-                    </TabsTrigger>
                     <TabsTrigger value="crm-search" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       <Search className="h-3.5 w-3.5" />
                       CRM Search
@@ -4640,10 +4635,6 @@ export default function DealDetail() {
                   <div className="rounded-lg overflow-hidden mt-3 bg-card border border-border/30" style={{ height: 'calc(100vh - 190px)' }}>
                     <DealActivityLogTab dealId={id!} />
                   </div>
-                </TabsContent>
-
-                <TabsContent value="stage-timeline" className={cn("mt-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`stage-timeline-${tabDirection}`}>
-                  <DealStageTimeline dealId={id!} />
                 </TabsContent>
 
                 <TabsContent value="crm-search" className={cn("mt-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`crm-search-${tabDirection}`}>

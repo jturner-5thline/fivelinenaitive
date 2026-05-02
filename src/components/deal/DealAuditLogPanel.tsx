@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import {
   Upload, Trash2, FolderInput, Pencil, Share2, FolderPlus, CheckSquare,
   Square, FileText, Clock, RotateCcw, Filter, User, Search, Undo2, Video,
-  ArrowRightFromLine, ArrowLeftFromLine, Loader2
+  ArrowRightFromLine, ArrowLeftFromLine, Loader2, GitBranch
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -42,10 +42,12 @@ const ACTION_CONFIG: Record<string, { icon: typeof Upload; color: string; label:
   move_reverted: { icon: Undo2, color: 'text-cyan-400', label: 'Move Reverted' },
   rename_reverted: { icon: Undo2, color: 'text-cyan-400', label: 'Rename Reverted' },
   claap_recording_linked: { icon: Video, color: 'text-primary', label: 'Call Linked' },
+  stage_changed: { icon: GitBranch, color: 'text-muted-foreground', label: 'Stage Changed' },
 };
 
 const FILTER_OPTIONS = [
-  { value: 'all', label: 'All' },
+  { value: 'all', label: 'All activity' },
+  { value: 'stage_change', label: 'Stage changes only' },
   { value: 'file', label: 'Files' },
   { value: 'folder', label: 'Folders' },
   { value: 'checklist', label: 'Checklist' },
@@ -74,6 +76,12 @@ function describeAction(entry: DealAuditEntry): string {
     case 'move_reverted': return `reverted move of "${name}" back to ${meta.old_folder || '?'}`;
     case 'rename_reverted': return `reverted rename of "${name}" back to "${meta.old_name || '?'}"`;
     case 'claap_recording_linked': return entry.metadata?.recording_url ? `linked Claap call "${name}"` : name;
+    case 'stage_changed': {
+      const fromL = meta.from_label || (meta.from_stage ? String(meta.from_stage).replace(/-/g, ' ') : null);
+      const toL = meta.to_label || (meta.to_stage ? String(meta.to_stage).replace(/-/g, ' ') : name);
+      if (fromL && fromL !== '—') return `moved stage from "${fromL}" to "${toL}"`;
+      return `set stage to "${toL}"`;
+    }
     default: return entry.action_type.replace(/_/g, ' ');
   }
 }
@@ -181,7 +189,9 @@ export function DealAuditLogPanel({ entries, loading, hasMore, onLoadMore, onRes
           {!loading && filtered.length === 0 && (
             <div className="text-center py-8 text-xs text-muted-foreground">
               <Clock className="h-5 w-5 mx-auto mb-1 opacity-50" />
-              No activity yet
+              {activeFilter === 'stage_change'
+                ? 'No stage changes yet — stage transitions will appear here as the deal progresses.'
+                : 'No activity yet'}
             </div>
           )}
           {grouped.map(group => (
