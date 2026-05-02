@@ -14,13 +14,23 @@ interface WeeklyChartsProps {
    * weeks in weeklyData are plotted (legacy behavior).
    */
   visibleWeekKeys?: string[];
+  /** Week key (entry of weeklyData) of the peak Ending Cash in the visible window. */
+  peakWeekKey?: string | null;
+  /** Week key (entry of weeklyData) of the low Ending Cash in the visible window. */
+  lowWeekKey?: string | null;
+  /** When true, the low marker is rendered with a pulsing radius to draw attention. */
+  lowWeekBelowCaution?: boolean;
 }
 
-export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme, visibleWeekKeys }: WeeklyChartsProps) {
+export const WeeklyCharts = memo(function WeeklyCharts({
+  weeklyData, theme, visibleWeekKeys,
+  peakWeekKey = null, lowWeekKey = null, lowWeekBelowCaution = false,
+}: WeeklyChartsProps) {
   const chart1Ref = useRef<HTMLCanvasElement>(null);
   const chart2Ref = useRef<HTMLCanvasElement>(null);
   const chart1Instance = useRef<Chart | null>(null);
   const chart2Instance = useRef<Chart | null>(null);
+  const pulseFrame = useRef<number | null>(null);
 
   // Memoize chart data to avoid recalculation
   const chartData = useMemo(() => {
@@ -30,6 +40,9 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme, visi
       const allow = new Set(visibleWeekKeys);
       entries = all.filter(([k]) => allow.has(k));
     }
+    const orderedKeys = entries.map(([k]) => k);
+    const peakIdx = peakWeekKey ? orderedKeys.indexOf(peakWeekKey) : -1;
+    const lowIdx = lowWeekKey ? orderedKeys.indexOf(lowWeekKey) : -1;
     return {
       labels: entries.map(([, v]) => {
         const d = new Date(v.week_ending);
@@ -39,8 +52,10 @@ export const WeeklyCharts = memo(function WeeklyCharts({ weeklyData, theme, visi
       totalLiquidity: entries.map(([, v]) => (v["TOTAL CASH ON HAND"] as number) / 1000),
       cashIn: entries.map(([, v]) => ((v["TOTAL RECEIPTS"] as number) || 0) / 1000),
       cashOut: entries.map(([, v]) => ((v["TOTAL DISBURSEMENTS"] as number) || 0) / 1000),
+      peakIdx,
+      lowIdx,
     };
-  }, [weeklyData, visibleWeekKeys]);
+  }, [weeklyData, visibleWeekKeys, peakWeekKey, lowWeekKey]);
 
   useEffect(() => {
     const canvas1 = chart1Ref.current;
