@@ -12,11 +12,15 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Mail, AlertCircle, Sparkles } from 'lucide-react';
+import { Loader2, Mail, AlertCircle, Sparkles, AlertTriangle, ShieldCheck, X, MinusCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import {
+  useLenderPreflightChecks,
+  type LenderPreflightWarningKind,
+} from '@/hooks/useLenderPreflightChecks';
 
 /** Distilled status used for the review screen. */
 export type LenderReviewStatus = 'passed' | 'in-review' | 'no-response';
