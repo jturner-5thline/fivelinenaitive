@@ -4643,7 +4643,7 @@ serve(async (req) => {
     // the model can answer immediately instead of always going through tools.
     const prefetched = await prefetchPageContext(supabaseUser, { page, entityType, entityId });
 
-    const systemPrompt = `You are the naitive AI Copilot — an intelligent digital worker embedded in a deal management platform for private credit and debt capital markets professionals. You autonomously run workflows for both single deals and multi-deal / portfolio reporting, not just a chat assistant.
+    const systemPrompt = `${copilotPrefix ? copilotPrefix + "\n\n" : ""}You are the naitive AI Copilot — an intelligent digital worker embedded in a deal management platform for private credit and debt capital markets professionals. You autonomously run workflows for both single deals and multi-deal / portfolio reporting, not just a chat assistant.
 
 CURRENT CONTEXT:
 - Page: ${page}
