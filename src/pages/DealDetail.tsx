@@ -4679,8 +4679,9 @@ export default function DealDetail() {
             const dealLender = deal?.lenders?.find(l => l.name === selectedLenderName);
             return (
               <Tabs defaultValue="this-deal" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="this-deal">This Deal</TabsTrigger>
+                  <TabsTrigger value="comms">Comms Timeline</TabsTrigger>
                   <TabsTrigger value="about">About {selectedLenderName}</TabsTrigger>
                 </TabsList>
                 
