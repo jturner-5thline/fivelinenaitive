@@ -2947,6 +2947,11 @@ Finance / QuickBooks context (firm-level, accrual basis, all 5th Line entities c
 - "Top customers", "revenue concentration", "biggest clients by revenue" → get_revenue_breakdown
 - Always state the period explicitly and format dollars as $X,XXX.
 
+Notifications & alerts context (use whenever the user asks what they were alerted about, who needs follow-up, or which deals are slipping):
+- "What notifications do I have", "show my alerts", "what's unread", "recent notifications" → get_my_notifications
+- "Which lenders engaged", "who opened the deck", "lender activity alerts", "FLEx notifications" → get_lender_engagement_alerts
+- "Stale deals", "which deals need attention", "lenders I haven't followed up with", "deals with no recent updates" → get_stale_deal_alerts (default 7 days)
+
 Communications context (use whenever the question references emails, calls, meetings, or scheduling):
 - "What did X say", "find emails about/from", "recent messages with Y" → search_emails (synced inbox)
 - "What's on my calendar", "do I have a meeting with X", "next call with Y" → get_upcoming_events
