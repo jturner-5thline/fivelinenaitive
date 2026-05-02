@@ -4483,23 +4483,31 @@ serve(async (req) => {
     }
 
     const page = context?.page || "unknown";
-    const entityType = context?.entityType;
-    const entityId = context?.entityId;
+    // contextOverride lets the user say "@SomeDeal" in the input and have the
+    // server treat that deal (not the URL) as the focused entity for this turn.
+    const override = context?.contextOverride || null;
+    const entityType = override?.entityType ?? context?.entityType ?? null;
+    const entityId = override?.entityId ?? context?.entityId ?? null;
     const activeTab = context?.activeTab || null;
     const banners = context?.banners || [];
+
+    // Pre-fetch a compact, prompt-ready snapshot of the current page/entity so
+    // the model can answer immediately instead of always going through tools.
+    const prefetched = await prefetchPageContext(supabaseUser, { page, entityType, entityId });
 
     const systemPrompt = `You are the naitive AI Copilot — an intelligent digital worker embedded in a deal management platform for private credit and debt capital markets professionals. You autonomously run workflows for both single deals and multi-deal / portfolio reporting, not just a chat assistant.
 
 CURRENT CONTEXT:
 - Page: ${page}
 - Active Tab: ${activeTab || "None"}
-- Entity: ${entityType === "deal" && entityId ? `Deal (ID: ${entityId}) — use get_deal tool to fetch details` : "None"}
+- Entity: ${entityType === "deal" && entityId ? `Deal (ID: ${entityId})${override ? " — user overrode the page context with @mention" : ""}` : entityType === "lender" && entityId ? `Lender (${entityId})` : "None"}
 - Entity Details: ${context?.entityDetails ? JSON.stringify(context.entityDetails) : "None"}
 - User: ${userName} (${context?.userRole || "member"})
 ${banners.length > 0 ? `\nACTIVE ALERTS/BANNERS ON PAGE:\n${banners.map((b: string) => `⚠️ ${b}`).join('\n')}` : ''}
+${prefetched.block}
 
 DATA ACCESS — IMPORTANT:
-You do NOT have pre-loaded data. Always use your tools to fetch current information before answering. NEVER tell the user "I don't have that data" — call a tool first.
+The PRE-LOADED ... CONTEXT block above (if present) was fetched fresh from the database for the current page/entity. Treat it as authoritative and use it first. Only call tools when the user asks for fields not present in the pre-loaded block, asks about a different entity, or asks for fresh data. NEVER tell the user "I don't have that data" — check the pre-loaded block, then call a tool.
 
 PREFERRED TOOLS (use these first for any specific question about a single entity — they return the FULL record in one call so you have everything you need to answer):
 - Anything about a single deal (financials, write-up, lenders, outstanding items, milestones, memo, activity, documents) → get_deal_full
