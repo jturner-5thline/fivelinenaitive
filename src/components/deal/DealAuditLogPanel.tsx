@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import {
   Upload, Trash2, FolderInput, Pencil, Share2, FolderPlus, CheckSquare,
   Square, FileText, Clock, RotateCcw, Filter, User, Search, Undo2, Video,
-  ArrowRightFromLine, ArrowLeftFromLine, Loader2, GitBranch
+  ArrowRightFromLine, ArrowLeftFromLine, Loader2, GitBranch, ArrowRight
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
