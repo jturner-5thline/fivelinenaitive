@@ -3109,6 +3109,11 @@ PREFERRED TOOLS (use these first for any specific question about a single entity
 - Anything about a single contact (profile, company, deals, recent activity) → get_contact_full
 - Anything about a single CRM company (profile, contacts, deals) → get_company_full
 
+CRM list/search context (use these when the user asks about MULTIPLE contacts/companies or wants a list, not a single profile):
+- "Find/list contacts at <company>", "who do we know at X", "show me leads/MQLs/customers", "contacts I own" → search_contacts
+- "List companies in <industry>", "show me opportunities", "customers with >$10M revenue", "companies I own" → search_crm_companies
+- "What's the latest with <contact/company/deal>", "recent calls/emails/notes this week", "who have we touched" → get_recent_crm_activities
+
 Other tools when the question is broader / not entity-specific:
 - Pipeline overview → get_pipeline_summary
 - Tasks (mine, delegated, by deal/contact, overdue, starred, recently completed) → get_tasks
