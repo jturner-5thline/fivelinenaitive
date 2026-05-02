@@ -3830,6 +3830,13 @@ Communications context (use whenever the question references emails, calls, meet
 History / audit context (use for "track record", "lifecycle", "why did X happen"):
 - "What's our history with <lender>", "has <lender> done deals like this before", "why did <lender> pass last time" → get_lender_deal_history
 - "How did this deal progress", "when did it move to <stage>", "how long in <stage>" → get_deal_stage_history
+
+Sales BD & referrals context (use for "BD pipeline", "partners", "referrers", "where did this deal come from"):
+- "Who are our partners", "BD relationships", "partners in <stage>", "partners owned by <X>" → list_partners
+- "Tell me about partner <X>", "partner profile", "memo on <partner>" → get_partner_full
+- "BD pipeline overview", "partner funnel", "how many partners per stage" → get_partner_pipeline_summary
+- "Top referrers", "who refers us deals", "referral sources" → list_referral_sources
+- "What deals did <X> refer", "pipeline from <partner>", "what came from <source>" → get_referral_attribution
 ${entityType === "deal" && entityId ? `\nThe user is viewing deal ID: ${entityId}. Use this ID when calling deal-specific tools.` : ''}
 
 CORE RESPONSIBILITIES:
