@@ -537,7 +537,7 @@ export function CashFlowManager() {
       return `${y}-${m}-${day}`;
     };
     let horizonEnd = parseISO('2026-12-25');
-    for (const e of scheduledItems || []) {
+    for (const e of combinedScheduledItems || []) {
       const candidates = [
         e.frequency_config?.one_time_date,
         e.end_date,
@@ -584,21 +584,21 @@ export function CashFlowManager() {
     }
 
     return out;
-  }, [scheduledItems, weeklyOverrides]);
+  }, [combinedScheduledItems, weeklyOverrides]);
 
   // Apply Entity and Category filters to the scheduled (Configure) entries.
   // When neither filter is active, all entries pass through unchanged.
   const isConfigureFilterActive = filterEntities.length > 0 || filterCategories.length > 0;
   const filteredScheduledItems = useMemo(() => {
-    if (!isConfigureFilterActive) return scheduledItems;
-    return (scheduledItems || []).filter((e) => {
+    if (!isConfigureFilterActive) return combinedScheduledItems;
+    return (combinedScheduledItems || []).filter((e) => {
       // Migrate legacy parent storage so filtering is consistent with the grid.
       const cat = resolveCategoryToGridRow(e.category);
       const entityOk = filterEntities.length === 0 || filterEntities.includes(e.account);
       const categoryOk = filterCategories.length === 0 || filterCategories.includes(cat);
       return entityOk && categoryOk;
     });
-  }, [scheduledItems, filterEntities, filterCategories, isConfigureFilterActive]);
+  }, [combinedScheduledItems, filterEntities, filterCategories, isConfigureFilterActive]);
 
   // Build a zeroed shell of weekly entries (preserves week_ending, week_num, etc.)
   // so that when a Configure filter is active we show ONLY filtered Configure
