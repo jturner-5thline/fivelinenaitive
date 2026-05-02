@@ -1062,6 +1062,8 @@ function selectTools(page: string, entityType?: string) {
     "link_contact_to_deal",
     // Always-available comms context (synced inbox, calendar, recorded meetings).
     "search_emails", "get_upcoming_events", "get_recent_meetings",
+    // Always-available email deep-dive (threads, drafts, sent, scheduled, deal-linked).
+    "get_email_thread", "get_deal_emails", "list_email_drafts", "get_sent_emails", "get_scheduled_emails",
     // Always-available task & follow-up context.
     "get_task_details", "get_scheduled_followups",
     // Always-available finance / QuickBooks context (firm-level, shared org-wide).
