@@ -2,15 +2,17 @@
 // Pipeline:
 //   1. Resolve transcript: prefer the cached one on claap_meetings, fall back
 //      to the live Claap API (action=transcript on claap-recordings).
-//   2. Run the transcript through Lovable AI with a tool-call schema that
+//   2. Run the transcript through Anthropic Claude (sonnet) with a tool-use
+//      schema that
 //      extracts: attendees, key_discussion_points, deal_terms, action_items,
 //      decisions, open_questions, next_steps.
 //   3. Render a markdown summary and insert ONE row into activity_logs
 //      (activity_type='meeting_summary') tagged
 //      "Meeting Summary — <date> — <recording title>".
-//   4. Return suggested_tasks (from action_items) so the UI can show
-//      one-click confirm cards. We do NOT auto-create tasks — per platform
-//      rule, AI writes require human approval.
+//   4. By default (auto_create_tasks=true) create one task per action_item
+//      server-side, idempotently scoped to (deal_id, recording_id), so users
+//      can delete unwanted ones. Pass auto_create_tasks=false to keep them
+//      as suggestions only. Created/suggested tasks are returned for UI use.
 //
 // Auth: requires the caller's JWT. We use a user-scoped supabase client so
 // RLS on activity_logs/deals is enforced (only deal members can attach).
@@ -31,6 +33,9 @@ interface AnalyzeBody {
   // When invoked from the auto-trigger right after linking, set true so we
   // skip if a summary already exists for (deal, recording).
   skip_if_exists?: boolean;
+  // When true (default) the function inserts one row in `tasks` per action
+  // item, idempotently keyed by recording_id so re-runs do not duplicate.
+  auto_create_tasks?: boolean;
 }
 
 interface ExtractedInsights {
@@ -205,80 +210,80 @@ Deno.serve(async (req) => {
     }
     const transcript = transcriptRaw.slice(0, 20000); // token guard
 
-    // 2. Extract via Lovable AI tool-calling.
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "AI gateway not configured" }), {
+    // 2. Extract via Anthropic Claude tool-use.
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      return new Response(JSON.stringify({ error: "Anthropic API key not configured" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `You are a senior associate at a private credit / debt advisory firm summarizing a recorded call for the deal team. Be concise, factual, and use the lender/sponsor's exact terms (rates, advance rates, sizes, dates) when present. Never invent numbers.`,
+    const extractToolSchema = {
+      name: "extract_deal_meeting",
+      description: "Structured extraction from a deal meeting transcript",
+      input_schema: {
+        type: "object",
+        properties: {
+          attendees: {
+            type: "array",
+            items: { type: "object", properties: { name: { type: "string" }, role: { type: "string" } }, required: ["name"] },
           },
+          key_discussion_points: { type: "array", items: { type: "string" } },
+          deal_terms_discussed: {
+            type: "array",
+            items: { type: "object", properties: { term: { type: "string" }, value: { type: "string" } }, required: ["term", "value"] },
+            description: "Concrete terms mentioned: rates (e.g. SOFR+450), advance rates, deal size, tenor, fees, covenants, close timeline.",
+          },
+          decisions: { type: "array", items: { type: "string" } },
+          open_questions: { type: "array", items: { type: "string" } },
+          action_items: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                owner: { type: "string", description: "Name of the person responsible (or 'Team' if unclear)." },
+                title: { type: "string", description: "Imperative task title, e.g. 'Send updated financial model to TriplePoint'." },
+                due_hint: { type: "string", description: "Natural-language due hint if mentioned, e.g. 'by Friday', 'next week', 'EOD tomorrow'. Empty if none." },
+                priority: { type: "string", enum: ["low", "medium", "high"] },
+              },
+              required: ["owner", "title"],
+            },
+          },
+          next_steps: { type: "array", items: { type: "string" } },
+        },
+        required: ["attendees", "key_discussion_points", "deal_terms_discussed", "decisions", "open_questions", "action_items", "next_steps"],
+      },
+    };
+
+    const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-5",
+        max_tokens: 4096,
+        temperature: 0.2,
+        system: `You are a senior associate at a private credit / debt advisory firm summarizing a recorded call for the deal team. Be concise, factual, and use the lender/sponsor's exact terms (rates, advance rates, sizes, dates) when present. Never invent numbers.`,
+        tools: [extractToolSchema],
+        tool_choice: { type: "tool", name: "extract_deal_meeting" },
+        messages: [
           {
             role: "user",
             content: `Recording title: "${title}"\nDeal context: an active credit/lender deal.\n\nTranscript:\n---\n${transcript}\n---\n\nExtract the structured fields using the provided tool. For deal_terms_discussed, capture every quoted rate, advance rate, deal size, tenor, fee, covenant, or timeline mentioned. For action_items, infer the owner from the speaker; if unclear, use "Team".`,
           },
         ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "extract_deal_meeting",
-            description: "Structured extraction from a deal meeting transcript",
-            parameters: {
-              type: "object",
-              properties: {
-                attendees: {
-                  type: "array",
-                  items: { type: "object", properties: { name: { type: "string" }, role: { type: "string" } }, required: ["name"] },
-                },
-                key_discussion_points: { type: "array", items: { type: "string" } },
-                deal_terms_discussed: {
-                  type: "array",
-                  items: { type: "object", properties: { term: { type: "string" }, value: { type: "string" } }, required: ["term", "value"] },
-                  description: "Concrete terms mentioned: rates (e.g. SOFR+450), advance rates, deal size, tenor, fees, covenants, close timeline.",
-                },
-                decisions: { type: "array", items: { type: "string" } },
-                open_questions: { type: "array", items: { type: "string" } },
-                action_items: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      owner: { type: "string", description: "Name of the person responsible (or 'Team' if unclear)." },
-                      title: { type: "string", description: "Imperative task title, e.g. 'Send updated financial model to TriplePoint'." },
-                      due_hint: { type: "string", description: "Natural-language due hint if mentioned, e.g. 'by Friday', 'next week', 'EOD tomorrow'. Empty if none." },
-                      priority: { type: "string", enum: ["low", "medium", "high"] },
-                    },
-                    required: ["owner", "title"],
-                  },
-                },
-                next_steps: { type: "array", items: { type: "string" } },
-              },
-              required: ["attendees", "key_discussion_points", "deal_terms_discussed", "decisions", "open_questions", "action_items", "next_steps"],
-              additionalProperties: false,
-            },
-          },
-        }],
-        tool_choice: { type: "function", function: { name: "extract_deal_meeting" } },
-        temperature: 0.2,
       }),
     });
 
     if (!aiResp.ok) {
       const errText = await aiResp.text();
-      console.error("AI gateway error", aiResp.status, errText);
+      console.error("Anthropic error", aiResp.status, errText);
       const status = aiResp.status === 429 ? 429 : aiResp.status === 402 ? 402 : 502;
-      const msg = aiResp.status === 429 ? "Rate limit exceeded, please try again later."
-        : aiResp.status === 402 ? "AI credits exhausted. Please add credits."
+      const msg = aiResp.status === 429 ? "Claude rate limit exceeded, please try again later."
+        : aiResp.status === 402 ? "Anthropic credits exhausted."
         : "AI extraction failed.";
       return new Response(JSON.stringify({ error: msg }), {
         status, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -286,22 +291,15 @@ Deno.serve(async (req) => {
     }
 
     const aiJson = await aiResp.json();
-    const toolCall = aiJson?.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall?.function?.arguments) {
-      console.error("No tool call returned", JSON.stringify(aiJson).slice(0, 500));
+    const toolUseBlock = (aiJson?.content || []).find((c: any) => c?.type === "tool_use" && c?.name === "extract_deal_meeting");
+    if (!toolUseBlock?.input || typeof toolUseBlock.input !== "object") {
+      console.error("No tool_use block returned", JSON.stringify(aiJson).slice(0, 500));
       return new Response(JSON.stringify({ error: "AI did not return structured data" }), {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    let insights: ExtractedInsights;
-    try {
-      insights = JSON.parse(toolCall.function.arguments);
-    } catch {
-      return new Response(JSON.stringify({ error: "AI returned malformed JSON" }), {
-        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const insights: ExtractedInsights = toolUseBlock.input as ExtractedInsights;
 
     // Normalize defensively.
     insights.attendees ??= [];
@@ -346,14 +344,87 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 4. Return suggested tasks (NOT auto-created — UI confirms each one).
-    const suggested_tasks = insights.action_items.map((a, i) => ({
-      key: `${activityRow.id}:${i}`,
-      title: a.title.length > 200 ? a.title.slice(0, 197) + "…" : a.title,
-      owner_label: a.owner,
-      due_hint: a.due_hint || null,
-      priority: a.priority || "medium",
-    }));
+    // 4. Auto-create tasks (default) or return suggestions for UI confirm.
+    const autoCreate = body.auto_create_tasks !== false; // default true
+    const truncate = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
+
+    // Naive due-date heuristic from due_hint — never invent dates.
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const addDays = (n: number) => {
+      const d = new Date(today); d.setDate(d.getDate() + n);
+      return d.toISOString().slice(0, 10);
+    };
+    const inferDueDate = (hint?: string | null): string | null => {
+      const h = (hint || "").toLowerCase();
+      if (!h) return null;
+      if (/\btomorrow\b|\beod tomorrow\b/.test(h)) return addDays(1);
+      if (/\btoday\b|\beod\b/.test(h)) return addDays(0);
+      if (/\bnext week\b/.test(h)) return addDays(7);
+      if (/\bthis week\b|\bby friday\b|\bend of week\b/.test(h)) {
+        const dow = today.getDay();
+        const toFri = (5 - dow + 7) % 7 || 5;
+        return addDays(toFri);
+      }
+      if (/\bnext month\b/.test(h)) return addDays(30);
+      return null;
+    };
+
+    let created_tasks: Array<{ id: string; title: string; due_date: string | null; priority: string; owner_label: string }> = [];
+    let suggested_tasks: Array<{ key: string; title: string; owner_label: string; due_hint: string | null; priority: string }> = [];
+
+    if (autoCreate && insights.action_items.length > 0) {
+      // Idempotency: skip action items already created from this recording.
+      // We tag tasks via a marker line in `description` so this works even
+      // before a `metadata` column is available on `tasks`.
+      const recordingMarker = `[claap:${body.recording_id}]`;
+      const { data: existingTasks } = await supabaseUser
+        .from("tasks")
+        .select("id, title, description")
+        .eq("deal_id", body.deal_id)
+        .ilike("description", `%${recordingMarker}%`);
+
+      const existingTitles = new Set((existingTasks || []).map((t: any) => (t.title || "").trim().toLowerCase()));
+
+      const rowsToInsert = insights.action_items
+        .filter((a) => !existingTitles.has(truncate(a.title, 200).trim().toLowerCase()))
+        .map((a) => ({
+          deal_id: body.deal_id,
+          assigned_to: user.id,
+          assigned_by: user.id,
+          title: truncate(a.title, 200),
+          description: `Auto-created by naitive AI from Claap recording: ${title}${a.owner ? `\nOriginal owner mentioned: ${a.owner}` : ""}${a.due_hint ? `\nDue hint: ${a.due_hint}` : ""}\n\nYou can delete this task if it isn't relevant.\n\n${recordingMarker}`,
+          priority: a.priority || "medium",
+          status: "not_started",
+          task_type: "task",
+          due_date: inferDueDate(a.due_hint),
+        }));
+
+      if (rowsToInsert.length > 0) {
+        const { data: inserted, error: taskErr } = await supabaseUser
+          .from("tasks")
+          .insert(rowsToInsert)
+          .select("id, title, due_date, priority");
+        if (taskErr) {
+          console.warn("Auto-create tasks failed (continuing):", taskErr);
+        } else {
+          created_tasks = (inserted || []).map((t: any, i: number) => ({
+            id: t.id,
+            title: t.title,
+            due_date: t.due_date,
+            priority: t.priority,
+            owner_label: insights.action_items[i]?.owner || "Team",
+          }));
+        }
+      }
+    } else {
+      suggested_tasks = insights.action_items.map((a, i) => ({
+        key: `${activityRow.id}:${i}`,
+        title: truncate(a.title, 200),
+        owner_label: a.owner,
+        due_hint: a.due_hint || null,
+        priority: a.priority || "medium",
+      }));
+    }
 
     return new Response(JSON.stringify({
       ok: true,
@@ -362,6 +433,8 @@ Deno.serve(async (req) => {
       activity_log_id: activityRow.id,
       summary_markdown: markdown,
       insights,
+      auto_created: autoCreate,
+      created_tasks,
       suggested_tasks,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
