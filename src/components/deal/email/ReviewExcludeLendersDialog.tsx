@@ -152,6 +152,46 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
     };
   }, [rows]);
 
+  // ── Pre-flight risk checks against currently INCLUDED lenders ───────────
+  const includedNames = useMemo(
+    () => rows.filter((r) => !r.excluded).map((r) => r.name),
+    [rows]
+  );
+  const preflight = useLenderPreflightChecks({
+    dealId,
+    lenderNames: includedNames,
+    enabled: open && !loading,
+  });
+
+  /** Active warnings = those raised by the hook minus per-session dismissals. */
+  const activeWarnings = useMemo(() => {
+    return preflight.flat
+      .map((entry) => ({
+        ...entry,
+        warnings: entry.warnings.filter(
+          (w) => !dismissedWarnings.has(`${entry.lenderName.toLowerCase()}::${w.kind}`)
+        ),
+      }))
+      .filter((entry) => entry.warnings.length > 0);
+  }, [preflight.flat, dismissedWarnings]);
+
+  const dismissWarning = (lenderName: string, kind: LenderPreflightWarningKind) => {
+    setDismissedWarnings((prev) => {
+      const next = new Set(prev);
+      next.add(`${lenderName.toLowerCase()}::${kind}`);
+      return next;
+    });
+  };
+
+  const removeLenderFromSubmission = (lenderName: string) => {
+    const target = lenderName.trim().toLowerCase();
+    setRows((prev) =>
+      prev.map((r) =>
+        r.name.trim().toLowerCase() === target ? { ...r, excluded: true } : r
+      )
+    );
+  };
+
   const toggleExcluded = (id: string, value: boolean) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, excluded: value } : r)));
   };
