@@ -97,10 +97,15 @@ const tools = [
     type: "function",
     function: {
       name: "get_deal_lenders",
-      description: "Get all lenders on a specific deal with stage and notes.",
+      description: "Get all lenders engaged on a specific deal — current stage, tracking_status, last_contact_at (with auto-computed days_since_last_contact + is_stale flag), pass_reason, quote terms (amount/rate/term), and notes. Always returns the deal name so the answer can cite it. Use for: 'Who are the lenders on <Deal>', 'What stage is <Lender> on <Deal>' (set lender_name), 'Which lenders haven't we heard back from on <Deal>' (set stale_days, default 7).",
       parameters: {
         type: "object",
-        properties: { deal_id: { type: "string" } },
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID. Resolve from deal name via search_deals first if needed." },
+          lender_name: { type: "string", description: "Optional. Filter to a specific lender on the deal (case-insensitive partial match)." },
+          stale_days: { type: "number", description: "Optional. Only return lenders with no contact in the last N days OR no last_contact_at recorded. Use 7 as the default for 'haven't heard back' queries." },
+          status: { type: "string", description: "Optional. Filter by tracking_status (e.g. 'active', 'passed', 'no_response')." },
+        },
         required: ["deal_id"],
       },
     },
@@ -760,6 +765,22 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "get_lenders_by_pass_filter",
+      description: "Find lenders that PASSED on deals matching a segment in a recent time window. Use for 'which lenders have passed on <segment> deals in the last <N> months' (e.g. SaaS, growth-capital, ABL). Returns lenders grouped with the deals they passed on, the pass_reason, and the date.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_type_keyword: { type: "string", description: "Substring match against deals.deal_type (e.g. 'growth-capital', 'abl', 'refinancing'). Optional." },
+          deal_keyword: { type: "string", description: "Substring match against the deal name / company (e.g. 'SaaS', 'health'). Optional. Combined with deal_type_keyword via AND when both set." },
+          months: { type: "number", description: "Window in months. Default 6, max 36." },
+          limit: { type: "number", description: "Max pass rows returned. Default 100, max 300." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_deal_stage_history",
       description: "Chronological stage-change timeline for a single deal (deal_stage_history): from_stage → to_stage, who changed it, when, and which pipeline. Use when the user asks 'how did this deal progress', 'when did we move it to <stage>', 'how long has it been in <stage>', or wants a deal lifecycle audit trail.",
       parameters: {
@@ -1299,14 +1320,14 @@ function selectTools(page: string, entityType?: string) {
   ]);
 
   if (page.includes("lender")) {
-    ["get_deal_lenders", "search_lenders", "update_lender_status", "get_deal_call_transcripts", "get_lender_deal_history"].forEach(n => coreNames.add(n));
+    ["get_deal_lenders", "search_lenders", "update_lender_status", "get_deal_call_transcripts", "get_lender_deal_history", "get_lenders_by_pass_filter"].forEach(n => coreNames.add(n));
   } else if (page.includes("deals") || page.includes("pipeline")) {
-    ["get_deal_lenders", "get_deal_health", "get_deal_milestones", "get_outstanding_items", "get_deal_call_transcripts", "get_deal_stage_history", "get_lender_deal_history", "search_vdr_documents", "list_vdr_documents"].forEach(n => coreNames.add(n));
+    ["get_deal_lenders", "get_deal_health", "get_deal_milestones", "get_outstanding_items", "get_deal_call_transcripts", "get_deal_stage_history", "get_lender_deal_history", "get_lenders_by_pass_filter", "search_vdr_documents", "list_vdr_documents"].forEach(n => coreNames.add(n));
   } else if (page.includes("task")) {
     // Tasks page: core + task tools only
   } else {
     // Dashboard and other pages: core + some deal read tools
-    ["get_deal_lenders", "get_deal_health", "get_deal_call_transcripts"].forEach(n => coreNames.add(n));
+    ["get_deal_lenders", "get_deal_health", "get_deal_call_transcripts", "get_lenders_by_pass_filter"].forEach(n => coreNames.add(n));
   }
 
   return tools.filter(t => coreNames.has(t.function.name));
@@ -1380,8 +1401,39 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       };
     }
     case "get_deal_lenders": {
-      const { data } = await supabase.from("deal_lenders").select("id, name, stage, notes, tracking_status, created_at").eq("deal_id", args.deal_id).order("created_at", { ascending: false });
-      return { lenders: data || [] };
+      const [{ data: deal }, { data: rows }] = await Promise.all([
+        supabase.from("deals").select("id, company, stage, deal_type").eq("id", args.deal_id).maybeSingle(),
+        supabase.from("deal_lenders")
+          .select("id, name, stage, substage, notes, tracking_status, pass_reason, quote_amount, quote_rate, quote_term, last_contact_at, created_at, updated_at")
+          .eq("deal_id", args.deal_id)
+          .order("last_contact_at", { ascending: false, nullsFirst: false }),
+      ]);
+      const now = Date.now();
+      const decorated = (rows || []).map((r: any) => {
+        const last = r.last_contact_at ? new Date(r.last_contact_at).getTime() : null;
+        const days = last ? Math.floor((now - last) / 86_400_000) : null;
+        return { ...r, days_since_last_contact: days, is_stale: days === null || days >= 7 };
+      });
+      let filtered = decorated;
+      if (args.lender_name) {
+        const needle = String(args.lender_name).toLowerCase();
+        filtered = filtered.filter((r: any) => String(r.name || "").toLowerCase().includes(needle));
+      }
+      if (args.status) {
+        const s = String(args.status).toLowerCase();
+        filtered = filtered.filter((r: any) => String(r.tracking_status || "").toLowerCase() === s);
+      }
+      if (typeof args.stale_days === "number" && args.stale_days >= 0) {
+        filtered = filtered.filter((r: any) =>
+          r.days_since_last_contact === null || r.days_since_last_contact >= args.stale_days,
+        );
+      }
+      return {
+        deal: deal ? { id: deal.id, name: deal.company, stage: deal.stage, deal_type: deal.deal_type } : null,
+        cite: deal?.company ? `Source: ${deal.company} deal` : "Source: deal record",
+        count: filtered.length,
+        lenders: filtered,
+      };
     }
     case "search_lenders": {
       const { data } = await supabase.from("master_lenders").select("id, name, lender_type, geo, tier, loan_types, industries").ilike("name", `%${args.query}%`).limit(10);
@@ -3286,6 +3338,69 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         notes: notes.map((n: any) => ({ body: (n.body || "").slice(0, 1000), is_flag: n.is_flag, tags: n.tags, created_at: n.created_at })),
       };
     }
+    case "get_lenders_by_pass_filter": {
+      const months = Math.min(Math.max(Number(args.months) || 6, 1), 36);
+      const limit = Math.min(Math.max(Number(args.limit) || 100, 1), 300);
+      const cutoff = new Date(Date.now() - months * 30 * 86_400_000).toISOString();
+
+      // 1) Find candidate deals matching the segment.
+      let dealQ = supabase.from("deals").select("id, company, deal_type").limit(500);
+      if (args.deal_type_keyword) {
+        // deal_type can be JSON array text or a free string — substring match handles both.
+        dealQ = dealQ.ilike("deal_type", `%${args.deal_type_keyword}%`);
+      }
+      if (args.deal_keyword) {
+        dealQ = dealQ.ilike("company", `%${args.deal_keyword}%`);
+      }
+      const { data: deals, error: dErr } = await dealQ;
+      if (dErr) return { error: dErr.message };
+      const dealIds = (deals || []).map((d: any) => d.id);
+      if (dealIds.length === 0) {
+        return { window_months: months, count: 0, lenders: [], note: "No deals match the segment filters." };
+      }
+      const dealMap: Record<string, any> = {};
+      for (const d of deals || []) dealMap[d.id] = d;
+
+      // 2) Pull passed deal_lenders rows in the window for those deals.
+      const { data: passes, error: pErr } = await supabase
+        .from("deal_lenders")
+        .select("id, deal_id, name, pass_reason, updated_at, last_contact_at, quote_amount, quote_rate, quote_term")
+        .eq("tracking_status", "passed")
+        .in("deal_id", dealIds)
+        .gte("updated_at", cutoff)
+        .order("updated_at", { ascending: false })
+        .limit(limit);
+      if (pErr) return { error: pErr.message };
+
+      // 3) Group by lender name.
+      const grouped: Record<string, any> = {};
+      for (const r of passes || []) {
+        const key = String(r.name || "(unknown)");
+        if (!grouped[key]) grouped[key] = { lender_name: key, pass_count: 0, deals: [] };
+        const deal = dealMap[r.deal_id];
+        grouped[key].pass_count += 1;
+        grouped[key].deals.push({
+          deal_id: r.deal_id,
+          deal_name: deal?.company || null,
+          deal_type: deal?.deal_type || null,
+          pass_reason: r.pass_reason || null,
+          passed_at: r.updated_at,
+          last_contact_at: r.last_contact_at,
+          quote: (r.quote_amount || r.quote_rate || r.quote_term)
+            ? { amount: r.quote_amount, rate: r.quote_rate, term: r.quote_term }
+            : null,
+        });
+      }
+      const lenders = Object.values(grouped).sort((a: any, b: any) => b.pass_count - a.pass_count);
+      return {
+        window_months: months,
+        deal_type_keyword: args.deal_type_keyword || null,
+        deal_keyword: args.deal_keyword || null,
+        deals_searched: dealIds.length,
+        count: lenders.length,
+        lenders,
+      };
+    }
     case "get_deal_stage_history": {
       if (!args.deal_id) return { error: "deal_id required" };
       const limit = Math.min(Math.max(Number(args.limit) || 50, 1), 200);
@@ -4196,6 +4311,14 @@ PREFERRED TOOLS (use these first for any specific question about a single entity
 - Anything about a single lender (profile, every deal they're on, stage per deal, last contact) → get_lender_full
 - Anything about a single contact (profile, company, deals, recent activity) → get_contact_full
 - Anything about a single CRM company (profile, contacts, deals) → get_company_full
+
+LENDER QUERY PLAYBOOK (always query the naitive lender directory + per-deal lender lists before answering — never guess):
+- "Who are the lenders on <Deal>?" → search_deals to resolve the deal, then get_deal_lenders(deal_id). Cite the deal name. Show stage + last_contact_at for each lender.
+- "What stage is <Lender> on <Deal>?" → search_deals → get_deal_lenders(deal_id, lender_name="<Lender>"). Quote stage and last_contact_at. Cite the deal.
+- "Which lenders have we not heard back from on <Deal>?" → get_deal_lenders(deal_id, stale_days=7). Treat tracking_status='no_response' OR days_since_last_contact >= 7 (or null) as stale. Cite the deal.
+- "What do we know about <Lender>?" → get_lender_full({ search: "<Lender>" }) for the directory profile (deal types, size range, industry focus), then call get_lender_deal_history for recent interaction history and notes. Combine both in the answer.
+- "Which lenders have passed on <segment, e.g. SaaS> deals in the last <N> months?" → get_lenders_by_pass_filter (deal_type or industry filter + months window). For ad-hoc segments not covered by the tool's enum, fall back to: search_deals(deal_type=...) then get_deal_lenders for each, filtering tracking_status='passed' and updated_at within the window.
+- ALWAYS cite the source deal (e.g. "On the Infillion deal, …") when answering deal-specific lender questions.
 
 CRM list/search context (use these when the user asks about MULTIPLE contacts/companies or wants a list, not a single profile):
 - "Find/list contacts at <company>", "who do we know at X", "show me leads/MQLs/customers", "contacts I own" → search_contacts
