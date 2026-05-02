@@ -1549,6 +1549,14 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
         sourceCount={autoFillSourceCount}
       />
 
+      {/* Branded Document Studio */}
+      <BrandedDocStudioDialog
+        open={showBrandedStudio}
+        onOpenChange={setShowBrandedStudio}
+        dealId={dealId}
+        companyName={data.companyName || 'Subject Company'}
+      />
+
       {/* Empty Fields Warning Dialog */}
       <AlertDialog open={showEmptyFieldsWarning} onOpenChange={setShowEmptyFieldsWarning}>
         <AlertDialogContent className="max-w-lg">
