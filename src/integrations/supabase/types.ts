@@ -936,6 +936,7 @@ export type Database = {
       ai_configuration: {
         Row: {
           company_id: string
+          copilot_instructions: Json
           created_at: string
           default_model: string
           default_temperature: number
@@ -946,6 +947,7 @@ export type Database = {
         }
         Insert: {
           company_id: string
+          copilot_instructions?: Json
           created_at?: string
           default_model?: string
           default_temperature?: number
@@ -956,6 +958,7 @@ export type Database = {
         }
         Update: {
           company_id?: string
+          copilot_instructions?: Json
           created_at?: string
           default_model?: string
           default_temperature?: number

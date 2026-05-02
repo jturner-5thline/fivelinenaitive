@@ -7,11 +7,20 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
-import { Brain, BarChart3, Loader2, Save, MessageSquare, TrendingUp, Bot, Workflow } from 'lucide-react';
+import { Brain, BarChart3, Loader2, Save, MessageSquare, TrendingUp, Bot, Workflow, Sparkles, Plus, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  DEFAULT_COPILOT_INSTRUCTIONS,
+  TONE_LABELS,
+  compileCopilotInstructions,
+  normalizeCopilotInstructions,
+  type CopilotInstructions,
+  type CopilotTone,
+} from '@/lib/copilotInstructions';
 
 const AI_MODELS = [
   { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4 (Latest)' },
@@ -33,6 +42,7 @@ interface AIConfig {
   default_temperature: number;
   max_tokens: number;
   features_enabled: Record<string, boolean>;
+  copilot_instructions?: CopilotInstructions;
 }
 
 export function AIConfigurationSettings({ isAdmin }: { isAdmin: boolean }) {
@@ -44,6 +54,9 @@ export function AIConfigurationSettings({ isAdmin }: { isAdmin: boolean }) {
     max_tokens: 4096,
     features_enabled: { chat: true, financial_analysis: true, agents: true, workflows: true },
   });
+  const [localCopilot, setLocalCopilot] = useState<CopilotInstructions>(DEFAULT_COPILOT_INSTRUCTIONS);
+  const [copilotLoaded, setCopilotLoaded] = useState(false);
+  const [showCompiledPreview, setShowCompiledPreview] = useState(false);
 
   const { data: config, isLoading } = useQuery({
     queryKey: ['ai-configuration', company?.id],
@@ -55,7 +68,7 @@ export function AIConfigurationSettings({ isAdmin }: { isAdmin: boolean }) {
         .eq('company_id', company.id)
         .single();
       if (error && error.code !== 'PGRST116') throw error;
-      return data as AIConfig | null;
+      return (data as unknown) as AIConfig | null;
     },
     enabled: !!company?.id,
   });
@@ -85,8 +98,12 @@ export function AIConfigurationSettings({ isAdmin }: { isAdmin: boolean }) {
   useEffect(() => {
     if (config) {
       setLocalConfig(config);
+      if (!copilotLoaded) {
+        setLocalCopilot(normalizeCopilotInstructions((config as any).copilot_instructions));
+        setCopilotLoaded(true);
+      }
     }
-  }, [config]);
+  }, [config, copilotLoaded]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -97,6 +114,7 @@ export function AIConfigurationSettings({ isAdmin }: { isAdmin: boolean }) {
         default_temperature: localConfig.default_temperature ?? 0.7,
         max_tokens: localConfig.max_tokens ?? 4096,
         features_enabled: localConfig.features_enabled || { chat: true, financial_analysis: true, agents: true, workflows: true },
+        copilot_instructions: localCopilot as any,
       };
 
       if (config?.id) {
@@ -274,6 +292,184 @@ export function AIConfigurationSettings({ isAdmin }: { isAdmin: boolean }) {
           )}
         </CardContent>
       </Card>
+
+      {/* Copilot Instructions (admin only) */}
+      {isAdmin && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Copilot Instructions
+            </CardTitle>
+            <CardDescription>
+              Firm-level context injected at the start of every AI conversation (chat, dashboard, deal copilot).
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {/* Company description */}
+            <div className="space-y-2">
+              <Label>Company Description</Label>
+              <Textarea
+                rows={3}
+                value={localCopilot.company_description}
+                onChange={(e) => setLocalCopilot((p) => ({ ...p, company_description: e.target.value }))}
+                placeholder={DEFAULT_COPILOT_INSTRUCTIONS.company_description}
+              />
+            </div>
+
+            {/* Lifecycle stages */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Deal Lifecycle Stages</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1 text-xs"
+                  onClick={() =>
+                    setLocalCopilot((p) => ({
+                      ...p,
+                      lifecycle_stages: [...p.lifecycle_stages, { name: '', description: '' }],
+                    }))
+                  }
+                >
+                  <Plus className="h-3.5 w-3.5" /> Add stage
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {localCopilot.lifecycle_stages.map((stage, idx) => (
+                  <div key={idx} className="flex items-start gap-2">
+                    <span className="mt-2 w-5 text-right text-xs text-muted-foreground">{idx + 1}.</span>
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-[1fr_1.5fr] gap-2">
+                      <Input
+                        value={stage.name}
+                        placeholder="Stage name"
+                        onChange={(e) =>
+                          setLocalCopilot((p) => ({
+                            ...p,
+                            lifecycle_stages: p.lifecycle_stages.map((s, i) =>
+                              i === idx ? { ...s, name: e.target.value } : s,
+                            ),
+                          }))
+                        }
+                      />
+                      <Input
+                        value={stage.description ?? ''}
+                        placeholder="Optional description"
+                        onChange={(e) =>
+                          setLocalCopilot((p) => ({
+                            ...p,
+                            lifecycle_stages: p.lifecycle_stages.map((s, i) =>
+                              i === idx ? { ...s, description: e.target.value } : s,
+                            ),
+                          }))
+                        }
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                      onClick={() =>
+                        setLocalCopilot((p) => ({
+                          ...p,
+                          lifecycle_stages: p.lifecycle_stages.filter((_, i) => i !== idx),
+                        }))
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Tone */}
+            <div className="space-y-2">
+              <Label>Communication Tone</Label>
+              <Select
+                value={localCopilot.tone}
+                onValueChange={(v) => setLocalCopilot((p) => ({ ...p, tone: v as CopilotTone }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(TONE_LABELS) as CopilotTone[]).map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {TONE_LABELS[t]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Team structure */}
+            <div className="space-y-2">
+              <Label>Team Structure</Label>
+              <Textarea
+                rows={3}
+                value={localCopilot.team_structure}
+                onChange={(e) => setLocalCopilot((p) => ({ ...p, team_structure: e.target.value }))}
+                placeholder="e.g. James Turner manages enterprise deals; Song Chae covers growth-stage; analysts assist with diligence."
+              />
+            </div>
+
+            {/* Custom instructions */}
+            <div className="space-y-2">
+              <Label>Custom Instructions</Label>
+              <Textarea
+                rows={4}
+                value={localCopilot.custom_instructions}
+                onChange={(e) => setLocalCopilot((p) => ({ ...p, custom_instructions: e.target.value }))}
+                placeholder="Any firm-specific rules, lender preferences, formatting templates, etc."
+              />
+            </div>
+
+            {/* Compiled preview */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Compiled System Prompt Preview</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1 text-xs"
+                  onClick={() => setShowCompiledPreview((v) => !v)}
+                >
+                  {showCompiledPreview ? (
+                    <>
+                      <EyeOff className="h-3.5 w-3.5" /> Hide
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-3.5 w-3.5" /> Show
+                    </>
+                  )}
+                </Button>
+              </div>
+              {showCompiledPreview && (
+                <pre className="text-[11px] leading-relaxed bg-muted/60 border rounded-md p-3 max-h-80 overflow-auto whitespace-pre-wrap">
+{compileCopilotInstructions(localCopilot)}
+                </pre>
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                This block is prepended to every AI conversation across naitive (Deal Copilot, Dashboard AI, AI Chat).
+              </p>
+            </div>
+
+            <Button
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending}
+              className="w-full gap-2"
+            >
+              {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save Copilot Instructions
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

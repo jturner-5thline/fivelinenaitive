@@ -9,6 +9,44 @@ const corsHeaders = {
 const CLAUDE_MODEL = "claude-sonnet-4-20250514";
 const CLAUDE_TIMEOUT_MS = 55_000;
 
+// Compile firm-level Copilot Instructions (set in Settings → AI) into a system-prompt prefix.
+// Mirrors src/lib/copilotInstructions.ts.
+function compileCopilotInstructions(raw: any): string {
+  const TONE_GUIDANCE: Record<string, string> = {
+    professional_concise:
+      "Use a professional, concise tone. Skip preamble. Favor short sentences and scannable bullets. Be direct and action-oriented.",
+    formal:
+      "Use a formal, polished tone appropriate for institutional capital partners. Avoid slang and contractions. Prefer complete sentences and measured language.",
+    casual:
+      "Use a casual, conversational tone. Plain language, contractions are fine. Stay accurate, but feel free to be friendly.",
+  };
+  const r = raw && typeof raw === "object" ? raw : {};
+  const company = typeof r.company_description === "string" ? r.company_description.trim() : "";
+  const stagesArr = Array.isArray(r.lifecycle_stages) ? r.lifecycle_stages : [];
+  const stages = stagesArr
+    .map((s: any) => (typeof s === "string" ? { name: s, description: "" } : s))
+    .filter((s: any) => s && typeof s.name === "string" && s.name.trim().length > 0);
+  const tone = ["professional_concise", "formal", "casual"].includes(r.tone) ? r.tone : "professional_concise";
+  const team = typeof r.team_structure === "string" ? r.team_structure.trim() : "";
+  const custom = typeof r.custom_instructions === "string" ? r.custom_instructions.trim() : "";
+  if (!company && stages.length === 0 && !team && !custom) return "";
+  const parts: string[] = [];
+  if (company) parts.push("## Firm Profile", company, "");
+  if (stages.length > 0) {
+    parts.push("## Deal Lifecycle Stages");
+    parts.push(
+      stages
+        .map((s: any, i: number) => `${i + 1}. ${s.name}${s.description ? ` — ${s.description}` : ""}`)
+        .join("\n"),
+    );
+    parts.push("");
+  }
+  parts.push("## Communication Tone", TONE_GUIDANCE[tone], "");
+  if (team) parts.push("## Team Structure", team, "");
+  if (custom) parts.push("## Custom Instructions", custom);
+  return parts.join("\n").trim();
+}
+
 // Format a YYYY-MM-DD due date as a human-readable relative phrase
 // (e.g., "due today", "due tomorrow", "due this Friday", "3 days overdue").
 function formatRelativeDue(dueDate: string): string {
@@ -848,7 +886,22 @@ Deno.serve(async (req) => {
     const lastUserText = [...messages].reverse().find((m: any) => m.role === "user")?.content || "";
     const promptAddendum = getPromptAddendum(lastUserText);
 
-    const systemPrompt = `You are naitive Copilot — a Claude-powered deal intelligence assistant for commercial lending professionals at ${companyName}. You answer questions about deals, lenders, pipeline, tasks, and outstanding items using the user's actual data below.
+    // Load firm-level Copilot Instructions and prepend to the system prompt.
+    let copilotPrefix = "";
+    try {
+      if (companyId) {
+        const { data: aiConfigRow } = await supabase
+          .from("ai_configuration")
+          .select("copilot_instructions")
+          .eq("company_id", companyId)
+          .maybeSingle();
+        copilotPrefix = compileCopilotInstructions(aiConfigRow?.copilot_instructions);
+      }
+    } catch (e) {
+      console.warn("[claude-dashboard-chat] copilot instructions load failed", e);
+    }
+
+    const systemPrompt = `${copilotPrefix ? copilotPrefix + "\n\n" : ""}You are naitive Copilot — a Claude-powered deal intelligence assistant for commercial lending professionals at ${companyName}. You answer questions about deals, lenders, pipeline, tasks, and outstanding items using the user's actual data below.
 
 The user's name is ${userName}.
 

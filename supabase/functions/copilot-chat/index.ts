@@ -14,6 +14,44 @@ const MAX_TOOL_TURNS = 20;
 
 // Context fetchers removed — data is now lazy-loaded via tool calls
 
+// Compile firm-level Copilot Instructions (Settings → AI) into a system-prompt prefix.
+// Mirrors src/lib/copilotInstructions.ts.
+function compileCopilotInstructions(raw: any): string {
+  const TONE_GUIDANCE: Record<string, string> = {
+    professional_concise:
+      "Use a professional, concise tone. Skip preamble. Favor short sentences and scannable bullets. Be direct and action-oriented.",
+    formal:
+      "Use a formal, polished tone appropriate for institutional capital partners. Avoid slang and contractions. Prefer complete sentences and measured language.",
+    casual:
+      "Use a casual, conversational tone. Plain language, contractions are fine. Stay accurate, but feel free to be friendly.",
+  };
+  const r = raw && typeof raw === "object" ? raw : {};
+  const company = typeof r.company_description === "string" ? r.company_description.trim() : "";
+  const stagesArr = Array.isArray(r.lifecycle_stages) ? r.lifecycle_stages : [];
+  const stages = stagesArr
+    .map((s: any) => (typeof s === "string" ? { name: s, description: "" } : s))
+    .filter((s: any) => s && typeof s.name === "string" && s.name.trim().length > 0);
+  const tone = ["professional_concise", "formal", "casual"].includes(r.tone) ? r.tone : "professional_concise";
+  const team = typeof r.team_structure === "string" ? r.team_structure.trim() : "";
+  const custom = typeof r.custom_instructions === "string" ? r.custom_instructions.trim() : "";
+  if (!company && stages.length === 0 && !team && !custom) return "";
+  const parts: string[] = [];
+  if (company) parts.push("## Firm Profile", company, "");
+  if (stages.length > 0) {
+    parts.push("## Deal Lifecycle Stages");
+    parts.push(
+      stages
+        .map((s: any, i: number) => `${i + 1}. ${s.name}${s.description ? ` — ${s.description}` : ""}`)
+        .join("\n"),
+    );
+    parts.push("");
+  }
+  parts.push("## Communication Tone", TONE_GUIDANCE[tone], "");
+  if (team) parts.push("## Team Structure", team, "");
+  if (custom) parts.push("## Custom Instructions", custom);
+  return parts.join("\n").trim();
+}
+
 // ── Period resolver for finance tools ──────────────────────────
 function resolvePeriod(period?: string, customStart?: string, customEnd?: string): { start: string; end: string; label: string } {
   const now = new Date();
@@ -4558,6 +4596,21 @@ serve(async (req) => {
     const { data: memberData } = await supabaseUser.from("company_members").select("company_id").eq("user_id", userId).limit(1).single();
     const companyId = memberData?.company_id;
 
+    // Load firm-level Copilot Instructions (Settings → AI) for this company.
+    let copilotPrefix = "";
+    if (companyId) {
+      try {
+        const { data: aiCfg } = await supabaseAdmin
+          .from("ai_configuration")
+          .select("copilot_instructions")
+          .eq("company_id", companyId)
+          .maybeSingle();
+        copilotPrefix = compileCopilotInstructions((aiCfg as any)?.copilot_instructions);
+      } catch (e) {
+        console.warn("[copilot-chat] copilot instructions load failed", e);
+      }
+    }
+
     // Fetch active org preferences/rules
     let orgPreferencesSection = "";
     if (companyId) {
@@ -4590,7 +4643,7 @@ serve(async (req) => {
     // the model can answer immediately instead of always going through tools.
     const prefetched = await prefetchPageContext(supabaseUser, { page, entityType, entityId });
 
-    const systemPrompt = `You are the naitive AI Copilot — an intelligent digital worker embedded in a deal management platform for private credit and debt capital markets professionals. You autonomously run workflows for both single deals and multi-deal / portfolio reporting, not just a chat assistant.
+    const systemPrompt = `${copilotPrefix ? copilotPrefix + "\n\n" : ""}You are the naitive AI Copilot — an intelligent digital worker embedded in a deal management platform for private credit and debt capital markets professionals. You autonomously run workflows for both single deals and multi-deal / portfolio reporting, not just a chat assistant.
 
 CURRENT CONTEXT:
 - Page: ${page}
