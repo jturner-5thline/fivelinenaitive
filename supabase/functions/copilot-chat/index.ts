@@ -639,6 +639,79 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "get_email_thread",
+      description: "Get all messages in a single email thread (chronological), including subject, participants, snippets, and body excerpts. Use after search_emails when the user asks 'show me the whole thread', 'what was the back-and-forth', or 'full conversation with X'.",
+      parameters: {
+        type: "object",
+        properties: {
+          thread_id: { type: "string", description: "Gmail thread_id (from search_emails results)." },
+          limit: { type: "number", description: "Max messages to return. Default 25, max 100." },
+        },
+        required: ["thread_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_deal_emails",
+      description: "Return emails explicitly linked to a deal (via the deal_emails join). Use when the user asks 'what emails are on this deal', 'show emails attached to <deal>', or wants the deal-specific email trail (separate from the broader inbox).",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID. Defaults to the current deal context if omitted." },
+          limit: { type: "number", description: "Default 25, max 100." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_email_drafts",
+      description: "List the user's pending email drafts (composed but not sent). Use when the user asks 'what drafts do I have', 'unfinished emails', 'drafts for <deal>', or needs to find a draft to send/finish.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Optional: only drafts linked to this deal." },
+          limit: { type: "number", description: "Default 25, max 100." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_sent_emails",
+      description: "Recent emails the user actually sent (with delivery status). Use for 'did I email X', 'when did I last reply to Y', 'what did I send about <topic>', or to verify a send went out. Includes status (sent/failed) and error messages.",
+      parameters: {
+        type: "object",
+        properties: {
+          to_email: { type: "string", description: "Optional: filter by recipient (partial match)." },
+          query: { type: "string", description: "Optional: free-text across subject and body." },
+          since_days: { type: "number", description: "Default 30, max 365." },
+          limit: { type: "number", description: "Default 25, max 100." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_scheduled_emails",
+      description: "Emails the user has queued to send later (scheduled_emails). Use for 'what's queued to go out', 'pending sends', 'cancel scheduled email', or to inspect scheduling status (pending / sent / failed).",
+      parameters: {
+        type: "object",
+        properties: {
+          status: { type: "string", description: "Optional filter: 'pending', 'sent', 'failed', 'cancelled'." },
+          limit: { type: "number", description: "Default 25, max 100." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_upcoming_events",
       description: "Get the user's upcoming calendar events (live from Google Calendar via Nylas v3). Use when the user asks 'what's on my calendar', 'do I have a meeting with X', 'next call with', or needs scheduling context. Requires the user has connected their calendar.",
       parameters: {
@@ -989,6 +1062,8 @@ function selectTools(page: string, entityType?: string) {
     "link_contact_to_deal",
     // Always-available comms context (synced inbox, calendar, recorded meetings).
     "search_emails", "get_upcoming_events", "get_recent_meetings",
+    // Always-available email deep-dive (threads, drafts, sent, scheduled, deal-linked).
+    "get_email_thread", "get_deal_emails", "list_email_drafts", "get_sent_emails", "get_scheduled_emails",
     // Always-available task & follow-up context.
     "get_task_details", "get_scheduled_followups",
     // Always-available finance / QuickBooks context (firm-level, shared org-wide).
@@ -2733,6 +2808,115 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         messages: (data || []).map((m: any) => ({ ...m, body_text: (m.body_text || "").slice(0, 1500) })),
       };
     }
+    case "get_email_thread": {
+      const threadId = String(args.thread_id || "").trim();
+      if (!threadId) return { error: "thread_id required" };
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      const { data, error } = await supabase
+        .from("gmail_messages")
+        .select("id, gmail_message_id, thread_id, subject, from_email, from_name, to_emails, cc_emails, snippet, body_text, is_read, received_at")
+        .eq("user_id", userId)
+        .eq("thread_id", threadId)
+        .order("received_at", { ascending: true })
+        .limit(limit);
+      if (error) return { error: error.message };
+      const messages = (data || []).map((m: any) => ({ ...m, body_text: (m.body_text || "").slice(0, 2000) }));
+      return { thread_id: threadId, count: messages.length, messages };
+    }
+    case "get_deal_emails": {
+      const dealId = String(args.deal_id || entityId || "").trim();
+      if (!dealId) return { error: "deal_id required (no current deal context)" };
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      const { data: links, error: linkErr } = await supabase
+        .from("deal_emails")
+        .select("id, gmail_message_id, linked_at, notes, user_id")
+        .eq("deal_id", dealId)
+        .order("linked_at", { ascending: false })
+        .limit(limit);
+      if (linkErr) return { error: linkErr.message };
+      if (!links || links.length === 0) return { deal_id: dealId, count: 0, messages: [] };
+      const ids = links.map((l: any) => l.gmail_message_id).filter(Boolean);
+      const { data: msgs } = await supabase
+        .from("gmail_messages")
+        .select("gmail_message_id, thread_id, subject, from_email, from_name, to_emails, snippet, body_text, received_at, is_read")
+        .in("gmail_message_id", ids);
+      const map = new Map((msgs || []).map((m: any) => [m.gmail_message_id, m]));
+      const messages = links.map((l: any) => {
+        const m: any = map.get(l.gmail_message_id) || {};
+        return {
+          link_id: l.id,
+          linked_at: l.linked_at,
+          notes: l.notes,
+          gmail_message_id: l.gmail_message_id,
+          thread_id: m.thread_id || null,
+          subject: m.subject || null,
+          from: m.from_name ? `${m.from_name} <${m.from_email}>` : m.from_email || null,
+          to_emails: m.to_emails || null,
+          snippet: m.snippet || null,
+          body_text: (m.body_text || "").slice(0, 1500),
+          received_at: m.received_at || null,
+          is_read: m.is_read ?? null,
+        };
+      });
+      return { deal_id: dealId, count: messages.length, messages };
+    }
+    case "list_email_drafts": {
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      let q = supabase
+        .from("email_drafts")
+        .select("id, subject, to_emails, cc_emails, to_name, deal_id, thread_id, body, updated_at, created_at, auto_link_deal")
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false })
+        .limit(limit);
+      if (args.deal_id) q = q.eq("deal_id", String(args.deal_id));
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const drafts = (data || []).map((d: any) => ({
+        ...d,
+        body: (d.body || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 1500),
+      }));
+      return { count: drafts.length, drafts };
+    }
+    case "get_sent_emails": {
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      const sinceDays = Math.min(Math.max(Number(args.since_days) || 30, 1), 365);
+      const sinceIso = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000).toISOString();
+      let q = supabase
+        .from("gmail_sent_messages")
+        .select("id, gmail_message_id, to_emails, cc_emails, subject, body_text, status, error_message, sent_at, created_at")
+        .eq("user_id", userId)
+        .gte("created_at", sinceIso)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (args.query) {
+        const needle = String(args.query).replace(/[%,()]/g, " ").trim();
+        if (needle) q = q.or(`subject.ilike.%${needle}%,body_text.ilike.%${needle}%`);
+      }
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      let rows: any[] = data || [];
+      if (args.to_email) {
+        const needle = String(args.to_email).toLowerCase();
+        rows = rows.filter((m: any) => (m.to_emails || []).some((e: string) => (e || "").toLowerCase().includes(needle)));
+      }
+      return {
+        count: rows.length,
+        messages: rows.map((m: any) => ({ ...m, body_text: (m.body_text || "").slice(0, 1500) })),
+      };
+    }
+    case "get_scheduled_emails": {
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      let q = supabase
+        .from("scheduled_emails")
+        .select("id, subject, to_recipients, cc_recipients, thread_id, scheduled_for, status, attempts, last_error, sent_at, created_at")
+        .eq("user_id", userId)
+        .order("scheduled_for", { ascending: true })
+        .limit(limit);
+      if (args.status) q = q.eq("status", String(args.status));
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      return { count: (data || []).length, scheduled: data || [] };
+    }
     case "get_upcoming_events": {
       const daysAhead = Math.min(Math.max(Number(args.days_ahead) || 7, 1), 60);
       const limit = Math.min(Math.max(Number(args.limit) || 20, 1), 50);
@@ -3439,6 +3623,11 @@ Workflows & automations context (use whenever the user asks about saved automati
 
 Communications context (use whenever the question references emails, calls, meetings, or scheduling):
 - "What did X say", "find emails about/from", "recent messages with Y" → search_emails (synced inbox)
+- "Show me the whole thread", "full conversation", "back-and-forth with X" → get_email_thread (after search_emails to get the thread_id)
+- "What emails are on this deal", "deal email trail", "emails attached to <deal>" → get_deal_emails
+- "What drafts do I have", "unfinished emails", "draft for <deal>" → list_email_drafts
+- "Did I email X", "when did I last reply to Y", "what did I send about Z", "did the email go out" → get_sent_emails (includes status + error_message)
+- "What's queued to send", "pending scheduled emails", "what goes out tomorrow" → get_scheduled_emails
 - "What's on my calendar", "do I have a meeting with X", "next call with Y" → get_upcoming_events
 - "What did we discuss with X", "summary of the call", "last meeting on this deal" → get_recent_meetings (Claap recordings with summaries + transcripts)
 
