@@ -2265,6 +2265,29 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       };
     }
 
+    // ── HIGH RISK: Confirm deal status update (on-track / at-risk / off-track) ──
+    case "update_deal_status": {
+      const { data: deal } = await supabase
+        .from("deals")
+        .select("id, company, status")
+        .eq("id", args.deal_id)
+        .single();
+      if (!deal) return { error: "Deal not found" };
+      const dealName = args.deal_name || deal.company;
+      return {
+        action: "confirm",
+        action_type: "update_deal_status",
+        description: `Update ${dealName} status to "${args.new_status}"`,
+        params: {
+          deal_id: args.deal_id,
+          deal_name: dealName,
+          new_status: args.new_status,
+          current_status: deal.status,
+          status_note: args.status_note || null,
+        },
+      };
+    }
+
     // ── DATA ACCESS TOOLS ──
     case "get_outstanding_items": {
       let q = supabase.from("outstanding_items").select("id, description, status, priority, assigned_to, due_date, eta, notes, lender_id, created_at").eq("deal_id", args.deal_id).order("position", { ascending: true });
