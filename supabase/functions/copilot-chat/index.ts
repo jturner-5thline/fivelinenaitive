@@ -1043,6 +1043,78 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "list_partners",
+      description: "List BD partners (referral firms, banks, advisors, etc.) the company tracks in the Sales BD partner pipeline. Returns name, firm_type, stage, owner, and metadata. Use for 'who are our partners', 'list BD relationships', 'partners in <stage>', 'partners owned by <person>'.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Optional: name substring." },
+          firm_type: { type: "string", description: "Optional: filter by firm_type." },
+          stage_id: { type: "string", description: "Optional: filter by partner_pipeline_stages.id." },
+          owner_id: { type: "string", description: "Optional: filter by owner user UUID." },
+          limit: { type: "number", description: "Default 25, max 100." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_partner_full",
+      description: "Full partner profile: stage, owner, latest memo (who they are, ICP, mutual benefits), linked CRM contacts and companies. Use for 'tell me about partner <X>', 'partner profile', 'what's our angle with <partner>'.",
+      parameters: {
+        type: "object",
+        properties: {
+          partner_id: { type: "string", description: "Partner UUID." },
+          partner_name: { type: "string", description: "Or partner name (case-insensitive substring)." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_partner_pipeline_summary",
+      description: "Aggregate counts of partners per stage in the BD pipeline (with stage definitions). Use for 'BD pipeline overview', 'how many partners in each stage', 'partner funnel'.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_referral_sources",
+      description: "List referral sources (people/firms who send us deals) with attributed referral counts. Use for 'top referrers', 'who refers us deals', 'referral source list', 'referrals by <person>'.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Optional: name/email substring." },
+          source_type: { type: "string", description: "Optional: filter by source_type." },
+          owner_id: { type: "string", description: "Optional: filter by relationship_owner_id." },
+          min_referrals: { type: "number", description: "Optional: only sources with >= N referrals." },
+          limit: { type: "number", description: "Default 25, max 100." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_referral_attribution",
+      description: "Find deals attributed to a referral source/partner (matches deals.referral_source / referred_by / sourced_via / lead_source). Use for 'what deals did <X> refer', 'pipeline from <partner>', 'what came from <source>'.",
+      parameters: {
+        type: "object",
+        properties: {
+          source_name: { type: "string", description: "Name of the referral source / partner / person to attribute (case-insensitive substring)." },
+          since_days: { type: "number", description: "Optional: limit to deals created in the last N days." },
+          limit: { type: "number", description: "Default 50, max 200." },
+        },
+        required: ["source_name"],
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
@@ -1073,6 +1145,9 @@ function selectTools(page: string, entityType?: string) {
     // Always-available workflows & automations (user/company-scoped via RLS).
     "list_workflows", "get_workflow_runs", "list_email_workflows", "get_email_workflow_events",
     "list_zapier_webhooks", "get_zapier_webhook_logs",
+    // Always-available Sales BD & referrals.
+    "list_partners", "get_partner_full", "get_partner_pipeline_summary",
+    "list_referral_sources", "get_referral_attribution",
   ]);
 
   if (page.includes("lender")) {
@@ -3291,6 +3366,127 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         })),
       };
     }
+    case "list_partners": {
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      let q = supabase.from("partners")
+        .select("id, name, firm_type, stage_id, owner_id, notes, metadata, created_at, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(limit);
+      if (args.query) q = q.ilike("name", `%${String(args.query).replace(/[%,()]/g, " ").trim()}%`);
+      if (args.firm_type) q = q.eq("firm_type", String(args.firm_type));
+      if (args.stage_id) q = q.eq("stage_id", String(args.stage_id));
+      if (args.owner_id) q = q.eq("owner_id", String(args.owner_id));
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const partners = data || [];
+      const stageIds = [...new Set(partners.map((p: any) => p.stage_id).filter(Boolean))];
+      const stageMap: Record<string, string> = {};
+      if (stageIds.length) {
+        const { data: stages } = await supabase.from("partner_pipeline_stages").select("id, name").in("id", stageIds);
+        for (const s of stages || []) stageMap[s.id] = s.name;
+      }
+      return {
+        count: partners.length,
+        partners: partners.map((p: any) => ({ ...p, stage_name: p.stage_id ? stageMap[p.stage_id] || null : null })),
+      };
+    }
+    case "get_partner_full": {
+      let partnerId = String(args.partner_id || "").trim();
+      if (!partnerId && args.partner_name) {
+        const { data } = await supabase.from("partners").select("id").ilike("name", `%${String(args.partner_name).trim()}%`).limit(1).maybeSingle();
+        partnerId = data?.id || "";
+      }
+      if (!partnerId) return { error: "partner_id or partner_name required" };
+      const { data: partner, error } = await supabase.from("partners")
+        .select("id, name, firm_type, stage_id, owner_id, notes, metadata, created_at, updated_at")
+        .eq("id", partnerId).maybeSingle();
+      if (error || !partner) return { error: error?.message || "Partner not found" };
+      const [{ data: stage }, { data: memos }, { data: pcs }, { data: pcons }] = await Promise.all([
+        partner.stage_id ? supabase.from("partner_pipeline_stages").select("id, name, definition, color").eq("id", partner.stage_id).maybeSingle() : Promise.resolve({ data: null }),
+        supabase.from("partner_memos").select("memo_type, who_are_they, icp, benefit_from_us, benefit_from_them, notes, updated_at").eq("partner_id", partnerId).order("updated_at", { ascending: false }).limit(3),
+        supabase.from("partner_companies").select("company_id").eq("partner_id", partnerId),
+        supabase.from("partner_contacts").select("contact_id").eq("partner_id", partnerId),
+      ]);
+      const companyIds = (pcs || []).map((r: any) => r.company_id).filter(Boolean);
+      const contactIds = (pcons || []).map((r: any) => r.contact_id).filter(Boolean);
+      const [{ data: companies }, { data: contacts }] = await Promise.all([
+        companyIds.length ? supabase.from("crm_companies").select("id, name, domain, industry").in("id", companyIds) : Promise.resolve({ data: [] }),
+        contactIds.length ? supabase.from("contacts").select("id, first_name, last_name, email, title").in("id", contactIds) : Promise.resolve({ data: [] }),
+      ]);
+      return {
+        partner,
+        stage: stage || null,
+        memos: memos || [],
+        linked_crm_companies: companies || [],
+        linked_contacts: contacts || [],
+      };
+    }
+    case "get_partner_pipeline_summary": {
+      const { data: stages, error: sErr } = await supabase
+        .from("partner_pipeline_stages")
+        .select("id, name, definition, color, sort_order")
+        .order("sort_order", { ascending: true });
+      if (sErr) return { error: sErr.message };
+      const { data: partners, error: pErr } = await supabase.from("partners").select("id, stage_id, name");
+      if (pErr) return { error: pErr.message };
+      const counts: Record<string, number> = {};
+      const samples: Record<string, string[]> = {};
+      for (const p of partners || []) {
+        if (!p.stage_id) continue;
+        counts[p.stage_id] = (counts[p.stage_id] || 0) + 1;
+        if (!samples[p.stage_id]) samples[p.stage_id] = [];
+        if (samples[p.stage_id].length < 5) samples[p.stage_id].push(p.name);
+      }
+      return {
+        total_partners: (partners || []).length,
+        stages: (stages || []).map((s: any) => ({
+          ...s,
+          partner_count: counts[s.id] || 0,
+          sample_partner_names: samples[s.id] || [],
+        })),
+      };
+    }
+    case "list_referral_sources": {
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      let q = supabase.from("referral_sources")
+        .select("id, name, email, contact_name, contact_email, company, type, source_type, number_of_referrals, relationship_owner_id, promoted_to_partner_id, notes, created_at")
+        .order("number_of_referrals", { ascending: false, nullsFirst: false })
+        .limit(limit);
+      if (args.query) {
+        const needle = String(args.query).replace(/[%,()]/g, " ").trim();
+        if (needle) q = q.or(`name.ilike.%${needle}%,email.ilike.%${needle}%,contact_name.ilike.%${needle}%,company.ilike.%${needle}%`);
+      }
+      if (args.source_type) q = q.eq("source_type", String(args.source_type));
+      if (args.owner_id) q = q.eq("relationship_owner_id", String(args.owner_id));
+      if (typeof args.min_referrals === "number") q = q.gte("number_of_referrals", args.min_referrals);
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      return { count: (data || []).length, sources: data || [] };
+    }
+    case "get_referral_attribution": {
+      const name = String(args.source_name || "").trim();
+      if (!name) return { error: "source_name required" };
+      const limit = Math.min(Math.max(Number(args.limit) || 50, 1), 200);
+      const escaped = name.replace(/[%,()]/g, " ").trim();
+      let q = supabase.from("deals")
+        .select("id, deal_name, stage_id, pipeline_id, deal_value, lead_source, referral_source, referred_by, sourced_via, manager_email, created_at, updated_at")
+        .or(`referral_source.ilike.%${escaped}%,referred_by.ilike.%${escaped}%,sourced_via.ilike.%${escaped}%,lead_source.ilike.%${escaped}%`)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (typeof args.since_days === "number") {
+        const since = new Date(Date.now() - Math.max(1, args.since_days) * 86400000).toISOString();
+        q = q.gte("created_at", since);
+      }
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const deals = (data || []).filter((d: any) => {
+        const lower = String(d.deal_name || "").toLowerCase();
+        if (lower.startsWith("test ") || lower === "test-niki's store" || lower === "example deal") return false;
+        return true;
+      });
+      const totalValue = deals.reduce((sum: number, d: any) => sum + (Number(d.deal_value) || 0), 0);
+      return { source_name: name, count: deals.length, total_deal_value: totalValue, deals };
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -3634,6 +3830,13 @@ Communications context (use whenever the question references emails, calls, meet
 History / audit context (use for "track record", "lifecycle", "why did X happen"):
 - "What's our history with <lender>", "has <lender> done deals like this before", "why did <lender> pass last time" → get_lender_deal_history
 - "How did this deal progress", "when did it move to <stage>", "how long in <stage>" → get_deal_stage_history
+
+Sales BD & referrals context (use for "BD pipeline", "partners", "referrers", "where did this deal come from"):
+- "Who are our partners", "BD relationships", "partners in <stage>", "partners owned by <X>" → list_partners
+- "Tell me about partner <X>", "partner profile", "memo on <partner>" → get_partner_full
+- "BD pipeline overview", "partner funnel", "how many partners per stage" → get_partner_pipeline_summary
+- "Top referrers", "who refers us deals", "referral sources" → list_referral_sources
+- "What deals did <X> refer", "pipeline from <partner>", "what came from <source>" → get_referral_attribution
 ${entityType === "deal" && entityId ? `\nThe user is viewing deal ID: ${entityId}. Use this ID when calling deal-specific tools.` : ''}
 
 CORE RESPONSIBILITIES:
