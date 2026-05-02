@@ -4262,6 +4262,13 @@ Claap meeting intelligence & routing context (use for call transcripts, matching
 - "Claap routing queue", "pending Claap reviews", "unresolved routing tasks" → get_claap_routing_queue
 - "Why didn't <call> sync", "what calls were skipped", "force-sync candidates" → list_claap_skipped_calls
 - "Why isn't Claap syncing", "Claap webhook failures", "ingestion errors" → get_claap_webhook_errors
+
+FinServ ops context (5th Line internal FinServ pipeline — separate from Debt deals):
+- "FinServ pipeline overview", "FinServ funnel", "deals per FinServ stage" → get_finserv_pipeline_summary (returns stage definitions + counts)
+- "Show FinServ deals", "active FinServ engagements", "FinServ deals owned by <X>" → list_finserv_deals
+- "Tell me about FinServ deal <X>", "status of <FinServ engagement>" → get_finserv_deal_full
+- "FinServ revenue", "FinServ bookings this quarter", "FinServ closed deals by month" → get_finserv_revenue_summary
+- "FinServ deliverables", "overdue FinServ milestones", "what's pending in FinServ" → list_finserv_milestones
 ${entityType === "deal" && entityId ? `\nThe user is viewing deal ID: ${entityId}. Use this ID when calling deal-specific tools.` : ''}
 
 CORE RESPONSIBILITIES:
