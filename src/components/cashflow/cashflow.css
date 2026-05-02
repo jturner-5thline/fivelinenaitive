@@ -1221,3 +1221,15 @@ tr:hover .cf-row-remove { opacity: 1; }
   align-items: center;
   justify-content: center;
 }
+
+/* Pulse animation for the Low Cash KPI chip when projected cash falls below
+   the caution threshold. Subtle scale + opacity pulse on the value text so
+   it draws the eye without flashing the whole row. */
+@keyframes cf-kpi-pulse-anim {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.06); opacity: 0.78; }
+}
+.cf-kpi-pulse .cf-kpi-value {
+  animation: cf-kpi-pulse-anim 1.4s ease-in-out infinite;
+  transform-origin: center;
+}
