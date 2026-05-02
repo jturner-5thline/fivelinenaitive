@@ -444,6 +444,7 @@ function MessageActions({ msg, conversationId }: { msg: { id: string; content: s
 
 export function AICopilotPanel() {
   const { isOpen, closePanel, messages, addMessage, setMessages, isProcessing, setProcessing, conversationId, setConversationId, conversationMutations, pendingPrompt, setPendingPrompt } = useCopilotStore();
+  const [agentMode, setAgentMode] = useState(false);
   const { user } = useAuth();
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
@@ -908,6 +909,20 @@ export function AICopilotPanel() {
     addMessage(userMsg);
     setInput('');
 
+    // Agent mode: instead of streaming a chat reply, push an assistant
+    // message that mounts <AgentRunCard /> and runs the chained pipeline.
+    if (agentMode) {
+      const ctx = getPageContext();
+      addMessage({
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: '',
+        timestamp: new Date(),
+        metadata: { kind: 'agent_run', prompt: text, context: ctx },
+      });
+      return;
+    }
+
     if (isProcessingRef.current) {
       // Queue this message to be processed after current one finishes
       messageQueueRef.current.push(text);
@@ -915,7 +930,7 @@ export function AICopilotPanel() {
     }
 
     processMessage(text);
-  }, [input, addMessage, processMessage]);
+  }, [input, addMessage, processMessage, agentMode]);
 
   const handleRetry = useCallback(() => {
     if (!lastFailedMessage) return;
