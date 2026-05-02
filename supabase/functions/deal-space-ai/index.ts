@@ -796,7 +796,7 @@ serve(async (req) => {
 
     const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { messages, dealId, action, sectionKey, documentId, scope, stream } = await req.json();
+    const { messages, dealId, action, sectionKey, documentId, scope, stream, conversationId, includeDataRoom } = await req.json();
 
     if (action === "summarize") return await handleSummarize(dealId, supabaseUser, supabaseService);
     if (action === "extract-writeup") return await handleExtractWriteUp(dealId, supabaseUser, supabaseService);
@@ -817,6 +817,7 @@ serve(async (req) => {
       includeDocContent: true,
       supabaseService,
       scope: scope || 'all',
+      includeDataRoom: includeDataRoom !== false,
     });
 
     // ── Scope-aware filtering ──
@@ -853,11 +854,55 @@ SCOPE RESTRICTION: The user has selected "Transcripts Only" scope.
     // Build source labels for citation
     const sourceLabels = ctx.sourcesUsed.map((s, i) => `[${i + 1}] ${s.name}`).join(', ');
 
+    // ── Persistent memory: load up to 10 prior exchanges (20 messages) for this deal ──
+    // Used to provide cross-session context. We pull from the most recently-updated
+    // conversation for the deal+user; if `conversationId` is supplied we honor that.
+    let priorMemoryBlock = '';
+    try {
+      let memConvId: string | null = conversationId || null;
+      if (!memConvId) {
+        const { data: latestConv } = await supabase
+          .from('deal_space_conversations')
+          .select('id')
+          .eq('deal_id', dealId)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        memConvId = latestConv?.id || null;
+      }
+      if (memConvId) {
+        const { data: priorMsgs } = await supabase
+          .from('deal_space_messages')
+          .select('role, content, created_at')
+          .eq('conversation_id', memConvId)
+          .order('created_at', { ascending: false })
+          .limit(20);
+        const ordered = (priorMsgs || []).reverse();
+        // Skip prior messages that duplicate what the client sent in `messages`.
+        const incomingFirst = messages?.[0]?.content || '';
+        const filtered = ordered.filter((m: any) => m.content !== incomingFirst).slice(-20);
+        if (filtered.length > 0) {
+          priorMemoryBlock = `\n\n**PRIOR CONVERSATION HISTORY (last ${Math.ceil(filtered.length / 2)} exchanges, for continuity):**\n` +
+            filtered.map((m: any) => `${m.role === 'user' ? 'User' : 'AI'}: ${truncate(m.content, 800)}`).join('\n');
+        }
+      }
+    } catch (memErr) {
+      console.warn('Prior memory load failed (continuing):', memErr);
+    }
+
+    // ── Custom per-deal AI instructions ──
+    const customInstructions = (ctx.deal?.ai_custom_instructions || '').trim();
+    const customInstructionsBlock = customInstructions
+      ? `\n\n**CUSTOM INSTRUCTIONS FOR THIS DEAL (set by the deal team — follow these strictly):**\n${truncate(customInstructions, 4000)}`
+      : '';
+
     const systemPrompt = `You are a senior deal analyst AI assistant with complete knowledge of this deal. Your responses must be factual, well-structured, and grounded in the data provided.
+${customInstructionsBlock}
 
 ${ctx.fullContext}
 
 ${ctx.docContentBlock}
+${priorMemoryBlock}
 
 **DOCUMENT INVENTORY (Scope: ${activeScope === 'all' ? 'All Documents' : activeScope === 'financial' ? 'Financial Models Only' : activeScope === 'transcripts' ? 'Transcripts Only' : 'Custom'}):**
 ${scopedDocInventory}
@@ -871,6 +916,8 @@ Instructions:
 - Answer questions using the appropriate data.
 - CRITICAL: For every claim, cite the source using this format at the end of the relevant bullet or paragraph: *(Source: [source name])*
   Examples: *(Source: Deal Write-Up)*, *(Source: Lender Notes — ABC Bank)*, *(Source: Q3 Financials.xlsx)*
+- When you reference a file from the Data Room or Deal Space (any item from the DOCUMENT CONTENT block), use this exact phrasing somewhere in the answer: "Based on [Filename] in the Data Room..." (or "in Deal Space" for deal_space items). Then still include the *(Source: filename)* citation.
+- The PRIOR CONVERSATION HISTORY block, if present, is real prior context with this user. Reference it when relevant (e.g. "as we discussed earlier...") but do not repeat it verbatim.
 - When generating overviews, proposals, or memos, use the standardized section framework:
 ${getMemoSectionHeadings()}
 
