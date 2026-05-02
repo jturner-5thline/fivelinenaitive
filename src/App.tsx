@@ -48,6 +48,7 @@ const Account = lazy(lazyRetry(() => import("./pages/Account")));
 const Lenders = lazy(lazyRetry(() => import("./pages/Lenders")));
 const LenderDatabaseConfig = lazy(lazyRetry(() => import("./pages/LenderDatabaseConfig")));
 const LenderSyncHistory = lazy(lazyRetry(() => import("./pages/LenderSyncHistory")));
+const LenderDealHistory = lazy(lazyRetry(() => import("./pages/LenderDealHistory")));
 const Preferences = lazy(lazyRetry(() => import("./pages/Preferences")));
 const Analytics = lazy(lazyRetry(() => import("./pages/Analytics")));
 const Reports = lazy(lazyRetry(() => import("./pages/Reports")));
@@ -271,6 +272,9 @@ const App = () => (
                           } />
                           <Route path="/lenders/sync-history" element={
                             <ProtectedRoute><AppLayout><LenderSyncHistory /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/lenders/:lenderName/history" element={
+                            <ProtectedRoute><AppLayout><LenderDealHistory /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/preferences" element={
                             <ProtectedRoute><AppLayout><Preferences /></AppLayout></ProtectedRoute>
