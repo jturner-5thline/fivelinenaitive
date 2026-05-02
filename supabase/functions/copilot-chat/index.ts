@@ -1145,6 +1145,9 @@ function selectTools(page: string, entityType?: string) {
     // Always-available workflows & automations (user/company-scoped via RLS).
     "list_workflows", "get_workflow_runs", "list_email_workflows", "get_email_workflow_events",
     "list_zapier_webhooks", "get_zapier_webhook_logs",
+    // Always-available Sales BD & referrals.
+    "list_partners", "get_partner_full", "get_partner_pipeline_summary",
+    "list_referral_sources", "get_referral_attribution",
   ]);
 
   if (page.includes("lender")) {
