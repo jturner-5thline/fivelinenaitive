@@ -31,7 +31,7 @@ interface Props {
   onTerminal?: (final_summary: string | null) => void;
 }
 
-const TOOL_ICONS: Record<AgentTool, React.ComponentType<{ size?: number }>> = {
+const TOOL_ICONS: Record<AgentTool, React.ComponentType<any>> = {
   gmail_search: Mail,
   deal_lookup: Search,
   data_room_search: FolderOpen,
@@ -241,7 +241,7 @@ export function AgentRunCard({ initialPrompt, initialContext, runId, onTerminal 
         <span className="text-xs font-semibold">Agent run</span>
         {status && (
           <Badge variant="outline" className="text-[10px] capitalize">
-            {status.replaceAll('_', ' ')}
+            {status.split('_').join(' ')}
           </Badge>
         )}
       </div>
