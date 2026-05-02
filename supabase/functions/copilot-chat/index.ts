@@ -1115,6 +1115,80 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_claap_meeting_full",
+      description: "Full Claap meeting profile: transcript snippet, AI summary, key decisions, next steps, sentiment, participants (internal/external), match info (deal/lender/contact, confidence, method, reason), and ranked match suggestions. Use for 'why was this call matched to X', 'who was on this call', 'what was decided', 'show me the routing for this meeting'.",
+      parameters: {
+        type: "object",
+        properties: {
+          meeting_id: { type: "string", description: "claap_meetings.id (UUID)." },
+          claap_id: { type: "string", description: "Or claap_id (Claap's external id)." },
+          include_transcript: { type: "boolean", description: "Include first 8k chars of transcript. Default false." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_unmatched_claap_meetings",
+      description: "Recent Claap meetings that have no deal/lender/contact match yet, or whose match is pending review. Use for 'what calls need routing', 'unmatched meetings', 'Claap routing queue', 'calls without a deal'.",
+      parameters: {
+        type: "object",
+        properties: {
+          since_days: { type: "number", description: "Default 14, max 90." },
+          limit: { type: "number", description: "Default 25, max 100." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_claap_routing_queue",
+      description: "Pending Claap routing tasks (claap_routing_tasks): meetings flagged for human action (assign deal, confirm match, etc.). Use for 'what's in the Claap routing queue', 'pending Claap reviews', 'unresolved routing tasks'.",
+      parameters: {
+        type: "object",
+        properties: {
+          status: { type: "string", description: "Optional filter (e.g. 'pending', 'completed')." },
+          assigned_to: { type: "string", description: "Optional user UUID." },
+          limit: { type: "number", description: "Default 25, max 100." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_claap_skipped_calls",
+      description: "Claap calls that were skipped from sync (no internal participant, transcript missing, excluded organizer, etc.). Use for 'why didn't <call> sync', 'what calls were skipped', 'force-sync candidates'.",
+      parameters: {
+        type: "object",
+        properties: {
+          since_days: { type: "number", description: "Default 30, max 180." },
+          force_synced: { type: "boolean", description: "Optional: filter on whether the call was later force-synced." },
+          limit: { type: "number", description: "Default 25, max 100." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_claap_webhook_errors",
+      description: "Recent Claap webhook ingestion errors (claap_webhook_errors). Use for 'why isn't Claap syncing', 'Claap webhook failures', 'recent ingestion errors'.",
+      parameters: {
+        type: "object",
+        properties: {
+          unresolved_only: { type: "boolean", description: "Default true." },
+          since_days: { type: "number", description: "Default 7, max 60." },
+          limit: { type: "number", description: "Default 25, max 100." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
@@ -1148,6 +1222,9 @@ function selectTools(page: string, entityType?: string) {
     // Always-available Sales BD & referrals.
     "list_partners", "get_partner_full", "get_partner_pipeline_summary",
     "list_referral_sources", "get_referral_attribution",
+    // Always-available Claap meeting intelligence & routing.
+    "get_claap_meeting_full", "list_unmatched_claap_meetings",
+    "get_claap_routing_queue", "list_claap_skipped_calls", "get_claap_webhook_errors",
   ]);
 
   if (page.includes("lender")) {
@@ -3487,6 +3564,90 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       const totalValue = deals.reduce((sum: number, d: any) => sum + (Number(d.deal_value) || 0), 0);
       return { source_name: name, count: deals.length, total_deal_value: totalValue, deals };
     }
+    case "get_claap_meeting_full": {
+      let q = supabase.from("claap_meetings")
+        .select("id, claap_id, title, ai_summary, key_decisions, next_steps, topics, sentiment, organizer_email, duration_seconds, started_at, status, exclusion_reason, transcript_missing, no_internal_participant, deal_id, company_id, call_type, match_source, matched_lender_id, matched_contact_id, matched_crm_company_id, match_method, match_confidence, match_reason, match_status, manually_locked, matched_at, matched_by, transcript")
+        .limit(1);
+      if (args.meeting_id) q = q.eq("id", String(args.meeting_id));
+      else if (args.claap_id) q = q.eq("claap_id", String(args.claap_id));
+      else return { error: "meeting_id or claap_id required" };
+      const { data: meeting, error } = await q.maybeSingle();
+      if (error || !meeting) return { error: error?.message || "Meeting not found" };
+      const includeTranscript = !!args.include_transcript;
+      const [{ data: participants }, { data: suggestions }] = await Promise.all([
+        supabase.from("claap_meeting_participants").select("name, email, domain, is_internal, contact_id, resolved").eq("meeting_id", meeting.id),
+        supabase.from("claap_match_suggestions").select("rank, lender_name, company_name, contact_email, confidence, reason, suggestion_source, status").eq("meeting_id", meeting.id).order("rank", { ascending: true }),
+      ]);
+      return {
+        meeting: { ...meeting, transcript: includeTranscript ? (meeting.transcript || "").slice(0, 8000) : undefined },
+        participants: participants || [],
+        suggestions: suggestions || [],
+      };
+    }
+    case "list_unmatched_claap_meetings": {
+      const sinceDays = Math.min(Math.max(Number(args.since_days) || 14, 1), 90);
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      const sinceIso = new Date(Date.now() - sinceDays * 86400000).toISOString();
+      const { data, error } = await supabase.from("claap_meetings")
+        .select("id, claap_id, title, organizer_email, started_at, duration_seconds, call_type, match_status, match_confidence, match_reason, deal_id, matched_lender_id, matched_crm_company_id, suggestion_count")
+        .gte("started_at", sinceIso)
+        .or("deal_id.is.null,match_status.eq.pending,match_status.eq.unmatched")
+        .order("started_at", { ascending: false })
+        .limit(limit);
+      if (error) return { error: error.message };
+      return { count: (data || []).length, since_days: sinceDays, meetings: data || [] };
+    }
+    case "get_claap_routing_queue": {
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      let q = supabase.from("claap_routing_tasks")
+        .select("id, meeting_id, task_type, status, assigned_to, prefilled_data, expires_at, completed_at, created_at, updated_at")
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (args.status) q = q.eq("status", String(args.status));
+      else q = q.eq("status", "pending");
+      if (args.assigned_to) q = q.eq("assigned_to", String(args.assigned_to));
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const meetingIds = [...new Set((data || []).map((r: any) => r.meeting_id).filter(Boolean))];
+      const meetingMap: Record<string, any> = {};
+      if (meetingIds.length) {
+        const { data: meetings } = await supabase.from("claap_meetings").select("id, title, organizer_email, started_at").in("id", meetingIds);
+        for (const m of meetings || []) meetingMap[m.id] = m;
+      }
+      return {
+        count: (data || []).length,
+        tasks: (data || []).map((t: any) => ({ ...t, meeting: meetingMap[t.meeting_id] || null })),
+      };
+    }
+    case "list_claap_skipped_calls": {
+      const sinceDays = Math.min(Math.max(Number(args.since_days) || 30, 1), 180);
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      const sinceIso = new Date(Date.now() - sinceDays * 86400000).toISOString();
+      let q = supabase.from("claap_skipped_calls")
+        .select("id, claap_id, title, organizer_email, started_at, duration_seconds, skip_reason, force_synced, force_synced_at, force_synced_by, match_attempts, created_at")
+        .gte("created_at", sinceIso)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (typeof args.force_synced === "boolean") q = q.eq("force_synced", args.force_synced);
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      return { count: (data || []).length, since_days: sinceDays, skipped: data || [] };
+    }
+    case "get_claap_webhook_errors": {
+      const sinceDays = Math.min(Math.max(Number(args.since_days) || 7, 1), 60);
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      const unresolvedOnly = args.unresolved_only !== false;
+      const sinceIso = new Date(Date.now() - sinceDays * 86400000).toISOString();
+      let q = supabase.from("claap_webhook_errors")
+        .select("id, event_type, error_message, retry_count, resolved, created_at")
+        .gte("created_at", sinceIso)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (unresolvedOnly) q = q.eq("resolved", false);
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      return { count: (data || []).length, since_days: sinceDays, errors: data || [] };
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -3837,6 +3998,13 @@ Sales BD & referrals context (use for "BD pipeline", "partners", "referrers", "w
 - "BD pipeline overview", "partner funnel", "how many partners per stage" → get_partner_pipeline_summary
 - "Top referrers", "who refers us deals", "referral sources" → list_referral_sources
 - "What deals did <X> refer", "pipeline from <partner>", "what came from <source>" → get_referral_attribution
+
+Claap meeting intelligence & routing context (use for call transcripts, matching, and routing diagnostics):
+- "Why was this call matched to <X>", "show me the routing", "who was on this call", "what was decided" → get_claap_meeting_full
+- "What calls need routing", "unmatched meetings", "calls without a deal" → list_unmatched_claap_meetings
+- "Claap routing queue", "pending Claap reviews", "unresolved routing tasks" → get_claap_routing_queue
+- "Why didn't <call> sync", "what calls were skipped", "force-sync candidates" → list_claap_skipped_calls
+- "Why isn't Claap syncing", "Claap webhook failures", "ingestion errors" → get_claap_webhook_errors
 ${entityType === "deal" && entityId ? `\nThe user is viewing deal ID: ${entityId}. Use this ID when calling deal-specific tools.` : ''}
 
 CORE RESPONSIBILITIES:
