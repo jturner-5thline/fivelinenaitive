@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Sparkles, Loader2, Check, Plus, Calendar, ExternalLink } from 'lucide-react';
+import { Sparkles, Loader2, Check, Calendar, ExternalLink, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -9,11 +9,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 
-interface SuggestedTask {
-  key: string;
+interface CreatedTask {
+  id: string;
   title: string;
   owner_label: string;
-  due_hint: string | null;
+  due_date: string | null;
   priority: 'low' | 'medium' | 'high';
 }
 
@@ -21,7 +21,8 @@ interface AnalyzeResult {
   ok: boolean;
   activity_log_id: string;
   summary_markdown: string;
-  suggested_tasks: SuggestedTask[];
+  created_tasks: CreatedTask[];
+  auto_created: boolean;
 }
 
 interface Props {
@@ -40,7 +41,8 @@ export function ClaapAnalyzeDialog({ open, onClose, dealId, recordingId, recordi
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalyzeResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [creating, setCreating] = useState<Record<string, 'pending' | 'creating' | 'done'>>({});
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+  const [deletedTaskIds, setDeletedTaskIds] = useState<Set<string>>(new Set());
 
   // Run the analysis when the dialog opens.
   useEffect(() => {
@@ -59,6 +61,7 @@ export function ClaapAnalyzeDialog({ open, onClose, dealId, recordingId, recordi
             recording_url: recordingUrl,
             recorded_at: recordedAt,
             skip_if_exists: false,
+            auto_create_tasks: true,
           },
         });
         if (cancelled) return;
@@ -68,6 +71,8 @@ export function ClaapAnalyzeDialog({ open, onClose, dealId, recordingId, recordi
         // Refresh the deal's activity feed so the Activity tab shows the new note.
         queryClient.invalidateQueries({ queryKey: ['deal-activity', dealId] });
         queryClient.invalidateQueries({ queryKey: ['deal', dealId] });
+        queryClient.invalidateQueries({ queryKey: ['deal-tasks', dealId] });
+        queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
         window.dispatchEvent(new CustomEvent('claap-recording-analyzed', {
           detail: { dealId, recordingId },
         }));
@@ -81,49 +86,19 @@ export function ClaapAnalyzeDialog({ open, onClose, dealId, recordingId, recordi
     return () => { cancelled = true; };
   }, [open, dealId, recordingId, recordingTitle, recordingUrl, recordedAt, queryClient]);
 
-  const createTask = async (task: SuggestedTask) => {
-    setCreating(prev => ({ ...prev, [task.key]: 'creating' }));
+  const deleteTask = async (taskId: string) => {
+    setDeletingTaskId(taskId);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not signed in');
-
-      // Naive due_date heuristic from due_hint — never invent dates.
-      let due_date: string | null = null;
-      const hint = (task.due_hint || '').toLowerCase();
-      const today = new Date(); today.setHours(0, 0, 0, 0);
-      const addDays = (n: number) => {
-        const d = new Date(today); d.setDate(d.getDate() + n);
-        return d.toISOString().slice(0, 10);
-      };
-      if (/\btomorrow\b/.test(hint) || /\beod tomorrow\b/.test(hint)) due_date = addDays(1);
-      else if (/\btoday\b|\beod\b/.test(hint)) due_date = addDays(0);
-      else if (/\bnext week\b/.test(hint)) due_date = addDays(7);
-      else if (/\bthis week\b|\bby friday\b|\bend of week\b/.test(hint)) {
-        const dow = today.getDay(); // Sun=0..Sat=6
-        const toFri = (5 - dow + 7) % 7 || 5;
-        due_date = addDays(toFri);
-      } else if (/\bnext month\b/.test(hint)) due_date = addDays(30);
-
-      const { error: insErr } = await supabase.from('tasks').insert({
-        deal_id: dealId,
-        assigned_to: user.id,
-        assigned_by: user.id,
-        title: task.title,
-        description: `Suggested by naitive AI from Claap recording: ${recordingTitle}${task.owner_label ? `\nOriginal owner mentioned: ${task.owner_label}` : ''}${task.due_hint ? `\nDue hint: ${task.due_hint}` : ''}`,
-        priority: task.priority || 'medium',
-        status: 'not_started',
-        task_type: 'task',
-        due_date,
-      });
-      if (insErr) throw insErr;
-
-      setCreating(prev => ({ ...prev, [task.key]: 'done' }));
-      toast({ title: 'Task created', description: task.title });
+      const { error: delErr } = await supabase.from('tasks').delete().eq('id', taskId);
+      if (delErr) throw delErr;
+      setDeletedTaskIds(prev => { const next = new Set(prev); next.add(taskId); return next; });
+      toast({ title: 'Task deleted' });
       queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
       queryClient.invalidateQueries({ queryKey: ['deal-tasks', dealId] });
     } catch (e: any) {
-      setCreating(prev => ({ ...prev, [task.key]: 'pending' }));
-      toast({ title: 'Failed to create task', description: e?.message || 'Try again', variant: 'destructive' });
+      toast({ title: 'Failed to delete task', description: e?.message || 'Try again', variant: 'destructive' });
+    } finally {
+      setDeletingTaskId(null);
     }
   };
 
@@ -172,29 +147,30 @@ export function ClaapAnalyzeDialog({ open, onClose, dealId, recordingId, recordi
               </div>
 
               <div>
-                <h3 className="text-sm font-semibold mb-2">
-                  Suggested Tasks
-                  <span className="ml-2 text-xs font-normal text-muted-foreground">
-                    ({result.suggested_tasks.length}) — click <Plus className="inline h-3 w-3" /> to create each one
+                <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                  <Check className="h-3.5 w-3.5 text-primary" />
+                  Tasks Auto-Created
+                  <span className="text-xs font-normal text-muted-foreground">
+                    ({result.created_tasks?.length || 0}) — delete any that aren't useful
                   </span>
                 </h3>
 
-                {result.suggested_tasks.length === 0 ? (
+                {!result.created_tasks || result.created_tasks.length === 0 ? (
                   <p className="text-sm text-muted-foreground italic">No action items extracted from this recording.</p>
                 ) : (
                   <div className="space-y-2">
-                    {result.suggested_tasks.map((t) => {
-                      const state = creating[t.key] || 'pending';
+                    {result.created_tasks.map((t) => {
+                      const isDeleted = deletedTaskIds.has(t.id);
                       return (
-                        <div key={t.key} className="flex items-start gap-3 p-3 rounded-md border bg-card">
+                        <div key={t.id} className={"flex items-start gap-3 p-3 rounded-md border bg-card " + (isDeleted ? "opacity-50" : "")}>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium leading-snug">{t.title}</p>
+                            <p className={"text-sm font-medium leading-snug " + (isDeleted ? "line-through" : "")}>{t.title}</p>
                             <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-muted-foreground">
                               <Badge variant="outline" className="text-[10px]">Owner: {t.owner_label}</Badge>
-                              {t.due_hint && (
+                              {t.due_date && (
                                 <span className="flex items-center gap-1">
                                   <Calendar className="h-3 w-3" />
-                                  {t.due_hint}
+                                  Due {t.due_date}
                                 </span>
                               )}
                               {t.priority && t.priority !== 'medium' && (
@@ -206,13 +182,15 @@ export function ClaapAnalyzeDialog({ open, onClose, dealId, recordingId, recordi
                           </div>
                           <Button
                             size="sm"
-                            variant={state === 'done' ? 'secondary' : 'default'}
-                            disabled={state !== 'pending'}
-                            onClick={() => createTask(t)}
+                            variant="ghost"
+                            disabled={isDeleted || deletingTaskId === t.id}
+                            onClick={() => deleteTask(t.id)}
                           >
-                            {state === 'creating' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> :
-                              state === 'done' ? <><Check className="h-3.5 w-3.5 mr-1" /> Created</> :
-                              <><Plus className="h-3.5 w-3.5 mr-1" /> Create task</>}
+                            {deletingTaskId === t.id
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : isDeleted
+                                ? <><Check className="h-3.5 w-3.5 mr-1" /> Removed</>
+                                : <><Trash2 className="h-3.5 w-3.5 mr-1" /> Delete</>}
                           </Button>
                         </div>
                       );
