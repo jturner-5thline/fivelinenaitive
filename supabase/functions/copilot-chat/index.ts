@@ -2808,6 +2808,115 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         messages: (data || []).map((m: any) => ({ ...m, body_text: (m.body_text || "").slice(0, 1500) })),
       };
     }
+    case "get_email_thread": {
+      const threadId = String(args.thread_id || "").trim();
+      if (!threadId) return { error: "thread_id required" };
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      const { data, error } = await supabase
+        .from("gmail_messages")
+        .select("id, gmail_message_id, thread_id, subject, from_email, from_name, to_emails, cc_emails, snippet, body_text, is_read, received_at")
+        .eq("user_id", userId)
+        .eq("thread_id", threadId)
+        .order("received_at", { ascending: true })
+        .limit(limit);
+      if (error) return { error: error.message };
+      const messages = (data || []).map((m: any) => ({ ...m, body_text: (m.body_text || "").slice(0, 2000) }));
+      return { thread_id: threadId, count: messages.length, messages };
+    }
+    case "get_deal_emails": {
+      const dealId = String(args.deal_id || entityId || "").trim();
+      if (!dealId) return { error: "deal_id required (no current deal context)" };
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      const { data: links, error: linkErr } = await supabase
+        .from("deal_emails")
+        .select("id, gmail_message_id, linked_at, notes, user_id")
+        .eq("deal_id", dealId)
+        .order("linked_at", { ascending: false })
+        .limit(limit);
+      if (linkErr) return { error: linkErr.message };
+      if (!links || links.length === 0) return { deal_id: dealId, count: 0, messages: [] };
+      const ids = links.map((l: any) => l.gmail_message_id).filter(Boolean);
+      const { data: msgs } = await supabase
+        .from("gmail_messages")
+        .select("gmail_message_id, thread_id, subject, from_email, from_name, to_emails, snippet, body_text, received_at, is_read")
+        .in("gmail_message_id", ids);
+      const map = new Map((msgs || []).map((m: any) => [m.gmail_message_id, m]));
+      const messages = links.map((l: any) => {
+        const m: any = map.get(l.gmail_message_id) || {};
+        return {
+          link_id: l.id,
+          linked_at: l.linked_at,
+          notes: l.notes,
+          gmail_message_id: l.gmail_message_id,
+          thread_id: m.thread_id || null,
+          subject: m.subject || null,
+          from: m.from_name ? `${m.from_name} <${m.from_email}>` : m.from_email || null,
+          to_emails: m.to_emails || null,
+          snippet: m.snippet || null,
+          body_text: (m.body_text || "").slice(0, 1500),
+          received_at: m.received_at || null,
+          is_read: m.is_read ?? null,
+        };
+      });
+      return { deal_id: dealId, count: messages.length, messages };
+    }
+    case "list_email_drafts": {
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      let q = supabase
+        .from("email_drafts")
+        .select("id, subject, to_emails, cc_emails, to_name, deal_id, thread_id, body, updated_at, created_at, auto_link_deal")
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false })
+        .limit(limit);
+      if (args.deal_id) q = q.eq("deal_id", String(args.deal_id));
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const drafts = (data || []).map((d: any) => ({
+        ...d,
+        body: (d.body || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 1500),
+      }));
+      return { count: drafts.length, drafts };
+    }
+    case "get_sent_emails": {
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      const sinceDays = Math.min(Math.max(Number(args.since_days) || 30, 1), 365);
+      const sinceIso = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000).toISOString();
+      let q = supabase
+        .from("gmail_sent_messages")
+        .select("id, gmail_message_id, to_emails, cc_emails, subject, body_text, status, error_message, sent_at, created_at")
+        .eq("user_id", userId)
+        .gte("created_at", sinceIso)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (args.query) {
+        const needle = String(args.query).replace(/[%,()]/g, " ").trim();
+        if (needle) q = q.or(`subject.ilike.%${needle}%,body_text.ilike.%${needle}%`);
+      }
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      let rows: any[] = data || [];
+      if (args.to_email) {
+        const needle = String(args.to_email).toLowerCase();
+        rows = rows.filter((m: any) => (m.to_emails || []).some((e: string) => (e || "").toLowerCase().includes(needle)));
+      }
+      return {
+        count: rows.length,
+        messages: rows.map((m: any) => ({ ...m, body_text: (m.body_text || "").slice(0, 1500) })),
+      };
+    }
+    case "get_scheduled_emails": {
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      let q = supabase
+        .from("scheduled_emails")
+        .select("id, subject, to_recipients, cc_recipients, thread_id, scheduled_for, status, attempts, last_error, sent_at, created_at")
+        .eq("user_id", userId)
+        .order("scheduled_for", { ascending: true })
+        .limit(limit);
+      if (args.status) q = q.eq("status", String(args.status));
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      return { count: (data || []).length, scheduled: data || [] };
+    }
     case "get_upcoming_events": {
       const daysAhead = Math.min(Math.max(Number(args.days_ahead) || 7, 1), 60);
       const limit = Math.min(Math.max(Number(args.limit) || 20, 1), 50);
