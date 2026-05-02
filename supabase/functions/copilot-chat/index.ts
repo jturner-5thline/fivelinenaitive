@@ -3998,6 +3998,13 @@ Sales BD & referrals context (use for "BD pipeline", "partners", "referrers", "w
 - "BD pipeline overview", "partner funnel", "how many partners per stage" → get_partner_pipeline_summary
 - "Top referrers", "who refers us deals", "referral sources" → list_referral_sources
 - "What deals did <X> refer", "pipeline from <partner>", "what came from <source>" → get_referral_attribution
+
+Claap meeting intelligence & routing context (use for call transcripts, matching, and routing diagnostics):
+- "Why was this call matched to <X>", "show me the routing", "who was on this call", "what was decided" → get_claap_meeting_full
+- "What calls need routing", "unmatched meetings", "calls without a deal" → list_unmatched_claap_meetings
+- "Claap routing queue", "pending Claap reviews", "unresolved routing tasks" → get_claap_routing_queue
+- "Why didn't <call> sync", "what calls were skipped", "force-sync candidates" → list_claap_skipped_calls
+- "Why isn't Claap syncing", "Claap webhook failures", "ingestion errors" → get_claap_webhook_errors
 ${entityType === "deal" && entityId ? `\nThe user is viewing deal ID: ${entityId}. Use this ID when calling deal-specific tools.` : ''}
 
 CORE RESPONSIBILITIES:
