@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDealReferralSources, type DealReferralSourceEntry } from '@/hooks/useDealReferralSources';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/hooks/useCompany';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,6 +20,13 @@ const CHANNEL_OPTIONS = [
   { value: 'Service Providers', label: 'Service Providers' },
   { value: 'Investors', label: 'Investors' },
 ];
+
+const TIER_OPTIONS = [
+  { value: 'Tier 1', label: 'Tier 1' },
+  { value: 'Tier 2', label: 'Tier 2' },
+  { value: 'Tier 3', label: 'Tier 3' },
+] as const;
+type TierValue = typeof TIER_OPTIONS[number]['value'] | 'all';
 
 function formatCurrency(v: number): string {
   if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
