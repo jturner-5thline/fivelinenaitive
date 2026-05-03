@@ -15658,6 +15658,7 @@ export type Database = {
       }
       referral_sources: {
         Row: {
+          channel: string | null
           company: string | null
           company_id: string | null
           contact_email: string | null
@@ -15678,6 +15679,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          channel?: string | null
           company?: string | null
           company_id?: string | null
           contact_email?: string | null
@@ -15698,6 +15700,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          channel?: string | null
           company?: string | null
           company_id?: string | null
           contact_email?: string | null

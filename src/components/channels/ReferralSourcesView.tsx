@@ -11,8 +11,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DollarSign, Users, TrendingUp, Briefcase, ChevronDown, ChevronUp, X, RotateCcw, ExternalLink } from 'lucide-react';
+import { DollarSign, Users, TrendingUp, Briefcase, ChevronDown, ChevronUp, X, RotateCcw, ExternalLink, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
+import { ReferralSourceEditDialog } from './ReferralSourceEditDialog';
 
 const CHANNEL_OPTIONS = [
   { value: 'Banks', label: 'Banks' },
@@ -136,6 +137,7 @@ export function ReferralSourcesView() {
   const [pipelineFilter, setPipelineFilter] = useState<'all' | 'active' | 'in-development'>('all');
   const [tierFilter, setTierFilter] = useState<TierValue>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<DealReferralSourceEntry | null>(null);
 
   const { referralSources, isLoading, totalCount, totalVolume, totalDeals, companyOptions } = useDealReferralSources({
     channelFilter,
@@ -360,6 +362,7 @@ export function ReferralSourcesView() {
                   <th className="text-right p-3 text-muted-foreground font-medium">Volume</th>
                   <th className="text-left p-3 text-muted-foreground font-medium">Latest Deal</th>
                   <th className="text-left p-3 text-muted-foreground font-medium">Stage</th>
+                  <th className="text-right p-3 text-muted-foreground font-medium w-10"></th>
                 </tr>
               </thead>
               <tbody>
@@ -417,10 +420,21 @@ export function ReferralSourcesView() {
                             {entry.latestDeal.stage}
                           </span>
                         </td>
+                        <td className="p-3 text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                            onClick={(e) => { e.stopPropagation(); setEditTarget(entry); }}
+                            title="Edit referral source"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        </td>
                       </tr>
                       {isExpanded && (
                         <tr>
-                          <td colSpan={9} className="p-0">
+                          <td colSpan={10} className="p-0">
                             <ExpandedDeals entry={entry} />
                           </td>
                         </tr>
@@ -432,6 +446,15 @@ export function ReferralSourcesView() {
             </table>
           </div>
         </div>
+      )}
+
+      {editTarget && (
+        <ReferralSourceEditDialog
+          open={!!editTarget}
+          onOpenChange={(v) => { if (!v) setEditTarget(null); }}
+          referredBy={editTarget.referredBy}
+          initialCompany={editTarget.companyName}
+        />
       )}
     </div>
   );

@@ -1,0 +1,1 @@
+ALTER TABLE public.referral_sources ADD COLUMN IF NOT EXISTS channel text;
