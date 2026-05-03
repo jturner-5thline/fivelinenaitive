@@ -8,34 +8,14 @@ import { Button } from '@/components/ui/button';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList,
 } from 'recharts';
+import { LIQUID_GLASS_SERIES } from '@/components/metrics/liquidGlass';
 
 interface Props {
   onNavigateToStage?: (stageId: string) => void;
 }
 
-// Helper: hex string from any CSS color (used for gradients)
-function stageColorToHex(color: string): string {
-  // color is a tailwind class like "bg-yellow-500" — map common ones
-  const map: Record<string, string> = {
-    'bg-yellow-500': '#eab308', 'bg-amber-500': '#f59e0b', 'bg-pink-500': '#ec4899',
-    'bg-rose-500': '#f43f5e', 'bg-green-500': '#22c55e', 'bg-emerald-500': '#10b981',
-    'bg-red-500': '#ef4444', 'bg-blue-500': '#3b82f6', 'bg-indigo-500': '#6366f1',
-    'bg-violet-500': '#8b5cf6', 'bg-purple-500': '#a855f7', 'bg-fuchsia-500': '#d946ef',
-    'bg-cyan-500': '#06b6d4', 'bg-teal-500': '#14b8a6', 'bg-orange-500': '#f97316',
-    'bg-slate-500': '#64748b', 'bg-gray-500': '#6b7280', 'bg-lime-500': '#84cc16',
-    'bg-sky-500': '#0ea5e9',
-  };
-  if (color?.startsWith('#')) return color;
-  return map[color] || '#6366f1';
-}
-
-function lighten(hex: string, pct: number): string {
-  const num = parseInt(hex.slice(1), 16);
-  const r = Math.min(255, ((num >> 16) & 0xff) + Math.round(255 * pct));
-  const g = Math.min(255, ((num >> 8) & 0xff) + Math.round(255 * pct));
-  const b = Math.min(255, (num & 0xff) + Math.round(255 * pct));
-  return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
-}
+// Chart segment colors come from the shared Insights palette so every chart
+// across Channels and Sales & BD uses the same series colors.
 
 export function PartnersByStageCards({ onNavigateToStage }: Props) {
   const { data: stages = [] } = usePipelineStages();
@@ -67,10 +47,10 @@ export function PartnersByStageCards({ onNavigateToStage }: Props) {
   const displayedStages = stages.filter(s => effectiveVisible.includes(s.id));
 
   const chartData = useMemo(() =>
-    displayedStages.map(s => ({
+    displayedStages.map((s, idx) => ({
       name: s.name,
       count: countByStage.get(s.id) || 0,
-      color: stageColorToHex(s.color),
+      color: LIQUID_GLASS_SERIES[idx % LIQUID_GLASS_SERIES.length],
       id: s.id,
     })),
     [displayedStages, countByStage]
@@ -134,14 +114,6 @@ export function PartnersByStageCards({ onNavigateToStage }: Props) {
           <div className="rounded-lg border border-border bg-card p-4 min-h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 24, right: 10, left: 0, bottom: 20 }}>
-                <defs>
-                  {chartData.map((d, i) => (
-                    <linearGradient key={`g-${i}`} id={`stageGrad-${i}`} x1="0" y1="1" x2="0" y2="0">
-                      <stop offset="0%" stopColor={d.color} stopOpacity={0.9} />
-                      <stop offset="100%" stopColor={lighten(d.color, 0.25)} stopOpacity={1} />
-                    </linearGradient>
-                  ))}
-                </defs>
                 <XAxis dataKey="name" tick={{ fill: '#e5e7eb', fontSize: 11 }} axisLine={false} tickLine={false} interval={0} angle={-30} textAnchor="end" height={60} />
                 <YAxis tick={{ fill: '#e5e7eb', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip
@@ -152,8 +124,8 @@ export function PartnersByStageCards({ onNavigateToStage }: Props) {
                 />
                 <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={56}>
                   <LabelList dataKey="count" position="top" fill="#e5e7eb" fontSize={12} fontWeight={600} />
-                  {chartData.map((_, i) => (
-                    <Cell key={i} fill={`url(#stageGrad-${i})`} />
+                  {chartData.map((d, i) => (
+                    <Cell key={i} fill={d.color} />
                   ))}
                 </Bar>
               </BarChart>

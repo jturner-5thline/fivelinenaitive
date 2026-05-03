@@ -18,6 +18,7 @@ import {
   PieChart, Pie,
 } from 'recharts';
 import jsPDF from 'jspdf';
+import { LIQUID_GLASS_SERIES } from '@/components/metrics/liquidGlass';
 
 type TimePeriod = '7d' | '30d' | '90d';
 
@@ -87,6 +88,9 @@ function extractReferralSourceName(text: string): string {
   return match?.[1]?.trim() || 'Unknown';
 }
 
+// Donut color pairs are kept for the static PDF export (hex required for
+// inline SVG/HTML gradient stops). In-app Recharts segments use the shared
+// LIQUID_GLASS_SERIES palette to match Channels and the Insights page.
 const DONUT_COLORS = [
   ['#3b82f6', '#60a5fa'],
   ['#10b981', '#34d399'],
@@ -257,10 +261,10 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
       const sid = p.stage_id || '';
       countMap.set(sid, (countMap.get(sid) || 0) + 1);
     });
-    return stages.map(s => ({
+    return stages.map((s, idx) => ({
       name: s.name,
       count: countMap.get(s.id) || 0,
-      color: stageColorToHex(s.color),
+      color: LIQUID_GLASS_SERIES[idx % LIQUID_GLASS_SERIES.length],
     }));
   }, [partners, stages]);
 
@@ -436,7 +440,6 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
         ? stageChartData
             .map((stage) => {
               const width = Math.max((stage.count / maxStageCount) * 100, stage.count > 0 ? 8 : 0);
-              const lighter = lighten(stage.color, 0.22);
               return `
                 <div style="background-color:${background};margin-bottom:14px;">
                   <div style="background-color:${background};display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
@@ -444,7 +447,7 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
                     <div style="background-color:${background};color:${textSecondary};font-size:13px;font-weight:700;">${stage.count}</div>
                   </div>
                   <div style="background-color:rgba(255,255,255,0.08);border-radius:999px;height:16px;overflow:hidden;">
-                    <div style="height:16px;width:${width}%;border-radius:999px;background:linear-gradient(90deg, ${stage.color} 0%, ${lighter} 100%);"></div>
+                    <div style="height:16px;width:${width}%;border-radius:999px;background:${stage.color};"></div>
                   </div>
                 </div>`;
             })
@@ -798,21 +801,13 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
               <p className="text-xs font-semibold text-muted-foreground mb-2">Partners by Stage</p>
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={stageChartData} margin={{ top: 16, right: 5, left: 0, bottom: 30 }}>
-                  <defs>
-                    {stageChartData.map((d, i) => (
-                      <linearGradient key={i} id={`rg-${i}`} x1="0" y1="1" x2="0" y2="0">
-                        <stop offset="0%" stopColor={d.color} stopOpacity={0.9} />
-                        <stop offset="100%" stopColor={lighten(d.color, 0.25)} stopOpacity={1} />
-                      </linearGradient>
-                    ))}
-                  </defs>
                   <XAxis dataKey="name" tick={{ fill: '#e5e7eb', fontSize: 9 }} axisLine={false} tickLine={false} interval={0} angle={-25} textAnchor="end" height={40} />
                   <YAxis tick={{ fill: '#e5e7eb', fontSize: 9 }} axisLine={false} tickLine={false} allowDecimals={false} />
                   <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }} />
                   <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={40}>
                     <LabelList dataKey="count" position="top" fill="#e5e7eb" fontSize={10} fontWeight={600} />
-                    {stageChartData.map((_, i) => (
-                      <Cell key={i} fill={`url(#rg-${i})`} />
+                    {stageChartData.map((d, i) => (
+                      <Cell key={i} fill={d.color} />
                     ))}
                   </Bar>
                 </BarChart>
