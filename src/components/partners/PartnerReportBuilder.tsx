@@ -261,10 +261,10 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
       const sid = p.stage_id || '';
       countMap.set(sid, (countMap.get(sid) || 0) + 1);
     });
-    return stages.map(s => ({
+    return stages.map((s, idx) => ({
       name: s.name,
       count: countMap.get(s.id) || 0,
-      color: stageColorToHex(s.color),
+      color: LIQUID_GLASS_SERIES[idx % LIQUID_GLASS_SERIES.length],
     }));
   }, [partners, stages]);
 
