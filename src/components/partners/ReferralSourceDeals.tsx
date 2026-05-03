@@ -135,7 +135,7 @@ export function ReferralSourceDeals() {
             <div className={`${liquidGlassCard} overflow-hidden`}>
               <Table>
                 <TableHeader>
-                  <TableRow className="border-white/[0.06] hover:bg-transparent">
+                  <TableRow className="border-border hover:bg-transparent">
                     <SortHeader col="company">Deal Name</SortHeader>
                     <SortHeader col="value">Amount</SortHeader>
                     <SortHeader col="stage">Stage</SortHeader>
@@ -145,7 +145,7 @@ export function ReferralSourceDeals() {
                 </TableHeader>
                 <TableBody>
                   {sorted.map(d => (
-                    <TableRow key={d.id} className="border-white/[0.04] hover:bg-white/[0.04]">
+                    <TableRow key={d.id} className="border-border hover:bg-muted/40">
                       <TableCell className="text-sm text-foreground font-medium">{d.company}</TableCell>
                       <TableCell className="text-sm text-foreground/80">
                         {d.value ? `$${d.value.toLocaleString()}` : '—'}
