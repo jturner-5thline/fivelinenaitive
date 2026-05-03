@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDealReferralSources, type DealReferralSourceEntry } from '@/hooks/useDealReferralSources';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/hooks/useCompany';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,6 +20,13 @@ const CHANNEL_OPTIONS = [
   { value: 'Service Providers', label: 'Service Providers' },
   { value: 'Investors', label: 'Investors' },
 ];
+
+const TIER_OPTIONS = [
+  { value: 'Tier 1', label: 'Tier 1' },
+  { value: 'Tier 2', label: 'Tier 2' },
+  { value: 'Tier 3', label: 'Tier 3' },
+] as const;
+type TierValue = typeof TIER_OPTIONS[number]['value'] | 'all';
 
 function formatCurrency(v: number): string {
   if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
@@ -124,6 +134,7 @@ function ExpandedDeals({ entry }: { entry: DealReferralSourceEntry }) {
 export function ReferralSourcesView() {
   const [channelFilter, setChannelFilter] = useState<string[]>([]);
   const [pipelineFilter, setPipelineFilter] = useState<'all' | 'active' | 'in-development'>('all');
+  const [tierFilter, setTierFilter] = useState<TierValue>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const { referralSources, isLoading, totalCount, totalVolume, totalDeals, companyOptions } = useDealReferralSources({
@@ -131,14 +142,50 @@ export function ReferralSourcesView() {
     pipelineFilter,
   });
 
+  const { company } = useCompany();
+  const { data: tierRows = [] } = useQuery({
+    queryKey: ['referral_source_tiers', company?.id],
+    enabled: !!company?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('referral_sources')
+        .select('name, contact_name, tier')
+        .eq('company_id', company!.id);
+      if (error) throw error;
+      return (data || []) as { name: string | null; contact_name: string | null; tier: string | null }[];
+    },
+  });
+
+  const tierLookup = useMemo(() => {
+    const m = new Map<string, string>();
+    const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+    for (const r of tierRows) {
+      if (!r.tier) continue;
+      if (r.name) m.set(norm(r.name), r.tier);
+      if (r.contact_name) m.set(norm(r.contact_name), r.tier);
+    }
+    return m;
+  }, [tierRows]);
+
+  const getTier = (entry: DealReferralSourceEntry): string | null => {
+    const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+    return tierLookup.get(norm(entry.referredBy)) || null;
+  };
+
   const [companyFilter, setCompanyFilter] = useState<string[]>([]);
   const filteredSources = useMemo(() => {
-    if (!companyFilter.length) return referralSources;
-    return referralSources.filter(r => r.companyName && companyFilter.includes(r.companyName));
-  }, [referralSources, companyFilter]);
+    let list = referralSources;
+    if (companyFilter.length) {
+      list = list.filter(r => r.companyName && companyFilter.includes(r.companyName));
+    }
+    if (tierFilter !== 'all') {
+      list = list.filter(r => getTier(r) === tierFilter);
+    }
+    return list;
+  }, [referralSources, companyFilter, tierFilter, tierLookup]);
 
-  const hasActiveFilters = channelFilter.length > 0 || companyFilter.length > 0 || pipelineFilter !== 'all';
-  const clearAll = () => { setChannelFilter([]); setCompanyFilter([]); setPipelineFilter('all'); };
+  const hasActiveFilters = channelFilter.length > 0 || companyFilter.length > 0 || pipelineFilter !== 'all' || tierFilter !== 'all';
+  const clearAll = () => { setChannelFilter([]); setCompanyFilter([]); setPipelineFilter('all'); setTierFilter('all'); };
 
   if (isLoading) {
     return (
@@ -184,6 +231,26 @@ export function ReferralSourcesView() {
           selected={channelFilter}
           onChange={setChannelFilter}
         />
+
+        {/* Tier filter */}
+        <div className="flex items-center bg-[hsl(260,20%,14%,0.5)] backdrop-blur-xl border border-[hsl(260,30%,45%,0.1)] ring-1 ring-inset ring-white/[0.03] rounded-lg p-0.5 gap-0.5 shadow-[0_2px_8px_hsl(0,0%,0%,0.2)]">
+          {([
+            { value: 'all', label: 'All Tiers' },
+            ...TIER_OPTIONS,
+          ] as { value: TierValue; label: string }[]).map(t => (
+            <button
+              key={t.value}
+              onClick={() => setTierFilter(t.value)}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all duration-200 ${
+                tierFilter === t.value
+                  ? 'bg-[hsl(263,60%,55%,0.2)] text-primary shadow-[0_0_8px_hsl(263,60%,55%,0.15)] border border-[hsl(263,50%,55%,0.15)]'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.05]'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
         {companyOptions.length > 0 && (
           <MultiSelectFilter
@@ -288,6 +355,7 @@ export function ReferralSourcesView() {
                   <th className="text-left p-3 text-muted-foreground font-medium">Referral Source</th>
                   <th className="text-left p-3 text-muted-foreground font-medium">Company</th>
                   <th className="text-left p-3 text-muted-foreground font-medium">Channel</th>
+                  <th className="text-left p-3 text-muted-foreground font-medium">Tier</th>
                   <th className="text-right p-3 text-muted-foreground font-medium">Deals</th>
                   <th className="text-right p-3 text-muted-foreground font-medium">Volume</th>
                   <th className="text-left p-3 text-muted-foreground font-medium">Latest Deal</th>
@@ -319,6 +387,20 @@ export function ReferralSourcesView() {
                             <span className="text-muted-foreground/50">—</span>
                           )}
                         </td>
+                        <td className="p-3">
+                          {(() => {
+                            const tier = getTier(entry);
+                            if (!tier) return <span className="text-muted-foreground/50">—</span>;
+                            const tone = tier === 'Tier 1'
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                              : tier === 'Tier 2'
+                              ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                              : 'bg-white/[0.06] text-muted-foreground border-white/[0.08]';
+                            return (
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded border ${tone}`}>{tier}</span>
+                            );
+                          })()}
+                        </td>
                         <td className="p-3 text-right font-mono tabular-nums">
                           <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary px-1.5">
                             {entry.dealCount}
@@ -338,7 +420,7 @@ export function ReferralSourcesView() {
                       </tr>
                       {isExpanded && (
                         <tr>
-                          <td colSpan={8} className="p-0">
+                          <td colSpan={9} className="p-0">
                             <ExpandedDeals entry={entry} />
                           </td>
                         </tr>
