@@ -218,3 +218,6 @@ verify_jwt = false
 
 [functions.flex-auto-remove]
 verify_jwt = false
+
+[functions.report-frontend-error]
+verify_jwt = false
