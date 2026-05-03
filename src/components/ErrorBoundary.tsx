@@ -1,4 +1,33 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
+const reportedHashes = new Set<string>();
+function reportFrontendError(payload: {
+  error_type: string;
+  message: string;
+  stack?: string | null;
+  feature_area?: string;
+  metadata?: Record<string, unknown>;
+}) {
+  try {
+    const hash = `${payload.error_type}|${payload.message}`.slice(0, 200);
+    if (reportedHashes.has(hash)) return;
+    reportedHashes.add(hash);
+    if (reportedHashes.size > 50) reportedHashes.clear();
+    void supabase.functions.invoke('report-frontend-error', {
+      body: {
+        feature_area: payload.feature_area || 'frontend',
+        error_type: payload.error_type,
+        message: payload.message,
+        stack: payload.stack ?? null,
+        url: typeof window !== 'undefined' ? window.location.href : null,
+        metadata: payload.metadata ?? null,
+      },
+    });
+  } catch {
+    /* ignore reporting failures */
+  }
+}
 
 interface Props {
   children: ReactNode;
@@ -120,6 +149,12 @@ export class ErrorBoundary extends Component<Props, State> {
       e.error,
     );
     if (this.maybeReloadOnChunkError(e.error ?? e.message)) return;
+    reportFrontendError({
+      error_type: 'window.error',
+      message: e.message || 'Unknown runtime error',
+      stack: e.error instanceof Error ? e.error.stack : null,
+      metadata: { filename: e.filename, lineno: e.lineno, colno: e.colno, route: ctx.route },
+    });
     if (!this.state.hasError) {
       this.setState({
         hasError: true,
@@ -157,6 +192,12 @@ export class ErrorBoundary extends Component<Props, State> {
     // Stale dynamic-import chunks often surface as unhandled rejections
     // from React.lazy. Reload once to recover the user transparently.
     this.maybeReloadOnChunkError(reason);
+    reportFrontendError({
+      error_type: 'unhandledrejection',
+      message,
+      stack: reason instanceof Error ? reason.stack : null,
+      metadata: { route: ctx.route },
+    });
     // Do not trip the fallback for promise rejections — they often come from
     // background network calls and would hide an otherwise-healthy app.
   };
@@ -173,6 +214,12 @@ export class ErrorBoundary extends Component<Props, State> {
       '\n  error:',
       error,
     );
+    reportFrontendError({
+      error_type: 'react-render',
+      message: error.message,
+      stack: error.stack ?? null,
+      metadata: { route: ctx.route, componentStack: errorInfo.componentStack },
+    });
     this.setState({ componentStack: errorInfo.componentStack ?? null });
   }
 

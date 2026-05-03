@@ -12,7 +12,7 @@ import {
 import { 
   Shield, Users, Building2, ListTodo, Mail, ClipboardList, Cloud, MessageSquare, 
   Settings, Megaphone, Lock, Webhook, AlertCircle, Database, Layout, ChevronDown,
-  ShieldCheck, Cog, Lightbulb, UserCheck, Bell, MonitorPlay, ToggleRight, Brain, Wallet
+  ShieldCheck, Cog, Lightbulb, UserCheck, Bell, MonitorPlay, ToggleRight, Brain, Wallet, FileText
 } from "lucide-react";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useSystemStats } from "@/hooks/useAdminData";
@@ -43,6 +43,7 @@ import { ClientAccountViewer } from "@/components/admin/ClientAccountViewer";
 import { CompanyFeaturesPanel } from "@/components/admin/CompanyFeaturesPanel";
 import { AIRulesPanel } from "@/components/admin/AIRulesPanel";
 import { QbCashflowMappingPanel } from "@/components/admin/QbCashflowMappingPanel";
+import { RecurringReportsPanel } from "@/components/admin/RecurringReportsPanel";
 
 // Sub-page configurations
 const usersSubPages = [
@@ -74,6 +75,7 @@ const dataSecuritySubPages = [
 
 const settingsSubPages = [
   { id: "settings", label: "Settings", icon: Settings },
+  { id: "reports", label: "Reports", icon: FileText },
   { id: "errors", label: "Errors", icon: AlertCircle },
   { id: "audit", label: "Audit", icon: ClipboardList },
 ];
@@ -388,6 +390,21 @@ const Admin = () => {
               <CardDescription>View aggregated error tracking</CardDescription>
             </CardHeader>
             <CardContent><ErrorLogsPanel /></CardContent>
+          </Card>
+        );
+      case "reports":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Recurring Reports
+              </CardTitle>
+              <CardDescription>
+                Manage automated UX & engagement insights and platform update reports.
+              </CardDescription>
+            </CardHeader>
+            <CardContent><RecurringReportsPanel /></CardContent>
           </Card>
         );
       case "audit":
