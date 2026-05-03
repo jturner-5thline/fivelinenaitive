@@ -6,6 +6,7 @@ import { Building2, UserCheck } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PartnersByStageCards } from "@/components/partners/PartnersByStageCards";
 import { PartnerSourcedDeals } from "@/components/partners/PartnerSourcedDeals";
+import { ReferralSourceDeals } from "@/components/partners/ReferralSourceDeals";
 import { ReEngagementInsights } from "@/components/partners/ReEngagementInsights";
 import { ReferralsNeedingAttention } from "@/components/partners/ReferralsNeedingAttention";
 import { PartnerInsightsFeed, type InsightsSource } from "@/components/partners/PartnerInsightsFeed";
@@ -101,6 +102,7 @@ export default function SalesBD() {
                   {insightsSource !== 'partners' && <ReferralsNeedingAttention />}
                 </div>
                 <PartnerSourcedDeals />
+                <ReferralSourceDeals />
               </div>
             </TabsContent>
 
