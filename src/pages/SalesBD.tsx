@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PartnersByStageCards } from "@/components/partners/PartnersByStageCards";
 import { PartnerSourcedDeals } from "@/components/partners/PartnerSourcedDeals";
 import { ReEngagementInsights } from "@/components/partners/ReEngagementInsights";
+import { ReferralsNeedingAttention } from "@/components/partners/ReferralsNeedingAttention";
 import { PartnerInsightsFeed } from "@/components/partners/PartnerInsightsFeed";
 import { PartnerDetailPanel } from "@/components/partners/PartnerDetailPanel";
 import { usePartners } from "@/hooks/usePartnersPipeline";
@@ -68,6 +69,7 @@ export default function SalesBD() {
                   <PartnerInsightsFeed />
                   <ReEngagementInsights onViewPartner={(id) => setViewPartnerId(id)} />
                 </div>
+                <ReferralsNeedingAttention />
                 <PartnerSourcedDeals />
               </div>
             </TabsContent>
