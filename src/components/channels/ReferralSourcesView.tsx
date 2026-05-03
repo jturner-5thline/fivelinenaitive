@@ -355,6 +355,7 @@ export function ReferralSourcesView() {
                   <th className="text-left p-3 text-muted-foreground font-medium">Referral Source</th>
                   <th className="text-left p-3 text-muted-foreground font-medium">Company</th>
                   <th className="text-left p-3 text-muted-foreground font-medium">Channel</th>
+                  <th className="text-left p-3 text-muted-foreground font-medium">Tier</th>
                   <th className="text-right p-3 text-muted-foreground font-medium">Deals</th>
                   <th className="text-right p-3 text-muted-foreground font-medium">Volume</th>
                   <th className="text-left p-3 text-muted-foreground font-medium">Latest Deal</th>
@@ -386,6 +387,20 @@ export function ReferralSourcesView() {
                             <span className="text-muted-foreground/50">—</span>
                           )}
                         </td>
+                        <td className="p-3">
+                          {(() => {
+                            const tier = getTier(entry);
+                            if (!tier) return <span className="text-muted-foreground/50">—</span>;
+                            const tone = tier === 'Tier 1'
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                              : tier === 'Tier 2'
+                              ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                              : 'bg-white/[0.06] text-muted-foreground border-white/[0.08]';
+                            return (
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded border ${tone}`}>{tier}</span>
+                            );
+                          })()}
+                        </td>
                         <td className="p-3 text-right font-mono tabular-nums">
                           <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary px-1.5">
                             {entry.dealCount}
@@ -405,7 +420,7 @@ export function ReferralSourcesView() {
                       </tr>
                       {isExpanded && (
                         <tr>
-                          <td colSpan={8} className="p-0">
+                          <td colSpan={9} className="p-0">
                             <ExpandedDeals entry={entry} />
                           </td>
                         </tr>
