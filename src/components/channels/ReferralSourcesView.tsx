@@ -232,6 +232,26 @@ export function ReferralSourcesView() {
           onChange={setChannelFilter}
         />
 
+        {/* Tier filter */}
+        <div className="flex items-center bg-[hsl(260,20%,14%,0.5)] backdrop-blur-xl border border-[hsl(260,30%,45%,0.1)] ring-1 ring-inset ring-white/[0.03] rounded-lg p-0.5 gap-0.5 shadow-[0_2px_8px_hsl(0,0%,0%,0.2)]">
+          {([
+            { value: 'all', label: 'All Tiers' },
+            ...TIER_OPTIONS,
+          ] as { value: TierValue; label: string }[]).map(t => (
+            <button
+              key={t.value}
+              onClick={() => setTierFilter(t.value)}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all duration-200 ${
+                tierFilter === t.value
+                  ? 'bg-[hsl(263,60%,55%,0.2)] text-primary shadow-[0_0_8px_hsl(263,60%,55%,0.15)] border border-[hsl(263,50%,55%,0.15)]'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.05]'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
         {companyOptions.length > 0 && (
           <MultiSelectFilter
             label="Companies"
