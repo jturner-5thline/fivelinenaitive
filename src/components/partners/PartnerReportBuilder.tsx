@@ -802,21 +802,13 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
               <p className="text-xs font-semibold text-muted-foreground mb-2">Partners by Stage</p>
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={stageChartData} margin={{ top: 16, right: 5, left: 0, bottom: 30 }}>
-                  <defs>
-                    {stageChartData.map((d, i) => (
-                      <linearGradient key={i} id={`rg-${i}`} x1="0" y1="1" x2="0" y2="0">
-                        <stop offset="0%" stopColor={d.color} stopOpacity={0.9} />
-                        <stop offset="100%" stopColor={lighten(d.color, 0.25)} stopOpacity={1} />
-                      </linearGradient>
-                    ))}
-                  </defs>
                   <XAxis dataKey="name" tick={{ fill: '#e5e7eb', fontSize: 9 }} axisLine={false} tickLine={false} interval={0} angle={-25} textAnchor="end" height={40} />
                   <YAxis tick={{ fill: '#e5e7eb', fontSize: 9 }} axisLine={false} tickLine={false} allowDecimals={false} />
                   <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }} />
                   <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={40}>
                     <LabelList dataKey="count" position="top" fill="#e5e7eb" fontSize={10} fontWeight={600} />
-                    {stageChartData.map((_, i) => (
-                      <Cell key={i} fill={`url(#rg-${i})`} />
+                    {stageChartData.map((d, i) => (
+                      <Cell key={i} fill={d.color} />
                     ))}
                   </Bar>
                 </BarChart>
