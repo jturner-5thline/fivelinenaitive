@@ -32,7 +32,7 @@ interface TimeInStageCardProps {
 
 function TimeInStageCard({ stage, value }: TimeInStageCardProps) {
   return (
-    <Card>
+    <Card className="glass-module">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">Time in Stage: {stage}</CardTitle>
       </CardHeader>

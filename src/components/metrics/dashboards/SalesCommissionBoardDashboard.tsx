@@ -16,7 +16,7 @@ const formatCurrency = (value: number) => {
 
 function NoDataCard({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <Card>
+    <Card className="glass-module">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         {subtitle && <Badge variant="outline" className="w-fit text-xs">{subtitle}</Badge>}
@@ -37,7 +37,7 @@ function MQLGaugeCard({ value = 0 }: { value?: number }) {
   ];
   
   return (
-    <Card>
+    <Card className="glass-module">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">MQL % Holder</CardTitle>
         <Badge variant="outline" className="w-fit text-xs">Quarter to date</Badge>
@@ -96,7 +96,7 @@ export function SalesCommissionBoardDashboard({ ownerName }: SalesCommissionBoar
 
       {/* Row 1: Deals on Board */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Deals on the Board</CardTitle>
             <Badge variant="outline" className="w-fit text-xs">Quarter to date</Badge>
@@ -123,7 +123,7 @@ export function SalesCommissionBoardDashboard({ ownerName }: SalesCommissionBoar
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">$ on the Board</CardTitle>
             <Badge variant="outline" className="w-fit text-xs">Quarter to date</Badge>
@@ -150,7 +150,7 @@ export function SalesCommissionBoardDashboard({ ownerName }: SalesCommissionBoar
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Average Deal Size Added to the Board</CardTitle>
             <Badge variant="outline" className="w-fit text-xs">Quarter to date</Badge>
@@ -180,7 +180,7 @@ export function SalesCommissionBoardDashboard({ ownerName }: SalesCommissionBoar
 
       {/* Row 2: Proposals Issued */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Proposals Issued</CardTitle>
             <Badge variant="outline" className="w-fit text-xs">Quarter to date</Badge>
@@ -207,7 +207,7 @@ export function SalesCommissionBoardDashboard({ ownerName }: SalesCommissionBoar
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Proposals Issued $</CardTitle>
             <Badge variant="outline" className="w-fit text-xs">Quarter to date</Badge>
@@ -237,7 +237,7 @@ export function SalesCommissionBoardDashboard({ ownerName }: SalesCommissionBoar
 
       {/* Row 3: Clients Signed */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Clients Signed</CardTitle>
             <Badge variant="outline" className="w-fit text-xs">Quarter to date</Badge>
@@ -264,7 +264,7 @@ export function SalesCommissionBoardDashboard({ ownerName }: SalesCommissionBoar
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Clients Signed $</CardTitle>
             <Badge variant="outline" className="w-fit text-xs">Quarter to date</Badge>

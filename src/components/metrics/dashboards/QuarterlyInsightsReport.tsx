@@ -388,7 +388,7 @@ function ReportHeaderSection({ s, set, reset, print }: { s: ReportState; set: Re
   }, [s.period, s.quarter, s.month, set]);
 
   return (
-    <Card>
+    <Card className="glass-module">
       <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
           <div>
@@ -513,7 +513,7 @@ function ReportKpisSection({ s, set }: { s: ReportState; set: ReportSetState }) 
   const addKPI = () => set(prev => ({ ...prev, kpis: [...prev.kpis, { id: uid(), label: 'New KPI', actual: '0', target: '0', format: 'number' }] }));
 
   return (
-    <Card>
+    <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
         <SectionTitle right={<Btn icon={Plus} variant="ghost" onClick={addKPI}>Add KPI</Btn>}>KPIs</SectionTitle>
         <div style={{ display: 'grid', gap: 10 }}>
@@ -563,7 +563,7 @@ function ReportKpisSection({ s, set }: { s: ReportState; set: ReportSetState }) 
 
 function ReportNarrativeSection({ s, set }: { s: ReportState; set: ReportSetState }) {
   return (
-    <Card>
+    <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
         <SectionTitle>Summary / Quarterly Narrative Update</SectionTitle>
         <textarea
@@ -1119,7 +1119,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
   };
 
   return (
-    <Card>
+    <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
         <SectionTitle right={headerRight}>Goals</SectionTitle>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 10 }}>
@@ -1235,7 +1235,7 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
   const tdStyle: React.CSSProperties = { padding: '6px 8px', fontSize: 12, color: TEXT_PRIMARY, verticalAlign: 'middle', borderBottom: '1px solid rgba(255,255,255,0.04)' };
 
   return (
-    <Card>
+    <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
         <SectionTitle right={<Btn icon={Plus} variant="ghost" onClick={addInit}>Add Goal</Btn>}>Initiatives</SectionTitle>
 
@@ -1339,7 +1339,7 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
   const taStyle: React.CSSProperties = { ...inputStyle, minHeight: 70, lineHeight: 1.5, padding: 10, resize: 'vertical', fontFamily: 'inherit' };
 
   return (
-    <Card>
+    <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
         <SectionTitle right={<div style={{ display: 'flex', gap: 8 }}><Btn icon={Plus} variant="ghost" onClick={addRisk}>Add Risk</Btn><Btn icon={Printer} onClick={print}>Print / Export</Btn></div>}>
           Open Risks
@@ -1377,7 +1377,7 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
 
 function ReportFooterSection({ s, print }: { s: ReportState; print: () => void }) {
   return (
-    <Card>
+    <Card className="glass-module">
       <div style={{ padding: '20px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', color: TEXT_LABEL }}>5th Line — {s.quarter}</div>

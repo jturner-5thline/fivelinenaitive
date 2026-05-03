@@ -9,7 +9,7 @@ interface ChandlerSalesCommissionProps {
 
 function NoDataCard({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <Card>
+    <Card className="glass-module">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         {subtitle && <Badge variant="outline" className="w-fit text-xs">{subtitle}</Badge>}
@@ -30,7 +30,7 @@ function MQLGaugeCard({ value = 0 }: { value?: number }) {
   ];
   
   return (
-    <Card>
+    <Card className="glass-module">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">MQL % Holder</CardTitle>
         <Badge variant="outline" className="w-fit text-xs">Quarter to date</Badge>

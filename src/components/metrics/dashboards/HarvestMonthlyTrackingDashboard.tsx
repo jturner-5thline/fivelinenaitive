@@ -20,7 +20,7 @@ export function HarvestMonthlyTrackingDashboard() {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Billable Hours Chart */}
-        <Card>
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-semibold">Billable Hours</CardTitle>
             <Badge variant="outline" className="w-fit text-xs">Year to date</Badge>
@@ -55,7 +55,7 @@ export function HarvestMonthlyTrackingDashboard() {
         </Card>
 
         {/* Billable Amount Chart */}
-        <Card>
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-semibold">Billable Amount</CardTitle>
             <Badge variant="outline" className="w-fit text-xs">Year to date</Badge>

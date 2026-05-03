@@ -131,7 +131,7 @@ function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="bg-card/60 backdrop-blur border-border/40">
+    <Card className="glass-module">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}

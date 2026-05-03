@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 function NoPermissionCard({ title }: { title: string }) {
   return (
-    <Card>
+    <Card className="glass-module">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
       </CardHeader>
@@ -64,7 +64,7 @@ export function WeeklyCashflowDashboard() {
 
       {/* Bottom Row: Notes, Next 8 Weeks, Cash In/Out */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Notes</CardTitle>
           </CardHeader>
@@ -77,7 +77,7 @@ export function WeeklyCashflowDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Next 8 Weeks</CardTitle>
           </CardHeader>
@@ -112,7 +112,7 @@ export function WeeklyCashflowDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Cash In | Cash Out</CardTitle>
           </CardHeader>

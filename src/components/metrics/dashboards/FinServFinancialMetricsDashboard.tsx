@@ -79,7 +79,7 @@ function WidgetEmpty({ message }: { message?: string }) {
 
 function PlaceholderWidget({ title }: { title: string }) {
   return (
-    <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+    <Card className="glass-module">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <Badge variant="outline" className="w-fit text-xs">Monthly · Past 6 months</Badge>
@@ -143,7 +143,7 @@ export function FinServFinancialMetricsDashboard() {
 
       {/* ── Row 0: Active Clients KPI ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+        <Card className="glass-module">
           <CardContent className="p-4">
             {activeClients.isLoading ? (
               <Skeleton className="h-16 w-full" />
@@ -164,7 +164,7 @@ export function FinServFinancialMetricsDashboard() {
       </div>
 
       {/* ── Row 1: Total Revenue ── */}
-      <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+      <Card className="glass-module">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
           <Badge variant="outline" className="w-fit text-xs">Monthly · {selectedQuarter.label}</Badge>
@@ -188,7 +188,7 @@ export function FinServFinancialMetricsDashboard() {
 
       {/* ── Row 2: Gross Profit $ + Gross Margin % ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Gross Profit $</CardTitle>
             <Badge variant="outline" className="w-fit text-xs">Quarterly</Badge>
@@ -210,7 +210,7 @@ export function FinServFinancialMetricsDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Gross Profit Margin %</CardTitle>
             <Badge variant="outline" className="w-fit text-xs">Quarterly</Badge>
@@ -235,7 +235,7 @@ export function FinServFinancialMetricsDashboard() {
 
       {/* ── Row 3: Operating Profit $ + Operating Margin % ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Operating Profit $</CardTitle>
             <Badge variant="outline" className="w-fit text-xs">Quarterly</Badge>
@@ -266,7 +266,7 @@ export function FinServFinancialMetricsDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Operating Margin %</CardTitle>
             <Badge variant="outline" className="w-fit text-xs">Quarterly</Badge>
@@ -295,7 +295,7 @@ export function FinServFinancialMetricsDashboard() {
       </div>
 
       {/* ── Row 4: FinServ Cashflow ── */}
-      <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+      <Card className="glass-module">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">FinServ Cashflow</CardTitle>
           <Badge variant="outline" className="w-fit text-xs">Monthly · Last 12 months</Badge>
@@ -324,7 +324,7 @@ export function FinServFinancialMetricsDashboard() {
       </Card>
 
       {/* ── Row 5: Active Clients trend ── */}
-      <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+      <Card className="glass-module">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Active Clients</CardTitle>
           <Badge variant="outline" className="w-fit text-xs">Monthly · Past 6 months</Badge>
@@ -351,7 +351,7 @@ export function FinServFinancialMetricsDashboard() {
       </Card>
 
       {/* ── Row 6: Revenue Change by Client ── */}
-      <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+      <Card className="glass-module">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Revenue Change by Client</CardTitle>
           <Badge variant="outline" className="w-fit text-xs">
@@ -393,7 +393,7 @@ export function FinServFinancialMetricsDashboard() {
       </Card>
 
       {/* ── Row 7: Income by Product/Service (stacked) ── */}
-      <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+      <Card className="glass-module">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Income by Product/Service</CardTitle>
           <Badge variant="outline" className="w-fit text-xs">Monthly · {selectedQuarter.label} · Excl. null customers</Badge>

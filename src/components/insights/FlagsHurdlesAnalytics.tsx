@@ -99,7 +99,7 @@ export function FlagsHurdlesAnalytics() {
       <div className="space-y-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
+            <Card key={i} className="glass-module">
               <CardContent className="pt-4">
                 <Skeleton className="h-8 w-16 mb-2" />
                 <Skeleton className="h-4 w-24" />
@@ -187,26 +187,26 @@ export function FlagsHurdlesAnalytics() {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="glass-module">
           <CardContent className="pt-4 pb-4">
             <div className="text-2xl font-bold">{totalFlags}</div>
             <p className="text-xs text-muted-foreground">Total Flags</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="glass-module">
           <CardContent className="pt-4 pb-4">
             <div className="text-2xl font-bold text-destructive">{activeFlags.length}</div>
             <p className="text-xs text-muted-foreground">Active</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="glass-module">
           <CardContent className="pt-4 pb-4">
             <div className="text-2xl font-bold">{resolutionRate}%</div>
             <p className="text-xs text-muted-foreground">Resolution Rate</p>
             <Progress value={resolutionRate} className="h-1.5 mt-2" />
           </CardContent>
         </Card>
-        <Card>
+        <Card className="glass-module">
           <CardContent className="pt-4 pb-4">
             <div className="text-2xl font-bold">{avgResolutionDays}d</div>
             <p className="text-xs text-muted-foreground">Avg Resolution Time</p>
@@ -215,7 +215,7 @@ export function FlagsHurdlesAnalytics() {
       </div>
 
       {/* Active Hurdles — promoted to top */}
-      <Card>
+      <Card className="glass-module">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-destructive" />
@@ -297,7 +297,7 @@ export function FlagsHurdlesAnalytics() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Flags by Deal */}
-        <Card>
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
@@ -323,7 +323,7 @@ export function FlagsHurdlesAnalytics() {
         </Card>
 
         {/* Status Breakdown */}
-        <Card>
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
@@ -360,7 +360,7 @@ export function FlagsHurdlesAnalytics() {
       </div>
 
       {/* Monthly Trend */}
-      <Card>
+      <Card className="glass-module">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Clock className="h-4 w-4" />

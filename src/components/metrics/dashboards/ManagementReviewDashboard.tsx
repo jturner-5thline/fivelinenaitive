@@ -131,7 +131,7 @@ export function ManagementReviewDashboard() {
   return (
     <div style={{ background: 'transparent', color: '#c8e8ff', fontFamily: 'system-ui, sans-serif', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Header */}
-      <Card>
+      <Card className="glass-module">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', flexWrap: 'wrap', gap: 8 }}>
           <div>
             <span style={{ fontSize: 17, fontWeight: 700, color: '#e8f6ff' }}>5th<span style={{ color: '#29aaff' }}>Line</span> Financial</span>
@@ -168,7 +168,7 @@ export function ManagementReviewDashboard() {
       {/* Middle 3-col */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: 10 }}>
         {/* Col 1 — Charts */}
-        <Card>
+        <Card className="glass-module">
           <div style={{ padding: '10px 14px' }}>
             <SectionLabel>Monthly Revenue ($K)</SectionLabel>
             <div style={{ position: 'relative', height: 148 }}><canvas ref={rcRef} /></div>
@@ -178,7 +178,7 @@ export function ManagementReviewDashboard() {
           </div>
         </Card>
         {/* Col 2 — Liquidity Accounts */}
-        <Card>
+        <Card className="glass-module">
           <div style={{ padding: '10px 14px' }}>
             <SectionLabel>Liquidity Accounts</SectionLabel>
             <Row label="Operating Acc."><span style={{ color: '#ff6b7a' }}>-$98.0K</span> <span style={{ fontSize: 9, color: '#ff6b7a' }}>↓$46.5K</span></Row>
@@ -203,7 +203,7 @@ export function ManagementReviewDashboard() {
         </Card>
         {/* Col 3 — FinServ / DSCR / TTM */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <Card>
+          <Card className="glass-module">
             <div style={{ padding: '10px 14px' }}>
               <SectionLabel>FinServ</SectionLabel>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px', fontSize: 11 }}>
@@ -231,7 +231,7 @@ export function ManagementReviewDashboard() {
               </div>
             </div>
           </Card>
-          <Card>
+          <Card className="glass-module">
             <div style={{ padding: '10px 14px' }}>
               <SectionLabel>DSCR</SectionLabel>
               <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center', marginBottom: 6, fontSize: 11 }}>
@@ -242,7 +242,7 @@ export function ManagementReviewDashboard() {
               <div style={{ position: 'relative', height: 82 }}><canvas ref={dcRef} /></div>
             </div>
           </Card>
-          <Card>
+          <Card className="glass-module">
             <div style={{ padding: '10px 14px' }}>
               <SectionLabel>TTM Revenue</SectionLabel>
               <div style={{ position: 'relative', height: 90 }}><canvas ref={ttmcRef} /></div>
@@ -253,7 +253,7 @@ export function ManagementReviewDashboard() {
 
       {/* Pipeline + Monthly Snapshot */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.85fr', gap: 10 }}>
-        <Card>
+        <Card className="glass-module">
           <div style={{ padding: '10px 14px' }}>
             <SectionLabel>Deal Pipeline — Debt Solutions</SectionLabel>
             <table style={{ width: '100%', fontSize: 10, borderCollapse: 'collapse' }}>
@@ -285,7 +285,7 @@ export function ManagementReviewDashboard() {
             </div>
           </div>
         </Card>
-        <Card>
+        <Card className="glass-module">
           <div style={{ padding: '10px 14px' }}>
             <SectionLabel>Monthly Snapshot</SectionLabel>
             <div style={{ overflowX: 'auto' }}>
@@ -323,7 +323,7 @@ export function ManagementReviewDashboard() {
       </div>
 
       {/* Cashflow 12-Week */}
-      <Card>
+      <Card className="glass-module">
         <div style={{ padding: '12px 16px' }}>
           <SectionLabel>Cashflow — 12-Week Rolling Forecast (Mar 13 – May 29)</SectionLabel>
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14 }}>
@@ -338,19 +338,19 @@ export function ManagementReviewDashboard() {
 
       {/* Bottom Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
-        <Card>
+        <Card className="glass-module">
           <div style={{ padding: '12px 14px' }}>
             <SectionLabel>6-Mo Operating Liquidity</SectionLabel>
             <div style={{ position: 'relative', height: 120 }}><canvas ref={ol6Ref} /></div>
           </div>
         </Card>
-        <Card>
+        <Card className="glass-module">
           <div style={{ padding: '12px 14px' }}>
             <SectionLabel>6-Mo Firm Liquidity</SectionLabel>
             <div style={{ position: 'relative', height: 120 }}><canvas ref={fl6Ref} /></div>
           </div>
         </Card>
-        <Card>
+        <Card className="glass-module">
           <div style={{ padding: '12px 14px' }}>
             <SectionLabel>Debt by Rating</SectionLabel>
             <div style={{ position: 'relative', height: 120 }}><canvas ref={dbcRef} /></div>
