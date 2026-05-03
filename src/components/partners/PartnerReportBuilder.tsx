@@ -18,6 +18,7 @@ import {
   PieChart, Pie,
 } from 'recharts';
 import jsPDF from 'jspdf';
+import { LIQUID_GLASS_SERIES } from '@/components/metrics/liquidGlass';
 
 type TimePeriod = '7d' | '30d' | '90d';
 
@@ -87,6 +88,9 @@ function extractReferralSourceName(text: string): string {
   return match?.[1]?.trim() || 'Unknown';
 }
 
+// Donut color pairs are kept for the static PDF export (hex required for
+// inline SVG/HTML gradient stops). In-app Recharts segments use the shared
+// LIQUID_GLASS_SERIES palette to match Channels and the Insights page.
 const DONUT_COLORS = [
   ['#3b82f6', '#60a5fa'],
   ['#10b981', '#34d399'],
