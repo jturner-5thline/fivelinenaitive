@@ -38,7 +38,9 @@ interface InsightItem {
   partnerId?: string;
 }
 
-export function PartnerInsightsFeed() {
+export type InsightsSource = 'all' | 'partners' | 'referrals';
+
+export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: InsightsSource } = {}) {
   const { company } = useCompany();
   const { user } = useAuth();
   const { data: partners = [] } = usePartners();
@@ -197,8 +199,21 @@ export function PartnerInsightsFeed() {
 
     return items
       .filter(i => activeTypes.has(i.type))
+      .filter(i => {
+        if (sourceFilter === 'all') return true;
+        if (sourceFilter === 'partners') {
+          // Partner-anchored insight types
+          return i.type === 'stage_move'
+            || i.type === 'memo_update'
+            || i.type === 'new_partner'
+            || i.type === 'stale_alert'
+            || (i.type === 'new_deal' && !!i.partnerId);
+        }
+        // referrals
+        return i.type === 'new_deal' && !i.partnerId;
+      })
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [stageMoves, memoUpdates, newDeals, partners, cutoff, activeTypes, partnerMap, stageMap, profileMap]);
+  }, [stageMoves, memoUpdates, newDeals, partners, cutoff, activeTypes, partnerMap, stageMap, profileMap, sourceFilter]);
 
   const toggleType = (t: InsightType) => {
     setActiveTypes(prev => {

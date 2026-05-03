@@ -8,7 +8,7 @@ import { PartnersByStageCards } from "@/components/partners/PartnersByStageCards
 import { PartnerSourcedDeals } from "@/components/partners/PartnerSourcedDeals";
 import { ReEngagementInsights } from "@/components/partners/ReEngagementInsights";
 import { ReferralsNeedingAttention } from "@/components/partners/ReferralsNeedingAttention";
-import { PartnerInsightsFeed } from "@/components/partners/PartnerInsightsFeed";
+import { PartnerInsightsFeed, type InsightsSource } from "@/components/partners/PartnerInsightsFeed";
 import { PartnerDetailPanel } from "@/components/partners/PartnerDetailPanel";
 import { usePartners } from "@/hooks/usePartnersPipeline";
 import { ChannelsBoard } from "@/components/channels/ChannelsBoard";
@@ -22,6 +22,7 @@ export default function SalesBD() {
   const [activeTab, setActiveTab] = useState("overview");
   const [channelsSubView, setChannelsSubView] = useState<"channels" | "companies" | "referral-sources">("channels");
   const [viewPartnerId, setViewPartnerId] = useState<string | null>(null);
+  const [insightsSource, setInsightsSource] = useState<InsightsSource>("all");
   const { data: partners = [] } = usePartners();
   const viewPartner = viewPartnerId ? partners.find(p => p.id === viewPartnerId) || null : null;
 
@@ -65,11 +66,40 @@ export default function SalesBD() {
             <TabsContent value="overview" className="mt-4">
               <div className="space-y-8">
                 <PartnersByStageCards onNavigateToStage={navigateToStage} />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                  <PartnerInsightsFeed />
-                  <ReEngagementInsights onViewPartner={(id) => setViewPartnerId(id)} />
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <h2 className="text-lg font-semibold">Partners and Referrals Insights</h2>
+                      <p className="text-xs text-muted-foreground mt-0.5">Activity, alerts, and follow-ups across partners and referral sources</p>
+                    </div>
+                    <div className="flex items-center bg-[hsl(260,20%,14%,0.5)] backdrop-blur-xl border border-[hsl(260,30%,45%,0.1)] ring-1 ring-inset ring-white/[0.03] rounded-lg p-0.5 gap-0.5 shadow-[0_2px_8px_hsl(0,0%,0%,0.2)]">
+                      {([
+                        { value: 'all', label: 'All' },
+                        { value: 'partners', label: 'Partners only' },
+                        { value: 'referrals', label: 'Referral Sources only' },
+                      ] as { value: InsightsSource; label: string }[]).map(o => (
+                        <button
+                          key={o.value}
+                          onClick={() => setInsightsSource(o.value)}
+                          className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all duration-200 ${
+                            insightsSource === o.value
+                              ? 'bg-[hsl(263,60%,55%,0.2)] text-primary shadow-[0_0_8px_hsl(263,60%,55%,0.15)] border border-[hsl(263,50%,55%,0.15)]'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.05]'
+                          }`}
+                        >
+                          {o.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                    <PartnerInsightsFeed sourceFilter={insightsSource} />
+                    {insightsSource !== 'referrals' && (
+                      <ReEngagementInsights onViewPartner={(id) => setViewPartnerId(id)} />
+                    )}
+                  </div>
+                  {insightsSource !== 'partners' && <ReferralsNeedingAttention />}
                 </div>
-                <ReferralsNeedingAttention />
                 <PartnerSourcedDeals />
               </div>
             </TabsContent>
