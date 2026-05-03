@@ -35,7 +35,7 @@ export function QuickBooksFinancialDashboard() {
 
   if (!status?.connected) {
     return (
-      <Card>
+      <Card className="glass-module">
         <CardContent className="py-12 text-center">
           <CreditCard className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
           <h3 className="text-lg font-semibold mb-2">QuickBooks Not Connected</h3>
@@ -102,7 +102,7 @@ export function QuickBooksFinancialDashboard() {
       {/* Charts Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue Trend */}
-        <Card>
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-medium">Revenue & Payments Trend</CardTitle>
             <CardDescription>Rolling 12 months from QuickBooks</CardDescription>
@@ -125,7 +125,7 @@ export function QuickBooksFinancialDashboard() {
         </Card>
 
         {/* AR Aging */}
-        <Card>
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-medium">Accounts Receivable Aging</CardTitle>
             <CardDescription>Outstanding balances by aging bucket</CardDescription>
@@ -153,7 +153,7 @@ export function QuickBooksFinancialDashboard() {
       {/* Charts Row 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Customers */}
-        <Card>
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-medium">Top Customers by Revenue</CardTitle>
             <CardDescription>Based on invoice totals</CardDescription>
@@ -182,7 +182,7 @@ export function QuickBooksFinancialDashboard() {
         </Card>
 
         {/* Invoice Status & Payment Methods */}
-        <Card>
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-medium">Invoice Status Breakdown</CardTitle>
             <CardDescription>Distribution by status</CardDescription>

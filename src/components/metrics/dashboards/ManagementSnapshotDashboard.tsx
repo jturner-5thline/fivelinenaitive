@@ -44,7 +44,7 @@ const CHART_COLORS = [
 
 function NoPermissionCard({ title }: { title: string }) {
   return (
-    <Card>
+    <Card className="glass-module">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
       </CardHeader>

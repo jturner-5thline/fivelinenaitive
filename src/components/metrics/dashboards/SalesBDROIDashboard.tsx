@@ -18,7 +18,7 @@ function KPICard({ title, value, change, changeDirection }: {
   changeDirection?: 'up' | 'down' 
 }) {
   return (
-    <Card>
+    <Card className="glass-module">
       <CardContent className="p-4 text-center">
         <p className="text-xs text-muted-foreground mb-1">{title}</p>
         <p className="text-2xl font-bold text-foreground">{value}</p>
@@ -41,7 +41,7 @@ function KPICard({ title, value, change, changeDirection }: {
 
 function NoPermissionCard({ title }: { title: string }) {
   return (
-    <Card>
+    <Card className="glass-module">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
       </CardHeader>
@@ -57,7 +57,7 @@ function NoPermissionCard({ title }: { title: string }) {
 
 function ErrorCard({ title }: { title: string }) {
   return (
-    <Card>
+    <Card className="glass-module">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
       </CardHeader>
@@ -112,7 +112,7 @@ export function SalesBDROIDashboard() {
       {/* Header Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Current Month & Quarter */}
-        <Card>
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Current Month</CardTitle>
           </CardHeader>
@@ -125,7 +125,7 @@ export function SalesBDROIDashboard() {
         </Card>
 
         {/* Sales P&L */}
-        <Card>
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Sales P&L</CardTitle>
           </CardHeader>
@@ -151,7 +151,7 @@ export function SalesBDROIDashboard() {
       </div>
 
       {/* Sales Section Header */}
-      <Card>
+      <Card className="glass-module">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg font-semibold">Sales</CardTitle>
         </CardHeader>
@@ -213,14 +213,14 @@ export function SalesBDROIDashboard() {
 
         {/* Deals on Board & Dollars */}
         <div className="space-y-4">
-          <Card>
+          <Card className="glass-module">
             <CardContent className="p-4 text-center">
               <p className="text-xs text-muted-foreground">Deals on Board</p>
               <p className="text-4xl font-bold text-foreground">7</p>
               <p className="text-success text-sm">vs previous Mo <span className="font-semibold">1 ↑</span></p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="glass-module">
             <CardContent className="p-4 text-center">
               <p className="text-xs text-muted-foreground">Dollars on Board</p>
               <p className="text-4xl font-bold text-foreground">$39.5MM</p>
@@ -230,7 +230,7 @@ export function SalesBDROIDashboard() {
         </div>
 
         {/* Rep Breakdown */}
-        <Card>
+        <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Rep Breakdown</CardTitle>
           </CardHeader>
@@ -270,7 +270,7 @@ export function SalesBDROIDashboard() {
       </div>
 
       {/* BD Financials Section */}
-      <Card>
+      <Card className="glass-module">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg font-semibold">BD Financials</CardTitle>
         </CardHeader>
