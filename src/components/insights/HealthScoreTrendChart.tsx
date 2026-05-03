@@ -91,7 +91,7 @@ export function HealthScoreTrendChart({ history }: HealthScoreTrendChartProps) {
   };
 
   return (
-    <Card>
+    <Card className="glass-module">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
