@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { differenceInDays } from 'date-fns';
 import { ReferralSourceEditDialog } from '@/components/channels/ReferralSourceEditDialog';
+import { liquidGlassCard, liquidGlassSectionTitle } from '@/components/metrics/liquidGlass';
 
 interface StaleReferral {
   key: string;
@@ -81,7 +82,7 @@ export function ReferralsNeedingAttention() {
     <div>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Referrals Needing Attention</h3>
+          <h3 className={liquidGlassSectionTitle}>Referrals Needing Attention</h3>
           {stale.length > 0 && (
             <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
               {stale.length}
@@ -124,27 +125,27 @@ export function ReferralsNeedingAttention() {
       </div>
 
       {stale.length === 0 ? (
-        <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-6 text-center">
-          <p className="text-sm text-slate-400">All referral sources are active — no alerts right now.</p>
+        <div className={`${liquidGlassCard} p-6 text-center`}>
+          <p className="text-sm text-muted-foreground">All referral sources are active — no alerts right now.</p>
         </div>
       ) : (
         <div className="space-y-2">
           {displayed.map(sr => (
             <div
               key={sr.key}
-              className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-800/60 px-4 py-3 hover:border-slate-600 transition-colors"
+              className={`${liquidGlassCard} flex items-center justify-between px-4 py-3 transition-colors`}
             >
               <div className="flex items-center gap-3 min-w-0">
                 <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{sr.name}</p>
-                  <p className="text-xs text-slate-400 truncate">{sr.company || '—'} · {sr.reason}</p>
+                  <p className="text-sm font-medium text-foreground truncate">{sr.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{sr.company || '—'} · {sr.reason}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <div className="text-right hidden sm:block">
-                  <p className="text-xs text-slate-400">{sr.daysSinceActivity}d ago</p>
-                  <p className="text-[10px] text-slate-500">Last: {sr.lastActivityType}</p>
+                  <p className="text-xs text-muted-foreground">{sr.daysSinceActivity}d ago</p>
+                  <p className="text-[10px] text-muted-foreground/70">Last: {sr.lastActivityType}</p>
                 </div>
                 <Button
                   variant="ghost"

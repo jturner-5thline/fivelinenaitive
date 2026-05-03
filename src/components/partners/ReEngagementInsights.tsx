@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { differenceInDays, format } from 'date-fns';
+import { liquidGlassCard, liquidGlassSectionTitle } from '@/components/metrics/liquidGlass';
 
 interface StalePartner {
   id: string;
@@ -109,7 +110,7 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
     <div>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Partners Needing Attention</h3>
+          <h3 className={liquidGlassSectionTitle}>Partners Needing Attention</h3>
           {stalePartners.length > 0 && (
             <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
               {stalePartners.length}
@@ -161,27 +162,27 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
       </div>
 
       {stalePartners.length === 0 ? (
-        <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-6 text-center">
-          <p className="text-sm text-slate-400">All partners are active — no alerts right now.</p>
+        <div className={`${liquidGlassCard} p-6 text-center`}>
+          <p className="text-sm text-muted-foreground">All partners are active — no alerts right now.</p>
         </div>
       ) : (
         <div className="space-y-2">
           {displayed.map(sp => (
             <div
               key={sp.id}
-              className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-800/60 px-4 py-3 hover:border-slate-600 transition-colors"
+              className={`${liquidGlassCard} flex items-center justify-between px-4 py-3 transition-colors`}
             >
               <div className="flex items-center gap-3 min-w-0">
                 <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{sp.name}</p>
-                  <p className="text-xs text-slate-400">{sp.reason}</p>
+                  <p className="text-sm font-medium text-foreground truncate">{sp.name}</p>
+                  <p className="text-xs text-muted-foreground">{sp.reason}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <div className="text-right hidden sm:block">
-                  <p className="text-xs text-slate-400">{sp.stageName}</p>
-                  <p className="text-[10px] text-slate-500">Last: {sp.lastActivityType}</p>
+                  <p className="text-xs text-muted-foreground">{sp.stageName}</p>
+                  <p className="text-[10px] text-muted-foreground/70">Last: {sp.lastActivityType}</p>
                 </div>
                 <Button
                   variant="ghost"

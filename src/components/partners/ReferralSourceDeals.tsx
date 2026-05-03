@@ -8,6 +8,7 @@ import { ChevronDown, ChevronRight, DollarSign, Hash, TrendingUp, ArrowUpDown } 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
+import { liquidGlassCard, liquidGlassKPI, liquidGlassSectionTitle } from '@/components/metrics/liquidGlass';
 
 interface DealRow {
   id: string;
@@ -85,7 +86,7 @@ export function ReferralSourceDeals() {
 
   const SortHeader = ({ col, children }: { col: string; children: React.ReactNode }) => (
     <TableHead
-      className="text-slate-400 text-xs font-medium cursor-pointer hover:text-slate-200 select-none"
+      className="text-muted-foreground text-xs font-medium cursor-pointer hover:text-foreground select-none"
       onClick={() => handleSort(col)}
     >
       <div className="flex items-center gap-1">
@@ -97,28 +98,28 @@ export function ReferralSourceDeals() {
 
   return (
     <div>
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-3">Referral-Source Deals</h3>
+      <h3 className={`${liquidGlassSectionTitle} mb-3`}>Referral-Source Deals</h3>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-        <div className="rounded-lg border border-border bg-card p-4 flex flex-col items-center">
+        <div className={`${liquidGlassKPI} p-4 flex flex-col items-center`}>
           <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
             <Hash className="h-3.5 w-3.5" /> Total Referred
           </div>
-          <span className="text-2xl font-bold">{matchedDeals.length}</span>
+          <span className="text-2xl font-bold text-foreground">{matchedDeals.length}</span>
         </div>
-        <div className="rounded-lg border border-border bg-card p-4 flex flex-col items-center">
+        <div className={`${liquidGlassKPI} p-4 flex flex-col items-center`}>
           <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
             <DollarSign className="h-3.5 w-3.5" /> Referred Value
           </div>
-          <span className="text-2xl font-bold">
+          <span className="text-2xl font-bold text-foreground">
             {totalValue >= 1_000_000_000 ? `$${(totalValue / 1_000_000_000).toFixed(2)}B` : totalValue >= 1_000_000 ? `$${(totalValue / 1_000_000).toFixed(2)}MM` : totalValue >= 1_000 ? `$${(totalValue / 1_000).toFixed(2)}K` : `$${totalValue.toFixed(2)}`}
           </span>
         </div>
-        <div className="rounded-lg border border-border bg-card p-4 flex flex-col items-center">
+        <div className={`${liquidGlassKPI} p-4 flex flex-col items-center`}>
           <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
             <TrendingUp className="h-3.5 w-3.5" /> Conversion Rate
           </div>
-          <span className="text-2xl font-bold">{conversionRate}%</span>
+          <span className="text-2xl font-bold text-foreground">{conversionRate}%</span>
         </div>
       </div>
 
@@ -129,12 +130,12 @@ export function ReferralSourceDeals() {
         </CollapsibleTrigger>
         <CollapsibleContent>
           {matchedDeals.length === 0 ? (
-            <p className="text-sm text-slate-500 py-4 text-center">No referral-source deals found.</p>
+            <p className="text-sm text-muted-foreground py-4 text-center">No referral-source deals found.</p>
           ) : (
-            <div className="border border-slate-700 rounded-lg overflow-hidden">
+            <div className={`${liquidGlassCard} overflow-hidden`}>
               <Table>
                 <TableHeader>
-                  <TableRow className="border-slate-700 hover:bg-transparent">
+                  <TableRow className="border-white/[0.06] hover:bg-transparent">
                     <SortHeader col="company">Deal Name</SortHeader>
                     <SortHeader col="value">Amount</SortHeader>
                     <SortHeader col="stage">Stage</SortHeader>
@@ -144,14 +145,14 @@ export function ReferralSourceDeals() {
                 </TableHeader>
                 <TableBody>
                   {sorted.map(d => (
-                    <TableRow key={d.id} className="border-slate-700/50 hover:bg-slate-700/30">
-                      <TableCell className="text-sm text-white font-medium">{d.company}</TableCell>
-                      <TableCell className="text-sm text-slate-300">
+                    <TableRow key={d.id} className="border-white/[0.04] hover:bg-white/[0.04]">
+                      <TableCell className="text-sm text-foreground font-medium">{d.company}</TableCell>
+                      <TableCell className="text-sm text-foreground/80">
                         {d.value ? `$${d.value.toLocaleString()}` : '—'}
                       </TableCell>
-                      <TableCell className="text-xs text-slate-400">{d.stage || '—'}</TableCell>
-                      <TableCell className="text-sm text-slate-300">{d.referred_by || d.sourced_via || '—'}</TableCell>
-                      <TableCell className="text-xs text-slate-400">
+                      <TableCell className="text-xs text-muted-foreground">{d.stage || '—'}</TableCell>
+                      <TableCell className="text-sm text-foreground/80">{d.referred_by || d.sourced_via || '—'}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
                         {format(new Date(d.created_at), 'MMM d, yyyy')}
                       </TableCell>
                     </TableRow>
