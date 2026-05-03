@@ -440,7 +440,6 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
         ? stageChartData
             .map((stage) => {
               const width = Math.max((stage.count / maxStageCount) * 100, stage.count > 0 ? 8 : 0);
-              const lighter = lighten(stage.color, 0.22);
               return `
                 <div style="background-color:${background};margin-bottom:14px;">
                   <div style="background-color:${background};display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
@@ -448,7 +447,7 @@ export function PartnerReportBuilder({ open, onClose, insights, period }: Props)
                     <div style="background-color:${background};color:${textSecondary};font-size:13px;font-weight:700;">${stage.count}</div>
                   </div>
                   <div style="background-color:rgba(255,255,255,0.08);border-radius:999px;height:16px;overflow:hidden;">
-                    <div style="height:16px;width:${width}%;border-radius:999px;background:linear-gradient(90deg, ${stage.color} 0%, ${lighter} 100%);"></div>
+                    <div style="height:16px;width:${width}%;border-radius:999px;background:${stage.color};"></div>
                   </div>
                 </div>`;
             })
