@@ -296,15 +296,15 @@ export function ChannelsDashboard() {
       <div className="space-y-2">
         <div className="flex items-center gap-2 flex-wrap">
           {/* Time pills */}
-          <div className="flex items-center bg-[hsl(260,20%,14%,0.5)] backdrop-blur-xl border border-[hsl(260,30%,45%,0.1)] ring-1 ring-inset ring-white/[0.03] rounded-lg p-0.5 gap-0.5 shadow-[0_2px_8px_hsl(0,0%,0%,0.2)]">
+          <div className="flex items-center bg-card border border-border rounded-lg p-0.5 gap-0.5">
             {TIME_PRESETS.map(p => (
               <button
                 key={p.value}
                 onClick={() => setTimePeriod(p.value)}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all duration-200 ${
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
                   timePeriod === p.value
-                    ? 'bg-[hsl(263,60%,55%,0.2)] text-primary shadow-[0_0_8px_hsl(263,60%,55%,0.15),inset_0_1px_0_hsl(0,0%,100%,0.06)] border border-[hsl(263,50%,55%,0.15)]'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.05]'
+                    ? 'bg-primary/15 text-primary border border-primary/25'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
               >
                 {p.short}
@@ -312,7 +312,7 @@ export function ChannelsDashboard() {
             ))}
           </div>
 
-          <div className="h-4 w-px bg-white/[0.08]" />
+          <div className="h-4 w-px bg-border" />
 
           {/* Multi-select: Channels */}
           <MultiSelectFilter
@@ -390,24 +390,23 @@ export function ChannelsDashboard() {
             tabIndex={0}
             onKeyDown={(e) => e.key === 'Enter' && handleKPIClick(kpi.stageKey)}
           >
-            <div className="relative z-10 flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <div
-                className="p-1.5 rounded-lg border backdrop-blur-sm"
+                className="p-1.5 rounded-lg border"
                 style={{
-                  backgroundColor: kpi.color + '15',
-                  borderColor: kpi.color + '25',
-                  boxShadow: `0 0 12px ${kpi.color}15, inset 0 1px 1px ${kpi.color}10`,
+                  backgroundColor: kpi.color + '1f',
+                  borderColor: kpi.color + '33',
                 }}
               >
                 <kpi.icon className="h-3.5 w-3.5" style={{ color: kpi.color }} />
               </div>
               <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">{kpi.label}</span>
             </div>
-            <div className="relative z-10 flex items-end gap-3">
-              <span className="text-2xl font-bold font-mono tabular-nums">{kpi.count}</span>
-              <span className="text-sm text-muted-foreground font-mono pb-0.5">{formatCurrency(kpi.volume)}</span>
+            <div className="flex items-end gap-3">
+              <span className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">{kpi.count}</span>
+              <span className="text-sm text-muted-foreground pb-0.5">{formatCurrency(kpi.volume)}</span>
             </div>
-            <p className="relative z-10 text-[10px] text-muted-foreground/60 group-hover:text-muted-foreground/80 transition-colors">
+            <p className="text-[10px] text-muted-foreground">
               {kpi.subtitle} · Click to view
             </p>
           </div>
@@ -426,7 +425,7 @@ export function ChannelsDashboard() {
         <>
           {/* ── Stage Funnel ── */}
           <div className={`${glassCard} p-4`}>
-            <h3 className="text-sm font-medium text-foreground mb-4">Stage Progression — Sourced Deals</h3>
+            <h3 className="text-base font-semibold tracking-tight text-foreground mb-4">Stage Progression — Sourced Deals</h3>
             <div className="grid grid-cols-4 gap-2">
               {funnelData.map((stage, i) => {
                 const maxCount = Math.max(...funnelData.map(f => f.count), 1);
@@ -466,9 +465,9 @@ export function ChannelsDashboard() {
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted-foreground">Group by:</span>
             <Tabs value={chartGroupBy} onValueChange={(v) => setChartGroupBy(v as ChartGroupBy)}>
-              <TabsList className="h-7 bg-[hsl(260,20%,14%,0.5)] backdrop-blur-xl border border-[hsl(260,30%,45%,0.1)] ring-1 ring-inset ring-white/[0.03] shadow-[0_2px_8px_hsl(0,0%,0%,0.15)]">
-                <TabsTrigger value="channel" className="text-xs h-6 px-3 data-[state=active]:bg-[hsl(263,60%,55%,0.2)] data-[state=active]:text-primary data-[state=active]:shadow-[0_0_6px_hsl(263,60%,55%,0.12)]">Channel</TabsTrigger>
-                <TabsTrigger value="source" className="text-xs h-6 px-3 data-[state=active]:bg-[hsl(263,60%,55%,0.2)] data-[state=active]:text-primary data-[state=active]:shadow-[0_0_6px_hsl(263,60%,55%,0.12)]">Company</TabsTrigger>
+              <TabsList className="h-7">
+                <TabsTrigger value="channel" className="text-xs h-6 px-3">Channel</TabsTrigger>
+                <TabsTrigger value="source" className="text-xs h-6 px-3">Company</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -480,8 +479,8 @@ export function ChannelsDashboard() {
               { data: volumeChartData, title: volumeChartTitle, formatter: (v: number) => `$${v.toFixed(1)}M` },
             ].map(({ data, title, formatter }) => (
               <div key={title} className={`${glassCard} p-4`}>
-                <div className="relative z-10 flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-foreground">{title}</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-semibold tracking-tight text-foreground">{title}</h3>
                   <div className="flex items-center gap-3">
                     {barKeys.map((bk, idx) => (
                       <span key={bk.key} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -492,16 +491,15 @@ export function ChannelsDashboard() {
                   </div>
                 </div>
                 {data.length > 0 ? (
-                  <div className="rounded-lg bg-[hsl(260,18%,9%,0.5)] border border-white/[0.03] ring-1 ring-inset ring-white/[0.02] p-2 shadow-[inset_0_2px_6px_hsl(0,0%,0%,0.15)]">
-                    <ResponsiveContainer width="100%" height={300}>
+                  <div style={{ height: 300 }}>
+                    <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={data} margin={{ left: 4, right: 8, top: 8, bottom: data.length > 4 ? 60 : 24 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(260,20%,30%,0.08)" vertical={false} />
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                         <XAxis
                           dataKey="name"
                           type="category"
-                          tick={{ fontSize: 10, fill: 'hsl(260,10%,60%)' }}
-                          axisLine={false}
-                          tickLine={false}
+                          tick={INSIGHTS_AXIS_TICK}
+                          className="text-muted-foreground"
                           interval={0}
                           angle={data.length > 4 ? -35 : 0}
                           textAnchor={data.length > 4 ? 'end' : 'middle'}
@@ -509,21 +507,19 @@ export function ChannelsDashboard() {
                         />
                         <YAxis
                           type="number"
-                          tick={{ fontSize: 10, fill: 'hsl(260,10%,55%)' }}
-                          axisLine={false}
-                          tickLine={false}
+                          tick={INSIGHTS_AXIS_TICK}
                           tickFormatter={formatter}
                           width={formatter ? 55 : 35}
                           allowDecimals={!(!formatter)}
                         />
-                        <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'hsl(263,30%,40%,0.06)' }} />
+                        <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
                         {barKeys.map((bk, idx) => (
                           <Bar
                             key={bk.key}
                             dataKey={bk.key}
                             name={bk.label}
                             fill={seriesColors[idx]}
-                            radius={[3, 3, 0, 0]}
+                            radius={INSIGHTS_BAR_RADIUS}
                             cursor="pointer"
                             onClick={(d: any) => d?.payload?.name && handleBarClick(d.payload.name, bk.key)}
                             maxBarSize={48}
@@ -541,14 +537,14 @@ export function ChannelsDashboard() {
 
           {/* ── Performance Table ── */}
           <div className={`${glassCard} overflow-hidden`}>
-            <div className="relative z-10 p-4 border-b border-white/[0.06]">
-              <h3 className="text-sm font-medium text-foreground">Company Performance</h3>
+            <div className="p-4 border-b border-border">
+              <h3 className="text-base font-semibold tracking-tight text-foreground">Company Performance</h3>
               <p className="text-[10px] text-muted-foreground mt-0.5">Click any row to view underlying deals</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b border-white/[0.06] bg-[hsl(260,18%,12%,0.4)] backdrop-blur-sm">
+                  <tr className="border-b border-border bg-muted/30">
                     <th className="text-left p-3 text-muted-foreground font-medium">Company</th>
                     <th className="text-left p-3 text-muted-foreground font-medium">Channel</th>
                     <th className="text-right p-3 text-muted-foreground font-medium">Added</th>
@@ -562,12 +558,12 @@ export function ChannelsDashboard() {
                   {performanceRows.filter(r => r.added.count > 0).map(row => (
                     <tr
                       key={row.channelEntryId}
-                      className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors cursor-pointer"
+                      className="border-b border-border hover:bg-muted/40 transition-colors cursor-pointer"
                       onClick={() => handleTableRowClick(row.channelEntryId, row.channelName)}
                     >
                       <td className="p-3 font-medium text-foreground">{row.channelName}</td>
                       <td className="p-3">
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.06] text-muted-foreground">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                           {row.channelType === 'M&A and Investment Bankers' ? 'M&A / IB' : row.channelType}
                         </span>
                       </td>
