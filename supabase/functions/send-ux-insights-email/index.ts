@@ -7,447 +7,546 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+type ReportKey = "weekly-insights" | "platform-update";
+
+interface ReportConfig {
+  id: string;
+  report_key: string;
+  name: string;
+  recipient: string;
+  frequency: string;
+  enabled: boolean;
+}
+
+const j = (status: number, body: any) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    const cronSecret = Deno.env.get("CRON_SECRET");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const cronSecret = Deno.env.get("CRON_SECRET");
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+
+    if (!RESEND_API_KEY) return j(500, { error: "RESEND_API_KEY not configured" });
+
+    // ── Auth: cron (anon/CRON_SECRET) OR authenticated admin ──
+    const authHeader = req.headers.get("Authorization") || "";
     const isCron = authHeader === `Bearer ${cronSecret}` || authHeader === `Bearer ${anonKey}`;
+    let triggeredBy: "cron" | "manual" = isCron ? "cron" : "manual";
+    let triggeredByUser: string | null = null;
 
     if (!isCron) {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const sb = createClient(supabaseUrl, anonKey, {
-        global: { headers: { Authorization: authHeader || "" } },
-      });
+      const sb = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
       const { data: { user }, error } = await sb.auth.getUser();
-      if (error || !user) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+      if (error || !user) return j(401, { error: "Unauthorized" });
+      triggeredByUser = user.id;
+    }
+
+    const supabase = createClient(supabaseUrl, serviceKey);
+    const resend = new Resend(RESEND_API_KEY);
+
+    // ── Parse request: { report_key, override_recipient?, dry_run?, period_days? } ──
+    let body: any = {};
+    try { body = await req.json(); } catch { /* allow empty body */ }
+    const reportKey: ReportKey = body.report_key || "weekly-insights";
+    const overrideRecipient: string | undefined = body.override_recipient;
+    const dryRun: boolean = body.dry_run === true;
+
+    // ── Load config from recurring_reports ──
+    const { data: configRow } = await supabase
+      .from("recurring_reports")
+      .select("id, report_key, name, recipient, frequency, enabled")
+      .eq("report_key", reportKey)
+      .maybeSingle();
+
+    if (!configRow) return j(404, { error: `Unknown report_key '${reportKey}'` });
+    const config = configRow as ReportConfig;
+
+    // Cron-triggered runs respect the enabled flag; manual previews/tests run regardless.
+    if (isCron && !config.enabled) {
+      return j(200, { skipped: true, reason: "report disabled" });
+    }
+
+    const recipient = overrideRecipient || config.recipient;
+    const periodDays: number = body.period_days || (reportKey === "weekly-insights" ? 7 : 2);
+    const periodMs = periodDays * 24 * 60 * 60 * 1000;
+    const periodStart = new Date(Date.now() - periodMs);
+    const priorStart = new Date(Date.now() - 2 * periodMs);
+    const periodEnd = new Date();
+    const sinceISO = periodStart.toISOString();
+    const priorISO = priorStart.toISOString();
+
+    // ── Gather data ──
+    const [
+      aiRes, aiPrevRes, featRes, featPrevRes,
+      clientErrRes, uxErrRes, errLogsRes,
+      dealsUpdatedRes, dealLendersRes, tasksRes, emailLogRes, activityRes,
+    ] = await Promise.all([
+      supabase.from("ai_usage_logs").select("feature, status").gte("created_at", sinceISO),
+      supabase.from("ai_usage_logs").select("feature, status").gte("created_at", priorISO).lt("created_at", sinceISO),
+      supabase.from("ux_feature_usage").select("feature_name, action_type").gte("created_at", sinceISO).limit(5000),
+      supabase.from("ux_feature_usage").select("feature_name").gte("created_at", priorISO).lt("created_at", sinceISO).limit(5000),
+      supabase.from("client_error_log").select("feature_area, error_type, message, url, created_at").gte("created_at", sinceISO).limit(500),
+      supabase.from("ux_client_errors").select("page_path, error_type, error_message, component_name, created_at").gte("created_at", sinceISO).limit(500),
+      supabase.from("error_logs").select("error_type, message, source, created_at").gte("created_at", sinceISO).limit(500),
+      supabase.from("deals").select("id, company, stage, status, updated_at").gte("updated_at", sinceISO).limit(500),
+      supabase.from("deal_lenders").select("stage, tracking_status, updated_at").gte("updated_at", sinceISO).limit(500),
+      supabase.from("tasks").select("id, title, status, created_at").gte("created_at", sinceISO).limit(500),
+      supabase.from("email_send_log").select("status").gte("created_at", sinceISO).limit(2000),
+      supabase.from("activity_logs").select("activity_type").gte("created_at", sinceISO).limit(2000),
+    ]);
+
+    // Aggregate AI usage by canonical feature buckets
+    const AI_BUCKETS: Record<string, RegExp> = {
+      "AI chat queries": /chat|claude|copilot|ask/i,
+      "Email drafts generated": /email|polish|draft/i,
+      "Agent runs": /agent|workflow|automation/i,
+      "Deal Space lookups": /deal[_-]?space|deal[_-]?ai|vdr|rag|spreadsheet/i,
+    };
+    const bucketize = (rows: any[]) => {
+      const out: Record<string, number> = { "AI chat queries": 0, "Email drafts generated": 0, "Agent runs": 0, "Deal Space lookups": 0 };
+      for (const r of rows || []) {
+        const f = String(r.feature || "");
+        for (const [name, re] of Object.entries(AI_BUCKETS)) {
+          if (re.test(f)) { out[name]++; break; }
+        }
+      }
+      return out;
+    };
+    const aiNow = bucketize(aiRes.data || []);
+    const aiPrev = bucketize(aiPrevRes.data || []);
+    const aiTotalNow = (aiRes.data || []).length;
+    const aiTotalPrev = (aiPrevRes.data || []).length;
+    const pct = (cur: number, prev: number) => prev === 0 ? (cur > 0 ? 100 : 0) : Math.round(((cur - prev) / prev) * 100);
+
+    // Feature engagement
+    const featCounts: Record<string, number> = {};
+    for (const r of featRes.data || []) featCounts[r.feature_name] = (featCounts[r.feature_name] || 0) + 1;
+    const prevFeatCounts: Record<string, number> = {};
+    for (const r of featPrevRes.data || []) prevFeatCounts[r.feature_name] = (prevFeatCounts[r.feature_name] || 0) + 1;
+
+    // Track every feature we know exists, even if not seen this period
+    const KNOWN_FEATURES = [
+      "email_widget", "cash_flow", "deal_rundown", "write_up", "deal_space_ai",
+      "schedule_meeting", "lender_sync", "vdr", "agreement_drafter",
+      "calendar", "tasks", "agents", "claude_chat", "morning_briefing",
+    ];
+    for (const f of KNOWN_FEATURES) if (!(f in featCounts)) featCounts[f] = 0;
+
+    const featSorted = Object.entries(featCounts).sort((a, b) => b[1] - a[1]);
+    const topFeatures = featSorted.slice(0, 5);
+    const zeroUsage = featSorted.filter(([, c]) => c === 0).map(([n]) => n);
+    const drops = Object.entries(featCounts)
+      .map(([name, cur]) => ({ name, cur, prev: prevFeatCounts[name] || 0, delta: cur - (prevFeatCounts[name] || 0) }))
+      .filter(d => d.prev > 5 && d.cur < d.prev * 0.6)
+      .sort((a, b) => a.delta - b.delta)
+      .slice(0, 5);
+
+    // Errors aggregation
+    type ErrAgg = { feature_area: string; error_type: string; sample: string; count: number };
+    const errMap = new Map<string, ErrAgg>();
+    const addErr = (area: string, type: string, msg: string) => {
+      const key = `${area}::${type}::${msg.slice(0, 60)}`;
+      const cur = errMap.get(key);
+      if (cur) cur.count++;
+      else errMap.set(key, { feature_area: area, error_type: type, sample: msg, count: 1 });
+    };
+    for (const e of clientErrRes.data || []) addErr(e.feature_area || "frontend", e.error_type, e.message || "");
+    for (const e of uxErrRes.data || []) addErr(e.component_name || e.page_path || "frontend", e.error_type, e.error_message || "");
+    for (const e of errLogsRes.data || []) addErr(e.source || "backend", e.error_type, e.message || "");
+    const errors = [...errMap.values()].sort((a, b) => b.count - a.count).slice(0, 25);
+    const totalErrors = errors.reduce((s, e) => s + e.count, 0);
+
+    // Deal activity
+    const dealsUpdated = (dealsUpdatedRes.data || []).length;
+    const lendersContacted = (dealLendersRes.data || []).filter((dl: any) =>
+      dl.tracking_status && !["pending", "not_started"].includes(String(dl.tracking_status).toLowerCase())
+    ).length;
+    const tasksCreated = (tasksRes.data || []).length;
+    const emailsSent = (emailLogRes.data || []).filter((e: any) => e.status === "sent").length;
+    const activitySummary: Record<string, number> = {};
+    for (const a of activityRes.data || []) activitySummary[a.activity_type] = (activitySummary[a.activity_type] || 0) + 1;
+
+    // ── AI improvement opportunities (Claude) ──
+    let suggestions: { title: string; rationale: string; priority: "high" | "medium" | "low" }[] = [];
+    const usageContext = {
+      period_days: periodDays,
+      ai_usage: { current: aiNow, previous: aiPrev, total_current: aiTotalNow, total_previous: aiTotalPrev },
+      feature_usage_top: topFeatures.map(([n, c]) => ({ feature: n, uses: c })),
+      feature_usage_zero: zeroUsage,
+      feature_engagement_drops: drops,
+      errors_top: errors.slice(0, 10),
+      deals_activity: { dealsUpdated, lendersContacted, tasksCreated, emailsSent },
+    };
+
+    if (ANTHROPIC_API_KEY) {
+      try {
+        const claudeReq = {
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1500,
+          system:
+            "You are a senior product analytics expert for a B2B deal management platform called naitive. " +
+            "Given platform usage data, return EXACTLY 3-5 specific, actionable improvement suggestions. " +
+            "Each suggestion must reference real numbers from the data (e.g., 'Schedule Meeting was used 0 times'). " +
+            "Respond ONLY as a JSON array of objects with keys: title (string), rationale (string, 1-2 sentences), priority ('high'|'medium'|'low'). " +
+            "No prose, no markdown — only the JSON array.",
+          messages: [{ role: "user", content: `Usage data:\n\n${JSON.stringify(usageContext, null, 2)}` }],
+        };
+        const resp = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": ANTHROPIC_API_KEY,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify(claudeReq),
         });
+        if (resp.ok) {
+          const out = await resp.json();
+          const text = out?.content?.[0]?.text || "";
+          const match = text.match(/\[[\s\S]*\]/);
+          if (match) suggestions = JSON.parse(match[0]);
+        } else {
+          console.error("[reports] Claude error", resp.status, await resp.text());
+        }
+      } catch (e) {
+        console.error("[reports] Claude exception", e);
+      }
+    }
+    if (suggestions.length === 0) {
+      // Deterministic fallback
+      if (zeroUsage.length > 0) {
+        suggestions.push({
+          title: `${zeroUsage[0].replace(/_/g, " ")} had zero usage this period`,
+          rationale: `Consider improving discoverability or removing from the navigation.`,
+          priority: "medium",
+        });
+      }
+      if (totalErrors > 5) {
+        suggestions.push({
+          title: `${totalErrors} errors logged — most common: ${errors[0]?.error_type || "n/a"}`,
+          rationale: `Investigate ${errors[0]?.feature_area || "the affected area"}.`,
+          priority: "high",
+        });
+      }
+      if (drops.length > 0) {
+        suggestions.push({
+          title: `${drops[0].name.replace(/_/g, " ")} engagement dropped ${drops[0].cur}/${drops[0].prev}`,
+          rationale: `Engagement is down materially vs prior period.`,
+          priority: "medium",
+        });
+      }
+      if (suggestions.length === 0) {
+        suggestions.push({ title: "Insufficient data for suggestions", rationale: "Continue collecting usage data.", priority: "low" });
       }
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    // ── Render emails ──
+    const fmtDate = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const dateRange = `${fmtDate(periodStart)} – ${fmtDate(periodEnd)}`;
+    const dateOnly = fmtDate(periodEnd);
 
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
-    if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY not configured");
+    let subject = "";
+    let html = "";
+    let text = "";
 
-    const resend = new Resend(RESEND_API_KEY);
-    const supabase = createClient(supabaseUrl, serviceKey);
-
-    // ── 1. Gather platform data ──
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const since = thirtyDaysAgo.toISOString();
-
-    const [
-      pageViewsRes, rageClicksRes, errorsRes, navigationRes,
-      searchEventsRes, feedbackRes, performanceRes,
-      dealsRes, activityLogsRes, dealLendersRes,
-      prevScoreRes,
-    ] = await Promise.all([
-      supabase.from("page_views").select("page_path, session_id, device_type, created_at").gte("created_at", since).limit(1000),
-      supabase.from("ux_rage_clicks").select("page_path, element_selector, element_text, click_count, device_type").limit(100),
-      supabase.from("ux_client_errors").select("page_path, error_type, error_message, component_name, created_at").gte("created_at", since).limit(200),
-      supabase.from("ux_navigation_events").select("to_path, from_path, is_bounce, is_exit, scroll_depth_percent, time_on_previous_page_ms, device_type").gte("created_at", since).limit(500),
-      supabase.from("ux_search_events").select("query, results_count, created_at").gte("created_at", since).limit(300),
-      supabase.from("ux_user_feedback").select("page_path, rating, comment, category, created_at").gte("created_at", since).limit(100),
-      supabase.from("ux_performance_metrics").select("metric_type, value_ms, device_type, page_path").gte("created_at", since).limit(300),
-      supabase.from("deals").select("id, company, stage, status, created_at, updated_at, deal_type, value").limit(500),
-      supabase.from("activity_logs").select("activity_type, description, created_at").gte("created_at", since).order("created_at", { ascending: false }).limit(500),
-      supabase.from("deal_lenders").select("stage, tracking_status, created_at, updated_at").limit(500),
-      // Get previous week's health score from ai_usage_logs metadata
-      supabase.from("ai_usage_logs").select("created_at, output_tokens").eq("feature", "ux_insights_email").order("created_at", { ascending: false }).limit(2),
-    ]);
-
-    const pageViews = pageViewsRes.data || [];
-    const rageClicks = rageClicksRes.data || [];
-    const errors = errorsRes.data || [];
-    const navigation = navigationRes.data || [];
-    const searchEvents = searchEventsRes.data || [];
-    const feedback = feedbackRes.data || [];
-    const performance = performanceRes.data || [];
-    const deals = dealsRes.data || [];
-    const activityLogs = activityLogsRes.data || [];
-    const dealLenders = dealLendersRes.data || [];
-
-    // Summarize
-    const pageViewSummary: Record<string, number> = {};
-    pageViews.forEach((pv: any) => { pageViewSummary[pv.page_path] = (pageViewSummary[pv.page_path] || 0) + 1; });
-
-    const errorSummary: Record<string, number> = {};
-    errors.forEach((e: any) => { const k = `${e.error_type}: ${(e.error_message || "unknown").substring(0, 80)}`; errorSummary[k] = (errorSummary[k] || 0) + 1; });
-
-    const failedSearches = searchEvents.filter((s: any) => s.results_count === 0);
-    const dealStages: Record<string, number> = {};
-    deals.forEach((d: any) => { dealStages[d.stage || "Unknown"] = (dealStages[d.stage || "Unknown"] || 0) + 1; });
-    const lenderStages: Record<string, number> = {};
-    dealLenders.forEach((dl: any) => { lenderStages[dl.stage || "Unknown"] = (lenderStages[dl.stage || "Unknown"] || 0) + 1; });
-    const activityTypes: Record<string, number> = {};
-    activityLogs.forEach((a: any) => { activityTypes[a.activity_type] = (activityTypes[a.activity_type] || 0) + 1; });
-    const bounces = navigation.filter((n: any) => n.is_bounce).length;
-    const exits = navigation.filter((n: any) => n.is_exit).length;
-    const perfByType: Record<string, { sum: number; count: number }> = {};
-    performance.forEach((p: any) => {
-      if (!perfByType[p.metric_type]) perfByType[p.metric_type] = { sum: 0, count: 0 };
-      perfByType[p.metric_type].sum += Number(p.value_ms) || 0;
-      perfByType[p.metric_type].count++;
-    });
-    const avgPerf: Record<string, number> = {};
-    Object.entries(perfByType).forEach(([k, v]) => { avgPerf[k] = Math.round(v.sum / v.count); });
-    const avgRating = feedback.length > 0
-      ? (feedback.reduce((s: number, f: any) => s + (f.rating || 0), 0) / feedback.length).toFixed(1)
-      : "N/A";
-
-    const dataSummary = {
-      period: "Last 30 days",
-      hasRealData: pageViews.length > 0 || errors.length > 0 || deals.length > 0 || activityLogs.length > 0,
-      pageViews: { total: pageViews.length, uniqueSessions: new Set(pageViews.map((p: any) => p.session_id)).size, byPage: pageViewSummary },
-      rageClicks: rageClicks.slice(0, 10).map((r: any) => ({ page: r.page_path, element: r.element_text || r.element_selector, clicks: r.click_count })),
-      errors: { total: errors.length, byType: errorSummary },
-      navigation: { total: navigation.length, bounceRate: navigation.length > 0 ? ((bounces / navigation.length) * 100).toFixed(1) + "%" : "N/A", exitRate: navigation.length > 0 ? ((exits / navigation.length) * 100).toFixed(1) + "%" : "N/A" },
-      search: { total: searchEvents.length, failed: failedSearches.length, failRate: searchEvents.length > 0 ? ((failedSearches.length / searchEvents.length) * 100).toFixed(1) + "%" : "N/A", topFailedQueries: failedSearches.slice(0, 5).map((s: any) => s.query) },
-      performance: avgPerf,
-      feedback: { count: feedback.length, avgRating },
-      deals: { total: deals.length, byStage: dealStages, activeCount: deals.filter((d: any) => d.status === "active").length },
-      lenders: { total: dealLenders.length, byStage: lenderStages },
-      activityLogs: { total: activityLogs.length, byType: activityTypes },
-    };
-
-    // ── 2. Generate AI insights ──
-    const systemPrompt = `You are a senior product analytics expert for a B2B deal management / lending platform called "naitive". Analyze the provided user activity data and generate actionable product improvement insights.
-
-Return a JSON object with this structure:
-{
-  "healthScore": number (0-100, overall UX health),
-  "summary": string (2-3 sentence executive summary),
-  "insights": [
-    {
-      "title": string (short, specific),
-      "description": string (2-3 sentences with data),
-      "recommendation": string (specific action),
-      "impact": "high" | "medium" | "low",
-      "category": "UX" | "Feature" | "Workflow" | "Performance",
-      "relatedDeals": string[] (company names of deals most relevant to this insight, max 3)
-    }
-  ]
-}
-
-Guidelines:
-- Generate 5-8 insights, prioritized by impact
-- Be specific with numbers when data exists
-- For each insight, identify which deals (by company name) are most relevant if applicable
-- Recommendations should be concrete and actionable
-- If data is sparse, note that and provide best-effort analysis
-
-Return ONLY valid JSON, no markdown wrapping.`;
-
-    const userPrompt = `Here is the platform activity data for analysis:
-
-${JSON.stringify(dataSummary, null, 2)}
-
-Active deals in the platform:
-${deals.map((d: any) => `• ${d.company} — Stage: ${d.stage}, Value: $${(d.value || 0).toLocaleString()}, Status: ${d.status || "active"}`).join("\n")}
-
-Generate product improvement insights with related deals where applicable.`;
-
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.7,
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      const errText = await aiResponse.text();
-      console.error("AI gateway error:", aiResponse.status, errText);
-      throw new Error(`AI gateway error: ${aiResponse.status}`);
-    }
-
-    const aiResult = await aiResponse.json();
-    const content = aiResult.choices?.[0]?.message?.content;
-    if (!content) throw new Error("No content in AI response");
-
-    let parsed: any;
-    try {
-      const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || content.match(/```\s*([\s\S]*?)\s*```/);
-      const jsonStr = jsonMatch ? jsonMatch[1] : content;
-      parsed = JSON.parse(jsonStr.trim());
-    } catch {
-      console.error("Failed to parse AI response:", content);
-      parsed = {
-        healthScore: 70,
-        summary: "Analysis completed but response format was unexpected.",
-        insights: [{ title: "Review Required", description: content.substring(0, 300), recommendation: "Review the full analysis manually.", impact: "medium", category: "UX", relatedDeals: [] }],
+    if (reportKey === "weekly-insights") {
+      subject = `naitive Weekly Insights — ${dateRange}`;
+      html = renderWeeklyInsightsHtml({
+        dateRange, aiNow, aiPrev, aiTotalNow, aiTotalPrev, pct,
+        topFeatures, zeroUsage, errors, totalErrors,
+        dealsUpdated, lendersContacted, tasksCreated, emailsSent,
+        suggestions,
+      });
+      text = `naitive Weekly Insights — ${dateRange}\n\nSee HTML version for full report.`;
+    } else {
+      subject = `naitive Platform Update — ${dateOnly} — Action Required`;
+      const payload = {
+        report: "platform-update",
+        period: { start: periodStart.toISOString(), end: periodEnd.toISOString(), days: periodDays },
+        bugs_detected: errors.map(e => ({ feature_area: e.feature_area, error_type: e.error_type, message: e.sample, count: e.count })),
+        feature_engagement_drops: drops,
+        zero_usage_features: zeroUsage,
+        new_user_feedback: [], // hook for ux_user_feedback comments — left empty if none
+        ai_suggestions: suggestions,
+        deals_activity: { dealsUpdated, lendersContacted, tasksCreated, emailsSent },
       };
+      // Pull recent feedback comments
+      const { data: fb } = await supabase
+        .from("ux_user_feedback")
+        .select("page_path, rating, comment, category, created_at")
+        .gte("created_at", sinceISO)
+        .not("comment", "is", null)
+        .limit(50);
+      payload.new_user_feedback = (fb || []).map((f: any) => ({
+        page: f.page_path, rating: f.rating, category: f.category, comment: f.comment, at: f.created_at,
+      }));
+
+      text = renderPlatformUpdateText(payload);
+      html = `<pre style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background:#0f172a;color:#e2e8f0;padding:20px;border-radius:8px;white-space:pre-wrap;">${escapeHtml(text)}</pre>`;
     }
 
-    const { healthScore = 70, summary = "", insights = [] } = parsed;
-
-    // ── 2b. Compute change from last week ──
-    // Previous score stored as output_tokens (repurposed field) in ai_usage_logs
-    const prevLogs = prevScoreRes.data || [];
-    // The most recent entry is the current run (not yet logged), so the previous is index 0 if it exists
-    const previousScore = prevLogs.length > 0 ? prevLogs[0].output_tokens : null;
-    const scoreDelta = previousScore !== null ? healthScore - previousScore : null;
-
-    // Log this week's score for next week's comparison
-    await supabase.from("ai_usage_logs").insert({
-      company_id: "00000000-0000-0000-0000-000000000000", // system-level
-      user_id: "00000000-0000-0000-0000-000000000000",
-      feature: "ux_insights_email",
-      model: "gemini-3-flash-preview",
-      input_tokens: 0,
-      output_tokens: healthScore, // Store health score for week-over-week tracking
-      status: "success",
-    });
-
-    // ── 3. Build email HTML (dark theme) ──
-    const now = new Date();
-    const formattedDate = now.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-
-    const healthColor = healthScore >= 80 ? "#22c55e" : healthScore >= 60 ? "#f59e0b" : "#ef4444";
-    const healthLabel = healthScore >= 80 ? "Healthy" : healthScore >= 60 ? "Needs Attention" : "Critical";
-    const healthGlow = healthScore >= 80 ? "rgba(34,197,94,0.3)" : healthScore >= 60 ? "rgba(245,158,11,0.3)" : "rgba(239,68,68,0.3)";
-
-    // Delta display
-    let deltaHtml = "";
-    if (scoreDelta !== null) {
-      const deltaColor = scoreDelta > 0 ? "#22c55e" : scoreDelta < 0 ? "#ef4444" : "#94a3b8";
-      const deltaArrow = scoreDelta > 0 ? "▲" : scoreDelta < 0 ? "▼" : "●";
-      const deltaText = scoreDelta > 0 ? `+${scoreDelta}` : `${scoreDelta}`;
-      deltaHtml = `<p style="margin:4px 0 0;font-size:12px;color:${deltaColor};font-weight:600;">${deltaArrow} ${deltaText} from last week</p>`;
+    // ── Send via Resend ──
+    let sendStatus = "sent";
+    let sendError: string | null = null;
+    let sendId: string | null = null;
+    if (!dryRun) {
+      const send = await resend.emails.send({
+        from: "naitive Reports <reports@notify.naitive.co>",
+        to: [recipient],
+        subject,
+        html,
+        text,
+      });
+      if ((send as any).error) {
+        sendStatus = "failed";
+        sendError = JSON.stringify((send as any).error);
+      } else {
+        sendId = (send as any).data?.id || null;
+      }
     } else {
-      deltaHtml = `<p style="margin:4px 0 0;font-size:11px;color:#64748b;">First report — no prior data</p>`;
+      sendStatus = "preview";
     }
 
-    const insightRows = insights.map((insight: any) => {
-      const impactColor = insight.impact === "high" ? "#ef4444" : insight.impact === "medium" ? "#f59e0b" : "#64748b";
-      const impactBg = insight.impact === "high" ? "rgba(239,68,68,0.15)" : insight.impact === "medium" ? "rgba(245,158,11,0.15)" : "rgba(100,116,139,0.15)";
-      const categoryColors: Record<string, string> = { UX: "#a78bfa", Performance: "#60a5fa", Workflow: "#34d399", Feature: "#c084fc" };
-      const categoryColor = categoryColors[insight.category] || "#a78bfa";
-
-      const dealChips = (insight.relatedDeals || []).map((d: string) =>
-        `<span style="display:inline-block;background:rgba(59,130,246,0.15);color:#93c5fd;padding:2px 8px;border-radius:4px;font-size:11px;margin-right:4px;margin-top:4px;">${d}</span>`
-      ).join("");
-
-      return `
-        <tr>
-          <td style="padding:0 0 12px 0;">
-            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#1e293b;border:1px solid #334155;border-radius:8px;border-left:3px solid ${impactColor};">
-              <tr>
-                <td style="padding:16px 20px;">
-                  <table cellpadding="0" cellspacing="0" border="0" width="100%">
-                    <tr>
-                      <td>
-                        <span style="display:inline-block;background:${impactBg};color:${impactColor};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;text-transform:uppercase;">${insight.impact} impact</span>
-                        <span style="display:inline-block;background:rgba(100,116,139,0.2);color:${categoryColor};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;margin-left:6px;">${insight.category}</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style="padding-top:10px;">
-                        <p style="margin:0;font-size:15px;font-weight:600;color:#f1f5f9;">${insight.title}</p>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style="padding-top:6px;">
-                        <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.6;">${insight.description}</p>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style="padding-top:10px;border-top:1px solid #334155;margin-top:8px;">
-                        <p style="margin:8px 0 0;font-size:13px;color:#cbd5e1;"><span style="color:#60a5fa;font-weight:600;">→</span> ${insight.recommendation}</p>
-                      </td>
-                    </tr>
-                    ${dealChips ? `
-                    <tr>
-                      <td style="padding-top:8px;">
-                        <p style="margin:0 0 4px;font-size:10px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">RELATED DEALS</p>
-                        ${dealChips}
-                      </td>
-                    </tr>` : ""}
-                  </table>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>`;
-    }).join("");
-
-    const appUrl = "https://fivelinenaitive.lovable.app";
-
-    const emailHtml = `
-<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background-color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
-  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#0f172a;">
-    <tr><td align="center" style="padding:32px 16px;">
-      <table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;">
-
-        <!-- Header -->
-        <tr>
-          <td style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f172a 100%);padding:36px 32px 28px;border-radius:12px 12px 0 0;border:1px solid #1e293b;border-bottom:none;">
-            <table cellpadding="0" cellspacing="0" border="0" width="100%">
-              <tr>
-                <td>
-                  <p style="margin:0;font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;">WEEKLY UX INSIGHTS</p>
-                  <p style="margin:6px 0 0;font-size:24px;font-weight:700;color:#f8fafc;">naitive Platform Health</p>
-                  <p style="margin:6px 0 0;font-size:13px;color:#64748b;">${formattedDate}</p>
-                </td>
-                <td style="text-align:right;vertical-align:top;">
-                  <table cellpadding="0" cellspacing="0" border="0" style="display:inline-block;">
-                    <tr>
-                      <td style="background:rgba(15,23,42,0.8);border:2px solid ${healthColor};border-radius:16px;padding:16px 24px;text-align:center;box-shadow:0 0 20px ${healthGlow};">
-                        <p style="margin:0;font-size:36px;font-weight:800;color:${healthColor};line-height:1;">${healthScore}</p>
-                        <p style="margin:4px 0 0;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">${healthLabel}</p>
-                        ${deltaHtml}
-                      </td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- Executive Summary -->
-        <tr>
-          <td style="background:#1e293b;padding:24px 32px;border-left:1px solid #334155;border-right:1px solid #334155;">
-            <p style="margin:0;font-size:10px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:1px;">EXECUTIVE SUMMARY</p>
-            <p style="margin:10px 0 0;font-size:14px;color:#cbd5e1;line-height:1.7;">${summary}</p>
-          </td>
-        </tr>
-
-        <!-- Quick Stats -->
-        <tr>
-          <td style="background:#0f172a;padding:20px 32px;border-left:1px solid #334155;border-right:1px solid #334155;">
-            <table cellpadding="0" cellspacing="0" border="0" width="100%">
-              <tr>
-                <td width="25%" style="text-align:center;padding:12px 4px;">
-                  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#1e293b;border-radius:8px;border:1px solid #334155;">
-                    <tr><td style="padding:14px 8px;">
-                      <p style="margin:0;font-size:24px;font-weight:700;color:#60a5fa;">${dataSummary.deals.total}</p>
-                      <p style="margin:4px 0 0;font-size:10px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Total Deals</p>
-                    </td></tr>
-                  </table>
-                </td>
-                <td width="25%" style="text-align:center;padding:12px 4px;">
-                  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#1e293b;border-radius:8px;border:1px solid #334155;">
-                    <tr><td style="padding:14px 8px;">
-                      <p style="margin:0;font-size:24px;font-weight:700;color:#34d399;">${dataSummary.deals.activeCount}</p>
-                      <p style="margin:4px 0 0;font-size:10px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Active</p>
-                    </td></tr>
-                  </table>
-                </td>
-                <td width="25%" style="text-align:center;padding:12px 4px;">
-                  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#1e293b;border-radius:8px;border:1px solid #334155;">
-                    <tr><td style="padding:14px 8px;">
-                      <p style="margin:0;font-size:24px;font-weight:700;color:#a78bfa;">${dataSummary.lenders.total}</p>
-                      <p style="margin:4px 0 0;font-size:10px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Lenders</p>
-                    </td></tr>
-                  </table>
-                </td>
-                <td width="25%" style="text-align:center;padding:12px 4px;">
-                  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#1e293b;border-radius:8px;border:1px solid #334155;">
-                    <tr><td style="padding:14px 8px;">
-                      <p style="margin:0;font-size:24px;font-weight:700;color:#f59e0b;">${dataSummary.activityLogs.total}</p>
-                      <p style="margin:4px 0 0;font-size:10px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Activities</p>
-                    </td></tr>
-                  </table>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- Insights Section -->
-        <tr>
-          <td style="background:#0f172a;padding:24px 32px 8px;border-left:1px solid #334155;border-right:1px solid #334155;">
-            <p style="margin:0;font-size:16px;font-weight:700;color:#f1f5f9;">🔍 Insights & Recommendations</p>
-            <p style="margin:4px 0 16px;font-size:13px;color:#64748b;">${insights.length} insight${insights.length !== 1 ? "s" : ""} generated from platform activity</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="background:#0f172a;padding:0 32px 24px;border-left:1px solid #334155;border-right:1px solid #334155;">
-            <table cellpadding="0" cellspacing="0" border="0" width="100%">
-              ${insightRows}
-            </table>
-          </td>
-        </tr>
-
-        <!-- CTA -->
-        <tr>
-          <td style="background:#1e293b;padding:24px 32px;text-align:center;border-left:1px solid #334155;border-right:1px solid #334155;">
-            <a href="${appUrl}/admin" style="display:inline-block;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#ffffff;padding:14px 32px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;letter-spacing:0.3px;">View Full UX Recommendations →</a>
-          </td>
-        </tr>
-
-        <!-- Footer -->
-        <tr>
-          <td style="padding:24px 32px;text-align:center;border-radius:0 0 12px 12px;border:1px solid #1e293b;border-top:none;">
-            <p style="margin:0;font-size:11px;color:#475569;"><p style="margin:0;font-size:11px;color:#475569;">This is an automated weekly report from naitive. Delivered every Friday at 6:00 PM ET.</p></p>
-            <p style="margin:4px 0 0;font-size:11px;color:#475569;">naitive • <a href="${appUrl}" style="color:#64748b;text-decoration:none;">fivelinenaitive.lovable.app</a></p>
-          </td>
-        </tr>
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
-
-    // ── 4. Send via Resend ──
-    const RECIPIENT = "jturner@5thline.co";
-    const subjectDelta = scoreDelta !== null
-      ? (scoreDelta > 0 ? ` (▲ +${scoreDelta})` : scoreDelta < 0 ? ` (▼ ${scoreDelta})` : ` (● no change)`)
-      : "";
-    const { data: emailResult, error: emailError } = await resend.emails.send({
-      from: "naitive <noreply@updates.naitive.co>",
-      to: [RECIPIENT],
-      subject: `naitive UX Insights — Health Score: ${healthScore}/100${subjectDelta} — ${formattedDate}`,
-      html: emailHtml,
+    // ── Persist run ──
+    await supabase.from("recurring_report_runs").insert({
+      report_key: reportKey,
+      recipient,
+      subject,
+      status: sendStatus,
+      error_message: sendError,
+      rendered_html: html,
+      rendered_text: text,
+      data_snapshot: usageContext,
+      ai_summary: { suggestions },
+      triggered_by: triggeredBy,
+      triggered_by_user: triggeredByUser,
+      period_start: periodStart.toISOString(),
+      period_end: periodEnd.toISOString(),
     });
 
-    if (emailError) {
-      console.error("Resend error:", emailError);
-    } else {
-      console.log("UX insights email sent:", emailResult);
+    // Update recurring_reports cache
+    if (!dryRun) {
+      await supabase.from("recurring_reports").update({
+        last_run_at: new Date().toISOString(),
+        last_subject: subject,
+        last_status: sendStatus,
+        last_error: sendError,
+        last_preview_html: html,
+        last_preview_text: text,
+      }).eq("report_key", reportKey);
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      recipient: RECIPIENT,
-      healthScore,
-      previousScore,
-      scoreDelta,
-      insightCount: insights.length,
-      emailId: emailResult?.id || null,
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (error) {
-    console.error("send-ux-insights-email error:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return j(200, { ok: true, report_key: reportKey, recipient, status: sendStatus, send_id: sendId, dry_run: dryRun });
+  } catch (e: any) {
+    console.error("[reports] fatal", e);
+    return j(500, { error: e?.message || "Unknown error" });
   }
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Renderers
+// ─────────────────────────────────────────────────────────────────────────────
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+}
+
+function renderWeeklyInsightsHtml(args: any): string {
+  const {
+    dateRange, aiNow, aiPrev, aiTotalNow, aiTotalPrev, pct,
+    topFeatures, zeroUsage, errors, totalErrors,
+    dealsUpdated, lendersContacted, tasksCreated, emailsSent,
+    suggestions,
+  } = args;
+
+  const aiRows = Object.entries(aiNow).map(([k, v]: [string, any]) => {
+    const p = pct(v as number, (aiPrev as any)[k] || 0);
+    const color = p > 0 ? "#22c55e" : p < 0 ? "#ef4444" : "#94a3b8";
+    const arrow = p > 0 ? "▲" : p < 0 ? "▼" : "●";
+    return `<tr>
+      <td style="padding:8px 12px;color:#cbd5e1;border-bottom:1px solid #1e293b;">${k}</td>
+      <td style="padding:8px 12px;color:#f1f5f9;font-weight:600;border-bottom:1px solid #1e293b;text-align:right;">${v}</td>
+      <td style="padding:8px 12px;color:${color};font-weight:600;border-bottom:1px solid #1e293b;text-align:right;">${arrow} ${p > 0 ? "+" : ""}${p}%</td>
+    </tr>`;
+  }).join("");
+
+  const featRows = topFeatures.map(([n, c]: [string, number]) =>
+    `<tr><td style="padding:6px 12px;color:#cbd5e1;border-bottom:1px solid #1e293b;">${escapeHtml(n.replace(/_/g, " "))}</td>
+         <td style="padding:6px 12px;color:#f1f5f9;font-weight:600;text-align:right;border-bottom:1px solid #1e293b;">${c}</td></tr>`
+  ).join("");
+
+  const zeroBadges = zeroUsage.length === 0
+    ? `<span style="color:#22c55e;font-size:12px;">No zero-usage features</span>`
+    : zeroUsage.slice(0, 8).map((f: string) =>
+        `<span style="display:inline-block;background:rgba(239,68,68,0.15);color:#fca5a5;padding:3px 8px;border-radius:4px;font-size:11px;margin:2px;">${escapeHtml(f.replace(/_/g, " "))}</span>`
+      ).join("");
+
+  const errorRows = errors.length === 0
+    ? `<tr><td colspan="3" style="padding:14px;color:#22c55e;text-align:center;font-size:13px;">No errors detected this period 🎉</td></tr>`
+    : errors.slice(0, 8).map((e: any) =>
+        `<tr>
+          <td style="padding:6px 10px;color:#fca5a5;font-size:12px;border-bottom:1px solid #1e293b;">${escapeHtml(e.feature_area)}</td>
+          <td style="padding:6px 10px;color:#cbd5e1;font-size:12px;border-bottom:1px solid #1e293b;">${escapeHtml(e.error_type)}: ${escapeHtml(e.sample.slice(0, 80))}</td>
+          <td style="padding:6px 10px;color:#f1f5f9;font-weight:600;text-align:right;border-bottom:1px solid #1e293b;">${e.count}</td>
+        </tr>`
+      ).join("");
+
+  const sugRows = suggestions.map((s: any) => {
+    const color = s.priority === "high" ? "#ef4444" : s.priority === "medium" ? "#f59e0b" : "#64748b";
+    const bg = s.priority === "high" ? "rgba(239,68,68,0.12)" : s.priority === "medium" ? "rgba(245,158,11,0.12)" : "rgba(100,116,139,0.12)";
+    return `<tr>
+      <td style="padding:0 0 12px 0;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#1e293b;border:1px solid #334155;border-left:3px solid ${color};border-radius:6px;">
+          <tr><td style="padding:14px 18px;">
+            <span style="display:inline-block;background:${bg};color:${color};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">${s.priority}</span>
+            <p style="margin:8px 0 4px;color:#f1f5f9;font-size:14px;font-weight:600;">${escapeHtml(s.title)}</p>
+            <p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.5;">${escapeHtml(s.rationale)}</p>
+          </td></tr>
+        </table>
+      </td></tr>`;
+  }).join("");
+
+  const aiDelta = pct(aiTotalNow, aiTotalPrev);
+  const aiDeltaColor = aiDelta > 0 ? "#22c55e" : aiDelta < 0 ? "#ef4444" : "#94a3b8";
+
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>naitive Weekly Insights</title></head>
+<body style="margin:0;padding:0;background:#0a0f1c;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e2e8f0;">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#0a0f1c;padding:32px 16px;">
+  <tr><td align="center">
+    <table cellpadding="0" cellspacing="0" border="0" width="640" style="max-width:640px;background:#0f172a;border:1px solid #1e293b;border-radius:12px;overflow:hidden;">
+      <tr><td style="padding:28px 32px 20px;border-bottom:1px solid #1e293b;background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);">
+        <p style="margin:0;color:#60a5fa;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">5th Line · naitive</p>
+        <h1 style="margin:6px 0 4px;color:#f1f5f9;font-size:22px;font-weight:700;">Weekly Insights</h1>
+        <p style="margin:0;color:#94a3b8;font-size:13px;">${dateRange}</p>
+      </td></tr>
+
+      <tr><td style="padding:24px 32px;">
+        <p style="margin:0 0 6px;color:#60a5fa;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Executive Summary</p>
+        <p style="margin:0 0 20px;color:#cbd5e1;font-size:14px;line-height:1.6;">
+          AI usage was <strong style="color:${aiDeltaColor};">${aiDelta > 0 ? "+" : ""}${aiDelta}%</strong> vs. the prior period
+          (${aiTotalNow} total interactions). The team updated <strong>${dealsUpdated}</strong> deals,
+          contacted <strong>${lendersContacted}</strong> lenders, created <strong>${tasksCreated}</strong> tasks,
+          and sent <strong>${emailsSent}</strong> emails. ${totalErrors === 0 ? "No errors were logged." : `<strong style="color:#fca5a5;">${totalErrors}</strong> errors were detected.`}
+        </p>
+      </td></tr>
+
+      <tr><td style="padding:0 32px 8px;">
+        <p style="margin:0 0 10px;color:#60a5fa;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">AI Usage</p>
+        <table width="100%" style="border-collapse:collapse;background:#0f172a;border:1px solid #1e293b;border-radius:6px;overflow:hidden;">
+          <thead><tr><th style="text-align:left;padding:8px 12px;color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;background:#1e293b;">Metric</th>
+          <th style="text-align:right;padding:8px 12px;color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;background:#1e293b;">Count</th>
+          <th style="text-align:right;padding:8px 12px;color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;background:#1e293b;">vs Prior</th></tr></thead>
+          <tbody>${aiRows}</tbody>
+        </table>
+      </td></tr>
+
+      <tr><td style="padding:24px 32px 8px;">
+        <p style="margin:0 0 10px;color:#60a5fa;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Feature Engagement — Top 5</p>
+        <table width="100%" style="border-collapse:collapse;background:#0f172a;border:1px solid #1e293b;border-radius:6px;overflow:hidden;">
+          <tbody>${featRows || `<tr><td style="padding:14px;color:#94a3b8;text-align:center;font-size:13px;">No feature usage tracked this period</td></tr>`}</tbody>
+        </table>
+        <p style="margin:14px 0 6px;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:1px;">Zero-usage features</p>
+        <div>${zeroBadges}</div>
+      </td></tr>
+
+      <tr><td style="padding:24px 32px 8px;">
+        <p style="margin:0 0 10px;color:#60a5fa;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Errors & Bugs Detected</p>
+        <table width="100%" style="border-collapse:collapse;background:#0f172a;border:1px solid #1e293b;border-radius:6px;overflow:hidden;">
+          <tbody>${errorRows}</tbody>
+        </table>
+      </td></tr>
+
+      <tr><td style="padding:24px 32px 8px;">
+        <p style="margin:0 0 10px;color:#60a5fa;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Deal Activity</p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="width:25%;padding:14px;background:#1e293b;border-radius:6px;text-align:center;">
+              <p style="margin:0;color:#94a3b8;font-size:10px;text-transform:uppercase;letter-spacing:1px;">Deals updated</p>
+              <p style="margin:4px 0 0;color:#f1f5f9;font-size:22px;font-weight:700;">${dealsUpdated}</p>
+            </td>
+            <td style="width:6px;"></td>
+            <td style="width:25%;padding:14px;background:#1e293b;border-radius:6px;text-align:center;">
+              <p style="margin:0;color:#94a3b8;font-size:10px;text-transform:uppercase;letter-spacing:1px;">Lenders contacted</p>
+              <p style="margin:4px 0 0;color:#f1f5f9;font-size:22px;font-weight:700;">${lendersContacted}</p>
+            </td>
+            <td style="width:6px;"></td>
+            <td style="width:25%;padding:14px;background:#1e293b;border-radius:6px;text-align:center;">
+              <p style="margin:0;color:#94a3b8;font-size:10px;text-transform:uppercase;letter-spacing:1px;">Tasks created</p>
+              <p style="margin:4px 0 0;color:#f1f5f9;font-size:22px;font-weight:700;">${tasksCreated}</p>
+            </td>
+            <td style="width:6px;"></td>
+            <td style="width:25%;padding:14px;background:#1e293b;border-radius:6px;text-align:center;">
+              <p style="margin:0;color:#94a3b8;font-size:10px;text-transform:uppercase;letter-spacing:1px;">Emails sent</p>
+              <p style="margin:4px 0 0;color:#f1f5f9;font-size:22px;font-weight:700;">${emailsSent}</p>
+            </td>
+          </tr>
+        </table>
+      </td></tr>
+
+      <tr><td style="padding:24px 32px 28px;">
+        <p style="margin:0 0 12px;color:#60a5fa;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Improvement Opportunities</p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0"><tbody>${sugRows}</tbody></table>
+      </td></tr>
+
+      <tr><td style="padding:18px 32px;background:#0a0f1c;border-top:1px solid #1e293b;text-align:center;">
+        <p style="margin:0;color:#64748b;font-size:11px;">Generated automatically by naitive · 5th Line</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table></body></html>`;
+}
+
+function renderPlatformUpdateText(p: any): string {
+  const lines: string[] = [];
+  lines.push(`naitive Platform Update — ${new Date(p.period.end).toUTCString()}`);
+  lines.push(`Period: ${p.period.start} → ${p.period.end} (${p.period.days}d)`);
+  lines.push("");
+  lines.push("=== BUGS DETECTED ===");
+  if (p.bugs_detected.length === 0) lines.push("(none)");
+  for (const b of p.bugs_detected) {
+    lines.push(`• [${b.feature_area}] ${b.error_type} ×${b.count}`);
+    lines.push(`    ${b.message}`);
+  }
+  lines.push("");
+  lines.push("=== FEATURE ENGAGEMENT DROPS ===");
+  if (p.feature_engagement_drops.length === 0) lines.push("(none)");
+  for (const d of p.feature_engagement_drops) {
+    lines.push(`• ${d.name}: ${d.cur} (was ${d.prev}, Δ ${d.delta})`);
+  }
+  lines.push("");
+  lines.push("=== ZERO-USAGE FEATURES ===");
+  if (p.zero_usage_features.length === 0) lines.push("(none)");
+  for (const f of p.zero_usage_features) lines.push(`• ${f}`);
+  lines.push("");
+  lines.push("=== NEW USER FEEDBACK ===");
+  if (p.new_user_feedback.length === 0) lines.push("(none)");
+  for (const f of p.new_user_feedback) {
+    lines.push(`• [${f.page || "?"}] (${f.rating ?? "-"}/5) ${f.category || ""}`);
+    lines.push(`    "${f.comment}"`);
+  }
+  lines.push("");
+  lines.push("=== AI-SUGGESTED ACTIONS ===");
+  for (const s of p.ai_suggestions) {
+    lines.push(`• [${s.priority.toUpperCase()}] ${s.title}`);
+    lines.push(`    → ${s.rationale}`);
+  }
+  lines.push("");
+  lines.push("=== DEALS ACTIVITY ===");
+  lines.push(`Deals updated: ${p.deals_activity.dealsUpdated}`);
+  lines.push(`Lenders contacted: ${p.deals_activity.lendersContacted}`);
+  lines.push(`Tasks created: ${p.deals_activity.tasksCreated}`);
+  lines.push(`Emails sent: ${p.deals_activity.emailsSent}`);
+  lines.push("");
+  lines.push("--- Use this list to build new subtasks under '5th Line Technology Roadmap' in Asana ---");
+  return lines.join("\n");
+}

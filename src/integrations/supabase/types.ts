@@ -15616,6 +15616,7 @@ export type Database = {
           next_run_at: string | null
           recipient: string
           report_key: string
+          schedule_overrides: Json
           updated_at: string
         }
         Insert: {
@@ -15634,6 +15635,7 @@ export type Database = {
           next_run_at?: string | null
           recipient: string
           report_key: string
+          schedule_overrides?: Json
           updated_at?: string
         }
         Update: {
@@ -15652,6 +15654,7 @@ export type Database = {
           next_run_at?: string | null
           recipient?: string
           report_key?: string
+          schedule_overrides?: Json
           updated_at?: string
         }
         Relationships: []
