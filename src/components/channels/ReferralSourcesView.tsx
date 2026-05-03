@@ -134,6 +134,7 @@ function ExpandedDeals({ entry }: { entry: DealReferralSourceEntry }) {
 export function ReferralSourcesView() {
   const [channelFilter, setChannelFilter] = useState<string[]>([]);
   const [pipelineFilter, setPipelineFilter] = useState<'all' | 'active' | 'in-development'>('all');
+  const [tierFilter, setTierFilter] = useState<TierValue>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const { referralSources, isLoading, totalCount, totalVolume, totalDeals, companyOptions } = useDealReferralSources({
@@ -141,14 +142,50 @@ export function ReferralSourcesView() {
     pipelineFilter,
   });
 
+  const { company } = useCompany();
+  const { data: tierRows = [] } = useQuery({
+    queryKey: ['referral_source_tiers', company?.id],
+    enabled: !!company?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('referral_sources')
+        .select('name, contact_name, tier')
+        .eq('company_id', company!.id);
+      if (error) throw error;
+      return (data || []) as { name: string | null; contact_name: string | null; tier: string | null }[];
+    },
+  });
+
+  const tierLookup = useMemo(() => {
+    const m = new Map<string, string>();
+    const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+    for (const r of tierRows) {
+      if (!r.tier) continue;
+      if (r.name) m.set(norm(r.name), r.tier);
+      if (r.contact_name) m.set(norm(r.contact_name), r.tier);
+    }
+    return m;
+  }, [tierRows]);
+
+  const getTier = (entry: DealReferralSourceEntry): string | null => {
+    const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+    return tierLookup.get(norm(entry.referredBy)) || null;
+  };
+
   const [companyFilter, setCompanyFilter] = useState<string[]>([]);
   const filteredSources = useMemo(() => {
-    if (!companyFilter.length) return referralSources;
-    return referralSources.filter(r => r.companyName && companyFilter.includes(r.companyName));
-  }, [referralSources, companyFilter]);
+    let list = referralSources;
+    if (companyFilter.length) {
+      list = list.filter(r => r.companyName && companyFilter.includes(r.companyName));
+    }
+    if (tierFilter !== 'all') {
+      list = list.filter(r => getTier(r) === tierFilter);
+    }
+    return list;
+  }, [referralSources, companyFilter, tierFilter, tierLookup]);
 
-  const hasActiveFilters = channelFilter.length > 0 || companyFilter.length > 0 || pipelineFilter !== 'all';
-  const clearAll = () => { setChannelFilter([]); setCompanyFilter([]); setPipelineFilter('all'); };
+  const hasActiveFilters = channelFilter.length > 0 || companyFilter.length > 0 || pipelineFilter !== 'all' || tierFilter !== 'all';
+  const clearAll = () => { setChannelFilter([]); setCompanyFilter([]); setPipelineFilter('all'); setTierFilter('all'); };
 
   if (isLoading) {
     return (
