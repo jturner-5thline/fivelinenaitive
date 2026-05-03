@@ -12,22 +12,15 @@
  * Insights design system, not an approximation.
  */
 
-// Card surface: matches the standard <Card /> shell used throughout Insights.
-// Use this on a plain <div> when you need the Insights card look without the
-// React Card component (e.g. when you also want custom padding/layout).
-export const liquidGlassCard = [
-  'rounded-xl border text-card-foreground transition-all duration-200 ease-out',
-  'bg-card border-border shadow-sm',
-  'dark:bg-[rgba(255,255,255,0.04)] dark:border-[rgba(255,255,255,0.08)] dark:backdrop-blur-xl dark:backdrop-saturate-150',
-  'dark:shadow-[0_4px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.06)]',
-].join(' ');
+// Card surface: delegates to the canonical `.glass-module` utility defined in
+// `src/index.css` — the single, unified dashboard module surface used by every
+// KPI card, chart card, widget, summary module, and insight panel on /insights.
+// Per the project memory ("Liquid Glass Specs"), there is exactly ONE Insights
+// surface treatment — do not introduce variants.
+export const liquidGlassCard = 'glass-module';
 
 // Elevated KPI variant — same surface + Insights-style hover affordance.
-export const liquidGlassKPI = [
-  liquidGlassCard,
-  'dark:hover:border-[rgba(255,255,255,0.14)]',
-  'dark:hover:shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)]',
-].join(' ');
+export const liquidGlassKPI = 'glass-module glass-module-interactive';
 
 // Insights chart series palette (verbatim from src/pages/Insights.tsx COLORS).
 export const LIQUID_GLASS_SERIES = [
