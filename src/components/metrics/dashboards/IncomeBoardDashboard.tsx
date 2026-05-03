@@ -28,7 +28,7 @@ function StatCard({ label, value, variant }: { label: string; value: number; var
   const Icon = variant === 'positive' ? TrendingUp : variant === 'negative' ? TrendingDown : Minus;
 
   return (
-    <Card className="border-border/50">
+    <Card className="glass-module">
       <CardContent className="p-4">
         <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{label}</p>
         <div className="flex items-center gap-1.5 mt-1">
