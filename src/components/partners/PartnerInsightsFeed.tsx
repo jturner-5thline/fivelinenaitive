@@ -279,7 +279,7 @@ export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: I
       </div>
 
       {/* Feed */}
-      <div className="rounded-lg border border-border bg-card divide-y divide-border max-h-[420px] overflow-y-auto">
+      <div className="relative isolate rounded-xl overflow-hidden border border-[hsl(260,40%,50%,0.12)] ring-1 ring-inset ring-white/[0.05] bg-[linear-gradient(145deg,hsl(260,25%,16%,0.72)_0%,hsl(255,20%,11%,0.58)_50%,hsl(250,18%,9%,0.65)_100%)] backdrop-blur-2xl backdrop-saturate-150 shadow-[0_2px_4px_hsl(0,0%,0%,0.2),0_8px_32px_hsl(260,40%,8%,0.5)] divide-y divide-white/[0.05] max-h-[420px] overflow-y-auto">
         {insights.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
             <Lightbulb className="h-8 w-8 opacity-30" />
