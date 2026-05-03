@@ -229,7 +229,7 @@ export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: I
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Lightbulb className="h-5 w-5 text-primary" />
-          <h3 className="text-lg font-semibold">Partner Insights</h3>
+          <h3 className="text-lg font-semibold">Partners and Referrals Insights</h3>
           <Badge variant="secondary" className="text-xs">{insights.length}</Badge>
         </div>
         <div className="flex items-center gap-2">
