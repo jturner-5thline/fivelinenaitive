@@ -15672,6 +15672,7 @@ export type Database = {
           promoted_to_partner_id: string | null
           relationship_owner_id: string | null
           source_type: string | null
+          tier: string | null
           type: string
           updated_at: string
           user_id: string | null
@@ -15691,6 +15692,7 @@ export type Database = {
           promoted_to_partner_id?: string | null
           relationship_owner_id?: string | null
           source_type?: string | null
+          tier?: string | null
           type?: string
           updated_at?: string
           user_id?: string | null
@@ -15710,6 +15712,7 @@ export type Database = {
           promoted_to_partner_id?: string | null
           relationship_owner_id?: string | null
           source_type?: string | null
+          tier?: string | null
           type?: string
           updated_at?: string
           user_id?: string | null

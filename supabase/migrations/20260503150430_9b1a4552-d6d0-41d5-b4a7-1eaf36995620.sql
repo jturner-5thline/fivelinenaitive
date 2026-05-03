@@ -1,0 +1,2 @@
+ALTER TABLE public.referral_sources ADD COLUMN IF NOT EXISTS tier text;
+ALTER TABLE public.referral_sources ADD CONSTRAINT referral_sources_tier_check CHECK (tier IS NULL OR tier IN ('Tier 1','Tier 2','Tier 3'));
