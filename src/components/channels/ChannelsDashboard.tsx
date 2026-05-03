@@ -12,7 +12,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import { liquidGlassCard, liquidGlassKPI } from '@/components/metrics/liquidGlass';
+import {
+  liquidGlassCard,
+  liquidGlassKPI,
+  LIQUID_GLASS_SERIES,
+  INSIGHTS_TOOLTIP_STYLE,
+  INSIGHTS_AXIS_TICK,
+  INSIGHTS_BAR_RADIUS,
+} from '@/components/metrics/liquidGlass';
 
 // ── Constants ──
 const TIME_PRESETS: { value: ChannelTimePeriod; label: string; short: string }[] = [
@@ -37,11 +44,13 @@ const STAGE_LABELS: Record<string, string> = {
   fundedInvoiced: 'Funded / Invoiced',
 };
 
+// Series colors come from the shared Insights palette so charts here match
+// the Insights page exactly.
 const SERIES_COLORS = {
-  added: 'hsl(263, 70%, 58%)',
-  proposalIssued: 'hsl(280, 65%, 55%)',
-  finalCreditItems: 'hsl(38, 92%, 55%)',
-  fundedInvoiced: 'hsl(160, 65%, 45%)',
+  added: LIQUID_GLASS_SERIES[0],
+  proposalIssued: LIQUID_GLASS_SERIES[1],
+  finalCreditItems: LIQUID_GLASS_SERIES[2],
+  fundedInvoiced: LIQUID_GLASS_SERIES[3],
 };
 
 type ChartGroupBy = 'channel' | 'source';
@@ -75,20 +84,23 @@ function dealReachedStage(deal: AttributedDeal, stageKey: string): boolean {
 const glassCard = liquidGlassCard;
 const glassCardKPI = liquidGlassKPI;
 
-// ── Tooltip — frosted glass popover ──
+// ── Tooltip — matches Insights tooltip styling ──
 function CustomBarTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-[hsl(260,20%,12%,0.92)] backdrop-blur-2xl border border-[hsl(260,30%,50%,0.15)] ring-1 ring-inset ring-white/[0.04] rounded-xl p-3 shadow-[0_8px_32px_hsl(0,0%,0%,0.5)] text-xs space-y-1">
+    <div
+      className="text-xs space-y-1 p-3"
+      style={INSIGHTS_TOOLTIP_STYLE as React.CSSProperties}
+    >
       <p className="font-medium text-foreground">{label}</p>
       {payload.map((p: any, i: number) => (
         <div key={i} className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full shadow-[0_0_4px_currentColor]" style={{ backgroundColor: p.color, color: p.color }} />
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
           <span className="text-muted-foreground">{p.name}:</span>
-          <span className="font-mono font-medium">{typeof p.value === 'number' && p.value < 1 ? p.value.toFixed(2) : p.value}</span>
+          <span className="font-medium">{typeof p.value === 'number' && p.value < 1 ? p.value.toFixed(2) : p.value}</span>
         </div>
       ))}
-      <p className="text-[9px] text-muted-foreground/50 pt-1 border-t border-white/[0.06]">Click bar to see deals</p>
+      <p className="text-[10px] text-muted-foreground pt-1 border-t border-border">Click bar to see deals</p>
     </div>
   );
 }
