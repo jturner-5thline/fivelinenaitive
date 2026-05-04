@@ -11,6 +11,7 @@ import {
   TrendingDown,
   Save,
   CalendarClock,
+  Lock,
 } from 'lucide-react';
 import {
   Dialog,
@@ -46,6 +47,7 @@ import {
   type FrequencyType,
   type FlowType,
 } from './scheduledCashFlows';
+import type { CreditFacility } from './types';
 
 interface Props {
   open: boolean;
@@ -55,6 +57,10 @@ interface Props {
   extraCashInCategories?: string[];
   /** Extra user-defined Cash-Out category labels to append to the dropdown. */
   extraCashOutCategories?: string[];
+  /** Configured credit facilities (LOCs). */
+  creditFacilities?: CreditFacility[];
+  /** Persist updated facilities. */
+  onCreditFacilitiesChange?: (next: CreditFacility[]) => void;
   /**
    * `entries` are the rows to persist (existing rows are matched by `id`,
    * new rows have empty `id`). `deleteIds` is the explicit list of ids the
