@@ -81,6 +81,10 @@ export function PolishWithAiDialog({
       const out = (data as { polished?: string; error?: string } | null);
       if (!out || out.error) throw new Error(out?.error || 'Polish failed');
       setPolished(out.polished ?? '');
+      try {
+        const { logUsage } = await import('@/lib/usageLogger');
+        logUsage({ feature_type: 'EMAIL_DRAFT', feature_subtype: 'polished' });
+      } catch { /* ignore */ }
     } catch (e: any) {
       const msg = e?.message || 'Failed to polish draft';
       setError(msg);
