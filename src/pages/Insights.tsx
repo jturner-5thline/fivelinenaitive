@@ -1558,17 +1558,18 @@ export default function Metrics() {
   // Unified layout IDs: snapshot cards + section blocks + custom widgets in ONE grid.
   // Section blocks are full-width tiles in the same grid so users can drag any
   // widget across, above, below, or between sections in edit mode.
-  const SNAPSHOT_SECTION_IDS: import('@/components/metrics/dashboards/ManagementSnapshotDashboard').ManagementSnapshotSectionId[] = [
-    'revenue-overview', 'pipeline-metrics', 'signed-deals-ar', 'profit-by-entity', 'executive-dashboard',
+  const SNAPSHOT_SUB_WIDGET_IDS: import('@/components/metrics/dashboards/ManagementSnapshotDashboard').WeeklyRundownSubWidgetId[] = [
+    'rev-debt','rev-finserv',
+    'pm-deals-on-board','pm-debt-dollar-on-board','pm-debt-deals-signed','pm-debt-dollar-signed','pm-finserv-deals-on-board','pm-finserv-clients-signed',
+    'sd-deals-signed','sd-finserv-clients-signed','sd-outstanding-ar',
+    'pe-debt-profit','pe-finserv-profit',
   ];
-  const visibleSectionIds = useMemo(
-    () => SNAPSHOT_SECTION_IDS.filter(id => !hiddenSnapshotSections.includes(id)),
-    [hiddenSnapshotSections],
-  );
+  const includeExec = !hiddenSnapshotSections.includes('executive-dashboard');
   const unifiedLayoutIds = useMemo(() => {
     const widgetIds = widgets.map(w => w.id);
-    return [...SNAPSHOT_CARD_IDS, ...visibleSectionIds, ...widgetIds];
-  }, [widgets, visibleSectionIds]);
+    const subIds = SNAPSHOT_SUB_WIDGET_IDS.filter(id => !(hiddenSnapshotCards as any).includes(id));
+    return [...SNAPSHOT_CARD_IDS, ...subIds, ...(includeExec ? ['executive-dashboard'] : []), ...widgetIds];
+  }, [widgets, hiddenSnapshotCards, includeExec]);
 
   // Default placement: KPI tiles top, then sections stacked full-width below.
   const unifiedLayoutDefaults = useMemo(() => {
@@ -1584,12 +1585,21 @@ export default function Metrics() {
       { i: 'outstanding-ar',       x: 8, y: 7,  w: 4, h: 2, minW: 3, minH: 2 },
       { i: 'debt-profit',          x: 0, y: 9,  w: 6, h: 3, minW: 3, minH: 3 },
       { i: 'finserv-profit',       x: 6, y: 9,  w: 6, h: 3, minW: 3, minH: 3 },
-      // Sections — full width, stacked below
-      { i: 'revenue-overview',     x: 0, y: 12, w: 12, h: 7, minW: 6, minH: 5 },
-      { i: 'pipeline-metrics',     x: 0, y: 19, w: 12, h: 7, minW: 6, minH: 5 },
-      { i: 'signed-deals-ar',      x: 0, y: 26, w: 12, h: 7, minW: 6, minH: 5 },
-      { i: 'profit-by-entity',     x: 0, y: 33, w: 12, h: 7, minW: 6, minH: 5 },
-      { i: 'executive-dashboard',  x: 0, y: 40, w: 12, h: 10, minW: 8, minH: 8 },
+      // Sub-widgets — placed grouped by their original section
+      { i: 'rev-debt',                  x: 0, y: 12, w: 6, h: 6, minW: 4, minH: 4 },
+      { i: 'rev-finserv',               x: 6, y: 12, w: 6, h: 6, minW: 4, minH: 4 },
+      { i: 'pm-deals-on-board',         x: 0, y: 18, w: 2, h: 2, minW: 2, minH: 2 },
+      { i: 'pm-debt-dollar-on-board',   x: 2, y: 18, w: 2, h: 2, minW: 2, minH: 2 },
+      { i: 'pm-debt-deals-signed',      x: 4, y: 18, w: 2, h: 2, minW: 2, minH: 2 },
+      { i: 'pm-debt-dollar-signed',     x: 6, y: 18, w: 2, h: 2, minW: 2, minH: 2 },
+      { i: 'pm-finserv-deals-on-board', x: 8, y: 18, w: 2, h: 2, minW: 2, minH: 2 },
+      { i: 'pm-finserv-clients-signed', x: 10, y: 18, w: 2, h: 2, minW: 2, minH: 2 },
+      { i: 'sd-deals-signed',           x: 0, y: 20, w: 4, h: 6, minW: 4, minH: 4 },
+      { i: 'sd-finserv-clients-signed', x: 4, y: 20, w: 4, h: 6, minW: 4, minH: 4 },
+      { i: 'sd-outstanding-ar',         x: 8, y: 20, w: 4, h: 6, minW: 3, minH: 4 },
+      { i: 'pe-debt-profit',            x: 0, y: 26, w: 6, h: 6, minW: 4, minH: 4 },
+      { i: 'pe-finserv-profit',         x: 6, y: 26, w: 6, h: 6, minW: 4, minH: 4 },
+      { i: 'executive-dashboard',       x: 0, y: 32, w: 12, h: 10, minW: 8, minH: 8 },
     ];
     return defaults;
   }, []);
