@@ -197,6 +197,36 @@ serve(async (req) => {
       return aBigrams.size + bBigrams.size === 0 ? 0 : (2 * intersection) / (aBigrams.size + bBigrams.size);
     }
 
+    // Build domain index for participants → CRM company / contact / lender
+    const crmCompanyByDomain: Record<string, any> = {};
+    (crmCompanies || []).forEach((c: any) => {
+      const ds: string[] = [];
+      if (c.primary_domain) ds.push(c.primary_domain);
+      if (Array.isArray(c.domains)) ds.push(...c.domains);
+      ds.forEach(d => {
+        const k = String(d || "").toLowerCase().trim();
+        if (k && !INTERNAL_DOMAINS.has(k)) crmCompanyByDomain[k] = c;
+      });
+    });
+    const contactByEmail: Record<string, any> = {};
+    const contactByDomain: Record<string, any[]> = {};
+    (contacts || []).forEach((c: any) => {
+      if (c.email) {
+        const e = c.email.toLowerCase();
+        contactByEmail[e] = c;
+        const dom = e.split("@")[1];
+        if (dom && !INTERNAL_DOMAINS.has(dom)) {
+          (contactByDomain[dom] = contactByDomain[dom] || []).push(c);
+        }
+      }
+    });
+
+    // Map crm_company_id → deals (for cross-linking domain matches to deals)
+    const dealsByCrmCompany: Record<string, any[]> = {};
+    (deals || []).forEach((d: any) => {
+      // We don't have crm_company_id on deal here, so skip; we still match by name
+    });
+
     // Deterministic scoring for each meeting-deal pair
     function scoreDeal(meeting: any, deal: any, meetingParticipants: any[]): { score: number; reasons: string[] } {
       let score = 0;
@@ -204,25 +234,68 @@ serve(async (req) => {
       const titleLower = (meeting.title || "").toLowerCase();
       const dealNameLower = (deal.company || "").toLowerCase();
 
-      // Title matching
-      if (titleLower.includes(dealNameLower) && dealNameLower.length > 2) {
-        score += 40;
-        reasons.push(`Title contains deal name "${deal.company}"`);
+      // Title matching: exact substring → strong; normalized substring → strong; token overlap → medium; dice → weak
+      const cleanTitle = normalizeTitle(meeting.title || "");
+      const cleanDeal = normalizeTitle(deal.company || "");
+      if (dealNameLower.length > 2 && titleLower.includes(dealNameLower)) {
+        score += 55;
+        reasons.push(`Title contains "${deal.company}"`);
+      } else if (cleanDeal.length > 2 && cleanTitle.includes(cleanDeal)) {
+        score += 50;
+        reasons.push(`Title contains "${deal.company}" (after stripping prefixes)`);
       } else {
-        const dice = diceCoefficient(titleLower, dealNameLower);
-        if (dice >= 0.6) {
-          score += Math.round(dice * 30);
-          reasons.push(`Title similar to deal name (${Math.round(dice * 100)}% match)`);
+        const { overlap, tokens } = tokenOverlap(meeting.title || "", deal.company || "");
+        if (overlap >= 2) {
+          score += 40 + Math.min(overlap * 5, 20);
+          reasons.push(`Title shares words [${tokens.join(", ")}] with "${deal.company}"`);
+        } else if (overlap === 1 && tokens[0].length >= 5) {
+          score += 22;
+          reasons.push(`Title shares "${tokens[0]}" with "${deal.company}"`);
+        } else {
+          const dice = diceCoefficient(cleanTitle, cleanDeal);
+          if (dice >= 0.55) {
+            score += Math.round(dice * 30);
+            reasons.push(`Title similar to "${deal.company}" (${Math.round(dice * 100)}%)`);
+          }
         }
       }
 
-      // Alias matching
+      // Alias matching (substring + token overlap)
       const dealAliases = aliasMap[deal.id] || [];
       for (const alias of dealAliases) {
-        if (titleLower.includes(alias) && alias.length > 2) {
-          score += 35;
+        if (alias.length <= 2) continue;
+        if (titleLower.includes(alias) || cleanTitle.includes(alias)) {
+          score += 45;
           reasons.push(`Title matches deal alias "${alias}"`);
           break;
+        }
+        const { overlap, tokens } = tokenOverlap(meeting.title || "", alias);
+        if (overlap >= 2) {
+          score += 30;
+          reasons.push(`Title shares words [${tokens.join(", ")}] with alias "${alias}"`);
+          break;
+        }
+      }
+
+      // Lender matching: any participant domain matches a lender on this deal (by name)
+      const lenders = lenderMap[deal.id] || [];
+      for (const participant of meetingParticipants) {
+        if (participant.is_internal) continue;
+        const pDomain = (participant.domain || "").toLowerCase();
+        const pDomainCore = pDomain.replace(/\.(com|io|co|net|org|ai|us|uk)$/i, "").replace(/[^a-z0-9]/g, "");
+        for (const lender of lenders) {
+          if (!lender.name) continue;
+          const lenderCore = lender.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+          if (pDomainCore && lenderCore.length > 3 && (pDomainCore.includes(lenderCore) || lenderCore.includes(pDomainCore))) {
+            score += 35;
+            reasons.push(`Attendee domain @${pDomain} matches lender "${lender.name}"`);
+          }
+          // Token overlap with lender name in title
+          const { overlap } = tokenOverlap(meeting.title || "", lender.name);
+          if (overlap >= 2) {
+            score += 20;
+            reasons.push(`Title mentions lender "${lender.name}"`);
+          }
         }
       }
 
