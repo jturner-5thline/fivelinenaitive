@@ -16,6 +16,13 @@ const formatCurrency = (value: number) => {
   return `$${value.toFixed(0)}`;
 };
 
+/** Combined-widget formatter: shows millions as "MM" per requested format. */
+const formatCurrencyMM = (value: number) => {
+  if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}MM`;
+  if (Math.abs(value) >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
+  return `$${value.toFixed(0)}`;
+};
+
 const formatCurrencyFull = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 });
 
@@ -234,6 +241,107 @@ export function PipelineMetricWidget({
   return (
     <div className="h-full">
       <MetricKPICard config={card} onClick={() => setDrilldown({ title: card.drilldownTitle, deals: card.deals })} />
+      <PipelineDrilldownModal
+        open={!!drilldown}
+        onClose={() => setDrilldown(null)}
+        title={drilldown?.title ?? ''}
+        deals={drilldown?.deals ?? []}
+      />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Combined Pipeline Metric tile — shows deal count AND dollar volume side-by-side.
+// ---------------------------------------------------------------------------
+export type CombinedPipelineMetricId = 'debt-on-board-combined' | 'debt-signed-combined';
+
+export const COMBINED_PIPELINE_METRIC_LABELS: Record<CombinedPipelineMetricId, string> = {
+  'debt-on-board-combined': 'Deals on the Board',
+  'debt-signed-combined': 'Deals Signed',
+};
+
+export function CombinedPipelineMetricWidget({
+  cardId,
+  selectedQuarter,
+}: {
+  cardId: CombinedPipelineMetricId;
+  selectedQuarter: import('@/hooks/useQBQuarterlyRevenue').QuarterOption;
+}) {
+  const metrics = usePipelineStageMetrics(selectedQuarter);
+  const [drilldown, setDrilldown] = useState<{ title: string; deals: StageEntryDeal[] } | null>(null);
+
+  const config = (() => {
+    if (cardId === 'debt-on-board-combined') {
+      return {
+        title: 'Deals on the Board',
+        icon: Users,
+        color: 'hsl(var(--primary))',
+        count: metrics.dealsOnBoard.count,
+        dollars: metrics.debtDollarOnBoard.dollarVolume,
+        isLoading: metrics.dealsOnBoard.isLoading || metrics.debtDollarOnBoard.isLoading,
+        deals: metrics.debtDollarOnBoard.deals,
+        drilldownTitle: 'Deals on the Board — Active Pipeline',
+      };
+    }
+    return {
+      title: 'Deals Signed',
+      icon: FileCheck,
+      color: 'hsl(var(--chart-3))',
+      count: metrics.debtDealsSigned.count,
+      dollars: metrics.debtDollarSigned.dollarVolume,
+      isLoading: metrics.debtDealsSigned.isLoading || metrics.debtDollarSigned.isLoading,
+      deals: metrics.debtDealsSigned.deals,
+      drilldownTitle: 'Debt Deals Signed — Final Credit Items',
+    };
+  })();
+
+  const Icon = config.icon;
+
+  return (
+    <div className="h-full">
+      <Card
+        onClick={() => setDrilldown({ title: config.drilldownTitle, deals: config.deals })}
+        className={cn(
+          'relative group cursor-pointer overflow-hidden transition-all duration-200 h-full',
+          'glass-module',
+          'hover:border-primary/40 hover:-translate-y-0.5',
+          'hover:shadow-[0_0_20px_hsl(var(--primary)/0.1),0_8px_32px_hsl(0,0%,0%,0.4)]',
+        )}
+      >
+        <div
+          className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
+          style={{ background: `linear-gradient(90deg, ${config.color}, transparent)` }}
+        />
+        <CardContent className="flex items-center gap-4 p-4 h-full">
+          <div
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border/20"
+            style={{ background: `linear-gradient(135deg, ${config.color}20, transparent)` }}
+          >
+            <Icon className="h-5 w-5" style={{ color: config.color }} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium truncate">
+              {config.title}
+            </p>
+            <div className="flex items-baseline gap-2 mt-1">
+              {config.isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              ) : (
+                <>
+                  <span className="text-xl font-bold font-mono tabular-nums text-foreground">
+                    {config.count} <span className="text-xs font-medium text-muted-foreground">Deal{config.count === 1 ? '' : 's'}</span>
+                  </span>
+                  <span className="text-muted-foreground/60 font-light">|</span>
+                  <span className="text-xl font-bold font-mono tabular-nums text-foreground">
+                    {formatCurrencyMM(config.dollars)}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       <PipelineDrilldownModal
         open={!!drilldown}
         onClose={() => setDrilldown(null)}
