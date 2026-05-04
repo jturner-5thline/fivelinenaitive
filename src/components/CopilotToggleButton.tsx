@@ -62,6 +62,10 @@ export function CopilotToggleButton() {
   const togglePanel = useCopilotStore((s) => s.togglePanel);
   const openPanelWithPrompt = useCopilotStore((s) => s.openPanelWithPrompt);
   const isOpen = useCopilotStore((s) => s.isOpen);
+  const isMinimized = useCopilotStore((s) => s.isMinimized);
+  const expandPanel = useCopilotStore((s) => s.expandPanel);
+  const isProcessing = useCopilotStore((s) => s.isProcessing);
+  const unreadCount = useCopilotStore((s) => s.unreadCount);
   const hasOpenModal = useAnyDialogOpen();
   const [value, setValue] = useState('');
   const [focused, setFocused] = useState(false);
