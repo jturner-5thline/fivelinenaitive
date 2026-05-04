@@ -24,6 +24,7 @@ import { useDealProjectedCashFlows } from './useDealProjectedCashFlows';
 import { useCustomCashFlowRows } from './useCustomCashFlowRows';
 import { mergeScheduledIntoWeekly, ACCOUNT_OPTIONS, resolveCategoryToGridRow, DEBT_ADVISORY_DEFAULT_SUBCATEGORY, generateOccurrences, applyVariance, gridRowToCanonicalCategory, type ScheduledCashFlow } from './scheduledCashFlows';
 import { WEEKLY_HISTORICAL_SEED, LAST_HISTORICAL_WEEK_ENDING } from './weeklyHistoricalSeed';
+import { computeFacilityWeekStates, totalAvailableLocForWeek } from './creditFacilities';
 import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -655,6 +656,52 @@ export function CashFlowManager() {
     [rawWeekly, zeroedWeeklyShell, filteredScheduledItems, isConfigureFilterActive],
   );
 
+  // Overlay Line of Credit availability onto the weekly data:
+  //   - "Add'l Liquidity (Delayed Draw)" reflects total available LOC per week
+  //   - Per-facility availability stashed under __loc_facilities for sub-rows
+  //   - TOTAL CASH ON HAND recomputed = ENDING CASH + addl
+  // Historical (locked) weeks are left alone.
+  const weeklyWithLoc = useMemo<WeeklyData>(() => {
+    if (!creditFacilities || creditFacilities.length === 0) return weeklyWithScheduled;
+    const sortedKeys = Object.keys(weeklyWithScheduled).sort();
+    if (sortedKeys.length === 0) return weeklyWithScheduled;
+    const weekEndingByKey: Record<string, string> = {};
+    for (const k of sortedKeys) {
+      const we = (weeklyWithScheduled[k] as any)?.week_ending;
+      weekEndingByKey[k] = typeof we === 'string' ? we : k;
+    }
+    const states = computeFacilityWeekStates(
+      creditFacilities,
+      filteredScheduledItems || [],
+      sortedKeys,
+      weekEndingByKey,
+    );
+    const out: WeeklyData = {};
+    for (const k of sortedKeys) {
+      const target = { ...(weeklyWithScheduled[k] as any) };
+      const weekEnding = weekEndingByKey[k];
+      const isHistorical = weekEnding <= LAST_HISTORICAL_WEEK_ENDING;
+      const perFacility: Record<string, { name: string; available: number; drawn: number; active: boolean }> = {};
+      let totalAvail = 0;
+      for (const f of creditFacilities) {
+        const s = states[f.id]?.[k];
+        if (!s) continue;
+        perFacility[f.id] = { name: f.name, available: s.available, drawn: s.drawn, active: s.active };
+        if (s.active) totalAvail += s.available;
+      }
+      target.__loc_facilities = perFacility;
+      if (!isHistorical) {
+        target["Add'l Liquidity (Delayed Draw)"] = totalAvail;
+        const addlLegacy = totalAvail;
+        const addlNew = Number(target['Addl Liquidity Chase Tax Reserve MT Chk']) || 0;
+        const ec = Number(target['ENDING CASH']) || 0;
+        target['TOTAL CASH ON HAND'] = Math.round(ec + addlLegacy + addlNew);
+      }
+      out[k] = target;
+    }
+    return out;
+  }, [weeklyWithScheduled, creditFacilities, filteredScheduledItems]);
+
   const rawSidebar = useMemo(() => normalizeSidebarData(role === 'viewer' && sandboxSidebar ? sandboxSidebar : sidebarData), [role, sandboxSidebar, sidebarData]);
 
   // Sum of all Configure-modal Cash-In entries with occurrences in the next 8 weeks (today → +56 days).
@@ -696,7 +743,7 @@ export function CashFlowManager() {
 
   // Filtered data using debounced values
   const filteredDaily = useMemo(() => filterDailyByPeriod(rawDaily, debouncedYears, debouncedQuarters), [rawDaily, debouncedYears, debouncedQuarters]);
-  const filteredWeekly = useMemo(() => filterWeeklyByPeriod(weeklyWithScheduled, debouncedYears, debouncedQuarters), [weeklyWithScheduled, debouncedYears, debouncedQuarters]);
+  const filteredWeekly = useMemo(() => filterWeeklyByPeriod(weeklyWithLoc, debouncedYears, debouncedQuarters), [weeklyWithLoc, debouncedYears, debouncedQuarters]);
 
   const setActiveData = useCallback((setter: 'daily' | 'sidebar', updater: (prev: any) => any) => {
     if (role === 'viewer') {

@@ -1,5 +1,5 @@
 import { useState, useEffect, memo, useCallback, useRef, useMemo } from 'react';
-import { ChevronDown, ChevronRight, MessageSquare, X, Plus, Pencil } from 'lucide-react';
+import { ChevronDown, ChevronRight, MessageSquare, X, Plus, Pencil, Lock } from 'lucide-react';
 import type { WeeklyData, SidebarData, PlanSnapshot, ThemeMode, WeeklyOverrides } from './types';
 import { fmtAbbrev } from './formatters';
 import { WeeklyCharts } from './WeeklyCharts';
@@ -108,6 +108,9 @@ type WeeklyRow = {
   transferAccount?: string;
   isCustom?: boolean;
   isAddRowFooter?: boolean;
+  isLocFacility?: boolean;
+  facilityId?: string;
+  facilityName?: string;
 };
 
 const WEEKLY_ROW_ORDER: Array<WeeklyRow> = [
@@ -392,8 +395,30 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
     const out: WeeklyRow[] = [];
     const extraReceipts = customReceiptRows ?? [];
     const extraDisb = customDisbursementRows ?? [];
+    // Discover all facility ids/names from any visible week.
+    const facilityMeta = new Map<string, string>();
+    for (const [, entry] of (Object.entries(weeklyData || {}) as Array<[string, any]>)) {
+      const fac = entry?.__loc_facilities;
+      if (fac && typeof fac === 'object') {
+        for (const [id, v] of Object.entries(fac as Record<string, { name: string }>)) {
+          if (!facilityMeta.has(id)) facilityMeta.set(id, v?.name || id);
+        }
+      }
+    }
     for (const row of WEEKLY_ROW_ORDER) {
       out.push(row);
+      // Inject one sub-row per configured LOC right after the Add'l Liquidity row
+      if (row.key === "Add'l Liquidity (Delayed Draw)" && facilityMeta.size > 0) {
+        for (const [id, name] of facilityMeta.entries()) {
+          out.push({
+            key: `__loc_${id}`,
+            section: 'position',
+            isLocFacility: true,
+            facilityId: id,
+            facilityName: name,
+          });
+        }
+      }
       // Insert custom receipts + footer right after the last canonical receipts
       // line item ('Other Receipts').
       if (row.key === 'Other Receipts') {
@@ -414,7 +439,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
       }
     }
     return out;
-  }, [customReceiptRows, customDisbursementRows, onAddCustomRow]);
+  }, [customReceiptRows, customDisbursementRows, onAddCustomRow, weeklyData]);
   const closeAddCellPopover = useCallback(() => {
     setAddCellPopover(null);
     setAddCellDraft({ description: '', amount: '', flowType: 'cash_in' });
@@ -907,6 +932,36 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                 const isTotal = rowDef.isTotal;
                 const isParent = rowDef.isParent === true;
                 const isChild = !!rowDef.parent;
+                // LOC facility sub-row — read availability from entry.__loc_facilities
+                if ((rowDef as WeeklyRow).isLocFacility) {
+                  const facId = (rowDef as WeeklyRow).facilityId!;
+                  const facName = (rowDef as WeeklyRow).facilityName || 'Facility';
+                  return (
+                    <tr key={rowDef.key} className="cf-indent cf-subcategory-row">
+                      <td
+                        className="cf-label-col"
+                        style={{ paddingLeft: 32, color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: 6 }}
+                      >
+                        <Lock size={11} className="text-amber-400" aria-label="Line of Credit" />
+                        <span>{facName}</span>
+                      </td>
+                      {visibleWeeks.map(([weekKey, entry]) => {
+                        const fac = (entry as any)?.__loc_facilities?.[facId];
+                        const available = fac?.active ? Number(fac.available) || 0 : 0;
+                        return (
+                          <td
+                            key={weekKey}
+                            className="tabular-nums"
+                            style={{ color: 'hsl(38 92% 60%)' }}
+                            title={fac?.active ? `Available LOC: ${fmtAbbrev(available)}` : 'Outside facility window'}
+                          >
+                            {fac?.active ? fmtAbbrev(available) : '—'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                }
                 const isTransferAccount = (rowDef as WeeklyRow).isTransferAccount === true;
                 const isTransfersParent = isParent && rowDef.key === INTERNAL_TRANSFERS_PARENT_KEY;
                 const isDebtAdvParent = isParent && rowDef.key === DEBT_ADV_PARENT_KEY;
