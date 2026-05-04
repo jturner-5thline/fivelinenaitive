@@ -2225,6 +2225,17 @@ export default function Metrics() {
                     <RotateCcw className="h-4 w-4 mr-2" />
                     Reset Layout
                   </Button>
+                  {(hiddenSnapshotCards.length + hiddenSnapshotSections.length) > 0 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={restoreAllSnapshotHidden}
+                      title="Bring back all widgets and sections you removed"
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Restore Hidden ({hiddenSnapshotCards.length + hiddenSnapshotSections.length})
+                    </Button>
+                  )}
                 </>
               )}
             </div>
