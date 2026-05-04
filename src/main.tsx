@@ -2,6 +2,12 @@ import { createRoot } from "react-dom/client";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import App from "./App.tsx";
 import "./index.css";
+import { markSessionEnd } from "./lib/usageLogger";
+
+// Best-effort session-end log when the tab/window is hidden or closed.
+window.addEventListener("pagehide", () => {
+  try { markSessionEnd(); } catch { /* ignore */ }
+});
 
 const rootEl = document.getElementById("root");
 

@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { logUsage } from '@/lib/usageLogger';
 
 export type DocumentScope = 'all' | 'financial' | 'transcripts' | 'custom';
 
@@ -71,6 +72,11 @@ export function useDealSpaceAI(dealId: string | undefined) {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+      logUsage({
+        feature_type: 'DEAL_SPACE_AI_LOOKUP',
+        deal_id: dealId,
+        metadata: { scope: overrideScope || scope, includeDataRoom },
+      });
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         return;

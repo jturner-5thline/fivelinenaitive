@@ -106,6 +106,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         setIsLoading(false);
 
+        // Mark a usage SESSION_START on any successful auth event (login or restore)
+        if (session?.user) {
+          import("@/lib/usageLogger").then((m) => m.markSessionStart()).catch(() => {});
+        }
+
         // For OAuth logins (Google, etc.), always treat as "remember me"
         // since there's no checkbox shown during OAuth flow
         if (event === 'SIGNED_IN' && session?.user) {

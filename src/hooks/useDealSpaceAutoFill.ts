@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { logUsage } from '@/lib/usageLogger';
 import { DealWriteUpData } from '@/components/deal/DealWriteUp';
 
 export interface SourceReference {
@@ -45,6 +46,16 @@ export function useDealSpaceAutoFill(dealId: string | undefined) {
 
       const fields = data.extractedFields || [];
       setExtractedFields(fields);
+
+      logUsage({
+        feature_type: 'WRITE_UP_GENERATED',
+        feature_subtype: 'ai_autofill',
+        deal_id: dealId,
+        metadata: {
+          field_count: fields.length,
+          document_count: data.documentCount || 0,
+        },
+      });
 
       return {
         extractedFields: fields,

@@ -1064,6 +1064,20 @@ export function useDealsDatabase() {
         triggerWebhookSync(userId, 'deal_lenders', 'INSERT', data as unknown as Record<string, unknown>);
       }
 
+      try {
+        const { logUsage } = await import('@/lib/usageLogger');
+        const existingNames = new Set(
+          (deals.find(d => d.id === dealId)?.lenders || []).map(l => (l.name || '').toLowerCase())
+        );
+        const isResubmission = existingNames.has((data.name || '').toLowerCase());
+        logUsage({
+          feature_type: 'LENDER_SUBMISSION',
+          feature_subtype: isResubmission ? 're_submission' : 'new_submission',
+          deal_id: dealId,
+          metadata: { lender_name: data.name, stage: data.stage },
+        });
+      } catch { /* ignore */ }
+
       return newLender;
     } catch (err) {
       console.error('Error adding lender:', err);

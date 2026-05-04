@@ -424,6 +424,18 @@ export function useGmail() {
       });
 
       if (error) throw error;
+      try {
+        const { logUsage } = await import('@/lib/usageLogger');
+        logUsage({
+          feature_type: 'EMAIL_SENT',
+          feature_subtype: 'via_naitive',
+          metadata: {
+            recipient_count: options.to?.length ?? 0,
+            has_attachments: !!encodedAttachments?.length,
+            is_reply: !!options.replyToMessageId,
+          },
+        });
+      } catch { /* ignore */ }
       return data;
     } catch (err: any) {
       console.error('Gmail send error:', err);

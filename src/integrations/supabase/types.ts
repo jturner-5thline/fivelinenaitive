@@ -17893,6 +17893,51 @@ export type Database = {
           },
         ]
       }
+      usage_events: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          deal_id: string | null
+          duration_ms: number | null
+          feature_subtype: string | null
+          feature_type: string
+          id: string
+          metadata: Json
+          session_id: string | null
+          timestamp: string
+          token_count: number | null
+          user_id: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          duration_ms?: number | null
+          feature_subtype?: string | null
+          feature_type: string
+          id?: string
+          metadata?: Json
+          session_id?: string | null
+          timestamp?: string
+          token_count?: number | null
+          user_id: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          duration_ms?: number | null
+          feature_subtype?: string | null
+          feature_type?: string
+          id?: string
+          metadata?: Json
+          session_id?: string | null
+          timestamp?: string
+          token_count?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_behavior_insights: {
         Row: {
           category: string

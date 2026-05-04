@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { logUsage } from "@/lib/usageLogger";
 
 export interface ClaudeMessage {
   role: "user" | "assistant";
@@ -11,6 +12,12 @@ export interface ClaudeRequestOptions {
   temperature?: number;
   max_tokens?: number;
   context?: "chat" | "financial-analysis" | "agent" | "workflow" | "deal-assistant";
+  /** Optional usage-logging hints. Not sent to the AI. */
+  usage?: {
+    feature_subtype?: string;
+    deal_id?: string | null;
+    skip?: boolean;
+  };
 }
 
 export interface ClaudeResponse {
@@ -38,6 +45,8 @@ export async function sendClaudeMessage(
   { retries = MAX_RETRIES, timeoutMs = CLAUDE_TIMEOUT_MS } = {}
 ): Promise<ClaudeResponse> {
   let lastError: string = "Unknown error";
+  const startedAt = Date.now();
+  const { usage: usageHint, ...edgeOptions } = options;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -45,7 +54,7 @@ export async function sendClaudeMessage(
       const timer = setTimeout(() => controller.abort(), timeoutMs);
 
       const { data, error } = await supabase.functions.invoke("claude-ai", {
-        body: options,
+        body: edgeOptions,
       });
 
       clearTimeout(timer);
@@ -92,6 +101,22 @@ export async function sendClaudeMessage(
         }
 
         return result;
+      }
+
+      if (!usageHint?.skip) {
+        const subtype =
+          usageHint?.feature_subtype ||
+          (options.context === "deal-assistant" ? "deal_query" : "general");
+        const tokens =
+          (result.usage?.input_tokens ?? 0) + (result.usage?.output_tokens ?? 0);
+        logUsage({
+          feature_type: "AI_CHAT",
+          feature_subtype: subtype,
+          deal_id: usageHint?.deal_id ?? null,
+          token_count: tokens || null,
+          duration_ms: Date.now() - startedAt,
+          metadata: { model: result.model, context: options.context ?? null },
+        });
       }
 
       return result;
