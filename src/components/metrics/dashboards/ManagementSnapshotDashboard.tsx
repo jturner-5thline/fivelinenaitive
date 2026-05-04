@@ -692,6 +692,11 @@ export function ManagementSnapshotDashboard({
           >
             {visibleCards.map(({ cardId, props }) => (
               <div key={cardId} className="relative group">
+                {isEditMode && (
+                  <div className="widget-drag-handle absolute top-1.5 left-1.5 z-20 cursor-grab active:cursor-grabbing flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-background/70 backdrop-blur border border-border/50 opacity-70 hover:opacity-100 transition-opacity">
+                    <GripVertical className="h-3 w-3 text-muted-foreground" />
+                  </div>
+                )}
                 {/* Edit & delete chrome */}
                 {(onEditCard || (isEditMode && onDeleteCard)) && (
                   <div className="absolute top-1.5 right-1.5 z-20 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
