@@ -72,6 +72,51 @@ export function CopilotToggleButton() {
   const { deals } = useDealsContext();
   const { lenders } = useLenders();
 
+  // ── Persisted bar width ────────────────────────────────────────────────
+  // The user can drag the left edge of the bar to resize it. The pixel
+  // width is persisted to localStorage so the layout stays consistent
+  // across sessions and routes.
+  const BAR_WIDTH_KEY = 'naitive:bar-width';
+  const BAR_WIDTH_MIN = 280;
+  const BAR_WIDTH_MAX = 960;
+  const BAR_WIDTH_DEFAULT = 432;
+  const [barWidth, setBarWidth] = useState<number>(() => {
+    if (typeof window === 'undefined') return BAR_WIDTH_DEFAULT;
+    const raw = window.localStorage.getItem(BAR_WIDTH_KEY);
+    const parsed = raw ? parseInt(raw, 10) : NaN;
+    if (!Number.isFinite(parsed)) return BAR_WIDTH_DEFAULT;
+    return Math.min(BAR_WIDTH_MAX, Math.max(BAR_WIDTH_MIN, parsed));
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem(BAR_WIDTH_KEY, String(Math.round(barWidth))); } catch {}
+  }, [barWidth]);
+
+  const resizingRef = useRef<{ startX: number; startW: number } | null>(null);
+  const onResizeStart = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    resizingRef.current = { startX: e.clientX, startW: barWidth };
+    const onMove = (ev: PointerEvent) => {
+      const s = resizingRef.current;
+      if (!s) return;
+      // Dragging the LEFT handle outward (left) grows the bar; because
+      // the bar is centered, we grow by 2x the delta to keep the right
+      // edge symmetric.
+      const delta = s.startX - ev.clientX;
+      const next = Math.min(BAR_WIDTH_MAX, Math.max(BAR_WIDTH_MIN, s.startW + delta * 2));
+      setBarWidth(next);
+    };
+    const onUp = () => {
+      resizingRef.current = null;
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+  const onResizeDoubleClick = () => setBarWidth(BAR_WIDTH_DEFAULT);
+
   // ── Debug centering overlay ────────────────────────────────────────────
   // Toggle with Shift+Ctrl+D / Shift+Cmd+D. Draws the main content's
   // center line, the bar's center line, and the pixel delta so we can
