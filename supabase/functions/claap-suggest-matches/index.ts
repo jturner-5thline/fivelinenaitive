@@ -140,7 +140,52 @@ serve(async (req) => {
       }
     });
 
-    // Helper: Dice coefficient
+    // ===== Helpers =====
+    const COMMON_PREFIXES = [
+      "fw:", "fwd:", "re:", "call with", "meeting with", "sync with",
+      "intro:", "intro with", "catch up:", "catch up with", "catchup with",
+      "discussion with", "chat with", "interview with", "kickoff:",
+      "kickoff with", "follow up:", "follow up with", "followup with",
+      "weekly", "monthly", "quarterly", "1:1", "1-1", "external",
+    ];
+    const STOPWORDS = new Set([
+      "the","a","an","and","or","of","to","for","with","on","in","at","by",
+      "call","meeting","sync","intro","catch","up","chat","discussion",
+      "kickoff","followup","follow","review","weekly","monthly","quarterly",
+      "external","internal","fw","fwd","re","draft","copy","new","old",
+      "5thline","5th","line","naitive","financing","diligence","dd",
+      "project","deal","company","lender","update","status","check","in",
+      "vs","via","amp","et","is","this","that","these","those","be","do",
+    ]);
+    const INTERNAL_DOMAINS = new Set(["5thline.co", "naitive.co", "gmail.com", "outlook.com", "yahoo.com", "hotmail.com", "icloud.com"]);
+
+    function normalizeTitle(s: string): string {
+      let t = (s || "").toLowerCase().trim();
+      // Strip leading prefixes repeatedly
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const p of COMMON_PREFIXES) {
+          if (t.startsWith(p)) { t = t.slice(p.length).trim(); changed = true; break; }
+        }
+      }
+      // Strip "<deal> <> <something>" -> keep both sides
+      t = t.replace(/[<>|·•\-—–:|]+/g, " ");
+      t = t.replace(/\s+/g, " ").trim();
+      return t;
+    }
+    function tokenize(s: string): string[] {
+      return normalizeTitle(s)
+        .split(/[^a-z0-9]+/)
+        .filter(w => w && w.length >= 3 && !STOPWORDS.has(w));
+    }
+    function tokenOverlap(a: string, b: string): { overlap: number; tokens: string[] } {
+      const A = new Set(tokenize(a));
+      const B = new Set(tokenize(b));
+      const matched: string[] = [];
+      for (const t of A) if (B.has(t)) matched.push(t);
+      return { overlap: matched.length, tokens: matched };
+    }
     function diceCoefficient(a: string, b: string): number {
       if (!a || !b) return 0;
       const aBigrams = new Set<string>();
