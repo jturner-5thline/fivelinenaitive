@@ -787,7 +787,9 @@ export function ManagementSnapshotDashboard({
                 )}
               </>
             )}
-            {subWidgetRenderers[id]}
+            <div className={cn('h-full', isEditMode && 'pointer-events-none')}>
+              {subWidgetRenderers[id]}
+            </div>
               </div>
             ))}
             {includeExec && (
