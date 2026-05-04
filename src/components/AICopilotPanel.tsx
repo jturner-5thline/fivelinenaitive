@@ -1006,6 +1006,12 @@ export function AICopilotPanel() {
   const panelWidth = isMobile
     ? Math.max(0, mainWidth - 16)
     : Math.min(barWidthPref, Math.max(280, mainWidth - 32));
+  // Ask bar surface tone (matches CopilotToggleButton's bar background).
+  // Used as the bottom stop of the panel gradient + as a reference for the
+  // border so the popup and the bar feel like a single coordinated dock.
+  const BAR_SURFACE = 'rgba(14, 16, 24, 0.92)';
+  const PANEL_TOP = 'rgba(12, 14, 22, 0.97)';
+  const BORDER_TONE = 'rgba(255, 255, 255, 0.18)';
   const bottomFromViewport = Math.max(8, (window.innerHeight - mainBottom) + BAR_OFFSET + BAR_HEIGHT + GAP);
   const availableHeight = Math.max(280, mainBottom - BAR_OFFSET - BAR_HEIGHT - GAP - 16);
   const panelHeight = isMobile
@@ -1033,7 +1039,10 @@ export function AICopilotPanel() {
           display: 'flex', flexDirection: 'column',
           // Mostly opaque neutral surface — same family as the Ask bar below,
           // just a touch denser so the popup reads as elevated above it.
-          background: 'rgba(12, 14, 22, 0.97)',
+          // Vertical gradient: starts at the popup surface near the top and
+          // gradually fades toward the Ask bar tone at the bottom so the two
+          // surfaces feel like one coordinated dock.
+          background: `linear-gradient(180deg, ${PANEL_TOP} 0%, ${PANEL_TOP} 55%, ${BAR_SURFACE} 100%)`,
           // Greatly reduced glassmorphism — keep a hint of saturation only.
           backdropFilter: 'saturate(1.2)',
           WebkitBackdropFilter: 'saturate(1.2)',
@@ -1043,8 +1052,9 @@ export function AICopilotPanel() {
           borderTopRightRadius: 18,
           borderBottomLeftRadius: 12,
           borderBottomRightRadius: 12,
-          // Same border tone as the Ask bar.
-          border: '1px solid rgba(255, 255, 255, 0.18)',
+          // Same border tone on all four edges so the popup feels fully
+          // framed — bottom edge matches the top in thickness/opacity.
+          border: `1px solid ${BORDER_TONE}`,
           boxShadow:
             '0 12px 36px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
           overflow: 'hidden',
