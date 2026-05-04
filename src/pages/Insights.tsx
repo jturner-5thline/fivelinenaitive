@@ -1483,6 +1483,28 @@ export default function Metrics() {
     saveHiddenSnapshotCards({ items: newVal });
   };
 
+  // Persisted hidden Weekly Rundown sections (Revenue Overview, Pipeline
+  // Metrics, etc.). Soft-delete via this list — never destroys the section
+  // implementations themselves.
+  const {
+    config: hiddenSnapshotSectionsConfig,
+    saveConfig: saveHiddenSnapshotSections,
+  } = useCompanyDashboardConfig<{ items: import('@/components/metrics/dashboards/ManagementSnapshotDashboard').ManagementSnapshotSectionId[] }>(
+    'hidden_snapshot_sections',
+    { items: [] },
+    { allowAllMembers: true },
+  );
+  const hiddenSnapshotSections = hiddenSnapshotSectionsConfig.items;
+  const handleDeleteSnapshotSection = (sectionId: import('@/components/metrics/dashboards/ManagementSnapshotDashboard').ManagementSnapshotSectionId) => {
+    if (!window.confirm('Remove this section from the dashboard? You can restore it later from the layout menu.')) return;
+    if (hiddenSnapshotSections.includes(sectionId)) return;
+    saveHiddenSnapshotSections({ items: [...hiddenSnapshotSections, sectionId] });
+  };
+  const restoreAllSnapshotHidden = () => {
+    saveHiddenSnapshotCards({ items: [] });
+    saveHiddenSnapshotSections({ items: [] });
+  };
+
   const SNAPSHOT_CARD_IDS: EditableManagementSnapshotCardId[] = [
     'debt-revenue', 'finserv-revenue', 'total-revenue', 'total-revenue-detail',
     'revenue-by-month',
@@ -2203,6 +2225,17 @@ export default function Metrics() {
                     <RotateCcw className="h-4 w-4 mr-2" />
                     Reset Layout
                   </Button>
+                  {(hiddenSnapshotCards.length + hiddenSnapshotSections.length) > 0 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={restoreAllSnapshotHidden}
+                      title="Bring back all widgets and sections you removed"
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Restore Hidden ({hiddenSnapshotCards.length + hiddenSnapshotSections.length})
+                    </Button>
+                  )}
                 </>
               )}
             </div>
@@ -2219,6 +2252,8 @@ export default function Metrics() {
                       onEditCard={handleEditManagementSnapshotCard}
                       onDeleteCard={handleDeleteManagementSnapshotCard}
                       hiddenCards={hiddenSnapshotCards}
+                      hiddenSections={hiddenSnapshotSections}
+                      onDeleteSection={handleDeleteSnapshotSection}
                       onTimeWindowChange={(cardId, window) => {
                         setManagementSnapshotCards(prev => {
                           const card = prev[cardId];

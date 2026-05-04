@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Lock, Pencil, ChevronDown, Loader2, Trash2, TrendingUp } from 'lucide-react';
+import { Calendar, Lock, Pencil, ChevronDown, Loader2, Trash2, TrendingUp, X } from 'lucide-react';
 import { ResponsiveContainer, ComposedChart, BarChart, LineChart, Bar, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid, Cell, ReferenceLine, LabelList } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { Button } from '@/components/ui/button';
@@ -477,6 +477,13 @@ export interface CardSizeOverride {
   h: number;
 }
 
+export type ManagementSnapshotSectionId =
+  | 'revenue-overview'
+  | 'pipeline-metrics'
+  | 'signed-deals-ar'
+  | 'profit-by-entity'
+  | 'executive-dashboard';
+
 interface ManagementSnapshotDashboardProps {
   isEditMode?: boolean;
   onEditCard?: (cardId: EditableManagementSnapshotCardId) => void;
@@ -484,6 +491,8 @@ interface ManagementSnapshotDashboardProps {
   onTimeWindowChange?: (cardId: EditableManagementSnapshotCardId, window: TimeWindow) => void;
   cardConfigs?: Partial<Record<EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig>>;
   hiddenCards?: EditableManagementSnapshotCardId[];
+  hiddenSections?: ManagementSnapshotSectionId[];
+  onDeleteSection?: (sectionId: ManagementSnapshotSectionId) => void;
   gridLayout: GridLayoutItem[];
   onGridLayoutChange: (layout: GridLayoutItem[], immediate?: boolean) => void;
   /** Global dashboard quarter selection */
@@ -510,6 +519,8 @@ export function ManagementSnapshotDashboard({
   quarterOptions,
   children,
   executiveSlot,
+  hiddenSections = [],
+  onDeleteSection,
 }: ManagementSnapshotDashboardProps) {
   const { data: qbStatus } = useQuickBooksStatus();
 
@@ -609,13 +620,14 @@ export function ManagementSnapshotDashboard({
   // Section-level grid: lets the user drag/resize the whole sections
   // (Revenue Overview, Pipeline Metrics, Signed Deals & AR, Profit by Entity,
   // Executive Dashboard) when edit mode is on. Persisted per company.
-  const SECTION_IDS = [
+  const ALL_SECTION_IDS: ManagementSnapshotSectionId[] = [
     'revenue-overview',
     'pipeline-metrics',
     'signed-deals-ar',
     'profit-by-entity',
     'executive-dashboard',
   ];
+  const SECTION_IDS = ALL_SECTION_IDS.filter(id => !hiddenSections.includes(id));
   const SECTION_DEFAULT_LAYOUT: GridLayoutItem[] = [
     { i: 'revenue-overview',    x: 0, y: 0,  w: 12, h: 7, minW: 6, minH: 4 },
     { i: 'pipeline-metrics',    x: 0, y: 7,  w: 12, h: 7, minW: 6, minH: 4 },
@@ -680,17 +692,31 @@ export function ManagementSnapshotDashboard({
           >
             {visibleCards.map(({ cardId, props }) => (
               <div key={cardId} className="relative group">
-                {/* Pencil edit button for all cards */}
-                {onEditCard && (
-                  <div className="absolute top-1.5 right-1.5 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={(e) => { e.stopPropagation(); onEditCard(cardId); }}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
+                {/* Edit & delete chrome */}
+                {(onEditCard || (isEditMode && onDeleteCard)) && (
+                  <div className="absolute top-1.5 right-1.5 z-20 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {onEditCard && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Edit widget"
+                        className="h-7 w-7"
+                        onClick={(e) => { e.stopPropagation(); onEditCard(cardId); }}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {isEditMode && onDeleteCard && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Remove widget"
+                        className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive"
+                        onClick={(e) => { e.stopPropagation(); onDeleteCard(cardId); }}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                   </div>
                 )}
                 {cardId === 'total-revenue-detail' ? (
@@ -705,9 +731,7 @@ export function ManagementSnapshotDashboard({
                 ) : cardId === 'avg-rev-per-client' ? (
                   <AvgRevenuePerClientWidget />
                 ) : cardId === 'revenue-by-month' ? (
-                  <div className={cn('h-full', isEditMode && 'widget-drag-handle cursor-grab')}>
-                    <RevenueByMonthChart />
-                  </div>
+                  <RevenueByMonthChart />
                 ) : (
                   <GenericDashboardCard {...props} />
                 )}
@@ -729,10 +753,23 @@ export function ManagementSnapshotDashboard({
         {SECTION_IDS.map((id) => (
           <div key={id} className="relative group h-full overflow-auto">
             {isEditMode && (
-              <div className="widget-drag-handle absolute top-1 left-1/2 -translate-x-1/2 z-20 cursor-grab active:cursor-grabbing flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/70 backdrop-blur border border-border/50 opacity-70 hover:opacity-100 transition-opacity">
-                <GripVertical className="h-3 w-3 text-muted-foreground" />
-                <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Drag</span>
-              </div>
+              <>
+                <div className="widget-drag-handle absolute top-1 left-1/2 -translate-x-1/2 z-20 cursor-grab active:cursor-grabbing flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/70 backdrop-blur border border-border/50 opacity-70 hover:opacity-100 transition-opacity">
+                  <GripVertical className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Drag</span>
+                </div>
+                {onDeleteSection && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Remove section"
+                    className="absolute top-1 right-1 z-20 h-7 w-7 bg-background/70 backdrop-blur border border-border/50 hover:bg-destructive/10 hover:text-destructive opacity-80 hover:opacity-100"
+                    onClick={(e) => { e.stopPropagation(); onDeleteSection(id); }}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </>
             )}
             {sectionContent[id]}
           </div>
