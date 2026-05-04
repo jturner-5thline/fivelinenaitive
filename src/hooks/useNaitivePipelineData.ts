@@ -146,6 +146,12 @@ export function useNaitivePipelineData(): NaitivePipelineData {
       nextStepDate: d.next_step_date || undefined,
       prospectType: d.prospect_type || undefined,
       outcome: d.outcome || undefined,
+      painPointsConfirmed: d.pain_points_confirmed || undefined,
+      objectionsRaised: d.objections_raised || undefined,
+      competitorsMentioned: d.competitors_mentioned || undefined,
+      keySignal: d.key_signal || undefined,
+      productGapFlagged: d.product_gap_flagged || undefined,
+      dmPresent: d.dm_present || undefined,
       lenders: (d.deal_lenders || []).map((l: any) => ({
         id: l.id,
         name: l.name || '',
