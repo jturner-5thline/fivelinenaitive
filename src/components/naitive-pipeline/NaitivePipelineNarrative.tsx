@@ -232,6 +232,76 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week' }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, periodType, current.key, prior.key]);
 
+  // Load snapshots for the current period
+  const loadSnapshots = useCallback(async () => {
+    const { data, error } = await (supabase as any)
+      .from('naitive_pipeline_narrative_snapshots')
+      .select('id, content, created_at, created_by')
+      .eq('company_id', FIFTH_LINE_COMPANY_ID)
+      .eq('period_type', current.type)
+      .eq('period_key', current.key)
+      .order('created_at', { ascending: false })
+      .limit(MAX_SNAPSHOTS);
+    if (error) {
+      console.error('[narrative] snapshots load error', error);
+      return;
+    }
+    setSnapshots((data || []) as SnapshotRow[]);
+  }, [current.type, current.key]);
+
+  useEffect(() => { void loadSnapshots(); }, [loadSnapshots]);
+
+  const recordSnapshot = useCallback(async (html: string) => {
+    if (!html) return;
+    if (html === lastSnapshotContent.current) return;
+    const now = Date.now();
+    if (now - lastSnapshotAt.current < SNAPSHOT_MIN_INTERVAL_MS) return;
+    lastSnapshotAt.current = now;
+    lastSnapshotContent.current = html;
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const { error } = await (supabase as any)
+        .from('naitive_pipeline_narrative_snapshots')
+        .insert({
+          company_id: FIFTH_LINE_COMPANY_ID,
+          period_type: current.type,
+          period_key: current.key,
+          content: html,
+          created_by: userData.user?.id ?? null,
+        });
+      if (error) throw error;
+      // Trim older snapshots beyond MAX_SNAPSHOTS
+      const { data: all } = await (supabase as any)
+        .from('naitive_pipeline_narrative_snapshots')
+        .select('id, created_at')
+        .eq('company_id', FIFTH_LINE_COMPANY_ID)
+        .eq('period_type', current.type)
+        .eq('period_key', current.key)
+        .order('created_at', { ascending: false });
+      const rows = (all || []) as { id: string; created_at: string }[];
+      const stale = rows.slice(MAX_SNAPSHOTS).map((r) => r.id);
+      if (stale.length > 0) {
+        await (supabase as any)
+          .from('naitive_pipeline_narrative_snapshots')
+          .delete()
+          .in('id', stale);
+      }
+      void loadSnapshots();
+    } catch (e) {
+      console.error('[narrative] snapshot failed', e);
+    }
+  }, [current.type, current.key, loadSnapshots]);
+
+  const restoreSnapshot = useCallback((snap: SnapshotRow) => {
+    if (!editor) return;
+    if (!window.confirm('Restore this snapshot? Your current draft will be replaced (and saved as a new snapshot).')) return;
+    // Snapshot the current state first so the user can undo the restore
+    void recordSnapshot(content);
+    editor.commands.setContent(snap.content || '', { emitUpdate: false } as any);
+    setContent(snap.content || '');
+    void persist(snap.content || '');
+  }, [editor, content, recordSnapshot]);
+
   const persist = useCallback(async (html: string) => {
     if (html === lastSaved.current) return;
     setSaveState('saving');
