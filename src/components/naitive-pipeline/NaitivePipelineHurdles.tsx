@@ -17,16 +17,16 @@ export function NaitivePipelineHurdles({ hurdles }: { hurdles: NaitiveDealHurdle
 
   return (
     <Card className="bg-card border-border">
-      <CardHeader className="pb-2 pt-4 px-4">
+      <CardHeader className="pb-3 pt-5 px-5">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-medium">Hurdles & Flags</CardTitle>
+          <CardTitle className="text-base font-semibold tracking-tight text-foreground">Hurdles & Flags</CardTitle>
           {hurdles.length > 0 && (
             <Badge variant="secondary" className="text-[10px] h-5 px-1.5">{hurdles.length}</Badge>
           )}
         </div>
       </CardHeader>
-      <CardContent className="px-4 pb-4">
+      <CardContent className="px-5 pb-5 pt-1">
         {hurdles.length === 0 ? (
           <p className="text-xs text-muted-foreground py-4 text-center">No active hurdles</p>
         ) : (
