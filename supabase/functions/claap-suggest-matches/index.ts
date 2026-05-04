@@ -16,7 +16,8 @@ serve(async (req) => {
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    const { meeting_ids, company_id } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const { meeting_ids, company_id, batch_size, all_unmatched } = body || {};
 
     if (!company_id) {
       return new Response(JSON.stringify({ error: "company_id required" }), {
@@ -26,6 +27,7 @@ serve(async (req) => {
     }
 
     // Get unmatched meetings to suggest for
+    const limit = Math.min(Number(batch_size) || (all_unmatched ? 500 : 30), 500);
     let meetingQuery = supabase
       .from("claap_meetings")
       .select("id, title, organizer_email, started_at, duration_seconds, transcript, match_candidates, match_status, manually_locked, company_id")
@@ -39,7 +41,7 @@ serve(async (req) => {
         .in("match_status", ["unmatched", "needs_review"])
         .is("deal_id", null)
         .order("created_at", { ascending: false })
-        .limit(30);
+        .limit(limit);
     }
 
     const { data: meetings, error: meetErr } = await meetingQuery;
