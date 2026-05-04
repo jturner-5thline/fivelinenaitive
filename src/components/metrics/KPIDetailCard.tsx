@@ -165,6 +165,7 @@ export function KPIDetailCard({
       footerLabel={kpiConfig.footerLabel}
       isLoading={isLoading}
       onClick={onClick}
+      align="center"
     />
   );
 }

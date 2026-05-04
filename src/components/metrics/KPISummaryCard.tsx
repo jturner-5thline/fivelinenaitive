@@ -49,6 +49,12 @@ export interface KPISummaryCardProps {
   onClick?: () => void;
   /** Footer label shown below in compact mode */
   footerLabel?: string;
+  /**
+   * Horizontal alignment of all card content (title, main value, trend row,
+   * sub-metric columns). Defaults to 'left' to preserve existing behaviour
+   * across the app — opt-in for widgets that want centred layout.
+   */
+  align?: 'left' | 'center';
 }
 
 /** Format a number using abbreviated notation */
@@ -93,6 +99,7 @@ export function KPISummaryCard({
   className,
   onClick,
   footerLabel,
+  align = 'left',
 }: KPISummaryCardProps) {
   const formattedValue = formatValue(value, formatOptions);
 
@@ -101,6 +108,7 @@ export function KPISummaryCard({
     trendDirection ?? (trendPercent !== null && trendPercent !== undefined ? (trendPercent >= 0 ? 'up' : 'down') : undefined);
 
   const hasBreakdown = showBreakdown && !compact && subMetrics && subMetrics.length > 0;
+  const isCentered = align === 'center';
 
   return (
     <Card
@@ -112,6 +120,7 @@ export function KPISummaryCard({
         className={cn(
           'flex-1 flex flex-col justify-center gap-2',
           compact ? 'p-3' : 'p-4',
+          isCentered && 'items-center text-center',
         )}
       >
         {isLoading ? (
@@ -142,7 +151,7 @@ export function KPISummaryCard({
 
             {/* Trend badge + label */}
             {trendPercent !== null && trendPercent !== undefined && (
-              <div className="flex items-center gap-1.5">
+              <div className={cn('flex items-center gap-1.5', isCentered && 'justify-center')}>
                 <TrendBadge value={trendPercent} direction={effectiveDirection} />
                 {(trendLabel || comparisonPeriod) && (
                   <span className="text-[10px] text-muted-foreground">
@@ -167,6 +176,7 @@ export function KPISummaryCard({
                   className={cn(
                     'grid gap-4',
                     subMetrics!.length === 1 ? 'grid-cols-1 text-center' : 'grid-cols-2',
+                    isCentered && 'w-full text-center',
                   )}
                 >
                   {subMetrics!.map((sm) => (
@@ -176,6 +186,7 @@ export function KPISummaryCard({
                       value={formatValue(sm.value, formatOptions)}
                       trendPercent={sm.trendPercent}
                       trendDirection={sm.trendDirection}
+                      align={align}
                     />
                   ))}
                 </div>
@@ -195,14 +206,17 @@ function SubMetricColumn({
   value,
   trendPercent,
   trendDirection,
+  align = 'left',
 }: {
   label: string;
   value: string;
   trendPercent?: number | null;
   trendDirection?: 'up' | 'down';
+  align?: 'left' | 'center';
 }) {
+  const isCentered = align === 'center';
   return (
-    <div className="space-y-0.5">
+    <div className={cn('space-y-0.5', isCentered && 'flex flex-col items-center text-center')}>
       <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
