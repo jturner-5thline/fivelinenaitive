@@ -19,6 +19,12 @@ import type {
   DealOriginLocationState,
 } from '@/lib/dealOriginContext';
 import { consumePendingReopen } from '@/lib/dealOriginContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+
+const AR_DEBT_REALM_ID = '193514877331929';
+const AR_FINSERV_REALM_ID = '9341451968897660';
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
@@ -450,8 +456,14 @@ export function DealsSignedWidget({ selectedQuarter }: { selectedQuarter: import
     returnTo: '/insights',
     reopen: { source: 'insights.signed-deals-and-ar', bucketKey: `deals-signed|${bucket.key}`, bucketLabel: bucket.label, quarterId: selectedQuarter.value },
   });
+  const openAll = () => {
+    const allDeals = series.months.flatMap((m) => m.deals);
+    if (allDeals.length === 0) return;
+    const lastBucket = series.months[series.months.length - 1];
+    setDrilldown({ title: `Deals Signed — ${selectedQuarter.label}`, deals: allDeals, origin: buildOrigin(lastBucket) });
+  };
   return (
-    <div className="h-full">
+    <div className="h-full cursor-pointer" onClick={openAll}>
       <SignedBarChart
         title="Deals Signed" subtitle="Active Pipeline → Final Credit Items"
         months={series.months} isLoading={series.isLoading} color="hsl(var(--chart-3))"
@@ -470,8 +482,14 @@ export function FinServClientsSignedWidget({ selectedQuarter }: { selectedQuarte
     returnTo: '/insights',
     reopen: { source: 'insights.signed-deals-and-ar', bucketKey: `finserv-clients-signed|${bucket.key}`, bucketLabel: bucket.label, quarterId: selectedQuarter.value },
   });
+  const openAll = () => {
+    const allDeals = series.months.flatMap((m) => m.deals);
+    if (allDeals.length === 0) return;
+    const lastBucket = series.months[series.months.length - 1];
+    setDrilldown({ title: `FinServ Clients Signed — ${selectedQuarter.label}`, deals: allDeals, origin: buildOrigin(lastBucket) });
+  };
   return (
-    <div className="h-full">
+    <div className="h-full cursor-pointer" onClick={openAll}>
       <SignedBarChart
         title="FinServ Clients Signed" subtitle="FinServ Pipeline → Active Client"
         months={series.months} isLoading={series.isLoading} color="hsl(var(--chart-4))"
@@ -483,5 +501,115 @@ export function FinServClientsSignedWidget({ selectedQuarter }: { selectedQuarte
 }
 
 export function OutstandingARWidget() {
-  return <div className="h-full"><OutstandingARPieChart /></div>;
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="h-full cursor-pointer" onClick={() => setOpen(true)}>
+      <OutstandingARPieChart />
+      <OutstandingARDrilldownModal open={open} onClose={() => setOpen(false)} />
+    </div>
+  );
+}
+
+// ── Outstanding A/R drilldown modal ──
+export function OutstandingARDrilldownModal({
+  open,
+  onClose,
+}: { open: boolean; onClose: () => void }) {
+  const { user } = useAuth();
+  const { data: invoices, isLoading } = useQuery({
+    queryKey: ['outstanding-ar-detail'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('quickbooks_invoices')
+        .select('id, doc_number, customer_name, txn_date, due_date, total_amt, balance, realm_id')
+        .in('realm_id', [AR_DEBT_REALM_ID, AR_FINSERV_REALM_ID])
+        .gt('balance', 0)
+        .order('balance', { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: open && !!user,
+  });
+
+  const total = (invoices ?? []).reduce((s, r: any) => s + (Number(r.balance) || 0), 0);
+
+  const realmLabel = (id: string) =>
+    id === AR_DEBT_REALM_ID ? 'Debt' : id === AR_FINSERV_REALM_ID ? 'FinServ' : id;
+
+  const today = new Date();
+  const daysOverdue = (due?: string | null) => {
+    if (!due) return null;
+    const d = new Date(due);
+    const diff = Math.floor((today.getTime() - d.getTime()) / 86400000);
+    return diff;
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileCheck className="h-4 w-4" />
+            Outstanding A/R — Detail
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="flex items-center gap-3 mb-4">
+          <Badge variant="outline" className="text-xs">{(invoices ?? []).length} open invoice{(invoices ?? []).length !== 1 ? 's' : ''}</Badge>
+          <Badge variant="secondary" className="text-xs font-mono">{formatCurrencyFull(total)}</Badge>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : (invoices ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">No outstanding invoices.</p>
+        ) : (
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Customer</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Entity</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Invoice</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Due</th>
+                  <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Total</th>
+                  <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Balance</th>
+                  <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Days Overdue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(invoices ?? []).map((r: any) => {
+                  const od = daysOverdue(r.due_date);
+                  return (
+                    <tr key={r.id} className="border-b last:border-0 hover:bg-muted/20">
+                      <td className="px-3 py-2 text-xs font-medium">{r.customer_name ?? '—'}</td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">{realmLabel(r.realm_id)}</td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">{r.doc_number ?? '—'}</td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">
+                        {r.due_date ? new Date(r.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—'}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-right font-mono">{formatCurrencyFull(Number(r.total_amt) || 0)}</td>
+                      <td className="px-3 py-2 text-xs text-right font-mono font-semibold">{formatCurrencyFull(Number(r.balance) || 0)}</td>
+                      <td className={`px-3 py-2 text-xs text-right ${od !== null && od > 0 ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                        {od === null ? '—' : od > 0 ? `${od}d` : 'On time'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="bg-muted/20">
+                  <td colSpan={5} className="px-3 py-2 text-xs font-medium">Total Outstanding</td>
+                  <td className="px-3 py-2 text-xs text-right font-mono font-bold">{formatCurrencyFull(total)}</td>
+                  <td />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
 }

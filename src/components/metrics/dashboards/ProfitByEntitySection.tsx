@@ -1,4 +1,8 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { TrendingUp } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, LabelList,
@@ -292,10 +296,133 @@ export function ProfitByEntitySection({ selectedQuarter }: { selectedQuarter: im
 
 export function DebtProfitWidget({ selectedQuarter }: { selectedQuarter: import('@/hooks/useQBQuarterlyRevenue').QuarterOption }) {
   const debt = useMonthlyEntityProfit('5th Line Capital Advisors, LLC', selectedQuarter.months);
-  return <div className="h-full"><ProfitBarChart title="Debt Profit" entityName="5th Line Capital Advisors, LLC" months={debt.months} isLoading={debt.isLoading} total={debt.total} color="hsl(var(--primary))" /></div>;
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="h-full cursor-pointer" onClick={() => !debt.isLoading && setOpen(true)}>
+      <ProfitBarChart title="Debt Profit" entityName="5th Line Capital Advisors, LLC" months={debt.months} isLoading={debt.isLoading} total={debt.total} color="hsl(var(--primary))" />
+      <ProfitDrilldownModal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Debt Profit"
+        entityName="5th Line Capital Advisors, LLC"
+        months={debt.months}
+        total={debt.total}
+        quarterLabel={selectedQuarter.label}
+      />
+    </div>
+  );
 }
 
 export function FinServProfitWidget({ selectedQuarter }: { selectedQuarter: import('@/hooks/useQBQuarterlyRevenue').QuarterOption }) {
   const finserv = useMonthlyEntityProfit('5th Line Financial Services, LLC', selectedQuarter.months);
-  return <div className="h-full"><ProfitBarChart title="FinServ Profit" entityName="5th Line Financial Services, LLC" months={finserv.months} isLoading={finserv.isLoading} total={finserv.total} color="hsl(var(--chart-4))" /></div>;
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="h-full cursor-pointer" onClick={() => !finserv.isLoading && setOpen(true)}>
+      <ProfitBarChart title="FinServ Profit" entityName="5th Line Financial Services, LLC" months={finserv.months} isLoading={finserv.isLoading} total={finserv.total} color="hsl(var(--chart-4))" />
+      <ProfitDrilldownModal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="FinServ Profit"
+        entityName="5th Line Financial Services, LLC"
+        months={finserv.months}
+        total={finserv.total}
+        quarterLabel={selectedQuarter.label}
+      />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Drilldown modal — monthly P&L breakdown for the selected entity & quarter
+// ---------------------------------------------------------------------------
+export function ProfitDrilldownModal({
+  open,
+  onClose,
+  title,
+  entityName,
+  months,
+  total,
+  quarterLabel,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  entityName: string;
+  months: ProfitMonthBucket[];
+  total: number;
+  quarterLabel: string;
+}) {
+  const totalRevenue = months.reduce((s, m) => s + m.revenue, 0);
+  const totalExpenses = months.reduce((s, m) => s + m.expenses, 0);
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            {title} — {quarterLabel}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <Badge variant="outline" className="text-xs">{entityName}</Badge>
+          <Badge variant="secondary" className="text-xs font-mono">Revenue: {formatCurrencyFull(totalRevenue)}</Badge>
+          <Badge variant="secondary" className="text-xs font-mono">Expenses: {formatCurrencyFull(totalExpenses)}</Badge>
+          <Badge variant={total >= 0 ? 'default' : 'destructive'} className="text-xs font-mono">
+            Profit: {formatCurrencyFull(total)}
+          </Badge>
+        </div>
+
+        <div className="border rounded-lg overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/30">
+                <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Month</th>
+                <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Revenue</th>
+                <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Expenses</th>
+                <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Operating Profit</th>
+                <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Margin</th>
+              </tr>
+            </thead>
+            <tbody>
+              {months.map((m) => {
+                const margin = m.revenue > 0 ? (m.profit / m.revenue) * 100 : 0;
+                return (
+                  <tr key={m.key} className="border-b last:border-0 hover:bg-muted/20">
+                    <td className="px-3 py-2 text-xs font-medium">{m.label}</td>
+                    <td className="px-3 py-2 text-xs text-right font-mono">{formatCurrencyFull(m.revenue)}</td>
+                    <td className="px-3 py-2 text-xs text-right font-mono">{formatCurrencyFull(m.expenses)}</td>
+                    <td className={`px-3 py-2 text-xs text-right font-mono font-semibold ${m.profit < 0 ? 'text-destructive' : 'text-foreground'}`}>
+                      {formatCurrencyFull(m.profit)}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-right text-muted-foreground">
+                      {m.revenue > 0 ? `${margin.toFixed(1)}%` : '—'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="bg-muted/20">
+                <td className="px-3 py-2 text-xs font-medium">Total</td>
+                <td className="px-3 py-2 text-xs text-right font-mono font-bold">{formatCurrencyFull(totalRevenue)}</td>
+                <td className="px-3 py-2 text-xs text-right font-mono font-bold">{formatCurrencyFull(totalExpenses)}</td>
+                <td className={`px-3 py-2 text-xs text-right font-mono font-bold ${total < 0 ? 'text-destructive' : ''}`}>
+                  {formatCurrencyFull(total)}
+                </td>
+                <td className="px-3 py-2 text-xs text-right text-muted-foreground">
+                  {totalRevenue > 0 ? `${((total / totalRevenue) * 100).toFixed(1)}%` : '—'}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <p className="text-[11px] text-muted-foreground mt-3">
+          Operating Profit = Revenue − (Expenses + Bills). QuickBooks accrual basis.
+        </p>
+      </DialogContent>
+    </Dialog>
+  );
 }
