@@ -56,6 +56,7 @@ import { toast } from 'sonner';
 import { useDueBoundaries } from '@/hooks/useDueBoundaries';
 import { bucketDueDate, isOverdue as isOverdueFn } from '@/lib/taskDateGrouping';
 import { cn } from '@/lib/utils';
+import { useDealsContext } from '@/contexts/DealsContext';
 import {
   DndContext, closestCenter, DragOverlay, PointerSensor, TouchSensor,
   useSensor, useSensors, DragStartEvent, DragEndEvent, DragOverEvent,
