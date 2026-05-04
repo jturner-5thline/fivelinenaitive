@@ -255,7 +255,9 @@ export function CopilotToggleButton() {
     setActiveIndex(0);
   }, [value]);
 
-  if (isOpen) return null;
+  // Always render the Ask bar when the panel is open — the bar IS the
+  // input for the popup, so it must remain visible above the (sticky-bottom)
+  // panel even while the transcript is showing or minimized.
   if (hasOpenModal) return null;
 
   const askAi = (text: string) => {
