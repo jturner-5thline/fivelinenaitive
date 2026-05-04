@@ -60,7 +60,8 @@ export function ClaapSuggestionCard({ call }: { call: SuggestionCallData }) {
   const hasMultiple = call.suggestions.length > 1;
 
   const confirmMatch = async (suggestion: Suggestion) => {
-    if (!suggestion.deal_id || !suggestion.deal_name) return;
+    const isDeal = !!suggestion.deal_id;
+    if (!isDeal && !suggestion.lender_name && !suggestion.company_name && !suggestion.contact_email) return;
     setLoadingAction(suggestion.id);
     try {
       // Record feedback
@@ -74,8 +75,8 @@ export function ClaapSuggestionCard({ call }: { call: SuggestionCallData }) {
         meeting_id: call.id,
         company_id: member?.company_id,
         action: 'confirmed',
-        suggested_deal_id: suggestion.deal_id,
-        chosen_deal_id: suggestion.deal_id,
+        suggested_deal_id: suggestion.deal_id || null,
+        chosen_deal_id: suggestion.deal_id || null,
         suggestion_id: suggestion.id,
         performed_by: user?.id,
       }) as any);
@@ -85,12 +86,33 @@ export function ClaapSuggestionCard({ call }: { call: SuggestionCallData }) {
         .update({ status: 'confirmed', feedback_action: 'confirmed', feedback_at: new Date().toISOString(), feedback_by: user?.id })
         .eq('id', suggestion.id) as any);
 
-      // Link the deal
-      linkToDeal.mutate({
-        meetingId: call.id,
-        dealId: suggestion.deal_id,
-        dealName: suggestion.deal_name,
-      });
+      if (isDeal) {
+        linkToDeal.mutate({
+          meetingId: call.id,
+          dealId: suggestion.deal_id!,
+          dealName: suggestion.deal_name || 'Deal',
+        });
+      } else {
+        // Non-deal: link to lender/company/contact directly on the meeting
+        const update: any = {
+          match_status: 'manually_linked',
+          match_method: 'manual',
+          manually_locked: true,
+          matched_at: new Date().toISOString(),
+          matched_by: user?.id,
+          match_reason: `Manually linked to ${suggestion.lender_name || suggestion.company_name || suggestion.contact_email}`,
+          status: 'routed',
+        };
+        if (suggestion.contact_email) {
+          // Resolve contact id
+          const { data: c } = await (supabase.from('contacts').select('id').eq('email', suggestion.contact_email).maybeSingle() as any);
+          if (c?.id) update.matched_contact_id = c.id;
+        }
+        await (supabase.from('claap_meetings').update(update).eq('id', call.id) as any);
+        queryClient.invalidateQueries({ queryKey: ['claap-suggestions'] });
+        queryClient.invalidateQueries({ queryKey: ['claap-all-calls'] });
+        toast.success('Call linked');
+      }
     } catch (err) {
       toast.error('Failed to confirm match');
     } finally {
@@ -193,8 +215,7 @@ export function ClaapSuggestionCard({ call }: { call: SuggestionCallData }) {
             size="sm"
             className="h-6 text-[10px] px-2"
             onClick={() => confirmMatch(suggestion)}
-            disabled={loadingAction === suggestion.id || !isDeal}
-            title={!isDeal ? 'Confirm linking to a deal not yet supported for non-deal matches' : ''}
+            disabled={loadingAction === suggestion.id}
           >
             <CheckCircle2 className="h-3 w-3 mr-0.5" />
             Confirm
