@@ -520,7 +520,7 @@ export function StackedDebtRevenueChart({
     </Card>
   );
 }
-function StackedGenericRevenueChart({
+export function StackedGenericRevenueChart({
   title,
   subtitle,
   data,
