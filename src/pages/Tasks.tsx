@@ -8,7 +8,14 @@ import { Helmet } from 'react-helmet-async';
 import { useMyTasks, type Task, type TaskOwnerFilter } from '@/hooks/useTasks';
 import { useTaskViewTabs } from '@/hooks/useTaskViewTabs';
 import { TaskTabBar, applyTabFilter } from '@/components/tasks/TaskTabBar';
-import { TaskListView, type GroupBy } from '@/components/tasks/TaskListView';
+import {
+  TaskListView,
+  type GroupBy,
+  OPTIONAL_TASK_COLUMNS,
+  DEFAULT_TASK_COLUMNS,
+  type TaskColumnId,
+} from '@/components/tasks/TaskListView';
+import { useUiPreference } from '@/hooks/useUiPreference';
 import { TaskDetailDrawer } from '@/components/tasks/TaskDetailDrawer';
 // Lazy-load heavy tab views so they don't ship with the initial Tasks bundle
 const TaskCalendarView = lazy(() =>
@@ -58,6 +65,7 @@ import {
   Tag, ClipboardList, Users, Briefcase, Building2, CalendarDays, X,
   Pencil, Copy as CopyIcon, Check,
   Link2, Pin, PinOff, Repeat,
+  Columns3,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDueBoundaries } from '@/hooks/useDueBoundaries';
