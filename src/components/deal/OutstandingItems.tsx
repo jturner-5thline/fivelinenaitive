@@ -327,6 +327,10 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [bulkImportText, setBulkImportText] = useState('');
   const [bulkImportRequestedBy, setBulkImportRequestedBy] = useState<string[]>([]);
+  // Individual-add mode rows inside the Bulk Import dialog. Each row has
+  // its own text and an optional requester override; if the override is
+  // empty, it falls back to the dialog-level "Assign requester to all".
+  const [individualRows, setIndividualRows] = useState<Array<{ id: string; text: string; requestedBy: string[] }>>([]);
 
   const handleItemClick = (item: OutstandingItem) => {
     if (editingId) return;
@@ -503,12 +507,21 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
   };
 
   const handleBulkImport = () => {
-    if (!onBulkAdd || !bulkImportText.trim()) return;
     const lines = bulkImportText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    if (lines.length === 0) return;
-    onBulkAdd(lines, bulkImportRequestedBy);
+    const rows = individualRows
+      .map(r => ({ text: r.text.trim(), requestedBy: r.requestedBy.length > 0 ? r.requestedBy : bulkImportRequestedBy }))
+      .filter(r => r.text.length > 0);
+    if (lines.length === 0 && rows.length === 0) return;
+    if (lines.length > 0 && onBulkAdd) {
+      onBulkAdd(lines, bulkImportRequestedBy);
+    }
+    // Individual rows can have differing requesters, so add them one by one.
+    for (const r of rows) {
+      onAdd(r.text, r.requestedBy);
+    }
     setBulkImportText('');
     setBulkImportRequestedBy([]);
+    setIndividualRows([]);
     setIsBulkImportOpen(false);
   };
 
@@ -759,8 +772,8 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
   return (
     <>
       <Card className="h-full flex flex-col">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div className="flex items-center gap-2 min-w-0 shrink-0">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-y-2 space-y-0 pb-2">
+          <div className="flex items-center gap-2 min-w-0 shrink-0 order-1">
             <CardTitle className="text-lg whitespace-nowrap">Outstanding Items</CardTitle>
             {items.length > 0 ? (
               <span className="text-sm font-normal text-muted-foreground">
@@ -773,9 +786,15 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          {/*
+            Responsive toolbar: wraps onto a second line at narrow widths.
+            Order classes guarantee Search → All → Bulk Add always come first
+            so they stay visible on row 1, and the icon-only / requester
+            controls drop to row 2 before anything important is clipped.
+          */}
+          <div className="flex flex-row flex-wrap items-center gap-2 order-2 justify-end ml-auto min-w-0">
             {/* Search */}
-            <div className="relative">
+            <div className="relative order-1">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Search items..."
@@ -786,13 +805,13 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
             </div>
             
             {/* Filter by requester */}
-            <Popover>
+            <Popover>{/* "All" filter — order 2 */}
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
                   className={cn(
-                    'gap-1.5 text-xs h-8',
+                    'gap-1.5 text-xs h-8 order-2',
                     filterByLender.length > 0 && 'border-primary bg-primary/5'
                   )}
                 >
@@ -828,7 +847,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
             
             {/* Group by */}
             <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
-              <SelectTrigger className="h-8 w-8 p-0 flex items-center justify-center text-xs [&>svg:last-child]:hidden" title="Group by">
+              <SelectTrigger className="h-8 w-8 p-0 flex items-center justify-center text-xs [&>svg:last-child]:hidden order-4" title="Group by">
                 <Group className="h-4 w-4" />
               </SelectTrigger>
               <SelectContent>
@@ -844,7 +863,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="h-8 gap-1.5 text-xs"
+                className="h-8 gap-1.5 text-xs order-3 whitespace-nowrap shrink-0"
                 onClick={() => setIsBulkImportOpen(true)}
               >
                 <ClipboardPaste className="h-3.5 w-3.5" />
@@ -855,7 +874,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8"
+              className="h-8 w-8 order-5"
               onClick={() => setIsKanbanOpen(true)}
             >
               <LayoutGrid className="h-4 w-4" />
@@ -1012,7 +1031,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
       </Dialog>
 
       {/* Bulk Import Dialog */}
-      <Dialog open={isBulkImportOpen} onOpenChange={(open) => { setIsBulkImportOpen(open); if (!open) { setBulkImportRequestedBy([]); } }}>
+      <Dialog open={isBulkImportOpen} onOpenChange={(open) => { setIsBulkImportOpen(open); if (!open) { setBulkImportRequestedBy([]); setIndividualRows([]); setBulkImportText(''); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1027,10 +1046,65 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
             <Textarea
               value={bulkImportText}
               onChange={(e) => setBulkImportText(e.target.value)}
-              placeholder={`Financial Statements\nTax Returns\nBank Statements\nCorporate Documents`}
+              placeholder={"e.g. Financial Statements\nTax Returns\nBank Statements\nCorporate Documents"}
               className="min-h-[200px] font-mono text-sm"
               autoFocus
             />
+            {/* Individual add mode — alternative to pasting. Each row can
+                optionally override the dialog-level requester. */}
+            {individualRows.length > 0 && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Individual items</label>
+                {individualRows.map((row, idx) => (
+                  <div key={row.id} className="flex items-center gap-2">
+                    <Input
+                      value={row.text}
+                      placeholder="Item name…"
+                      onChange={(e) => setIndividualRows(prev => prev.map((r, i) => i === idx ? { ...r, text: e.target.value } : r))}
+                      className="flex-1 h-8 text-sm"
+                    />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={cn(
+                            'h-8 gap-1.5 text-xs w-40 justify-between font-normal',
+                            row.requestedBy.length > 0 ? 'border-primary/50 bg-primary/5' : 'text-muted-foreground'
+                          )}
+                        >
+                          <span className="truncate">{row.requestedBy.length === 0 ? 'Override requester' : getDisplayText(row.requestedBy)}</span>
+                          <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[220px] p-0 bg-popover z-50" align="end">
+                        <SearchableRequesterList
+                          options={requestedByOptions}
+                          selected={row.requestedBy}
+                          onToggle={(opt) => setIndividualRows(prev => prev.map((r, i) => i === idx ? { ...r, requestedBy: r.requestedBy.includes(opt) ? r.requestedBy.filter(x => x !== opt) : [...r.requestedBy, opt] } : r))}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => setIndividualRows(prev => prev.filter((_, i) => i !== idx))}
+                      aria-label="Remove row"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              type="button"
+              className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+              onClick={() => setIndividualRows(prev => [...prev, { id: `${Date.now()}-${prev.length}`, text: '', requestedBy: [] }])}
+            >
+              + Add individual item
+            </button>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Assign requester to all items</label>
               <Popover>
@@ -1057,11 +1131,11 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">
-                {bulkImportText.split('\n').filter(l => l.trim()).length} items to import
+                {bulkImportText.split('\n').filter(l => l.trim()).length + individualRows.filter(r => r.text.trim()).length} items to import
               </span>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setIsBulkImportOpen(false)}>Cancel</Button>
-                <Button onClick={handleBulkImport} disabled={!bulkImportText.trim()}>
+                <Button onClick={handleBulkImport} disabled={!bulkImportText.trim() && individualRows.every(r => !r.text.trim())}>
                   Import Items
                 </Button>
               </div>
