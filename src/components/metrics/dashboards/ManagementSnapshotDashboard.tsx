@@ -644,21 +644,8 @@ export function ManagementSnapshotDashboard({
     'pipeline-metrics':    { minW: 6, minH: 5, maxH: 14 },
     'signed-deals-ar':     { minW: 6, minH: 5, maxH: 14 },
     'profit-by-entity':    { minW: 6, minH: 5, maxH: 14 },
-    // Executive dashboard packs many tiles — never let it shrink narrow,
-    // and keep it height-resizable only (isResizable still true so users
-    // can grow it; minW guards width).
     'executive-dashboard': { minW: 8, minH: 8, maxH: 20 },
   };
-  const {
-    layout: sectionLayout,
-    saveLayout: saveSectionLayout,
-    isLoaded: sectionLayoutLoaded,
-  } = useGridLayout('weekly-rundown-sections', SECTION_IDS, { allowAllMembers: true });
-
-  // Hydrate from defaults until backend layout loads, so first paint isn't broken.
-  const effectiveSectionLayout = sectionLayoutLoaded && sectionLayout.length
-    ? sectionLayout
-    : SECTION_DEFAULT_LAYOUT;
 
   const sectionContent: Record<string, React.ReactNode> = {
     'revenue-overview':    <RevenueQuarterlySection selectedQuarter={selectedQuarter} />,
@@ -675,19 +662,24 @@ export function ManagementSnapshotDashboard({
     ),
   };
 
+  // Unified grid: top KPI/chart tiles, full-width section blocks, and any
+  // custom widgets (passed via children) all live in ONE DraggableGridLayout
+  // so users can drag any widget across sections, above sections, or between
+  // sections in edit mode.
+  const UNIFIED_CONSTRAINTS: Record<string, WidgetConstraint> = {
+    ...TOP_GRID_CONSTRAINTS,
+    ...SECTION_CONSTRAINTS,
+  };
+
   return (
     <div className="space-y-6">
-      {/* Top draggable grid (KPI tiles + Revenue by Month + custom widgets) */}
       <div className="min-w-0">
         <DraggableGridLayout
             layout={gridLayout}
             onLayoutChange={onGridLayoutChange}
             isEditMode={isEditMode}
             rowHeight={60}
-            constraints={TOP_GRID_CONSTRAINTS}
-            // Edit-mode frame: keep the dashed outline so the editable region is
-            // clearly delimited, but drop the tinted fill so the section reads as
-            // an open transparent area rather than a boxed-in surface.
+            constraints={UNIFIED_CONSTRAINTS}
             className={cn(isEditMode && 'p-2 rounded-xl border-2 border-dashed border-primary/20')}
           >
             {visibleCards.map(({ cardId, props }) => (
@@ -747,21 +739,8 @@ export function ManagementSnapshotDashboard({
                 )}
               </div>
             ))}
-            {children}
-        </DraggableGridLayout>
-      </div>
-
-      {/* Section-level draggable/resizable grid */}
-      <DraggableGridLayout
-        layout={effectiveSectionLayout}
-        onLayoutChange={saveSectionLayout}
-        isEditMode={isEditMode}
-        rowHeight={60}
-        constraints={SECTION_CONSTRAINTS}
-        className={cn(isEditMode && 'p-2 rounded-xl border-2 border-dashed border-primary/20')}
-      >
-        {SECTION_IDS.map((id) => (
-          <div key={id} className="relative group h-full overflow-auto">
+            {SECTION_IDS.map((id) => (
+              <div key={id} className="relative group h-full overflow-auto">
             {isEditMode && (
               <>
                 <div className="widget-drag-handle absolute top-1 left-1/2 -translate-x-1/2 z-20 cursor-grab active:cursor-grabbing flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/70 backdrop-blur border border-border/50 opacity-70 hover:opacity-100 transition-opacity">
@@ -785,9 +764,11 @@ export function ManagementSnapshotDashboard({
               </>
             )}
             {sectionContent[id]}
-          </div>
-        ))}
-      </DraggableGridLayout>
+              </div>
+            ))}
+            {children}
+        </DraggableGridLayout>
+      </div>
     </div>
   );
 }
