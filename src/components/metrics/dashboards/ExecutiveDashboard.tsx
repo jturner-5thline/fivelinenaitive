@@ -506,7 +506,6 @@ export function ExecutiveDashboard() {
   const fmtCount = (v: number | null) =>
     v === null || !Number.isFinite(v) ? '—' : v.toLocaleString();
 
-  // Sample data for executive metrics
   const revenueByMonthData = [
     { month: 'Aug-25', revenue: 250000 },
     { month: 'Sep-25', revenue: 320000 },
@@ -514,14 +513,6 @@ export function ExecutiveDashboard() {
     { month: 'Nov-25', revenue: 350000 },
     { month: 'Dec-25', revenue: 420000 },
     { month: 'Jan-26', revenue: 180000 },
-  ];
-
-  const pipelineByStageData = [
-    { stage: 'Proposal', value: 15000000 },
-    { stage: 'Terms Issued', value: 8000000 },
-    { stage: 'Due Diligence', value: 12000000 },
-    { stage: 'Agreement', value: 5000000 },
-    { stage: 'Closed Won', value: 3000000 },
   ];
 
   return (
@@ -571,7 +562,7 @@ export function ExecutiveDashboard() {
       </div>
 
       {/* Row 1: Key Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <StatCard
           title="Total Active Deal Volume"
           value={fmtMoney(kpis.totalActiveDealVolume.value)}
@@ -614,52 +605,10 @@ export function ExecutiveDashboard() {
             })
           }
         />
-        <StatCard
-          title="Revenue"
-          value={fmtMoney(kpis.revenueQTD.value)}
-          subtitle={`5th Line Capital Advisors · ${selectedWindow.label}`}
-          loading={kpis.revenueQTD.loading}
-          tooltip={
-            <div className="space-y-1.5">
-              <p className="font-medium text-foreground">Revenue</p>
-              <p>QuickBooks <em>Profit &amp; Loss</em> Income total for <strong>5th Line Capital Advisors LLC</strong> (realm 193514877331929), accrual basis.</p>
-              <p className="text-muted-foreground">Window: {selectedWindow.label}.</p>
-            </div>
-          }
-          onClick={() =>
-            setDrilldown({
-              kind: 'revenue',
-              title: `Revenue · ${selectedWindow.label}`,
-              subtitle: '5th Line Capital Advisors · Income line items from QuickBooks P&L',
-              rows: kpis.revenueQTD.lineItems,
-            })
-          }
-        />
-        <StatCard
-          title="Avg. Deal Size"
-          value={fmtMoney(kpis.avgDealSize.value)}
-          subtitle={`Entered Final Credit Items · ${selectedWindow.label}`}
-          loading={kpis.avgDealSize.loading}
-          tooltip={
-            <div className="space-y-1.5">
-              <p className="font-medium text-foreground">Avg. Deal Size</p>
-              <p>SUM of deal value ÷ COUNT of distinct deals that <em>entered</em> the <em>Final Credit Items</em> stage during the selected window. Re-entries deduped to one per deal.</p>
-              <p className="text-muted-foreground">Window: {selectedWindow.label}.</p>
-            </div>
-          }
-          onClick={() =>
-            setDrilldown({
-              kind: 'deals',
-              title: `Avg. Deal Size · ${selectedWindow.label}`,
-              subtitle: 'Deals that entered Final Credit Items during the selected window',
-              rows: kpis.avgDealSize.deals,
-            })
-          }
-        />
       </div>
 
       {/* Row 2: Revenue & Pipeline */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <GlassCard interactive>
           <ChartCardHeader title="Revenue by Month" subtitle="Last 6 Months" />
           <GlassCardBody>
@@ -674,24 +623,6 @@ export function ExecutiveDashboard() {
                   <Area type="monotone" dataKey="revenue" name="Revenue" fill="hsl(var(--primary) / 0.22)" stroke="transparent" legendType="none" />
                   <Line type="monotone" dataKey="revenue" name="Revenue" stroke="hsl(var(--primary))" strokeWidth={1.75} dot={{ r: 3, fill: 'hsl(var(--primary))', strokeWidth: 0 }} />
                 </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          </GlassCardBody>
-        </GlassCard>
-
-        <GlassCard interactive>
-          <ChartCardHeader title="Pipeline by Stage" subtitle="Current" />
-          <GlassCardBody>
-            <div className="h-[240px]" role="img" aria-label="Pipeline value by stage">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={pipelineByStageData} layout="vertical" margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
-                  <CartesianGrid strokeDasharray="2 4" stroke={GRID_STROKE} horizontal={false} />
-                  <XAxis type="number" tickFormatter={formatCurrency} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
-                  <YAxis dataKey="stage" type="category" width={108} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
-                  <Tooltip formatter={(value: number) => [formatCurrency(value), 'Pipeline Value']} contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(160,200,255,0.08)' }} />
-                  <Legend wrapperStyle={LEGEND_STYLE} iconType="circle" iconSize={8} />
-                  <Bar dataKey="value" name="Pipeline Value" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 4 })} />
-                </BarChart>
               </ResponsiveContainer>
             </div>
           </GlassCardBody>
