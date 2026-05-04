@@ -12,6 +12,33 @@ export function CopilotToggleButton() {
   const hasOpenModal = useAnyDialogOpen();
   const [value, setValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  // Track the bounding rect of the main content column so the bar centers
+  // within it (not the viewport) even when the sidebar opens/closes.
+  const [mainRect, setMainRect] = useState<{ left: number; width: number } | null>(null);
+
+  useEffect(() => {
+    if (isOpen || hasOpenModal) return;
+
+    const mainEl = document.querySelector('main.main-scrollable') as HTMLElement | null;
+    if (!mainEl) return;
+
+    const update = () => {
+      const rect = mainEl.getBoundingClientRect();
+      setMainRect({ left: rect.left, width: rect.width });
+    };
+    update();
+
+    const ro = new ResizeObserver(update);
+    ro.observe(mainEl);
+    window.addEventListener('resize', update);
+    // The sidebar transitions width — observe body/html size changes too.
+    ro.observe(document.body);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, [isOpen, hasOpenModal]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -34,6 +61,10 @@ export function CopilotToggleButton() {
     setValue('');
   };
 
+  // Center horizontally within the main content column.
+  const centerX = mainRect ? mainRect.left + mainRect.width / 2 : null;
+  const maxWidthPx = mainRect ? Math.max(0, mainRect.width - 32) : null;
+
   return createPortal(
     <div
       role="search"
@@ -51,9 +82,13 @@ export function CopilotToggleButton() {
       style={{
         position: 'fixed',
         bottom: 'max(24px, env(safe-area-inset-bottom))',
-        left: '50%',
+        left: centerX != null ? `${centerX}px` : '50%',
         transform: 'translateX(-50%)',
-        width: 'min(720px, calc(100vw - 32px))',
+        width:
+          maxWidthPx != null
+            ? `min(720px, ${maxWidthPx}px)`
+            : 'min(720px, calc(100vw - 32px))',
+        visibility: mainRect ? 'visible' : 'hidden',
         zIndex: 99999,
         background: 'rgba(14, 16, 24, 0.6)',
         backdropFilter: 'blur(18px) saturate(1.4)',
