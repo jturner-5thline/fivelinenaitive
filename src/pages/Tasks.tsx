@@ -164,6 +164,21 @@ export default function Tasks() {
     return Array.from(dealMap.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [tasks]);
 
+  // All RLS-visible deals — used so the Deal filter can target deals that
+  // don't yet appear on any task in the current view (uniqueDeals only
+  // surfaces deals already linked to a loaded task).
+  const { deals: allDeals } = useDealsContext();
+  const allDealOptions = useMemo(() => {
+    const fromTasks = new Map(uniqueDeals);
+    const merged = new Map<string, string>(fromTasks);
+    allDeals.forEach(d => {
+      if (d.status === 'archived') return;
+      if (!merged.has(d.id)) merged.set(d.id, d.company || d.name);
+    });
+    return Array.from(merged.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [allDeals, uniqueDeals]);
+  const [dealFilterQuery, setDealFilterQuery] = useState('');
+
   const selectedTask = tasks.find(t => t.id === selectedTaskId) || null;
 
   // Single source of truth for "today" / "this week" boundaries — auto-rolls
