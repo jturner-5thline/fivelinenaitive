@@ -27,6 +27,24 @@ const WHY_NOT_OPTIONS = [
   'Product gap', 'Timing', 'No close attempt made',
 ];
 const NEEDS_REASON = new Set(['Not a fit', 'Tabled', 'Disqualified']);
+const MAX_WHY_NOT = 3;
+const MAX_BULLETS = 3;
+
+function limitBullets(text: string, max = MAX_BULLETS): string {
+  const lines = text.split('\n');
+  let kept = 0;
+  const out: string[] = [];
+  for (const line of lines) {
+    if (line.trim().length === 0) {
+      out.push(line);
+      continue;
+    }
+    if (kept >= max) break;
+    out.push(line);
+    kept++;
+  }
+  return out.join('\n');
+}
 
 interface Props {
   trigger: ReactNode;
@@ -76,7 +94,14 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
   };
 
   const toggleWhyNot = (opt: string) => {
-    setWhyNot(prev => prev.includes(opt) ? prev.filter(x => x !== opt) : [...prev, opt]);
+    setWhyNot(prev => {
+      if (prev.includes(opt)) return prev.filter(x => x !== opt);
+      if (prev.length >= MAX_WHY_NOT) {
+        toast.error(`Pick up to ${MAX_WHY_NOT} reasons`);
+        return prev;
+      }
+      return [...prev, opt];
+    });
   };
 
   const handleSubmit = async () => {
@@ -87,6 +112,9 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
     if (!ownedBy) return toast.error('Owned By is required');
     if (!source) return toast.error('Source is required');
     if (!stage) return toast.error('Current Stage is required');
+    if (NEEDS_REASON.has(outcome) && whyNot.length === 0) {
+      return toast.error('Select at least one reason for "Why Not Moving Forward"');
+    }
 
     setSubmitting(true);
     try {
