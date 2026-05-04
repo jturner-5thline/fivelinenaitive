@@ -193,8 +193,19 @@ export function TaskListView({
   onNewTaskChange, onNewTaskKeyDown, onNewTaskCreate, onCancelCreate,
   onSelectTask, onUpdateTask, onDeleteTask, selectedTaskId,
   groupBy = 'status', selectedTaskIds, onToggleSelect, onSelectAll,
-  onToggleStar, focusedTaskIndex, taskNameWarning,
+  onToggleStar, focusedTaskIndex, taskNameWarning, visibleColumnIds,
 }: TaskListViewProps) {
+  const visibleSet = useMemo(
+    () => new Set<TaskColumnId>((visibleColumnIds && visibleColumnIds.length > 0
+      ? visibleColumnIds
+      : DEFAULT_TASK_COLUMNS) as TaskColumnId[]),
+    [visibleColumnIds],
+  );
+  const cols = useMemo(() => visibleColumns(visibleSet), [visibleSet]);
+  const gridStyle = useMemo<React.CSSProperties>(
+    () => ({ gridTemplateColumns: buildGridTemplate(visibleSet) }),
+    [visibleSet],
+  );
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(['complete']));
   const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(new Set());
   const [dragActiveId, setDragActiveId] = useState<string | null>(null);
