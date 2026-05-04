@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -6,11 +6,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/u
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CalendarIcon, Loader2, UserCheck, Zap, Sun, Sunrise, CalendarDays, Flame, Coffee, Repeat } from 'lucide-react';
+import { CalendarIcon, Loader2, UserCheck, Zap, Sun, Sunrise, CalendarDays, Flame, Coffee, Repeat, Briefcase, Search, X, Sparkles } from 'lucide-react';
 import { addDays, format, isSameDay, nextMonday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { type TeamMember } from '@/hooks/useTeamMembers';
 import { useAssigneeOpenTaskCounts } from '@/hooks/useAssigneeOpenTaskCounts';
+import { useDealsContext } from '@/contexts/DealsContext';
+import type { Deal } from '@/types/deal';
 import { toast } from 'sonner';
 
 export interface QuickTaskInput {
@@ -22,6 +24,8 @@ export interface QuickTaskInput {
   recurrence_rule: string | null;
   /** YYYY-MM-DD; if set, no new occurrence is generated past this date. */
   recurrence_end_date: string | null;
+  /** Optional deal association — surfaces task under deal's Tasks tab. */
+  deal_id: string | null;
 }
 
 interface Props {
