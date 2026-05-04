@@ -40,6 +40,8 @@ const PipelineMemoView = lazy(() =>
 );
 import { useAuth } from '@/contexts/AuthContext';
 import { useMorningFollowups, useFollowupActions, type FollowupDealGroup, type FollowupItem } from '@/hooks/useMorningFollowups';
+import { useDealsContext } from '@/contexts/DealsContext';
+import type { Deal } from '@/types/deal';
 
 interface DailyBriefingModalProps {
   open: boolean;
@@ -201,6 +203,78 @@ function BriefingRow({
         {onClick && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />}
       </div>
     </div>
+  );
+}
+
+// ── Deal link chip ─────────────────────────────────────────────
+// Resolves a deal/company reference from a briefing row (email, activity, etc.)
+// against the user's DealsContext and renders a clickable chip that navigates
+// to the matching deal page. Falls back gracefully when no match is found.
+function useResolveDealForEmail(email: Record<string, any>): Deal | null {
+  const { deals } = useDealsContext();
+  return useMemo(() => {
+    if (!deals?.length) return null;
+    const dealName: string | undefined = email?.analysis?.deal_name || email?.deal_name;
+    const norm = (s?: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (dealName) {
+      const target = norm(dealName);
+      const exact = deals.find(d => norm(d.company) === target || norm(d.name) === target);
+      if (exact) return exact;
+      const partial = deals.find(d => {
+        const c = norm(d.company);
+        const n = norm(d.name);
+        return (c && (c.includes(target) || target.includes(c)))
+          || (n && (n.includes(target) || target.includes(n)));
+      });
+      if (partial) return partial;
+    }
+    // Fallback: sender domain ↔ deal.companyUrl
+    const fromEmail: string | undefined = email?.from_email;
+    const senderDomain = fromEmail?.split('@')[1]?.toLowerCase();
+    if (senderDomain && !COMMON_EMAIL_DOMAINS.has(senderDomain)) {
+      const byDomain = deals.find(d => {
+        try {
+          const url = d.companyUrl;
+          if (!url) return false;
+          const host = new URL(url.startsWith('http') ? url : `https://${url}`).hostname.toLowerCase().replace(/^www\./, '');
+          return host === senderDomain || senderDomain.endsWith(`.${host}`) || host.endsWith(`.${senderDomain}`);
+        } catch { return false; }
+      });
+      if (byDomain) return byDomain;
+    }
+    return null;
+  }, [deals, email]);
+}
+
+const COMMON_EMAIL_DOMAINS = new Set([
+  'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com',
+  'me.com', 'aol.com', 'proton.me', 'protonmail.com', 'live.com', 'msn.com',
+]);
+
+function DealLinkChip({ email, onNavigate }: { email: Record<string, any>; onNavigate: (path: string) => void }) {
+  const deal = useResolveDealForEmail(email);
+  if (!deal) return null;
+  const label = deal.company || deal.name;
+  return (
+    <Badge
+      variant="outline"
+      role="button"
+      tabIndex={0}
+      onClick={(e) => { e.stopPropagation(); onNavigate(`/deal/${deal.id}`); }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          onNavigate(`/deal/${deal.id}`);
+        }
+      }}
+      title={`Open deal: ${label}`}
+      className="text-[9px] h-[16px] px-1 gap-0.5 shrink-0 font-medium cursor-pointer bg-primary/10 text-primary border-primary/30 hover:bg-primary/20 hover:border-primary/50 transition-colors inline-flex items-center"
+    >
+      <GitBranch className="h-2.5 w-2.5" />
+      <span className="truncate max-w-[140px]">{label}</span>
+      <ArrowUpRight className="h-2.5 w-2.5" />
+    </Badge>
   );
 }
 
@@ -868,6 +942,7 @@ function EmailTab({
                       extras={
                         <>
                           <EmailCategoryChips email={e} />
+                          <DealLinkChip email={e} onNavigate={onNavigate} />
                           {autoLabels.map(lbl => (
                             <Badge
                               key={lbl.id}
