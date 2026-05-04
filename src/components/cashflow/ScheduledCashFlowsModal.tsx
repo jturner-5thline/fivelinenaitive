@@ -48,6 +48,7 @@ import {
   type FlowType,
 } from './scheduledCashFlows';
 import type { CreditFacility } from './types';
+import { LOC_DRAW_PREFIX, LOC_REPAY_PREFIX } from './creditFacilities';
 
 interface Props {
   open: boolean;
