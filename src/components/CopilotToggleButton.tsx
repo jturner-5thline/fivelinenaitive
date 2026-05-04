@@ -72,6 +72,51 @@ export function CopilotToggleButton() {
   const { deals } = useDealsContext();
   const { lenders } = useLenders();
 
+  // ── Persisted bar width ────────────────────────────────────────────────
+  // The user can drag the left edge of the bar to resize it. The pixel
+  // width is persisted to localStorage so the layout stays consistent
+  // across sessions and routes.
+  const BAR_WIDTH_KEY = 'naitive:bar-width';
+  const BAR_WIDTH_MIN = 280;
+  const BAR_WIDTH_MAX = 960;
+  const BAR_WIDTH_DEFAULT = 432;
+  const [barWidth, setBarWidth] = useState<number>(() => {
+    if (typeof window === 'undefined') return BAR_WIDTH_DEFAULT;
+    const raw = window.localStorage.getItem(BAR_WIDTH_KEY);
+    const parsed = raw ? parseInt(raw, 10) : NaN;
+    if (!Number.isFinite(parsed)) return BAR_WIDTH_DEFAULT;
+    return Math.min(BAR_WIDTH_MAX, Math.max(BAR_WIDTH_MIN, parsed));
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem(BAR_WIDTH_KEY, String(Math.round(barWidth))); } catch {}
+  }, [barWidth]);
+
+  const resizingRef = useRef<{ startX: number; startW: number } | null>(null);
+  const onResizeStart = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    resizingRef.current = { startX: e.clientX, startW: barWidth };
+    const onMove = (ev: PointerEvent) => {
+      const s = resizingRef.current;
+      if (!s) return;
+      // Dragging the LEFT handle outward (left) grows the bar; because
+      // the bar is centered, we grow by 2x the delta to keep the right
+      // edge symmetric.
+      const delta = s.startX - ev.clientX;
+      const next = Math.min(BAR_WIDTH_MAX, Math.max(BAR_WIDTH_MIN, s.startW + delta * 2));
+      setBarWidth(next);
+    };
+    const onUp = () => {
+      resizingRef.current = null;
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+  const onResizeDoubleClick = () => setBarWidth(BAR_WIDTH_DEFAULT);
+
   // ── Debug centering overlay ────────────────────────────────────────────
   // Toggle with Shift+Ctrl+D / Shift+Cmd+D. Draws the main content's
   // center line, the bar's center line, and the pixel delta so we can
@@ -258,7 +303,7 @@ export function CopilotToggleButton() {
     >
       <div
         className="pointer-events-auto flex flex-col items-center gap-2"
-        style={{ width: 'min(432px, calc(100% - 32px))' }}
+        style={{ width: `min(${barWidth}px, calc(100% - 32px))` }}
       >
         {showDropdown && (
           <div
@@ -367,12 +412,8 @@ export function CopilotToggleButton() {
             'animate-in fade-in duration-150',
           )}
           style={{
-            width: '432px',
+            width: `${barWidth}px`,
             maxWidth: 'calc(100% - 32px)',
-            // Temporary debug outline to confirm which element is being
-            // resized — remove after visual verification.
-            outline: '2px dashed rgba(244, 114, 182, 0.85)',
-            outlineOffset: '2px',
             background: 'rgba(14, 16, 24, 0.6)',
             backdropFilter: 'blur(18px) saturate(1.4)',
             WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
@@ -382,6 +423,24 @@ export function CopilotToggleButton() {
           }}
           onClick={() => inputRef.current?.focus()}
         >
+          {/* Left-edge resize handle. Drag to resize; double-click to reset. */}
+          <div
+            role="separator"
+            aria-label="Resize Ask naitive AI bar"
+            aria-orientation="vertical"
+            onPointerDown={onResizeStart}
+            onDoubleClick={onResizeDoubleClick}
+            onClick={(e) => e.stopPropagation()}
+            className="absolute left-0 top-0 z-10 h-full w-2 cursor-ew-resize opacity-0 hover:opacity-100 focus:opacity-100 transition-opacity"
+            style={{ touchAction: 'none' }}
+            title="Drag to resize • Double-click to reset"
+          >
+            <div
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-5 w-[2px] rounded-full"
+              style={{ background: 'rgba(255,255,255,0.45)' }}
+            />
+          </div>
+
           {/* Centered watermark emblem */}
           <span
             aria-hidden="true"
