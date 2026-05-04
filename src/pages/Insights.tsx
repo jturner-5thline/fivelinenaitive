@@ -75,6 +75,7 @@ import { SortableMetricWidget, StatWidgetContent, ChartWidgetContent } from "@/c
 import { DatarailsWidgetEditor } from "@/components/widget-editor/DatarailsWidgetEditor";
 import { DEFAULT_WIDGET_CONFIG, WidgetConfig as DatarailsWidgetConfig } from "@/components/widget-editor/widgetTypes";
 import { toast } from "@/hooks/use-toast";
+import { toast as sonnerToast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useCompanyDashboardConfig } from "@/hooks/useCompanyDashboardConfig";
 import { useMetricsEditPermission } from "@/hooks/useMetricsEditPermission";
@@ -1495,10 +1496,24 @@ export default function Metrics() {
     { allowAllMembers: true },
   );
   const hiddenSnapshotSections = hiddenSnapshotSectionsConfig.items;
+  const SNAPSHOT_SECTION_LABELS: Record<string, string> = {
+    'revenue-overview': 'Revenue Overview',
+    'pipeline-metrics': 'Pipeline Metrics',
+    'signed-deals-ar': 'Signed Deals & AR',
+    'profit-by-entity': 'Profit by Entity',
+    'executive-dashboard': 'Executive Dashboard',
+  };
   const handleDeleteSnapshotSection = (sectionId: import('@/components/metrics/dashboards/ManagementSnapshotDashboard').ManagementSnapshotSectionId) => {
-    if (!window.confirm('Remove this section from the dashboard? You can restore it later from the layout menu.')) return;
     if (hiddenSnapshotSections.includes(sectionId)) return;
-    saveHiddenSnapshotSections({ items: [...hiddenSnapshotSections, sectionId] });
+    const next = [...hiddenSnapshotSections, sectionId];
+    saveHiddenSnapshotSections({ items: next });
+    const label = SNAPSHOT_SECTION_LABELS[sectionId] ?? 'Section';
+    sonnerToast(`${label} removed`, {
+      action: {
+        label: 'Undo',
+        onClick: () => saveHiddenSnapshotSections({ items: next.filter(s => s !== sectionId) }),
+      },
+    });
   };
   const restoreAllSnapshotHidden = () => {
     saveHiddenSnapshotCards({ items: [] });
@@ -1534,7 +1549,16 @@ export default function Metrics() {
 
   const confirmDeleteSnapshotCard = () => {
     if (snapshotCardToDelete) {
-      setHiddenSnapshotCards(prev => [...prev, snapshotCardToDelete]);
+      const cardId = snapshotCardToDelete;
+      const next = [...hiddenSnapshotCards, cardId];
+      saveHiddenSnapshotCards({ items: next });
+      const label = managementSnapshotCards?.[cardId]?.title ?? 'Widget';
+      sonnerToast(`${label} removed`, {
+        action: {
+          label: 'Undo',
+          onClick: () => saveHiddenSnapshotCards({ items: next.filter(c => c !== cardId) }),
+        },
+      });
     }
     setSnapshotDeleteConfirmOpen(false);
     setSnapshotCardToDelete(null);
