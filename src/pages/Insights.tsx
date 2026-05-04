@@ -1392,6 +1392,25 @@ export default function Metrics() {
 
   const [selectedDashboard, setSelectedDashboard] = useState('management-snapshot');
   const [isEditMode, setIsEditMode] = useState(false);
+  const undoStackRef = useRef<Array<{ type: 'card' | 'section'; id: string; label: string; undo: () => void }>>([]);
+
+  // Ctrl/Cmd+Z while in Edit Layout mode undoes most recent widget/section deletion
+  useEffect(() => {
+    if (!isEditMode) return;
+    const handler = (e: KeyboardEvent) => {
+      const isUndo = (e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z');
+      if (!isUndo) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      const last = undoStackRef.current.pop();
+      if (!last) return;
+      e.preventDefault();
+      last.undo();
+      sonnerToast(`Restored ${last.label}`);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isEditMode]);
   const [editorOpen, setEditorOpen] = useState(false);
   const [createDashboardOpen, setCreateDashboardOpen] = useState(false);
   const [newDashboardName, setNewDashboardName] = useState('');
@@ -1508,10 +1527,19 @@ export default function Metrics() {
     const next = [...hiddenSnapshotSections, sectionId];
     saveHiddenSnapshotSections({ items: next });
     const label = SNAPSHOT_SECTION_LABELS[sectionId] ?? 'Section';
+    undoStackRef.current.push({
+      type: 'section',
+      id: sectionId,
+      label,
+      undo: () => saveHiddenSnapshotSections({ items: next.filter(s => s !== sectionId) }),
+    });
     sonnerToast(`${label} removed`, {
       action: {
         label: 'Undo',
-        onClick: () => saveHiddenSnapshotSections({ items: next.filter(s => s !== sectionId) }),
+        onClick: () => {
+          saveHiddenSnapshotSections({ items: next.filter(s => s !== sectionId) });
+          undoStackRef.current = undoStackRef.current.filter(e => !(e.type === 'section' && e.id === sectionId));
+        },
       },
     });
   };
@@ -1553,10 +1581,19 @@ export default function Metrics() {
       const next = [...hiddenSnapshotCards, cardId];
       saveHiddenSnapshotCards({ items: next });
       const label = managementSnapshotCards?.[cardId]?.title ?? 'Widget';
+      undoStackRef.current.push({
+        type: 'card',
+        id: cardId,
+        label,
+        undo: () => saveHiddenSnapshotCards({ items: next.filter(c => c !== cardId) }),
+      });
       sonnerToast(`${label} removed`, {
         action: {
           label: 'Undo',
-          onClick: () => saveHiddenSnapshotCards({ items: next.filter(c => c !== cardId) }),
+          onClick: () => {
+            saveHiddenSnapshotCards({ items: next.filter(c => c !== cardId) });
+            undoStackRef.current = undoStackRef.current.filter(e => !(e.type === 'card' && e.id === cardId));
+          },
         },
       });
     }
