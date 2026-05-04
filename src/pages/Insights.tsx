@@ -2759,3 +2759,11 @@ function MetricsInner() {
     </>
   );
 }
+
+export default function Metrics() {
+  return (
+    <InsightsTimeframeProvider>
+      <MetricsInner />
+    </InsightsTimeframeProvider>
+  );
+}
