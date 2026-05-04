@@ -2535,19 +2535,11 @@ function MetricsInner() {
       </div>
 
       {/* Widget Editor - Full Screen Overlay */}
-      {editorOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-background/95"
-          onMouseDown={(e) => {
-            // Close when clicking the backdrop (outside the editor content)
-            if (e.target === e.currentTarget) handleCloseEditor();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') handleCloseEditor();
-          }}
-          tabIndex={-1}
+      <Dialog open={editorOpen} onOpenChange={(o) => { if (!o) handleCloseEditor(); }}>
+        <DialogContent
+          className="max-w-none w-screen h-screen p-0 gap-0 rounded-none border-0 sm:rounded-none translate-x-0 translate-y-0 left-0 top-0 bg-background overflow-hidden flex flex-col"
         >
-          <div onMouseDown={(e) => e.stopPropagation()} className="h-full">
+          <div className="flex-1 min-h-0 overflow-auto">
             <DatarailsWidgetEditor
             initialWidgetConfig={editorInitialConfig}
             onSave={(datarailsConfig) => {
@@ -2587,8 +2579,8 @@ function MetricsInner() {
             onCancel={() => handleCloseEditor()}
             />
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation */}
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
