@@ -1393,6 +1393,24 @@ export default function Metrics() {
   const [selectedDashboard, setSelectedDashboard] = useState('management-snapshot');
   const [isEditMode, setIsEditMode] = useState(false);
   const undoStackRef = useRef<Array<{ type: 'card' | 'section'; id: string; label: string; undo: () => void }>>([]);
+
+  // Ctrl/Cmd+Z while in Edit Layout mode undoes most recent widget/section deletion
+  useEffect(() => {
+    if (!isEditMode) return;
+    const handler = (e: KeyboardEvent) => {
+      const isUndo = (e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z');
+      if (!isUndo) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      const last = undoStackRef.current.pop();
+      if (!last) return;
+      e.preventDefault();
+      last.undo();
+      sonnerToast(`Restored ${last.label}`);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isEditMode]);
   const [editorOpen, setEditorOpen] = useState(false);
   const [createDashboardOpen, setCreateDashboardOpen] = useState(false);
   const [newDashboardName, setNewDashboardName] = useState('');
