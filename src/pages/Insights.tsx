@@ -2291,11 +2291,7 @@ function MetricsInner() {
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               {selectedDashboard === 'management-snapshot' && (
-                <PeriodPicker
-                  quarterOptions={dashboardQuarterOptions}
-                  selected={dashboardSelectedQuarter}
-                  onChange={setDashboardSelectedQuarter}
-                />
+                <InsightsTimeframePicker />
               )}
 
               <DropdownMenu>
