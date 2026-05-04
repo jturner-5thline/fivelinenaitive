@@ -398,7 +398,13 @@
   border-radius: 4px;
   background: hsl(var(--primary) / 0.85);
   color: hsl(var(--primary-foreground));
-  pointer-events: none;
+  pointer-events: auto;
+  z-index: 2;
+  transition: transform 120ms ease, background 120ms ease;
+}
+.cf-grid td.cf-cell-override .cf-override-badge:hover {
+  background: hsl(var(--primary));
+  transform: scale(1.15);
 }
 
 /* Section header rows */
