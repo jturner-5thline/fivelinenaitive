@@ -254,9 +254,9 @@ export function NaitiveICPLeaderboard({ deals }: { deals: Deal[] }) {
   const insights = useMemo(() => generateInsights(qualToDemo, demoToTrial, persona), [qualToDemo, demoToTrial, persona]);
 
   return (
-    <section className="space-y-3">
-      <div>
-        <h2 className="text-lg font-semibold tracking-tight">ICP Conversion Leaderboard</h2>
+    <section className="space-y-4">
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold tracking-tight text-foreground">ICP Conversion Leaderboard</h2>
         <p className="text-sm text-muted-foreground">
           Where to focus and where to pull back — updated as pipeline moves.
         </p>
