@@ -1508,7 +1508,7 @@ export default function Metrics() {
     const next = [...hiddenSnapshotSections, sectionId];
     saveHiddenSnapshotSections({ items: next });
     const label = SNAPSHOT_SECTION_LABELS[sectionId] ?? 'Section';
-    toast(`${label} removed`, {
+    sonnerToast(`${label} removed`, {
       action: {
         label: 'Undo',
         onClick: () => saveHiddenSnapshotSections({ items: next.filter(s => s !== sectionId) }),
@@ -1553,7 +1553,7 @@ export default function Metrics() {
       const next = [...hiddenSnapshotCards, cardId];
       saveHiddenSnapshotCards({ items: next });
       const label = managementSnapshotCards?.[cardId]?.title ?? 'Widget';
-      toast(`${label} removed`, {
+      sonnerToast(`${label} removed`, {
         action: {
           label: 'Undo',
           onClick: () => saveHiddenSnapshotCards({ items: next.filter(c => c !== cardId) }),
