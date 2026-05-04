@@ -164,7 +164,8 @@ function ConversionChart({ title, data }: { title: string; data: ConversionRow[]
               <YAxis
                 dataKey="icp"
                 type="category"
-                width={120}
+                width={104}
+                interval={0}
                 tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                 axisLine={false}
                 tickLine={false}
@@ -210,8 +211,8 @@ function PersonaMatrix({ data }: { data: PersonaRow[] }) {
         <CardTitle className="text-base font-semibold tracking-tight text-foreground">Persona Output: Who Buys vs. Who Informs</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="overflow-hidden rounded-b-lg">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-b-lg">
+          <table className="w-full min-w-[420px] text-sm">
             <thead className="bg-muted/40 text-xs text-muted-foreground">
               <tr>
                 <th className="text-left px-3 py-2 font-medium">Persona</th>
@@ -262,7 +263,7 @@ export function NaitiveICPLeaderboard({ deals }: { deals: Deal[] }) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         <ConversionChart title="Qual → Demo Conversion by ICP" data={qualToDemo} />
         <ConversionChart title="Demo → Trial Conversion by ICP" data={demoToTrial} />
         <PersonaMatrix data={persona} />
