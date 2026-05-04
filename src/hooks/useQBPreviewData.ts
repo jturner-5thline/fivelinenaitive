@@ -10,12 +10,30 @@ export interface PreviewDataPoint {
 }
 
 /** Compute the date range from a TimeWindow */
-function getDateRange(window: TimeWindow | undefined): { start: string; end: string } | null {
+function getDateRange(
+  window: TimeWindow | undefined,
+  customRange?: { start: string; end: string },
+): { start: string; end: string } | null {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth(); // 0-indexed
 
   switch (window) {
+    case 'custom':
+      if (customRange?.start && customRange?.end) return { start: customRange.start, end: customRange.end };
+      return null;
+    case '7d': {
+      const s = new Date(now); s.setDate(s.getDate() - 6);
+      return { start: s.toISOString().slice(0, 10), end: now.toISOString().slice(0, 10) };
+    }
+    case '30d': {
+      const s = new Date(now); s.setDate(s.getDate() - 29);
+      return { start: s.toISOString().slice(0, 10), end: now.toISOString().slice(0, 10) };
+    }
+    case '90d': {
+      const s = new Date(now); s.setDate(s.getDate() - 89);
+      return { start: s.toISOString().slice(0, 10), end: now.toISOString().slice(0, 10) };
+    }
     case 'mtd':
       return { start: `${year}-${String(month + 1).padStart(2, '0')}-01`, end: now.toISOString().slice(0, 10) };
     case 'lastMonth': {
@@ -213,10 +231,11 @@ export function useQBPreviewData(config: WidgetConfig) {
     `${v.fieldId}|${v.agg}|${v.breakdown ?? 'total'}|${(v.accountFilter ?? []).sort().join(',')}|${v.combineOp ?? ''}`
   ).join(';');
 
+  const customRange = config.xAxis.customRange;
   return useQuery({
-    queryKey: ['qb-preview-data', user?.id, realmId, valuesKey, grain, timeWindow, showZeroPeriods],
+    queryKey: ['qb-preview-data', user?.id, realmId, valuesKey, grain, timeWindow, customRange?.start, customRange?.end, showZeroPeriods],
     queryFn: async (): Promise<PreviewDataPoint[]> => {
-      const dateRange = getDateRange(timeWindow);
+      const dateRange = getDateRange(timeWindow, customRange);
 
       // Group results by period
       const periodMap = new Map<string, PreviewDataPoint>();
