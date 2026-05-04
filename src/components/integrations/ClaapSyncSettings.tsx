@@ -256,6 +256,16 @@ export function ClaapSyncSettings() {
         cursor = result.next_cursor;
       }
 
+      // After re-matching, run AI suggestions for any calls still unmatched
+      if (rematchExistingOnly) {
+        try {
+          await generateSuggestions.mutateAsync({ allUnmatched: true });
+        } catch (e) {
+          // Surface but don't fail the whole flow
+          console.error('Auto-suggest after re-match failed', e);
+        }
+      }
+
       toast.success(rematchExistingOnly ? 'Call re-match complete' : 'Historical backfill complete', {
         description: rematchExistingOnly
           ? `Processed: ${totalProcessed} | Re-matched: ${totalRematched} | Pages: ${totalPagesProcessed}`
