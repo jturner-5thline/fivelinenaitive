@@ -990,7 +990,8 @@ export function AICopilotPanel() {
   // resizes. Width matches the bar's persisted width.
   const BAR_OFFSET = 24;
   const BAR_HEIGHT = 44;
-  const GAP = 12;
+  // Tight seam between the popup and the Ask bar so they read as a joined pair.
+  const GAP = 8;
   const barWidthPref = (() => {
     try {
       const raw = window.localStorage.getItem('naitive:bar-width');
@@ -1030,18 +1031,22 @@ export function AICopilotPanel() {
           maxHeight: 'calc(100vh - 48px)',
           zIndex: 51,
           display: 'flex', flexDirection: 'column',
-          background: 'rgba(8, 10, 18, 0.92)',
-          backdropFilter: 'blur(24px) saturate(1.3)',
-          WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
-          // Top corners rounded; bottom corners square so the panel reads as
-          // a continuous surface with the rounded Ask bar that sits below.
-          borderTopLeftRadius: 16,
-          borderTopRightRadius: 16,
-          borderBottomLeftRadius: 0,
-          borderBottomRightRadius: 0,
-          border: '1px solid var(--glass-border)',
-          borderBottom: 'none',
-          boxShadow: '0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.05)',
+          // Mostly opaque neutral surface — same family as the Ask bar below,
+          // just a touch denser so the popup reads as elevated above it.
+          background: 'rgba(12, 14, 22, 0.97)',
+          // Greatly reduced glassmorphism — keep a hint of saturation only.
+          backdropFilter: 'saturate(1.2)',
+          WebkitBackdropFilter: 'saturate(1.2)',
+          // Match the Ask bar's curvature on top; square bottom so the seam
+          // visually attaches to the rounded bar below.
+          borderTopLeftRadius: 18,
+          borderTopRightRadius: 18,
+          borderBottomLeftRadius: 12,
+          borderBottomRightRadius: 12,
+          // Same border tone as the Ask bar.
+          border: '1px solid rgba(255, 255, 255, 0.18)',
+          boxShadow:
+            '0 12px 36px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
           overflow: 'hidden',
           transition: 'height 220ms cubic-bezier(0.16, 1, 0.3, 1), opacity 180ms ease-out',
           opacity: isMinimized ? 0 : 1,
