@@ -259,6 +259,111 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
   const workloadTone = (n: number) =>
     n >= 15 ? '#e57373' : n >= 8 ? '#e89b6c' : n >= 3 ? '#d4a45a' : '#7fc89a';
 
+  // ─── Deal suggestion engine ─────────────────────────────────────────
+  // Debounce title so suggestion scoring doesn't run on every keystroke.
+  useEffect(() => {
+    const h = setTimeout(() => setDebouncedTitle(title), 250);
+    return () => clearTimeout(h);
+  }, [title]);
+
+  const stopWords = useMemo(() => new Set([
+    'a','an','the','to','for','with','and','or','of','on','at','in','from','by',
+    'follow','followup','follow-up','call','email','send','review','update',
+    'task','about','re','please','need','needs','next','today','tomorrow','asap',
+  ]), []);
+
+  // Token similarity: deal scores higher when its name/company/lender/contact
+  // tokens overlap with words from the task title. Multi-word deal names
+  // (e.g. "SoLo Funds", "LAGO Innovation Fund") get a substring boost so
+  // exact phrase mentions reliably win over single-word collisions.
+  const scoreDeal = (deal: Deal, text: string): number => {
+    if (!text) return 0;
+    const haystackParts = [deal.name, deal.company, deal.lender, deal.contact]
+      .filter(Boolean)
+      .map(s => String(s).toLowerCase());
+    const lower = text.toLowerCase();
+    let score = 0;
+    for (const part of haystackParts) {
+      if (!part) continue;
+      // Phrase match (e.g. "lago innovation") — strong signal.
+      if (part.length >= 4 && lower.includes(part)) score += 100;
+      // Token-level overlap.
+      const tokens = part.split(/[^a-z0-9]+/).filter(t => t.length >= 3 && !stopWords.has(t));
+      const titleTokens = lower.split(/[^a-z0-9]+/).filter(t => t.length >= 3 && !stopWords.has(t));
+      for (const tk of tokens) {
+        if (titleTokens.includes(tk)) score += 25;
+      }
+    }
+    // Tie-breaker: recently updated deals slightly preferred.
+    const ageDays = deal.updatedAt
+      ? (Date.now() - new Date(deal.updatedAt).getTime()) / 86400000
+      : 365;
+    score += Math.max(0, 5 - Math.min(5, ageDays / 30));
+    return score;
+  };
+
+  const suggestions = useMemo(() => {
+    if (!debouncedTitle || debouncedTitle.trim().length < 3) return [];
+    return allDeals
+      .filter(d => d.status !== 'archived')
+      .map(d => ({ deal: d, score: scoreDeal(d, debouncedTitle) }))
+      .filter(x => x.score >= 25)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedTitle, allDeals]);
+
+  // Auto-fill ONLY when there's a single high-confidence match and the user
+  // hasn't already chosen a deal. Never override an explicit selection.
+  useEffect(() => {
+    if (dealId) return;
+    if (suggestions.length === 1 && suggestions[0].score >= 100) {
+      setDealId(suggestions[0].deal.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggestions]);
+
+  const selectedDeal = dealId ? allDeals.find(d => d.id === dealId) : null;
+
+  const dealSearchResults = useMemo(() => {
+    const q = dealQuery.trim().toLowerCase();
+    const base = allDeals.filter(d => d.status !== 'archived');
+    const ranked = base
+      .map(d => ({
+        deal: d,
+        // Prioritize relevance to the task title, then to the picker query.
+        s: scoreDeal(d, debouncedTitle) +
+           (q ? (d.name.toLowerCase().includes(q) || d.company.toLowerCase().includes(q) ? 50 : 0) : 0),
+      }))
+      .sort((a, b) => {
+        if (b.s !== a.s) return b.s - a.s;
+        return a.deal.name.localeCompare(b.deal.name);
+      });
+    const filtered = q
+      ? ranked.filter(({ deal: d }) =>
+          d.name.toLowerCase().includes(q) ||
+          d.company.toLowerCase().includes(q) ||
+          (d.lender || '').toLowerCase().includes(q) ||
+          (d.contact || '').toLowerCase().includes(q))
+      : ranked;
+    return filtered.slice(0, 50).map(x => x.deal);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allDeals, dealQuery, debouncedTitle]);
+
+  const dealStageTone = (stage?: string) => {
+    switch (stage) {
+      case 'closed-won': return '#7fc89a';
+      case 'closed-lost': return '#e57373';
+      case 'in-due-diligence':
+      case 'term-sheet': return '#7eb8f7';
+      case 'nda':
+      case 'initial-review': return '#d4a45a';
+      default: return '#9aa3b6';
+    }
+  };
+  const formatStage = (s?: string) =>
+    s ? s.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '';
+
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent
