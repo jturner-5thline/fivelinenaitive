@@ -28,9 +28,6 @@ export function MemoHeader({ deal }: MemoHeaderProps) {
     <div className="px-5 pt-4 pb-3 border-b border-border">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-1">
-            Deal Update Memo
-          </div>
           <h2
             className="text-lg font-semibold leading-tight text-foreground truncate"
             title={deal.company || deal.name}
