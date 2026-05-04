@@ -392,7 +392,7 @@ function DrilldownModal({
   );
 }
 
-function StackedDebtRevenueChart({
+export function StackedDebtRevenueChart({
   data,
   isLoading,
   total,
