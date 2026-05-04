@@ -1515,6 +1515,30 @@ export default function Metrics() {
     { allowAllMembers: true },
   );
   const hiddenSnapshotSections = hiddenSnapshotSectionsConfig.items;
+
+  // Persisted hidden sub-widgets (individual charts/KPIs extracted from sections)
+  const {
+    config: hiddenSubWidgetsConfig,
+    saveConfig: saveHiddenSubWidgets,
+  } = useCompanyDashboardConfig<{ items: import('@/components/metrics/dashboards/ManagementSnapshotDashboard').WeeklyRundownSubWidgetId[] }>(
+    'hidden_snapshot_sub_widgets',
+    { items: [] },
+    { allowAllMembers: true },
+  );
+  const hiddenSubWidgets = hiddenSubWidgetsConfig.items;
+  const handleDeleteSubWidget = (id: import('@/components/metrics/dashboards/ManagementSnapshotDashboard').WeeklyRundownSubWidgetId) => {
+    if (hiddenSubWidgets.includes(id)) return;
+    const next = [...hiddenSubWidgets, id];
+    saveHiddenSubWidgets({ items: next });
+    const label = (require('@/components/metrics/dashboards/ManagementSnapshotDashboard') as any).SUB_WIDGET_LABELS?.[id] ?? 'Widget';
+    undoStackRef.current.push({
+      type: 'card', id, label,
+      undo: () => saveHiddenSubWidgets({ items: next.filter(x => x !== id) }),
+    });
+    sonnerToast(`${label} removed`, {
+      action: { label: 'Undo', onClick: () => saveHiddenSubWidgets({ items: next.filter(x => x !== id) }) },
+    });
+  };
   const SNAPSHOT_SECTION_LABELS: Record<string, string> = {
     'revenue-overview': 'Revenue Overview',
     'pipeline-metrics': 'Pipeline Metrics',
