@@ -252,7 +252,7 @@ export function CashFlowManager() {
       try {
         const { data, error } = await supabase
           .from('cash_flow_imports' as any)
-          .select('daily_data, recurring_tags, weekly_overrides')
+          .select('daily_data, recurring_tags, weekly_overrides, credit_facilities')
           .eq('company_id', company.id)
           .maybeSingle();
 
@@ -270,6 +270,10 @@ export function CashFlowManager() {
           const wo = (data as any).weekly_overrides;
           if (wo && typeof wo === 'object' && !Array.isArray(wo)) {
             setWeeklyOverrides(wo as WeeklyOverrides);
+          }
+          const cf = (data as any).credit_facilities;
+          if (Array.isArray(cf)) {
+            setCreditFacilities(cf as CreditFacility[]);
           }
         }
       } catch (err) {
