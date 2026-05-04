@@ -146,8 +146,8 @@ export function NaitivHealthMixChart({ data }: { data: HealthMixItem[] }) {
         <CardTitle className="text-base font-semibold tracking-tight text-foreground">Health Mix</CardTitle>
       </CardHeader>
       <CardContent className="px-5 pb-5 pt-1">
-        <div className="flex items-center gap-4">
-          <div className="w-[55%] min-w-0">
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="w-full sm:w-[55%] min-w-0">
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
               <PieGlassDefs colors={filtered.map(e => e.color)} />
@@ -160,12 +160,12 @@ export function NaitivHealthMixChart({ data }: { data: HealthMixItem[] }) {
             </PieChart>
           </ResponsiveContainer>
           </div>
-          <div className="flex flex-col gap-2 min-w-0 flex-1">
+          <div className="flex flex-col gap-2 min-w-0 w-full sm:flex-1">
             {data.map(d => (
-              <div key={d.status} className="flex items-center gap-2 text-xs">
+              <div key={d.status} className="flex items-center gap-2 text-xs min-w-0">
                 <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
-                <span className="text-muted-foreground truncate">{d.label}</span>
-                <span className="font-semibold text-foreground tabular-nums ml-auto">{d.count}</span>
+                <span className="text-muted-foreground truncate min-w-0 flex-1">{d.label}</span>
+                <span className="font-semibold text-foreground tabular-nums flex-shrink-0">{d.count}</span>
               </div>
             ))}
           </div>
