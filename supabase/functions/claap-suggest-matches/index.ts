@@ -299,26 +299,6 @@ serve(async (req) => {
         }
       }
 
-      // Participant-lender matching
-      const lenders = lenderMap[deal.id] || [];
-      for (const participant of meetingParticipants) {
-        if (participant.is_internal) continue;
-        for (const lender of lenders) {
-          if (participant.email && lender.contact_email && participant.email.toLowerCase() === lender.contact_email.toLowerCase()) {
-            score += 30;
-            reasons.push(`Participant ${participant.email} is lender contact on this deal`);
-          }
-          if (participant.domain && lender.name) {
-            const lenderDomain = lender.name.toLowerCase().replace(/[^a-z0-9]/g, "");
-            const participantDomain = participant.domain.toLowerCase().replace(/[^a-z0-9]/g, "");
-            if (lenderDomain.length > 3 && participantDomain.includes(lenderDomain)) {
-              score += 15;
-              reasons.push(`Participant domain matches lender "${lender.name}"`);
-            }
-          }
-        }
-      }
-
       // Activity recency bonus
       if (deal.status === "active") {
         score += 5;
