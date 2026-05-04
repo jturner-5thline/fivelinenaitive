@@ -155,6 +155,10 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week' }: Props) {
   const saveTimer = useRef<number | null>(null);
   const analysisTimer = useRef<number | null>(null);
   const lastSaved = useRef<string>('');
+  const lastSnapshotAt = useRef<number>(0);
+  const lastSnapshotContent = useRef<string>('');
+
+  const [snapshots, setSnapshots] = useState<SnapshotRow[]>([]);
 
   const editor = useEditor({
     extensions: [
