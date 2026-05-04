@@ -36,9 +36,13 @@ export function CopilotToggleButton() {
   return (
     <div
       aria-hidden={false}
-      className="pointer-events-none absolute inset-x-0 z-50 flex justify-center"
+      className="pointer-events-none sticky inset-x-0 z-50 mt-auto flex justify-center"
       style={{
         bottom: 'max(24px, env(safe-area-inset-bottom))',
+        // Negative top margin keeps the bar from adding layout height in
+        // short pages while still sticking to the bottom of the viewport
+        // when content scrolls past it.
+        marginTop: 'auto',
       }}
     >
     <div
