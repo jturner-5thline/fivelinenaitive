@@ -17,16 +17,16 @@ export function NaitivePipelineNotifications({ notifications }: { notifications:
 
   return (
     <Card className="bg-card border-border">
-      <CardHeader className="pb-2 pt-4 px-4">
+      <CardHeader className="pb-3 pt-5 px-5">
         <div className="flex items-center gap-2">
           <Bell className="h-4 w-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-medium">Pipeline Alerts</CardTitle>
+          <CardTitle className="text-base font-semibold tracking-tight text-foreground">Pipeline Alerts</CardTitle>
           {notifications.length > 0 && (
             <Badge variant="secondary" className="text-[10px] h-5 px-1.5">{notifications.length}</Badge>
           )}
         </div>
       </CardHeader>
-      <CardContent className="px-4 pb-4">
+      <CardContent className="px-5 pb-5 pt-1">
         {notifications.length === 0 ? (
           <p className="text-xs text-muted-foreground py-4 text-center">No alerts — pipeline is healthy</p>
         ) : (
