@@ -1,7 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Deal } from '@/types/deal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { X } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList,
   PieChart, Pie,
@@ -94,6 +96,39 @@ export function NaitiveDidNotMoveInsights({ deals }: Props) {
     () => deals.filter((d) => normalizeOutcome(d.outcome) !== null),
     [deals],
   );
+
+  // Cross-chart filters — clicking any chart element toggles the corresponding filter
+  const [reasonFilter, setReasonFilter] = useState<string | null>(null);
+  const [cellFilter, setCellFilter] = useState<{ icp: string; outcome: string } | null>(null);
+  const [prospectFilter, setProspectFilter] = useState<string | null>(null);
+
+  const toggle = <T,>(curr: T | null, next: T, eq: (a: T, b: T) => boolean) =>
+    curr && eq(curr, next) ? null : next;
+
+  const feedDeals = useMemo(() => {
+    return filtered.filter((d) => {
+      if (reasonFilter) {
+        const tokens = splitReasons(d.whyNotMovingForward)
+          .map((t) => matchReason(t))
+          .filter(Boolean) as string[];
+        if (!tokens.includes(reasonFilter)) return false;
+      }
+      if (cellFilter) {
+        const icp = (ICP_CATEGORIES as readonly string[]).includes(d.icpCategory || '')
+          ? (d.icpCategory as string)
+          : 'Other';
+        const o = normalizeOutcome(d.outcome);
+        if (icp !== cellFilter.icp || o !== cellFilter.outcome) return false;
+      }
+      if (prospectFilter) {
+        if ((d.prospectType || '') !== prospectFilter) return false;
+      }
+      return true;
+    });
+  }, [filtered, reasonFilter, cellFilter, prospectFilter]);
+
+  const hasFilter = !!(reasonFilter || cellFilter || prospectFilter);
+  const clearAll = () => { setReasonFilter(null); setCellFilter(null); setProspectFilter(null); };
 
   // Reason counts
   const reasonRows = useMemo(() => {
@@ -255,6 +290,11 @@ export function NaitiveDidNotMoveInsights({ deals }: Props) {
                       <Cell
                         key={r.reason}
                         fill={i === 0 && r.count > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--muted-foreground) / 0.6)'}
+                        cursor={r.count > 0 ? 'pointer' : 'default'}
+                        opacity={reasonFilter && reasonFilter !== r.reason ? 0.4 : 1}
+                        onClick={() => {
+                          if (r.count > 0) setReasonFilter((prev) => (prev === r.reason ? null : r.reason));
+                        }}
                       />
                     ))}
                     <LabelList
@@ -299,11 +339,22 @@ export function NaitiveDidNotMoveInsights({ deals }: Props) {
                       <td className="text-foreground font-medium pr-2 whitespace-nowrap">{icp}</td>
                       {OUTCOMES.map((o) => {
                         const count = heatmap.map[icp][o];
+                        const active = cellFilter?.icp === icp && cellFilter?.outcome === o;
                         return (
                           <td
                             key={o}
-                            className="text-center font-mono rounded-md py-2 min-w-[40px]"
-                            style={cellStyle(count)}
+                            className={
+                              'text-center font-mono rounded-md py-2 min-w-[40px] ' +
+                              (count > 0 ? 'cursor-pointer transition-all ' : '') +
+                              (active ? 'ring-2 ring-primary ring-offset-1 ring-offset-card' : '')
+                            }
+                            style={{
+                              ...cellStyle(count),
+                              opacity: cellFilter && !active ? 0.5 : 1,
+                            }}
+                            onClick={() => {
+                              if (count > 0) setCellFilter((prev) => (prev?.icp === icp && prev?.outcome === o ? null : { icp, outcome: o }));
+                            }}
                           >
                             {count}
                           </td>
@@ -339,9 +390,20 @@ export function NaitiveDidNotMoveInsights({ deals }: Props) {
                         innerRadius={40}
                         outerRadius={72}
                         paddingAngle={2}
+                        onClick={(slice: any) => {
+                          const name = slice?.name;
+                          if (!name) return;
+                          const v = prospectData.find((p) => p.name === name)?.value || 0;
+                          if (v > 0) setProspectFilter((prev) => (prev === name ? null : name));
+                        }}
                       >
                         {prospectData.map((p) => (
-                          <Cell key={p.name} fill={p.color} />
+                          <Cell
+                            key={p.name}
+                            fill={p.color}
+                            cursor={p.value > 0 ? 'pointer' : 'default'}
+                            opacity={prospectFilter && prospectFilter !== p.name ? 0.4 : 1}
+                          />
                         ))}
                       </Pie>
                       <Tooltip
@@ -356,14 +418,26 @@ export function NaitiveDidNotMoveInsights({ deals }: Props) {
                 </div>
                 <div className="flex flex-col gap-2 min-w-0 flex-1">
                   {prospectData.map((p) => (
-                    <div key={p.name} className="flex items-center gap-2 text-xs">
+                    <button
+                      key={p.name}
+                      type="button"
+                      disabled={p.value === 0}
+                      onClick={() =>
+                        setProspectFilter((prev) => (prev === p.name ? null : p.name))
+                      }
+                      className={
+                        'flex items-center gap-2 text-xs text-left rounded px-1 py-0.5 transition-colors ' +
+                        (p.value === 0 ? 'opacity-50 cursor-default' : 'hover:bg-muted/40 ') +
+                        (prospectFilter === p.name ? 'bg-muted/60 ' : '')
+                      }
+                    >
                       <span
                         className="h-2.5 w-2.5 rounded-full flex-shrink-0"
                         style={{ background: p.color }}
                       />
                       <span className="text-muted-foreground truncate">{p.name}</span>
                       <span className="font-semibold text-foreground tabular-nums ml-auto">{p.pct}%</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -375,16 +449,57 @@ export function NaitiveDidNotMoveInsights({ deals }: Props) {
       {/* Individual record feed */}
       <Card>
         <CardHeader className="pb-3 pt-5 px-5">
-          <CardTitle className="text-base font-semibold tracking-tight text-foreground">
-            Records — did not progress
-          </CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="text-base font-semibold tracking-tight text-foreground">
+              Records — did not progress
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                {feedDeals.length} of {filtered.length}
+              </span>
+            </CardTitle>
+            {hasFilter && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {reasonFilter && (
+                  <Badge variant="secondary" className="text-[10px] gap-1">
+                    Reason: {REASON_SHORT[reasonFilter] || reasonFilter}
+                    <button onClick={() => setReasonFilter(null)} className="hover:text-foreground">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                {cellFilter && (
+                  <Badge variant="secondary" className="text-[10px] gap-1">
+                    {cellFilter.icp} · {cellFilter.outcome}
+                    <button onClick={() => setCellFilter(null)} className="hover:text-foreground">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                {prospectFilter && (
+                  <Badge variant="secondary" className="text-[10px] gap-1">
+                    Persona: {prospectFilter}
+                    <button onClick={() => setProspectFilter(null)} className="hover:text-foreground">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={clearAll}>
+                  Clear
+                </Button>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="px-5 pb-5 pt-1">
           {filtered.length === 0 ? (
             <p className="text-xs text-muted-foreground py-4">No records yet.</p>
+          ) : feedDeals.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-4">
+              No records match the current filter.{' '}
+              <button onClick={clearAll} className="underline text-primary">Clear filters</button>
+            </p>
           ) : (
             <div className="max-h-[420px] overflow-y-auto pr-1 space-y-2">
-              {[...filtered]
+              {[...feedDeals]
                 .sort(
                   (a, b) =>
                     new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
