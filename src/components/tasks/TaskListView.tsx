@@ -201,7 +201,7 @@ export function TaskListView({
       : DEFAULT_TASK_COLUMNS) as TaskColumnId[]),
     [visibleColumnIds],
   );
-  const cols = useMemo(() => visibleColumns(visibleSet), [visibleSet]);
+  const cols = useMemo(() => getVisibleColumns(visibleSet), [visibleSet]);
   const gridStyle = useMemo<React.CSSProperties>(
     () => ({ gridTemplateColumns: buildGridTemplate(visibleSet) }),
     [visibleSet],
