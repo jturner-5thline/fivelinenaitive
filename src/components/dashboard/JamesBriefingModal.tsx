@@ -51,12 +51,15 @@ function priorityScore(d: Deal & { outstandingCount?: number; lastActivityAt?: s
 function usePipelineSummary(enabled: boolean) {
   const { deals } = useDealsContext();
   const activeDeals = useMemo(
-    () => deals.filter(
-      (d) =>
-        !['archived', 'on-hold', 'on_hold', 'closed-lost', 'closed-won'].includes(
-          (d.status || '').toLowerCase(),
-        ) && !isExcludedDealName(d.name) && !isExcludedDealName(d.company),
-    ),
+    () => deals.filter((d) => {
+      const status = (d.status || '').toLowerCase().replace(/_/g, '-');
+      // Only include deals in active pipeline statuses. Exclude funded,
+      // closed, archived, off-track, and any other terminal/inactive status.
+      const allowed = ['on-track', 'at-risk', 'on-hold'];
+      return allowed.includes(status)
+        && !isExcludedDealName(d.name)
+        && !isExcludedDealName(d.company);
+    }),
     [deals],
   );
   const dealIds = useMemo(() => activeDeals.map((d) => d.id), [activeDeals]);
