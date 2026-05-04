@@ -128,6 +128,12 @@ export interface Deal {
   nextStepDate?: string | null;
   prospectType?: string;
   outcome?: string;
+  painPointsConfirmed?: string;
+  objectionsRaised?: string;
+  competitorsMentioned?: string;
+  keySignal?: string;
+  productGapFlagged?: string;
+  dmPresent?: string;
 }
 
 export const LENDER_STATUS_CONFIG: Record<LenderStatus, { label: string }> = {
