@@ -124,6 +124,7 @@ interface TaskListViewProps {
   onToggleStar?: (id: string, current: boolean) => void;
   focusedTaskIndex?: number;
   taskNameWarning?: string;
+  visibleColumnIds?: TaskColumnId[];
 }
 
 function getTimeGroups(tasks: Task[], boundaries: DueBoundaries) {
