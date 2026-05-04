@@ -114,7 +114,7 @@ function MetricKPICard({ config, onClick }: { config: MetricCardConfig; onClick:
               <button
                 type="button"
                 onClick={onClick}
-                className="text-xl font-bold font-mono tabular-nums text-foreground cursor-pointer hover:text-primary transition-colors"
+                className="drilldown-value text-xl font-bold font-mono tabular-nums text-foreground"
               >
                 {config.value}
               </button>
