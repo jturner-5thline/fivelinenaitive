@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   ArrowDown, ArrowUp, ArrowUpDown, BarChart3, Download, DollarSign,
-  Search, TrendingUp, Users,
+  Search, TrendingUp, Users, ChevronRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -279,11 +279,28 @@ export function UsageAnalyticsPanel() {
                   </TableCell>
                 </TableRow>
               ) : (
-                sortedRows.map((r) => (
-                  <TableRow key={r.company_id}
-                    onClick={() => setDrilldown(r)}
-                    className="cursor-pointer hover:bg-muted/30">
-                    <TableCell className="font-medium">{r.company_name}</TableCell>
+                 sortedRows.map((r) => (
+                   <TableRow key={r.company_id}
+                     onClick={() => {
+                       setDrilldown(r);
+                       window.scrollTo({ top: 0, behavior: "smooth" });
+                     }}
+                     role="button"
+                     tabIndex={0}
+                     onKeyDown={(e) => {
+                       if (e.key === "Enter" || e.key === " ") {
+                         e.preventDefault();
+                         setDrilldown(r);
+                         window.scrollTo({ top: 0, behavior: "smooth" });
+                       }
+                     }}
+                     className="cursor-pointer hover:bg-primary/5 transition-colors">
+                    <TableCell className="font-medium">
+                      <span className="inline-flex items-center gap-1 text-primary group-hover:underline">
+                        {r.company_name}
+                        <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+                      </span>
+                    </TableCell>
                     <TableCell className="text-right">{numberFmt.format(r.active_users)}</TableCell>
                     <TableCell className="text-right">{numberFmt.format(r.ai_chat_calls)}</TableCell>
                     <TableCell className="text-right">{numberFmt.format(r.email_drafts)}</TableCell>
