@@ -5,6 +5,17 @@ import 'react-resizable/css/styles.css';
 import { cn } from '@/lib/utils';
 import { GridLayoutItem } from '@/hooks/useGridLayout';
 
+export interface WidgetConstraint {
+  minW?: number;
+  minH?: number;
+  maxW?: number;
+  maxH?: number;
+  /** When false, item can be dragged/reordered but not resized. */
+  isResizable?: boolean;
+  /** When false, item is locked in place (no drag, no resize). */
+  isDraggable?: boolean;
+}
+
 interface DraggableGridLayoutProps {
   layout: GridLayoutItem[];
   onLayoutChange: (layout: GridLayoutItem[], immediate?: boolean) => void;
@@ -12,6 +23,8 @@ interface DraggableGridLayoutProps {
   children: ReactNode;
   rowHeight?: number;
   className?: string;
+  /** Per-widget constraints keyed by layout item id (`i`). */
+  constraints?: Record<string, WidgetConstraint>;
 }
 
 function mapLayout(currentLayout: any[]): GridLayoutItem[] {
@@ -33,6 +46,7 @@ export function DraggableGridLayout({
   children,
   rowHeight = 150,
   className,
+  constraints,
 }: DraggableGridLayoutProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(1200);
@@ -60,11 +74,38 @@ export function DraggableGridLayout({
     prevEditMode.current = isEditMode;
   }, [isEditMode, onLayoutChange]);
 
-  const layouts = useMemo(() => ({
-    lg: layout,
-    md: layout.map(l => ({ ...l, w: Math.min(l.w, 8) })),
-    sm: layout.map(l => ({ ...l, w: Math.min(l.w, 4), x: 0 })),
-  }), [layout]);
+  const applyConstraints = useCallback((items: GridLayoutItem[]) => {
+    if (!constraints) return items;
+    return items.map(l => {
+      const c = constraints[l.i];
+      if (!c) return l;
+      const minW = Math.max(l.minW ?? 1, c.minW ?? 1);
+      const minH = Math.max(l.minH ?? 1, c.minH ?? 1);
+      const next: any = {
+        ...l,
+        minW,
+        minH,
+        maxW: c.maxW,
+        maxH: c.maxH,
+        // Enforce minimums on the item's own dimensions so saved layouts
+        // can't violate them after a constraint change.
+        w: Math.max(l.w, minW),
+        h: Math.max(l.h, minH),
+      };
+      if (c.isResizable === false) next.isResizable = false;
+      if (c.isDraggable === false) next.isDraggable = false;
+      return next;
+    });
+  }, [constraints]);
+
+  const layouts = useMemo(() => {
+    const constrained = applyConstraints(layout);
+    return {
+      lg: constrained,
+      md: constrained.map(l => ({ ...l, w: Math.min(l.w, 8) })),
+      sm: constrained.map(l => ({ ...l, w: Math.min(l.w, 4), x: 0 })),
+    };
+  }, [layout, applyConstraints]);
 
   const handleLayoutChange = useCallback((currentLayout: any[]) => {
     if (isEditMode) {
