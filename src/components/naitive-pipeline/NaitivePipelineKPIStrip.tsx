@@ -12,14 +12,14 @@ function KpiCard({ label, value, icon: Icon, color, subtext }: {
 }) {
   return (
     <Card className="bg-card border-border">
-      <CardContent className="p-3 flex items-start gap-3">
-        <div className={cn("h-8 w-8 rounded-md flex items-center justify-center flex-shrink-0", color)}>
+      <CardContent className="p-4 flex items-start gap-3">
+        <div className={cn("h-9 w-9 rounded-md flex items-center justify-center flex-shrink-0", color)}>
           <Icon className="h-4 w-4 text-white" />
         </div>
-        <div className="min-w-0">
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">{label}</p>
-          <p className="text-lg font-bold text-foreground leading-tight">{value}</p>
-          {subtext && <p className="text-[10px] text-muted-foreground mt-0.5">{subtext}</p>}
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate leading-tight">{label}</p>
+          <p className="text-xl font-bold text-foreground leading-tight tracking-tight mt-1">{value}</p>
+          {subtext && <p className="text-[10px] text-muted-foreground mt-1 truncate">{subtext}</p>}
         </div>
       </CardContent>
     </Card>
@@ -34,7 +34,7 @@ export function NaitivePipelineKPIStrip({ kpis }: NaitivePipelineKPIStripProps) 
       : `$${kpis.weightedPipelineValue.toLocaleString()}`;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
       <KpiCard label="Total Deals" value={kpis.totalDeals} icon={BarChart3} color="bg-primary" />
       <KpiCard label="Weighted Value" value={formattedValue} icon={Target} color="bg-chart-2" />
       <KpiCard label="Added (30d)" value={kpis.dealsAddedLast30Days} icon={Plus} color="bg-chart-3" />

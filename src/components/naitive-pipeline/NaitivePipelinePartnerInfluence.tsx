@@ -31,26 +31,26 @@ export function NaitivePipelinePartnerInfluence({ deals }: PartnerInfluenceProps
 
   return (
     <Card className="bg-card border-border">
-      <CardHeader className="pb-2 pt-4 px-4">
+      <CardHeader className="pb-3 pt-5 px-5">
         <div className="flex items-center gap-2">
           <Handshake className="h-4 w-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-medium">Partner Influence</CardTitle>
+          <CardTitle className="text-base font-semibold tracking-tight text-foreground">Partner Influence</CardTitle>
         </div>
       </CardHeader>
-      <CardContent className="px-4 pb-4">
+      <CardContent className="px-5 pb-5 pt-1">
         <div className="grid grid-cols-2 gap-3 mb-3">
-          <div className="text-center p-2 rounded-md bg-muted/50">
-            <p className="text-lg font-bold text-foreground">{stats.channelLinkedCount}</p>
-            <p className="text-[10px] text-muted-foreground">Channel-Linked</p>
+          <div className="text-center p-3 rounded-md bg-muted/50">
+            <p className="text-xl font-bold text-foreground leading-tight tracking-tight">{stats.channelLinkedCount}</p>
+            <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">Channel-Linked</p>
           </div>
-          <div className="text-center p-2 rounded-md bg-muted/50">
-            <p className="text-lg font-bold text-foreground">{stats.nonLinkedCount}</p>
-            <p className="text-[10px] text-muted-foreground">Direct</p>
+          <div className="text-center p-3 rounded-md bg-muted/50">
+            <p className="text-xl font-bold text-foreground leading-tight tracking-tight">{stats.nonLinkedCount}</p>
+            <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">Direct</p>
           </div>
         </div>
         {stats.topPartners.length > 0 ? (
           <div className="space-y-1">
-            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Top Partners</p>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Top Partners</p>
             {stats.topPartners.map(([name, count]) => (
               <div key={name} className="flex items-center justify-between text-xs py-1">
                 <span className="text-foreground truncate">{name}</span>
