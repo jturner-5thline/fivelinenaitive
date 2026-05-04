@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -6,11 +6,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/u
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CalendarIcon, Loader2, UserCheck, Zap, Sun, Sunrise, CalendarDays, Flame, Coffee, Repeat } from 'lucide-react';
+import { CalendarIcon, Loader2, UserCheck, Zap, Sun, Sunrise, CalendarDays, Flame, Coffee, Repeat, Briefcase, Search, X, Sparkles } from 'lucide-react';
 import { addDays, format, isSameDay, nextMonday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { type TeamMember } from '@/hooks/useTeamMembers';
 import { useAssigneeOpenTaskCounts } from '@/hooks/useAssigneeOpenTaskCounts';
+import { useDealsContext } from '@/contexts/DealsContext';
+import type { Deal } from '@/types/deal';
 import { toast } from 'sonner';
 
 export interface QuickTaskInput {
@@ -22,6 +24,8 @@ export interface QuickTaskInput {
   recurrence_rule: string | null;
   /** YYYY-MM-DD; if set, no new occurrence is generated past this date. */
   recurrence_end_date: string | null;
+  /** Optional deal association — surfaces task under deal's Tasks tab. */
+  deal_id: string | null;
 }
 
 interface Props {
@@ -93,6 +97,15 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
   const [warning, setWarning] = useState('');
   const [confirmedJunk, setConfirmedJunk] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // Deal association — optional. Auto-suggested from the title via fuzzy
+  // matching against deal name / company / lender / contact, then overridable
+  // through a type-ahead picker that respects RLS (deals already filtered
+  // server-side via DealsContext).
+  const { deals: allDeals } = useDealsContext();
+  const [dealId, setDealId] = useState<string | null>(null);
+  const [dealPickerOpen, setDealPickerOpen] = useState(false);
+  const [dealQuery, setDealQuery] = useState('');
+  const [debouncedTitle, setDebouncedTitle] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -113,6 +126,10 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
       setWarning('');
       setConfirmedJunk(false);
       setSubmitting(false);
+      setDealId(null);
+      setDealPickerOpen(false);
+      setDealQuery('');
+      setDebouncedTitle('');
     }
   }, [open, currentUserId, teamMembers]);
 
@@ -223,6 +240,7 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
         assigned_to: assignedTo,
         recurrence_rule: recurrence,
         recurrence_end_date: resolvedEndDate,
+        deal_id: dealId,
       });
       try {
         window.localStorage.setItem(LAST_ASSIGNEE_KEY, assignedTo);
@@ -240,6 +258,111 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
   const assigneeCount = openCounts[assignedTo] ?? 0;
   const workloadTone = (n: number) =>
     n >= 15 ? '#e57373' : n >= 8 ? '#e89b6c' : n >= 3 ? '#d4a45a' : '#7fc89a';
+
+  // ─── Deal suggestion engine ─────────────────────────────────────────
+  // Debounce title so suggestion scoring doesn't run on every keystroke.
+  useEffect(() => {
+    const h = setTimeout(() => setDebouncedTitle(title), 250);
+    return () => clearTimeout(h);
+  }, [title]);
+
+  const stopWords = useMemo(() => new Set([
+    'a','an','the','to','for','with','and','or','of','on','at','in','from','by',
+    'follow','followup','follow-up','call','email','send','review','update',
+    'task','about','re','please','need','needs','next','today','tomorrow','asap',
+  ]), []);
+
+  // Token similarity: deal scores higher when its name/company/lender/contact
+  // tokens overlap with words from the task title. Multi-word deal names
+  // (e.g. "SoLo Funds", "LAGO Innovation Fund") get a substring boost so
+  // exact phrase mentions reliably win over single-word collisions.
+  const scoreDeal = (deal: Deal, text: string): number => {
+    if (!text) return 0;
+    const haystackParts = [deal.name, deal.company, deal.lender, deal.contact]
+      .filter(Boolean)
+      .map(s => String(s).toLowerCase());
+    const lower = text.toLowerCase();
+    let score = 0;
+    for (const part of haystackParts) {
+      if (!part) continue;
+      // Phrase match (e.g. "lago innovation") — strong signal.
+      if (part.length >= 4 && lower.includes(part)) score += 100;
+      // Token-level overlap.
+      const tokens = part.split(/[^a-z0-9]+/).filter(t => t.length >= 3 && !stopWords.has(t));
+      const titleTokens = lower.split(/[^a-z0-9]+/).filter(t => t.length >= 3 && !stopWords.has(t));
+      for (const tk of tokens) {
+        if (titleTokens.includes(tk)) score += 25;
+      }
+    }
+    // Tie-breaker: recently updated deals slightly preferred.
+    const ageDays = deal.updatedAt
+      ? (Date.now() - new Date(deal.updatedAt).getTime()) / 86400000
+      : 365;
+    score += Math.max(0, 5 - Math.min(5, ageDays / 30));
+    return score;
+  };
+
+  const suggestions = useMemo(() => {
+    if (!debouncedTitle || debouncedTitle.trim().length < 3) return [];
+    return allDeals
+      .filter(d => d.status !== 'archived')
+      .map(d => ({ deal: d, score: scoreDeal(d, debouncedTitle) }))
+      .filter(x => x.score >= 25)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedTitle, allDeals]);
+
+  // Auto-fill ONLY when there's a single high-confidence match and the user
+  // hasn't already chosen a deal. Never override an explicit selection.
+  useEffect(() => {
+    if (dealId) return;
+    if (suggestions.length === 1 && suggestions[0].score >= 100) {
+      setDealId(suggestions[0].deal.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggestions]);
+
+  const selectedDeal = dealId ? allDeals.find(d => d.id === dealId) : null;
+
+  const dealSearchResults = useMemo(() => {
+    const q = dealQuery.trim().toLowerCase();
+    const base = allDeals.filter(d => d.status !== 'archived');
+    const ranked = base
+      .map(d => ({
+        deal: d,
+        // Prioritize relevance to the task title, then to the picker query.
+        s: scoreDeal(d, debouncedTitle) +
+           (q ? (d.name.toLowerCase().includes(q) || d.company.toLowerCase().includes(q) ? 50 : 0) : 0),
+      }))
+      .sort((a, b) => {
+        if (b.s !== a.s) return b.s - a.s;
+        return a.deal.name.localeCompare(b.deal.name);
+      });
+    const filtered = q
+      ? ranked.filter(({ deal: d }) =>
+          d.name.toLowerCase().includes(q) ||
+          d.company.toLowerCase().includes(q) ||
+          (d.lender || '').toLowerCase().includes(q) ||
+          (d.contact || '').toLowerCase().includes(q))
+      : ranked;
+    return filtered.slice(0, 50).map(x => x.deal);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allDeals, dealQuery, debouncedTitle]);
+
+  const dealStageTone = (stage?: string) => {
+    switch (stage) {
+      case 'closed-won': return '#7fc89a';
+      case 'closed-lost': return '#e57373';
+      case 'in-due-diligence':
+      case 'term-sheet': return '#7eb8f7';
+      case 'nda':
+      case 'initial-review': return '#d4a45a';
+      default: return '#9aa3b6';
+    }
+  };
+  const formatStage = (s?: string) =>
+    s ? s.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '';
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -660,6 +783,158 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
                 })()}
               </div>
             )}
+          </div>
+
+          {/* Deal — optional association with smart suggestions */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] uppercase tracking-wide font-medium flex items-center gap-1" style={{ color: '#7a8194' }}>
+                <Briefcase className="h-3 w-3" /> Deal
+              </label>
+              {selectedDeal && (
+                <button
+                  type="button"
+                  onClick={() => setDealId(null)}
+                  className="text-[10px] font-medium px-1.5 py-0.5 rounded hover:bg-[rgba(229,115,115,0.1)] transition-colors"
+                  style={{ color: '#e57373' }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Inline AI suggestion chips above the picker */}
+            {!selectedDeal && suggestions.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 text-[10px]" style={{ color: '#9aa3b6' }}>
+                  <Sparkles className="h-2.5 w-2.5" /> Suggested
+                </span>
+                {suggestions.map(({ deal: d }) => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => setDealId(d.id)}
+                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium border transition-colors hover:brightness-110"
+                    style={{
+                      color: '#cfe3ff',
+                      borderColor: 'rgba(126,184,247,0.35)',
+                      backgroundColor: 'rgba(126,184,247,0.10)',
+                    }}
+                    title={`${d.company || d.name}${d.stage ? ' · ' + formatStage(d.stage) : ''}`}
+                  >
+                    {d.name}
+                    {d.stage && (
+                      <span
+                        className="inline-block px-1 rounded text-[9px] font-semibold"
+                        style={{
+                          color: dealStageTone(d.stage),
+                          backgroundColor: `${dealStageTone(d.stage)}1f`,
+                        }}
+                      >
+                        {formatStage(d.stage)}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <Popover open={dealPickerOpen} onOpenChange={setDealPickerOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="w-full h-9 px-3 rounded-md border text-sm flex items-center gap-2 text-left"
+                  style={{ backgroundColor: 'rgba(20,24,32,0.65)', borderColor: 'rgba(255,255,255,0.07)', color: selectedDeal ? '#eef1f6' : '#7a8194' }}
+                >
+                  {selectedDeal ? (
+                    <>
+                      <span
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold"
+                        style={{ backgroundColor: 'rgba(30,58,95,0.6)', color: '#93c5fd' }}
+                      >
+                        {selectedDeal.name}
+                      </span>
+                      {selectedDeal.stage && (
+                        <span
+                          className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+                          style={{
+                            color: dealStageTone(selectedDeal.stage),
+                            backgroundColor: `${dealStageTone(selectedDeal.stage)}1a`,
+                          }}
+                        >
+                          {formatStage(selectedDeal.stage)}
+                        </span>
+                      )}
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        aria-label="Clear deal"
+                        onClick={(e) => { e.stopPropagation(); setDealId(null); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setDealId(null); } }}
+                        className="ml-auto inline-flex items-center justify-center h-5 w-5 rounded hover:bg-[rgba(255,255,255,0.06)] cursor-pointer"
+                      >
+                        <X className="h-3 w-3" style={{ color: '#9aa3b6' }} />
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Search className="h-3.5 w-3.5" style={{ color: '#7a8194' }} />
+                      <span>Search deals…</span>
+                    </>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="p-0 w-[440px] max-h-[320px] overflow-hidden"
+                align="start"
+                style={{ backgroundColor: '#12151b', borderColor: 'rgba(255,255,255,0.08)' }}
+              >
+                <div className="p-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                  <Input
+                    autoFocus
+                    value={dealQuery}
+                    onChange={(e) => setDealQuery(e.target.value)}
+                    placeholder="Search by name, company, lender, contact…"
+                    className="h-8 text-xs"
+                    style={{ backgroundColor: 'rgba(20,24,32,0.85)', border: '1px solid rgba(255,255,255,0.07)', color: '#eef1f6' }}
+                  />
+                </div>
+                <div className="max-h-[260px] overflow-y-auto py-1">
+                  {dealSearchResults.length === 0 && (
+                    <div className="px-3 py-4 text-[11px] text-center" style={{ color: '#7a8194' }}>
+                      No deals match your search.
+                    </div>
+                  )}
+                  {dealSearchResults.map(d => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => { setDealId(d.id); setDealPickerOpen(false); setDealQuery(''); }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-[rgba(126,184,247,0.08)]"
+                      style={{ color: dealId === d.id ? '#cfe3ff' : '#eef1f6' }}
+                    >
+                      <span className="flex-1 truncate">
+                        <span className="font-medium">{d.name}</span>
+                        {d.company && d.company !== d.name && (
+                          <span className="ml-2" style={{ color: '#7a8194' }}>· {d.company}</span>
+                        )}
+                      </span>
+                      {d.stage && (
+                        <span
+                          className="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0"
+                          style={{
+                            color: dealStageTone(d.stage),
+                            backgroundColor: `${dealStageTone(d.stage)}1a`,
+                          }}
+                        >
+                          {formatStage(d.stage)}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Assignee */}
