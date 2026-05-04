@@ -420,12 +420,18 @@ export function CopilotToggleButton() {
           style={{
             width: `${barWidth}px`,
             maxWidth: 'calc(100% - 32px)',
-            background: 'rgba(14, 16, 24, 0.6)',
+            // When the popup is expanded (open and not minimized), deepen the
+            // bar surface slightly so the bar + popup read as a single active
+            // dock. Border language stays the same; only the fill shifts.
+            background: (isOpen && !isMinimized)
+              ? 'rgba(12, 14, 22, 0.92)'
+              : 'rgba(14, 16, 24, 0.6)',
             backdropFilter: 'blur(18px) saturate(1.4)',
             WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
             border: '1px solid rgba(255, 255, 255, 0.22)',
             boxShadow:
               '0 10px 32px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.25)',
+            transition: 'background 180ms ease-out',
           }}
           onClick={() => inputRef.current?.focus()}
         >
