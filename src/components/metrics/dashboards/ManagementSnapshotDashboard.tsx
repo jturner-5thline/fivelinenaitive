@@ -19,7 +19,7 @@ import { type WidgetConfig, type TimeWindow, type KPIDetailCardConfig, type Nega
 import { KPIDetailCard } from '@/components/metrics/KPIDetailCard';
 import { DraggableGridLayout, type WidgetConstraint } from '@/components/metrics/DraggableGridLayout';
 import { RevenueByMonthChart } from '@/components/metrics/RevenueByMonthChart';
-import { type GridLayoutItem, useGridLayout } from '@/hooks/useGridLayout';
+import { type GridLayoutItem } from '@/hooks/useGridLayout';
 import { GripVertical } from 'lucide-react';
 import {
   DropdownMenu,
