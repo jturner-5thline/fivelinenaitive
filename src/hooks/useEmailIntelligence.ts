@@ -252,12 +252,10 @@ export function useEmailIntelligence() {
   const loadEnrichedEmails = useCallback(async () => {
     if (!user) return;
     try {
-      // Get cached emails — list-view columns only.
-      // body_text is intentionally excluded; it is fetched on-demand when a thread is opened
-      // and is also pulled separately for the unanalyzed-AI batch.
+      // Get cached emails
       const { data: cached, error: cacheErr } = await supabase
         .from('email_cache')
-        .select('id, user_id, gmail_message_id, thread_id, subject, snippet, from_email, from_name, to_emails, cc_emails, labels, is_read, is_starred, received_at, fetched_at')
+        .select('*')
         .eq('user_id', user.id)
         .order('received_at', { ascending: false })
         .limit(200);
