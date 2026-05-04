@@ -1031,3 +1031,40 @@
    day numbers don't look squished in tabular columns smaller than the cell. */
 .rdp-day { font-variant-numeric: normal; }
 
+
+/* ── Drilldown affordances ─────────────────────────────────────────
+   Make it visually obvious which figures and bars open drilldowns. */
+.metric-glass-bar {
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.15s ease;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+.metric-glass-bar:hover {
+  filter: brightness(1.18) drop-shadow(0 0 6px hsl(var(--primary) / 0.5));
+}
+
+/* Clickable metric value buttons (KPI numbers that open drilldowns) */
+.drilldown-value {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: baseline;
+  border-radius: 6px;
+  padding: 0 4px;
+  margin: 0 -4px;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+.drilldown-value:hover {
+  background-color: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+  text-decoration-color: hsl(var(--primary) / 0.8);
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.25);
+}
+.drilldown-value:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.6);
+}
