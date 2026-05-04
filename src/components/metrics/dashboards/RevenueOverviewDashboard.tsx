@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { DollarSign, TrendingUp, Building2, Loader2 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend,
@@ -23,6 +25,11 @@ import { useAuth } from '@/contexts/AuthContext';
 // Entity realm IDs
 const DEBT_REALM_ID = '193514877331929';
 const FINSERV_REALM_ID = '9341451968897660';
+
+const REALM_LABELS: Record<string, string> = {
+  [DEBT_REALM_ID]: 'Debt (5th Line Capital Advisors)',
+  [FINSERV_REALM_ID]: 'FinServ (5th Line Financial Services)',
+};
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
@@ -162,23 +169,40 @@ function DrilldownModal({
   quarter: QuarterOption;
 }) {
   const { user } = useAuth();
-  const month = quarter.months.find(m => m.key === drilldown?.monthKey);
+
+  // Local filter state, seeded from the clicked bar
+  const [monthKey, setMonthKey] = useState<string>('');
+  const [realmFilter, setRealmFilter] = useState<string>('all');
+
+  // Reseed filters whenever a new drilldown is opened
+  const drilldownKey = `${drilldown?.title ?? ''}-${drilldown?.monthKey ?? ''}`;
+  const [seededFor, setSeededFor] = useState<string>('');
+  if (drilldown && seededFor !== drilldownKey) {
+    setSeededFor(drilldownKey);
+    setMonthKey(drilldown.monthKey);
+    setRealmFilter(drilldown.realmIds.length === 1 ? drilldown.realmIds[0] : 'all');
+  }
+
+  const month = quarter.months.find(m => m.key === monthKey);
+  const availableRealms = drilldown?.realmIds ?? [];
+  const effectiveRealms =
+    realmFilter === 'all' ? availableRealms : [realmFilter];
 
   const { data: invoices, isLoading } = useQuery({
-    queryKey: ['qb-drilldown-invoices', drilldown?.realmIds, drilldown?.monthKey],
+    queryKey: ['qb-drilldown-invoices', effectiveRealms, monthKey],
     queryFn: async () => {
       if (!month || !drilldown) return [];
       const { data, error } = await supabase
         .from('quickbooks_invoices')
         .select('id, txn_date, customer_name, total_amt, doc_number, realm_id')
-        .in('realm_id', drilldown.realmIds)
+        .in('realm_id', effectiveRealms)
         .gte('txn_date', month.start)
         .lte('txn_date', month.end)
         .order('txn_date', { ascending: true });
       if (error) throw error;
       return (data ?? []) as InvoiceRow[];
     },
-    enabled: open && !!drilldown && !!month && !!user,
+    enabled: open && !!drilldown && !!month && !!user && effectiveRealms.length > 0,
   });
 
   const total = (invoices ?? []).reduce((s, r) => s + (r.total_amt ?? 0), 0);
@@ -192,6 +216,43 @@ function DrilldownModal({
             {drilldown?.title} — {month?.label} Detail
           </DialogTitle>
         </DialogHeader>
+
+        {/* Filters */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Month</Label>
+            <Select value={monthKey} onValueChange={setMonthKey}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Select month" />
+              </SelectTrigger>
+              <SelectContent>
+                {quarter.months.map(m => (
+                  <SelectItem key={m.key} value={m.key} className="text-xs">
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Entity (Realm)</Label>
+            <Select value={realmFilter} onValueChange={setRealmFilter}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Select entity" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableRealms.length > 1 && (
+                  <SelectItem value="all" className="text-xs">All entities</SelectItem>
+                )}
+                {availableRealms.map(r => (
+                  <SelectItem key={r} value={r} className="text-xs">
+                    {REALM_LABELS[r] ?? r}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
         <div className="flex items-center gap-3 mb-4">
           <Badge variant="outline" className="text-xs">
