@@ -110,7 +110,7 @@ export function useNaitivePipelineData(): NaitivePipelineData {
       companyUrl: d.company_url || undefined,
       businessModel: d.business_model || undefined,
       contactInfo: d.contact_info || undefined,
-      stage: d.stage || 'prospects',
+      stage: d.stage || 'qual-booked',
       status: d.status || 'on-track',
       engagementType: d.engagement_type || 'guided',
       exclusivity: d.exclusivity || undefined,
