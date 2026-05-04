@@ -14,13 +14,13 @@ const CATEGORY_CONFIG = {
 export function NaitivePipelineRecommendations({ recommendations }: { recommendations: NaitivePipelineRecommendation[] }) {
   return (
     <Card className="bg-card border-border">
-      <CardHeader className="pb-2 pt-4 px-4">
+      <CardHeader className="pb-3 pt-5 px-5">
         <div className="flex items-center gap-2">
           <Lightbulb className="h-4 w-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-medium">Recommendations</CardTitle>
+          <CardTitle className="text-base font-semibold tracking-tight text-foreground">Recommendations</CardTitle>
         </div>
       </CardHeader>
-      <CardContent className="px-4 pb-4">
+      <CardContent className="px-5 pb-5 pt-1">
         {recommendations.length === 0 ? (
           <p className="text-xs text-muted-foreground py-4 text-center">No recommendations right now</p>
         ) : (
