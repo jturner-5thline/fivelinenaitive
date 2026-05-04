@@ -456,8 +456,14 @@ export function DealsSignedWidget({ selectedQuarter }: { selectedQuarter: import
     returnTo: '/insights',
     reopen: { source: 'insights.signed-deals-and-ar', bucketKey: `deals-signed|${bucket.key}`, bucketLabel: bucket.label, quarterId: selectedQuarter.value },
   });
+  const openAll = () => {
+    const allDeals = series.months.flatMap((m) => m.deals);
+    if (allDeals.length === 0) return;
+    const lastBucket = series.months[series.months.length - 1];
+    setDrilldown({ title: `Deals Signed — ${selectedQuarter.label}`, deals: allDeals, origin: buildOrigin(lastBucket) });
+  };
   return (
-    <div className="h-full">
+    <div className="h-full cursor-pointer" onClick={openAll}>
       <SignedBarChart
         title="Deals Signed" subtitle="Active Pipeline → Final Credit Items"
         months={series.months} isLoading={series.isLoading} color="hsl(var(--chart-3))"
@@ -476,8 +482,14 @@ export function FinServClientsSignedWidget({ selectedQuarter }: { selectedQuarte
     returnTo: '/insights',
     reopen: { source: 'insights.signed-deals-and-ar', bucketKey: `finserv-clients-signed|${bucket.key}`, bucketLabel: bucket.label, quarterId: selectedQuarter.value },
   });
+  const openAll = () => {
+    const allDeals = series.months.flatMap((m) => m.deals);
+    if (allDeals.length === 0) return;
+    const lastBucket = series.months[series.months.length - 1];
+    setDrilldown({ title: `FinServ Clients Signed — ${selectedQuarter.label}`, deals: allDeals, origin: buildOrigin(lastBucket) });
+  };
   return (
-    <div className="h-full">
+    <div className="h-full cursor-pointer" onClick={openAll}>
       <SignedBarChart
         title="FinServ Clients Signed" subtitle="FinServ Pipeline → Active Client"
         months={series.months} isLoading={series.isLoading} color="hsl(var(--chart-4))"
