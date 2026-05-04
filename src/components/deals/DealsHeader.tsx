@@ -11,6 +11,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { CreateDealDialog } from './CreateDealDialog';
+import { CreateNaitiveDealDialog } from '@/components/naitive-pipeline/CreateNaitiveDealDialog';
+import { useNaitivePipelineData } from '@/hooks/useNaitivePipelineData';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { DashboardModal } from '@/components/dashboard/DashboardModal';
@@ -29,6 +33,8 @@ export function DealsHeader() {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const { hasPageAccess } = usePageAccessFlags();
   const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
+  const isNaitivePipelineRoute = location.pathname.startsWith('/naitive-pipeline');
+  const { pipelineId: naitivePipelineId, stages: naitiveStages, refetch: refetchNaitive } = useNaitivePipelineData();
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [isBriefingOpen, setIsBriefingOpen] = useState(false);
   const [isNikiBriefingOpen, setIsNikiBriefingOpen] = useState(false);
@@ -142,7 +148,22 @@ export function DealsHeader() {
             side="bottom"
             align="end"
           >
-            <CreateDealDialog />
+            {isNaitivePipelineRoute && naitivePipelineId ? (
+              <CreateNaitiveDealDialog
+                pipelineId={naitivePipelineId}
+                stages={naitiveStages}
+                defaultStage={naitiveStages[0]?.id}
+                onCreated={refetchNaitive}
+                trigger={
+                  <Button size="sm" className="gap-1.5">
+                    <Plus className="h-4 w-4" />
+                    Add Deal
+                  </Button>
+                }
+              />
+            ) : (
+              <CreateDealDialog />
+            )}
           </HintTooltip>
           
         </div>
