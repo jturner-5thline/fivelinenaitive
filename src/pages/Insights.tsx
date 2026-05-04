@@ -1631,7 +1631,7 @@ export default function Metrics() {
     layout: snapshotGridLayout,
     saveLayout: saveSnapshotGridLayout,
     resetLayout: resetSnapshotGridLayout,
-  } = useGridLayout('management-snapshot-unified-v4', unifiedLayoutIds, {
+  } = useGridLayout('management-snapshot-unified-v5', unifiedLayoutIds, {
     allowAllMembers: true,
     layoutDefaults: unifiedLayoutDefaults,
   });
