@@ -256,6 +256,8 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week' }: Props) {
       setUpdatedAt(new Date());
       setSaveState('saved');
       window.setTimeout(() => setSaveState((s) => (s === 'saved' ? 'idle' : s)), 1500);
+      // Capture a versioned snapshot (throttled, deduped, capped)
+      void recordSnapshot(html);
     } catch (err) {
       console.error('[narrative] save failed', err);
       setSaveState('error');
