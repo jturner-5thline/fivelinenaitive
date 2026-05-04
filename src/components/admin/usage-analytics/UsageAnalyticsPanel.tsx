@@ -26,6 +26,7 @@ import {
   classifyUsageTier, tierBadgeClass, isPaidTier,
   DEFAULT_AI_RATE_PER_1K_TOKENS,
 } from "./usageTiers";
+import { CompanyDeepDive } from "./CompanyDeepDive";
 
 type SortKey =
   | "company_name" | "active_users" | "ai_chat_calls" | "email_drafts"
@@ -162,6 +163,15 @@ export function UsageAnalyticsPanel() {
 
   return (
     <div className="space-y-6">
+      {drilldown ? (
+        <CompanyDeepDive
+          companyId={drilldown.company_id}
+          companyName={drilldown.company_name}
+          range={range}
+          onBack={() => setDrilldown(null)}
+        />
+      ) : (
+      <>
       {/* Controls */}
       <Card>
         <CardHeader className="pb-3">
@@ -298,26 +308,8 @@ export function UsageAnalyticsPanel() {
           </Table>
         </CardContent>
       </Card>
-
-      {/* Drill-down placeholder (Company Deep Dive ships in Prompt 3) */}
-      <Dialog open={!!drilldown} onOpenChange={(open) => { if (!open) setDrilldown(null); }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{drilldown?.company_name ?? "Company"}</DialogTitle>
-            <DialogDescription>
-              Company Deep Dive opens here. (Coming in Prompt 3.)
-            </DialogDescription>
-          </DialogHeader>
-          {drilldown && (
-            <div className="text-xs text-muted-foreground space-y-1 font-mono">
-              <div>company_id: {drilldown.company_id}</div>
-              <div>range: {dateFmt.format(range.start)} → {dateFmt.format(range.end)}</div>
-              <div>total_ai_calls: {drilldown.total_ai_calls}</div>
-              <div>tier: {drilldown.tier}</div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      </>
+      )}
     </div>
   );
 }
