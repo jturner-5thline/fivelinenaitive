@@ -432,8 +432,6 @@ import { toast } from 'sonner';
 import { NikiDailyBriefingModal } from '@/components/dashboard/NikiDailyBriefingModal';
 import {
   canSeeNikiBriefing,
-  NIKI_USER_ID,
-  NIKI_ASSIGNEE_NAME,
   NIKI_EMAIL,
 } from '@/constants/nikiBriefing';
 import { useDashboardCarouselWidgets } from '@/hooks/useDashboardCarouselWidgets';
