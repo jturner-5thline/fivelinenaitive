@@ -983,59 +983,28 @@ export function AICopilotPanel() {
   // hard close.
   if (!isOpen) return null;
 
-  // ── Anchor to the Ask naitive AI bar (centered over main content) ──
-  // anchor = { left, width, bottom } from the <main class="main-scrollable">
-  // element. This is the same container the Ask bar lives in, so centering
-  // over it keeps parity as the sidebar opens/closes and the viewport
-  // resizes. Width matches the bar's persisted width.
-  const BAR_OFFSET = 24;
-  const BAR_HEIGHT = 44;
-  // Tight seam between the popup and the Ask bar so they read as a joined pair.
-  const GAP = 8;
-  const barWidthPref = (() => {
-    try {
-      const raw = window.localStorage.getItem('naitive:bar-width');
-      const n = raw ? parseInt(raw, 10) : NaN;
-      if (!Number.isFinite(n)) return 432;
-      return Math.min(960, Math.max(280, n));
-    } catch { return 432; }
-  })();
-  const mainLeft = anchor.left;
-  const mainWidth = anchor.width;
-  const mainBottom = anchor.bottom;
-  const panelWidth = isMobile
-    ? Math.max(0, mainWidth - 16)
-    : Math.min(barWidthPref, Math.max(280, mainWidth - 32));
-  // Ask bar surface tone (matches CopilotToggleButton's bar background).
-  // Used as the bottom stop of the panel gradient + as a reference for the
-  // border so the popup and the bar feel like a single coordinated dock.
+  // The panel is rendered INSIDE the same width-defining wrapper as the
+  // Ask bar (see CopilotToggleButton). It uses width:100% so its outer
+  // shell aligns 1:1 with the bar — no independent width math, no
+  // translateX, no fixed positioning.
   const BAR_SURFACE = 'rgba(14, 16, 24, 0.92)';
   const PANEL_TOP = 'rgba(12, 14, 22, 0.97)';
   const BORDER_TONE = 'rgba(255, 255, 255, 0.18)';
-  const bottomFromViewport = Math.max(8, (window.innerHeight - mainBottom) + BAR_OFFSET + BAR_HEIGHT + GAP);
-  const availableHeight = Math.max(280, mainBottom - BAR_OFFSET - BAR_HEIGHT - GAP - 16);
-  const panelHeight = isMobile
-    ? Math.min(window.innerHeight - 16, availableHeight)
-    : Math.min(Math.round(window.innerHeight * 0.7), availableHeight);
-  const panelLeft = mainLeft + mainWidth / 2;
+  const panelHeight = Math.min(
+    Math.round((typeof window !== 'undefined' ? window.innerHeight : 768) * 0.6),
+    560,
+  );
 
   return (
     <>
-      {/* No backdrop / scrim — the panel is non-modal and the rest of the
-          page must remain fully interactive. */}
       <div
         ref={panelRef}
         role="region"
         aria-label="naitive AI transcript"
         style={{
-          position: 'fixed',
-          bottom: bottomFromViewport,
-          left: panelLeft,
-          transform: 'translateX(-50%)',
-          width: panelWidth,
+          width: '100%',
           height: isMinimized ? 0 : panelHeight,
           maxHeight: 'calc(100vh - 48px)',
-          zIndex: 51,
           display: 'flex', flexDirection: 'column',
           // Mostly opaque neutral surface — same family as the Ask bar below,
           // just a touch denser so the popup reads as elevated above it.
