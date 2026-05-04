@@ -607,3 +607,169 @@ export function ExecutiveDashboard() {
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Standalone Executive Dashboard widgets
+// Each one is independently mounted as a tile in the unified Weekly Rundown
+// grid (so they can be dragged/resized just like the rest of the widgets).
+// They share a Mon→Sun week anchor via localStorage so toggling the week
+// selector tile keeps every tile in sync.
+// ─────────────────────────────────────────────────────────────────────────────
+const EXEC_WEEK_STORAGE_KEY = 'executiveDashboard.weekAnchor';
+const EXEC_WEEK_EVENT = 'executiveDashboard.weekAnchor.change';
+
+function readWeekAnchor(): Date {
+  try {
+    const raw = globalThis.localStorage?.getItem(EXEC_WEEK_STORAGE_KEY);
+    if (raw) {
+      const d = new Date(raw);
+      if (!Number.isNaN(d.getTime())) return startOfWeek(d, { weekStartsOn: 1 });
+    }
+  } catch { /* ignore */ }
+  return startOfWeek(new Date(), { weekStartsOn: 1 });
+}
+
+function writeWeekAnchor(d: Date) {
+  try {
+    globalThis.localStorage?.setItem(EXEC_WEEK_STORAGE_KEY, d.toISOString());
+    globalThis.dispatchEvent(new CustomEvent(EXEC_WEEK_EVENT));
+  } catch { /* ignore */ }
+}
+
+function useExecutiveWeekWindow() {
+  const [weekAnchor, setWeekAnchor] = useState<Date>(readWeekAnchor);
+
+  useEffect(() => {
+    const onChange = () => setWeekAnchor(readWeekAnchor());
+    globalThis.addEventListener(EXEC_WEEK_EVENT, onChange);
+    globalThis.addEventListener('storage', onChange);
+    return () => {
+      globalThis.removeEventListener(EXEC_WEEK_EVENT, onChange);
+      globalThis.removeEventListener('storage', onChange);
+    };
+  }, []);
+
+  const setAnchor = useCallback((d: Date) => {
+    const norm = startOfWeek(d, { weekStartsOn: 1 });
+    writeWeekAnchor(norm);
+    setWeekAnchor(norm);
+  }, []);
+
+  const selectedWindow: ExecKpiWindow = useMemo(() => {
+    const start = startOfWeek(weekAnchor, { weekStartsOn: 1 });
+    const end = endOfWeek(weekAnchor, { weekStartsOn: 1 });
+    return {
+      start,
+      end,
+      label: `${fmtDateFn(start, 'MMM d')} → ${fmtDateFn(end, 'MMM d, yyyy')}`,
+    };
+  }, [weekAnchor]);
+
+  const isCurrentWeek = useMemo(
+    () => isSameWeek(weekAnchor, new Date(), { weekStartsOn: 1 }),
+    [weekAnchor],
+  );
+
+  return {
+    weekAnchor,
+    selectedWindow,
+    isCurrentWeek,
+    goPrev: () => setAnchor(addWeeks(weekAnchor, -1)),
+    goNext: () => setAnchor(addWeeks(weekAnchor, 1)),
+    goCurrent: () => setAnchor(startOfWeek(new Date(), { weekStartsOn: 1 })),
+  };
+}
+
+export function ExecWeekSelectorWidget() {
+  const { selectedWindow, isCurrentWeek, goPrev, goNext, goCurrent } = useExecutiveWeekWindow();
+  return (
+    <GlassCard className="h-full">
+      <GlassCardHeader title="Executive Dashboard" subtitle="Week selector · Mon → Sun" />
+      <GlassCardBody className="pt-0 pb-5 space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={goPrev} aria-label="Previous week" className="h-8 w-8 p-0">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="min-w-[180px] text-center px-3 py-1.5 rounded-md bg-white/5 border border-white/10">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Week of</p>
+            <p className="text-xs font-medium tabular-nums">{selectedWindow.label}</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={goNext} disabled={isCurrentWeek} aria-label="Next week" className="h-8 w-8 p-0">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          {!isCurrentWeek && (
+            <Button variant="ghost" size="sm" onClick={goCurrent} className="h-8 text-xs">Current week</Button>
+          )}
+        </div>
+        <p className="text-[11px] text-muted-foreground">Total Active Deal Volume is always live</p>
+      </GlassCardBody>
+    </GlassCard>
+  );
+}
+
+export function ExecTotalActiveDealVolumeWidget() {
+  const { selectedWindow } = useExecutiveWeekWindow();
+  const kpis = useExecutiveTopRowKpis(selectedWindow);
+  const [drilldown, setDrilldown] = useState<ExecKpiDrilldown | null>(null);
+  const fmtMoney = (v: number | null) => (v === null || !Number.isFinite(v) ? '—' : formatCurrency(v));
+  return (
+    <>
+      <StatCard
+        title="Total Active Deal Volume"
+        value={fmtMoney(kpis.totalActiveDealVolume.value)}
+        subtitle="Final Credit Items → In Due Diligence"
+        loading={kpis.totalActiveDealVolume.loading}
+        tooltip={
+          <div className="space-y-1.5">
+            <p className="font-medium text-foreground">Total Active Deal Volume</p>
+            <p>SUM of <span className="font-mono">deal value</span> for every open deal whose current stage falls in the inclusive range <em>Final Credit Items → In Due Diligence</em>.</p>
+            <p className="text-muted-foreground">Pipeline: active (default). Window: live snapshot.</p>
+          </div>
+        }
+        onClick={() => setDrilldown({
+          kind: 'deals',
+          title: 'Total Active Deal Volume',
+          subtitle: 'Open deals · Final Credit Items → In Due Diligence (active pipeline)',
+          rows: kpis.totalActiveDealVolume.deals,
+        })}
+      />
+      <ExecKpiDrilldownModal drilldown={drilldown} onClose={() => setDrilldown(null)} />
+    </>
+  );
+}
+
+export function ExecDealsClosedWidget() {
+  const { selectedWindow } = useExecutiveWeekWindow();
+  const kpis = useExecutiveTopRowKpis(selectedWindow);
+  const [drilldown, setDrilldown] = useState<ExecKpiDrilldown | null>(null);
+  const fmtCount = (v: number | null) => (v === null || !Number.isFinite(v) ? '—' : v.toLocaleString());
+  return (
+    <>
+      <StatCard
+        title="Deals Closed"
+        value={fmtCount(kpis.dealsClosedQTD.value)}
+        subtitle={`Entered Funded / Invoiced · ${selectedWindow.label}`}
+        loading={kpis.dealsClosedQTD.loading}
+        tooltip={
+          <div className="space-y-1.5">
+            <p className="font-medium text-foreground">Deals Closed</p>
+            <p>COUNT of distinct deals that <em>entered</em> the <em>Funded / Invoiced</em> stage during the selected window (stage-entry events, not current snapshots).</p>
+            <p className="text-muted-foreground">Window: {selectedWindow.label}.</p>
+          </div>
+        }
+        onClick={() => setDrilldown({
+          kind: 'deals',
+          title: `Deals Closed · ${selectedWindow.label}`,
+          subtitle: 'Stage-entry events into Funded / Invoiced for the selected window',
+          rows: kpis.dealsClosedQTD.deals,
+        })}
+      />
+      <ExecKpiDrilldownModal drilldown={drilldown} onClose={() => setDrilldown(null)} />
+    </>
+  );
+}
+
+export function ExecDealsByStatusWidget() {
+  const { selectedWindow } = useExecutiveWeekWindow();
+  return <DealsByStatusPieChart window={{ start: selectedWindow.start, end: selectedWindow.end }} />;
+}
