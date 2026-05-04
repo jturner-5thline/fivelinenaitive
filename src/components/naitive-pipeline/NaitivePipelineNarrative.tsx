@@ -15,7 +15,7 @@ import {
   Bold as BoldIcon, Italic as ItalicIcon, Underline as UnderlineIcon,
   List, ListOrdered, Link as LinkIcon, Heading2, Loader2, Check,
   Sparkles, RefreshCw, History as HistoryIcon, Pencil,
-  RotateCcw,
+  RotateCcw, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
@@ -555,6 +555,7 @@ function AnalysisPanel({
   draftAware: boolean;
   onRefresh: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   if (loading && !analysis) {
     return (
       <div className="flex items-center justify-center h-40 text-xs text-muted-foreground gap-2">
@@ -580,6 +581,7 @@ function AnalysisPanel({
 
   const v = analysis.viewer_view;
   const e = analysis.editor_view;
+  const hasDetails = !!e;
 
   return (
     <div className="space-y-4">
@@ -612,10 +614,24 @@ function AnalysisPanel({
               </ul>
             </div>
           )}
+          {hasDetails && (
+            <button
+              type="button"
+              onClick={() => setExpanded(v => !v)}
+              className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+              aria-expanded={expanded}
+            >
+              {expanded ? (
+                <>Hide details <ChevronUp className="h-3 w-3" /></>
+              ) : (
+                <>Expand for details <ChevronDown className="h-3 w-3" /></>
+              )}
+            </button>
+          )}
         </div>
       )}
 
-      {e && (
+      {e && expanded && (
         <div className="rounded-md border border-border p-3 space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Editor view</p>
