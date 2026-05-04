@@ -152,6 +152,7 @@ export function useNaitivePipelineData(): NaitivePipelineData {
       keySignal: d.key_signal || undefined,
       productGapFlagged: d.product_gap_flagged || undefined,
       dmPresent: d.dm_present || undefined,
+      whyNotMovingForward: d.why_not_moving_forward || undefined,
       lenders: (d.deal_lenders || []).map((l: any) => ({
         id: l.id,
         name: l.name || '',

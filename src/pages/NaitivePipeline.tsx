@@ -24,6 +24,7 @@ import { NaitivePipelineRecommendations } from '@/components/naitive-pipeline/Na
 import { NaitivePipelinePartnerInfluence } from '@/components/naitive-pipeline/NaitivePipelinePartnerInfluence';
 import { NaitiveICPLeaderboard } from '@/components/naitive-pipeline/NaitiveICPLeaderboard';
 import { NaitiveQualToDemoInsights } from '@/components/naitive-pipeline/NaitiveQualToDemoInsights';
+import { NaitiveDidNotMoveInsights } from '@/components/naitive-pipeline/NaitiveDidNotMoveInsights';
 import {
   DndContext,
   DragOverlay,
@@ -375,6 +376,7 @@ export default function NaitivePipeline() {
                       </div>
                       <NaitiveICPLeaderboard deals={deals} />
                       <NaitiveQualToDemoInsights deals={deals} />
+                      <NaitiveDidNotMoveInsights deals={deals} />
                     </div>
                   )
                 ) : (
