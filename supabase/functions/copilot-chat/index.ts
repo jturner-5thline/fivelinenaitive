@@ -167,13 +167,16 @@ const tools = [
     type: "function",
     function: {
       name: "create_task",
-      description: "Create a task. Returns a confirmation card.",
+      description: "Create a task. Returns a confirmation card. To assign to a teammate, first call search_team_members to resolve their user UUID, then pass it as assignee_user_id.",
       parameters: {
         type: "object",
         properties: {
           title: { type: "string" },
           description: { type: "string" },
           deal_id: { type: "string" },
+          contact_id: { type: "string" },
+          assignee_user_id: { type: "string", description: "User UUID. Resolve names via search_team_members first. Defaults to the current user." },
+          assignee_name: { type: "string", description: "Display name of the assignee (for the confirm card label only)." },
           priority: { type: "string", enum: ["low", "medium", "high", "urgent"] },
           due_date: { type: "string", description: "ISO date string YYYY-MM-DD" },
         },
