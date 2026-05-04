@@ -1014,6 +1014,57 @@ function splitQuotedContent(body: string): { main: string; quoted: string | null
   return { main: body, quoted: null };
 }
 
+// ─── Always-visible email header details ─────────────────────
+function toArray(v: unknown): string[] {
+  if (!v) return [];
+  if (Array.isArray(v)) return v.map(String).map(s => s.trim()).filter(Boolean);
+  if (typeof v === 'string') return v.split(',').map(s => s.trim()).filter(Boolean);
+  return [];
+}
+
+function HeaderRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex gap-2 text-xs text-[hsl(var(--email-text-muted))] leading-snug">
+      <span className="w-14 shrink-0 font-medium text-[hsl(var(--email-text-secondary))]">{label}</span>
+      <span className="min-w-0 break-words text-[hsl(var(--email-text-primary))]">{value}</span>
+    </div>
+  );
+}
+
+function EmailHeaderDetails({ email, fullData }: { email: MockEmail; fullData: any }) {
+  const fromCombined = email.from_name && email.from_email && email.from_name !== email.from_email
+    ? `${email.from_name} <${email.from_email}>`
+    : (email.from_email || email.from_name || '');
+
+  const toFromFull = toArray(fullData?.to_emails);
+  const toFallback = email.to_email
+    ? [email.to_name && email.to_name !== email.to_email ? `${email.to_name} <${email.to_email}>` : email.to_email]
+    : [];
+  const toList = toFromFull.length > 0 ? toFromFull : toFallback;
+
+  const ccList = toArray(fullData?.cc_emails).length > 0
+    ? toArray(fullData?.cc_emails)
+    : toArray((email as any)._cc);
+  const bccList = toArray(fullData?.bcc_emails).length > 0
+    ? toArray(fullData?.bcc_emails)
+    : toArray((email as any)._bcc);
+  const replyToList = toArray(fullData?.reply_to ?? fullData?.reply_to_emails);
+
+  const dateLabel = email.received_at ? format(new Date(email.received_at), 'EEE, MMM d, yyyy h:mm a') : '';
+
+  return (
+    <div className="mb-3 space-y-1 rounded-md border border-[hsl(var(--email-border))]/60 bg-[hsl(var(--foreground)/0.02)] px-3 py-2">
+      {fromCombined && <HeaderRow label="From" value={fromCombined} />}
+      {toList.length > 0 && <HeaderRow label="To" value={toList.join(', ')} />}
+      {ccList.length > 0 && <HeaderRow label="Cc" value={ccList.join(', ')} />}
+      {bccList.length > 0 && <HeaderRow label="Bcc" value={bccList.join(', ')} />}
+      {replyToList.length > 0 && <HeaderRow label="Reply-To" value={replyToList.join(', ')} />}
+      {dateLabel && <HeaderRow label="Date" value={dateLabel} />}
+      {email.subject && <HeaderRow label="Subject" value={email.subject} />}
+    </div>
+  );
+}
+
 // ─── Thread Message Card ─────────────────────────────────────
 function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threadId, threadSubject, threadEmails, dealId, dealName }: { 
   email: MockEmail; 
