@@ -134,6 +134,7 @@ export interface Deal {
   keySignal?: string;
   productGapFlagged?: string;
   dmPresent?: string;
+  whyNotMovingForward?: string;
 }
 
 export const LENDER_STATUS_CONFIG: Record<LenderStatus, { label: string }> = {
