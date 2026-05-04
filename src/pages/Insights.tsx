@@ -240,6 +240,14 @@ const MANAGEMENT_SNAPSHOT_CARD_DEFAULTS: Record<EditableManagementSnapshotCardId
     size: 'small',
     color: 'hsl(var(--chart-3))',
   },
+  'revenue-by-month': {
+    title: 'Revenue by Month',
+    type: 'chart',
+    chartType: 'bar',
+    dataSource: 'computed-kpi',
+    size: 'medium',
+    color: 'hsl(var(--chart-2))',
+  },
 };
 
 const COLORS = [
