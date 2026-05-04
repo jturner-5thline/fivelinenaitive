@@ -743,7 +743,7 @@ export function CashFlowManager() {
 
   // Filtered data using debounced values
   const filteredDaily = useMemo(() => filterDailyByPeriod(rawDaily, debouncedYears, debouncedQuarters), [rawDaily, debouncedYears, debouncedQuarters]);
-  const filteredWeekly = useMemo(() => filterWeeklyByPeriod(weeklyWithScheduled, debouncedYears, debouncedQuarters), [weeklyWithScheduled, debouncedYears, debouncedQuarters]);
+  const filteredWeekly = useMemo(() => filterWeeklyByPeriod(weeklyWithLoc, debouncedYears, debouncedQuarters), [weeklyWithLoc, debouncedYears, debouncedQuarters]);
 
   const setActiveData = useCallback((setter: 'daily' | 'sidebar', updater: (prev: any) => any) => {
     if (role === 'viewer') {
