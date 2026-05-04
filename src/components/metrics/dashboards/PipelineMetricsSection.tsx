@@ -30,7 +30,7 @@ interface MetricCardConfig {
   drilldownTitle: string;
 }
 
-function MetricKPICard({
+export function MetricKPICard({
   config,
   onClick,
 }: {
@@ -80,7 +80,7 @@ function MetricKPICard({
   );
 }
 
-function DrilldownModal({
+export function PipelineDrilldownModal({
   open,
   onClose,
   title,
