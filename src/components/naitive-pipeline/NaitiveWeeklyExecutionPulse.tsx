@@ -382,7 +382,7 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
         <Card>
           <CardHeader className="pb-3 pt-5 px-5">
             <CardTitle className="text-base font-semibold tracking-tight text-foreground">
-              DM Present Rate by Week
+              DM Present Rate
             </CardTitle>
           </CardHeader>
           <CardContent className="px-5 pb-5 pt-1">
