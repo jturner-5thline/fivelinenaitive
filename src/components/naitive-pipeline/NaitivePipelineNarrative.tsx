@@ -510,7 +510,13 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week' }: Props) {
           </TabsContent>
 
           <TabsContent value="history" className="mt-3 flex-1 overflow-y-auto data-[state=inactive]:hidden">
-            <HistoryPanel rows={history} currentKey={current.key} />
+            <HistoryPanel
+              rows={history}
+              currentKey={current.key}
+              snapshots={snapshots}
+              onRestore={restoreSnapshot}
+              currentLabel={current.label}
+            />
           </TabsContent>
         </Tabs>
       </CardContent>
