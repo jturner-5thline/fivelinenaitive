@@ -303,7 +303,7 @@ export function CopilotToggleButton() {
     >
       <div
         className="pointer-events-auto flex flex-col items-center gap-2"
-        style={{ width: 'min(432px, calc(100% - 32px))' }}
+        style={{ width: `min(${barWidth}px, calc(100% - 32px))` }}
       >
         {showDropdown && (
           <div
@@ -412,12 +412,8 @@ export function CopilotToggleButton() {
             'animate-in fade-in duration-150',
           )}
           style={{
-            width: '432px',
+            width: `${barWidth}px`,
             maxWidth: 'calc(100% - 32px)',
-            // Temporary debug outline to confirm which element is being
-            // resized — remove after visual verification.
-            outline: '2px dashed rgba(244, 114, 182, 0.85)',
-            outlineOffset: '2px',
             background: 'rgba(14, 16, 24, 0.6)',
             backdropFilter: 'blur(18px) saturate(1.4)',
             WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
@@ -427,6 +423,24 @@ export function CopilotToggleButton() {
           }}
           onClick={() => inputRef.current?.focus()}
         >
+          {/* Left-edge resize handle. Drag to resize; double-click to reset. */}
+          <div
+            role="separator"
+            aria-label="Resize Ask naitive AI bar"
+            aria-orientation="vertical"
+            onPointerDown={onResizeStart}
+            onDoubleClick={onResizeDoubleClick}
+            onClick={(e) => e.stopPropagation()}
+            className="absolute left-0 top-0 z-10 h-full w-2 cursor-ew-resize opacity-0 hover:opacity-100 focus:opacity-100 transition-opacity"
+            style={{ touchAction: 'none' }}
+            title="Drag to resize • Double-click to reset"
+          >
+            <div
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-5 w-[2px] rounded-full"
+              style={{ background: 'rgba(255,255,255,0.45)' }}
+            />
+          </div>
+
           {/* Centered watermark emblem */}
           <span
             aria-hidden="true"
