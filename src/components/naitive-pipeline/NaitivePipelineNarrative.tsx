@@ -74,6 +74,16 @@ interface NarrativeRow {
   updated_by: string | null;
 }
 
+interface SnapshotRow {
+  id: string;
+  content: string;
+  created_at: string;
+  created_by: string | null;
+}
+
+const MAX_SNAPSHOTS = 10;
+const SNAPSHOT_MIN_INTERVAL_MS = 60_000; // throttle: at most one snapshot per minute
+
 interface AnalysisResult {
   empty?: boolean;
   message?: string;
