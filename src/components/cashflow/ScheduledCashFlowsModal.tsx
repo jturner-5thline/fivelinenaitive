@@ -298,6 +298,21 @@ export function ScheduledCashFlowsModal({
       notes: d.notes,
     }));
     const ok = await onSave(entries, deletedIds);
+    if (ok && onCreditFacilitiesChange) {
+      // Sanitize facility drafts before persisting
+      const cleaned = facilityDrafts
+        .filter((f) => f.name?.trim() && Number(f.facility_amount) > 0)
+        .map((f) => ({
+          ...f,
+          name: f.name.trim(),
+          facility_amount: Math.max(0, Number(f.facility_amount) || 0),
+          initial_drawn: Math.max(
+            0,
+            Math.min(Number(f.facility_amount) || 0, Number(f.initial_drawn) || 0),
+          ),
+        }));
+      onCreditFacilitiesChange(cleaned);
+    }
     setSaving(false);
     if (ok) {
       toast.success('Scheduled cash flows saved');
