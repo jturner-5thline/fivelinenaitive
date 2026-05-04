@@ -942,6 +942,7 @@ function EmailTab({
                       extras={
                         <>
                           <EmailCategoryChips email={e} />
+                          <DealLinkChip email={e} onNavigate={onNavigate} />
                           {autoLabels.map(lbl => (
                             <Badge
                               key={lbl.id}
