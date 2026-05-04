@@ -465,6 +465,33 @@ export function AICopilotPanel() {
   const location = useLocation();
   const isDealDetail = isDealDetailPath(location.pathname);
 
+  // Anchor: the <main class="main-scrollable"> bounding rect. We re-measure
+  // on open and on viewport resize so the panel stays centered above the
+  // Ask bar even as the sidebar opens/closes.
+  const [anchor, setAnchor] = useState<{ left: number; width: number; bottom: number }>(() => ({
+    left: 0,
+    width: typeof window !== 'undefined' ? window.innerWidth : 1024,
+    bottom: typeof window !== 'undefined' ? window.innerHeight : 768,
+  }));
+  useEffect(() => {
+    if (!isOpen) return;
+    const measure = () => {
+      const el = document.querySelector('main.main-scrollable') as HTMLElement | null;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setAnchor({ left: r.left, width: r.width, bottom: r.bottom });
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    const ro = new ResizeObserver(measure);
+    const el = document.querySelector('main.main-scrollable');
+    if (el) ro.observe(el);
+    return () => {
+      window.removeEventListener('resize', measure);
+      ro.disconnect();
+    };
+  }, [isOpen]);
+
   // Per-deal AI memory (loads last ~10 exchanges; persists new ones).
   const dealIdFromPath = (() => {
     const parts = location.pathname.split('/').filter(Boolean);
