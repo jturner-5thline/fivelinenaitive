@@ -32,10 +32,44 @@ export function generateDefaultLayout(widgetIds: string[], cols = 3, w = 4, h = 
  * Hook to persist and restore grid layouts per company + dashboard.
  * All company members see the same layout; only admins can save changes.
  */
-export function useGridLayout(dashboardId: string, defaultWidgetIds: string[], options?: { allowAllMembers?: boolean }) {
+export function useGridLayout(
+  dashboardId: string,
+  defaultWidgetIds: string[],
+  options?: { allowAllMembers?: boolean; layoutDefaults?: GridLayoutItem[] },
+) {
   const { company, isAdmin, isOwner } = useCompany();
   const canEdit = options?.allowAllMembers ? !!company?.id : (isAdmin || isOwner);
-  const [layout, setLayout] = useState<GridLayoutItem[]>(() => generateDefaultLayout(defaultWidgetIds));
+  const defaultsMap = (options?.layoutDefaults ?? []).reduce<Record<string, GridLayoutItem>>((acc, item) => {
+    acc[item.i] = item;
+    return acc;
+  }, {});
+  const buildDefaults = (ids: string[]): GridLayoutItem[] => {
+    if (options?.layoutDefaults && options.layoutDefaults.length) {
+      const generated = generateDefaultLayout(ids);
+      let maxY = 0;
+      const result = generated.map(g => {
+        if (defaultsMap[g.i]) {
+          const d = defaultsMap[g.i];
+          maxY = Math.max(maxY, d.y + d.h);
+          return { ...g, ...d };
+        }
+        return g;
+      });
+      // Reflow any non-defaulted items below the explicitly-positioned ones
+      const explicitIds = new Set(Object.keys(defaultsMap));
+      let cursor = maxY;
+      let col = 0;
+      return result.map(item => {
+        if (explicitIds.has(item.i)) return item;
+        const placed = { ...item, x: col, y: cursor };
+        col += item.w;
+        if (col >= 12) { col = 0; cursor += item.h; }
+        return placed;
+      });
+    }
+    return generateDefaultLayout(ids);
+  };
+  const [layout, setLayout] = useState<GridLayoutItem[]>(() => buildDefaults(defaultWidgetIds));
   const [isLoaded, setIsLoaded] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevWidgetIdsRef = useRef<string>(defaultWidgetIds.join(','));
@@ -48,15 +82,21 @@ export function useGridLayout(dashboardId: string, defaultWidgetIds: string[], o
     const newIds = defaultWidgetIds.filter(id => !currentIds.has(id));
     if (newIds.length > 0) {
       const maxY = layout.reduce((max, l) => Math.max(max, l.y + l.h), 0);
-      const newItems: GridLayoutItem[] = newIds.map((id, idx) => ({
-        i: id,
-        x: (idx % 3) * 4,
-        y: maxY + Math.floor(idx / 3) * 2,
-        w: 4,
-        h: 2,
-        minW: 3,
-        minH: 2,
-      }));
+      const newItems: GridLayoutItem[] = newIds.map((id, idx) => {
+        const d = defaultsMap[id];
+        if (d) {
+          return { ...d, y: maxY + d.y };
+        }
+        return {
+          i: id,
+          x: (idx % 3) * 4,
+          y: maxY + Math.floor(idx / 3) * 2,
+          w: 4,
+          h: 2,
+          minW: 3,
+          minH: 2,
+        };
+      });
       setLayout(prev => [...prev, ...newItems]);
     }
     const validIds = new Set(defaultWidgetIds);
@@ -84,19 +124,23 @@ export function useGridLayout(dashboardId: string, defaultWidgetIds: string[], o
         const newWidgets = defaultWidgetIds.filter(id => !savedIds.has(id));
         const maxY = savedLayout.reduce((max, l) => Math.max(max, l.y + l.h), 0);
 
-        const newLayouts: GridLayoutItem[] = newWidgets.map((id, idx) => ({
-          i: id,
-          x: (idx % 3) * 4,
-          y: maxY + Math.floor(idx / 3) * 2,
-          w: 4,
-          h: 2,
-          minW: 3,
-          minH: 2,
-        }));
+        const newLayouts: GridLayoutItem[] = newWidgets.map((id, idx) => {
+          const d = defaultsMap[id];
+          if (d) return { ...d, y: maxY + d.y };
+          return {
+            i: id,
+            x: (idx % 3) * 4,
+            y: maxY + Math.floor(idx / 3) * 2,
+            w: 4,
+            h: 2,
+            minW: 3,
+            minH: 2,
+          };
+        });
 
         setLayout([...savedLayout, ...newLayouts]);
       } else {
-        setLayout(generateDefaultLayout(defaultWidgetIds));
+        setLayout(buildDefaults(defaultWidgetIds));
       }
       setIsLoaded(true);
     })();
@@ -171,7 +215,7 @@ export function useGridLayout(dashboardId: string, defaultWidgetIds: string[], o
   }, [canEdit, company?.id, dashboardId, persistLayout]);
 
   const resetLayout = useCallback(async () => {
-    const def = generateDefaultLayout(defaultWidgetIds);
+    const def = buildDefaults(defaultWidgetIds);
     setLayout(def);
     if (!company?.id || !canEdit) return;
     await (supabase
