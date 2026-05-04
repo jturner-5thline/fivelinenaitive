@@ -1002,7 +1002,8 @@ export function AICopilotPanel() {
         role="region"
         aria-label="naitive AI transcript"
         style={{
-          width: '100%',
+          width: '90%',
+          marginInline: 'auto',
           height: isMinimized ? 0 : panelHeight,
           maxHeight: 'calc(100vh - 48px)',
           display: 'flex', flexDirection: 'column',
