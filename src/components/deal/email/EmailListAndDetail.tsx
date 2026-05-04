@@ -1066,7 +1066,7 @@ function EmailHeaderDetails({ email, fullData }: { email: MockEmail; fullData: a
 }
 
 // ─── Thread Message Card ─────────────────────────────────────
-function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threadId, threadSubject, threadEmails, dealId, dealName }: { 
+function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threadId, threadSubject, threadEmails, dealId, dealName, onReply, onReplyAll, onForward }: { 
   email: MockEmail; 
   isLatest: boolean; 
   defaultExpanded: boolean;
@@ -1076,6 +1076,9 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
   threadEmails: MockEmail[];
   dealId?: string;
   dealName?: string;
+  onReply?: (email: MockEmail) => void;
+  onReplyAll?: (email: MockEmail) => void;
+  onForward?: (email: MockEmail) => void;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [showQuoted, setShowQuoted] = useState(false);
