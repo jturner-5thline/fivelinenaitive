@@ -17483,6 +17483,7 @@ export type Database = {
           completed_by: string | null
           contact_id: string | null
           created_at: string
+          created_by: string | null
           crm_company_id: string | null
           deal_id: string | null
           description: string | null
@@ -17518,6 +17519,7 @@ export type Database = {
           completed_by?: string | null
           contact_id?: string | null
           created_at?: string
+          created_by?: string | null
           crm_company_id?: string | null
           deal_id?: string | null
           description?: string | null
@@ -17553,6 +17555,7 @@ export type Database = {
           completed_by?: string | null
           contact_id?: string | null
           created_at?: string
+          created_by?: string | null
           crm_company_id?: string | null
           deal_id?: string | null
           description?: string | null
