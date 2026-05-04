@@ -371,15 +371,6 @@ export default function NaitivePipeline() {
                           <NaitiveWeeklyExecutionPulse deals={deals} history={stageHistory} />
                         </div>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                        <NaitivePipelineHurdles hurdles={hurdles} />
-                        <NaitivePipelineNotifications notifications={notifications} />
-                        <NaitivePipelineRecommendations recommendations={recommendations} />
-                        <NaitivePipelinePartnerInfluence deals={deals} />
-                      </div>
-                      <NaitiveICPLeaderboard deals={deals} />
-                      <NaitiveQualToDemoInsights deals={deals} />
-                      <NaitiveDidNotMoveInsights deals={deals} />
                     </div>
                   )
                 ) : (

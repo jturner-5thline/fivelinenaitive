@@ -343,50 +343,22 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
         </div>
       </div>
 
-      {/* 8 stat cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+      {/* Core KPI strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <StatCard label="Quals Held" value={current.qualsHeld} prev={previous.qualsHeld} />
         <StatCard label="Demos Held" value={current.demosHeld} prev={previous.demosHeld} />
         <StatCard label="Demos Booked" value={current.demosBooked} prev={previous.demosBooked} />
         <StatCard label="Trials Started" value={current.trialsStarted} prev={previous.trialsStarted} />
         <StatCard label="Converted" value={current.converted} prev={previous.converted} />
-        <StatCard label="From Sequences" value={current.fromSequences} prev={previous.fromSequences} />
-        <StatCard label="From Warm" value={current.fromWarm} prev={previous.fromWarm} />
-        <StatCard label="DM Present Rate" value={current.dmRate} prev={previous.dmRate} isPercent />
       </div>
 
       {/* Charts row */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        {/* Activity trend */}
-        <Card>
-          <CardHeader className="pb-3 pt-5 px-5">
-            <CardTitle className="text-base font-semibold tracking-tight text-foreground">
-              Pipeline Activity Over Time
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-5 pb-5 pt-1">
-            <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={buckets.activity} margin={{ left: -8, right: 12, top: 8, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="2 4" stroke="hsl(var(--border) / 0.4)" vertical={false} />
-                <XAxis dataKey="week" tick={AXIS_TICK} axisLine={false} tickLine={false} />
-                <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" />
-                <Line type="monotone" dataKey="qualsHeld" name="Quals Held" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 2 }} />
-                <Line type="monotone" dataKey="demosHeld" name="Demos Held" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={{ r: 2 }} />
-                <Line type="monotone" dataKey="demosBooked" name="Demos Booked" stroke="hsl(var(--chart-3))" strokeWidth={2} dot={{ r: 2 }} />
-                <Line type="monotone" dataKey="trialsStarted" name="Trials Started" stroke="hsl(var(--chart-4))" strokeWidth={2} dot={{ r: 2 }} />
-                <Line type="monotone" dataKey="converted" name="Converted" stroke="hsl(var(--success))" strokeWidth={2} dot={{ r: 2 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Source split */}
         <Card>
           <CardHeader className="pb-3 pt-5 px-5">
             <CardTitle className="text-base font-semibold tracking-tight text-foreground">
-              New Meetings: Sequences vs. Warm
+              New Meetings: Sequences vs Warm Outreach
             </CardTitle>
           </CardHeader>
           <CardContent className="px-5 pb-5 pt-1">
@@ -410,7 +382,7 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
         <Card>
           <CardHeader className="pb-3 pt-5 px-5">
             <CardTitle className="text-base font-semibold tracking-tight text-foreground">
-              DM Present Rate by Week
+              DM Present Rate
             </CardTitle>
           </CardHeader>
           <CardContent className="px-5 pb-5 pt-1">
