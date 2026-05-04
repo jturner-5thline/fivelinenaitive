@@ -45,7 +45,7 @@ const prettyPipeline = (id?: string | null) => {
 };
 
 // ── Bar chart card ──
-function SignedBarChart({
+export function SignedBarChart({
   title,
   subtitle,
   months,
@@ -157,7 +157,7 @@ function SignedBarChart({
 }
 
 // ── Outstanding AR pie chart ──
-function OutstandingARPieChart() {
+export function OutstandingARPieChart() {
   const { slices, total, isLoading } = useOutstandingARByEntity();
 
   if (isLoading) {
@@ -243,7 +243,7 @@ function OutstandingARPieChart() {
 }
 
 // ── Drilldown modal ──
-function DealsDrilldownModal({
+export function SignedDealsDrilldownModal({
   open,
   onClose,
   title,
