@@ -75,6 +75,7 @@ import { SortableMetricWidget, StatWidgetContent, ChartWidgetContent } from "@/c
 import { DatarailsWidgetEditor } from "@/components/widget-editor/DatarailsWidgetEditor";
 import { DEFAULT_WIDGET_CONFIG, WidgetConfig as DatarailsWidgetConfig } from "@/components/widget-editor/widgetTypes";
 import { toast } from "@/hooks/use-toast";
+import { toast as sonnerToast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useCompanyDashboardConfig } from "@/hooks/useCompanyDashboardConfig";
 import { useMetricsEditPermission } from "@/hooks/useMetricsEditPermission";
