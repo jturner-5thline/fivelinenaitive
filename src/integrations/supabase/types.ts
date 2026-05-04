@@ -20968,6 +20968,14 @@ export type Database = {
         Args: { _rejection_note?: string; _request_id: string }
         Returns: undefined
       }
+      reset_dashboard_grid_layout: {
+        Args: { _company_id: string; _dashboard_id: string }
+        Returns: undefined
+      }
+      save_dashboard_grid_layout: {
+        Args: { _company_id: string; _dashboard_id: string; _layout: Json }
+        Returns: undefined
+      }
       save_fpa_dashboard_config: {
         Args: { _company_id: string; _config_key: string; _config_value: Json }
         Returns: undefined
