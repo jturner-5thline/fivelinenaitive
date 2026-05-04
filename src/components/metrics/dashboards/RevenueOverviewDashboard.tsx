@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { DollarSign, TrendingUp, Building2, Loader2, Inbox, RotateCcw } from 'lucide-react';
+import { DollarSign, TrendingUp, Building2, Loader2, Inbox, RotateCcw, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton as RowSkeleton } from '@/components/ui/skeleton';
 import {
@@ -209,6 +209,35 @@ function DrilldownModal({
 
   const total = (invoices ?? []).reduce((s, r) => s + (r.total_amt ?? 0), 0);
 
+  type SortKey = 'txn_date' | 'doc_number' | 'customer_name' | 'total_amt';
+  const [sortKey, setSortKey] = useState<SortKey>('txn_date');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir(key === 'total_amt' ? 'desc' : 'asc');
+    }
+  };
+  const sortedInvoices = [...(invoices ?? [])].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    if (sortKey === 'total_amt') {
+      return ((a.total_amt ?? 0) - (b.total_amt ?? 0)) * dir;
+    }
+    const av = (a[sortKey] ?? '') as string;
+    const bv = (b[sortKey] ?? '') as string;
+    return av.localeCompare(bv, undefined, { numeric: true }) * dir;
+  });
+  const SortIcon = ({ k }: { k: SortKey }) =>
+    sortKey !== k ? (
+      <ArrowUpDown className="h-3 w-3 opacity-40" />
+    ) : sortDir === 'asc' ? (
+      <ArrowUp className="h-3 w-3" />
+    ) : (
+      <ArrowDown className="h-3 w-3" />
+    );
+
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
@@ -313,14 +342,30 @@ function DrilldownModal({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/30">
-                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Date</th>
-                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Invoice #</th>
-                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Customer</th>
-                  <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Amount</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">
+                    <button type="button" onClick={() => toggleSort('txn_date')} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                      Date <SortIcon k="txn_date" />
+                    </button>
+                  </th>
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">
+                    <button type="button" onClick={() => toggleSort('doc_number')} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                      Invoice # <SortIcon k="doc_number" />
+                    </button>
+                  </th>
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">
+                    <button type="button" onClick={() => toggleSort('customer_name')} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                      Customer <SortIcon k="customer_name" />
+                    </button>
+                  </th>
+                  <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">
+                    <button type="button" onClick={() => toggleSort('total_amt')} className="inline-flex items-center gap-1 hover:text-foreground transition-colors ml-auto">
+                      Amount <SortIcon k="total_amt" />
+                    </button>
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {invoices.map(inv => (
+                {sortedInvoices.map(inv => (
                   <tr key={inv.id} className="border-b last:border-0 hover:bg-muted/20">
                     <td className="px-3 py-2 text-xs text-muted-foreground">{inv.txn_date}</td>
                     <td className="px-3 py-2 text-xs font-mono">{inv.doc_number || '—'}</td>
