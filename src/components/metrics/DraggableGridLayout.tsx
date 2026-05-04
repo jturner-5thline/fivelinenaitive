@@ -51,6 +51,9 @@ export function DraggableGridLayout({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(1200);
   const latestLayoutRef = useRef<GridLayoutItem[]>(layout);
+  // Suppresses click events fired immediately after a drag or resize,
+  // so dragging/resizing a widget never triggers a drilldown or widget editor.
+  const suppressClickUntilRef = useRef<number>(0);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -118,17 +121,30 @@ export function DraggableGridLayout({
   const handleDragStop = useCallback((_layout: any[], _oldItem: any, _newItem: any, _placeholder: any, _e: any, _element: any) => {
     const mapped = mapLayout(_layout);
     latestLayoutRef.current = mapped;
+    suppressClickUntilRef.current = Date.now() + 400;
     onLayoutChange(mapped, true); // immediate save
   }, [onLayoutChange]);
 
   const handleResizeStop = useCallback((_layout: any[], _oldItem: any, _newItem: any, _placeholder: any, _e: any, _element: any) => {
     const mapped = mapLayout(_layout);
     latestLayoutRef.current = mapped;
+    suppressClickUntilRef.current = Date.now() + 400;
     onLayoutChange(mapped, true); // immediate save
   }, [onLayoutChange]);
 
+  const handleClickCapture = useCallback((e: React.MouseEvent) => {
+    if (Date.now() < suppressClickUntilRef.current) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  }, []);
+
   return (
-    <div ref={containerRef} className={cn('draggable-grid-wrapper', className)}>
+    <div
+      ref={containerRef}
+      className={cn('draggable-grid-wrapper', className)}
+      onClickCapture={handleClickCapture}
+    >
       <Responsive
         className="layout"
         layouts={layouts}
