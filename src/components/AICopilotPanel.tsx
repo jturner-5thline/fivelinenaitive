@@ -965,33 +965,24 @@ export function AICopilotPanel() {
 
   if (!isOpen) return null;
 
-  // ── Anchor to the Ask naitive AI bar (centered over the main content) ──
-  // The Ask bar is sticky-bottom inside <main class="main-scrollable">. We
-  // compute the panel's position from the main element's bounding rect so
-  // the panel sits centered over the bar, regardless of sidebar state or
-  // viewport size. Width is read from the same localStorage key the bar uses
-  // so the panel matches the bar's measured width.
-  // (Hooks moved into AICopilotPanelInner so they can use isOpen safely.)
-  const ANCHOR = computeAnchorRect();
-  const barWidthPref = readBarWidthPref();
-  const isMobileLayout = isMobile;
-
-  // Bar offset inside main: bottom: max(24px, safe-area), height ~44px,
-  // plus a 12px gap above the bar.
+  // ── Anchor to the Ask naitive AI bar (centered over main content) ──
+  // anchor = { left, width, bottom } from the <main class="main-scrollable">
+  // element. This is the same container the Ask bar lives in, so centering
+  // over it keeps parity as the sidebar opens/closes and the viewport
+  // resizes. Width matches the bar's persisted width.
   const BAR_OFFSET = 24;
   const BAR_HEIGHT = 44;
   const GAP = 12;
-
-  const mainLeft = ANCHOR?.left ?? 0;
-  const mainWidth = ANCHOR?.width ?? window.innerWidth;
-  const mainBottom = ANCHOR?.bottom ?? window.innerHeight;
-
-  const panelWidth = isMobileLayout
+  const barWidthPref = readBarWidthPref();
+  const mainLeft = anchor.left;
+  const mainWidth = anchor.width;
+  const mainBottom = anchor.bottom;
+  const panelWidth = isMobile
     ? Math.max(0, mainWidth - 16)
     : Math.min(barWidthPref, Math.max(280, mainWidth - 32));
-  const bottomFromViewport = (window.innerHeight - mainBottom) + BAR_OFFSET + BAR_HEIGHT + GAP;
+  const bottomFromViewport = Math.max(8, (window.innerHeight - mainBottom) + BAR_OFFSET + BAR_HEIGHT + GAP);
   const availableHeight = Math.max(280, mainBottom - BAR_OFFSET - BAR_HEIGHT - GAP - 16);
-  const panelHeight = isMobileLayout
+  const panelHeight = isMobile
     ? Math.min(window.innerHeight - 16, availableHeight)
     : Math.min(Math.round(window.innerHeight * 0.7), availableHeight);
   const panelLeft = mainLeft + mainWidth / 2;
