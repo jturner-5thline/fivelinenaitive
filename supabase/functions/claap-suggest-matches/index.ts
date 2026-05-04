@@ -330,23 +330,97 @@ serve(async (req) => {
       return { score: Math.max(0, Math.min(100, score)), reasons };
     }
 
+    // AI is opt-in (skip on bulk re-match runs to keep latency/cost in check)
+    const useAi = !!lovableApiKey && (meeting_ids?.length || meetings.length <= 25);
+
     // Process each meeting
     let totalSuggestions = 0;
+    let totalReviewable = 0;
 
     for (const meeting of meetings) {
       const meetingParticipants = participantMap[meeting.id] || [];
 
       // Score all deals
-      const scoredDeals = deals.map((deal: any) => {
+      const scoredDealsRaw = (deals || []).map((deal: any) => {
         const { score, reasons } = scoreDeal(meeting, deal, meetingParticipants);
-        return { deal_id: deal.id, deal_name: deal.company, score, reasons };
-      }).filter((d: any) => d.score >= 10)
+        return {
+          match_type: "deal" as const,
+          deal_id: deal.id,
+          deal_name: deal.company,
+          label: deal.company,
+          score,
+          reasons,
+        };
+      }).filter((d: any) => d.score >= 20)
         .sort((a: any, b: any) => b.score - a.score)
         .slice(0, 5);
 
-      // Use AI for additional ranking if we have LOVABLE_API_KEY and meaningful text
-      let aiEnhancedDeals = scoredDeals;
-      if (lovableApiKey && scoredDeals.length > 0 && (meeting.title || meeting.transcript)) {
+      // Domain/email-based suggestions for CRM company / contact / lender (non-deal)
+      const extraSuggestions: any[] = [];
+      const seenLabels = new Set<string>(scoredDealsRaw.map((s: any) => `deal:${s.deal_id}`));
+      for (const p of meetingParticipants) {
+        if (p.is_internal) continue;
+        const email = (p.email || "").toLowerCase();
+        const domain = (p.domain || (email.includes("@") ? email.split("@")[1] : "")).toLowerCase();
+        if (!domain || INTERNAL_DOMAINS.has(domain)) continue;
+
+        // Contact match by email
+        if (email && contactByEmail[email]) {
+          const c = contactByEmail[email];
+          const k = `contact:${c.id}`;
+          if (!seenLabels.has(k)) {
+            seenLabels.add(k);
+            extraSuggestions.push({
+              match_type: "contact",
+              contact_email: email,
+              label: c.full_name || email,
+              score: 70,
+              reasons: [`Attendee ${email} matches CRM contact "${c.full_name || email}"`],
+            });
+          }
+        }
+        // CRM company match by domain
+        if (crmCompanyByDomain[domain]) {
+          const co = crmCompanyByDomain[domain];
+          const k = `company:${co.id}`;
+          if (!seenLabels.has(k)) {
+            seenLabels.add(k);
+            extraSuggestions.push({
+              match_type: "company",
+              company_name: co.name,
+              label: co.name,
+              score: 65,
+              reasons: [`Attendee domain @${domain} matches company "${co.name}"`],
+            });
+          }
+        }
+        // Lender match by name token vs domain
+        for (const lname of allLenderNames) {
+          const core = lname.toLowerCase().replace(/[^a-z0-9]/g, "");
+          const dCore = domain.replace(/\.(com|io|co|net|org|ai|us|uk)$/i, "").replace(/[^a-z0-9]/g, "");
+          if (core.length > 3 && dCore && (dCore.includes(core) || core.includes(dCore))) {
+            const k = `lender:${lname}`;
+            if (!seenLabels.has(k)) {
+              seenLabels.add(k);
+              extraSuggestions.push({
+                match_type: "lender",
+                lender_name: lname,
+                label: lname,
+                score: 60,
+                reasons: [`Attendee domain @${domain} matches lender "${lname}"`],
+              });
+              break;
+            }
+          }
+        }
+      }
+
+      let combined = [...scoredDealsRaw, ...extraSuggestions]
+        .sort((a: any, b: any) => b.score - a.score)
+        .slice(0, 5);
+
+      // Use AI for additional ranking if enabled
+      if (useAi && combined.length > 0 && (meeting.title || meeting.transcript)) {
         try {
           const contextText = [
             meeting.title ? `Meeting title: "${meeting.title}"` : "",
@@ -356,8 +430,8 @@ serve(async (req) => {
             meeting.transcript ? `Transcript excerpt: ${(meeting.transcript as string).substring(0, 800)}` : "",
           ].filter(Boolean).join("\n");
 
-          const candidateList = scoredDeals.map((d: any, i: number) =>
-            `${i + 1}. "${d.deal_name}" (current score: ${d.score}, reasons: ${d.reasons.join("; ")})`
+          const candidateList = combined.map((d: any, i: number) =>
+            `${i + 1}. [${d.match_type}] "${d.label}" (score: ${d.score}, reasons: ${d.reasons.join("; ")})`
           ).join("\n");
 
           const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -391,14 +465,12 @@ serve(async (req) => {
               const adjustments = JSON.parse(jsonMatch[0]);
               for (const adj of adjustments) {
                 const idx = (adj.deal_index || 0) - 1;
-                if (idx >= 0 && idx < aiEnhancedDeals.length) {
-                  aiEnhancedDeals[idx].score = Math.max(0, Math.min(100, aiEnhancedDeals[idx].score + (adj.confidence_adjustment || 0)));
-                  if (adj.reason) {
-                    aiEnhancedDeals[idx].reasons.push(`AI: ${adj.reason}`);
-                  }
+                if (idx >= 0 && idx < combined.length) {
+                  combined[idx].score = Math.max(0, Math.min(100, combined[idx].score + (adj.confidence_adjustment || 0)));
+                  if (adj.reason) combined[idx].reasons.push(`AI: ${adj.reason}`);
                 }
               }
-              aiEnhancedDeals.sort((a: any, b: any) => b.score - a.score);
+              combined.sort((a: any, b: any) => b.score - a.score);
             }
           }
         } catch (aiErr) {
@@ -406,8 +478,8 @@ serve(async (req) => {
         }
       }
 
-      // Take top 3 suggestions
-      const topSuggestions = aiEnhancedDeals.slice(0, 3).filter((d: any) => d.score >= 15);
+      // Take top 3 suggestions ≥ 20% (anything below is noise)
+      const topSuggestions = combined.slice(0, 3).filter((d: any) => d.score >= 20);
 
       if (topSuggestions.length > 0) {
         // Delete existing pending suggestions for this meeting
@@ -423,10 +495,13 @@ serve(async (req) => {
           .insert(
             topSuggestions.map((s: any, i: number) => ({
               meeting_id: meeting.id,
-              deal_id: s.deal_id,
+              deal_id: s.deal_id || null,
+              lender_name: s.lender_name || null,
+              company_name: s.company_name || null,
+              contact_email: s.contact_email || null,
               confidence: s.score,
               reason: s.reasons.join("; "),
-              suggestion_source: lovableApiKey ? "ai_enhanced" : "deterministic",
+              suggestion_source: useAi ? "ai_enhanced" : "deterministic",
               rank: i + 1,
               status: "pending",
             }))
@@ -435,26 +510,35 @@ serve(async (req) => {
         if (!insertErr) {
           totalSuggestions += topSuggestions.length;
 
-          // Update meeting
+          // Promote to needs_review if any suggestion ≥ 50% so it surfaces in the Review tab
+          const bestScore = topSuggestions[0].score;
+          const newStatus = bestScore >= 50 ? "needs_review" : "unmatched";
+          if (newStatus === "needs_review") totalReviewable++;
+
           await supabase
             .from("claap_meetings")
             .update({
+              match_status: newStatus,
+              match_confidence: bestScore,
               suggestions_generated_at: new Date().toISOString(),
               suggestion_count: topSuggestions.length,
               match_candidates: topSuggestions.map((s: any) => ({
-                deal_id: s.deal_id,
-                deal_name: s.deal_name,
+                match_type: s.match_type,
+                deal_id: s.deal_id || null,
+                label: s.label,
                 confidence: s.score,
                 reason: s.reasons.join("; "),
               })),
             } as any)
             .eq("id", meeting.id);
+        } else {
+          console.error("Insert suggestions failed", insertErr);
         }
       }
     }
 
     return new Response(
-      JSON.stringify({ ok: true, processed: meetings.length, suggestions: totalSuggestions }),
+      JSON.stringify({ ok: true, processed: meetings.length, suggestions: totalSuggestions, promoted_to_review: totalReviewable }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
