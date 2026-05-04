@@ -145,6 +145,7 @@ export function useNaitivePipelineData(): NaitivePipelineData {
       nextStep: d.next_step || undefined,
       nextStepDate: d.next_step_date || undefined,
       prospectType: d.prospect_type || undefined,
+      outcome: d.outcome || undefined,
       lenders: (d.deal_lenders || []).map((l: any) => ({
         id: l.id,
         name: l.name || '',
