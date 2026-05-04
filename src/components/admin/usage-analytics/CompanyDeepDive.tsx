@@ -104,7 +104,22 @@ function buildDayBuckets(start: Date, end: Date): string[] {
   return days;
 }
 
-export function CompanyDeepDive({ companyId, companyName, range, onBack }: Props) {
+export function CompanyDeepDive({ companyId, companyName, range: initialRange, onBack }: Props) {
+  const [rangeKey, setRangeKey] = useState<UsageDateRangeKey>(initialRange.key);
+  const [customStart, setCustomStart] = useState<string>(
+    initialRange.key === "custom" ? initialRange.start.toISOString().slice(0, 10) : "",
+  );
+  const [customEnd, setCustomEnd] = useState<string>(
+    initialRange.key === "custom" ? initialRange.end.toISOString().slice(0, 10) : "",
+  );
+  const range = useMemo(
+    () => buildDateRange(
+      rangeKey,
+      customStart ? new Date(customStart) : undefined,
+      customEnd ? new Date(customEnd) : undefined,
+    ),
+    [rangeKey, customStart, customEnd],
+  );
   const [events, setEvents] = useState<EventRow[]>([]);
   const [userMap, setUserMap] = useState<Map<string, { name: string; email: string }>>(new Map());
   const [dealMap, setDealMap] = useState<Map<string, string>>(new Map());
