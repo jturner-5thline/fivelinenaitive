@@ -572,6 +572,11 @@ export function ManagementSnapshotDashboard({
   onDeleteSubWidget,
 }: ManagementSnapshotDashboardProps) {
   const { data: qbStatus } = useQuickBooksStatus();
+  // Global Weekly Rundown timeframe — overrides per-card window so all
+  // widgets reflect the same date range (or live snapshot when 'all').
+  const tf = useInsightsTimeframeOptional();
+  const globalTimeWindow = (tf?.timeWindow ?? null) as TimeWindow | null;
+  const globalCustomRange = tf?.customRange;
 
   const resolveEntityName = (entityFilter?: string) => {
     if (!entityFilter || entityFilter === 'all') return null;
@@ -603,13 +608,15 @@ export function ManagementSnapshotDashboard({
   ): GenericDashboardCardProps => {
     const cfg = cardConfigs[cardId];
     const variant = cfg?.sizeVariant || fallbackSizeVariant;
+    const effectiveWindow = (globalTimeWindow ?? cfg?.timeWindow ?? fallbackWindow) as TimeWindow;
     return {
       cardId,
       title: cfg?.title || fallbackTitle,
       color: cfg?.color || fallbackColor,
       entityName: resolveEntityName(cfg?.entityFilter),
       visualization: resolveVisualization(cfg),
-      timeWindow: (cfg?.timeWindow || fallbackWindow) as TimeWindow,
+      timeWindow: effectiveWindow,
+      customRange: globalTimeWindow === 'custom' ? globalCustomRange : undefined,
       datarailsConfig: cfg?.datarailsConfig as Partial<WidgetConfig> | undefined,
       entityFilter: cfg?.entityFilter,
       isEditMode,
@@ -618,7 +625,9 @@ export function ManagementSnapshotDashboard({
       footerLabel: cfg?.footerLabel,
       onEditCard,
       onDeleteCard,
-      onTimeWindowChange,
+      // Per-card window override is disabled while the global selector drives
+      // the dashboard. Keep the prop available for non-Insights consumers.
+      onTimeWindowChange: globalTimeWindow ? undefined : onTimeWindowChange,
       chartHeight: variant === 'metric' ? 100 : 200,
     };
   };
