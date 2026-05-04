@@ -4224,7 +4224,7 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         .select("id, title, assigned_to")
         .single();
       if (error) {
-        console.error("[create_task] insert error:", error, "row:", insertRow);
+        console.error("[create_task] insert error:", JSON.stringify(error), "columns:", Object.keys(insertRow).join(","));
         return { success: false, error: error.message };
       }
       if (!newTask) return { success: false, error: `Failed to create task "${params.title}".` };
