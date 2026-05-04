@@ -1111,6 +1111,7 @@ export default function Tasks() {
                 onSelectAll={handleSelectAll}
                 onToggleStar={handleToggleStar}
                 focusedTaskIndex={focusedTaskIndex}
+                visibleColumnIds={visibleTaskColumns}
               />
             )}
             {viewMode === 'board' && (
