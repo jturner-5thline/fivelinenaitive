@@ -1531,7 +1531,7 @@ export default function Metrics() {
     if (hiddenSubWidgets.includes(id)) return;
     const next = [...hiddenSubWidgets, id];
     saveHiddenSubWidgets({ items: next });
-    const label = (require('@/components/metrics/dashboards/ManagementSnapshotDashboard') as any).SUB_WIDGET_LABELS?.[id] ?? 'Widget';
+    const label = SUB_WIDGET_LABELS[id] ?? 'Widget';
     undoStackRef.current.push({
       type: 'card', id, label,
       undo: () => saveHiddenSubWidgets({ items: next.filter(x => x !== id) }),
