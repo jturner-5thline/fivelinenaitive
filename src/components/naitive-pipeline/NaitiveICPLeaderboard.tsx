@@ -210,8 +210,8 @@ function PersonaMatrix({ data }: { data: PersonaRow[] }) {
         <CardTitle className="text-base font-semibold tracking-tight text-foreground">Persona Output: Who Buys vs. Who Informs</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="overflow-hidden rounded-b-lg">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-b-lg">
+          <table className="w-full min-w-[420px] text-sm">
             <thead className="bg-muted/40 text-xs text-muted-foreground">
               <tr>
                 <th className="text-left px-3 py-2 font-medium">Persona</th>
