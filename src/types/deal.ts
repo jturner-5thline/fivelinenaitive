@@ -120,22 +120,6 @@ export interface Deal {
   projectedCloseDate?: string | null;
   contractStartDate?: string | null;
   contractEndDate?: string | null;
-  /* ─── naitive sales pipeline fields ─────────────────────────── */
-  contactTitle?: string;
-  icpCategory?: string;
-  prospectType?: string;
-  ownedBy?: string;
-  nextStep?: string;
-  nextStepDate?: string | null;
-  dmPresent?: string;
-  dmName?: string;
-  outcome?: string;
-  whyNotMovingForward?: string[];
-  painPointsConfirmed?: string;
-  objectionsRaised?: string;
-  competitorsMentioned?: string;
-  keySignal?: string;
-  productGapFlagged?: string;
 }
 
 export const LENDER_STATUS_CONFIG: Record<LenderStatus, { label: string }> = {
