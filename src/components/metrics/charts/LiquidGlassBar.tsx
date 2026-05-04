@@ -95,7 +95,10 @@ export function LiquidGlassBar(props: LiquidGlassBarProps) {
   const gradY2 = isNegative ? '0' : '1';
 
   return (
-    <g clipPath={clipPathId ? `url(#${clipPathId})` : undefined}>
+    <g
+      clipPath={clipPathId ? `url(#${clipPathId})` : undefined}
+      className="metric-glass-bar"
+    >
       <defs>
         {clipRect ? (
           <clipPath id={clipPathId}>
