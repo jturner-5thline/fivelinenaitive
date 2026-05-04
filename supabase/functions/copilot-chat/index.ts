@@ -1510,8 +1510,17 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       return {
         action: "confirm",
         action_type: "create_task",
-        description: `Create task: "${args.title}"${args.due_date ? ` (due: ${args.due_date})` : ""}${args.priority ? ` [${args.priority}]` : ""}`,
-        params: { title: args.title, description: args.description, deal_id: args.deal_id, priority: args.priority || "medium", due_date: args.due_date },
+        description: `Create task${args.assignee_name ? ` for ${args.assignee_name}` : ""}: "${args.title}"${args.due_date ? ` (due: ${args.due_date})` : ""}${args.priority ? ` [${args.priority}]` : ""}`,
+        params: {
+          title: args.title,
+          description: args.description,
+          deal_id: args.deal_id,
+          contact_id: args.contact_id,
+          assignee_user_id: args.assignee_user_id,
+          assignee_name: args.assignee_name,
+          priority: args.priority || "medium",
+          due_date: args.due_date,
+        },
       };
     }
     case "get_tasks": {
