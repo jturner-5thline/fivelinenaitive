@@ -87,9 +87,8 @@ function MetricKPICard({ config, onClick }: { config: MetricCardConfig; onClick:
   const Icon = config.icon;
   return (
     <Card
-      onClick={onClick}
       className={cn(
-        'relative group cursor-pointer overflow-hidden transition-all duration-200',
+        'relative group overflow-hidden transition-all duration-200',
         'glass-module',
         'hover:border-primary/40 hover:-translate-y-0.5',
         'hover:shadow-[0_0_20px_hsl(var(--primary)/0.1),0_8px_32px_hsl(0,0%,0%,0.4)]',
@@ -112,9 +111,13 @@ function MetricKPICard({ config, onClick }: { config: MetricCardConfig; onClick:
             {config.isLoading ? (
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             ) : (
-              <span className="text-xl font-bold font-mono tabular-nums text-foreground">
+              <button
+                type="button"
+                onClick={onClick}
+                className="text-xl font-bold font-mono tabular-nums text-foreground cursor-pointer hover:text-primary transition-colors"
+              >
                 {config.value}
-              </span>
+              </button>
             )}
           </div>
           {config.subtitle && (
