@@ -71,7 +71,7 @@ export function logUsage(input: LogUsageInput): void {
         metadata: input.metadata ?? {},
       };
 
-      const { error } = await supabase.from("usage_events").insert(payload);
+      const { error } = await supabase.from("usage_events").insert(payload as never);
       if (error) console.warn("[usageLogger] insert failed", error.message);
     } catch (err) {
       console.warn("[usageLogger] unexpected error", err);
