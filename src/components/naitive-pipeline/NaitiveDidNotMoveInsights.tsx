@@ -198,35 +198,57 @@ export function NaitiveDidNotMoveInsights({ deals }: Props) {
   // AI insights
   const insights = useMemo(() => {
     const out: string[] = [];
-    if (topReason) {
+    const totalNonProgress = filtered.length;
+
+    // 1) Actual #1 disqualification reason with count + pct
+    if (topReason && topReason.count > 0) {
       out.push(
-        `${topReason.short} is your #1 disqualification reason at ${topReason.pct}% — consider whether this is a specific feature or a positioning issue.`,
+        `${topReason.short} is your #1 disqualification reason — ${topReason.count} ${
+          topReason.count === 1 ? 'deal' : 'deals'
+        } (${topReason.pct}% of all reasons logged). Consider whether this is a specific feature gap or a positioning issue.`,
       );
     }
-    // ICP × outcome — find ICP with highest "Feedback only"
-    let bestFeedback: { icp: string; n: number } | null = null;
+
+    // 2) Most common ICP × Outcome cell across the entire heatmap
+    let topCell: { icp: string; outcome: string; n: number } | null = null;
     ICP_CATEGORIES.forEach((icp) => {
-      const n = heatmap.map[icp]['Feedback only'];
-      if (n > 0 && (!bestFeedback || n > bestFeedback.n)) bestFeedback = { icp, n };
+      OUTCOMES.forEach((o) => {
+        const n = heatmap.map[icp][o];
+        if (n > 0 && (!topCell || n > topCell.n)) topCell = { icp, outcome: o, n };
+      });
     });
-    if (bestFeedback) {
+    if (topCell) {
+      const pct = totalNonProgress > 0 ? Math.round((topCell.n / totalNonProgress) * 100) : 0;
       out.push(
-        `${bestFeedback.icp} contacts are producing the most Feedback only outcomes — valuable for market research but not converting. Reduce time investment.`,
+        `${topCell.icp} → ${topCell.outcome} is your most common non-progression pattern — ${topCell.n} ${
+          topCell.n === 1 ? 'deal' : 'deals'
+        } (${pct}% of non-progressions). ${
+          topCell.outcome === 'Feedback only'
+            ? 'Valuable for market research but not converting — reduce time investment.'
+            : topCell.outcome === 'Not a fit' || topCell.outcome === 'Disqualified'
+            ? 'Re-evaluate ICP fit or upstream qualification for this segment.'
+            : 'Investigate what is stalling this segment.'
+        }`,
       );
     }
-    // Gatekeeper / Market Intelligence callout
-    const gateMI =
-      (prospectData.find((p) => p.name === 'Gatekeeper')?.pct || 0) +
-      (prospectData.find((p) => p.name === 'Market Intelligence')?.pct || 0);
-    if (gateMI > 30) {
+
+    // 3) Persona targeting callout with exact counts
+    const gate = prospectData.find((p) => p.name === 'Gatekeeper');
+    const mi = prospectData.find((p) => p.name === 'Market Intelligence');
+    const gateMICount = (gate?.value || 0) + (mi?.value || 0);
+    const gateMIPct = (gate?.pct || 0) + (mi?.pct || 0);
+    if (gateMIPct > 30 && gateMICount > 0) {
       out.push(
-        `Gatekeepers + Market Intelligence make up ${gateMI}% of non-progressions — that's a targeting signal worth addressing upstream.`,
+        `Gatekeepers + Market Intelligence account for ${gateMICount} ${
+          gateMICount === 1 ? 'deal' : 'deals'
+        } (${gateMIPct}% of non-progressions) — a targeting signal worth addressing upstream.`,
       );
     }
+
     if (out.length === 0)
       out.push('Not enough non-progression data yet — patterns will appear as deals are dispositioned.');
     return out.slice(0, 3);
-  }, [topReason, heatmap, prospectData]);
+  }, [topReason, heatmap, prospectData, filtered.length]);
 
   // Heatmap color (cell intensity)
   const cellStyle = (count: number) => {
