@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { format } from 'date-fns';
+import { format, subMonths } from 'date-fns';
+import type { DateRange } from 'react-day-picker';
 import { Calendar as CalendarIcon, ChevronDown, Loader2 } from 'lucide-react';
 import { useIsFetching } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -40,19 +41,24 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
   });
   const isRefreshing = fetchingCount > 0;
 
-  const [customStart, setCustomStart] = useState<Date | undefined>(
-    timeframe.id === 'custom' ? new Date(timeframe.start + 'T00:00:00') : undefined,
+  const [range, setRange] = useState<DateRange | undefined>(
+    timeframe.id === 'custom'
+      ? {
+          from: new Date(timeframe.start + 'T00:00:00'),
+          to: new Date(timeframe.end + 'T00:00:00'),
+        }
+      : undefined,
   );
-  const [customEnd, setCustomEnd] = useState<Date | undefined>(
-    timeframe.id === 'custom' ? new Date(timeframe.end + 'T00:00:00') : undefined,
-  );
+  // Default the two-month view to (previous month, current month) so the
+  // panes never duplicate the same month.
+  const defaultMonth = useMemo(() => subMonths(new Date(), 1), []);
 
   const fmtY = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
   const applyCustom = () => {
-    if (!customStart || !customEnd) return;
-    const [s, e] = customStart <= customEnd ? [customStart, customEnd] : [customEnd, customStart];
+    if (!range?.from || !range?.to) return;
+    const [s, e] = range.from <= range.to ? [range.from, range.to] : [range.to, range.from];
     setTimeframe('custom', { start: fmtY(s), end: fmtY(e) });
     setOpen(false);
   };
@@ -85,8 +91,11 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
             <ChevronDown className="h-3.5 w-3.5 ml-2 opacity-60" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-3 pointer-events-auto" align="end">
-          <div className="w-[320px] space-y-3">
+        <PopoverContent
+          className="w-auto p-3 pointer-events-auto max-w-[calc(100vw-2rem)]"
+          align="end"
+        >
+          <div className="w-[min(640px,calc(100vw-2rem))] space-y-3">
             <div className="grid grid-cols-3 gap-1.5">
               {PRESETS.map(p => {
                 const active = timeframe.id === p.id;
@@ -107,27 +116,23 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
               <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                 Custom range
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-md border overflow-x-auto">
                 <Calendar
-                  mode="single"
-                  selected={customStart}
-                  onSelect={setCustomStart}
-                  className="p-2 pointer-events-auto rounded-md border"
-                />
-                <Calendar
-                  mode="single"
-                  selected={customEnd}
-                  onSelect={setCustomEnd}
-                  className="p-2 pointer-events-auto rounded-md border"
+                  mode="range"
+                  numberOfMonths={2}
+                  defaultMonth={range?.from ?? defaultMonth}
+                  selected={range}
+                  onSelect={setRange}
+                  className="p-2 pointer-events-auto"
                 />
               </div>
               <div className="flex items-center justify-between pt-1">
                 <div className="text-[11px] text-muted-foreground">
-                  {customStart && customEnd
-                    ? `${format(customStart, 'MMM d, yyyy')} – ${format(customEnd, 'MMM d, yyyy')}`
+                  {range?.from && range?.to
+                    ? `${format(range.from, 'MMM d, yyyy')} – ${format(range.to, 'MMM d, yyyy')}`
                     : 'Pick a start and end date'}
                 </div>
-                <Button size="sm" className="h-7 text-xs" disabled={!customStart || !customEnd} onClick={applyCustom}>
+                <Button size="sm" className="h-7 text-xs" disabled={!range?.from || !range?.to} onClick={applyCustom}>
                   Apply
                 </Button>
               </div>
