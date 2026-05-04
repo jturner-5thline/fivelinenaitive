@@ -301,7 +301,7 @@ function StatCard({
           <button
             type="button"
             onClick={onClick}
-            className={`${GLASS_TOKENS.valueClass} cursor-pointer hover:opacity-80 transition-opacity text-left`}
+            className={`drilldown-value ${GLASS_TOKENS.valueClass} text-left`}
             style={{ color: GLASS_TOKENS.valueColor }}
           >
             {value}
