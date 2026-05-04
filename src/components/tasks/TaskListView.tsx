@@ -496,7 +496,7 @@ export function TaskListView({
 }
 
 // Pinned Overdue Section
-function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focusedTaskIndex, allTasks, onSelectTask, onUpdateTask, onDeleteTask, onToggleComplete, onToggleSelect, onToggleStar, expandedTaskIds, onToggleExpanded }: {
+function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focusedTaskIndex, allTasks, onSelectTask, onUpdateTask, onDeleteTask, onToggleComplete, onToggleSelect, onToggleStar, expandedTaskIds, onToggleExpanded, gridStyle, cols }: {
   tasks: Task[];
   todayStr: string;
   selectedTaskId: string | null;
@@ -511,6 +511,8 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
   onToggleStar?: (id: string, current: boolean) => void;
   expandedTaskIds?: Set<string>;
   onToggleExpanded?: (taskId: string) => void;
+  gridStyle: React.CSSProperties;
+  cols: typeof OPTIONAL_TASK_COLUMNS[number][];
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -519,7 +521,7 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
       <button
         onClick={() => setCollapsed(!collapsed)}
         className={cn(
-          'w-full grid', TASK_GRID_COLS,
+          'w-full grid',
           'gap-2 items-center px-4 min-h-[34px] text-left sticky z-[5] transition-colors',
           'border-b border-border/30',
         )}
@@ -528,6 +530,7 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
           borderLeft: '2px solid #e57373',
           backgroundColor: 'rgba(229,115,115,0.08)',
           backdropFilter: 'blur(6px)',
+          gridTemplateColumns: gridStyle.gridTemplateColumns,
         }}
       >
         <div aria-hidden />
@@ -552,8 +555,8 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
             {tasks.length}
           </span>
         </div>
-        <div aria-hidden /><div aria-hidden /><div aria-hidden />
-        <div aria-hidden /><div aria-hidden /><div aria-hidden /><div aria-hidden />
+        {cols.map(c => <div key={c.id} aria-hidden />)}
+        <div aria-hidden />
       </button>
       {!collapsed && tasks.map(task => {
         const globalIndex = allTasks.indexOf(task);
@@ -575,6 +578,8 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
             isExpanded={expandedTaskIds?.has(task.id)}
             onToggleExpanded={onToggleExpanded ? () => onToggleExpanded(task.id) : undefined}
             onOpenFullDetail={() => onSelectTask(task.id)}
+            gridStyle={gridStyle}
+            cols={cols}
           />
         );
       })}
