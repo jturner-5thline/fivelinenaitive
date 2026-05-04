@@ -1041,6 +1041,23 @@ export default function Tasks() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuLabel className="text-xs text-muted-foreground flex items-center gap-2">
+                <Columns3 className="h-3.5 w-3.5" /> Columns
+              </DropdownMenuLabel>
+              {OPTIONAL_TASK_COLUMNS.map(c => {
+                const checked = visibleTaskColumns.includes(c.id);
+                return (
+                  <DropdownMenuItem
+                    key={c.id}
+                    className="text-xs gap-2"
+                    onSelect={(e) => { e.preventDefault(); toggleTaskColumn(c.id); }}
+                  >
+                    <Checkbox checked={checked} className="h-3.5 w-3.5" />
+                    {c.label}
+                  </DropdownMenuItem>
+                );
+              })}
+              <DropdownMenuSeparator />
               <DropdownMenuItem className="text-xs gap-2" onClick={() => setShowSaveViewDialog(true)}>
                 <BookmarkPlus className="h-3.5 w-3.5" /> Save current view
               </DropdownMenuItem>
