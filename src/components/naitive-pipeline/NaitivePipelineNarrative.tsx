@@ -199,10 +199,10 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week' }: Props) {
       if (cur?.updated_by) {
         const { data: prof } = await supabase
           .from('profiles')
-          .select('email, full_name')
+          .select('display_name')
           .eq('user_id', cur.updated_by)
           .maybeSingle();
-        if (!cancelled) setUpdatedByEmail(prof?.full_name || prof?.email || null);
+        if (!cancelled) setUpdatedByEmail(prof?.display_name || null);
       } else {
         setUpdatedByEmail(null);
       }
