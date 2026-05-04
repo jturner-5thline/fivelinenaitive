@@ -16,8 +16,8 @@ import { NaitiveMilestoneDiamonds } from '@/components/naitive-pipeline/NaitiveM
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { NaitivePipelineKPIStrip } from '@/components/naitive-pipeline/NaitivePipelineKPIStrip';
-import { NaitiveFunnelChart, NaitiveTrendChart, NaitivAgingChart, NaitivHealthMixChart } from '@/components/naitive-pipeline/NaitivePipelineCharts';
+import { NaitiveWeeklyExecutionPulse } from '@/components/naitive-pipeline/NaitiveWeeklyExecutionPulse';
+import { useNaitiveStageHistory } from '@/hooks/useNaitiveStageHistory';
 import { NaitivePipelineNotifications } from '@/components/naitive-pipeline/NaitivePipelineNotifications';
 import { NaitivePipelineHurdles } from '@/components/naitive-pipeline/NaitivePipelineHurdles';
 import { NaitivePipelineRecommendations } from '@/components/naitive-pipeline/NaitivePipelineRecommendations';
