@@ -648,7 +648,7 @@ function QuickDatePicker({ value, onChange, todayStr }: { value: string | null; 
 }
 
 // Sortable task row
-function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocused, onSelect, onUpdate, onDelete, onToggleComplete, onToggleSelect, onToggleStar, showSelectCheckbox, collaborators, isExpanded, onToggleExpanded, onOpenFullDetail }: {
+function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocused, onSelect, onUpdate, onDelete, onToggleComplete, onToggleSelect, onToggleStar, showSelectCheckbox, collaborators, isExpanded, onToggleExpanded, onOpenFullDetail, gridStyle, cols }: {
   task: Task;
   todayStr: string;
   isSelected: boolean;
@@ -665,9 +665,16 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
   isExpanded?: boolean;
   onToggleExpanded?: () => void;
   onOpenFullDetail?: () => void;
+  gridStyle: React.CSSProperties;
+  cols: typeof OPTIONAL_TASK_COLUMNS[number][];
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.3 : 1 };
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+    gridTemplateColumns: gridStyle.gridTemplateColumns,
+  };
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(task.title);
   const isComplete = task.status === 'complete';
