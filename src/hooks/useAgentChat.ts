@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { logUsage } from '@/lib/usageLogger';
 import type { Agent } from './useAgents';
 
 interface Message {
@@ -79,6 +80,12 @@ export function useAgentChat(agent: Agent | null) {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+      logUsage({
+        feature_type: 'AGENT_RUN',
+        feature_subtype: agent.name,
+        deal_id: dealContext?.id ?? null,
+        metadata: { agent_id: agent.id },
+      });
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         return;
