@@ -167,13 +167,16 @@ const tools = [
     type: "function",
     function: {
       name: "create_task",
-      description: "Create a task. Returns a confirmation card.",
+      description: "Create a task. Returns a confirmation card. To assign to a teammate, first call search_team_members to resolve their user UUID, then pass it as assignee_user_id.",
       parameters: {
         type: "object",
         properties: {
           title: { type: "string" },
           description: { type: "string" },
           deal_id: { type: "string" },
+          contact_id: { type: "string" },
+          assignee_user_id: { type: "string", description: "User UUID. Resolve names via search_team_members first. Defaults to the current user." },
+          assignee_name: { type: "string", description: "Display name of the assignee (for the confirm card label only)." },
           priority: { type: "string", enum: ["low", "medium", "high", "urgent"] },
           due_date: { type: "string", description: "ISO date string YYYY-MM-DD" },
         },
@@ -1507,8 +1510,17 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       return {
         action: "confirm",
         action_type: "create_task",
-        description: `Create task: "${args.title}"${args.due_date ? ` (due: ${args.due_date})` : ""}${args.priority ? ` [${args.priority}]` : ""}`,
-        params: { title: args.title, description: args.description, deal_id: args.deal_id, priority: args.priority || "medium", due_date: args.due_date },
+        description: `Create task${args.assignee_name ? ` for ${args.assignee_name}` : ""}: "${args.title}"${args.due_date ? ` (due: ${args.due_date})` : ""}${args.priority ? ` [${args.priority}]` : ""}`,
+        params: {
+          title: args.title,
+          description: args.description,
+          deal_id: args.deal_id,
+          contact_id: args.contact_id,
+          assignee_user_id: args.assignee_user_id,
+          assignee_name: args.assignee_name,
+          priority: args.priority || "medium",
+          due_date: args.due_date,
+        },
       };
     }
     case "get_tasks": {
@@ -4160,15 +4172,69 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       return { success: true, message: `Moved "${dealName}" to "${pipelineName}" pipeline`, actionType: "move_deal_pipeline", params: { deal_id: params.deal_id } };
     }
     case "create_task": {
-      const { data: newTask, error } = await supabase.from("tasks").insert({
-        title: params.title, description: params.description || null,
-        deal_id: params.deal_id || null, priority: params.priority || "medium",
-        due_date: params.due_date || null, status: "todo",
-        assigned_to: userId, created_by: userId,
-      }).select("id, title").single();
-      if (error) return { success: false, error: error.message };
+      // Normalise due_date — accept YYYY-MM-DD, ISO timestamps, or relative words.
+      let dueDate: string | null = null;
+      const rawDue = params.due_date ? String(params.due_date).trim() : "";
+      if (rawDue) {
+        const lower = rawDue.toLowerCase();
+        const today = new Date();
+        today.setUTCHours(0, 0, 0, 0);
+        const fmt = (d: Date) => d.toISOString().slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}/.test(rawDue)) {
+          dueDate = rawDue.slice(0, 10);
+        } else if (lower === "today") dueDate = fmt(today);
+        else if (lower === "tomorrow") { const d = new Date(today); d.setUTCDate(d.getUTCDate() + 1); dueDate = fmt(d); }
+        else {
+          const parsed = new Date(rawDue);
+          if (!isNaN(parsed.getTime())) dueDate = parsed.toISOString().slice(0, 10);
+        }
+      }
+
+      const assignee = params.assignee_user_id || userId;
+
+      // Resolve company_id from the deal (if any) or the assigning user
+      let companyId: string | null = null;
+      if (params.deal_id) {
+        const { data: d } = await supabase.from("deals").select("company_id").eq("id", params.deal_id).maybeSingle();
+        companyId = d?.company_id || null;
+      }
+      if (!companyId) {
+        const { data: cm } = await supabase.from("company_members").select("company_id").eq("user_id", userId).limit(1).maybeSingle();
+        companyId = cm?.company_id || null;
+      }
+
+      const insertRow: Record<string, unknown> = {
+        title: params.title,
+        description: params.description || null,
+        deal_id: params.deal_id || null,
+        contact_id: params.contact_id || null,
+        priority: params.priority || "medium",
+        due_date: dueDate,
+        status: "not_started",
+        task_type: "task",
+        assigned_to: assignee,
+        assigned_by: userId,
+        company_id: companyId,
+        sync_source: "copilot",
+      };
+
+      const { data: newTask, error } = await supabase
+        .from("tasks")
+        .insert(insertRow)
+        .select("id, title, assigned_to")
+        .single();
+      if (error) {
+        console.error("[create_task] insert error:", error, "row:", insertRow);
+        return { success: false, error: error.message };
+      }
       if (!newTask) return { success: false, error: `Failed to create task "${params.title}".` };
-      return { success: true, message: `Task "${params.title}" created`, actionType: "create_task", params: { task_id: newTask.id, deal_id: params.deal_id } };
+      const who = params.assignee_name && assignee !== userId ? ` for ${params.assignee_name}` : "";
+      return {
+        success: true,
+        message: `Task "${params.title}" created${who}`,
+        actionType: "create_task",
+        params: { task_id: newTask.id, deal_id: params.deal_id, assigned_to: newTask.assigned_to },
+      };
     }
     case "update_milestone": {
       const { error } = await supabase.from("deal_milestones").update({ completed: params.completed, completed_at: params.completed ? new Date().toISOString() : null }).eq("id", params.milestone_id);
