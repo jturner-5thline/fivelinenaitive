@@ -346,7 +346,7 @@
 .cf-grid td .cf-cell-input {
   width: 100%;
   background: transparent;
-  border: 1px solid transparent;
+  border: 1px dashed hsl(var(--primary) / 0.25);
   border-radius: var(--radius-sm, 4px);
   color: inherit;
   font: inherit;
@@ -354,15 +354,18 @@
   text-align: center;
   padding: 2px 4px;
   outline: none;
+  cursor: text;
   transition: background 120ms ease, border-color 120ms ease;
 }
 .cf-grid td .cf-cell-input:hover {
-  background: var(--color-surface-offset);
-  border-color: var(--color-divider);
+  background: hsl(var(--primary) / 0.08);
+  border-color: hsl(var(--primary) / 0.6);
+  border-style: solid;
 }
 .cf-grid td .cf-cell-input:focus {
   background: var(--color-surface);
   border-color: var(--color-primary);
+  border-style: solid;
 }
 /* Hide native number spinners for a cleaner spreadsheet feel */
 .cf-grid td .cf-cell-input::-webkit-outer-spin-button,
@@ -395,7 +398,13 @@
   border-radius: 4px;
   background: hsl(var(--primary) / 0.85);
   color: hsl(var(--primary-foreground));
-  pointer-events: none;
+  pointer-events: auto;
+  z-index: 2;
+  transition: transform 120ms ease, background 120ms ease;
+}
+.cf-grid td.cf-cell-override .cf-override-badge:hover {
+  background: hsl(var(--primary));
+  transform: scale(1.15);
 }
 
 /* Section header rows */
