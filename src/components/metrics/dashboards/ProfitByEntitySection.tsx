@@ -36,7 +36,7 @@ const ZERO_LINE_COLOR = 'rgba(220, 232, 255, 0.85)';
 const GLASS_CARD_STYLE: React.CSSProperties = {};
 const GLASS_SHEEN_STYLE: React.CSSProperties = { display: 'none' };
 
-function ProfitBarChart({
+export function ProfitBarChart({
   title,
   entityName,
   months,
