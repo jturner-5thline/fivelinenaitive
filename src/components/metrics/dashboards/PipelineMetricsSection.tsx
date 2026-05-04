@@ -16,6 +16,13 @@ const formatCurrency = (value: number) => {
   return `$${value.toFixed(0)}`;
 };
 
+/** Combined-widget formatter: shows millions as "MM" per requested format. */
+const formatCurrencyMM = (value: number) => {
+  if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}MM`;
+  if (Math.abs(value) >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
+  return `$${value.toFixed(0)}`;
+};
+
 const formatCurrencyFull = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 });
 
