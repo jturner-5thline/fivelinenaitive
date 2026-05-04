@@ -116,6 +116,37 @@ export interface WeeklyCashOverride {
 }
 export type WeeklyOverrides = Record<string, WeeklyCashOverride>;
 
+// =====================================================================
+// Line of Credit / Credit Facilities
+// =====================================================================
+// A facility (e.g. "SVB Line of Credit") with a total commitment, an
+// initial drawn balance, and an active date range. Available LOC for a
+// given week = facility_amount − running_drawn(week), where running drawn
+// is computed from `initial_drawn` plus tagged Configure entries
+// (LOC Draw / LOC Repayment) plus per-week manual overrides.
+export interface CreditFacility {
+  id: string;
+  name: string;
+  /** Total facility commitment (e.g. 500_000). Always positive. */
+  facility_amount: number;
+  /**
+   * Drawn amount as-of `start_date`. Subsequent weekly running balance is
+   * computed forward from here. Always positive (≤ facility_amount).
+   */
+  initial_drawn: number;
+  /** ISO yyyy-mm-dd. Facility effective date — weeks before this show 0. */
+  start_date: string;
+  /** ISO yyyy-mm-dd or null. Maturity — weeks after this show 0. */
+  end_date: string | null;
+  /**
+   * Optional per-week manual override of the running drawn balance for
+   * this facility. Keyed by the same weekKey used in WeeklyData.
+   * If present for a given week, it pins the drawn balance for that week
+   * and all subsequent weeks (until the next override).
+   */
+  drawn_overrides?: Record<string, number>;
+}
+
 export const SECTION_KEYS = {
   BALANCE_BEGIN: 'balance_begin',
   BALANCE_END: 'balance_end',
