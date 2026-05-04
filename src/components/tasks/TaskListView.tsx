@@ -858,6 +858,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       </div>
 
       {/* Owner */}
+      {visibleSet(cols).has('owner') && (
       <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
         {task.assignee_profile ? (
           <>
@@ -875,8 +876,10 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
           <span className="text-[11px]" style={{ color: '#5b6173' }}>—</span>
         )}
       </div>
+      )}
 
       {/* Collaborators */}
+      {visibleSet(cols).has('collab') && (
       <div className="flex items-center" onClick={e => e.stopPropagation()}>
         {collaborators && collaborators.length > 0 ? (
           <div className="flex items-center -space-x-1.5">
@@ -894,9 +897,11 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
           </div>
         ) : null}
       </div>
+      )}
 
 
       {/* Deal cell — single-line ellipsis with hover tooltip. */}
+      {visibleSet(cols).has('deal') && (
       <div className="min-w-0 overflow-hidden flex items-center" onClick={e => e.stopPropagation()}>
         {task.deal_id && task.deal ? (
           <Link
@@ -911,13 +916,17 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
           </Link>
         ) : null}
       </div>
+      )}
 
       {/* Due date — right-aligned, tabular-nums for stable column width */}
+      {visibleSet(cols).has('due') && (
       <div className="flex items-center justify-end tabular-nums" onClick={e => e.stopPropagation()}>
         <QuickDatePicker value={task.due_date} onChange={v => onUpdate({ due_date: v } as any)} todayStr={todayStr} />
       </div>
+      )}
 
       {/* Priority pill */}
+      {visibleSet(cols).has('priority') && (
       <div className="flex items-center justify-center" onClick={e => e.stopPropagation()}>
         <Select value={task.priority} onValueChange={v => onUpdate({ priority: v } as any)}>
           <SelectTrigger className={cn('h-6 text-[10px] border-none bg-transparent px-0 focus:ring-0 [&>svg]:hidden hover:bg-[rgba(255,255,255,0.04)] rounded justify-center', PRIORITY_PILL_MIN_W)}>
@@ -936,8 +945,10 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
           </SelectContent>
         </Select>
       </div>
+      )}
 
       {/* Status pill */}
+      {visibleSet(cols).has('status') && (
       <div className="flex items-center justify-center" onClick={e => e.stopPropagation()}>
         <Select value={task.status} onValueChange={v => { onUpdate({ status: v } as any); if (v === 'complete') fireCelebration(); }}>
           <SelectTrigger className={cn('h-6 text-[10px] border-none bg-transparent px-0 [&>svg]:hidden hover:bg-[rgba(255,255,255,0.04)] rounded justify-center', STATUS_PILL_MIN_W)}>
@@ -957,6 +968,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
           </SelectContent>
         </Select>
       </div>
+      )}
 
       {/* Actions */}
       <div className="flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
