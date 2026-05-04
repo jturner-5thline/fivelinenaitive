@@ -6,7 +6,6 @@ import { TaskAssignmentBanner } from "@/components/TaskAssignmentBanner";
 import { PlatformTour } from "@/components/PlatformTour";
 import { ClaapRoutingTasksBadge } from "@/components/integrations/claap/ClaapRoutingTasksBadge";
 import { CopilotToggleButton } from "@/components/CopilotToggleButton";
-import { AICopilotPanel } from "@/components/AICopilotPanel";
 import { CommandBar } from "@/components/CommandBar";
 import { cn } from "@/lib/utils";
 
@@ -122,11 +121,6 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
       </div>
       <TaskAssignmentBanner />
       <PlatformTour />
-      {!isDashboardPage && (
-        <>
-          <AICopilotPanel />
-        </>
-      )}
       <CommandBar />
     </SidebarProvider>
   );
