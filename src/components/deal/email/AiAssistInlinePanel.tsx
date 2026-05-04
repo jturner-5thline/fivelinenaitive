@@ -144,9 +144,9 @@ Respond ONLY with valid JSON, no markdown fences.`;
     // language as dashboard tiles (see DashboardGrid / DailyBriefingModal),
     // with a refined on-brand blue border so the AI Assist module reads
     // clearly as its own widget inside the email popup.
-    <div className="mx-4 mb-3 rounded-xl border border-primary/40 bg-card/60 backdrop-blur overflow-hidden shadow-[0_1px_0_rgba(255,255,255,0.04)_inset]">
+    <div className="mx-4 mb-3 rounded-xl border border-primary/25 bg-card/60 backdrop-blur overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-primary/20">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.06]">
         <Sparkles className="h-3.5 w-3.5 text-primary" />
         <span className="text-xs font-semibold text-foreground">AI Assist</span>
         <div className="flex-1" />
