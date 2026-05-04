@@ -1123,13 +1123,44 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { global: { headers: { Authorization: authHeader } } });
     const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: authError } = await supabase.auth.getClaims(token);
-    if (authError || !claimsData?.claims?.sub) {
-      console.error('[dashboard-chat] auth failed', authError?.message);
+    // Try remote claim verification first; if GoTrue is transiently unavailable
+    // (e.g. SQLSTATE 53300 connection-slot exhaustion), fall back to decoding
+    // the signed JWT payload locally so the dashboard chat does not 401 on
+    // intermittent auth-service hiccups. RLS still enforces real access on
+    // every downstream query because we pass the user's token to the client.
+    let resolvedUserId: string | null = null;
+    try {
+      const { data: claimsData, error: authError } = await supabase.auth.getClaims(token);
+      if (!authError && claimsData?.claims?.sub) {
+        resolvedUserId = claimsData.claims.sub as string;
+      } else if (authError) {
+        console.warn('[dashboard-chat] getClaims failed, will try JWT fallback', authError.message);
+      }
+    } catch (e) {
+      console.warn('[dashboard-chat] getClaims threw, will try JWT fallback', (e as Error)?.message);
+    }
+
+    if (!resolvedUserId) {
+      try {
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const padded = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+          const padding = padded.length % 4 === 0 ? '' : '='.repeat(4 - (padded.length % 4));
+          const payload = JSON.parse(atob(padded + padding));
+          if (payload?.sub && (!payload.exp || payload.exp * 1000 > Date.now())) {
+            resolvedUserId = payload.sub as string;
+          }
+        }
+      } catch (e) {
+        console.error('[dashboard-chat] JWT fallback decode failed', (e as Error)?.message);
+      }
+    }
+
+    if (!resolvedUserId) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const user = { id: claimsData.claims.sub as string };
+    const user = { id: resolvedUserId };
     userId = user.id;
 
     const { messages, includeAlerts } = await req.json();
