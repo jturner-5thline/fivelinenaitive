@@ -17,7 +17,7 @@ import { useQuickBooksStatus } from '@/hooks/useQuickBooks';
 import { useDashboardCardData } from '@/hooks/useDashboardCardData';
 import { type WidgetConfig, type TimeWindow, type KPIDetailCardConfig, type NegativeStylingConfig, DEFAULT_KPI_DETAIL_CARD_CONFIG } from '@/components/widget-editor/widgetTypes';
 import { KPIDetailCard } from '@/components/metrics/KPIDetailCard';
-import { DraggableGridLayout } from '@/components/metrics/DraggableGridLayout';
+import { DraggableGridLayout, type WidgetConstraint } from '@/components/metrics/DraggableGridLayout';
 import { RevenueByMonthChart } from '@/components/metrics/RevenueByMonthChart';
 import { type GridLayoutItem, useGridLayout } from '@/hooks/useGridLayout';
 import { GripVertical } from 'lucide-react';
@@ -588,6 +588,24 @@ export function ManagementSnapshotDashboard({
 
   const visibleCards = allCards.filter(c => !isHidden(c.cardId));
 
+  // Per-widget resize/drag rules for the top KPI grid. Keys = card id.
+  // Charts get larger minimums than stat tiles so axes/legends stay legible.
+  const TOP_GRID_CONSTRAINTS: Record<string, WidgetConstraint> = {
+    // KPI tiles: small/medium, draggable + resizable within sane bounds
+    'total-revenue-detail':  { minW: 4, minH: 3, maxH: 8 },
+    'debt-revenue':          { minW: 3, minH: 3, maxH: 8 },
+    'finserv-revenue':       { minW: 3, minH: 3, maxH: 8 },
+    'total-revenue':         { minW: 3, minH: 3, maxH: 8 },
+    'clients-signed-debt':   { minW: 3, minH: 2, maxH: 6 },
+    'clients-signed-finserv':{ minW: 3, minH: 2, maxH: 6 },
+    'outstanding-ar':        { minW: 3, minH: 2, maxH: 6 },
+    'debt-profit':           { minW: 3, minH: 3, maxH: 8 },
+    'finserv-profit':        { minW: 3, minH: 3, maxH: 8 },
+    'avg-rev-per-client':    { minW: 3, minH: 2, maxH: 5, isResizable: false }, // compact stat — reorder only
+    // Chart widget: needs more room
+    'revenue-by-month':      { minW: 5, minH: 4, maxH: 10 },
+  };
+
   // Section-level grid: lets the user drag/resize the whole sections
   // (Revenue Overview, Pipeline Metrics, Signed Deals & AR, Profit by Entity,
   // Executive Dashboard) when edit mode is on. Persisted per company.
@@ -605,6 +623,20 @@ export function ManagementSnapshotDashboard({
     { i: 'profit-by-entity',    x: 0, y: 21, w: 12, h: 7, minW: 6, minH: 4 },
     { i: 'executive-dashboard', x: 0, y: 28, w: 12, h: 10, minW: 6, minH: 5 },
   ];
+
+  // Sections render their own internal multi-chart layouts, so we want them
+  // wide and tall enough that those layouts don't collapse. They are
+  // reorderable (drag) and resizable in height; width can shrink to half-grid.
+  const SECTION_CONSTRAINTS: Record<string, WidgetConstraint> = {
+    'revenue-overview':    { minW: 6, minH: 5, maxH: 14 },
+    'pipeline-metrics':    { minW: 6, minH: 5, maxH: 14 },
+    'signed-deals-ar':     { minW: 6, minH: 5, maxH: 14 },
+    'profit-by-entity':    { minW: 6, minH: 5, maxH: 14 },
+    // Executive dashboard packs many tiles — never let it shrink narrow,
+    // and keep it height-resizable only (isResizable still true so users
+    // can grow it; minW guards width).
+    'executive-dashboard': { minW: 8, minH: 8, maxH: 20 },
+  };
   const {
     layout: sectionLayout,
     saveLayout: saveSectionLayout,
@@ -640,6 +672,7 @@ export function ManagementSnapshotDashboard({
             onLayoutChange={onGridLayoutChange}
             isEditMode={isEditMode}
             rowHeight={60}
+            constraints={TOP_GRID_CONSTRAINTS}
             // Edit-mode frame: keep the dashed outline so the editable region is
             // clearly delimited, but drop the tinted fill so the section reads as
             // an open transparent area rather than a boxed-in surface.
@@ -690,6 +723,7 @@ export function ManagementSnapshotDashboard({
         onLayoutChange={saveSectionLayout}
         isEditMode={isEditMode}
         rowHeight={60}
+        constraints={SECTION_CONSTRAINTS}
         className={cn(isEditMode && 'p-2 rounded-xl border-2 border-dashed border-primary/20')}
       >
         {SECTION_IDS.map((id) => (
