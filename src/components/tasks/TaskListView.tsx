@@ -43,27 +43,37 @@ import {
 } from '@/lib/taskDateGrouping';
 
 /**
- * Stable column template for the My Tasks list. The header row and every
- * data row use this same template so columns line up across rows and chevron
- * / checkbox / owner / deal / due / priority / status sit on a single
- * vertical centerline.
- *
- *   1  drag handle    20px (hidden until row hover)
- *   2  expand chevron 20px
- *   3  multi-select   20px
- *   4  complete check 20px
- *   5  star           20px
- *   6  task name      minmax(240px, 1fr)  ← only growable column
- *   7  owner          140px
- *   8  collaborators   60px
- *   9  deal           180px
- *  10  due date       120px (right-aligned, tabular-nums)
- *  11  priority pill  100px
- *  12  status pill    120px
- *  13  row actions     32px
+ * Optional columns the user can toggle on/off. The 5 leading utility cells
+ * (drag, expand, select, complete, star), the task title, and the trailing
+ * row-actions cell are always rendered. The default view shows only the
+ * key triage columns (priority + status) so the page opens clean; users can
+ * reveal more columns from the toolbar.
  */
-const TASK_GRID_COLS =
-  'grid-cols-[20px_20px_20px_20px_20px_minmax(240px,1fr)_140px_60px_180px_120px_100px_120px_32px]';
+export const OPTIONAL_TASK_COLUMNS = [
+  { id: 'owner',    label: 'Owner',         template: '140px' },
+  { id: 'collab',   label: 'Collaborators', template: '60px'  },
+  { id: 'deal',     label: 'Deal',          template: '180px' },
+  { id: 'due',      label: 'Due date',      template: '120px' },
+  { id: 'priority', label: 'Priority',      template: '100px' },
+  { id: 'status',   label: 'Status',        template: '120px' },
+] as const;
+
+export type TaskColumnId = typeof OPTIONAL_TASK_COLUMNS[number]['id'];
+
+/** Default columns shown to first-time users — fast triage view. */
+export const DEFAULT_TASK_COLUMNS: TaskColumnId[] = ['priority', 'status'];
+
+const LEADING_TEMPLATE = '20px_20px_20px_20px_20px_minmax(240px,1fr)';
+const TRAILING_TEMPLATE = '32px';
+
+/** Build the grid-cols class string from the active column set. */
+function buildGridCols(visible: Set<TaskColumnId>): string {
+  const middle = OPTIONAL_TASK_COLUMNS
+    .filter(c => visible.has(c.id))
+    .map(c => c.template)
+    .join('_');
+  return `grid-cols-[${LEADING_TEMPLATE}${middle ? '_' + middle : ''}_${TRAILING_TEMPLATE}]`;
+}
 
 /** Locked row height — every data row, header row, and add-row uses this. */
 const TASK_ROW_MIN_H = 'min-h-[44px]';
