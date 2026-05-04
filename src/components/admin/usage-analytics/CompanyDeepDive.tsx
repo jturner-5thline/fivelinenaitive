@@ -404,6 +404,34 @@ Pick a Suggested pricing that yields a healthy 60-75% gross margin over the cost
               <Kpi label="Total AI Calls" value={numberFmt.format(totalAi)} icon={TrendingUp} />
               <Kpi label="Est. Cost" value={currencyFmt.format(estCost)} icon={DollarSign} />
               <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Date range</label>
+                <Select value={rangeKey} onValueChange={(v) => setRangeKey(v as UsageDateRangeKey)}>
+                  <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="this-week">This Week</SelectItem>
+                    <SelectItem value="this-month">This Month</SelectItem>
+                    <SelectItem value="last-30">Last 30 Days</SelectItem>
+                    <SelectItem value="custom">Custom</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {rangeKey === "custom" && (
+                <>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Start</label>
+                    <Input type="date" value={customStart}
+                      onChange={(e) => setCustomStart(e.target.value)}
+                      className="h-8 w-36" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] uppercase tracking-wide text-muted-foreground">End</label>
+                    <Input type="date" value={customEnd}
+                      onChange={(e) => setCustomEnd(e.target.value)}
+                      className="h-8 w-36" />
+                  </div>
+                </>
+              )}
+              <div className="flex flex-col gap-1">
                 <label className="text-[10px] uppercase tracking-wide text-muted-foreground">$ / 1K tok</label>
                 <Input type="number" min={0} step="0.0001" value={aiRate}
                   onChange={(e) => setAiRate(Number(e.target.value) || 0)}
