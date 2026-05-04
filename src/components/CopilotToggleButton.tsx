@@ -256,7 +256,10 @@ export function CopilotToggleButton() {
         marginTop: 'auto',
       }}
     >
-      <div className="pointer-events-auto w-[min(432px,calc(100%-32px))] flex flex-col items-stretch gap-2">
+      <div
+        className="pointer-events-auto flex flex-col items-center gap-2"
+        style={{ width: 'min(432px, calc(100% - 32px))' }}
+      >
         {showDropdown && (
           <div
             id="naitive-unified-suggestions"
@@ -357,13 +360,19 @@ export function CopilotToggleButton() {
             'h-11 rounded-full',
             'flex items-center gap-3 pl-1.5 pr-4',
             'text-left',
-            'w-full',
+            'flex-none shrink-0',
             'opacity-70 hover:opacity-100 focus-within:opacity-100',
             'transition-[opacity,box-shadow] duration-200 ease-out',
             'hover:shadow-[0_16px_40px_rgba(0,0,0,0.55),0_4px_10px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.10),0_0_0_1px_rgba(0,0,0,0.28)]',
             'animate-in fade-in duration-150',
           )}
           style={{
+            width: '432px',
+            maxWidth: 'calc(100% - 32px)',
+            // Temporary debug outline to confirm which element is being
+            // resized — remove after visual verification.
+            outline: '2px dashed rgba(244, 114, 182, 0.85)',
+            outlineOffset: '2px',
             background: 'rgba(14, 16, 24, 0.6)',
             backdropFilter: 'blur(18px) saturate(1.4)',
             WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
