@@ -645,7 +645,7 @@ export function ManagementSnapshotDashboard({
     'outstanding-ar':        { minW: 3, minH: 2, maxH: 6 },
     'debt-profit':           { minW: 3, minH: 3, maxH: 8 },
     'finserv-profit':        { minW: 3, minH: 3, maxH: 8 },
-    'avg-rev-per-client':    { minW: 3, minH: 2, maxH: 5, isResizable: false }, // compact stat — reorder only
+    'avg-rev-per-client':    { minW: 3, minH: 2, maxH: 5 },
     // Chart widget: needs more room
     'revenue-by-month':      { minW: 5, minH: 4, maxH: 10 },
   };
@@ -701,10 +701,11 @@ export function ManagementSnapshotDashboard({
             className={cn(isEditMode && 'p-2 rounded-xl border-2 border-dashed border-primary/20')}
           >
             {visibleCards.map(({ cardId, props }) => (
-              <div key={cardId} className="relative group">
+              <div key={cardId} className="relative group h-full overflow-hidden">
                 {isEditMode && (
-                  <div className="widget-drag-handle absolute top-1.5 left-1.5 z-20 cursor-grab active:cursor-grabbing flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-background/70 backdrop-blur border border-border/50 opacity-70 hover:opacity-100 transition-opacity">
+                  <div className="widget-drag-handle absolute top-1 left-1/2 -translate-x-1/2 z-20 cursor-grab active:cursor-grabbing flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/70 backdrop-blur border border-border/50 opacity-70 hover:opacity-100 transition-opacity">
                     <GripVertical className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Drag</span>
                   </div>
                 )}
                 {/* Edit & delete chrome */}
@@ -739,22 +740,24 @@ export function ManagementSnapshotDashboard({
                     )}
                   </div>
                 )}
-                {cardId === 'total-revenue-detail' ? (
-                  <KPIDetailCard
-                    kpiConfig={cardConfigs[cardId]?.kpiDetailConfig ?? TOTAL_REVENUE_DETAIL_KPI}
-                    datarailsConfig={props.datarailsConfig}
-                    timeWindow={props.timeWindow}
-                    entityFilter={props.entityFilter}
-                    isEditMode={isEditMode}
-                    selectedPeriod={selectedQuarter}
-                  />
-                ) : cardId === 'avg-rev-per-client' ? (
-                  <AvgRevenuePerClientWidget />
-                ) : cardId === 'revenue-by-month' ? (
-                  <RevenueByMonthChart />
-                ) : (
-                  <GenericDashboardCard {...props} />
-                )}
+                <div className={cn('h-full', isEditMode && 'pointer-events-none')}>
+                  {cardId === 'total-revenue-detail' ? (
+                    <KPIDetailCard
+                      kpiConfig={cardConfigs[cardId]?.kpiDetailConfig ?? TOTAL_REVENUE_DETAIL_KPI}
+                      datarailsConfig={props.datarailsConfig}
+                      timeWindow={props.timeWindow}
+                      entityFilter={props.entityFilter}
+                      isEditMode={isEditMode}
+                      selectedPeriod={selectedQuarter}
+                    />
+                  ) : cardId === 'avg-rev-per-client' ? (
+                    <AvgRevenuePerClientWidget />
+                  ) : cardId === 'revenue-by-month' ? (
+                    <RevenueByMonthChart />
+                  ) : (
+                    <GenericDashboardCard {...props} />
+                  )}
+                </div>
               </div>
             ))}
             {visibleSubWidgets.map((id) => (
