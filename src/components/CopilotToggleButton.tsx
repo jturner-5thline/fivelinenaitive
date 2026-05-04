@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { useCopilotStore } from '@/stores/copilotStore';
 import { useAnyDialogOpen } from '@/hooks/useAnyDialogOpen';
 import naitiveAiIcon from '@/assets/naitive-ai-icon.png';
@@ -12,33 +11,6 @@ export function CopilotToggleButton() {
   const hasOpenModal = useAnyDialogOpen();
   const [value, setValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-  // Track the bounding rect of the main content column so the bar centers
-  // within it (not the viewport) even when the sidebar opens/closes.
-  const [mainRect, setMainRect] = useState<{ left: number; width: number } | null>(null);
-
-  useEffect(() => {
-    if (isOpen || hasOpenModal) return;
-
-    const mainEl = document.querySelector('main.main-scrollable') as HTMLElement | null;
-    if (!mainEl) return;
-
-    const update = () => {
-      const rect = mainEl.getBoundingClientRect();
-      setMainRect({ left: rect.left, width: rect.width });
-    };
-    update();
-
-    const ro = new ResizeObserver(update);
-    ro.observe(mainEl);
-    window.addEventListener('resize', update);
-    // The sidebar transitions width — observe body/html size changes too.
-    ro.observe(document.body);
-
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', update);
-    };
-  }, [isOpen, hasOpenModal]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -61,35 +33,33 @@ export function CopilotToggleButton() {
     setValue('');
   };
 
-  // Center horizontally within the main content column.
-  const centerX = mainRect ? mainRect.left + mainRect.width / 2 : null;
-  const maxWidthPx = mainRect ? Math.max(0, mainRect.width - 32) : null;
-
-  return createPortal(
+  return (
+    <div
+      aria-hidden={false}
+      className="pointer-events-none sticky inset-x-0 z-50 mt-auto flex justify-center"
+      style={{
+        bottom: 'max(24px, env(safe-area-inset-bottom))',
+        // Negative top margin keeps the bar from adding layout height in
+        // short pages while still sticking to the bottom of the viewport
+        // when content scrolls past it.
+        marginTop: 'auto',
+      }}
+    >
     <div
       role="search"
       aria-label="Ask naitive AI"
       className={cn(
-        "group relative overflow-hidden",
+        "group relative overflow-hidden pointer-events-auto",
         "h-11 rounded-full",
         "flex items-center gap-3 pl-1.5 pr-4",
         "text-left",
+        "w-[min(720px,calc(100%-32px))]",
         "opacity-70 hover:opacity-100 focus-within:opacity-100",
         "transition-[opacity,box-shadow] duration-200 ease-out",
         "hover:shadow-[0_16px_40px_rgba(0,0,0,0.55),0_4px_10px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.10),0_0_0_1px_rgba(0,0,0,0.28)]",
         "animate-in fade-in duration-150"
       )}
       style={{
-        position: 'fixed',
-        bottom: 'max(24px, env(safe-area-inset-bottom))',
-        left: centerX != null ? `${centerX}px` : '50%',
-        transform: 'translateX(-50%)',
-        width:
-          maxWidthPx != null
-            ? `min(720px, ${maxWidthPx}px)`
-            : 'min(720px, calc(100vw - 32px))',
-        visibility: mainRect ? 'visible' : 'hidden',
-        zIndex: 99999,
         background: 'rgba(14, 16, 24, 0.6)',
         backdropFilter: 'blur(18px) saturate(1.4)',
         WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
@@ -149,7 +119,7 @@ export function CopilotToggleButton() {
       <kbd className="relative z-10 hidden sm:inline-flex items-center gap-0.5 rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-medium text-white/40 group-hover:text-white/55 transition-colors shrink-0">
         ⌘J
       </kbd>
-    </div>,
-    document.body
+    </div>
+    </div>
   );
 }
