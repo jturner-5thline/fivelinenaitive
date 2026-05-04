@@ -785,6 +785,158 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
             )}
           </div>
 
+          {/* Deal — optional association with smart suggestions */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] uppercase tracking-wide font-medium flex items-center gap-1" style={{ color: '#7a8194' }}>
+                <Briefcase className="h-3 w-3" /> Deal
+              </label>
+              {selectedDeal && (
+                <button
+                  type="button"
+                  onClick={() => setDealId(null)}
+                  className="text-[10px] font-medium px-1.5 py-0.5 rounded hover:bg-[rgba(229,115,115,0.1)] transition-colors"
+                  style={{ color: '#e57373' }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Inline AI suggestion chips above the picker */}
+            {!selectedDeal && suggestions.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 text-[10px]" style={{ color: '#9aa3b6' }}>
+                  <Sparkles className="h-2.5 w-2.5" /> Suggested
+                </span>
+                {suggestions.map(({ deal: d }) => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => setDealId(d.id)}
+                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium border transition-colors hover:brightness-110"
+                    style={{
+                      color: '#cfe3ff',
+                      borderColor: 'rgba(126,184,247,0.35)',
+                      backgroundColor: 'rgba(126,184,247,0.10)',
+                    }}
+                    title={`${d.company || d.name}${d.stage ? ' · ' + formatStage(d.stage) : ''}`}
+                  >
+                    {d.name}
+                    {d.stage && (
+                      <span
+                        className="inline-block px-1 rounded text-[9px] font-semibold"
+                        style={{
+                          color: dealStageTone(d.stage),
+                          backgroundColor: `${dealStageTone(d.stage)}1f`,
+                        }}
+                      >
+                        {formatStage(d.stage)}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <Popover open={dealPickerOpen} onOpenChange={setDealPickerOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="w-full h-9 px-3 rounded-md border text-sm flex items-center gap-2 text-left"
+                  style={{ backgroundColor: 'rgba(20,24,32,0.65)', borderColor: 'rgba(255,255,255,0.07)', color: selectedDeal ? '#eef1f6' : '#7a8194' }}
+                >
+                  {selectedDeal ? (
+                    <>
+                      <span
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold"
+                        style={{ backgroundColor: 'rgba(30,58,95,0.6)', color: '#93c5fd' }}
+                      >
+                        {selectedDeal.name}
+                      </span>
+                      {selectedDeal.stage && (
+                        <span
+                          className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+                          style={{
+                            color: dealStageTone(selectedDeal.stage),
+                            backgroundColor: `${dealStageTone(selectedDeal.stage)}1a`,
+                          }}
+                        >
+                          {formatStage(selectedDeal.stage)}
+                        </span>
+                      )}
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        aria-label="Clear deal"
+                        onClick={(e) => { e.stopPropagation(); setDealId(null); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setDealId(null); } }}
+                        className="ml-auto inline-flex items-center justify-center h-5 w-5 rounded hover:bg-[rgba(255,255,255,0.06)] cursor-pointer"
+                      >
+                        <X className="h-3 w-3" style={{ color: '#9aa3b6' }} />
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Search className="h-3.5 w-3.5" style={{ color: '#7a8194' }} />
+                      <span>Search deals…</span>
+                    </>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="p-0 w-[440px] max-h-[320px] overflow-hidden"
+                align="start"
+                style={{ backgroundColor: '#12151b', borderColor: 'rgba(255,255,255,0.08)' }}
+              >
+                <div className="p-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                  <Input
+                    autoFocus
+                    value={dealQuery}
+                    onChange={(e) => setDealQuery(e.target.value)}
+                    placeholder="Search by name, company, lender, contact…"
+                    className="h-8 text-xs"
+                    style={{ backgroundColor: 'rgba(20,24,32,0.85)', border: '1px solid rgba(255,255,255,0.07)', color: '#eef1f6' }}
+                  />
+                </div>
+                <div className="max-h-[260px] overflow-y-auto py-1">
+                  {dealSearchResults.length === 0 && (
+                    <div className="px-3 py-4 text-[11px] text-center" style={{ color: '#7a8194' }}>
+                      No deals match your search.
+                    </div>
+                  )}
+                  {dealSearchResults.map(d => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => { setDealId(d.id); setDealPickerOpen(false); setDealQuery(''); }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-[rgba(126,184,247,0.08)]"
+                      style={{ color: dealId === d.id ? '#cfe3ff' : '#eef1f6' }}
+                    >
+                      <span className="flex-1 truncate">
+                        <span className="font-medium">{d.name}</span>
+                        {d.company && d.company !== d.name && (
+                          <span className="ml-2" style={{ color: '#7a8194' }}>· {d.company}</span>
+                        )}
+                      </span>
+                      {d.stage && (
+                        <span
+                          className="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0"
+                          style={{
+                            color: dealStageTone(d.stage),
+                            backgroundColor: `${dealStageTone(d.stage)}1a`,
+                          }}
+                        >
+                          {formatStage(d.stage)}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+
           {/* Assignee */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
