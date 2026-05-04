@@ -428,7 +428,7 @@ export function SignedDealsAndARSection({ selectedQuarter }: { selectedQuarter: 
         <OutstandingARPieChart />
       </div>
 
-      <DealsDrilldownModal
+      <SignedDealsDrilldownModal
         open={!!drilldown}
         onClose={() => setDrilldown(null)}
         title={drilldown?.title ?? ''}
