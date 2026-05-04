@@ -240,6 +240,14 @@ const MANAGEMENT_SNAPSHOT_CARD_DEFAULTS: Record<EditableManagementSnapshotCardId
     size: 'small',
     color: 'hsl(var(--chart-3))',
   },
+  'revenue-by-month': {
+    title: 'Revenue by Month',
+    type: 'chart',
+    chartType: 'bar',
+    dataSource: 'computed-kpi',
+    size: 'medium',
+    color: 'hsl(var(--chart-2))',
+  },
 };
 
 const COLORS = [
@@ -1477,6 +1485,7 @@ export default function Metrics() {
 
   const SNAPSHOT_CARD_IDS: EditableManagementSnapshotCardId[] = [
     'debt-revenue', 'finserv-revenue', 'total-revenue', 'total-revenue-detail',
+    'revenue-by-month',
     'clients-signed-debt', 'clients-signed-finserv', 'outstanding-ar',
     'debt-profit', 'finserv-profit',
   ];

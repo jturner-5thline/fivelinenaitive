@@ -65,6 +65,7 @@ export type EditableManagementSnapshotCardId =
   | 'finserv-revenue'
   | 'total-revenue'
   | 'total-revenue-detail'
+  | 'revenue-by-month'
   | 'clients-signed-debt'
   | 'clients-signed-finserv'
   | 'outstanding-ar'
@@ -582,6 +583,7 @@ export function ManagementSnapshotDashboard({
 
   const allCards: CardEntry[] = [
     { cardId: 'total-revenue-detail', props: getCardProps('total-revenue-detail', 'Total Revenue Detail', 'hsl(var(--chart-2))', 'ytd', 'metric') },
+    { cardId: 'revenue-by-month',     props: getCardProps('revenue-by-month',     'Revenue by Month',     'hsl(var(--chart-2))', 'ytd', 'chart') },
   ];
 
   const visibleCards = allCards.filter(c => !isHidden(c.cardId));
@@ -631,10 +633,9 @@ export function ManagementSnapshotDashboard({
 
   return (
     <div className="space-y-6">
-      {/* Top row: Revenue summary KPI tile + Revenue by Month chart side-by-side */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
-        <div className="min-w-0">
-          <DraggableGridLayout
+      {/* Top draggable grid (KPI tiles + Revenue by Month + custom widgets) */}
+      <div className="min-w-0">
+        <DraggableGridLayout
             layout={gridLayout}
             onLayoutChange={onGridLayoutChange}
             isEditMode={isEditMode}
@@ -670,17 +671,17 @@ export function ManagementSnapshotDashboard({
                   />
                 ) : cardId === 'avg-rev-per-client' ? (
                   <AvgRevenuePerClientWidget />
+                ) : cardId === 'revenue-by-month' ? (
+                  <div className={cn('h-full', isEditMode && 'widget-drag-handle cursor-grab')}>
+                    <RevenueByMonthChart />
+                  </div>
                 ) : (
                   <GenericDashboardCard {...props} />
                 )}
               </div>
             ))}
             {children}
-          </DraggableGridLayout>
-        </div>
-        <div className="min-w-0">
-          <RevenueByMonthChart />
-        </div>
+        </DraggableGridLayout>
       </div>
 
       {/* Section-level draggable/resizable grid */}
