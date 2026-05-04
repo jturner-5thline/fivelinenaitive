@@ -2232,6 +2232,7 @@ export default function Metrics() {
                       selectedQuarter={dashboardSelectedQuarter}
                       onQuarterChange={() => { /* selector lives in page header */ }}
                       quarterOptions={dashboardQuarterOptions}
+                      executiveSlot={<ExecutiveDashboard />}
                     >
                       {widgets.map((widget) => {
                         const HIDDEN_WEEKLY_RUNDOWN_SOURCES = new Set([
@@ -2265,13 +2266,6 @@ export default function Metrics() {
                         );
                       })}
                     </ManagementSnapshotDashboard>
-
-                    <div className="space-y-4">
-                      <div>
-                        <h2 className="text-lg font-semibold text-foreground">Executive Dashboard</h2>
-                      </div>
-                      <ExecutiveDashboard />
-                    </div>
                   </div>
                 }
               />
