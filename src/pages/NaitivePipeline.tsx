@@ -8,7 +8,7 @@ import { useMemo, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Deal, DealStatus } from '@/types/deal';
 import { DealStageOption } from '@/contexts/DealStagesContext';
-import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
+import { CreateNaitiveDealDialog } from '@/components/naitive-pipeline/CreateNaitiveDealDialog';
 import { DealCard } from '@/components/deals/DealCard';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useNaitiveStageMilestones, DealStageMilestone } from '@/hooks/useNaitiveStageMilestones';
@@ -274,19 +274,20 @@ export default function NaitivePipeline() {
                     </button>
                   ))}
                 </div>
-                <CreateDealDialog
-                  trigger={
-                    <Button size="sm" className="gap-1.5">
-                      <Plus className="h-4 w-4" />
-                      Add Deal
-                    </Button>
-                  }
-                  initialValues={{
-                    pipelineId: pipelineId || undefined,
-                    dealStage: stages[0]?.id || 'prospects',
-                    dealClass: 'naitive',
-                  }}
-                />
+                {pipelineId && (
+                  <CreateNaitiveDealDialog
+                    pipelineId={pipelineId}
+                    stages={stages}
+                    defaultStage={stages[0]?.id}
+                    onCreated={refetch}
+                    trigger={
+                      <Button size="sm" className="gap-1.5">
+                        <Plus className="h-4 w-4" />
+                        Add Deal
+                      </Button>
+                    }
+                  />
+                )}
               </div>
             </div>
           }
@@ -340,19 +341,20 @@ export default function NaitivePipeline() {
                       <p className="mt-1 text-sm text-muted-foreground max-w-md">
                         Get started by adding your first deal to the naitive pipeline.
                       </p>
-                      <CreateDealDialog
-                        trigger={
-                          <Button className="mt-4 gap-1.5">
-                            <Plus className="h-4 w-4" />
-                            Add Your First Deal
-                          </Button>
-                        }
-                        initialValues={{
-                          pipelineId: pipelineId || undefined,
-                          dealStage: stages[0]?.id || 'prospects',
-                          dealClass: 'naitive',
-                        }}
-                      />
+                      {pipelineId && (
+                        <CreateNaitiveDealDialog
+                          pipelineId={pipelineId}
+                          stages={stages}
+                          defaultStage={stages[0]?.id}
+                          onCreated={refetch}
+                          trigger={
+                            <Button className="mt-4 gap-1.5">
+                              <Plus className="h-4 w-4" />
+                              Add Your First Deal
+                            </Button>
+                          }
+                        />
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-4">

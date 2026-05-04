@@ -8192,9 +8192,11 @@ export type Database = {
           company: string
           company_id: string | null
           company_url: string | null
+          competitors_mentioned: string | null
           contact: string | null
           contact_email: string | null
           contact_info: string | null
+          contact_title: string | null
           contract_end_date: string | null
           contract_start_date: string | null
           created_at: string
@@ -8203,6 +8205,8 @@ export type Database = {
           deal_class: string
           deal_owner: string | null
           deal_type: string | null
+          dm_name: string | null
+          dm_present: string | null
           engagement_type: string | null
           exclusivity: string | null
           fee_type: string | null
@@ -8211,8 +8215,10 @@ export type Database = {
           hubspot_last_synced_at: string | null
           hubspot_sync_error: string | null
           hubspot_sync_status: string | null
+          icp_category: string | null
           id: string
           is_flagged: boolean
+          key_signal: string | null
           lead_source: string | null
           manager: string | null
           manager_move_forward_decision: boolean
@@ -8224,15 +8230,23 @@ export type Database = {
           mrr: number | null
           narrative: string | null
           next_follow_up_at: string | null
+          next_step: string | null
+          next_step_date: string | null
           notes: string | null
           notes_updated_at: string | null
+          objections_raised: string | null
           on_hold: boolean
           one_time_revenue: number | null
           opportunity_type: string | null
+          outcome: string | null
+          owned_by: string | null
+          pain_points_confirmed: string | null
           pipeline_id: string | null
           post_signing_hours: number | null
           pre_signing_hours: number | null
+          product_gap_flagged: string | null
           projected_close_date: string | null
+          prospect_type: string | null
           referral_source: string | null
           referred_by: string | null
           retainer_fee: number | null
@@ -8245,6 +8259,7 @@ export type Database = {
           updated_at: string
           user_id: string
           value: number
+          why_not_moving_forward: string[] | null
         }
         Insert: {
           agreement_sent?: boolean
@@ -8255,9 +8270,11 @@ export type Database = {
           company: string
           company_id?: string | null
           company_url?: string | null
+          competitors_mentioned?: string | null
           contact?: string | null
           contact_email?: string | null
           contact_info?: string | null
+          contact_title?: string | null
           contract_end_date?: string | null
           contract_start_date?: string | null
           created_at?: string
@@ -8266,6 +8283,8 @@ export type Database = {
           deal_class?: string
           deal_owner?: string | null
           deal_type?: string | null
+          dm_name?: string | null
+          dm_present?: string | null
           engagement_type?: string | null
           exclusivity?: string | null
           fee_type?: string | null
@@ -8274,8 +8293,10 @@ export type Database = {
           hubspot_last_synced_at?: string | null
           hubspot_sync_error?: string | null
           hubspot_sync_status?: string | null
+          icp_category?: string | null
           id?: string
           is_flagged?: boolean
+          key_signal?: string | null
           lead_source?: string | null
           manager?: string | null
           manager_move_forward_decision?: boolean
@@ -8287,15 +8308,23 @@ export type Database = {
           mrr?: number | null
           narrative?: string | null
           next_follow_up_at?: string | null
+          next_step?: string | null
+          next_step_date?: string | null
           notes?: string | null
           notes_updated_at?: string | null
+          objections_raised?: string | null
           on_hold?: boolean
           one_time_revenue?: number | null
           opportunity_type?: string | null
+          outcome?: string | null
+          owned_by?: string | null
+          pain_points_confirmed?: string | null
           pipeline_id?: string | null
           post_signing_hours?: number | null
           pre_signing_hours?: number | null
+          product_gap_flagged?: string | null
           projected_close_date?: string | null
+          prospect_type?: string | null
           referral_source?: string | null
           referred_by?: string | null
           retainer_fee?: number | null
@@ -8308,6 +8337,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           value?: number
+          why_not_moving_forward?: string[] | null
         }
         Update: {
           agreement_sent?: boolean
@@ -8318,9 +8348,11 @@ export type Database = {
           company?: string
           company_id?: string | null
           company_url?: string | null
+          competitors_mentioned?: string | null
           contact?: string | null
           contact_email?: string | null
           contact_info?: string | null
+          contact_title?: string | null
           contract_end_date?: string | null
           contract_start_date?: string | null
           created_at?: string
@@ -8329,6 +8361,8 @@ export type Database = {
           deal_class?: string
           deal_owner?: string | null
           deal_type?: string | null
+          dm_name?: string | null
+          dm_present?: string | null
           engagement_type?: string | null
           exclusivity?: string | null
           fee_type?: string | null
@@ -8337,8 +8371,10 @@ export type Database = {
           hubspot_last_synced_at?: string | null
           hubspot_sync_error?: string | null
           hubspot_sync_status?: string | null
+          icp_category?: string | null
           id?: string
           is_flagged?: boolean
+          key_signal?: string | null
           lead_source?: string | null
           manager?: string | null
           manager_move_forward_decision?: boolean
@@ -8350,15 +8386,23 @@ export type Database = {
           mrr?: number | null
           narrative?: string | null
           next_follow_up_at?: string | null
+          next_step?: string | null
+          next_step_date?: string | null
           notes?: string | null
           notes_updated_at?: string | null
+          objections_raised?: string | null
           on_hold?: boolean
           one_time_revenue?: number | null
           opportunity_type?: string | null
+          outcome?: string | null
+          owned_by?: string | null
+          pain_points_confirmed?: string | null
           pipeline_id?: string | null
           post_signing_hours?: number | null
           pre_signing_hours?: number | null
+          product_gap_flagged?: string | null
           projected_close_date?: string | null
+          prospect_type?: string | null
           referral_source?: string | null
           referred_by?: string | null
           retainer_fee?: number | null
@@ -8371,6 +8415,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           value?: number
+          why_not_moving_forward?: string[] | null
         }
         Relationships: [
           {
