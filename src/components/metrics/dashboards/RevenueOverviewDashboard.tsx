@@ -159,7 +159,7 @@ function RevenueBarChart({
   );
 }
 
-function DrilldownModal({
+export function RevenueDrilldownModal({
   open,
   onClose,
   drilldown,
