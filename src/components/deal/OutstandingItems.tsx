@@ -327,6 +327,10 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [bulkImportText, setBulkImportText] = useState('');
   const [bulkImportRequestedBy, setBulkImportRequestedBy] = useState<string[]>([]);
+  // Individual-add mode rows inside the Bulk Import dialog. Each row has
+  // its own text and an optional requester override; if the override is
+  // empty, it falls back to the dialog-level "Assign requester to all".
+  const [individualRows, setIndividualRows] = useState<Array<{ id: string; text: string; requestedBy: string[] }>>([]);
 
   const handleItemClick = (item: OutstandingItem) => {
     if (editingId) return;
@@ -503,12 +507,21 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
   };
 
   const handleBulkImport = () => {
-    if (!onBulkAdd || !bulkImportText.trim()) return;
     const lines = bulkImportText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    if (lines.length === 0) return;
-    onBulkAdd(lines, bulkImportRequestedBy);
+    const rows = individualRows
+      .map(r => ({ text: r.text.trim(), requestedBy: r.requestedBy.length > 0 ? r.requestedBy : bulkImportRequestedBy }))
+      .filter(r => r.text.length > 0);
+    if (lines.length === 0 && rows.length === 0) return;
+    if (lines.length > 0 && onBulkAdd) {
+      onBulkAdd(lines, bulkImportRequestedBy);
+    }
+    // Individual rows can have differing requesters, so add them one by one.
+    for (const r of rows) {
+      onAdd(r.text, r.requestedBy);
+    }
     setBulkImportText('');
     setBulkImportRequestedBy([]);
+    setIndividualRows([]);
     setIsBulkImportOpen(false);
   };
 
