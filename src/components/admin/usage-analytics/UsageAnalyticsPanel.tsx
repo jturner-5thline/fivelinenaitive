@@ -21,6 +21,7 @@ import {
   buildDateRange, useCompanyUsageOverview,
   type CompanyUsageRow, type UsageDateRangeKey,
 } from "./useCompanyUsageOverview";
+import type { UsageTier } from "./usageTiers";
 import {
   classifyUsageTier, tierBadgeClass, isPaidTier,
   DEFAULT_AI_RATE_PER_1K_TOKENS,
@@ -67,7 +68,8 @@ export function UsageAnalyticsPanel() {
   const [sortKey, setSortKey] = useState<SortKey>("total_ai_calls");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [aiRate, setAiRate] = useState<number>(DEFAULT_AI_RATE_PER_1K_TOKENS);
-  const [drilldown, setDrilldown] = useState<CompanyUsageRow | null>(null);
+  type EnrichedRow = CompanyUsageRow & { est_cost: number; tier: UsageTier };
+  const [drilldown, setDrilldown] = useState<EnrichedRow | null>(null);
 
   const range = useMemo(
     () => buildDateRange(
@@ -112,7 +114,7 @@ export function UsageAnalyticsPanel() {
   const summary = useMemo(() => {
     const totalAi = enrichedRows.reduce((s, r) => s + r.total_ai_calls, 0);
     const totalCost = enrichedRows.reduce((s, r) => s + r.est_cost, 0);
-    const mostActive = enrichedRows.reduce<CompanyUsageRow | null>(
+    const mostActive = enrichedRows.reduce<EnrichedRow | null>(
       (best, r) => (!best || r.total_ai_calls > best.total_ai_calls ? r : best),
       null,
     );
