@@ -36,7 +36,7 @@ const ZERO_LINE_COLOR = 'rgba(220, 232, 255, 0.85)';
 const GLASS_CARD_STYLE: React.CSSProperties = {};
 const GLASS_SHEEN_STYLE: React.CSSProperties = { display: 'none' };
 
-function ProfitBarChart({
+export function ProfitBarChart({
   title,
   entityName,
   months,
@@ -288,4 +288,14 @@ export function ProfitByEntitySection({ selectedQuarter }: { selectedQuarter: im
       </div>
     </div>
   );
+}
+
+export function DebtProfitWidget({ selectedQuarter }: { selectedQuarter: import('@/hooks/useQBQuarterlyRevenue').QuarterOption }) {
+  const debt = useMonthlyEntityProfit('5th Line Capital Advisors, LLC', selectedQuarter.months);
+  return <div className="h-full"><ProfitBarChart title="Debt Profit" entityName="5th Line Capital Advisors, LLC" months={debt.months} isLoading={debt.isLoading} total={debt.total} color="hsl(var(--primary))" /></div>;
+}
+
+export function FinServProfitWidget({ selectedQuarter }: { selectedQuarter: import('@/hooks/useQBQuarterlyRevenue').QuarterOption }) {
+  const finserv = useMonthlyEntityProfit('5th Line Financial Services, LLC', selectedQuarter.months);
+  return <div className="h-full"><ProfitBarChart title="FinServ Profit" entityName="5th Line Financial Services, LLC" months={finserv.months} isLoading={finserv.isLoading} total={finserv.total} color="hsl(var(--chart-4))" /></div>;
 }

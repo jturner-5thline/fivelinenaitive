@@ -159,7 +159,7 @@ function RevenueBarChart({
   );
 }
 
-function DrilldownModal({
+export function RevenueDrilldownModal({
   open,
   onClose,
   drilldown,
@@ -392,7 +392,7 @@ function DrilldownModal({
   );
 }
 
-function StackedDebtRevenueChart({
+export function StackedDebtRevenueChart({
   data,
   isLoading,
   total,
@@ -520,7 +520,7 @@ function StackedDebtRevenueChart({
     </Card>
   );
 }
-function StackedGenericRevenueChart({
+export function StackedGenericRevenueChart({
   title,
   subtitle,
   data,
@@ -664,12 +664,51 @@ export function RevenueQuarterlySection({ selectedQuarter }: { selectedQuarter: 
       </div>
 
       {/* Drilldown Modal */}
-      <DrilldownModal
+      <RevenueDrilldownModal
         open={!!drilldown}
         onClose={() => setDrilldown(null)}
         drilldown={drilldown}
         quarter={selectedQuarter}
       />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Atomic widget wrappers — let the unified Weekly Rundown grid place each
+// chart as an independently draggable/resizable tile.
+// ---------------------------------------------------------------------------
+export function DebtRevenueWidget({ selectedQuarter }: { selectedQuarter: QuarterOption }) {
+  const [drilldown, setDrilldown] = useState<DrilldownData | null>(null);
+  const debtRevenue = useQBStackedDebtRevenue(selectedQuarter);
+  return (
+    <div className="h-full">
+      <StackedDebtRevenueChart
+        data={debtRevenue.months}
+        isLoading={debtRevenue.isLoading}
+        total={debtRevenue.total}
+        onBarClick={(monthKey) => setDrilldown({ title: 'Debt Revenue', monthKey, realmIds: [DEBT_REALM_ID] })}
+      />
+      <RevenueDrilldownModal open={!!drilldown} onClose={() => setDrilldown(null)} drilldown={drilldown} quarter={selectedQuarter} />
+    </div>
+  );
+}
+
+export function FinServRevenueWidget({ selectedQuarter }: { selectedQuarter: QuarterOption }) {
+  const [drilldown, setDrilldown] = useState<DrilldownData | null>(null);
+  const finservRevenue = useQBStackedFinServRevenue(selectedQuarter);
+  return (
+    <div className="h-full">
+      <StackedGenericRevenueChart
+        title="FinServ Revenue"
+        subtitle="5th Line Financial Services, LLC"
+        data={finservRevenue.months}
+        isLoading={finservRevenue.isLoading}
+        total={finservRevenue.total}
+        categories={FINSERV_STACKED_CATEGORIES}
+        onBarClick={(monthKey) => setDrilldown({ title: 'FinServ Revenue', monthKey, realmIds: [FINSERV_REALM_ID] })}
+      />
+      <RevenueDrilldownModal open={!!drilldown} onClose={() => setDrilldown(null)} drilldown={drilldown} quarter={selectedQuarter} />
     </div>
   );
 }

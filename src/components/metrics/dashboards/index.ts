@@ -1,5 +1,6 @@
 export { ManagementSnapshotDashboard } from './ManagementSnapshotDashboard';
-export type { EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig, WidgetSizeVariant, CardSizeOverride, KPITileLayoutVariant } from './ManagementSnapshotDashboard';
+export type { EditableManagementSnapshotCardId, ManagementSnapshotEditableConfig, WidgetSizeVariant, CardSizeOverride, KPITileLayoutVariant, WeeklyRundownSubWidgetId, ManagementSnapshotSectionId } from './ManagementSnapshotDashboard';
+export { SUB_WIDGET_LABELS, ALL_SUB_WIDGET_IDS } from './ManagementSnapshotDashboard';
 export { SalesBDROIDashboard } from './SalesBDROIDashboard';
 export { SalesTeamBoardDashboard } from './SalesTeamBoardDashboard';
 export { ConsolidatedDebtPipelineDashboard } from './ConsolidatedDebtPipelineDashboard';

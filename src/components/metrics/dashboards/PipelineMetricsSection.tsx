@@ -30,7 +30,7 @@ interface MetricCardConfig {
   drilldownTitle: string;
 }
 
-function MetricKPICard({
+export function MetricKPICard({
   config,
   onClick,
 }: {
@@ -80,7 +80,7 @@ function MetricKPICard({
   );
 }
 
-function DrilldownModal({
+export function PipelineDrilldownModal({
   open,
   onClose,
   title,
@@ -158,6 +158,89 @@ function DrilldownModal({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+export type PipelineMetricCardId =
+  | 'deals-on-board'
+  | 'debt-dollar-on-board'
+  | 'debt-deals-signed'
+  | 'debt-dollar-signed'
+  | 'finserv-deals-on-board'
+  | 'finserv-clients-signed';
+
+export const PIPELINE_METRIC_LABELS: Record<PipelineMetricCardId, string> = {
+  'deals-on-board': 'Deals on the Board',
+  'debt-dollar-on-board': 'Debt $ on the Board',
+  'debt-deals-signed': 'Debt Deals Signed',
+  'debt-dollar-signed': 'Debt $ Signed',
+  'finserv-deals-on-board': 'FinServ: Deals on the Board',
+  'finserv-clients-signed': 'FinServ Clients Signed',
+};
+
+/** Single Pipeline Metric KPI tile, self-contained so it can be placed
+ *  individually in the unified Weekly Rundown grid. */
+export function PipelineMetricWidget({
+  cardId,
+  selectedQuarter,
+}: {
+  cardId: PipelineMetricCardId;
+  selectedQuarter: import('@/hooks/useQBQuarterlyRevenue').QuarterOption;
+}) {
+  const metrics = usePipelineStageMetrics(selectedQuarter);
+  const [drilldown, setDrilldown] = useState<{ title: string; deals: StageEntryDeal[] } | null>(null);
+
+  const map: Record<PipelineMetricCardId, MetricCardConfig> = {
+    'deals-on-board': {
+      id: 'deals-on-board', title: PIPELINE_METRIC_LABELS['deals-on-board'], icon: Users,
+      value: metrics.dealsOnBoard.count, isLoading: metrics.dealsOnBoard.isLoading,
+      deals: metrics.dealsOnBoard.deals, color: 'hsl(var(--primary))',
+      drilldownTitle: 'Deals on the Board — Active Pipeline',
+    },
+    'debt-dollar-on-board': {
+      id: 'debt-dollar-on-board', title: PIPELINE_METRIC_LABELS['debt-dollar-on-board'], icon: DollarSign,
+      value: formatCurrency(metrics.debtDollarOnBoard.dollarVolume),
+      isLoading: metrics.debtDollarOnBoard.isLoading,
+      deals: metrics.debtDollarOnBoard.deals, color: 'hsl(var(--chart-2))',
+      drilldownTitle: 'Debt $ on the Board — Active Pipeline',
+    },
+    'debt-deals-signed': {
+      id: 'debt-deals-signed', title: PIPELINE_METRIC_LABELS['debt-deals-signed'], icon: FileCheck,
+      value: metrics.debtDealsSigned.count, isLoading: metrics.debtDealsSigned.isLoading,
+      deals: metrics.debtDealsSigned.deals, color: 'hsl(var(--chart-3))',
+      drilldownTitle: 'Debt Deals Signed — Final Credit Items',
+    },
+    'debt-dollar-signed': {
+      id: 'debt-dollar-signed', title: PIPELINE_METRIC_LABELS['debt-dollar-signed'], icon: DollarSign,
+      value: formatCurrency(metrics.debtDollarSigned.dollarVolume),
+      isLoading: metrics.debtDollarSigned.isLoading,
+      deals: metrics.debtDollarSigned.deals, color: 'hsl(var(--chart-4))',
+      drilldownTitle: 'Debt $ Signed — Final Credit Items',
+    },
+    'finserv-deals-on-board': {
+      id: 'finserv-deals-on-board', title: PIPELINE_METRIC_LABELS['finserv-deals-on-board'], icon: Building2,
+      value: metrics.finservDealsOnBoard.count, isLoading: metrics.finservDealsOnBoard.isLoading,
+      deals: metrics.finservDealsOnBoard.deals, color: 'hsl(var(--chart-5))',
+      drilldownTitle: 'FinServ: Deals on the Board — Added to Pipeline',
+    },
+    'finserv-clients-signed': {
+      id: 'finserv-clients-signed', title: PIPELINE_METRIC_LABELS['finserv-clients-signed'], icon: UserCheck,
+      value: metrics.finservClientsSigned.count, isLoading: metrics.finservClientsSigned.isLoading,
+      deals: metrics.finservClientsSigned.deals, color: 'hsl(var(--success))',
+      drilldownTitle: 'FinServ Clients Signed — Active Client',
+    },
+  };
+  const card = map[cardId];
+  return (
+    <div className="h-full">
+      <MetricKPICard config={card} onClick={() => setDrilldown({ title: card.drilldownTitle, deals: card.deals })} />
+      <PipelineDrilldownModal
+        open={!!drilldown}
+        onClose={() => setDrilldown(null)}
+        title={drilldown?.title ?? ''}
+        deals={drilldown?.deals ?? []}
+      />
+    </div>
   );
 }
 
@@ -251,7 +334,7 @@ export function PipelineMetricsSection({ selectedQuarter }: { selectedQuarter: i
       </div>
 
       {/* Drilldown modal */}
-      <DrilldownModal
+      <PipelineDrilldownModal
         open={!!drilldown}
         onClose={() => setDrilldown(null)}
         title={drilldown?.title ?? ''}

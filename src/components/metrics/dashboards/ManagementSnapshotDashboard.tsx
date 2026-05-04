@@ -1,9 +1,9 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { AvgRevenuePerClientWidget } from '@/components/metrics/AvgRevenuePerClientWidget';
-import { RevenueQuarterlySection } from './RevenueOverviewDashboard';
-import { PipelineMetricsSection } from './PipelineMetricsSection';
-import { SignedDealsAndARSection } from './SignedDealsAndARSection';
-import { ProfitByEntitySection } from './ProfitByEntitySection';
+import { DebtRevenueWidget, FinServRevenueWidget } from './RevenueOverviewDashboard';
+import { PipelineMetricWidget, type PipelineMetricCardId, PIPELINE_METRIC_LABELS } from './PipelineMetricsSection';
+import { DealsSignedWidget, FinServClientsSignedWidget, OutstandingARWidget } from './SignedDealsAndARSection';
+import { DebtProfitWidget, FinServProfitWidget } from './ProfitByEntitySection';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +19,7 @@ import { type WidgetConfig, type TimeWindow, type KPIDetailCardConfig, type Nega
 import { KPIDetailCard } from '@/components/metrics/KPIDetailCard';
 import { DraggableGridLayout, type WidgetConstraint } from '@/components/metrics/DraggableGridLayout';
 import { RevenueByMonthChart } from '@/components/metrics/RevenueByMonthChart';
-import { type GridLayoutItem, useGridLayout } from '@/hooks/useGridLayout';
+import { type GridLayoutItem } from '@/hooks/useGridLayout';
 import { GripVertical } from 'lucide-react';
 import {
   DropdownMenu,
@@ -484,6 +484,37 @@ export type ManagementSnapshotSectionId =
   | 'profit-by-entity'
   | 'executive-dashboard';
 
+/** New per-widget IDs for sub-section charts/KPIs. Each one is an
+ *  independently draggable, resizable tile in the unified grid. */
+export type WeeklyRundownSubWidgetId =
+  // Revenue Overview charts
+  | 'rev-debt' | 'rev-finserv'
+  // Pipeline Metrics KPIs (reuse PipelineMetricCardId values prefixed)
+  | 'pm-deals-on-board' | 'pm-debt-dollar-on-board' | 'pm-debt-deals-signed'
+  | 'pm-debt-dollar-signed' | 'pm-finserv-deals-on-board' | 'pm-finserv-clients-signed'
+  // Signed Deals & AR
+  | 'sd-deals-signed' | 'sd-finserv-clients-signed' | 'sd-outstanding-ar'
+  // Profit by Entity
+  | 'pe-debt-profit' | 'pe-finserv-profit';
+
+export const SUB_WIDGET_LABELS: Record<WeeklyRundownSubWidgetId, string> = {
+  'rev-debt': 'Debt Revenue',
+  'rev-finserv': 'FinServ Revenue',
+  'pm-deals-on-board': 'Deals on the Board',
+  'pm-debt-dollar-on-board': 'Debt $ on the Board',
+  'pm-debt-deals-signed': 'Debt Deals Signed',
+  'pm-debt-dollar-signed': 'Debt $ Signed',
+  'pm-finserv-deals-on-board': 'FinServ: Deals on the Board',
+  'pm-finserv-clients-signed': 'FinServ Clients Signed',
+  'sd-deals-signed': 'Deals Signed',
+  'sd-finserv-clients-signed': 'FinServ Clients Signed',
+  'sd-outstanding-ar': 'Outstanding A/R',
+  'pe-debt-profit': 'Debt Profit',
+  'pe-finserv-profit': 'FinServ Profit',
+};
+
+export const ALL_SUB_WIDGET_IDS: WeeklyRundownSubWidgetId[] = Object.keys(SUB_WIDGET_LABELS) as WeeklyRundownSubWidgetId[];
+
 interface ManagementSnapshotDashboardProps {
   isEditMode?: boolean;
   onEditCard?: (cardId: EditableManagementSnapshotCardId) => void;
@@ -493,6 +524,8 @@ interface ManagementSnapshotDashboardProps {
   hiddenCards?: EditableManagementSnapshotCardId[];
   hiddenSections?: ManagementSnapshotSectionId[];
   onDeleteSection?: (sectionId: ManagementSnapshotSectionId) => void;
+  hiddenSubWidgets?: WeeklyRundownSubWidgetId[];
+  onDeleteSubWidget?: (id: WeeklyRundownSubWidgetId) => void;
   gridLayout: GridLayoutItem[];
   onGridLayoutChange: (layout: GridLayoutItem[], immediate?: boolean) => void;
   /** Global dashboard quarter selection */
@@ -521,6 +554,8 @@ export function ManagementSnapshotDashboard({
   executiveSlot,
   hiddenSections = [],
   onDeleteSection,
+  hiddenSubWidgets = [],
+  onDeleteSubWidget,
 }: ManagementSnapshotDashboardProps) {
   const { data: qbStatus } = useQuickBooksStatus();
 
@@ -617,58 +652,47 @@ export function ManagementSnapshotDashboard({
     'revenue-by-month':      { minW: 5, minH: 4, maxH: 10 },
   };
 
-  // Section-level grid: lets the user drag/resize the whole sections
-  // (Revenue Overview, Pipeline Metrics, Signed Deals & AR, Profit by Entity,
-  // Executive Dashboard) when edit mode is on. Persisted per company.
-  const ALL_SECTION_IDS: ManagementSnapshotSectionId[] = [
-    'revenue-overview',
-    'pipeline-metrics',
-    'signed-deals-ar',
-    'profit-by-entity',
-    'executive-dashboard',
-  ];
-  const SECTION_IDS = ALL_SECTION_IDS.filter(id => !hiddenSections.includes(id));
-  const SECTION_DEFAULT_LAYOUT: GridLayoutItem[] = [
-    { i: 'revenue-overview',    x: 0, y: 0,  w: 12, h: 7, minW: 6, minH: 4 },
-    { i: 'pipeline-metrics',    x: 0, y: 7,  w: 12, h: 7, minW: 6, minH: 4 },
-    { i: 'signed-deals-ar',     x: 0, y: 14, w: 12, h: 7, minW: 6, minH: 4 },
-    { i: 'profit-by-entity',    x: 0, y: 21, w: 12, h: 7, minW: 6, minH: 4 },
-    { i: 'executive-dashboard', x: 0, y: 28, w: 12, h: 10, minW: 6, minH: 5 },
-  ];
-
-  // Sections render their own internal multi-chart layouts, so we want them
-  // wide and tall enough that those layouts don't collapse. They are
-  // reorderable (drag) and resizable in height; width can shrink to half-grid.
-  const SECTION_CONSTRAINTS: Record<string, WidgetConstraint> = {
-    'revenue-overview':    { minW: 6, minH: 5, maxH: 14 },
-    'pipeline-metrics':    { minW: 6, minH: 5, maxH: 14 },
-    'signed-deals-ar':     { minW: 6, minH: 5, maxH: 14 },
-    'profit-by-entity':    { minW: 6, minH: 5, maxH: 14 },
-    'executive-dashboard': { minW: 8, minH: 8, maxH: 20 },
+  // Per-sub-widget renderers — each becomes an independently
+  // draggable/resizable tile in the unified Weekly Rundown grid.
+  const subWidgetRenderers: Record<WeeklyRundownSubWidgetId, React.ReactNode> = {
+    'rev-debt': <DebtRevenueWidget selectedQuarter={selectedQuarter} />,
+    'rev-finserv': <FinServRevenueWidget selectedQuarter={selectedQuarter} />,
+    'pm-deals-on-board':         <PipelineMetricWidget cardId="deals-on-board"          selectedQuarter={selectedQuarter} />,
+    'pm-debt-dollar-on-board':   <PipelineMetricWidget cardId="debt-dollar-on-board"    selectedQuarter={selectedQuarter} />,
+    'pm-debt-deals-signed':      <PipelineMetricWidget cardId="debt-deals-signed"       selectedQuarter={selectedQuarter} />,
+    'pm-debt-dollar-signed':     <PipelineMetricWidget cardId="debt-dollar-signed"      selectedQuarter={selectedQuarter} />,
+    'pm-finserv-deals-on-board': <PipelineMetricWidget cardId="finserv-deals-on-board"  selectedQuarter={selectedQuarter} />,
+    'pm-finserv-clients-signed': <PipelineMetricWidget cardId="finserv-clients-signed"  selectedQuarter={selectedQuarter} />,
+    'sd-deals-signed': <DealsSignedWidget selectedQuarter={selectedQuarter} />,
+    'sd-finserv-clients-signed': <FinServClientsSignedWidget selectedQuarter={selectedQuarter} />,
+    'sd-outstanding-ar': <OutstandingARWidget />,
+    'pe-debt-profit': <DebtProfitWidget selectedQuarter={selectedQuarter} />,
+    'pe-finserv-profit': <FinServProfitWidget selectedQuarter={selectedQuarter} />,
   };
 
-  const sectionContent: Record<string, React.ReactNode> = {
-    'revenue-overview':    <RevenueQuarterlySection selectedQuarter={selectedQuarter} />,
-    'pipeline-metrics':    <PipelineMetricsSection selectedQuarter={selectedQuarter} />,
-    'signed-deals-ar':     <SignedDealsAndARSection selectedQuarter={selectedQuarter} />,
-    'profit-by-entity':    <ProfitByEntitySection selectedQuarter={selectedQuarter} />,
-    'executive-dashboard': (
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Executive Dashboard</h2>
-        </div>
-        {executiveSlot}
-      </div>
-    ),
+  const SUB_WIDGET_CONSTRAINTS: Record<string, WidgetConstraint> = {
+    'rev-debt':    { minW: 4, minH: 4, maxH: 12 },
+    'rev-finserv': { minW: 4, minH: 4, maxH: 12 },
+    'pm-deals-on-board':         { minW: 2, minH: 2, maxH: 5 },
+    'pm-debt-dollar-on-board':   { minW: 2, minH: 2, maxH: 5 },
+    'pm-debt-deals-signed':      { minW: 2, minH: 2, maxH: 5 },
+    'pm-debt-dollar-signed':     { minW: 2, minH: 2, maxH: 5 },
+    'pm-finserv-deals-on-board': { minW: 2, minH: 2, maxH: 5 },
+    'pm-finserv-clients-signed': { minW: 2, minH: 2, maxH: 5 },
+    'sd-deals-signed':           { minW: 4, minH: 4, maxH: 12 },
+    'sd-finserv-clients-signed': { minW: 4, minH: 4, maxH: 12 },
+    'sd-outstanding-ar':         { minW: 3, minH: 4, maxH: 12 },
+    'pe-debt-profit':            { minW: 4, minH: 4, maxH: 12 },
+    'pe-finserv-profit':         { minW: 4, minH: 4, maxH: 12 },
+    'executive-dashboard':       { minW: 8, minH: 8, maxH: 20 },
   };
 
-  // Unified grid: top KPI/chart tiles, full-width section blocks, and any
-  // custom widgets (passed via children) all live in ONE DraggableGridLayout
-  // so users can drag any widget across sections, above sections, or between
-  // sections in edit mode.
+  const visibleSubWidgets = ALL_SUB_WIDGET_IDS.filter(id => !hiddenSubWidgets.includes(id));
+  const includeExec = !hiddenSections.includes('executive-dashboard');
+
   const UNIFIED_CONSTRAINTS: Record<string, WidgetConstraint> = {
     ...TOP_GRID_CONSTRAINTS,
-    ...SECTION_CONSTRAINTS,
+    ...SUB_WIDGET_CONSTRAINTS,
   };
 
   return (
@@ -739,33 +763,63 @@ export function ManagementSnapshotDashboard({
                 )}
               </div>
             ))}
-            {SECTION_IDS.map((id) => (
-              <div key={id} className="relative group h-full overflow-auto">
+            {visibleSubWidgets.map((id) => (
+              <div key={id} className="relative group h-full overflow-hidden">
             {isEditMode && (
               <>
                 <div className="widget-drag-handle absolute top-1 left-1/2 -translate-x-1/2 z-20 cursor-grab active:cursor-grabbing flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/70 backdrop-blur border border-border/50 opacity-70 hover:opacity-100 transition-opacity">
                   <GripVertical className="h-3 w-3 text-muted-foreground" />
                   <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Drag</span>
                 </div>
-                {onDeleteSection && (
+                {onDeleteSubWidget && (
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label="Remove section"
+                    aria-label={`Remove ${SUB_WIDGET_LABELS[id]}`}
                     className="absolute top-1 right-1 z-30 h-7 w-7 bg-background/70 backdrop-blur border border-border/50 hover:bg-destructive/10 hover:text-destructive opacity-80 hover:opacity-100"
                     onPointerDown={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
                     onTouchStart={(e) => e.stopPropagation()}
-                    onClick={(e) => { e.stopPropagation(); onDeleteSection(id); }}
+                    onClick={(e) => { e.stopPropagation(); onDeleteSubWidget(id); }}
                   >
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 )}
               </>
             )}
-            {sectionContent[id]}
+            {subWidgetRenderers[id]}
               </div>
             ))}
+            {includeExec && (
+              <div key="executive-dashboard" className="relative group h-full overflow-auto">
+                {isEditMode && (
+                  <>
+                    <div className="widget-drag-handle absolute top-1 left-1/2 -translate-x-1/2 z-20 cursor-grab active:cursor-grabbing flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/70 backdrop-blur border border-border/50 opacity-70 hover:opacity-100 transition-opacity">
+                      <GripVertical className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Drag</span>
+                    </div>
+                    {onDeleteSection && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Remove Executive Dashboard"
+                        className="absolute top-1 right-1 z-30 h-7 w-7 bg-background/70 backdrop-blur border border-border/50 hover:bg-destructive/10 hover:text-destructive opacity-80 hover:opacity-100"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
+                        onClick={(e) => { e.stopPropagation(); onDeleteSection('executive-dashboard'); }}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </>
+                )}
+                <div className="space-y-4">
+                  <div><h2 className="text-lg font-semibold text-foreground">Executive Dashboard</h2></div>
+                  {executiveSlot}
+                </div>
+              </div>
+            )}
             {children}
         </DraggableGridLayout>
       </div>

@@ -45,7 +45,7 @@ const prettyPipeline = (id?: string | null) => {
 };
 
 // ── Bar chart card ──
-function SignedBarChart({
+export function SignedBarChart({
   title,
   subtitle,
   months,
@@ -157,7 +157,7 @@ function SignedBarChart({
 }
 
 // ── Outstanding AR pie chart ──
-function OutstandingARPieChart() {
+export function OutstandingARPieChart() {
   const { slices, total, isLoading } = useOutstandingARByEntity();
 
   if (isLoading) {
@@ -243,7 +243,7 @@ function OutstandingARPieChart() {
 }
 
 // ── Drilldown modal ──
-function DealsDrilldownModal({
+export function SignedDealsDrilldownModal({
   open,
   onClose,
   title,
@@ -428,7 +428,7 @@ export function SignedDealsAndARSection({ selectedQuarter }: { selectedQuarter: 
         <OutstandingARPieChart />
       </div>
 
-      <DealsDrilldownModal
+      <SignedDealsDrilldownModal
         open={!!drilldown}
         onClose={() => setDrilldown(null)}
         title={drilldown?.title ?? ''}
@@ -437,4 +437,51 @@ export function SignedDealsAndARSection({ selectedQuarter }: { selectedQuarter: 
       />
     </div>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Atomic widget wrappers for unified Weekly Rundown grid
+// ---------------------------------------------------------------------------
+export function DealsSignedWidget({ selectedQuarter }: { selectedQuarter: import('@/hooks/useQBQuarterlyRevenue').QuarterOption }) {
+  const series = useDealsSignedMonthlySeries(selectedQuarter.months);
+  const [drilldown, setDrilldown] = useState<{ title: string; deals: StageEntryDeal[]; origin: DealOrigin } | null>(null);
+  const buildOrigin = (bucket: MonthBucket): DealOrigin => ({
+    label: `Back to Signed Deals (${bucket.label})`,
+    returnTo: '/insights',
+    reopen: { source: 'insights.signed-deals-and-ar', bucketKey: `deals-signed|${bucket.key}`, bucketLabel: bucket.label, quarterId: selectedQuarter.value },
+  });
+  return (
+    <div className="h-full">
+      <SignedBarChart
+        title="Deals Signed" subtitle="Active Pipeline → Final Credit Items"
+        months={series.months} isLoading={series.isLoading} color="hsl(var(--chart-3))"
+        onBarClick={(b) => setDrilldown({ title: `Deals Signed — ${b.label}`, deals: b.deals, origin: buildOrigin(b) })}
+      />
+      <SignedDealsDrilldownModal open={!!drilldown} onClose={() => setDrilldown(null)} title={drilldown?.title ?? ''} deals={drilldown?.deals ?? []} origin={drilldown?.origin ?? null} />
+    </div>
+  );
+}
+
+export function FinServClientsSignedWidget({ selectedQuarter }: { selectedQuarter: import('@/hooks/useQBQuarterlyRevenue').QuarterOption }) {
+  const series = useFinServClientsSignedMonthlySeries(selectedQuarter.months);
+  const [drilldown, setDrilldown] = useState<{ title: string; deals: StageEntryDeal[]; origin: DealOrigin } | null>(null);
+  const buildOrigin = (bucket: MonthBucket): DealOrigin => ({
+    label: `Back to FinServ Clients Signed (${bucket.label})`,
+    returnTo: '/insights',
+    reopen: { source: 'insights.signed-deals-and-ar', bucketKey: `finserv-clients-signed|${bucket.key}`, bucketLabel: bucket.label, quarterId: selectedQuarter.value },
+  });
+  return (
+    <div className="h-full">
+      <SignedBarChart
+        title="FinServ Clients Signed" subtitle="FinServ Pipeline → Active Client"
+        months={series.months} isLoading={series.isLoading} color="hsl(var(--chart-4))"
+        onBarClick={(b) => setDrilldown({ title: `FinServ Clients Signed — ${b.label}`, deals: b.deals, origin: buildOrigin(b) })}
+      />
+      <SignedDealsDrilldownModal open={!!drilldown} onClose={() => setDrilldown(null)} title={drilldown?.title ?? ''} deals={drilldown?.deals ?? []} origin={drilldown?.origin ?? null} />
+    </div>
+  );
+}
+
+export function OutstandingARWidget() {
+  return <div className="h-full"><OutstandingARPieChart /></div>;
 }
