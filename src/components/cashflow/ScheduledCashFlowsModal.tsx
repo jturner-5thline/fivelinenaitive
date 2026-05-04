@@ -352,6 +352,119 @@ export function ScheduledCashFlowsModal({
           className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-4 bg-card"
           style={{ maxHeight: 'calc(90vh - 180px)' }}
         >
+          {/* Credit Facilities (Lines of Credit) */}
+          <section className="mb-6 rounded-xl border border-border bg-muted/20 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-semibold flex items-center gap-1.5">
+                  <Lock className="h-3.5 w-3.5 text-amber-400" />
+                  Lines of Credit / Credit Facilities
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Available LOC auto-fills the “Add’l Liquidity (Delayed Draw)” row each week within the facility’s active dates.
+                </p>
+              </div>
+              <Button onClick={addFacility} size="sm" variant="outline" className="gap-1.5">
+                <Plus className="h-4 w-4" />
+                Add Facility
+              </Button>
+            </div>
+            {facilityDrafts.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">
+                No facilities configured. Click “Add Facility” to start.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {facilityDrafts.map((f) => {
+                  const total = Math.max(0, Number(f.facility_amount) || 0);
+                  const drawn = Math.max(0, Math.min(total, Number(f.initial_drawn) || 0));
+                  const available = Math.max(0, total - drawn);
+                  return (
+                    <div
+                      key={f.id}
+                      className="grid grid-cols-1 md:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))_repeat(2,minmax(0,1fr))_32px] gap-2 items-end p-3 rounded-lg border border-border bg-card"
+                    >
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Facility name</label>
+                        <Input
+                          value={f.name}
+                          placeholder="e.g. SVB Line of Credit"
+                          onChange={(e) => updateFacility(f.id, { name: e.target.value })}
+                          className="h-9 mt-1"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Total facility</label>
+                        <div className="relative mt-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">$</span>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={f.facility_amount || ''}
+                            placeholder="500000"
+                            onChange={(e) => updateFacility(f.id, { facility_amount: Number(e.target.value) })}
+                            className="pl-6 h-9 text-right tabular-nums"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Currently drawn</label>
+                        <div className="relative mt-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">$</span>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={f.initial_drawn || ''}
+                            placeholder="0"
+                            onChange={(e) => updateFacility(f.id, { initial_drawn: Number(e.target.value) })}
+                            className="pl-6 h-9 text-right tabular-nums"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Available LOC</label>
+                        <div className="h-9 mt-1 px-3 rounded-md border border-dashed border-amber-500/40 bg-amber-500/5 text-amber-300 flex items-center justify-end gap-1.5 text-sm font-medium tabular-nums">
+                          <Lock className="h-3 w-3" />
+                          {available.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Start date</label>
+                        <div className="mt-1">
+                          <DatePickerField
+                            value={f.start_date}
+                            onChange={(iso) => updateFacility(f.id, { start_date: iso || '' })}
+                            placeholder="Start"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Maturity (end)</label>
+                        <div className="mt-1">
+                          <DatePickerField
+                            value={f.end_date}
+                            onChange={(iso) => updateFacility(f.id, { end_date: iso })}
+                            placeholder="End date"
+                          />
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeFacility(f.id)}
+                        title="Remove facility"
+                        className="h-9 w-9 text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
           {drafts.length === 0 ? (
             <div className="flex flex-col items-center justify-center text-center py-16 px-6">
               <div className="h-14 w-14 rounded-2xl bg-muted/60 border border-border flex items-center justify-center mb-4">
