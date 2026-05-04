@@ -692,17 +692,31 @@ export function ManagementSnapshotDashboard({
           >
             {visibleCards.map(({ cardId, props }) => (
               <div key={cardId} className="relative group">
-                {/* Pencil edit button for all cards */}
-                {onEditCard && (
-                  <div className="absolute top-1.5 right-1.5 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={(e) => { e.stopPropagation(); onEditCard(cardId); }}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
+                {/* Edit & delete chrome */}
+                {(onEditCard || (isEditMode && onDeleteCard)) && (
+                  <div className="absolute top-1.5 right-1.5 z-20 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {onEditCard && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Edit widget"
+                        className="h-7 w-7"
+                        onClick={(e) => { e.stopPropagation(); onEditCard(cardId); }}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {isEditMode && onDeleteCard && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Remove widget"
+                        className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive"
+                        onClick={(e) => { e.stopPropagation(); onDeleteCard(cardId); }}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                   </div>
                 )}
                 {cardId === 'total-revenue-detail' ? (
