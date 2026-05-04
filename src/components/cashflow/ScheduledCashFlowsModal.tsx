@@ -599,6 +599,26 @@ export function ScheduledCashFlowsModal({
                               ))}
                             </SelectGroup>
                           )}
+                          {creditFacilities.length > 0 && d.flow_type === 'cash_in' && (
+                            <SelectGroup>
+                              <SelectLabel>Line of Credit Draws</SelectLabel>
+                              {creditFacilities.map((f) => (
+                                <SelectItem key={`loc-draw-${f.id}`} value={`${LOC_DRAW_PREFIX} ${f.name}`}>
+                                  LOC Draw — {f.name}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          )}
+                          {creditFacilities.length > 0 && d.flow_type === 'cash_out' && (
+                            <SelectGroup>
+                              <SelectLabel>Line of Credit Repayments</SelectLabel>
+                              {creditFacilities.map((f) => (
+                                <SelectItem key={`loc-repay-${f.id}`} value={`${LOC_REPAY_PREFIX} ${f.name}`}>
+                                  LOC Repayment — {f.name}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          )}
                         </SelectContent>
                       </Select>
 
