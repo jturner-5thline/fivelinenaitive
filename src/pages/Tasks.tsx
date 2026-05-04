@@ -850,38 +850,63 @@ export default function Tasks() {
           </Select>
 
           {/* Deal filter */}
-          {uniqueDeals.length > 0 && (
+          {allDealOptions.length > 0 && (
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant={filterDealIds.size > 0 ? "secondary" : "outline"} size="sm" className="h-7 text-[11px] gap-1.5" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(20,24,32,0.65)', color: '#9aa3b6' }}>
                   <Briefcase className="h-3 w-3" />
                   {filterDealIds.size > 0
-                    ? `Deal: ${uniqueDeals.filter(([id]) => filterDealIds.has(id)).map(([, name]) => name).join(', ')}`
+                    ? `Deal: ${allDealOptions.filter(([id]) => filterDealIds.has(id)).map(([, name]) => name).join(', ')}`
                     : 'Deal'}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[220px] p-1 max-h-[260px] overflow-auto" align="start">
+              <PopoverContent className="w-[280px] p-0" align="start">
+                <div className="p-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                  <Input
+                    autoFocus
+                    value={dealFilterQuery}
+                    onChange={(e) => setDealFilterQuery(e.target.value)}
+                    placeholder="Search deals…"
+                    className="h-7 text-xs"
+                  />
+                </div>
                 {filterDealIds.size > 0 && (
-                  <>
-                    <button className="w-full text-left px-2 py-1.5 text-xs text-destructive rounded hover:bg-muted" onClick={() => setFilterDealIds(new Set())}>
-                      Clear filter
-                    </button>
-                    <div className="border-t my-1" />
-                  </>
-                )}
-                {uniqueDeals.map(([id, name]) => (
-                  <button key={id} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
-                    onClick={() => {
-                      setFilterDealIds(prev => {
-                        const next = new Set(prev);
-                        if (next.has(id)) next.delete(id); else next.add(id);
-                        return next;
-                      });
-                    }}>
-                    <Checkbox checked={filterDealIds.has(id)} className="h-3.5 w-3.5" />
-                    <span className="truncate">{name}</span>
+                  <button className="w-full text-left px-3 py-1.5 text-xs text-destructive hover:bg-muted border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }} onClick={() => setFilterDealIds(new Set())}>
+                    Clear filter ({filterDealIds.size} selected)
                   </button>
-                ))}
+                )}
+                <div className="max-h-[260px] overflow-auto p-1">
+                  {(() => {
+                    const q = dealFilterQuery.trim().toLowerCase();
+                    // Selected deals always pinned to top so they remain
+                    // visible even when filtered out by search.
+                    const visible = allDealOptions.filter(([id, name]) =>
+                      filterDealIds.has(id) || (!q || name.toLowerCase().includes(q))
+                    );
+                    if (visible.length === 0) {
+                      return <div className="px-2 py-3 text-[11px] text-center text-muted-foreground">No deals match.</div>;
+                    }
+                    const sorted = [...visible].sort((a, b) => {
+                      const aSel = filterDealIds.has(a[0]) ? 0 : 1;
+                      const bSel = filterDealIds.has(b[0]) ? 0 : 1;
+                      if (aSel !== bSel) return aSel - bSel;
+                      return a[1].localeCompare(b[1]);
+                    });
+                    return sorted.map(([id, name]) => (
+                      <button key={id} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
+                        onClick={() => {
+                          setFilterDealIds(prev => {
+                            const next = new Set(prev);
+                            if (next.has(id)) next.delete(id); else next.add(id);
+                            return next;
+                          });
+                        }}>
+                        <Checkbox checked={filterDealIds.has(id)} className="h-3.5 w-3.5" />
+                        <span className="truncate">{name}</span>
+                      </button>
+                    ));
+                  })()}
+                </div>
               </PopoverContent>
             </Popover>
           )}
