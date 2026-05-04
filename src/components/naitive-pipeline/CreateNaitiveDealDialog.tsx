@@ -255,15 +255,32 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
                 <SimpleSelect value={outcome} onChange={(v) => { setOutcome(v); if (!NEEDS_REASON.has(v)) setWhyNot([]); }} options={OUTCOME_OPTIONS} placeholder="Select outcome" />
               </Field>
               {showWhyNot && (
-                <Field label="Why Not Moving Forward">
+                <Field label={`Why Not Moving Forward (pick up to ${MAX_WHY_NOT})`}>
                   <div className="grid grid-cols-2 gap-2 rounded-md border p-3">
-                    {WHY_NOT_OPTIONS.map(opt => (
-                      <label key={opt} className="flex items-center gap-2 text-sm cursor-pointer">
-                        <Checkbox checked={whyNot.includes(opt)} onCheckedChange={() => toggleWhyNot(opt)} />
-                        {opt}
-                      </label>
-                    ))}
+                    {WHY_NOT_OPTIONS.map(opt => {
+                      const checked = whyNot.includes(opt);
+                      const disabled = !checked && whyNot.length >= MAX_WHY_NOT;
+                      return (
+                        <label
+                          key={opt}
+                          className={cn(
+                            'flex items-center gap-2 text-sm',
+                            disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
+                          )}
+                        >
+                          <Checkbox
+                            checked={checked}
+                            disabled={disabled}
+                            onCheckedChange={() => toggleWhyNot(opt)}
+                          />
+                          {opt}
+                        </label>
+                      );
+                    })}
                   </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {whyNot.length}/{MAX_WHY_NOT} selected
+                  </p>
                 </Field>
               )}
             </div>
@@ -274,10 +291,20 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Call Intelligence (optional)</h3>
             <div className="grid grid-cols-1 gap-3">
               <Field label="Pain Points Confirmed">
-                <Textarea value={painPoints} onChange={(e) => setPainPoints(e.target.value)} placeholder="Max 3 bullets" rows={3} />
+                <Textarea
+                  value={painPoints}
+                  onChange={(e) => setPainPoints(limitBullets(e.target.value))}
+                  placeholder="Max 3 bullets — one per line"
+                  rows={3}
+                />
               </Field>
               <Field label="Objections Raised">
-                <Textarea value={objections} onChange={(e) => setObjections(e.target.value)} placeholder="Max 3 bullets" rows={3} />
+                <Textarea
+                  value={objections}
+                  onChange={(e) => setObjections(limitBullets(e.target.value))}
+                  placeholder="Max 3 bullets — one per line"
+                  rows={3}
+                />
               </Field>
               <Field label="Competitors or Tools Mentioned">
                 <Input value={competitors} onChange={(e) => setCompetitors(e.target.value)} />
