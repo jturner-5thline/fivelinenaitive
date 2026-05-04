@@ -140,11 +140,15 @@ Respond ONLY with valid JSON, no markdown fences.`;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="mx-4 mb-3 rounded-lg border border-primary/20 bg-primary/[0.03] overflow-hidden">
+    // Standard naitive tile language (matches DealContextCard, etc. in the
+    // email popup): subtle neutral surface, low-opacity border, platform
+    // radius. No custom primary-tinted background — accent is reserved for
+    // the icon and inline actions.
+    <div className="mx-4 mb-3 rounded-md border border-white/[0.06] bg-background/40 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-primary/10">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.06]">
         <Sparkles className="h-3.5 w-3.5 text-primary" />
-        <span className="text-xs font-semibold text-primary">AI Assist</span>
+        <span className="text-xs font-semibold text-foreground">AI Assist</span>
         <div className="flex-1" />
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
           <X className="h-3 w-3" />
