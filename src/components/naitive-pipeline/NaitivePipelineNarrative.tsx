@@ -15,6 +15,7 @@ import {
   Bold as BoldIcon, Italic as ItalicIcon, Underline as UnderlineIcon,
   List, ListOrdered, Link as LinkIcon, Heading2, Loader2, Check,
   Sparkles, RefreshCw, History as HistoryIcon, Pencil,
+  RotateCcw,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
