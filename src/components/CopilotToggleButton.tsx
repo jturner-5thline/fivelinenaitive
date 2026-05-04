@@ -425,18 +425,17 @@ export function CopilotToggleButton() {
           style={{
             width: `${barWidth}px`,
             maxWidth: 'calc(100% - 32px)',
-            // When the popup is expanded (open and not minimized), deepen the
-            // bar surface slightly so the bar + popup read as a single active
-            // dock. Border language stays the same; only the fill shifts.
-            background: (isOpen && !isMinimized)
-              ? 'rgba(12, 14, 22, 0.92)'
-              : 'rgba(14, 16, 24, 0.6)',
+            background: 'rgba(14, 16, 24, 0.6)',
             backdropFilter: 'blur(18px) saturate(1.4)',
             WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
             border: '1px solid rgba(255, 255, 255, 0.22)',
             boxShadow:
               '0 10px 32px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.25)',
-            transition: 'background 180ms ease-out',
+            transition: 'opacity 180ms ease-out',
+            // When the AI popup is expanded, force the bar into its focused
+            // appearance (full opacity) so it visually reads as the active
+            // input — exact same look as clicking into it.
+            opacity: (isOpen && !isMinimized) ? 1 : undefined,
           }}
           onClick={() => inputRef.current?.focus()}
         >
