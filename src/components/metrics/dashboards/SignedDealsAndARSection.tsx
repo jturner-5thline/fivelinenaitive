@@ -19,6 +19,13 @@ import type {
   DealOriginLocationState,
 } from '@/lib/dealOriginContext';
 import { consumePendingReopen } from '@/lib/dealOriginContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Loader2 } from 'lucide-react';
+
+const AR_DEBT_REALM_ID = '193514877331929';
+const AR_FINSERV_REALM_ID = '9341451968897660';
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
