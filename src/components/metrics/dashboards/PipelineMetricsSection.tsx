@@ -251,7 +251,7 @@ export function PipelineMetricsSection({ selectedQuarter }: { selectedQuarter: i
       </div>
 
       {/* Drilldown modal */}
-      <DrilldownModal
+      <PipelineDrilldownModal
         open={!!drilldown}
         onClose={() => setDrilldown(null)}
         title={drilldown?.title ?? ''}
