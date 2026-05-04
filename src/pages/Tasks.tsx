@@ -146,6 +146,18 @@ export default function Tasks() {
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const quickCreateTriggerRef = useRef<HTMLElement | null>(null);
 
+  // Visible task list columns — default = priority + status only (clean
+  // triage view). Saved per-user so customizations persist.
+  const [visibleTaskColumns, setVisibleTaskColumns] = useUiPreference<TaskColumnId[]>(
+    'task_list_visible_columns',
+    DEFAULT_TASK_COLUMNS,
+  );
+  const toggleTaskColumn = (id: TaskColumnId) => {
+    const set = new Set(visibleTaskColumns);
+    if (set.has(id)) set.delete(id); else set.add(id);
+    setVisibleTaskColumns(Array.from(set));
+  };
+
   // Fetch label assignments for all tasks for filtering
   const { data: allLabelAssignments = [] } = useQuery({
     queryKey: ['all-task-label-assignments'],
