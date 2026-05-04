@@ -2536,8 +2536,19 @@ function MetricsInner() {
 
       {/* Widget Editor - Full Screen Overlay */}
       {editorOpen && (
-        <div className="fixed inset-0 z-50 bg-background">
-          <DatarailsWidgetEditor
+        <div
+          className="fixed inset-0 z-50 bg-background/95"
+          onMouseDown={(e) => {
+            // Close when clicking the backdrop (outside the editor content)
+            if (e.target === e.currentTarget) handleCloseEditor();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') handleCloseEditor();
+          }}
+          tabIndex={-1}
+        >
+          <div onMouseDown={(e) => e.stopPropagation()} className="h-full">
+            <DatarailsWidgetEditor
             initialWidgetConfig={editorInitialConfig}
             onSave={(datarailsConfig) => {
               const chartTypeMap: Record<string, MetricChartType> = {
@@ -2574,7 +2585,8 @@ function MetricsInner() {
               handleCloseEditor();
             }}
             onCancel={() => handleCloseEditor()}
-          />
+            />
+          </div>
         </div>
       )}
 
