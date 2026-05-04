@@ -2378,6 +2378,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               style={{ wordBreak: 'normal', overflowWrap: 'break-word', whiteSpace: 'normal' }}
             >
               {thread.subject}
+              {totalMessages > 1 && (
+                <span className="ml-2 text-sm font-normal text-[hsl(var(--email-text-muted))]">
+                  — {totalMessages} messages
+                </span>
+              )}
             </h2>
 
             {/* Priority signal context badge — shown when this thread was opened
