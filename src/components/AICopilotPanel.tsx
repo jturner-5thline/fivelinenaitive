@@ -443,7 +443,7 @@ function MessageActions({ msg, conversationId }: { msg: { id: string; content: s
 }
 
 export function AICopilotPanel() {
-  const { isOpen, closePanel, messages, addMessage, setMessages, isProcessing, setProcessing, conversationId, setConversationId, conversationMutations, pendingPrompt, setPendingPrompt } = useCopilotStore();
+  const { isOpen, isMinimized, minimizePanel, closePanel, messages, addMessage, setMessages, isProcessing, setProcessing, conversationId, setConversationId, conversationMutations, pendingPrompt, setPendingPrompt } = useCopilotStore();
   const [agentMode, setAgentMode] = useState(false);
   const { user } = useAuth();
   const [input, setInput] = useState('');
@@ -569,22 +569,9 @@ export function AICopilotPanel() {
     ? `${contextOverride.entityName} (override)`
     : autoContextLabel;
 
-  // Focus trap
-  useEffect(() => {
-    if (!isOpen || !panelRef.current) return;
-    const panel = panelRef.current;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key !== 'Tab') return;
-      const focusable = panel.querySelectorAll<HTMLElement>('button, textarea, input, [tabindex]:not([tabindex="-1"])');
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [isOpen]);
+  // Non-modal: no focus trap. The Ask bar at the bottom is the input
+  // surface and retains its own focus management. The panel itself is just
+  // a transcript view that the user can also click into.
 
   // Screen reader announcement for new messages
   useEffect(() => {
@@ -700,7 +687,8 @@ export function AICopilotPanel() {
   }, [isOpen, closePanel]);
 
   useEffect(() => {
-    if (isOpen) setTimeout(() => textareaRef.current?.focus(), 200);
+    // Intentionally no auto-focus inside the panel — typing happens in the
+    // Ask bar below it.
   }, [isOpen]);
 
   // Core function that processes a single message (no guard on isProcessing)
@@ -973,11 +961,11 @@ export function AICopilotPanel() {
   // When the collapsed composer hands off a typed prompt, auto-send it
   // once the panel is open.
   useEffect(() => {
-    if (!isOpen || !pendingPrompt) return;
+    if (!pendingPrompt) return;
     const text = pendingPrompt;
     setPendingPrompt(null);
     handleSend(text);
-  }, [isOpen, pendingPrompt, setPendingPrompt, handleSend]);
+  }, [pendingPrompt, setPendingPrompt, handleSend]);
 
   const handleNudgeAction = useCallback((prompt: string) => {
     handleSend(prompt);
@@ -990,6 +978,9 @@ export function AICopilotPanel() {
     }
   };
 
+  // Keep the component mounted while minimized so in-flight requests, the
+  // streaming response, and the transcript are preserved. Only unmount on
+  // hard close.
   if (!isOpen) return null;
 
   // ── Anchor to the Ask naitive AI bar (centered over main content) ──
