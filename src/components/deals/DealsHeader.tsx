@@ -13,7 +13,6 @@ import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { CreateDealDialog } from './CreateDealDialog';
 import { CreateNaitiveDealDialog } from '@/components/naitive-pipeline/CreateNaitiveDealDialog';
 import { useNaitivePipelineData } from '@/hooks/useNaitivePipelineData';
-import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
