@@ -699,7 +699,12 @@ export function ManagementSnapshotDashboard({
                 )}
                 {/* Edit & delete chrome */}
                 {(onEditCard || (isEditMode && onDeleteCard)) && (
-                  <div className="absolute top-1.5 right-1.5 z-20 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div
+                    className="absolute top-1.5 right-1.5 z-30 flex gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                  >
                     {onEditCard && (
                       <Button
                         variant="ghost"
@@ -768,7 +773,10 @@ export function ManagementSnapshotDashboard({
                     variant="ghost"
                     size="icon"
                     aria-label="Remove section"
-                    className="absolute top-1 right-1 z-20 h-7 w-7 bg-background/70 backdrop-blur border border-border/50 hover:bg-destructive/10 hover:text-destructive opacity-80 hover:opacity-100"
+                    className="absolute top-1 right-1 z-30 h-7 w-7 bg-background/70 backdrop-blur border border-border/50 hover:bg-destructive/10 hover:text-destructive opacity-80 hover:opacity-100"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
                     onClick={(e) => { e.stopPropagation(); onDeleteSection(id); }}
                   >
                     <X className="h-3.5 w-3.5" />
