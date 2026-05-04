@@ -138,6 +138,13 @@ export function useNaitivePipelineData(): NaitivePipelineData {
       closingDate: d.closing_date || null,
       sourcedVia: d.sourced_via || undefined,
       dealClass: (d.deal_class || 'naitive') as 'standard' | 'naitive',
+      // ── Naitive sales-pipeline extras (tacked onto Deal for display) ──
+      icpCategory: d.icp_category || undefined,
+      ownedBy: d.owned_by || undefined,
+      contactTitle: d.contact_title || undefined,
+      nextStep: d.next_step || undefined,
+      nextStepDate: d.next_step_date || undefined,
+      prospectType: d.prospect_type || undefined,
       lenders: (d.deal_lenders || []).map((l: any) => ({
         id: l.id,
         name: l.name || '',
