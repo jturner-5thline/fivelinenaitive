@@ -346,6 +346,10 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
         .join('');
       onBodyChange(html);
       toast.success('Polished draft applied');
+      try {
+        const { logUsage } = await import('@/lib/usageLogger');
+        logUsage({ feature_type: 'EMAIL_DRAFT', feature_subtype: 'polished' });
+      } catch { /* ignore */ }
 
       if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
       undoTimerRef.current = setTimeout(() => setPrePolishBody(null), 10000);
