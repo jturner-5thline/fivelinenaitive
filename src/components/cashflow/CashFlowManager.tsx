@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo, memo } from 'react';
 import type {
   DailyData, WeeklyData, SidebarData, RecurringTag,
   PlanSnapshot, UndoSnapshot, ActivityLogEntry, ExportArchiveEntry,
-  ExportFlag, RoleMode, ActiveTab, ThemeMode, WeeklyOverrides,
+  ExportFlag, RoleMode, ActiveTab, ThemeMode, WeeklyOverrides, CreditFacility,
 } from './types';
 import {
   SEED_SIDEBAR_DATA,
@@ -424,6 +424,7 @@ export function CashFlowManager() {
   const [theme, setTheme] = useState<ThemeMode>('dark');
   const [recurringTags, setRecurringTags] = useState<RecurringTag[]>([]);
   const [weeklyOverrides, setWeeklyOverrides] = useState<WeeklyOverrides>({});
+  const [creditFacilities, setCreditFacilities] = useState<CreditFacility[]>([]);
 
   // Auto-save daily data + recurring tags to DB when they change (debounced)
   useEffect(() => {
@@ -439,6 +440,7 @@ export function CashFlowManager() {
             daily_data: dailyData,
             recurring_tags: recurringTags,
             weekly_overrides: weeklyOverrides,
+            credit_facilities: creditFacilities,
             updated_at: new Date().toISOString(),
           } as any, { onConflict: 'company_id' });
       } catch (err) {
@@ -449,7 +451,7 @@ export function CashFlowManager() {
     return () => {
       if (dailySaveTimerRef.current) clearTimeout(dailySaveTimerRef.current);
     };
-  }, [company?.id, dailyData, recurringTags, weeklyOverrides, role]);
+  }, [company?.id, dailyData, recurringTags, weeklyOverrides, creditFacilities, role]);
 
   // Date filter with debounce
   const [filterYears, setFilterYears] = useState<string[]>([]);
