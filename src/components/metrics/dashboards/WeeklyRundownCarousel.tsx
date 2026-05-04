@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useRef, ReactNode, TouchEvent } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { WeeklyRundownReadOnlyCashflow } from './WeeklyRundownReadOnlyCashflow';
-import { WeeklyRundownPipelineClientsPage } from './WeeklyRundownPipelineClientsPage';
 import { WeeklyRundownOpsProjectsPage } from './WeeklyRundownOpsProjectsPage';
 
 interface WeeklyRundownCarouselProps {
@@ -51,10 +50,6 @@ export function WeeklyRundownCarousel({ page1 }: WeeklyRundownCarouselProps) {
   const PAGES: { title: string; render: () => ReactNode }[] = [
     { title: 'Weekly Rundown', render: () => page1 },
     { title: 'Weekly Cashflow', render: () => <WeeklyRundownReadOnlyCashflow /> },
-    {
-      title: 'Pipeline & Clients',
-      render: () => <WeeklyRundownPipelineClientsPage />,
-    },
     {
       title: 'Ops & Projects',
       render: () => <WeeklyRundownOpsProjectsPage />,
