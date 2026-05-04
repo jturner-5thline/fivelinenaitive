@@ -184,22 +184,43 @@ function weeklyBuckets(deals: Deal[], history: NaitiveStageHistoryRow[]) {
   return { activity, sources, dm: dmFinal };
 }
 
+function normalizeReasons(raw: unknown): string[] {
+  const split = (s: string) =>
+    s.split(/\n|;|,|\u2022/g).map((v) => v.trim()).filter(Boolean);
+  if (raw == null) return [];
+  if (typeof raw === 'string') return split(raw);
+  if (Array.isArray(raw)) {
+    return raw.flatMap((v) => {
+      if (typeof v === 'string') return split(v);
+      if (v && typeof v === 'object') {
+        const label = (v as any).label ?? (v as any).value ?? (v as any).name;
+        return typeof label === 'string' ? split(label) : [];
+      }
+      return [];
+    });
+  }
+  if (typeof raw === 'object') {
+    const label = (raw as any).label ?? (raw as any).value ?? (raw as any).name;
+    return typeof label === 'string' ? split(label) : [];
+  }
+  return [];
+}
+
 function topReason(deals: Deal[], from: Date, to: Date): { label: string; count: number } | null {
   const counts = new Map<string, number>();
   for (const d of deals) {
-    const u = new Date(d.updatedAt);
-    if (!inRange(u, from, to)) continue;
-    const raw = d.whyNotMovingForward;
-    if (!raw) continue;
-    raw
-      .split(/\n|;|,|\u2022/g)
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .forEach((tok) => {
+    try {
+      const u = new Date(d.updatedAt);
+      if (!inRange(u, from, to)) continue;
+      const tokens = normalizeReasons(d.whyNotMovingForward);
+      for (const tok of tokens) {
         const head = tok.split('—')[0].trim();
-        if (!head) return;
+        if (!head) continue;
         counts.set(head, (counts.get(head) || 0) + 1);
-      });
+      }
+    } catch {
+      // skip malformed record
+    }
   }
   const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
   if (sorted.length === 0 || sorted[0][1] === 0) return null;
