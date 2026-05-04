@@ -18,6 +18,7 @@ import { useDashboardCardData } from '@/hooks/useDashboardCardData';
 import { type WidgetConfig, type TimeWindow, type KPIDetailCardConfig, type NegativeStylingConfig, DEFAULT_KPI_DETAIL_CARD_CONFIG } from '@/components/widget-editor/widgetTypes';
 import { KPIDetailCard } from '@/components/metrics/KPIDetailCard';
 import { DraggableGridLayout } from '@/components/metrics/DraggableGridLayout';
+import { RevenueByMonthChart } from '@/components/metrics/RevenueByMonthChart';
 import { type GridLayoutItem } from '@/hooks/useGridLayout';
 import {
   DropdownMenu,
@@ -583,49 +584,57 @@ export function ManagementSnapshotDashboard({
 
   return (
     <div className="space-y-6">
-      <DraggableGridLayout
-        layout={gridLayout}
-        onLayoutChange={onGridLayoutChange}
-        isEditMode={isEditMode}
-        rowHeight={60}
-        // Edit-mode frame: keep the dashed outline so the editable region is
-        // clearly delimited, but drop the tinted fill so the section reads as
-        // an open transparent area rather than a boxed-in surface.
-        className={cn(isEditMode && 'p-2 rounded-xl border-2 border-dashed border-primary/20')}
-      >
-        {visibleCards.map(({ cardId, props }) => (
-          <div key={cardId} className="relative group">
-            {/* Pencil edit button for all cards */}
-            {onEditCard && (
-              <div className="absolute top-1.5 right-1.5 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={(e) => { e.stopPropagation(); onEditCard(cardId); }}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
+      {/* Top row: Revenue summary KPI tile + Revenue by Month chart side-by-side */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+        <div className="min-w-0">
+          <DraggableGridLayout
+            layout={gridLayout}
+            onLayoutChange={onGridLayoutChange}
+            isEditMode={isEditMode}
+            rowHeight={60}
+            // Edit-mode frame: keep the dashed outline so the editable region is
+            // clearly delimited, but drop the tinted fill so the section reads as
+            // an open transparent area rather than a boxed-in surface.
+            className={cn(isEditMode && 'p-2 rounded-xl border-2 border-dashed border-primary/20')}
+          >
+            {visibleCards.map(({ cardId, props }) => (
+              <div key={cardId} className="relative group">
+                {/* Pencil edit button for all cards */}
+                {onEditCard && (
+                  <div className="absolute top-1.5 right-1.5 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={(e) => { e.stopPropagation(); onEditCard(cardId); }}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
+                {cardId === 'total-revenue-detail' ? (
+                  <KPIDetailCard
+                    kpiConfig={cardConfigs[cardId]?.kpiDetailConfig ?? TOTAL_REVENUE_DETAIL_KPI}
+                    datarailsConfig={props.datarailsConfig}
+                    timeWindow={props.timeWindow}
+                    entityFilter={props.entityFilter}
+                    isEditMode={isEditMode}
+                    selectedPeriod={selectedQuarter}
+                  />
+                ) : cardId === 'avg-rev-per-client' ? (
+                  <AvgRevenuePerClientWidget />
+                ) : (
+                  <GenericDashboardCard {...props} />
+                )}
               </div>
-            )}
-            {cardId === 'total-revenue-detail' ? (
-              <KPIDetailCard
-                kpiConfig={cardConfigs[cardId]?.kpiDetailConfig ?? TOTAL_REVENUE_DETAIL_KPI}
-                datarailsConfig={props.datarailsConfig}
-                timeWindow={props.timeWindow}
-                entityFilter={props.entityFilter}
-                isEditMode={isEditMode}
-                selectedPeriod={selectedQuarter}
-              />
-            ) : cardId === 'avg-rev-per-client' ? (
-              <AvgRevenuePerClientWidget />
-            ) : (
-              <GenericDashboardCard {...props} />
-            )}
-          </div>
-        ))}
-        {children}
-      </DraggableGridLayout>
+            ))}
+            {children}
+          </DraggableGridLayout>
+        </div>
+        <div className="min-w-0">
+          <RevenueByMonthChart />
+        </div>
+      </div>
 
       {/* Revenue Quarterly Section */}
       <RevenueQuarterlySection selectedQuarter={selectedQuarter} />
