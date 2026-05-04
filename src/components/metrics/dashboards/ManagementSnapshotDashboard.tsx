@@ -5,7 +5,6 @@ import { PipelineMetricWidget, CombinedPipelineMetricWidget, type PipelineMetric
 import { DealsSignedWidget, FinServClientsSignedWidget, OutstandingARWidget } from './SignedDealsAndARSection';
 import { DebtProfitWidget, FinServProfitWidget } from './ProfitByEntitySection';
 import {
-  ExecWeekSelectorWidget,
   ExecTotalActiveDealVolumeWidget,
   ExecDealsClosedWidget,
   ExecDealsByStatusWidget,
@@ -677,7 +676,10 @@ export function ManagementSnapshotDashboard({
     'sd-outstanding-ar': <OutstandingARWidget />,
     'pe-debt-profit': <DebtProfitWidget selectedQuarter={selectedQuarter} />,
     'pe-finserv-profit': <FinServProfitWidget selectedQuarter={selectedQuarter} />,
-    'exec-week-selector': <ExecWeekSelectorWidget />,
+    // The dedicated Mon→Sun week selector tile has been retired in favour of
+    // the unified header timeframe picker. The id remains for backwards
+    // compatibility with persisted layouts but renders nothing.
+    'exec-week-selector': null,
     'exec-total-active-deal-volume': <ExecTotalActiveDealVolumeWidget />,
     'exec-deals-closed': <ExecDealsClosedWidget />,
     'exec-deals-by-status': <ExecDealsByStatusWidget />,
