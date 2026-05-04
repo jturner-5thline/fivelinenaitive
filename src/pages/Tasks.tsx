@@ -1165,6 +1165,7 @@ export default function Tasks() {
               assigned_to: input.assigned_to,
               recurrence_rule: input.recurrence_rule,
               recurrence_end_date: input.recurrence_end_date,
+              deal_id: input.deal_id || undefined,
             });
             toast.success(`Task created: "${input.title}"`);
             const newId = (created as any)?.id as string | undefined;
