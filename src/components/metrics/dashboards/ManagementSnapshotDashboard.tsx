@@ -9,6 +9,7 @@ import {
   ExecDealsClosedWidget,
   ExecDealsByStatusWidget,
 } from './ExecutiveDashboard';
+import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -195,6 +196,7 @@ interface GenericDashboardCardProps {
   color: string;
   visualization: CardVisualization;
   timeWindow: TimeWindow;
+  customRange?: { start: string; end: string };
   entityName: string | null;
   datarailsConfig: Partial<WidgetConfig> | undefined | null;
   entityFilter?: string | null;
@@ -214,6 +216,7 @@ function GenericDashboardCard({
   color,
   visualization,
   timeWindow,
+  customRange,
   entityName,
   datarailsConfig,
   entityFilter,
@@ -231,6 +234,7 @@ function GenericDashboardCard({
     datarailsConfig,
     timeWindow,
     entityFilter,
+    customRange,
   );
 
   const renderEditActions = () => {
