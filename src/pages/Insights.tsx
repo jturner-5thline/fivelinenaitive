@@ -1585,7 +1585,7 @@ export default function Metrics() {
   // widget across, above, below, or between sections in edit mode.
   const SNAPSHOT_SUB_WIDGET_IDS: import('@/components/metrics/dashboards/ManagementSnapshotDashboard').WeeklyRundownSubWidgetId[] = [
     'rev-debt','rev-finserv',
-    'pm-deals-on-board','pm-debt-dollar-on-board','pm-debt-deals-signed','pm-debt-dollar-signed','pm-finserv-deals-on-board','pm-finserv-clients-signed',
+    'pm-debt-on-board-combined','pm-debt-signed-combined','pm-finserv-deals-on-board','pm-finserv-clients-signed',
     'sd-deals-signed','sd-finserv-clients-signed','sd-outstanding-ar',
     'pe-debt-profit','pe-finserv-profit',
   ];
@@ -1613,10 +1613,8 @@ export default function Metrics() {
       // Sub-widgets — placed grouped by their original section
       { i: 'rev-debt',                  x: 0, y: 12, w: 6, h: 6, minW: 4, minH: 4 },
       { i: 'rev-finserv',               x: 6, y: 12, w: 6, h: 6, minW: 4, minH: 4 },
-      { i: 'pm-deals-on-board',         x: 0, y: 18, w: 2, h: 2, minW: 2, minH: 2 },
-      { i: 'pm-debt-dollar-on-board',   x: 2, y: 18, w: 2, h: 2, minW: 2, minH: 2 },
-      { i: 'pm-debt-deals-signed',      x: 4, y: 18, w: 2, h: 2, minW: 2, minH: 2 },
-      { i: 'pm-debt-dollar-signed',     x: 6, y: 18, w: 2, h: 2, minW: 2, minH: 2 },
+      { i: 'pm-debt-on-board-combined', x: 0, y: 18, w: 4, h: 2, minW: 3, minH: 2 },
+      { i: 'pm-debt-signed-combined',   x: 4, y: 18, w: 4, h: 2, minW: 3, minH: 2 },
       { i: 'pm-finserv-deals-on-board', x: 8, y: 18, w: 2, h: 2, minW: 2, minH: 2 },
       { i: 'pm-finserv-clients-signed', x: 10, y: 18, w: 2, h: 2, minW: 2, minH: 2 },
       { i: 'sd-deals-signed',           x: 0, y: 20, w: 4, h: 6, minW: 4, minH: 4 },
