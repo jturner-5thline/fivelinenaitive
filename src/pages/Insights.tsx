@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
-import { buildQuarterOptions, getCurrentQuarter, type QuarterOption } from "@/hooks/useQBQuarterlyRevenue";
+import { type QuarterOption } from "@/hooks/useQBQuarterlyRevenue";
 import { format, subMonths, subDays, parseISO } from "date-fns";
 import {
   BarChart,
@@ -29,7 +29,8 @@ import { RepPerformanceModelGrid } from "@/components/metrics/rep-model/RepPerfo
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
 import { DraggableGridLayout } from "@/components/metrics/DraggableGridLayout";
-import { PeriodPicker } from "@/components/metrics/PeriodPicker";
+import { InsightsTimeframePicker } from "@/components/metrics/InsightsTimeframePicker";
+import { InsightsTimeframeProvider, useInsightsTimeframe } from "@/contexts/InsightsTimeframeContext";
 import { StickyDashboardHeader } from "@/components/layout/StickyDashboardHeader";
 import { EditableDashboardWrapper } from "@/components/metrics/EditableDashboardWrapper";
 import { GridWidgetCard } from "@/components/metrics/GridWidgetCard";
@@ -1372,7 +1373,7 @@ function renderStatContent(
   }
 }
 
-export default function Metrics() {
+function MetricsInner() {
   const { data: metrics, rawDeals, isLoading, isFetching, error, refetch } = useMetricsData();
   const { data: qbMetrics, rawInvoices, rawPayments, rawExpenses } = useQuickBooksMetrics();
   const { data: hsMetrics } = useHubSpotMetrics();
@@ -1465,10 +1466,13 @@ export default function Metrics() {
   const isCustomDashboard = selectedDashboard.startsWith('custom-');
   const activeCustomDashboard = customDashboards.find(d => d.id === selectedDashboard);
 
-  // ── Global dashboard quarter selector (Management Snapshot) ──
-  const dashboardQuarterOptions = useMemo(() => buildQuarterOptions(8), []);
-  const [dashboardSelectedQuarter, setDashboardSelectedQuarter] = useState<QuarterOption>(
-    () => getCurrentQuarter(),
+  // ── Global dashboard timeframe (drives every widget on Weekly Rundown) ──
+  const { selectedQuarter: dashboardSelectedQuarter } = useInsightsTimeframe();
+  // Legacy compat: a few places still expect a `quarterOptions` array. Build a
+  // single-element list containing the current selection so they keep working.
+  const dashboardQuarterOptions = useMemo<QuarterOption[]>(
+    () => [dashboardSelectedQuarter],
+    [dashboardSelectedQuarter],
   );
   const allDashboardOptions = [
     ...DASHBOARD_OPTIONS,
@@ -2287,11 +2291,7 @@ export default function Metrics() {
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               {selectedDashboard === 'management-snapshot' && (
-                <PeriodPicker
-                  quarterOptions={dashboardQuarterOptions}
-                  selected={dashboardSelectedQuarter}
-                  onChange={setDashboardSelectedQuarter}
-                />
+                <InsightsTimeframePicker />
               )}
 
               <DropdownMenu>
@@ -2757,5 +2757,13 @@ export default function Metrics() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+export default function Metrics() {
+  return (
+    <InsightsTimeframeProvider>
+      <MetricsInner />
+    </InsightsTimeframeProvider>
   );
 }

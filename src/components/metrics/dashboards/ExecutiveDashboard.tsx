@@ -31,6 +31,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { PieGlassDefs, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
 import { GlassCard, GlassCardHeader, GlassCardBody, GLASS_TOKENS } from '@/components/metrics/GlassCard';
+import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 
 // ── Shared chart primitives (axis/grid/tooltip) ──────────────────────────────
 // Mirrors the Liquid Glass treatment used by Profit by Entity / Revenue
@@ -708,7 +709,15 @@ export function ExecWeekSelectorWidget() {
 }
 
 export function ExecTotalActiveDealVolumeWidget() {
-  const { selectedWindow } = useExecutiveWeekWindow();
+  const tf = useInsightsTimeframeOptional();
+  const fallback = useExecutiveWeekWindow();
+  const selectedWindow: ExecKpiWindow = tf
+    ? {
+        start: new Date(tf.timeframe.start + 'T00:00:00'),
+        end: new Date(tf.timeframe.end + 'T23:59:59.999'),
+        label: tf.timeframe.label,
+      }
+    : fallback.selectedWindow;
   const kpis = useExecutiveTopRowKpis(selectedWindow);
   const [drilldown, setDrilldown] = useState<ExecKpiDrilldown | null>(null);
   const fmtMoney = (v: number | null) => (v === null || !Number.isFinite(v) ? '—' : formatCurrency(v));
@@ -739,7 +748,15 @@ export function ExecTotalActiveDealVolumeWidget() {
 }
 
 export function ExecDealsClosedWidget() {
-  const { selectedWindow } = useExecutiveWeekWindow();
+  const tf = useInsightsTimeframeOptional();
+  const fallback = useExecutiveWeekWindow();
+  const selectedWindow: ExecKpiWindow = tf
+    ? {
+        start: new Date(tf.timeframe.start + 'T00:00:00'),
+        end: new Date(tf.timeframe.end + 'T23:59:59.999'),
+        label: tf.timeframe.label,
+      }
+    : fallback.selectedWindow;
   const kpis = useExecutiveTopRowKpis(selectedWindow);
   const [drilldown, setDrilldown] = useState<ExecKpiDrilldown | null>(null);
   const fmtCount = (v: number | null) => (v === null || !Number.isFinite(v) ? '—' : v.toLocaleString());
@@ -770,6 +787,14 @@ export function ExecDealsClosedWidget() {
 }
 
 export function ExecDealsByStatusWidget() {
-  const { selectedWindow } = useExecutiveWeekWindow();
+  const tf = useInsightsTimeframeOptional();
+  const fallback = useExecutiveWeekWindow();
+  const selectedWindow: ExecKpiWindow = tf
+    ? {
+        start: new Date(tf.timeframe.start + 'T00:00:00'),
+        end: new Date(tf.timeframe.end + 'T23:59:59.999'),
+        label: tf.timeframe.label,
+      }
+    : fallback.selectedWindow;
   return <DealsByStatusPieChart window={{ start: selectedWindow.start, end: selectedWindow.end }} />;
 }

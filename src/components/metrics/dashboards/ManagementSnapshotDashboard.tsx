@@ -5,11 +5,11 @@ import { PipelineMetricWidget, CombinedPipelineMetricWidget, type PipelineMetric
 import { DealsSignedWidget, FinServClientsSignedWidget, OutstandingARWidget } from './SignedDealsAndARSection';
 import { DebtProfitWidget, FinServProfitWidget } from './ProfitByEntitySection';
 import {
-  ExecWeekSelectorWidget,
   ExecTotalActiveDealVolumeWidget,
   ExecDealsClosedWidget,
   ExecDealsByStatusWidget,
 } from './ExecutiveDashboard';
+import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -196,6 +196,7 @@ interface GenericDashboardCardProps {
   color: string;
   visualization: CardVisualization;
   timeWindow: TimeWindow;
+  customRange?: { start: string; end: string };
   entityName: string | null;
   datarailsConfig: Partial<WidgetConfig> | undefined | null;
   entityFilter?: string | null;
@@ -215,6 +216,7 @@ function GenericDashboardCard({
   color,
   visualization,
   timeWindow,
+  customRange,
   entityName,
   datarailsConfig,
   entityFilter,
@@ -232,6 +234,7 @@ function GenericDashboardCard({
     datarailsConfig,
     timeWindow,
     entityFilter,
+    customRange,
   );
 
   const renderEditActions = () => {
@@ -569,6 +572,11 @@ export function ManagementSnapshotDashboard({
   onDeleteSubWidget,
 }: ManagementSnapshotDashboardProps) {
   const { data: qbStatus } = useQuickBooksStatus();
+  // Global Weekly Rundown timeframe — overrides per-card window so all
+  // widgets reflect the same date range (or live snapshot when 'all').
+  const tf = useInsightsTimeframeOptional();
+  const globalTimeWindow = (tf?.timeWindow ?? null) as TimeWindow | null;
+  const globalCustomRange = tf?.customRange;
 
   const resolveEntityName = (entityFilter?: string) => {
     if (!entityFilter || entityFilter === 'all') return null;
@@ -600,13 +608,15 @@ export function ManagementSnapshotDashboard({
   ): GenericDashboardCardProps => {
     const cfg = cardConfigs[cardId];
     const variant = cfg?.sizeVariant || fallbackSizeVariant;
+    const effectiveWindow = (globalTimeWindow ?? cfg?.timeWindow ?? fallbackWindow) as TimeWindow;
     return {
       cardId,
       title: cfg?.title || fallbackTitle,
       color: cfg?.color || fallbackColor,
       entityName: resolveEntityName(cfg?.entityFilter),
       visualization: resolveVisualization(cfg),
-      timeWindow: (cfg?.timeWindow || fallbackWindow) as TimeWindow,
+      timeWindow: effectiveWindow,
+      customRange: globalTimeWindow === 'custom' ? globalCustomRange : undefined,
       datarailsConfig: cfg?.datarailsConfig as Partial<WidgetConfig> | undefined,
       entityFilter: cfg?.entityFilter,
       isEditMode,
@@ -615,7 +625,9 @@ export function ManagementSnapshotDashboard({
       footerLabel: cfg?.footerLabel,
       onEditCard,
       onDeleteCard,
-      onTimeWindowChange,
+      // Per-card window override is disabled while the global selector drives
+      // the dashboard. Keep the prop available for non-Insights consumers.
+      onTimeWindowChange: globalTimeWindow ? undefined : onTimeWindowChange,
       chartHeight: variant === 'metric' ? 100 : 200,
     };
   };
@@ -677,7 +689,10 @@ export function ManagementSnapshotDashboard({
     'sd-outstanding-ar': <OutstandingARWidget />,
     'pe-debt-profit': <DebtProfitWidget selectedQuarter={selectedQuarter} />,
     'pe-finserv-profit': <FinServProfitWidget selectedQuarter={selectedQuarter} />,
-    'exec-week-selector': <ExecWeekSelectorWidget />,
+    // The dedicated Mon→Sun week selector tile has been retired in favour of
+    // the unified header timeframe picker. The id remains for backwards
+    // compatibility with persisted layouts but renders nothing.
+    'exec-week-selector': null,
     'exec-total-active-deal-volume': <ExecTotalActiveDealVolumeWidget />,
     'exec-deals-closed': <ExecDealsClosedWidget />,
     'exec-deals-by-status': <ExecDealsByStatusWidget />,
@@ -702,7 +717,10 @@ export function ManagementSnapshotDashboard({
     'exec-deals-by-status':         { minW: 4, minH: 5, maxH: 12 },
   };
 
-  const visibleSubWidgets = ALL_SUB_WIDGET_IDS.filter(id => !hiddenSubWidgets.includes(id));
+  // 'exec-week-selector' is retired; its layout slot is collapsed.
+  const visibleSubWidgets = ALL_SUB_WIDGET_IDS.filter(
+    id => id !== 'exec-week-selector' && !hiddenSubWidgets.includes(id),
+  );
   const includeExec = !hiddenSections.includes('executive-dashboard');
 
   const UNIFIED_CONSTRAINTS: Record<string, WidgetConstraint> = {
