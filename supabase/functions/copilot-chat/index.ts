@@ -4214,6 +4214,7 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         task_type: "task",
         assigned_to: assignee,
         assigned_by: userId,
+        created_by: userId,
         company_id: companyId,
         sync_source: "copilot",
       };
