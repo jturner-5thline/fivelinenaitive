@@ -5,7 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { DollarSign, TrendingUp, Building2, Loader2 } from 'lucide-react';
+import { DollarSign, TrendingUp, Building2, Loader2, Inbox, RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Skeleton as RowSkeleton } from '@/components/ui/skeleton';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend,
 } from 'recharts';
@@ -265,11 +267,47 @@ function DrilldownModal({
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <div className="border rounded-lg overflow-hidden" aria-busy="true" aria-live="polite">
+            <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/30 text-xs text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>Loading invoices for {month?.label ?? 'selected month'}…</span>
+            </div>
+            <div className="divide-y">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 px-3 py-2">
+                  <RowSkeleton className="h-3 w-20" />
+                  <RowSkeleton className="h-3 w-16" />
+                  <RowSkeleton className="h-3 flex-1" />
+                  <RowSkeleton className="h-3 w-20" />
+                </div>
+              ))}
+            </div>
           </div>
         ) : !invoices?.length ? (
-          <p className="text-sm text-muted-foreground text-center py-8">No invoices found for this month.</p>
+          <div className="border border-dashed rounded-lg flex flex-col items-center justify-center text-center py-10 px-6">
+            <div className="rounded-full bg-muted/40 p-3 mb-3">
+              <Inbox className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-medium text-foreground">No invoices match these filters</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+              Nothing was billed in <span className="font-medium text-foreground">{month?.label ?? 'this month'}</span>
+              {realmFilter !== 'all' && (
+                <> for <span className="font-medium text-foreground">{REALM_LABELS[realmFilter] ?? realmFilter}</span></>
+              )}
+              . Try a different month{availableRealms.length > 1 && ' or entity'}.
+            </p>
+            {(realmFilter !== 'all' && availableRealms.length > 1) && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 h-7 text-xs"
+                onClick={() => setRealmFilter('all')}
+              >
+                <RotateCcw className="h-3 w-3 mr-1.5" />
+                Show all entities
+              </Button>
+            )}
+          </div>
         ) : (
           <div className="border rounded-lg overflow-hidden">
             <table className="w-full text-sm">
