@@ -52,20 +52,26 @@ serve(async (req) => {
       });
     }
 
-    // Get active deals for this company
+    // Get deals (broader: include archived too so historical calls match)
     const { data: deals } = await supabase
       .from("deals")
       .select("id, company, status, stage, user_id, updated_at")
       .eq("company_id", company_id)
-      .neq("status", "archived")
       .order("updated_at", { ascending: false })
-      .limit(200);
+      .limit(1000);
 
-    if (!deals?.length) {
-      return new Response(JSON.stringify({ ok: true, processed: meetings.length, suggestions: 0, reason: "no_active_deals" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Get CRM contacts (for domain/email matching)
+    const { data: contacts } = await supabase
+      .from("contacts")
+      .select("id, full_name, email, primary_company_id, crm_company_id")
+      .eq("org_company_id", company_id)
+      .limit(5000);
+
+    // Get CRM companies
+    const { data: crmCompanies } = await supabase
+      .from("companies")
+      .select("id, name, primary_domain, domains")
+      .limit(5000);
 
     // Get deal aliases
     const { data: aliases } = await supabase
@@ -92,16 +98,21 @@ serve(async (req) => {
     });
 
     // Get deal lenders for matching
-    const { data: dealLenders } = await supabase
+    const dealIds = (deals || []).map((d: any) => d.id);
+    const { data: dealLenders } = dealIds.length ? await supabase
       .from("deal_lenders")
-      .select("deal_id, name, contact_email")
-      .in("deal_id", deals.map((d: any) => d.id));
+      .select("deal_id, name")
+      .in("deal_id", dealIds) : { data: [] as any[] };
 
     const lenderMap: Record<string, any[]> = {};
     (dealLenders || []).forEach((l: any) => {
       if (!lenderMap[l.deal_id]) lenderMap[l.deal_id] = [];
       lenderMap[l.deal_id].push(l);
     });
+
+    // Build flat lender directory across all deals (for cross-deal lender matching)
+    const allLenderNames = new Set<string>();
+    (dealLenders || []).forEach((l: any) => { if (l.name) allLenderNames.add(l.name); });
 
     // Get prior feedback for learning
     const { data: priorFeedback } = await supabase
