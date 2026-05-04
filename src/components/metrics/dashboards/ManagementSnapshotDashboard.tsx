@@ -524,6 +524,8 @@ interface ManagementSnapshotDashboardProps {
   hiddenCards?: EditableManagementSnapshotCardId[];
   hiddenSections?: ManagementSnapshotSectionId[];
   onDeleteSection?: (sectionId: ManagementSnapshotSectionId) => void;
+  hiddenSubWidgets?: WeeklyRundownSubWidgetId[];
+  onDeleteSubWidget?: (id: WeeklyRundownSubWidgetId) => void;
   gridLayout: GridLayoutItem[];
   onGridLayoutChange: (layout: GridLayoutItem[], immediate?: boolean) => void;
   /** Global dashboard quarter selection */
@@ -552,6 +554,8 @@ export function ManagementSnapshotDashboard({
   executiveSlot,
   hiddenSections = [],
   onDeleteSection,
+  hiddenSubWidgets = [],
+  onDeleteSubWidget,
 }: ManagementSnapshotDashboardProps) {
   const { data: qbStatus } = useQuickBooksStatus();
 
@@ -648,58 +652,47 @@ export function ManagementSnapshotDashboard({
     'revenue-by-month':      { minW: 5, minH: 4, maxH: 10 },
   };
 
-  // Section-level grid: lets the user drag/resize the whole sections
-  // (Revenue Overview, Pipeline Metrics, Signed Deals & AR, Profit by Entity,
-  // Executive Dashboard) when edit mode is on. Persisted per company.
-  const ALL_SECTION_IDS: ManagementSnapshotSectionId[] = [
-    'revenue-overview',
-    'pipeline-metrics',
-    'signed-deals-ar',
-    'profit-by-entity',
-    'executive-dashboard',
-  ];
-  const SECTION_IDS = ALL_SECTION_IDS.filter(id => !hiddenSections.includes(id));
-  const SECTION_DEFAULT_LAYOUT: GridLayoutItem[] = [
-    { i: 'revenue-overview',    x: 0, y: 0,  w: 12, h: 7, minW: 6, minH: 4 },
-    { i: 'pipeline-metrics',    x: 0, y: 7,  w: 12, h: 7, minW: 6, minH: 4 },
-    { i: 'signed-deals-ar',     x: 0, y: 14, w: 12, h: 7, minW: 6, minH: 4 },
-    { i: 'profit-by-entity',    x: 0, y: 21, w: 12, h: 7, minW: 6, minH: 4 },
-    { i: 'executive-dashboard', x: 0, y: 28, w: 12, h: 10, minW: 6, minH: 5 },
-  ];
-
-  // Sections render their own internal multi-chart layouts, so we want them
-  // wide and tall enough that those layouts don't collapse. They are
-  // reorderable (drag) and resizable in height; width can shrink to half-grid.
-  const SECTION_CONSTRAINTS: Record<string, WidgetConstraint> = {
-    'revenue-overview':    { minW: 6, minH: 5, maxH: 14 },
-    'pipeline-metrics':    { minW: 6, minH: 5, maxH: 14 },
-    'signed-deals-ar':     { minW: 6, minH: 5, maxH: 14 },
-    'profit-by-entity':    { minW: 6, minH: 5, maxH: 14 },
-    'executive-dashboard': { minW: 8, minH: 8, maxH: 20 },
+  // Per-sub-widget renderers — each becomes an independently
+  // draggable/resizable tile in the unified Weekly Rundown grid.
+  const subWidgetRenderers: Record<WeeklyRundownSubWidgetId, React.ReactNode> = {
+    'rev-debt': <DebtRevenueWidget selectedQuarter={selectedQuarter} />,
+    'rev-finserv': <FinServRevenueWidget selectedQuarter={selectedQuarter} />,
+    'pm-deals-on-board':         <PipelineMetricWidget cardId="deals-on-board"          selectedQuarter={selectedQuarter} />,
+    'pm-debt-dollar-on-board':   <PipelineMetricWidget cardId="debt-dollar-on-board"    selectedQuarter={selectedQuarter} />,
+    'pm-debt-deals-signed':      <PipelineMetricWidget cardId="debt-deals-signed"       selectedQuarter={selectedQuarter} />,
+    'pm-debt-dollar-signed':     <PipelineMetricWidget cardId="debt-dollar-signed"      selectedQuarter={selectedQuarter} />,
+    'pm-finserv-deals-on-board': <PipelineMetricWidget cardId="finserv-deals-on-board"  selectedQuarter={selectedQuarter} />,
+    'pm-finserv-clients-signed': <PipelineMetricWidget cardId="finserv-clients-signed"  selectedQuarter={selectedQuarter} />,
+    'sd-deals-signed': <DealsSignedWidget selectedQuarter={selectedQuarter} />,
+    'sd-finserv-clients-signed': <FinServClientsSignedWidget selectedQuarter={selectedQuarter} />,
+    'sd-outstanding-ar': <OutstandingARWidget />,
+    'pe-debt-profit': <DebtProfitWidget selectedQuarter={selectedQuarter} />,
+    'pe-finserv-profit': <FinServProfitWidget selectedQuarter={selectedQuarter} />,
   };
 
-  const sectionContent: Record<string, React.ReactNode> = {
-    'revenue-overview':    <RevenueQuarterlySection selectedQuarter={selectedQuarter} />,
-    'pipeline-metrics':    <PipelineMetricsSection selectedQuarter={selectedQuarter} />,
-    'signed-deals-ar':     <SignedDealsAndARSection selectedQuarter={selectedQuarter} />,
-    'profit-by-entity':    <ProfitByEntitySection selectedQuarter={selectedQuarter} />,
-    'executive-dashboard': (
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Executive Dashboard</h2>
-        </div>
-        {executiveSlot}
-      </div>
-    ),
+  const SUB_WIDGET_CONSTRAINTS: Record<string, WidgetConstraint> = {
+    'rev-debt':    { minW: 4, minH: 4, maxH: 12 },
+    'rev-finserv': { minW: 4, minH: 4, maxH: 12 },
+    'pm-deals-on-board':         { minW: 2, minH: 2, maxH: 5 },
+    'pm-debt-dollar-on-board':   { minW: 2, minH: 2, maxH: 5 },
+    'pm-debt-deals-signed':      { minW: 2, minH: 2, maxH: 5 },
+    'pm-debt-dollar-signed':     { minW: 2, minH: 2, maxH: 5 },
+    'pm-finserv-deals-on-board': { minW: 2, minH: 2, maxH: 5 },
+    'pm-finserv-clients-signed': { minW: 2, minH: 2, maxH: 5 },
+    'sd-deals-signed':           { minW: 4, minH: 4, maxH: 12 },
+    'sd-finserv-clients-signed': { minW: 4, minH: 4, maxH: 12 },
+    'sd-outstanding-ar':         { minW: 3, minH: 4, maxH: 12 },
+    'pe-debt-profit':            { minW: 4, minH: 4, maxH: 12 },
+    'pe-finserv-profit':         { minW: 4, minH: 4, maxH: 12 },
+    'executive-dashboard':       { minW: 8, minH: 8, maxH: 20 },
   };
 
-  // Unified grid: top KPI/chart tiles, full-width section blocks, and any
-  // custom widgets (passed via children) all live in ONE DraggableGridLayout
-  // so users can drag any widget across sections, above sections, or between
-  // sections in edit mode.
+  const visibleSubWidgets = ALL_SUB_WIDGET_IDS.filter(id => !hiddenSubWidgets.includes(id));
+  const includeExec = !hiddenSections.includes('executive-dashboard');
+
   const UNIFIED_CONSTRAINTS: Record<string, WidgetConstraint> = {
     ...TOP_GRID_CONSTRAINTS,
-    ...SECTION_CONSTRAINTS,
+    ...SUB_WIDGET_CONSTRAINTS,
   };
 
   return (
