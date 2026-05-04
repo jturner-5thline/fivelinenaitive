@@ -1361,6 +1361,12 @@ export function CashFlowManager() {
           onClose={() => setScheduledModalOpen(false)}
           extraCashInCategories={customRows.receipts}
           extraCashOutCategories={customRows.disbursements}
+          creditFacilities={creditFacilities}
+          onCreditFacilitiesChange={(next) => {
+            pushUndo('Update credit facilities');
+            setCreditFacilities(next);
+            logAction(`Updated credit facilities (${next.length} configured)`);
+          }}
           onSave={async (entries, deleteIds) => {
             pushUndo(`Update scheduled cash flows`);
             const ok = await saveScheduledItems(entries, deleteIds);
