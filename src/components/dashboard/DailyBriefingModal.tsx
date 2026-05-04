@@ -40,6 +40,8 @@ const PipelineMemoView = lazy(() =>
 );
 import { useAuth } from '@/contexts/AuthContext';
 import { useMorningFollowups, useFollowupActions, type FollowupDealGroup, type FollowupItem } from '@/hooks/useMorningFollowups';
+import { useDealsContext } from '@/contexts/DealsContext';
+import type { Deal } from '@/types/deal';
 
 interface DailyBriefingModalProps {
   open: boolean;
