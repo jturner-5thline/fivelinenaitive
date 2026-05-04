@@ -345,6 +345,8 @@ export function TaskListView({
             onToggleStar={onToggleStar}
             expandedTaskIds={expandedTaskIds}
             onToggleExpanded={toggleExpanded}
+            gridStyle={gridStyle}
+            cols={cols}
           />
         )}
 
@@ -428,6 +430,8 @@ export function TaskListView({
                           isExpanded={expandedTaskIds.has(task.id)}
                           onToggleExpanded={() => toggleExpanded(task.id)}
                           onOpenFullDetail={() => onSelectTask(task.id)}
+                          gridStyle={gridStyle}
+                          cols={cols}
                         />
                       );
                     })}
