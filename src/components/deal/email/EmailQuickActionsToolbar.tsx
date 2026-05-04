@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   FolderUp,
   Building2,
@@ -84,10 +84,9 @@ export function EmailQuickActionsToolbar({
 
   // If the active panel is "save_dr" but no uploadable attachments remain
   // (e.g. user navigated to a different message), collapse it.
-  if (active === 'save_dr' && uploadableCount === 0) {
-    // setState during render is unsafe — schedule for after.
-    queueMicrotask(() => setActive(null));
-  }
+  useEffect(() => {
+    if (active === 'save_dr' && uploadableCount === 0) setActive(null);
+  }, [active, uploadableCount]);
 
   const handleClick = (key: QuickActionKey) => {
     if (key === 'draft') {
