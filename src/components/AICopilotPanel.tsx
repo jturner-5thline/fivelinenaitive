@@ -1014,40 +1014,38 @@ export function AICopilotPanel() {
 
   return (
     <>
-      {/* Backdrop overlay */}
-      <div
-        onClick={closePanel}
-        style={{
-          position: 'fixed', inset: 0, zIndex: 50,
-          background: 'rgba(0, 0, 0, 0.4)',
-          backdropFilter: 'blur(4px)',
-          WebkitBackdropFilter: 'blur(4px)',
-          animation: 'copilot-fade-in 200ms ease-out',
-        }}
-      />
+      {/* No backdrop / scrim — the panel is non-modal and the rest of the
+          page must remain fully interactive. */}
       <div
         ref={panelRef}
-        role="dialog"
-        aria-label="naitive AI"
-        aria-modal="true"
+        role="region"
+        aria-label="naitive AI transcript"
         style={{
           position: 'fixed',
           bottom: bottomFromViewport,
           left: panelLeft,
           transform: 'translateX(-50%)',
           width: panelWidth,
-          height: panelHeight,
+          height: isMinimized ? 0 : panelHeight,
           maxHeight: 'calc(100vh - 48px)',
           zIndex: 51,
           display: 'flex', flexDirection: 'column',
           background: 'rgba(8, 10, 18, 0.92)',
           backdropFilter: 'blur(24px) saturate(1.3)',
           WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
-          borderRadius: 16,
+          // Top corners rounded; bottom corners square so the panel reads as
+          // a continuous surface with the rounded Ask bar that sits below.
+          borderTopLeftRadius: 16,
+          borderTopRightRadius: 16,
+          borderBottomLeftRadius: 0,
+          borderBottomRightRadius: 0,
           border: '1px solid var(--glass-border)',
+          borderBottom: 'none',
           boxShadow: '0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.05)',
           overflow: 'hidden',
-          animation: 'copilot-popup-in 250ms cubic-bezier(0.16, 1, 0.3, 1)',
+          transition: 'height 220ms cubic-bezier(0.16, 1, 0.3, 1), opacity 180ms ease-out',
+          opacity: isMinimized ? 0 : 1,
+          pointerEvents: isMinimized ? 'none' : 'auto',
         }}
       >
         <style>{`
