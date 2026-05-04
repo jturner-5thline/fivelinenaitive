@@ -1392,6 +1392,7 @@ export default function Metrics() {
 
   const [selectedDashboard, setSelectedDashboard] = useState('management-snapshot');
   const [isEditMode, setIsEditMode] = useState(false);
+  const undoStackRef = useRef<Array<{ type: 'card' | 'section'; id: string; label: string; undo: () => void }>>([]);
   const [editorOpen, setEditorOpen] = useState(false);
   const [createDashboardOpen, setCreateDashboardOpen] = useState(false);
   const [newDashboardName, setNewDashboardName] = useState('');
