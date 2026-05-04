@@ -76,7 +76,7 @@ function buildGridTemplate(visible: Set<TaskColumnId>): string {
 }
 
 /** Convenience: ordered list of currently visible optional columns. */
-function visibleColumns(visible: Set<TaskColumnId>) {
+function getVisibleColumns(visible: Set<TaskColumnId>) {
   return OPTIONAL_TASK_COLUMNS.filter(c => visible.has(c.id));
 }
 
