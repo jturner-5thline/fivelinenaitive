@@ -16,8 +16,8 @@ import { NaitiveMilestoneDiamonds } from '@/components/naitive-pipeline/NaitiveM
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { NaitivePipelineKPIStrip } from '@/components/naitive-pipeline/NaitivePipelineKPIStrip';
-import { NaitiveFunnelChart, NaitiveTrendChart, NaitivAgingChart, NaitivHealthMixChart } from '@/components/naitive-pipeline/NaitivePipelineCharts';
+import { NaitiveWeeklyExecutionPulse } from '@/components/naitive-pipeline/NaitiveWeeklyExecutionPulse';
+import { useNaitiveStageHistory } from '@/hooks/useNaitiveStageHistory';
 import { NaitivePipelineNotifications } from '@/components/naitive-pipeline/NaitivePipelineNotifications';
 import { NaitivePipelineHurdles } from '@/components/naitive-pipeline/NaitivePipelineHurdles';
 import { NaitivePipelineRecommendations } from '@/components/naitive-pipeline/NaitivePipelineRecommendations';
@@ -121,6 +121,7 @@ export default function NaitivePipeline() {
   const { hasAccess, isLoading: accessLoading } = useNaitivePipelineAccess();
   const { pipelineId, stages, deals, isLoading: dataLoading, refetch } = useNaitivePipelineData();
   const { kpis, funnelData, agingData, healthMix, trendData, notifications, recommendations, hurdles } = useNaitivePipelineMetrics(deals, stages);
+  const { history: stageHistory } = useNaitiveStageHistory(pipelineId);
   const navigate = useNavigate();
   const dealIds = useMemo(() => deals.map(d => d.id), [deals]);
   const { getMilestonesForDeal, toggleMilestone } = useNaitiveStageMilestones(dealIds);
@@ -360,14 +361,8 @@ export default function NaitivePipeline() {
                       )}
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      <NaitivePipelineKPIStrip kpis={kpis} />
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                        <NaitiveFunnelChart data={funnelData} />
-                        <NaitiveTrendChart data={trendData} />
-                        <NaitivAgingChart data={agingData} />
-                        <NaitivHealthMixChart data={healthMix} />
-                      </div>
+                    <div className="space-y-6">
+                      <NaitiveWeeklyExecutionPulse deals={deals} history={stageHistory} />
                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                         <NaitivePipelineHurdles hurdles={hurdles} />
                         <NaitivePipelineNotifications notifications={notifications} />
