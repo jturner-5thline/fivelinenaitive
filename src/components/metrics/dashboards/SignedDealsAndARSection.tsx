@@ -22,7 +22,6 @@ import { consumePendingReopen } from '@/lib/dealOriginContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
 
 const AR_DEBT_REALM_ID = '193514877331929';
 const AR_FINSERV_REALM_ID = '9341451968897660';
@@ -511,7 +510,7 @@ export function OutstandingARDrilldownModal({
       const { data, error } = await supabase
         .from('quickbooks_invoices')
         .select('id, doc_number, customer_name, txn_date, due_date, total_amt, balance, realm_id')
-        .in('realm_id', [ACTIVE_PIPELINE_ID_AR_DEBT, ACTIVE_PIPELINE_ID_AR_FINSERV])
+        .in('realm_id', [AR_DEBT_REALM_ID, AR_FINSERV_REALM_ID])
         .gt('balance', 0)
         .order('balance', { ascending: false });
       if (error) throw error;
@@ -523,7 +522,7 @@ export function OutstandingARDrilldownModal({
   const total = (invoices ?? []).reduce((s, r: any) => s + (Number(r.balance) || 0), 0);
 
   const realmLabel = (id: string) =>
-    id === ACTIVE_PIPELINE_ID_AR_DEBT ? 'Debt' : id === ACTIVE_PIPELINE_ID_AR_FINSERV ? 'FinServ' : id;
+    id === AR_DEBT_REALM_ID ? 'Debt' : id === AR_FINSERV_REALM_ID ? 'FinServ' : id;
 
   const today = new Date();
   const daysOverdue = (due?: string | null) => {
