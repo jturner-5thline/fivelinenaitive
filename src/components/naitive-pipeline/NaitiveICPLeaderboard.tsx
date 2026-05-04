@@ -262,7 +262,7 @@ export function NaitiveICPLeaderboard({ deals }: { deals: Deal[] }) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         <ConversionChart title="Qual → Demo Conversion by ICP" data={qualToDemo} />
         <ConversionChart title="Demo → Trial Conversion by ICP" data={demoToTrial} />
         <PersonaMatrix data={persona} />
