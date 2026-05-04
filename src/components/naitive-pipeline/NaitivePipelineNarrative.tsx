@@ -59,6 +59,8 @@ const PLACEHOLDER = `Wins · Blockers · Trends · Next actions
 
 Capture the story behind this period's pipeline performance.`;
 
+const STARTER_TEMPLATE = `<h3>Wins</h3><ul><li></li></ul><h3>Blockers</h3><ul><li></li></ul><h3>Trends</h3><ul><li></li></ul><h3>Next actions</h3><ul><li></li></ul>`;
+
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 interface NarrativeRow {
@@ -189,10 +191,13 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week' }: Props) {
       const cur = rows.find((r) => r.period_key === current.key);
       const pri = rows.find((r) => r.period_key === prior.key);
       const curContent = cur?.content || '';
-      setContent(curContent);
+      const initialContent = curContent || STARTER_TEMPLATE;
+      setContent(initialContent);
+      // Keep lastSaved as the actual saved content (empty) so the starter
+      // template is not persisted until the user actually edits it.
       lastSaved.current = curContent;
       setUpdatedAt(cur?.updated_at ? new Date(cur.updated_at) : null);
-      editor.commands.setContent(curContent, { emitUpdate: false } as any);
+      editor.commands.setContent(initialContent, { emitUpdate: false } as any);
       setPriorContent(pri?.content || '');
       setLoaded(true);
       // Resolve last editor email
