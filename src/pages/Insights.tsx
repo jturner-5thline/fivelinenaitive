@@ -2379,7 +2379,7 @@ function MetricsInner() {
           </StickyDashboardHeader>
 
           {/* Dashboard Content - always show pre-built dashboards */}
-          <EditableDashboardWrapper isEditMode={isEditMode} onCardEdit={handlePrebuiltCardEdit}>
+          <EditableDashboardWrapper isEditMode={isEditMode} onCardEdit={() => { /* edit only via explicit pencil button */ }}>
             {selectedDashboard === 'management-snapshot' && (
               <WeeklyRundownCarousel
                 page1={

@@ -47,6 +47,7 @@ export function ProfitBarChart({
   isLoading,
   total,
   color,
+  onBarClick,
 }: {
   title: string;
   entityName: string;
@@ -54,6 +55,7 @@ export function ProfitBarChart({
   isLoading: boolean;
   total: number;
   color: string;
+  onBarClick?: (m: ProfitMonthBucket) => void;
 }) {
   if (isLoading) {
     return (
@@ -210,6 +212,8 @@ export function ProfitBarChart({
                 dataKey="profit"
                 shape={createGlassBarShape({ radius: 4, dataKey: 'profit' })}
                 maxBarSize={44}
+                cursor={onBarClick ? 'pointer' : undefined}
+                onClick={onBarClick ? ((d: ProfitMonthBucket) => onBarClick(d)) : undefined}
               >
                 {months.map((m, i) => (
                   <Cell
@@ -298,8 +302,16 @@ export function DebtProfitWidget({ selectedQuarter }: { selectedQuarter: import(
   const debt = useMonthlyEntityProfit('5th Line Capital Advisors, LLC', selectedQuarter.months);
   const [open, setOpen] = useState(false);
   return (
-    <div className="h-full cursor-pointer" onClick={() => !debt.isLoading && setOpen(true)}>
-      <ProfitBarChart title="Debt Profit" entityName="5th Line Capital Advisors, LLC" months={debt.months} isLoading={debt.isLoading} total={debt.total} color="hsl(var(--primary))" />
+    <div className="h-full">
+      <ProfitBarChart
+        title="Debt Profit"
+        entityName="5th Line Capital Advisors, LLC"
+        months={debt.months}
+        isLoading={debt.isLoading}
+        total={debt.total}
+        color="hsl(var(--primary))"
+        onBarClick={() => !debt.isLoading && setOpen(true)}
+      />
       <ProfitDrilldownModal
         open={open}
         onClose={() => setOpen(false)}
@@ -317,8 +329,16 @@ export function FinServProfitWidget({ selectedQuarter }: { selectedQuarter: impo
   const finserv = useMonthlyEntityProfit('5th Line Financial Services, LLC', selectedQuarter.months);
   const [open, setOpen] = useState(false);
   return (
-    <div className="h-full cursor-pointer" onClick={() => !finserv.isLoading && setOpen(true)}>
-      <ProfitBarChart title="FinServ Profit" entityName="5th Line Financial Services, LLC" months={finserv.months} isLoading={finserv.isLoading} total={finserv.total} color="hsl(var(--chart-4))" />
+    <div className="h-full">
+      <ProfitBarChart
+        title="FinServ Profit"
+        entityName="5th Line Financial Services, LLC"
+        months={finserv.months}
+        isLoading={finserv.isLoading}
+        total={finserv.total}
+        color="hsl(var(--chart-4))"
+        onBarClick={() => !finserv.isLoading && setOpen(true)}
+      />
       <ProfitDrilldownModal
         open={open}
         onClose={() => setOpen(false)}

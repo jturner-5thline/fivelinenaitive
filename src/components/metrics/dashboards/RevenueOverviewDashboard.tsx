@@ -681,12 +681,8 @@ export function RevenueQuarterlySection({ selectedQuarter }: { selectedQuarter: 
 export function DebtRevenueWidget({ selectedQuarter }: { selectedQuarter: QuarterOption }) {
   const [drilldown, setDrilldown] = useState<DrilldownData | null>(null);
   const debtRevenue = useQBStackedDebtRevenue(selectedQuarter);
-  const openLatest = () => {
-    const last = debtRevenue.months[debtRevenue.months.length - 1];
-    if (last) setDrilldown({ title: 'Debt Revenue', monthKey: last.monthKey, realmIds: [DEBT_REALM_ID] });
-  };
   return (
-    <div className="h-full cursor-pointer" onClick={openLatest}>
+    <div className="h-full">
       <StackedDebtRevenueChart
         data={debtRevenue.months}
         isLoading={debtRevenue.isLoading}
@@ -701,12 +697,8 @@ export function DebtRevenueWidget({ selectedQuarter }: { selectedQuarter: Quarte
 export function FinServRevenueWidget({ selectedQuarter }: { selectedQuarter: QuarterOption }) {
   const [drilldown, setDrilldown] = useState<DrilldownData | null>(null);
   const finservRevenue = useQBStackedFinServRevenue(selectedQuarter);
-  const openLatest = () => {
-    const last = finservRevenue.months[finservRevenue.months.length - 1];
-    if (last) setDrilldown({ title: 'FinServ Revenue', monthKey: last.monthKey, realmIds: [FINSERV_REALM_ID] });
-  };
   return (
-    <div className="h-full cursor-pointer" onClick={openLatest}>
+    <div className="h-full">
       <StackedGenericRevenueChart
         title="FinServ Revenue"
         subtitle="5th Line Financial Services, LLC"
