@@ -14,6 +14,9 @@ interface Suggestion {
   id: string;
   deal_id: string | null;
   deal_name?: string;
+  lender_name?: string | null;
+  company_name?: string | null;
+  contact_email?: string | null;
   confidence: number;
   reason: string;
   suggestion_source: string;
@@ -150,11 +153,28 @@ export function ClaapSuggestionCard({ call }: { call: SuggestionCallData }) {
 
   const renderSuggestionRow = (suggestion: Suggestion, isTop = false) => {
     const conf = getConfidenceConfig(suggestion.confidence);
+    const matchType = suggestion.deal_id
+      ? 'Deal'
+      : suggestion.lender_name
+      ? 'Lender'
+      : suggestion.company_name
+      ? 'Company'
+      : suggestion.contact_email
+      ? 'Contact'
+      : 'Match';
+    const matchLabel =
+      suggestion.deal_name ||
+      suggestion.lender_name ||
+      suggestion.company_name ||
+      suggestion.contact_email ||
+      'Unknown';
+    const isDeal = !!suggestion.deal_id;
     return (
       <div key={suggestion.id} className={`flex items-start gap-2 ${isTop ? 'p-2.5 bg-accent/30 rounded-md border border-border/50' : 'p-2 pl-4 border-l-2 border-border/30'}`}>
         <div className="flex-1 min-w-0 space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium truncate">{suggestion.deal_name || 'Unknown Deal'}</span>
+            <Badge variant="outline" className="text-[10px]">{matchType}</Badge>
+            <span className="text-sm font-medium truncate">{matchLabel}</span>
             <Badge variant="outline" className={`text-[10px] ${conf.className}`}>
               {Math.round(suggestion.confidence)}% {conf.label}
             </Badge>
@@ -173,7 +193,8 @@ export function ClaapSuggestionCard({ call }: { call: SuggestionCallData }) {
             size="sm"
             className="h-6 text-[10px] px-2"
             onClick={() => confirmMatch(suggestion)}
-            disabled={loadingAction === suggestion.id}
+            disabled={loadingAction === suggestion.id || !isDeal}
+            title={!isDeal ? 'Confirm linking to a deal not yet supported for non-deal matches' : ''}
           >
             <CheckCircle2 className="h-3 w-3 mr-0.5" />
             Confirm
