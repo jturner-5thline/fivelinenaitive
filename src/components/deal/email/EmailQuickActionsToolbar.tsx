@@ -24,7 +24,7 @@ interface ActionDef {
   iconClass?: string;
 }
 
-const ACTIONS: ActionDef[] = [
+const ALL_ACTIONS: ActionDef[] = [
   { key: 'save_dr', label: 'Save to Data Room', icon: <FolderUp className="h-3 w-3" />, iconClass: 'text-amber-300' },
   { key: 'lender', label: 'Update Lender Status', icon: <Building2 className="h-3 w-3" />, iconClass: 'text-emerald-300' },
   { key: 'draft', label: 'Draft Reply', icon: <SparklesIcon className="h-3 w-3" />, iconClass: 'text-primary' },
@@ -73,6 +73,22 @@ export function EmailQuickActionsToolbar({
 }: Props) {
   const [active, setActive] = useState<QuickActionKey | null>(null);
 
+  // Only show "Save to Data Room" when the currently viewed message has at
+  // least one non-inline attachment with an id. Guard against null/undefined.
+  const uploadableCount = (attachments || []).filter(
+    (a) => a && !a.is_inline && !!a.id,
+  ).length;
+  const actions = ALL_ACTIONS.filter(
+    (a) => a.key !== 'save_dr' || uploadableCount > 0,
+  );
+
+  // If the active panel is "save_dr" but no uploadable attachments remain
+  // (e.g. user navigated to a different message), collapse it.
+  if (active === 'save_dr' && uploadableCount === 0) {
+    // setState during render is unsafe — schedule for after.
+    queueMicrotask(() => setActive(null));
+  }
+
   const handleClick = (key: QuickActionKey) => {
     if (key === 'draft') {
       // Draft Reply expands the existing Draft Reply module (panel-level
@@ -99,7 +115,7 @@ export function EmailQuickActionsToolbar({
         role="toolbar"
         aria-label="Email quick actions"
       >
-        {ACTIONS.map((a) => {
+        {actions.map((a) => {
           const isActive = active === a.key;
           return (
             <button
