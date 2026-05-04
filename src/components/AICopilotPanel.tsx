@@ -1000,7 +1000,14 @@ export function AICopilotPanel() {
   const BAR_OFFSET = 24;
   const BAR_HEIGHT = 44;
   const GAP = 12;
-  const barWidthPref = readBarWidthPref();
+  const barWidthPref = (() => {
+    try {
+      const raw = window.localStorage.getItem('naitive:bar-width');
+      const n = raw ? parseInt(raw, 10) : NaN;
+      if (!Number.isFinite(n)) return 432;
+      return Math.min(960, Math.max(280, n));
+    } catch { return 432; }
+  })();
   const mainLeft = anchor.left;
   const mainWidth = anchor.width;
   const mainBottom = anchor.bottom;
