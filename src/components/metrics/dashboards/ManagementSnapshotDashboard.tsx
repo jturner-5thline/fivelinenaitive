@@ -4,6 +4,12 @@ import { DebtRevenueWidget, FinServRevenueWidget } from './RevenueOverviewDashbo
 import { PipelineMetricWidget, CombinedPipelineMetricWidget, type PipelineMetricCardId, PIPELINE_METRIC_LABELS } from './PipelineMetricsSection';
 import { DealsSignedWidget, FinServClientsSignedWidget, OutstandingARWidget } from './SignedDealsAndARSection';
 import { DebtProfitWidget, FinServProfitWidget } from './ProfitByEntitySection';
+import {
+  ExecWeekSelectorWidget,
+  ExecTotalActiveDealVolumeWidget,
+  ExecDealsClosedWidget,
+  ExecDealsByStatusWidget,
+} from './ExecutiveDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -495,7 +501,10 @@ export type WeeklyRundownSubWidgetId =
   // Signed Deals & AR
   | 'sd-deals-signed' | 'sd-finserv-clients-signed' | 'sd-outstanding-ar'
   // Profit by Entity
-  | 'pe-debt-profit' | 'pe-finserv-profit';
+  | 'pe-debt-profit' | 'pe-finserv-profit'
+  // Executive Dashboard tiles
+  | 'exec-week-selector' | 'exec-total-active-deal-volume'
+  | 'exec-deals-closed' | 'exec-deals-by-status';
 
 export const SUB_WIDGET_LABELS: Record<WeeklyRundownSubWidgetId, string> = {
   'rev-debt': 'Debt Revenue',
@@ -509,6 +518,10 @@ export const SUB_WIDGET_LABELS: Record<WeeklyRundownSubWidgetId, string> = {
   'sd-outstanding-ar': 'Outstanding A/R',
   'pe-debt-profit': 'Debt Profit',
   'pe-finserv-profit': 'FinServ Profit',
+  'exec-week-selector': 'Executive Week Selector',
+  'exec-total-active-deal-volume': 'Total Active Deal Volume',
+  'exec-deals-closed': 'Deals Closed',
+  'exec-deals-by-status': 'Deals By Status',
 };
 
 export const ALL_SUB_WIDGET_IDS: WeeklyRundownSubWidgetId[] = Object.keys(SUB_WIDGET_LABELS) as WeeklyRundownSubWidgetId[];
@@ -664,6 +677,10 @@ export function ManagementSnapshotDashboard({
     'sd-outstanding-ar': <OutstandingARWidget />,
     'pe-debt-profit': <DebtProfitWidget selectedQuarter={selectedQuarter} />,
     'pe-finserv-profit': <FinServProfitWidget selectedQuarter={selectedQuarter} />,
+    'exec-week-selector': <ExecWeekSelectorWidget />,
+    'exec-total-active-deal-volume': <ExecTotalActiveDealVolumeWidget />,
+    'exec-deals-closed': <ExecDealsClosedWidget />,
+    'exec-deals-by-status': <ExecDealsByStatusWidget />,
   };
 
   const SUB_WIDGET_CONSTRAINTS: Record<string, WidgetConstraint> = {
@@ -679,6 +696,10 @@ export function ManagementSnapshotDashboard({
     'pe-debt-profit':            { minW: 4, minH: 4, maxH: 12 },
     'pe-finserv-profit':         { minW: 4, minH: 4, maxH: 12 },
     'executive-dashboard':       { minW: 8, minH: 8, maxH: 20 },
+    'exec-week-selector':           { minW: 3, minH: 2, maxH: 5 },
+    'exec-total-active-deal-volume':{ minW: 3, minH: 2, maxH: 6 },
+    'exec-deals-closed':            { minW: 3, minH: 2, maxH: 6 },
+    'exec-deals-by-status':         { minW: 4, minH: 5, maxH: 12 },
   };
 
   const visibleSubWidgets = ALL_SUB_WIDGET_IDS.filter(id => !hiddenSubWidgets.includes(id));
