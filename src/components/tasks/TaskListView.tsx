@@ -401,8 +401,8 @@ export function TaskListView({
                     )}
                   </div>
                   {/* Spacer cells for remaining columns to keep grid aligned. */}
-                  <div aria-hidden /><div aria-hidden /><div aria-hidden />
-                  <div aria-hidden /><div aria-hidden /><div aria-hidden /><div aria-hidden />
+                  {cols.map(c => <div key={c.id} aria-hidden />)}
+                  <div aria-hidden />
                 </button>
 
                 {!isCollapsed && (
@@ -437,7 +437,10 @@ export function TaskListView({
                       <>
                         {isCreating ? (
                           <>
-                            <div className={cn('grid', TASK_GRID_COLS, TASK_ROW_MIN_H, 'gap-2 items-center px-4 py-1')}>
+                            <div
+                              className={cn('grid', TASK_ROW_MIN_H, 'gap-2 items-center px-4 py-1')}
+                              style={gridStyle}
+                            >
                               {/* 5 leading utility columns */}
                               <div /><div /><div /><div /><div />
                               {/* Title input occupies the task-name column */}
@@ -450,8 +453,9 @@ export function TaskListView({
                                 className="h-7 text-sm border-[#3b7eff] bg-[#13181f] text-white"
                                 autoFocus
                               />
-                              {/* 7 trailing columns */}
-                              <div /><div /><div /><div /><div /><div /><div />
+                              {/* trailing column placeholders */}
+                              {cols.map(c => <div key={c.id} />)}
+                              <div />
                             </div>
                             {taskNameWarning && <p className="text-[11px] px-4 py-1" style={{ color: '#ff4d4d' }}>{taskNameWarning}</p>}
                           </>
