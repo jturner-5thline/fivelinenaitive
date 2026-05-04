@@ -289,11 +289,12 @@ export function TaskListView({
             every header label sits directly above its column. */}
         <div
           className={cn(
-            'grid', TASK_GRID_COLS,
+            'grid',
             'gap-2 items-center px-4 min-h-[36px]',
             'text-[11px] font-medium uppercase tracking-wide sticky top-0 z-10',
             'bg-background/90 backdrop-blur-md border-b border-border/40 text-muted-foreground',
           )}
+          style={gridStyle}
         >
           <div aria-hidden />
           <div aria-hidden />
@@ -311,12 +312,19 @@ export function TaskListView({
           <div aria-hidden />
           <div aria-hidden />
           <div className="truncate">Task name</div>
-          <div className="truncate">Owner</div>
-          <div aria-hidden />
-          <div className="truncate">Deal</div>
-          <div className="text-right tabular-nums">Due date</div>
-          <div className="text-center">Priority</div>
-          <div className="text-center">Status</div>
+          {cols.map(c => (
+            <div
+              key={c.id}
+              className={cn(
+                'truncate',
+                c.id === 'due' && 'text-right tabular-nums',
+                (c.id === 'priority' || c.id === 'status') && 'text-center',
+                c.id === 'collab' && 'sr-only',
+              )}
+            >
+              {c.id === 'collab' ? '' : c.label}
+            </div>
+          ))}
           <div aria-hidden />
         </div>
 
@@ -353,7 +361,7 @@ export function TaskListView({
                 <button
                   onClick={() => toggleSection(group.key)}
                   className={cn(
-                    'w-full grid', TASK_GRID_COLS,
+                    'w-full grid',
                     'gap-2 items-center px-4 min-h-[34px] text-left sticky z-[5] transition-colors',
                     'border-b border-border/30',
                   )}
@@ -362,6 +370,7 @@ export function TaskListView({
                     borderLeft: `2px solid ${accentColor}`,
                     backgroundColor: `${accentColor}10`,
                     backdropFilter: 'blur(6px)',
+                    gridTemplateColumns: gridStyle.gridTemplateColumns,
                   }}
                 >
                   <div aria-hidden />
