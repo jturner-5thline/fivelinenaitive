@@ -20,7 +20,7 @@ export interface CachedEmail {
   thread_id: string | null;
   subject: string | null;
   snippet: string | null;
-  body_text?: string | null;
+  body_text: string | null;
   from_email: string | null;
   from_name: string | null;
   to_emails: string[] | null;
