@@ -1250,6 +1250,40 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
             </div>
           )}
 
+          {/* Per-message action row — Reply / Reply All / Forward anchored
+              to THIS specific message, not the thread as a whole. */}
+          {(onReply || onReplyAll || onForward) && (
+            <div className="mt-4 flex items-center gap-2">
+              {onReply && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onReply(email); }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-[hsl(var(--email-border))] text-[hsl(var(--email-text-secondary))] hover:text-[hsl(var(--email-text-primary))] hover:border-[hsl(var(--outlook-blue)/0.4)] hover:bg-[hsl(var(--outlook-blue)/0.06)] transition-colors"
+                >
+                  <Reply className="h-3.5 w-3.5" />
+                  <span>Reply</span>
+                </button>
+              )}
+              {onReplyAll && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onReplyAll(email); }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-[hsl(var(--email-border))] text-[hsl(var(--email-text-secondary))] hover:text-[hsl(var(--email-text-primary))] hover:border-[hsl(var(--outlook-blue)/0.4)] hover:bg-[hsl(var(--outlook-blue)/0.06)] transition-colors"
+                >
+                  <ReplyAll className="h-3.5 w-3.5" />
+                  <span>Reply All</span>
+                </button>
+              )}
+              {onForward && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onForward(email); }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-[hsl(var(--email-border))] text-[hsl(var(--email-text-secondary))] hover:text-[hsl(var(--email-text-primary))] hover:border-[hsl(var(--outlook-blue)/0.4)] hover:bg-[hsl(var(--outlook-blue)/0.06)] transition-colors"
+                >
+                  <Forward className="h-3.5 w-3.5" />
+                  <span>Forward</span>
+                </button>
+              )}
+            </div>
+          )}
+
         </div>
       )}
     </div>
