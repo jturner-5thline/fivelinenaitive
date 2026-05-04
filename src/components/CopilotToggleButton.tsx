@@ -14,6 +14,7 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { useLenders } from '@/contexts/LendersContext';
 import naitiveAiIcon from '@/assets/naitive-ai-icon.png';
 import { cn } from '@/lib/utils';
+import { AICopilotPanel } from '@/components/AICopilotPanel';
 
 const QUICK_PAGES: { name: string; path: string }[] = [
   { name: 'Dashboard', path: '/dashboard' },
