@@ -265,7 +265,7 @@ serve(async (req) => {
             if (dealIds.length && attendeeEmails.size) {
               const { data: lenderContacts } = await svc
                 .from("lender_contacts")
-                .select("email, deal_lender_id");
+                .select("email, lender_id");
               const { data: dealLendersForMap } = await svc
                 .from("deal_lenders")
                 .select("id, deal_id")
@@ -273,7 +273,7 @@ serve(async (req) => {
               const lenderToDeal = new Map<string, string>();
               (dealLendersForMap || []).forEach((dl: any) => lenderToDeal.set(dl.id, dl.deal_id));
               (lenderContacts || []).forEach((lc: any) => {
-                const dealId = lenderToDeal.get(lc.deal_lender_id);
+                const dealId = lenderToDeal.get(lc.lender_id);
                 if (dealId && lc.email) {
                   const company = dealNameById.get(dealId);
                   if (company) emailToDeal.set(lc.email.toLowerCase(), { id: dealId, company });
