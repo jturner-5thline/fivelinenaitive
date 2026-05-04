@@ -256,6 +256,16 @@ export function ClaapSyncSettings() {
         cursor = result.next_cursor;
       }
 
+      // After re-matching, run AI suggestions for any calls still unmatched
+      if (rematchExistingOnly) {
+        try {
+          await generateSuggestions.mutateAsync({ allUnmatched: true });
+        } catch (e) {
+          // Surface but don't fail the whole flow
+          console.error('Auto-suggest after re-match failed', e);
+        }
+      }
+
       toast.success(rematchExistingOnly ? 'Call re-match complete' : 'Historical backfill complete', {
         description: rematchExistingOnly
           ? `Processed: ${totalProcessed} | Re-matched: ${totalRematched} | Pages: ${totalPagesProcessed}`
@@ -467,27 +477,62 @@ export function ClaapSyncSettings() {
               </TabsTrigger>
             </TabsList>
 
-            {(['matched', 'needs_review'] as const).map(tab => (
-              <TabsContent key={tab} value={tab} className="mt-3">
-                {callsLoading ? (
-                  <div className="flex justify-center py-4">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  </div>
-                ) : (
-                  <div className="max-h-[450px] overflow-y-auto pr-1 space-y-2">
-                    {filterCalls(tab).length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        {tab === 'matched' ? 'No matched calls yet.' : 'No calls need review.'}
-                      </p>
-                    ) : (
-                      filterCalls(tab).map((call: ClaapCallData) => (
-                        <ClaapCallMatchCard key={call.id} call={call} />
-                      ))
-                    )}
-                  </div>
-                )}
-              </TabsContent>
-            ))}
+            <TabsContent value="matched" className="mt-3">
+              {callsLoading ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="max-h-[450px] overflow-y-auto pr-1 space-y-2">
+                  {filterCalls('matched').length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">No matched calls yet.</p>
+                  ) : (
+                    filterCalls('matched').map((call: ClaapCallData) => (
+                      <ClaapCallMatchCard key={call.id} call={call} />
+                    ))
+                  )}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Review tab: show AI suggestion cards */}
+            <TabsContent value="needs_review" className="mt-3">
+              {callsLoading ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="max-h-[450px] overflow-y-auto pr-1 space-y-2">
+                  {filterCalls('needs_review').length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No calls awaiting review. Click "Generate AI Suggestions" on the Unmatched tab to populate.
+                    </p>
+                  ) : (
+                    filterCalls('needs_review').map((call: ClaapCallData) => {
+                      const callSuggestions = suggestions[call.id] || [];
+                      if (callSuggestions.length > 0) {
+                        return (
+                          <ClaapSuggestionCard
+                            key={call.id}
+                            call={{
+                              id: call.id,
+                              title: call.title,
+                              started_at: call.started_at,
+                              created_at: call.created_at,
+                              duration_seconds: call.duration_seconds,
+                              recording_url: call.recording_url,
+                              match_status: call.match_status,
+                              suggestions: callSuggestions,
+                            }}
+                          />
+                        );
+                      }
+                      return <ClaapCallMatchCard key={call.id} call={call} />;
+                    })
+                  )}
+                </div>
+              )}
+            </TabsContent>
 
             {/* Unmatched tab with AI suggestions */}
             <TabsContent value="unmatched" className="mt-3">
@@ -506,7 +551,7 @@ export function ClaapSyncSettings() {
                         variant="outline"
                         size="sm"
                         className="h-6 text-[10px]"
-                        onClick={() => generateSuggestions.mutate(undefined)}
+                        onClick={() => generateSuggestions.mutate({ allUnmatched: true })}
                         disabled={generateSuggestions.isPending}
                       >
                         {generateSuggestions.isPending ? (
@@ -514,7 +559,7 @@ export function ClaapSyncSettings() {
                         ) : (
                           <Sparkles className="h-3 w-3 mr-1" />
                         )}
-                        {generateSuggestions.isPending ? 'Analyzing...' : 'Generate AI Suggestions'}
+                        {generateSuggestions.isPending ? 'Analyzing all unmatched...' : 'Generate AI Suggestions (all)'}
                       </Button>
                     </div>
                   )}

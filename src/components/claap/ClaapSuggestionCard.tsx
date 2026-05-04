@@ -14,6 +14,9 @@ interface Suggestion {
   id: string;
   deal_id: string | null;
   deal_name?: string;
+  lender_name?: string | null;
+  company_name?: string | null;
+  contact_email?: string | null;
   confidence: number;
   reason: string;
   suggestion_source: string;
@@ -57,7 +60,8 @@ export function ClaapSuggestionCard({ call }: { call: SuggestionCallData }) {
   const hasMultiple = call.suggestions.length > 1;
 
   const confirmMatch = async (suggestion: Suggestion) => {
-    if (!suggestion.deal_id || !suggestion.deal_name) return;
+    const isDeal = !!suggestion.deal_id;
+    if (!isDeal && !suggestion.lender_name && !suggestion.company_name && !suggestion.contact_email) return;
     setLoadingAction(suggestion.id);
     try {
       // Record feedback
@@ -71,8 +75,8 @@ export function ClaapSuggestionCard({ call }: { call: SuggestionCallData }) {
         meeting_id: call.id,
         company_id: member?.company_id,
         action: 'confirmed',
-        suggested_deal_id: suggestion.deal_id,
-        chosen_deal_id: suggestion.deal_id,
+        suggested_deal_id: suggestion.deal_id || null,
+        chosen_deal_id: suggestion.deal_id || null,
         suggestion_id: suggestion.id,
         performed_by: user?.id,
       }) as any);
@@ -82,12 +86,33 @@ export function ClaapSuggestionCard({ call }: { call: SuggestionCallData }) {
         .update({ status: 'confirmed', feedback_action: 'confirmed', feedback_at: new Date().toISOString(), feedback_by: user?.id })
         .eq('id', suggestion.id) as any);
 
-      // Link the deal
-      linkToDeal.mutate({
-        meetingId: call.id,
-        dealId: suggestion.deal_id,
-        dealName: suggestion.deal_name,
-      });
+      if (isDeal) {
+        linkToDeal.mutate({
+          meetingId: call.id,
+          dealId: suggestion.deal_id!,
+          dealName: suggestion.deal_name || 'Deal',
+        });
+      } else {
+        // Non-deal: link to lender/company/contact directly on the meeting
+        const update: any = {
+          match_status: 'manually_linked',
+          match_method: 'manual',
+          manually_locked: true,
+          matched_at: new Date().toISOString(),
+          matched_by: user?.id,
+          match_reason: `Manually linked to ${suggestion.lender_name || suggestion.company_name || suggestion.contact_email}`,
+          status: 'routed',
+        };
+        if (suggestion.contact_email) {
+          // Resolve contact id
+          const { data: c } = await (supabase.from('contacts').select('id').eq('email', suggestion.contact_email).maybeSingle() as any);
+          if (c?.id) update.matched_contact_id = c.id;
+        }
+        await (supabase.from('claap_meetings').update(update).eq('id', call.id) as any);
+        queryClient.invalidateQueries({ queryKey: ['claap-suggestions'] });
+        queryClient.invalidateQueries({ queryKey: ['claap-all-calls'] });
+        toast.success('Call linked');
+      }
     } catch (err) {
       toast.error('Failed to confirm match');
     } finally {
@@ -150,11 +175,28 @@ export function ClaapSuggestionCard({ call }: { call: SuggestionCallData }) {
 
   const renderSuggestionRow = (suggestion: Suggestion, isTop = false) => {
     const conf = getConfidenceConfig(suggestion.confidence);
+    const matchType = suggestion.deal_id
+      ? 'Deal'
+      : suggestion.lender_name
+      ? 'Lender'
+      : suggestion.company_name
+      ? 'Company'
+      : suggestion.contact_email
+      ? 'Contact'
+      : 'Match';
+    const matchLabel =
+      suggestion.deal_name ||
+      suggestion.lender_name ||
+      suggestion.company_name ||
+      suggestion.contact_email ||
+      'Unknown';
+    const isDeal = !!suggestion.deal_id;
     return (
       <div key={suggestion.id} className={`flex items-start gap-2 ${isTop ? 'p-2.5 bg-accent/30 rounded-md border border-border/50' : 'p-2 pl-4 border-l-2 border-border/30'}`}>
         <div className="flex-1 min-w-0 space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium truncate">{suggestion.deal_name || 'Unknown Deal'}</span>
+            <Badge variant="outline" className="text-[10px]">{matchType}</Badge>
+            <span className="text-sm font-medium truncate">{matchLabel}</span>
             <Badge variant="outline" className={`text-[10px] ${conf.className}`}>
               {Math.round(suggestion.confidence)}% {conf.label}
             </Badge>

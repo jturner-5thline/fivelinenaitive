@@ -46,7 +46,9 @@ export function useClaapSuggestions() {
 
   // Generate suggestions
   const generateSuggestions = useMutation({
-    mutationFn: async (meetingIds?: string[]) => {
+    mutationFn: async (arg?: string[] | { allUnmatched?: boolean; meetingIds?: string[] }) => {
+      const meetingIds = Array.isArray(arg) ? arg : arg?.meetingIds;
+      const allUnmatched = !Array.isArray(arg) ? !!arg?.allUnmatched : false;
       const { data: member } = await supabase
         .from('company_members')
         .select('company_id')
@@ -56,27 +58,39 @@ export function useClaapSuggestions() {
       if (!member?.company_id) throw new Error('No company');
 
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/claap-suggest-matches`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            company_id: member.company_id,
-            meeting_ids: meetingIds,
-          }),
-        }
-      );
-
-      const result = await response.json();
-      if (result.error) throw new Error(result.error);
-      return result;
+      // For "all unmatched" we batch through pages so the function stays under timeout.
+      let totalProcessed = 0;
+      let totalSuggestions = 0;
+      let totalReview = 0;
+      const pages = allUnmatched ? 20 : 1;
+      for (let i = 0; i < pages; i++) {
+        const response = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/claap-suggest-matches`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              company_id: member.company_id,
+              meeting_ids: meetingIds,
+              all_unmatched: allUnmatched,
+              batch_size: allUnmatched ? 50 : undefined,
+            }),
+          }
+        );
+        const r = await response.json();
+        if (r.error) throw new Error(r.error);
+        totalProcessed += r.processed || 0;
+        totalSuggestions += r.suggestions || 0;
+        totalReview += r.promoted_to_review || 0;
+        if (!allUnmatched || (r.processed || 0) === 0) break;
+      }
+      return { processed: totalProcessed, suggestions: totalSuggestions, promoted_to_review: totalReview };
     },
-    onSuccess: (result) => {
+    onSuccess: (result: any) => {
       queryClient.invalidateQueries({ queryKey: ['claap-suggestions'] });
       queryClient.invalidateQueries({ queryKey: ['claap-all-calls'] });
       toast.success('Suggestions generated', {
-        description: `${result.suggestions || 0} suggestions for ${result.processed || 0} calls`,
+        description: `${result.suggestions || 0} suggestions across ${result.processed || 0} calls; ${result.promoted_to_review || 0} routed to Review`,
       });
     },
     onError: (err: any) => toast.error('Failed to generate suggestions', { description: err.message }),
