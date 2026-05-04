@@ -2538,10 +2538,6 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                   </>
                 );
               })()}
-                    }}
-                  />
-                </div>
-              ))}
 
               {/* Resume draft banner */}
               {showResumeBanner && !replyTo && !popOutDraft && (
