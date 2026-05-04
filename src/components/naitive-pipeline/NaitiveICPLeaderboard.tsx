@@ -164,7 +164,8 @@ function ConversionChart({ title, data }: { title: string; data: ConversionRow[]
               <YAxis
                 dataKey="icp"
                 type="category"
-                width={120}
+                width={104}
+                interval={0}
                 tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                 axisLine={false}
                 tickLine={false}
