@@ -965,8 +965,36 @@ export function AICopilotPanel() {
 
   if (!isOpen) return null;
 
-  const panelWidth = isMobile ? '100vw' : 440;
-  const panelHeight = isMobile ? '100vh' : '70vh';
+  // ── Anchor to the Ask naitive AI bar (centered over the main content) ──
+  // The Ask bar is sticky-bottom inside <main class="main-scrollable">. We
+  // compute the panel's position from the main element's bounding rect so
+  // the panel sits centered over the bar, regardless of sidebar state or
+  // viewport size. Width is read from the same localStorage key the bar uses
+  // so the panel matches the bar's measured width.
+  // (Hooks moved into AICopilotPanelInner so they can use isOpen safely.)
+  const ANCHOR = computeAnchorRect();
+  const barWidthPref = readBarWidthPref();
+  const isMobileLayout = isMobile;
+
+  // Bar offset inside main: bottom: max(24px, safe-area), height ~44px,
+  // plus a 12px gap above the bar.
+  const BAR_OFFSET = 24;
+  const BAR_HEIGHT = 44;
+  const GAP = 12;
+
+  const mainLeft = ANCHOR?.left ?? 0;
+  const mainWidth = ANCHOR?.width ?? window.innerWidth;
+  const mainBottom = ANCHOR?.bottom ?? window.innerHeight;
+
+  const panelWidth = isMobileLayout
+    ? Math.max(0, mainWidth - 16)
+    : Math.min(barWidthPref, Math.max(280, mainWidth - 32));
+  const bottomFromViewport = (window.innerHeight - mainBottom) + BAR_OFFSET + BAR_HEIGHT + GAP;
+  const availableHeight = Math.max(280, mainBottom - BAR_OFFSET - BAR_HEIGHT - GAP - 16);
+  const panelHeight = isMobileLayout
+    ? Math.min(window.innerHeight - 16, availableHeight)
+    : Math.min(Math.round(window.innerHeight * 0.7), availableHeight);
+  const panelLeft = mainLeft + mainWidth / 2;
 
   return (
     <>
@@ -988,18 +1016,19 @@ export function AICopilotPanel() {
         aria-modal="true"
         style={{
           position: 'fixed',
-          bottom: isMobile ? 0 : 24,
-          right: isMobile ? 0 : 24,
+          bottom: bottomFromViewport,
+          left: panelLeft,
+          transform: 'translateX(-50%)',
           width: panelWidth,
           height: panelHeight,
-          maxHeight: isMobile ? '100vh' : 'calc(100vh - 48px)',
+          maxHeight: 'calc(100vh - 48px)',
           zIndex: 51,
           display: 'flex', flexDirection: 'column',
           background: 'rgba(8, 10, 18, 0.92)',
           backdropFilter: 'blur(24px) saturate(1.3)',
           WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
-          borderRadius: isMobile ? 0 : 16,
-          border: isMobile ? 'none' : '1px solid var(--glass-border)',
+          borderRadius: 16,
+          border: '1px solid var(--glass-border)',
           boxShadow: '0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.05)',
           overflow: 'hidden',
           animation: 'copilot-popup-in 250ms cubic-bezier(0.16, 1, 0.3, 1)',
@@ -1007,8 +1036,8 @@ export function AICopilotPanel() {
       >
         <style>{`
           @keyframes copilot-popup-in {
-            from { opacity: 0; transform: translateY(16px) scale(0.97); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+            from { opacity: 0; transform: translate(-50%, 16px) scale(0.97); }
+            to { opacity: 1; transform: translate(-50%, 0) scale(1); }
           }
           @keyframes copilot-fade-in {
             from { opacity: 0; }
