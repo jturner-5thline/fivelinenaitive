@@ -27,6 +27,24 @@ const WHY_NOT_OPTIONS = [
   'Product gap', 'Timing', 'No close attempt made',
 ];
 const NEEDS_REASON = new Set(['Not a fit', 'Tabled', 'Disqualified']);
+const MAX_WHY_NOT = 3;
+const MAX_BULLETS = 3;
+
+function limitBullets(text: string, max = MAX_BULLETS): string {
+  const lines = text.split('\n');
+  let kept = 0;
+  const out: string[] = [];
+  for (const line of lines) {
+    if (line.trim().length === 0) {
+      out.push(line);
+      continue;
+    }
+    if (kept >= max) break;
+    out.push(line);
+    kept++;
+  }
+  return out.join('\n');
+}
 
 interface Props {
   trigger: ReactNode;
@@ -76,7 +94,14 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
   };
 
   const toggleWhyNot = (opt: string) => {
-    setWhyNot(prev => prev.includes(opt) ? prev.filter(x => x !== opt) : [...prev, opt]);
+    setWhyNot(prev => {
+      if (prev.includes(opt)) return prev.filter(x => x !== opt);
+      if (prev.length >= MAX_WHY_NOT) {
+        toast.error(`Pick up to ${MAX_WHY_NOT} reasons`);
+        return prev;
+      }
+      return [...prev, opt];
+    });
   };
 
   const handleSubmit = async () => {
@@ -87,6 +112,9 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
     if (!ownedBy) return toast.error('Owned By is required');
     if (!source) return toast.error('Source is required');
     if (!stage) return toast.error('Current Stage is required');
+    if (NEEDS_REASON.has(outcome) && whyNot.length === 0) {
+      return toast.error('Select at least one reason for "Why Not Moving Forward"');
+    }
 
     setSubmitting(true);
     try {
@@ -227,15 +255,32 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
                 <SimpleSelect value={outcome} onChange={(v) => { setOutcome(v); if (!NEEDS_REASON.has(v)) setWhyNot([]); }} options={OUTCOME_OPTIONS} placeholder="Select outcome" />
               </Field>
               {showWhyNot && (
-                <Field label="Why Not Moving Forward">
+                <Field label={`Why Not Moving Forward (pick up to ${MAX_WHY_NOT})`}>
                   <div className="grid grid-cols-2 gap-2 rounded-md border p-3">
-                    {WHY_NOT_OPTIONS.map(opt => (
-                      <label key={opt} className="flex items-center gap-2 text-sm cursor-pointer">
-                        <Checkbox checked={whyNot.includes(opt)} onCheckedChange={() => toggleWhyNot(opt)} />
-                        {opt}
-                      </label>
-                    ))}
+                    {WHY_NOT_OPTIONS.map(opt => {
+                      const checked = whyNot.includes(opt);
+                      const disabled = !checked && whyNot.length >= MAX_WHY_NOT;
+                      return (
+                        <label
+                          key={opt}
+                          className={cn(
+                            'flex items-center gap-2 text-sm',
+                            disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
+                          )}
+                        >
+                          <Checkbox
+                            checked={checked}
+                            disabled={disabled}
+                            onCheckedChange={() => toggleWhyNot(opt)}
+                          />
+                          {opt}
+                        </label>
+                      );
+                    })}
                   </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {whyNot.length}/{MAX_WHY_NOT} selected
+                  </p>
                 </Field>
               )}
             </div>
@@ -246,10 +291,20 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Call Intelligence (optional)</h3>
             <div className="grid grid-cols-1 gap-3">
               <Field label="Pain Points Confirmed">
-                <Textarea value={painPoints} onChange={(e) => setPainPoints(e.target.value)} placeholder="Max 3 bullets" rows={3} />
+                <Textarea
+                  value={painPoints}
+                  onChange={(e) => setPainPoints(limitBullets(e.target.value))}
+                  placeholder="Max 3 bullets — one per line"
+                  rows={3}
+                />
               </Field>
               <Field label="Objections Raised">
-                <Textarea value={objections} onChange={(e) => setObjections(e.target.value)} placeholder="Max 3 bullets" rows={3} />
+                <Textarea
+                  value={objections}
+                  onChange={(e) => setObjections(limitBullets(e.target.value))}
+                  placeholder="Max 3 bullets — one per line"
+                  rows={3}
+                />
               </Field>
               <Field label="Competitors or Tools Mentioned">
                 <Input value={competitors} onChange={(e) => setCompetitors(e.target.value)} />
