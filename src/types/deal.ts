@@ -120,6 +120,13 @@ export interface Deal {
   projectedCloseDate?: string | null;
   contractStartDate?: string | null;
   contractEndDate?: string | null;
+  /* ─── Naitive SaaS-pipeline extras ───────────────────────────── */
+  icpCategory?: string;
+  ownedBy?: string;
+  contactTitle?: string;
+  nextStep?: string;
+  nextStepDate?: string | null;
+  prospectType?: string;
 }
 
 export const LENDER_STATUS_CONFIG: Record<LenderStatus, { label: string }> = {
