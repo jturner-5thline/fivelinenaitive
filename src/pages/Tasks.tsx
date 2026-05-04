@@ -1,4 +1,4 @@
-import { useState, useRef, KeyboardEvent, useCallback, useMemo, useEffect } from 'react';
+import { useState, useRef, KeyboardEvent, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { ClaapRoutingTasksBadge } from '@/components/integrations/claap/ClaapRoutingTasksBadge';
@@ -10,11 +10,18 @@ import { useTaskViewTabs } from '@/hooks/useTaskViewTabs';
 import { TaskTabBar, applyTabFilter } from '@/components/tasks/TaskTabBar';
 import { TaskListView, type GroupBy } from '@/components/tasks/TaskListView';
 import { TaskDetailDrawer } from '@/components/tasks/TaskDetailDrawer';
-import { TaskCalendarView } from '@/components/tasks/TaskCalendarView';
-import { TaskReportingView } from '@/components/tasks/TaskReportingView';
+// Lazy-load heavy tab views so they don't ship with the initial Tasks bundle
+const TaskCalendarView = lazy(() =>
+  import('@/components/tasks/TaskCalendarView').then(m => ({ default: m.TaskCalendarView }))
+);
+const TaskReportingView = lazy(() =>
+  import('@/components/tasks/TaskReportingView').then(m => ({ default: m.TaskReportingView }))
+);
 import { TaskBulkActionBar } from '@/components/tasks/TaskBulkActionBar';
 import { QuickCreateTaskDialog } from '@/components/tasks/QuickCreateTaskDialog';
-import { TaskFocusMode } from '@/components/tasks/TaskFocusMode';
+const TaskFocusMode = lazy(() =>
+  import('@/components/tasks/TaskFocusMode').then(m => ({ default: m.TaskFocusMode }))
+);
 import { useTaskNotifications } from '@/hooks/useTaskNotifications';
 import { useTaskSavedViews, type TaskSavedView } from '@/hooks/useTaskSavedViews';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
@@ -610,11 +617,13 @@ export default function Tasks() {
   // Focus mode
   if (showFocusMode) {
     return (
-      <TaskFocusMode
-        tasks={filtered}
-        onExit={() => setShowFocusMode(false)}
-        onUpdate={(id, updates) => updateTask.mutate({ id, ...updates })}
-      />
+      <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Loading focus mode…</div>}>
+        <TaskFocusMode
+          tasks={filtered}
+          onExit={() => setShowFocusMode(false)}
+          onUpdate={(id, updates) => updateTask.mutate({ id, ...updates })}
+        />
+      </Suspense>
     );
   }
 
@@ -1098,15 +1107,19 @@ export default function Tasks() {
               />
             )}
             {viewMode === 'calendar' && (
-              <TaskCalendarView
-                tasks={filtered}
-                onSelectTask={setSelectedTaskId}
-                onUpdateTask={(id, updates) => updateTask.mutate({ id, ...updates })}
-                selectedTaskId={selectedTaskId}
-              />
+              <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading calendar…</div>}>
+                <TaskCalendarView
+                  tasks={filtered}
+                  onSelectTask={setSelectedTaskId}
+                  onUpdateTask={(id, updates) => updateTask.mutate({ id, ...updates })}
+                  selectedTaskId={selectedTaskId}
+                />
+              </Suspense>
             )}
             {viewMode === 'reporting' && (
-              <TaskReportingView tasks={tasks} />
+              <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading reports…</div>}>
+                <TaskReportingView tasks={tasks} />
+              </Suspense>
             )}
           </div>
         </div>
