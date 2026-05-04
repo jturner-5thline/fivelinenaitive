@@ -8,7 +8,14 @@ import { Helmet } from 'react-helmet-async';
 import { useMyTasks, type Task, type TaskOwnerFilter } from '@/hooks/useTasks';
 import { useTaskViewTabs } from '@/hooks/useTaskViewTabs';
 import { TaskTabBar, applyTabFilter } from '@/components/tasks/TaskTabBar';
-import { TaskListView, type GroupBy } from '@/components/tasks/TaskListView';
+import {
+  TaskListView,
+  type GroupBy,
+  OPTIONAL_TASK_COLUMNS,
+  DEFAULT_TASK_COLUMNS,
+  type TaskColumnId,
+} from '@/components/tasks/TaskListView';
+import { useUiPreference } from '@/hooks/useUiPreference';
 import { TaskDetailDrawer } from '@/components/tasks/TaskDetailDrawer';
 // Lazy-load heavy tab views so they don't ship with the initial Tasks bundle
 const TaskCalendarView = lazy(() =>
@@ -58,6 +65,7 @@ import {
   Tag, ClipboardList, Users, Briefcase, Building2, CalendarDays, X,
   Pencil, Copy as CopyIcon, Check,
   Link2, Pin, PinOff, Repeat,
+  Columns3,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDueBoundaries } from '@/hooks/useDueBoundaries';
@@ -137,6 +145,18 @@ export default function Tasks() {
   const [showFocusMode, setShowFocusMode] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const quickCreateTriggerRef = useRef<HTMLElement | null>(null);
+
+  // Visible task list columns — default = priority + status only (clean
+  // triage view). Saved per-user so customizations persist.
+  const [visibleTaskColumns, setVisibleTaskColumns] = useUiPreference<TaskColumnId[]>(
+    'task_list_visible_columns',
+    DEFAULT_TASK_COLUMNS,
+  );
+  const toggleTaskColumn = (id: TaskColumnId) => {
+    const set = new Set(visibleTaskColumns);
+    if (set.has(id)) set.delete(id); else set.add(id);
+    setVisibleTaskColumns(Array.from(set));
+  };
 
   // Fetch label assignments for all tasks for filtering
   const { data: allLabelAssignments = [] } = useQuery({
@@ -1021,6 +1041,23 @@ export default function Tasks() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuLabel className="text-xs text-muted-foreground flex items-center gap-2">
+                <Columns3 className="h-3.5 w-3.5" /> Columns
+              </DropdownMenuLabel>
+              {OPTIONAL_TASK_COLUMNS.map(c => {
+                const checked = visibleTaskColumns.includes(c.id);
+                return (
+                  <DropdownMenuItem
+                    key={c.id}
+                    className="text-xs gap-2"
+                    onSelect={(e) => { e.preventDefault(); toggleTaskColumn(c.id); }}
+                  >
+                    <Checkbox checked={checked} className="h-3.5 w-3.5" />
+                    {c.label}
+                  </DropdownMenuItem>
+                );
+              })}
+              <DropdownMenuSeparator />
               <DropdownMenuItem className="text-xs gap-2" onClick={() => setShowSaveViewDialog(true)}>
                 <BookmarkPlus className="h-3.5 w-3.5" /> Save current view
               </DropdownMenuItem>
@@ -1091,6 +1128,7 @@ export default function Tasks() {
                 onSelectAll={handleSelectAll}
                 onToggleStar={handleToggleStar}
                 focusedTaskIndex={focusedTaskIndex}
+                visibleColumnIds={visibleTaskColumns}
               />
             )}
             {viewMode === 'board' && (

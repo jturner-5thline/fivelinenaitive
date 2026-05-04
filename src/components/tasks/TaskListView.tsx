@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/popover';
 import {
   Plus, MoreHorizontal, Trash2, ChevronDown, ChevronRight, GripVertical,
-  Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star, AlertTriangle, Building2, User, Repeat,
+  Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star, AlertTriangle, Building2, User, Repeat, Columns3,
 } from 'lucide-react';
 import { ExpandedTaskDetails } from '@/components/tasks/ExpandedTaskDetails';
 import { cn } from '@/lib/utils';
@@ -42,27 +42,42 @@ import {
 } from '@/lib/taskDateGrouping';
 
 /**
- * Stable column template for the My Tasks list. The header row and every
- * data row use this same template so columns line up across rows and chevron
- * / checkbox / owner / deal / due / priority / status sit on a single
- * vertical centerline.
- *
- *   1  drag handle    20px (hidden until row hover)
- *   2  expand chevron 20px
- *   3  multi-select   20px
- *   4  complete check 20px
- *   5  star           20px
- *   6  task name      minmax(240px, 1fr)  ← only growable column
- *   7  owner          140px
- *   8  collaborators   60px
- *   9  deal           180px
- *  10  due date       120px (right-aligned, tabular-nums)
- *  11  priority pill  100px
- *  12  status pill    120px
- *  13  row actions     32px
+ * Optional columns the user can toggle on/off. The 5 leading utility cells
+ * (drag, expand, select, complete, star), the task title, and the trailing
+ * row-actions cell are always rendered. The default view shows only the
+ * key triage columns (priority + status) so the page opens clean; users can
+ * reveal more columns from the toolbar.
  */
-const TASK_GRID_COLS =
-  'grid-cols-[20px_20px_20px_20px_20px_minmax(240px,1fr)_140px_60px_180px_120px_100px_120px_32px]';
+export const OPTIONAL_TASK_COLUMNS = [
+  { id: 'owner',    label: 'Owner',         template: '140px' },
+  { id: 'collab',   label: 'Collaborators', template: '60px'  },
+  { id: 'deal',     label: 'Deal',          template: '180px' },
+  { id: 'due',      label: 'Due date',      template: '120px' },
+  { id: 'priority', label: 'Priority',      template: '100px' },
+  { id: 'status',   label: 'Status',        template: '120px' },
+] as const;
+
+export type TaskColumnId = typeof OPTIONAL_TASK_COLUMNS[number]['id'];
+
+/** Default columns shown to first-time users — fast triage view. */
+export const DEFAULT_TASK_COLUMNS: TaskColumnId[] = ['priority', 'status'];
+
+const LEADING_TEMPLATE = '20px 20px 20px 20px 20px minmax(240px,1fr)';
+const TRAILING_TEMPLATE = '32px';
+
+/** Build the gridTemplateColumns CSS value from the active column set. */
+function buildGridTemplate(visible: Set<TaskColumnId>): string {
+  const middle = OPTIONAL_TASK_COLUMNS
+    .filter(c => visible.has(c.id))
+    .map(c => c.template)
+    .join(' ');
+  return [LEADING_TEMPLATE, middle, TRAILING_TEMPLATE].filter(Boolean).join(' ');
+}
+
+/** Convenience: ordered list of currently visible optional columns. */
+function getVisibleColumns(visible: Set<TaskColumnId>) {
+  return OPTIONAL_TASK_COLUMNS.filter(c => visible.has(c.id));
+}
 
 /** Locked row height — every data row, header row, and add-row uses this. */
 const TASK_ROW_MIN_H = 'min-h-[44px]';
@@ -108,6 +123,7 @@ interface TaskListViewProps {
   onToggleStar?: (id: string, current: boolean) => void;
   focusedTaskIndex?: number;
   taskNameWarning?: string;
+  visibleColumnIds?: TaskColumnId[];
 }
 
 function getTimeGroups(tasks: Task[], boundaries: DueBoundaries) {
@@ -176,8 +192,19 @@ export function TaskListView({
   onNewTaskChange, onNewTaskKeyDown, onNewTaskCreate, onCancelCreate,
   onSelectTask, onUpdateTask, onDeleteTask, selectedTaskId,
   groupBy = 'status', selectedTaskIds, onToggleSelect, onSelectAll,
-  onToggleStar, focusedTaskIndex, taskNameWarning,
+  onToggleStar, focusedTaskIndex, taskNameWarning, visibleColumnIds,
 }: TaskListViewProps) {
+  const visibleSet = useMemo(
+    () => new Set<TaskColumnId>((visibleColumnIds && visibleColumnIds.length > 0
+      ? visibleColumnIds
+      : DEFAULT_TASK_COLUMNS) as TaskColumnId[]),
+    [visibleColumnIds],
+  );
+  const cols = useMemo(() => getVisibleColumns(visibleSet), [visibleSet]);
+  const gridStyle = useMemo<React.CSSProperties>(
+    () => ({ gridTemplateColumns: buildGridTemplate(visibleSet) }),
+    [visibleSet],
+  );
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(['complete']));
   const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(new Set());
   const [dragActiveId, setDragActiveId] = useState<string | null>(null);
@@ -261,11 +288,12 @@ export function TaskListView({
             every header label sits directly above its column. */}
         <div
           className={cn(
-            'grid', TASK_GRID_COLS,
+            'grid',
             'gap-2 items-center px-4 min-h-[36px]',
             'text-[11px] font-medium uppercase tracking-wide sticky top-0 z-10',
             'bg-background/90 backdrop-blur-md border-b border-border/40 text-muted-foreground',
           )}
+          style={gridStyle}
         >
           <div aria-hidden />
           <div aria-hidden />
@@ -283,12 +311,19 @@ export function TaskListView({
           <div aria-hidden />
           <div aria-hidden />
           <div className="truncate">Task name</div>
-          <div className="truncate">Owner</div>
-          <div aria-hidden />
-          <div className="truncate">Deal</div>
-          <div className="text-right tabular-nums">Due date</div>
-          <div className="text-center">Priority</div>
-          <div className="text-center">Status</div>
+          {cols.map(c => (
+            <div
+              key={c.id}
+              className={cn(
+                'truncate',
+                c.id === 'due' && 'text-right tabular-nums',
+                (c.id === 'priority' || c.id === 'status') && 'text-center',
+                c.id === 'collab' && 'sr-only',
+              )}
+            >
+              {c.id === 'collab' ? '' : c.label}
+            </div>
+          ))}
           <div aria-hidden />
         </div>
 
@@ -309,6 +344,8 @@ export function TaskListView({
             onToggleStar={onToggleStar}
             expandedTaskIds={expandedTaskIds}
             onToggleExpanded={toggleExpanded}
+            gridStyle={gridStyle}
+            cols={cols}
           />
         )}
 
@@ -325,7 +362,7 @@ export function TaskListView({
                 <button
                   onClick={() => toggleSection(group.key)}
                   className={cn(
-                    'w-full grid', TASK_GRID_COLS,
+                    'w-full grid',
                     'gap-2 items-center px-4 min-h-[34px] text-left sticky z-[5] transition-colors',
                     'border-b border-border/30',
                   )}
@@ -334,6 +371,7 @@ export function TaskListView({
                     borderLeft: `2px solid ${accentColor}`,
                     backgroundColor: `${accentColor}10`,
                     backdropFilter: 'blur(6px)',
+                    gridTemplateColumns: gridStyle.gridTemplateColumns,
                   }}
                 >
                   <div aria-hidden />
@@ -364,8 +402,8 @@ export function TaskListView({
                     )}
                   </div>
                   {/* Spacer cells for remaining columns to keep grid aligned. */}
-                  <div aria-hidden /><div aria-hidden /><div aria-hidden />
-                  <div aria-hidden /><div aria-hidden /><div aria-hidden /><div aria-hidden />
+                  {cols.map(c => <div key={c.id} aria-hidden />)}
+                  <div aria-hidden />
                 </button>
 
                 {!isCollapsed && (
@@ -391,6 +429,8 @@ export function TaskListView({
                           isExpanded={expandedTaskIds.has(task.id)}
                           onToggleExpanded={() => toggleExpanded(task.id)}
                           onOpenFullDetail={() => onSelectTask(task.id)}
+                          gridStyle={gridStyle}
+                          cols={cols}
                         />
                       );
                     })}
@@ -400,7 +440,10 @@ export function TaskListView({
                       <>
                         {isCreating ? (
                           <>
-                            <div className={cn('grid', TASK_GRID_COLS, TASK_ROW_MIN_H, 'gap-2 items-center px-4 py-1')}>
+                            <div
+                              className={cn('grid', TASK_ROW_MIN_H, 'gap-2 items-center px-4 py-1')}
+                              style={gridStyle}
+                            >
                               {/* 5 leading utility columns */}
                               <div /><div /><div /><div /><div />
                               {/* Title input occupies the task-name column */}
@@ -413,8 +456,9 @@ export function TaskListView({
                                 className="h-7 text-sm border-[#3b7eff] bg-[#13181f] text-white"
                                 autoFocus
                               />
-                              {/* 7 trailing columns */}
-                              <div /><div /><div /><div /><div /><div /><div />
+                              {/* trailing column placeholders */}
+                              {cols.map(c => <div key={c.id} />)}
+                              <div />
                             </div>
                             {taskNameWarning && <p className="text-[11px] px-4 py-1" style={{ color: '#ff4d4d' }}>{taskNameWarning}</p>}
                           </>
@@ -455,7 +499,7 @@ export function TaskListView({
 }
 
 // Pinned Overdue Section
-function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focusedTaskIndex, allTasks, onSelectTask, onUpdateTask, onDeleteTask, onToggleComplete, onToggleSelect, onToggleStar, expandedTaskIds, onToggleExpanded }: {
+function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focusedTaskIndex, allTasks, onSelectTask, onUpdateTask, onDeleteTask, onToggleComplete, onToggleSelect, onToggleStar, expandedTaskIds, onToggleExpanded, gridStyle, cols }: {
   tasks: Task[];
   todayStr: string;
   selectedTaskId: string | null;
@@ -470,6 +514,8 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
   onToggleStar?: (id: string, current: boolean) => void;
   expandedTaskIds?: Set<string>;
   onToggleExpanded?: (taskId: string) => void;
+  gridStyle: React.CSSProperties;
+  cols: typeof OPTIONAL_TASK_COLUMNS[number][];
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -478,7 +524,7 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
       <button
         onClick={() => setCollapsed(!collapsed)}
         className={cn(
-          'w-full grid', TASK_GRID_COLS,
+          'w-full grid',
           'gap-2 items-center px-4 min-h-[34px] text-left sticky z-[5] transition-colors',
           'border-b border-border/30',
         )}
@@ -487,6 +533,7 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
           borderLeft: '2px solid #e57373',
           backgroundColor: 'rgba(229,115,115,0.08)',
           backdropFilter: 'blur(6px)',
+          gridTemplateColumns: gridStyle.gridTemplateColumns,
         }}
       >
         <div aria-hidden />
@@ -511,8 +558,8 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
             {tasks.length}
           </span>
         </div>
-        <div aria-hidden /><div aria-hidden /><div aria-hidden />
-        <div aria-hidden /><div aria-hidden /><div aria-hidden /><div aria-hidden />
+        {cols.map(c => <div key={c.id} aria-hidden />)}
+        <div aria-hidden />
       </button>
       {!collapsed && tasks.map(task => {
         const globalIndex = allTasks.indexOf(task);
@@ -534,6 +581,8 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
             isExpanded={expandedTaskIds?.has(task.id)}
             onToggleExpanded={onToggleExpanded ? () => onToggleExpanded(task.id) : undefined}
             onOpenFullDetail={() => onSelectTask(task.id)}
+            gridStyle={gridStyle}
+            cols={cols}
           />
         );
       })}
@@ -602,7 +651,7 @@ function QuickDatePicker({ value, onChange, todayStr }: { value: string | null; 
 }
 
 // Sortable task row
-function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocused, onSelect, onUpdate, onDelete, onToggleComplete, onToggleSelect, onToggleStar, showSelectCheckbox, collaborators, isExpanded, onToggleExpanded, onOpenFullDetail }: {
+function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocused, onSelect, onUpdate, onDelete, onToggleComplete, onToggleSelect, onToggleStar, showSelectCheckbox, collaborators, isExpanded, onToggleExpanded, onOpenFullDetail, gridStyle, cols }: {
   task: Task;
   todayStr: string;
   isSelected: boolean;
@@ -619,9 +668,17 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
   isExpanded?: boolean;
   onToggleExpanded?: () => void;
   onOpenFullDetail?: () => void;
+  gridStyle: React.CSSProperties;
+  cols: typeof OPTIONAL_TASK_COLUMNS[number][];
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.3 : 1 };
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+    gridTemplateColumns: gridStyle.gridTemplateColumns,
+  };
+  const visibleSet = useMemo(() => new Set(cols.map(c => c.id)), [cols]);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(task.title);
   const isComplete = task.status === 'complete';
@@ -656,7 +713,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       className={cn(
         // Locked-height glass row — single centerline alignment across all
         // cells regardless of which sub-label / pill content the row holds.
-        'grid', TASK_GRID_COLS,
+        'grid',
         TASK_ROW_MIN_H,
         'gap-2 items-center px-3 py-1 cursor-pointer group rounded-lg border transition-all duration-150',
         'bg-white/[0.025] dark:bg-white/[0.025] border-white/[0.06] backdrop-blur-md',
@@ -801,6 +858,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       </div>
 
       {/* Owner */}
+      {visibleSet.has('owner') && (
       <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
         {task.assignee_profile ? (
           <>
@@ -818,8 +876,10 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
           <span className="text-[11px]" style={{ color: '#5b6173' }}>—</span>
         )}
       </div>
+      )}
 
       {/* Collaborators */}
+      {visibleSet.has('collab') && (
       <div className="flex items-center" onClick={e => e.stopPropagation()}>
         {collaborators && collaborators.length > 0 ? (
           <div className="flex items-center -space-x-1.5">
@@ -837,9 +897,11 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
           </div>
         ) : null}
       </div>
+      )}
 
 
       {/* Deal cell — single-line ellipsis with hover tooltip. */}
+      {visibleSet.has('deal') && (
       <div className="min-w-0 overflow-hidden flex items-center" onClick={e => e.stopPropagation()}>
         {task.deal_id && task.deal ? (
           <Link
@@ -854,13 +916,17 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
           </Link>
         ) : null}
       </div>
+      )}
 
       {/* Due date — right-aligned, tabular-nums for stable column width */}
+      {visibleSet.has('due') && (
       <div className="flex items-center justify-end tabular-nums" onClick={e => e.stopPropagation()}>
         <QuickDatePicker value={task.due_date} onChange={v => onUpdate({ due_date: v } as any)} todayStr={todayStr} />
       </div>
+      )}
 
       {/* Priority pill */}
+      {visibleSet.has('priority') && (
       <div className="flex items-center justify-center" onClick={e => e.stopPropagation()}>
         <Select value={task.priority} onValueChange={v => onUpdate({ priority: v } as any)}>
           <SelectTrigger className={cn('h-6 text-[10px] border-none bg-transparent px-0 focus:ring-0 [&>svg]:hidden hover:bg-[rgba(255,255,255,0.04)] rounded justify-center', PRIORITY_PILL_MIN_W)}>
@@ -879,8 +945,10 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
           </SelectContent>
         </Select>
       </div>
+      )}
 
       {/* Status pill */}
+      {visibleSet.has('status') && (
       <div className="flex items-center justify-center" onClick={e => e.stopPropagation()}>
         <Select value={task.status} onValueChange={v => { onUpdate({ status: v } as any); if (v === 'complete') fireCelebration(); }}>
           <SelectTrigger className={cn('h-6 text-[10px] border-none bg-transparent px-0 [&>svg]:hidden hover:bg-[rgba(255,255,255,0.04)] rounded justify-center', STATUS_PILL_MIN_W)}>
@@ -900,6 +968,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
           </SelectContent>
         </Select>
       </div>
+      )}
 
       {/* Actions */}
       <div className="flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
