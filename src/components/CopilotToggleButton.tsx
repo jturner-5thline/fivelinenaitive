@@ -1,8 +1,61 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Search as SearchIcon,
+  Briefcase,
+  Building2,
+  ArrowRight,
+  CornerDownLeft,
+} from 'lucide-react';
 import { useCopilotStore } from '@/stores/copilotStore';
 import { useAnyDialogOpen } from '@/hooks/useAnyDialogOpen';
+import { useDealsContext } from '@/contexts/DealsContext';
+import { useLenders } from '@/contexts/LendersContext';
 import naitiveAiIcon from '@/assets/naitive-ai-icon.png';
 import { cn } from '@/lib/utils';
+
+const QUICK_PAGES: { name: string; path: string }[] = [
+  { name: 'Dashboard', path: '/dashboard' },
+  { name: 'Deals', path: '/deals' },
+  { name: 'Lenders', path: '/lenders' },
+  { name: 'Contacts', path: '/contacts' },
+  { name: 'Companies', path: '/companies' },
+  { name: 'Analytics', path: '/analytics' },
+  { name: 'Metrics', path: '/metrics' },
+  { name: 'Insights', path: '/insights' },
+  { name: 'Research', path: '/research' },
+  { name: 'Reports', path: '/reports' },
+  { name: 'Notifications', path: '/notifications' },
+  { name: 'Settings', path: '/settings' },
+  { name: 'Help', path: '/help' },
+];
+
+type Suggestion =
+  | { kind: 'deal'; id: string; label: string; sublabel?: string; path: string }
+  | { kind: 'lender'; id: string; label: string; sublabel?: string; path: string }
+  | { kind: 'page'; id: string; label: string; path: string };
+
+/**
+ * Heuristic intent router. Anything that looks like a question, command, or
+ * multi-clause prompt is treated as AI; short keyword/entity lookups stay as
+ * search. Suggestions still render alongside AI intent so the user can pick
+ * a record directly.
+ */
+function isAiIntent(raw: string): boolean {
+  const q = raw.trim();
+  if (!q) return false;
+  if (/[?]/.test(q)) return true;
+  if (
+    /^(how|what|why|when|where|who|show|find|list|summarize|summarise|draft|create|make|generate|explain|compare|analyze|analyse|tell|give|email|write|plan|schedule|remind|update|change|move|add|delete|cancel|open|close)\b/i.test(
+      q,
+    )
+  ) {
+    return true;
+  }
+  const words = q.split(/\s+/).filter(Boolean);
+  if (words.length >= 5) return true;
+  return false;
+}
 
 export function CopilotToggleButton() {
   const togglePanel = useCopilotStore((s) => s.togglePanel);
@@ -10,28 +63,113 @@ export function CopilotToggleButton() {
   const isOpen = useCopilotStore((s) => s.isOpen);
   const hasOpenModal = useAnyDialogOpen();
   const [value, setValue] = useState('');
+  const [focused, setFocused] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
+  const { deals } = useDealsContext();
+  const { lenders } = useLenders();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'j' || e.key === 'k')) {
         e.preventDefault();
-        togglePanel();
+        if (e.key === 'j' && isOpen) {
+          togglePanel();
+        } else {
+          inputRef.current?.focus();
+        }
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [togglePanel]);
+  }, [togglePanel, isOpen]);
+
+  const suggestions = useMemo<Suggestion[]>(() => {
+    const q = value.trim().toLowerCase();
+    if (!q) return [];
+    const out: Suggestion[] = [];
+
+    if (deals?.length) {
+      let count = 0;
+      for (const d of deals) {
+        const company = (d.company || '').toLowerCase();
+        if (!company) continue;
+        if (company.includes(q)) {
+          out.push({
+            kind: 'deal',
+            id: d.id,
+            label: d.company,
+            sublabel: d.stage,
+            path: `/deal/${d.id}`,
+          });
+          count += 1;
+          if (count >= 5) break;
+        }
+      }
+    }
+
+    if (lenders?.length) {
+      let count = 0;
+      for (const l of lenders) {
+        const name = (l.name || '').toLowerCase();
+        if (!name) continue;
+        if (name.includes(q)) {
+          out.push({
+            kind: 'lender',
+            id: l.name,
+            label: l.name,
+            sublabel: l.contact?.name,
+            path: `/lenders?search=${encodeURIComponent(l.name)}`,
+          });
+          count += 1;
+          if (count >= 5) break;
+        }
+      }
+    }
+
+    const pages = QUICK_PAGES.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 4);
+    for (const p of pages) {
+      out.push({ kind: 'page', id: p.path, label: p.name, path: p.path });
+    }
+
+    return out.slice(0, 10);
+  }, [value, deals, lenders]);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [value]);
 
   if (isOpen) return null;
   if (hasOpenModal) return null;
 
+  const askAi = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    openPanelWithPrompt(trimmed);
+    setValue('');
+  };
+
+  const goTo = (path: string) => {
+    navigate(path);
+    setValue('');
+    inputRef.current?.blur();
+  };
+
   const submit = () => {
     const text = value.trim();
     if (!text) return;
-    openPanelWithPrompt(text);
-    setValue('');
+    if (suggestions.length > 0 && activeIndex > 0 && activeIndex <= suggestions.length) {
+      const s = suggestions[activeIndex - 1];
+      goTo(s.path);
+      return;
+    }
+    askAi(text);
   };
+
+  const showDropdown = focused && value.trim().length > 0;
+  const aiIntent = isAiIntent(value);
+  const dropdownItemCount = suggestions.length + 1; // +1 for the AI row at index 0
 
   return (
     <div
@@ -39,87 +177,198 @@ export function CopilotToggleButton() {
       className="pointer-events-none sticky inset-x-0 z-50 mt-auto flex justify-center"
       style={{
         bottom: 'max(24px, env(safe-area-inset-bottom))',
-        // Negative top margin keeps the bar from adding layout height in
-        // short pages while still sticking to the bottom of the viewport
-        // when content scrolls past it.
         marginTop: 'auto',
       }}
     >
-    <div
-      role="search"
-      aria-label="Ask naitive AI"
-      className={cn(
-        "group relative overflow-hidden pointer-events-auto",
-        "h-11 rounded-full",
-        "flex items-center gap-3 pl-1.5 pr-4",
-        "text-left",
-        "w-[min(720px,calc(100%-32px))]",
-        "opacity-70 hover:opacity-100 focus-within:opacity-100",
-        "transition-[opacity,box-shadow] duration-200 ease-out",
-        "hover:shadow-[0_16px_40px_rgba(0,0,0,0.55),0_4px_10px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.10),0_0_0_1px_rgba(0,0,0,0.28)]",
-        "animate-in fade-in duration-150"
-      )}
-      style={{
-        background: 'rgba(14, 16, 24, 0.6)',
-        backdropFilter: 'blur(18px) saturate(1.4)',
-        WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
-        border: '1px solid rgba(255, 255, 255, 0.22)',
-        boxShadow:
-          '0 10px 32px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.25)',
-      }}
-      onClick={() => inputRef.current?.focus()}
-    >
-      {/* Centered watermark emblem */}
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 flex items-center justify-center"
-      >
-        <img
-          src={naitiveAiIcon}
-          alt=""
-          className="h-5 w-5 brightness-0 invert opacity-[0.06] transition-opacity duration-200 group-hover:opacity-[0.09]"
-        />
-      </span>
+      <div className="pointer-events-auto w-[min(720px,calc(100%-32px))] flex flex-col items-stretch gap-2">
+        {showDropdown && (
+          <div
+            id="naitive-unified-suggestions"
+            role="listbox"
+            className={cn(
+              'rounded-2xl overflow-hidden border max-h-[50vh] overflow-y-auto',
+              'animate-in fade-in slide-in-from-bottom-1 duration-150',
+            )}
+            style={{
+              background: 'rgba(14, 16, 24, 0.92)',
+              backdropFilter: 'blur(18px) saturate(1.4)',
+              WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
+              borderColor: 'rgba(255, 255, 255, 0.18)',
+              boxShadow:
+                '0 18px 42px rgba(0,0,0,0.55), 0 4px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)',
+            }}
+          >
+            {/* Always-present "Ask naitive AI" row */}
+            <button
+              type="button"
+              role="option"
+              aria-selected={activeIndex === 0}
+              onMouseDown={(e) => { e.preventDefault(); askAi(value); }}
+              onMouseEnter={() => setActiveIndex(0)}
+              className={cn(
+                'w-full flex items-center gap-3 px-4 py-2.5 text-left text-[13px]',
+                'transition-colors',
+                activeIndex === 0
+                  ? 'bg-white/[0.07] text-white'
+                  : 'text-white/85 hover:bg-white/[0.04]',
+              )}
+            >
+              <span
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
+                style={{
+                  background:
+                    'linear-gradient(to right, hsl(270, 65%, 55%), hsl(220, 70%, 62%))',
+                }}
+              >
+                <img src={naitiveAiIcon} alt="" className="h-3 w-3 brightness-0 invert" />
+              </span>
+              <span className="flex-1 min-w-0 truncate">
+                {aiIntent ? 'Ask naitive AI: ' : 'Ask naitive AI about '}
+                <span className="text-white">"{value}"</span>
+              </span>
+              <CornerDownLeft className="h-3.5 w-3.5 text-white/40 shrink-0" />
+            </button>
 
-      {/* Left gradient logo badge */}
-      <button
-        type="button"
-        aria-label="Open naitive AI"
-        onClick={(e) => { e.stopPropagation(); togglePanel(); }}
-        className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-[0_2px_10px_hsl(270_65%_55%/0.45)] cursor-pointer hover:scale-105 active:scale-95 transition-transform"
-        style={{
-          background: 'linear-gradient(to right, hsl(270, 65%, 55%), hsl(220, 70%, 62%))',
-        }}
-      >
-        <img
-          src={naitiveAiIcon}
-          alt=""
-          className="h-4 w-4 brightness-0 invert"
-        />
-      </button>
+            {suggestions.length > 0 && (
+              <div className="border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }} />
+            )}
 
-      {/* Inline input */}
-      <input
-        ref={inputRef}
-        type="text"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            submit();
-          }
-        }}
-        placeholder="Ask naitive AI…"
-        aria-label="Ask naitive AI"
-        className="relative z-10 flex-1 min-w-0 bg-transparent border-0 outline-none text-[13px] font-normal text-white/85 placeholder:text-white/45"
-      />
+            {suggestions.map((s, i) => {
+              const idx = i + 1;
+              const isActive = idx === activeIndex;
+              const Icon =
+                s.kind === 'deal' ? Briefcase : s.kind === 'lender' ? Building2 : ArrowRight;
+              const groupLabel =
+                s.kind === 'deal' ? 'Deal' : s.kind === 'lender' ? 'Lender' : 'Page';
+              return (
+                <button
+                  type="button"
+                  key={`${s.kind}-${s.id}`}
+                  role="option"
+                  aria-selected={isActive}
+                  onMouseDown={(e) => { e.preventDefault(); goTo(s.path); }}
+                  onMouseEnter={() => setActiveIndex(idx)}
+                  className={cn(
+                    'w-full flex items-center gap-3 px-4 py-2 text-left text-[13px]',
+                    'transition-colors',
+                    isActive
+                      ? 'bg-white/[0.07] text-white'
+                      : 'text-white/85 hover:bg-white/[0.04]',
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0 text-white/55" />
+                  <span className="flex-1 min-w-0 truncate">{s.label}</span>
+                  {s.kind !== 'page' && s.sublabel && (
+                    <span className="text-[11px] text-white/45 shrink-0 truncate max-w-[40%]">
+                      {s.sublabel}
+                    </span>
+                  )}
+                  <span className="text-[10px] uppercase tracking-wide text-white/35 shrink-0">
+                    {groupLabel}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
-      {/* Keyboard hint */}
-      <kbd className="relative z-10 hidden sm:inline-flex items-center gap-0.5 rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-medium text-white/40 group-hover:text-white/55 transition-colors shrink-0">
-        ⌘J
-      </kbd>
-    </div>
+        <div
+          role="search"
+          aria-label="Search or ask naitive AI"
+          className={cn(
+            'group relative overflow-hidden',
+            'h-11 rounded-full',
+            'flex items-center gap-3 pl-1.5 pr-4',
+            'text-left',
+            'w-full',
+            'opacity-70 hover:opacity-100 focus-within:opacity-100',
+            'transition-[opacity,box-shadow] duration-200 ease-out',
+            'hover:shadow-[0_16px_40px_rgba(0,0,0,0.55),0_4px_10px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.10),0_0_0_1px_rgba(0,0,0,0.28)]',
+            'animate-in fade-in duration-150',
+          )}
+          style={{
+            background: 'rgba(14, 16, 24, 0.6)',
+            backdropFilter: 'blur(18px) saturate(1.4)',
+            WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
+            border: '1px solid rgba(255, 255, 255, 0.22)',
+            boxShadow:
+              '0 10px 32px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.25)',
+          }}
+          onClick={() => inputRef.current?.focus()}
+        >
+          {/* Centered watermark emblem */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 flex items-center justify-center"
+          >
+            <img
+              src={naitiveAiIcon}
+              alt=""
+              className="h-5 w-5 brightness-0 invert opacity-[0.06] transition-opacity duration-200 group-hover:opacity-[0.09]"
+            />
+          </span>
+
+          {/* Left gradient logo badge */}
+          <button
+            type="button"
+            aria-label="Open naitive AI"
+            onClick={(e) => { e.stopPropagation(); togglePanel(); }}
+            className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-[0_2px_10px_hsl(270_65%_55%/0.45)] cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+            style={{
+              background:
+                'linear-gradient(to right, hsl(270, 65%, 55%), hsl(220, 70%, 62%))',
+            }}
+          >
+            <img src={naitiveAiIcon} alt="" className="h-4 w-4 brightness-0 invert" />
+          </button>
+
+          {/* Search affordance */}
+          <SearchIcon className="relative z-10 h-3.5 w-3.5 shrink-0 text-white/40 group-hover:text-white/55 transition-colors" />
+
+          {/* Inline input */}
+          <input
+            ref={inputRef}
+            type="text"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => {
+              // Delay to allow mousedown handlers on suggestions to fire first.
+              setTimeout(() => setFocused(false), 120);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                submit();
+                return;
+              }
+              if (e.key === 'Escape') {
+                if (value) setValue('');
+                else inputRef.current?.blur();
+                return;
+              }
+              if (showDropdown && e.key === 'ArrowDown') {
+                e.preventDefault();
+                setActiveIndex((i) => (i + 1) % dropdownItemCount);
+              } else if (showDropdown && e.key === 'ArrowUp') {
+                e.preventDefault();
+                setActiveIndex((i) => (i - 1 + dropdownItemCount) % dropdownItemCount);
+              }
+            }}
+            placeholder="Search or ask naitive AI…"
+            aria-label="Search or ask naitive AI"
+            aria-autocomplete="list"
+            aria-expanded={showDropdown}
+            aria-controls="naitive-unified-suggestions"
+            className="relative z-10 flex-1 min-w-0 bg-transparent border-0 outline-none text-[13px] font-normal text-white/85 placeholder:text-white/45"
+          />
+
+          {/* Keyboard hint */}
+          <kbd className="relative z-10 hidden sm:inline-flex items-center gap-0.5 rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-medium text-white/40 group-hover:text-white/55 transition-colors shrink-0">
+            ⌘J
+          </kbd>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Settings2, LayoutDashboard } from 'lucide-react';
-import { GlobalSearchAI } from '@/components/GlobalSearchAI';
 
 import { HeaderNotificationPreview } from '@/components/notifications/HeaderNotificationPreview';
 import { DemoModeBadge } from '@/components/DemoModeBadge';
@@ -50,9 +49,6 @@ export function DealsHeader() {
             <Logo className="h-[60px]" />
           </Link>
           <DemoModeBadge />
-          <div className="shrink min-w-0">
-            <GlobalSearchAI />
-          </div>
         </div>
 
         <nav className="hidden items-center gap-0.5 lg:flex shrink-0">
