@@ -506,15 +506,6 @@ export function ExecutiveDashboard() {
   const fmtCount = (v: number | null) =>
     v === null || !Number.isFinite(v) ? '—' : v.toLocaleString();
 
-  const revenueByMonthData = [
-    { month: 'Aug-25', revenue: 250000 },
-    { month: 'Sep-25', revenue: 320000 },
-    { month: 'Oct-25', revenue: 280000 },
-    { month: 'Nov-25', revenue: 350000 },
-    { month: 'Dec-25', revenue: 420000 },
-    { month: 'Jan-26', revenue: 180000 },
-  ];
-
   return (
     <div className="space-y-6">
       {/* Week stepper — drives the time-bound metrics on this page */}
@@ -607,29 +598,7 @@ export function ExecutiveDashboard() {
         />
       </div>
 
-      {/* Row 2: Revenue & Pipeline */}
-      <div className="grid grid-cols-1 gap-4">
-        <GlassCard interactive>
-          <ChartCardHeader title="Revenue by Month" subtitle="Last 6 Months" />
-          <GlassCardBody>
-            <div className="h-[240px]" role="img" aria-label="Revenue by month, last 6 months">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={revenueByMonthData} margin={{ top: 8, right: 8, left: -6, bottom: 4 }}>
-                  <CartesianGrid strokeDasharray="2 4" stroke={GRID_STROKE} vertical={false} />
-                  <XAxis dataKey="month" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
-                  <YAxis tickFormatter={formatCurrency} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
-                  <Tooltip formatter={(value: number) => [formatCurrency(value), 'Revenue']} contentStyle={TOOLTIP_STYLE} />
-                  <Legend wrapperStyle={LEGEND_STYLE} iconType="circle" iconSize={8} />
-                  <Area type="monotone" dataKey="revenue" name="Revenue" fill="hsl(var(--primary) / 0.22)" stroke="transparent" legendType="none" />
-                  <Line type="monotone" dataKey="revenue" name="Revenue" stroke="hsl(var(--primary))" strokeWidth={1.75} dot={{ r: 3, fill: 'hsl(var(--primary))', strokeWidth: 0 }} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          </GlassCardBody>
-        </GlassCard>
-      </div>
-
-      {/* Row 3: Deal Types */}
+      {/* Row 2: Deal Types */}
       <div className="grid grid-cols-1 gap-4">
         <DealsByStatusPieChart window={{ start: selectedWindow.start, end: selectedWindow.end }} />
       </div>
