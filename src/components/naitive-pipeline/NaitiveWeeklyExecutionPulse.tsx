@@ -5,7 +5,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { ArrowDown, ArrowUp, Minus, CalendarIcon } from 'lucide-react';
+import { ArrowDown, ArrowUp, Minus, CalendarIcon, ChevronRight } from 'lucide-react';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
+import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
   format, startOfWeek, endOfWeek, subWeeks, subDays, startOfDay, endOfDay,
@@ -206,17 +210,34 @@ function normalizeReasons(raw: unknown): string[] {
   return [];
 }
 
-function topReason(deals: Deal[], from: Date, to: Date): { label: string; count: number } | null {
+interface BlockerDealHit {
+  deal: Deal;
+  reasons: string[]; // full reason strings (incl. any "— detail" suffix)
+}
+
+function topReason(
+  deals: Deal[],
+  from: Date,
+  to: Date,
+): { label: string; count: number; deals: BlockerDealHit[] } | null {
   const counts = new Map<string, number>();
+  const dealsByHead = new Map<string, BlockerDealHit[]>();
   for (const d of deals) {
     try {
       const u = new Date(d.updatedAt);
       if (!inRange(u, from, to)) continue;
       const tokens = normalizeReasons(d.whyNotMovingForward);
+      const seenHeads = new Set<string>();
       for (const tok of tokens) {
         const head = tok.split('—')[0].trim();
         if (!head) continue;
         counts.set(head, (counts.get(head) || 0) + 1);
+        if (!seenHeads.has(head)) {
+          seenHeads.add(head);
+          const arr = dealsByHead.get(head) || [];
+          arr.push({ deal: d, reasons: tokens });
+          dealsByHead.set(head, arr);
+        }
       }
     } catch {
       // skip malformed record
@@ -224,7 +245,8 @@ function topReason(deals: Deal[], from: Date, to: Date): { label: string; count:
   }
   const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
   if (sorted.length === 0 || sorted[0][1] === 0) return null;
-  return { label: sorted[0][0], count: sorted[0][1] };
+  const [label, count] = sorted[0];
+  return { label, count, deals: dealsByHead.get(label) || [] };
 }
 
 function StatCard({ label, value, prev, isPercent }: {
@@ -286,6 +308,7 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
   const lastWeekTo = endOfWeek(subWeeks(new Date(), 1), { weekStartsOn: 1 });
   const blockerThis = useMemo(() => topReason(deals, thisWeekFrom, thisWeekTo), [deals]);
   const blockerLast = useMemo(() => topReason(deals, lastWeekFrom, lastWeekTo), [deals]);
+  const [blockerOpen, setBlockerOpen] = useState(false);
 
   return (
     <section className="space-y-4">
@@ -416,12 +439,30 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
         </Card>
       </div>
 
-      {/* Top blocker callout */}
+      {/* Top blocker callout — clickable drill-down */}
       <Card className="border-primary/30 bg-primary/5">
-        <CardContent className="p-4">
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            This Week's #1 Blocker
-          </p>
+        <button
+          type="button"
+          disabled={!blockerThis || blockerThis.deals.length === 0}
+          onClick={() => setBlockerOpen(true)}
+          className={cn(
+            'w-full text-left p-4 rounded-lg transition-colors',
+            blockerThis && blockerThis.deals.length > 0
+              ? 'hover:bg-primary/10 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50'
+              : 'cursor-default',
+          )}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              This Week's #1 Blocker
+            </p>
+            {blockerThis && blockerThis.deals.length > 0 && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-primary">
+                View {blockerThis.deals.length} {blockerThis.deals.length === 1 ? 'deal' : 'deals'}
+                <ChevronRight className="h-3 w-3" />
+              </span>
+            )}
+          </div>
           {blockerThis ? (
             <p className="text-sm text-foreground mt-1">
               <span className="font-semibold text-primary">Top disqualification this week:</span>{' '}
@@ -438,8 +479,65 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
           ) : (
             <p className="text-sm text-muted-foreground mt-1">No "Why Not Moving Forward" reasons logged this week yet.</p>
           )}
-        </CardContent>
+        </button>
       </Card>
+
+      <Dialog open={blockerOpen} onOpenChange={setBlockerOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base">
+              {blockerThis?.label ?? 'Top blocker'} · {blockerThis?.count ?? 0}{' '}
+              {blockerThis?.count === 1 ? 'mention' : 'mentions'}
+            </DialogTitle>
+            <DialogDescription>
+              Deals updated this week that cited this reason in "Why Not Moving Forward".
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto -mx-2 px-2">
+            {blockerThis && blockerThis.deals.length > 0 ? (
+              <ul className="divide-y divide-border">
+                {blockerThis.deals.map(({ deal, reasons }) => (
+                  <li key={deal.id} className="py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <Link
+                          to={`/deal/${deal.id}`}
+                          className="text-sm font-semibold text-foreground hover:text-primary truncate block"
+                          onClick={() => setBlockerOpen(false)}
+                        >
+                          {deal.company || 'Untitled deal'}
+                        </Link>
+                        {deal.stage && (
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            Stage: {deal.stage}
+                          </p>
+                        )}
+                        <ul className="mt-2 space-y-1">
+                          {reasons.map((r, i) => (
+                            <li
+                              key={i}
+                              className="text-xs text-foreground/90 leading-snug pl-3 border-l-2 border-primary/40"
+                            >
+                              {r}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
+                        {format(new Date(deal.updatedAt), 'MMM d')}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground py-6 text-center">
+                No deals match this blocker.
+              </p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
