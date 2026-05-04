@@ -713,7 +713,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       className={cn(
         // Locked-height glass row — single centerline alignment across all
         // cells regardless of which sub-label / pill content the row holds.
-        'grid', TASK_GRID_COLS,
+        'grid',
         TASK_ROW_MIN_H,
         'gap-2 items-center px-3 py-1 cursor-pointer group rounded-lg border transition-all duration-150',
         'bg-white/[0.025] dark:bg-white/[0.025] border-white/[0.06] backdrop-blur-md',
