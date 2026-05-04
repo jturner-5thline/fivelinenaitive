@@ -97,6 +97,15 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
   const [warning, setWarning] = useState('');
   const [confirmedJunk, setConfirmedJunk] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // Deal association — optional. Auto-suggested from the title via fuzzy
+  // matching against deal name / company / lender / contact, then overridable
+  // through a type-ahead picker that respects RLS (deals already filtered
+  // server-side via DealsContext).
+  const { deals: allDeals } = useDealsContext();
+  const [dealId, setDealId] = useState<string | null>(null);
+  const [dealPickerOpen, setDealPickerOpen] = useState(false);
+  const [dealQuery, setDealQuery] = useState('');
+  const [debouncedTitle, setDebouncedTitle] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -117,6 +126,10 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
       setWarning('');
       setConfirmedJunk(false);
       setSubmitting(false);
+      setDealId(null);
+      setDealPickerOpen(false);
+      setDealQuery('');
+      setDebouncedTitle('');
     }
   }, [open, currentUserId, teamMembers]);
 
