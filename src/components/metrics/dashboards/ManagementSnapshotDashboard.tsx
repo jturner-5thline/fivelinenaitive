@@ -1,9 +1,9 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { AvgRevenuePerClientWidget } from '@/components/metrics/AvgRevenuePerClientWidget';
-import { RevenueQuarterlySection } from './RevenueOverviewDashboard';
-import { PipelineMetricsSection } from './PipelineMetricsSection';
-import { SignedDealsAndARSection } from './SignedDealsAndARSection';
-import { ProfitByEntitySection } from './ProfitByEntitySection';
+import { DebtRevenueWidget, FinServRevenueWidget } from './RevenueOverviewDashboard';
+import { PipelineMetricWidget, type PipelineMetricCardId, PIPELINE_METRIC_LABELS } from './PipelineMetricsSection';
+import { DealsSignedWidget, FinServClientsSignedWidget, OutstandingARWidget } from './SignedDealsAndARSection';
+import { DebtProfitWidget, FinServProfitWidget } from './ProfitByEntitySection';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -483,6 +483,37 @@ export type ManagementSnapshotSectionId =
   | 'signed-deals-ar'
   | 'profit-by-entity'
   | 'executive-dashboard';
+
+/** New per-widget IDs for sub-section charts/KPIs. Each one is an
+ *  independently draggable, resizable tile in the unified grid. */
+export type WeeklyRundownSubWidgetId =
+  // Revenue Overview charts
+  | 'rev-debt' | 'rev-finserv'
+  // Pipeline Metrics KPIs (reuse PipelineMetricCardId values prefixed)
+  | 'pm-deals-on-board' | 'pm-debt-dollar-on-board' | 'pm-debt-deals-signed'
+  | 'pm-debt-dollar-signed' | 'pm-finserv-deals-on-board' | 'pm-finserv-clients-signed'
+  // Signed Deals & AR
+  | 'sd-deals-signed' | 'sd-finserv-clients-signed' | 'sd-outstanding-ar'
+  // Profit by Entity
+  | 'pe-debt-profit' | 'pe-finserv-profit';
+
+export const SUB_WIDGET_LABELS: Record<WeeklyRundownSubWidgetId, string> = {
+  'rev-debt': 'Debt Revenue',
+  'rev-finserv': 'FinServ Revenue',
+  'pm-deals-on-board': 'Deals on the Board',
+  'pm-debt-dollar-on-board': 'Debt $ on the Board',
+  'pm-debt-deals-signed': 'Debt Deals Signed',
+  'pm-debt-dollar-signed': 'Debt $ Signed',
+  'pm-finserv-deals-on-board': 'FinServ: Deals on the Board',
+  'pm-finserv-clients-signed': 'FinServ Clients Signed',
+  'sd-deals-signed': 'Deals Signed',
+  'sd-finserv-clients-signed': 'FinServ Clients Signed',
+  'sd-outstanding-ar': 'Outstanding A/R',
+  'pe-debt-profit': 'Debt Profit',
+  'pe-finserv-profit': 'FinServ Profit',
+};
+
+export const ALL_SUB_WIDGET_IDS: WeeklyRundownSubWidgetId[] = Object.keys(SUB_WIDGET_LABELS) as WeeklyRundownSubWidgetId[];
 
 interface ManagementSnapshotDashboardProps {
   isEditMode?: boolean;
