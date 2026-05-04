@@ -24,7 +24,7 @@ import {
 import {
   classifyUsageTier, tierBadgeClass, DEFAULT_AI_RATE_PER_1K_TOKENS,
 } from "./usageTiers";
-import type { UsageDateRange } from "./useCompanyUsageOverview";
+import { buildDateRange, type UsageDateRange, type UsageDateRangeKey } from "./useCompanyUsageOverview";
 import { sendClaudeMessage } from "@/services/claude";
 
 interface Props {
