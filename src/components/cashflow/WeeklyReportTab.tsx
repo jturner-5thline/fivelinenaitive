@@ -932,6 +932,36 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                 const isTotal = rowDef.isTotal;
                 const isParent = rowDef.isParent === true;
                 const isChild = !!rowDef.parent;
+                // LOC facility sub-row — read availability from entry.__loc_facilities
+                if ((rowDef as WeeklyRow).isLocFacility) {
+                  const facId = (rowDef as WeeklyRow).facilityId!;
+                  const facName = (rowDef as WeeklyRow).facilityName || 'Facility';
+                  return (
+                    <tr key={rowDef.key} className="cf-indent cf-subcategory-row">
+                      <td
+                        className="cf-label-col"
+                        style={{ paddingLeft: 32, color: 'hsl(var(--muted-foreground))', fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: 6 }}
+                      >
+                        <Lock size={11} className="text-amber-400" aria-label="Line of Credit" />
+                        <span>{facName}</span>
+                      </td>
+                      {visibleWeeks.map(([weekKey, entry]) => {
+                        const fac = (entry as any)?.__loc_facilities?.[facId];
+                        const available = fac?.active ? Number(fac.available) || 0 : 0;
+                        return (
+                          <td
+                            key={weekKey}
+                            className="tabular-nums"
+                            style={{ color: 'hsl(38 92% 60%)' }}
+                            title={fac?.active ? `Available LOC: ${fmtAbbrev(available)}` : 'Outside facility window'}
+                          >
+                            {fac?.active ? fmtAbbrev(available) : '—'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                }
                 const isTransferAccount = (rowDef as WeeklyRow).isTransferAccount === true;
                 const isTransfersParent = isParent && rowDef.key === INTERNAL_TRANSFERS_PARENT_KEY;
                 const isDebtAdvParent = isParent && rowDef.key === DEBT_ADV_PARENT_KEY;
