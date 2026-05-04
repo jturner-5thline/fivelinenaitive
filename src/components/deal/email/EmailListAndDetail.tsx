@@ -1670,6 +1670,71 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     setShowResumeBanner(false);
   }, [popOutDraft, thread]);
 
+  // ─── Per-message reply / reply all / forward handlers ────────
+  // Anchored to a specific message in the thread (not just the latest).
+  // Pre-addresses the composer to that message's sender and seeds the
+  // quoted body from that specific message.
+  const handleReplyToMessage = useCallback((msg: MockEmail) => {
+    if (popOutDraft) return;
+    const isOutbound = msg.from_name === 'You';
+    const target = isOutbound
+      ? { to_email: msg.to_email, to_name: msg.to_name }
+      : { to_email: msg.from_email, to_name: msg.from_name };
+    const subject = thread.subject.startsWith('Re:') ? thread.subject : `Re: ${thread.subject}`;
+    setReplyTo({ subject, to_email: target.to_email, to_name: target.to_name, threadId: thread.threadId });
+    setInlineDraft({
+      to: target.to_email,
+      toName: target.to_name,
+      subject,
+      body: '',
+      cc: '',
+      bcc: '',
+      attachments: [],
+      threadId: thread.threadId,
+    });
+    setShowResumeBanner(false);
+  }, [popOutDraft, thread]);
+
+  const handleReplyAllToMessage = useCallback((msg: MockEmail) => {
+    if (popOutDraft) return;
+    const isOutbound = msg.from_name === 'You';
+    const target = isOutbound
+      ? { to_email: msg.to_email, to_name: msg.to_name }
+      : { to_email: msg.from_email, to_name: msg.from_name };
+    const ccEmails = isOutbound ? '' : (msg.to_email && msg.to_email !== target.to_email ? msg.to_email : '');
+    const subject = thread.subject.startsWith('Re:') ? thread.subject : `Re: ${thread.subject}`;
+    setReplyTo({ subject, to_email: target.to_email, to_name: target.to_name, threadId: thread.threadId });
+    setInlineDraft({
+      to: target.to_email,
+      toName: target.to_name,
+      subject,
+      body: '',
+      cc: ccEmails,
+      bcc: '',
+      attachments: [],
+      threadId: thread.threadId,
+    });
+    setShowResumeBanner(false);
+  }, [popOutDraft, thread]);
+
+  const handleForwardMessage = useCallback((msg: MockEmail) => {
+    if (popOutDraft) return;
+    const fwdSubject = thread.subject.startsWith('Fwd:') ? thread.subject : `Fwd: ${thread.subject}`;
+    const fwdBody = `\n\n---------- Forwarded message ----------\nFrom: ${msg.from_name} <${msg.from_email}>\nDate: ${msg.received_at}\nSubject: ${msg.subject || thread.subject}\n\n${msg.body_preview || msg.snippet || ''}`;
+    setReplyTo({ subject: fwdSubject, to_email: '', to_name: '', threadId: thread.threadId });
+    setInlineDraft({
+      to: '',
+      toName: '',
+      subject: fwdSubject,
+      body: fwdBody,
+      cc: '',
+      bcc: '',
+      attachments: [],
+      threadId: thread.threadId,
+    });
+    setShowResumeBanner(false);
+  }, [popOutDraft, thread]);
+
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const handleDelete = useCallback(async () => {
