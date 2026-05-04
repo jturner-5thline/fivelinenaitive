@@ -312,6 +312,10 @@ export function CopilotToggleButton() {
         className="pointer-events-auto flex flex-col items-center gap-2"
         style={{ width: `min(${barWidth}px, calc(100% - 32px))` }}
       >
+        {/* AI transcript panel — rendered inside the same width-defining
+            wrapper as the Ask bar so it inherits identical horizontal
+            bounds (no independent width math). */}
+        <AICopilotPanel />
         {showDropdown && (
           <div
             id="naitive-unified-suggestions"
