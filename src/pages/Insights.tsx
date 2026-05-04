@@ -1598,7 +1598,10 @@ export default function Metrics() {
     layout: snapshotGridLayout,
     saveLayout: saveSnapshotGridLayout,
     resetLayout: resetSnapshotGridLayout,
-  } = useGridLayout('management-snapshot-unified', unifiedLayoutIds, { allowAllMembers: true });
+  } = useGridLayout('management-snapshot-unified-v2', unifiedLayoutIds, {
+    allowAllMembers: true,
+    layoutDefaults: unifiedLayoutDefaults,
+  });
 
   const [snapshotCardToDelete, setSnapshotCardToDelete] = useState<EditableManagementSnapshotCardId | null>(null);
   const [snapshotDeleteConfirmOpen, setSnapshotDeleteConfirmOpen] = useState(false);
