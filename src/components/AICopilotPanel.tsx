@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { X, ArrowUp, Plus, Clock, Copy, Check, ThumbsUp, ThumbsDown, HelpCircle, RefreshCw, WifiOff, Wand2 } from 'lucide-react';
+import { X, ArrowUp, Plus, Clock, Copy, Check, ThumbsUp, ThumbsDown, HelpCircle, RefreshCw, WifiOff, Wand2, ChevronDown } from 'lucide-react';
 import { AgentRunCard } from '@/components/copilot/AgentRunCard';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -443,7 +443,7 @@ function MessageActions({ msg, conversationId }: { msg: { id: string; content: s
 }
 
 export function AICopilotPanel() {
-  const { isOpen, closePanel, messages, addMessage, setMessages, isProcessing, setProcessing, conversationId, setConversationId, conversationMutations, pendingPrompt, setPendingPrompt } = useCopilotStore();
+  const { isOpen, isMinimized, minimizePanel, closePanel, messages, addMessage, setMessages, isProcessing, setProcessing, conversationId, setConversationId, conversationMutations, pendingPrompt, setPendingPrompt } = useCopilotStore();
   const [agentMode, setAgentMode] = useState(false);
   const { user } = useAuth();
   const [input, setInput] = useState('');
@@ -569,22 +569,9 @@ export function AICopilotPanel() {
     ? `${contextOverride.entityName} (override)`
     : autoContextLabel;
 
-  // Focus trap
-  useEffect(() => {
-    if (!isOpen || !panelRef.current) return;
-    const panel = panelRef.current;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key !== 'Tab') return;
-      const focusable = panel.querySelectorAll<HTMLElement>('button, textarea, input, [tabindex]:not([tabindex="-1"])');
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [isOpen]);
+  // Non-modal: no focus trap. The Ask bar at the bottom is the input
+  // surface and retains its own focus management. The panel itself is just
+  // a transcript view that the user can also click into.
 
   // Screen reader announcement for new messages
   useEffect(() => {
@@ -700,7 +687,8 @@ export function AICopilotPanel() {
   }, [isOpen, closePanel]);
 
   useEffect(() => {
-    if (isOpen) setTimeout(() => textareaRef.current?.focus(), 200);
+    // Intentionally no auto-focus inside the panel — typing happens in the
+    // Ask bar below it.
   }, [isOpen]);
 
   // Core function that processes a single message (no guard on isProcessing)
@@ -973,11 +961,11 @@ export function AICopilotPanel() {
   // When the collapsed composer hands off a typed prompt, auto-send it
   // once the panel is open.
   useEffect(() => {
-    if (!isOpen || !pendingPrompt) return;
+    if (!pendingPrompt) return;
     const text = pendingPrompt;
     setPendingPrompt(null);
     handleSend(text);
-  }, [isOpen, pendingPrompt, setPendingPrompt, handleSend]);
+  }, [pendingPrompt, setPendingPrompt, handleSend]);
 
   const handleNudgeAction = useCallback((prompt: string) => {
     handleSend(prompt);
@@ -990,6 +978,9 @@ export function AICopilotPanel() {
     }
   };
 
+  // Keep the component mounted while minimized so in-flight requests, the
+  // streaming response, and the transcript are preserved. Only unmount on
+  // hard close.
   if (!isOpen) return null;
 
   // ── Anchor to the Ask naitive AI bar (centered over main content) ──
@@ -1023,40 +1014,38 @@ export function AICopilotPanel() {
 
   return (
     <>
-      {/* Backdrop overlay */}
-      <div
-        onClick={closePanel}
-        style={{
-          position: 'fixed', inset: 0, zIndex: 50,
-          background: 'rgba(0, 0, 0, 0.4)',
-          backdropFilter: 'blur(4px)',
-          WebkitBackdropFilter: 'blur(4px)',
-          animation: 'copilot-fade-in 200ms ease-out',
-        }}
-      />
+      {/* No backdrop / scrim — the panel is non-modal and the rest of the
+          page must remain fully interactive. */}
       <div
         ref={panelRef}
-        role="dialog"
-        aria-label="naitive AI"
-        aria-modal="true"
+        role="region"
+        aria-label="naitive AI transcript"
         style={{
           position: 'fixed',
           bottom: bottomFromViewport,
           left: panelLeft,
           transform: 'translateX(-50%)',
           width: panelWidth,
-          height: panelHeight,
+          height: isMinimized ? 0 : panelHeight,
           maxHeight: 'calc(100vh - 48px)',
           zIndex: 51,
           display: 'flex', flexDirection: 'column',
           background: 'rgba(8, 10, 18, 0.92)',
           backdropFilter: 'blur(24px) saturate(1.3)',
           WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
-          borderRadius: 16,
+          // Top corners rounded; bottom corners square so the panel reads as
+          // a continuous surface with the rounded Ask bar that sits below.
+          borderTopLeftRadius: 16,
+          borderTopRightRadius: 16,
+          borderBottomLeftRadius: 0,
+          borderBottomRightRadius: 0,
           border: '1px solid var(--glass-border)',
+          borderBottom: 'none',
           boxShadow: '0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.05)',
           overflow: 'hidden',
-          animation: 'copilot-popup-in 250ms cubic-bezier(0.16, 1, 0.3, 1)',
+          transition: 'height 220ms cubic-bezier(0.16, 1, 0.3, 1), opacity 180ms ease-out',
+          opacity: isMinimized ? 0 : 1,
+          pointerEvents: isMinimized ? 'none' : 'auto',
         }}
       >
         <style>{`
@@ -1096,6 +1085,9 @@ export function AICopilotPanel() {
           </button>
           <button onClick={loadHistory} aria-label="Conversation history" title="Conversation history" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 4, borderRadius: 6, display: 'flex', transition: 'color 150ms' }} onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')} onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}>
             <Clock size={18} />
+          </button>
+          <button onClick={minimizePanel} aria-label="Minimize copilot" title="Minimize (keep running)" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 4, borderRadius: 6, display: 'flex', transition: 'color 150ms' }} onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')} onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}>
+            <ChevronDown size={18} />
           </button>
           <button onClick={closePanel} aria-label="Close copilot" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 4, borderRadius: 6, display: 'flex', transition: 'color 150ms' }} onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')} onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}>
             <X size={18} />
@@ -1267,134 +1259,10 @@ export function AICopilotPanel() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div style={{ padding: '12px 16px', flexShrink: 0, borderTop: '1px solid var(--glass-border)' }}>
-        <div style={{ position: 'relative' }}>
-          {/* @-mention deal autocomplete */}
-          {mentionQuery !== null && mentionMatches.length > 0 && (
-            <div
-              role="listbox"
-              style={{
-                position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 6,
-                background: 'rgba(8,10,18,0.98)', border: '1px solid var(--glass-border)',
-                borderRadius: 10, padding: 4, zIndex: 70, maxHeight: 220, overflowY: 'auto',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-              }}
-            >
-              {mentionMatches.map((d) => (
-                <button
-                  key={d.id}
-                  role="option"
-                  onClick={() => {
-                    setContextOverride({ entityType: 'deal', entityId: d.id, entityName: d.company });
-                    // Strip the trailing "@query" from the input.
-                    setInput((curr) => curr.replace(/(?:^|\s)@[^\s@]*$/, (m) => (m.startsWith(' ') ? ' ' : '')));
-                    setMentionQuery(null);
-                    setMentionMatches([]);
-                    textareaRef.current?.focus();
-                  }}
-                  style={{
-                    width: '100%', textAlign: 'left', background: 'none', border: 'none',
-                    cursor: 'pointer', padding: '6px 10px', borderRadius: 6,
-                    color: 'var(--foreground)', fontSize: 13,
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(126,184,247,0.08)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
-                >
-                  {d.company}
-                </button>
-              ))}
-            </div>
-          )}
-          {/* Shortcuts help button */}
-          <div style={{ position: 'relative', display: 'inline-block' }}>
-            <ShortcutsTooltip visible={showShortcuts} />
-          </div>
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => {
-              const v = e.target.value;
-              // Auto-dismiss any visible proactive nudges / suggestion bar as
-              // soon as the user starts typing so the input is never blocked
-              // or visually crowded by the suggestion stack.
-              if (v && !input && nudges.length > 0) {
-                dismissAllNudges();
-              }
-              setInput(v);
-              // Detect a trailing "@token" at cursor → drive deal autocomplete.
-              const cursor = e.target.selectionStart ?? v.length;
-              const upToCursor = v.slice(0, cursor);
-              const m = upToCursor.match(/(?:^|\s)@([^\s@]{0,40})$/);
-              setMentionQuery(m ? m[1] : null);
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder={agentMode ? "Describe a multi-step task… (Agent mode)" : "Ask anything..."}
-            rows={1}
-            aria-label="Message input"
-            style={{
-              width: '100%', background: 'var(--glass-surface)',
-              border: '1px solid var(--glass-border)', borderRadius: 12,
-              padding: '10px 44px 10px 40px', fontSize: 14,
-              color: 'var(--foreground)', resize: 'none', outline: 'none',
-              fontFamily: 'inherit', lineHeight: 1.5, transition: 'border-color 150ms',
-            }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--glass-border-accent)')}
-            onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--glass-border)')}
-          />
-          {/* ? icon button */}
-          <button
-            onClick={() => setShowShortcuts((v) => !v)}
-            onMouseEnter={() => setShowShortcuts(true)}
-            onMouseLeave={() => setShowShortcuts(false)}
-            aria-label="Keyboard shortcuts"
-            title="Keyboard shortcuts"
-            style={{
-              position: 'absolute', left: 10, bottom: 10,
-              width: 24, height: 24, borderRadius: '50%',
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: 'hsl(var(--muted-foreground))', display: 'flex',
-              alignItems: 'center', justifyContent: 'center', padding: 0,
-              transition: 'color 150ms',
-            }}
-          >
-            <HelpCircle size={15} />
-            <ShortcutsTooltip visible={showShortcuts} />
-          </button>
-          <button
-            onClick={() => handleSend()}
-            disabled={!input.trim() || isProcessing}
-            aria-label="Send message"
-            style={{
-              position: 'absolute', right: 8, bottom: 8,
-              width: 32, height: 32, borderRadius: '50%',
-              background: 'hsl(var(--primary))', color: 'white',
-              border: 'none', cursor: input.trim() && !isProcessing ? 'pointer' : 'default',
-              opacity: input.trim() && !isProcessing ? 1 : 0.5,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: 0, transition: 'opacity 150ms',
-            }}
-          >
-            <ArrowUp size={16} />
-          </button>
-          <button
-            onClick={() => setAgentMode(v => !v)}
-            aria-label="Toggle Agent mode"
-            title={agentMode ? 'Agent mode ON — next message will be planned and executed as a chain' : 'Switch to Agent mode (chained autonomous tasks)'}
-            style={{
-              position: 'absolute', right: 46, bottom: 10,
-              width: 26, height: 26, borderRadius: 6,
-              background: agentMode ? 'rgba(126,184,247,0.18)' : 'transparent',
-              color: agentMode ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
-              border: agentMode ? '1px solid rgba(126,184,247,0.4)' : '1px solid transparent',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
-              transition: 'all 150ms',
-            }}
-          >
-            <Wand2 size={14} />
-          </button>
-        </div>
-      </div>
+      {/* Input intentionally omitted — typing happens in the floating Ask
+          bar (CopilotToggleButton) which sits directly below this panel.
+          That avoids the "two inputs" anti-pattern and makes the panel feel
+          like a vertical extension of the bar. */}
       </div>
     </>
   );
