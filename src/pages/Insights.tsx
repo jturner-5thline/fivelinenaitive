@@ -1555,11 +1555,44 @@ export default function Metrics() {
     'debt-profit', 'finserv-profit',
   ];
 
-  // Unified layout IDs: snapshot cards + custom widgets in one grid
+  // Unified layout IDs: snapshot cards + section blocks + custom widgets in ONE grid.
+  // Section blocks are full-width tiles in the same grid so users can drag any
+  // widget across, above, below, or between sections in edit mode.
+  const SNAPSHOT_SECTION_IDS: import('@/components/metrics/dashboards/ManagementSnapshotDashboard').ManagementSnapshotSectionId[] = [
+    'revenue-overview', 'pipeline-metrics', 'signed-deals-ar', 'profit-by-entity', 'executive-dashboard',
+  ];
+  const visibleSectionIds = useMemo(
+    () => SNAPSHOT_SECTION_IDS.filter(id => !hiddenSnapshotSections.includes(id)),
+    [hiddenSnapshotSections],
+  );
   const unifiedLayoutIds = useMemo(() => {
     const widgetIds = widgets.map(w => w.id);
-    return [...SNAPSHOT_CARD_IDS, ...widgetIds];
-  }, [widgets]);
+    return [...SNAPSHOT_CARD_IDS, ...visibleSectionIds, ...widgetIds];
+  }, [widgets, visibleSectionIds]);
+
+  // Default placement: KPI tiles top, then sections stacked full-width below.
+  const unifiedLayoutDefaults = useMemo(() => {
+    const defaults: import('@/hooks/useGridLayout').GridLayoutItem[] = [
+      // Top KPI / chart tiles — preserve existing 3-col-ish placement
+      { i: 'total-revenue-detail', x: 0, y: 0,  w: 6, h: 4, minW: 4, minH: 3 },
+      { i: 'revenue-by-month',     x: 6, y: 0,  w: 6, h: 4, minW: 5, minH: 4 },
+      { i: 'debt-revenue',         x: 0, y: 4,  w: 4, h: 3, minW: 3, minH: 3 },
+      { i: 'finserv-revenue',      x: 4, y: 4,  w: 4, h: 3, minW: 3, minH: 3 },
+      { i: 'total-revenue',        x: 8, y: 4,  w: 4, h: 3, minW: 3, minH: 3 },
+      { i: 'clients-signed-debt',  x: 0, y: 7,  w: 4, h: 2, minW: 3, minH: 2 },
+      { i: 'clients-signed-finserv', x: 4, y: 7, w: 4, h: 2, minW: 3, minH: 2 },
+      { i: 'outstanding-ar',       x: 8, y: 7,  w: 4, h: 2, minW: 3, minH: 2 },
+      { i: 'debt-profit',          x: 0, y: 9,  w: 6, h: 3, minW: 3, minH: 3 },
+      { i: 'finserv-profit',       x: 6, y: 9,  w: 6, h: 3, minW: 3, minH: 3 },
+      // Sections — full width, stacked below
+      { i: 'revenue-overview',     x: 0, y: 12, w: 12, h: 7, minW: 6, minH: 5 },
+      { i: 'pipeline-metrics',     x: 0, y: 19, w: 12, h: 7, minW: 6, minH: 5 },
+      { i: 'signed-deals-ar',      x: 0, y: 26, w: 12, h: 7, minW: 6, minH: 5 },
+      { i: 'profit-by-entity',     x: 0, y: 33, w: 12, h: 7, minW: 6, minH: 5 },
+      { i: 'executive-dashboard',  x: 0, y: 40, w: 12, h: 10, minW: 8, minH: 8 },
+    ];
+    return defaults;
+  }, []);
 
   const {
     layout: snapshotGridLayout,
