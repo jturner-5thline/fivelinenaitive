@@ -65,13 +65,13 @@ export interface NaitiveDealHurdle {
 }
 
 const STAGE_WEIGHT_MAP: Record<string, number> = {
-  'prospects': 0.1,
-  'intro-conversations': 0.2,
-  'demo-completed': 0.4,
-  'offer-sent': 0.6,
-  'onboarding': 0.8,
-  'active-customer': 1.0,
-  'close-lost-opportunity': 0,
+  'qual-booked': 0.1,
+  'demo-booked': 0.4,
+  'onboarding-booked': 0.6,
+  'trial-active': 0.8,
+  'converted': 1.0,
+  'closed-lost': 0,
+  'tabled-on-hold': 0,
 };
 
 const STALLED_THRESHOLD_DAYS = 14;
@@ -82,9 +82,9 @@ export function useNaitivePipelineMetrics(deals: Deal[], stages: DealStageOption
     const now = new Date();
     const thirtyDaysAgo = subDays(now, 30);
 
-    const activeDeals = deals.filter(d => d.stage !== 'active-customer' && d.stage !== 'close-lost-opportunity');
-    const closedWon = deals.filter(d => d.stage === 'active-customer');
-    const closedLost = deals.filter(d => d.stage === 'close-lost-opportunity');
+    const activeDeals = deals.filter(d => d.stage !== 'converted' && d.stage !== 'closed-lost');
+    const closedWon = deals.filter(d => d.stage === 'converted');
+    const closedLost = deals.filter(d => d.stage === 'closed-lost');
     const totalClosed = closedWon.length + closedLost.length;
 
     const weightedValue = activeDeals.reduce((sum, d) => {
@@ -116,7 +116,7 @@ export function useNaitivePipelineMetrics(deals: Deal[], stages: DealStageOption
 
   const funnelData = useMemo<StageFunnelItem[]>(() => {
     return stages
-      .filter(s => s.id !== 'close-lost-opportunity')
+      .filter(s => s.id !== 'closed-lost')
       .map(s => {
         const stageDeals = deals.filter(d => d.stage === s.id);
         return {
@@ -131,7 +131,7 @@ export function useNaitivePipelineMetrics(deals: Deal[], stages: DealStageOption
   const agingData = useMemo<StageAgingItem[]>(() => {
     const now = new Date();
     return stages
-      .filter(s => s.id !== 'active-customer' && s.id !== 'close-lost-opportunity')
+      .filter(s => s.id !== 'converted' && s.id !== 'closed-lost')
       .map(s => {
         const stageDeals = deals.filter(d => d.stage === s.id);
         const days = stageDeals.map(d => differenceInDays(now, new Date(d.updatedAt)));
@@ -149,7 +149,7 @@ export function useNaitivePipelineMetrics(deals: Deal[], stages: DealStageOption
     ];
     return statuses.map(s => ({
       ...s,
-      count: deals.filter(d => d.status === s.status && d.stage !== 'active-customer' && d.stage !== 'close-lost-opportunity').length,
+      count: deals.filter(d => d.status === s.status && d.stage !== 'converted' && d.stage !== 'closed-lost').length,
     }));
   }, [deals]);
 
@@ -165,8 +165,8 @@ export function useNaitivePipelineMetrics(deals: Deal[], stages: DealStageOption
         return c >= monthStart && c <= monthEnd;
       }).length;
       // Won/lost approximated by updatedAt in that month
-      const won = deals.filter(d => d.stage === 'active-customer' && new Date(d.updatedAt) >= monthStart && new Date(d.updatedAt) <= monthEnd).length;
-      const lost = deals.filter(d => d.stage === 'close-lost-opportunity' && new Date(d.updatedAt) >= monthStart && new Date(d.updatedAt) <= monthEnd).length;
+      const won = deals.filter(d => d.stage === 'converted' && new Date(d.updatedAt) >= monthStart && new Date(d.updatedAt) <= monthEnd).length;
+      const lost = deals.filter(d => d.stage === 'closed-lost' && new Date(d.updatedAt) >= monthStart && new Date(d.updatedAt) <= monthEnd).length;
       points.push({ date: label, created, closedWon: won, closedLost: lost });
     }
     return points;
@@ -175,7 +175,7 @@ export function useNaitivePipelineMetrics(deals: Deal[], stages: DealStageOption
   const notifications = useMemo<NaitivePipelineNotification[]>(() => {
     const now = new Date();
     const alerts: NaitivePipelineNotification[] = [];
-    const activeDeals = deals.filter(d => d.stage !== 'active-customer' && d.stage !== 'close-lost-opportunity');
+    const activeDeals = deals.filter(d => d.stage !== 'converted' && d.stage !== 'closed-lost');
 
     activeDeals.forEach(d => {
       const daysSinceUpdate = differenceInDays(now, new Date(d.updatedAt));
@@ -222,10 +222,10 @@ export function useNaitivePipelineMetrics(deals: Deal[], stages: DealStageOption
   const recommendations = useMemo<NaitivePipelineRecommendation[]>(() => {
     const recs: NaitivePipelineRecommendation[] = [];
     const now = new Date();
-    const activeDeals = deals.filter(d => d.stage !== 'active-customer' && d.stage !== 'close-lost-opportunity');
+    const activeDeals = deals.filter(d => d.stage !== 'converted' && d.stage !== 'closed-lost');
 
     // Stale prospect stage
-    const staleProspects = activeDeals.filter(d => d.stage === 'prospects' && differenceInDays(now, new Date(d.updatedAt)) >= 7);
+    const staleProspects = activeDeals.filter(d => d.stage === 'qual-booked' && differenceInDays(now, new Date(d.updatedAt)) >= 7);
     if (staleProspects.length > 0) {
       recs.push({
         id: 'stale-prospects',
@@ -235,7 +235,7 @@ export function useNaitivePipelineMetrics(deals: Deal[], stages: DealStageOption
     }
 
     // Bottleneck detection
-    stages.filter(s => s.id !== 'active-customer' && s.id !== 'close-lost-opportunity').forEach(s => {
+    stages.filter(s => s.id !== 'converted' && s.id !== 'closed-lost').forEach(s => {
       const stageDeals = activeDeals.filter(d => d.stage === s.id);
       if (stageDeals.length >= 3) {
         const avgDays = stageDeals.reduce((sum, d) => sum + differenceInDays(now, new Date(d.updatedAt)), 0) / stageDeals.length;
@@ -275,7 +275,7 @@ export function useNaitivePipelineMetrics(deals: Deal[], stages: DealStageOption
   const hurdles = useMemo<NaitiveDealHurdle[]>(() => {
     const result: NaitiveDealHurdle[] = [];
     const now = new Date();
-    const activeDeals = deals.filter(d => d.stage !== 'active-customer' && d.stage !== 'close-lost-opportunity');
+    const activeDeals = deals.filter(d => d.stage !== 'converted' && d.stage !== 'closed-lost');
 
     activeDeals.forEach(d => {
       const daysSinceUpdate = differenceInDays(now, new Date(d.updatedAt));
@@ -295,10 +295,10 @@ export function useNaitivePipelineMetrics(deals: Deal[], stages: DealStageOption
       if (d.isFlagged) {
         result.push({ dealId: d.id, dealName: name, hurdle: d.flagNotes || 'Flagged for review', severity: 'high' });
       }
-      if (!d.contact && d.stage !== 'prospects') {
+      if (!d.contact && d.stage !== 'qual-booked') {
         result.push({ dealId: d.id, dealName: name, hurdle: 'No contact info', severity: 'low' });
       }
-      if ((d.value || 0) === 0 && d.stage !== 'prospects') {
+      if ((d.value || 0) === 0 && d.stage !== 'qual-booked') {
         result.push({ dealId: d.id, dealName: name, hurdle: 'No deal value set', severity: 'low' });
       }
     });
