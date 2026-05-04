@@ -12,7 +12,8 @@ import {
 import { 
   Shield, Users, Building2, ListTodo, Mail, ClipboardList, Cloud, MessageSquare, 
   Settings, Megaphone, Lock, Webhook, AlertCircle, Database, Layout, ChevronDown,
-  ShieldCheck, Cog, Lightbulb, UserCheck, Bell, MonitorPlay, ToggleRight, Brain, Wallet, FileText
+  ShieldCheck, Cog, Lightbulb, UserCheck, Bell, MonitorPlay, ToggleRight, Brain, Wallet, FileText,
+  BarChart3
 } from "lucide-react";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useSystemStats } from "@/hooks/useAdminData";
@@ -44,6 +45,7 @@ import { CompanyFeaturesPanel } from "@/components/admin/CompanyFeaturesPanel";
 import { AIRulesPanel } from "@/components/admin/AIRulesPanel";
 import { QbCashflowMappingPanel } from "@/components/admin/QbCashflowMappingPanel";
 import { RecurringReportsPanel } from "@/components/admin/RecurringReportsPanel";
+import { UsageAnalyticsPanel } from "@/components/admin/usage-analytics/UsageAnalyticsPanel";
 
 // Sub-page configurations
 const usersSubPages = [
@@ -90,7 +92,11 @@ const supportSubPages = [
   { id: "client-viewer", label: "Client Account Viewer", icon: MonitorPlay },
 ];
 
-type TabCategory = "users" | "access" | "data-security" | "settings" | "product-enhancement" | "support";
+const usageAnalyticsSubPages = [
+  { id: "usage-overview", label: "Company Overview", icon: BarChart3 },
+];
+
+type TabCategory = "users" | "access" | "data-security" | "settings" | "product-enhancement" | "support" | "usage-analytics";
 
 const Admin = () => {
   const { isAdmin, isLoading: roleLoading } = useAdminRole();
@@ -104,6 +110,7 @@ const Admin = () => {
     settings: "settings",
     "product-enhancement": "enhancement",
     support: "client-viewer",
+    "usage-analytics": "usage-overview",
   });
 
   const handleSubPageChange = (category: TabCategory, subPageId: string) => {
@@ -124,6 +131,8 @@ const Admin = () => {
         return productEnhancementSubPages;
       case "support":
         return supportSubPages;
+      case "usage-analytics":
+        return usageAnalyticsSubPages;
     }
   };
 
@@ -441,6 +450,8 @@ const Admin = () => {
         return <QbCashflowMappingPanel />;
       case "client-viewer":
         return <ClientAccountViewer />;
+      case "usage-overview":
+        return <UsageAnalyticsPanel />;
       default:
         return null;
     }
@@ -522,6 +533,7 @@ const Admin = () => {
             <TabWithDropdown category="settings" label="Settings" icon={Cog} />
             <TabWithDropdown category="product-enhancement" label="Product Enhancement" icon={Lightbulb} />
             <TabWithDropdown category="support" label="Support" icon={MonitorPlay} />
+            <TabWithDropdown category="usage-analytics" label="Usage Analytics" icon={BarChart3} />
           </div>
 
           <TabsContent value="users">
@@ -546,6 +558,10 @@ const Admin = () => {
 
           <TabsContent value="support">
             {renderSubPageContent(activeSubPage.support)}
+          </TabsContent>
+
+          <TabsContent value="usage-analytics">
+            {renderSubPageContent(activeSubPage["usage-analytics"])}
           </TabsContent>
         </Tabs>
       </div>
