@@ -465,6 +465,33 @@ export function AICopilotPanel() {
   const location = useLocation();
   const isDealDetail = isDealDetailPath(location.pathname);
 
+  // Anchor: the <main class="main-scrollable"> bounding rect. We re-measure
+  // on open and on viewport resize so the panel stays centered above the
+  // Ask bar even as the sidebar opens/closes.
+  const [anchor, setAnchor] = useState<{ left: number; width: number; bottom: number }>(() => ({
+    left: 0,
+    width: typeof window !== 'undefined' ? window.innerWidth : 1024,
+    bottom: typeof window !== 'undefined' ? window.innerHeight : 768,
+  }));
+  useEffect(() => {
+    if (!isOpen) return;
+    const measure = () => {
+      const el = document.querySelector('main.main-scrollable') as HTMLElement | null;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setAnchor({ left: r.left, width: r.width, bottom: r.bottom });
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    const ro = new ResizeObserver(measure);
+    const el = document.querySelector('main.main-scrollable');
+    if (el) ro.observe(el);
+    return () => {
+      window.removeEventListener('resize', measure);
+      ro.disconnect();
+    };
+  }, [isOpen]);
+
   // Per-deal AI memory (loads last ~10 exchanges; persists new ones).
   const dealIdFromPath = (() => {
     const parts = location.pathname.split('/').filter(Boolean);
@@ -965,8 +992,34 @@ export function AICopilotPanel() {
 
   if (!isOpen) return null;
 
-  const panelWidth = isMobile ? '100vw' : 440;
-  const panelHeight = isMobile ? '100vh' : '70vh';
+  // ── Anchor to the Ask naitive AI bar (centered over main content) ──
+  // anchor = { left, width, bottom } from the <main class="main-scrollable">
+  // element. This is the same container the Ask bar lives in, so centering
+  // over it keeps parity as the sidebar opens/closes and the viewport
+  // resizes. Width matches the bar's persisted width.
+  const BAR_OFFSET = 24;
+  const BAR_HEIGHT = 44;
+  const GAP = 12;
+  const barWidthPref = (() => {
+    try {
+      const raw = window.localStorage.getItem('naitive:bar-width');
+      const n = raw ? parseInt(raw, 10) : NaN;
+      if (!Number.isFinite(n)) return 432;
+      return Math.min(960, Math.max(280, n));
+    } catch { return 432; }
+  })();
+  const mainLeft = anchor.left;
+  const mainWidth = anchor.width;
+  const mainBottom = anchor.bottom;
+  const panelWidth = isMobile
+    ? Math.max(0, mainWidth - 16)
+    : Math.min(barWidthPref, Math.max(280, mainWidth - 32));
+  const bottomFromViewport = Math.max(8, (window.innerHeight - mainBottom) + BAR_OFFSET + BAR_HEIGHT + GAP);
+  const availableHeight = Math.max(280, mainBottom - BAR_OFFSET - BAR_HEIGHT - GAP - 16);
+  const panelHeight = isMobile
+    ? Math.min(window.innerHeight - 16, availableHeight)
+    : Math.min(Math.round(window.innerHeight * 0.7), availableHeight);
+  const panelLeft = mainLeft + mainWidth / 2;
 
   return (
     <>
@@ -988,18 +1041,19 @@ export function AICopilotPanel() {
         aria-modal="true"
         style={{
           position: 'fixed',
-          bottom: isMobile ? 0 : 24,
-          right: isMobile ? 0 : 24,
+          bottom: bottomFromViewport,
+          left: panelLeft,
+          transform: 'translateX(-50%)',
           width: panelWidth,
           height: panelHeight,
-          maxHeight: isMobile ? '100vh' : 'calc(100vh - 48px)',
+          maxHeight: 'calc(100vh - 48px)',
           zIndex: 51,
           display: 'flex', flexDirection: 'column',
           background: 'rgba(8, 10, 18, 0.92)',
           backdropFilter: 'blur(24px) saturate(1.3)',
           WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
-          borderRadius: isMobile ? 0 : 16,
-          border: isMobile ? 'none' : '1px solid var(--glass-border)',
+          borderRadius: 16,
+          border: '1px solid var(--glass-border)',
           boxShadow: '0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.05)',
           overflow: 'hidden',
           animation: 'copilot-popup-in 250ms cubic-bezier(0.16, 1, 0.3, 1)',
@@ -1007,8 +1061,8 @@ export function AICopilotPanel() {
       >
         <style>{`
           @keyframes copilot-popup-in {
-            from { opacity: 0; transform: translateY(16px) scale(0.97); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+            from { opacity: 0; transform: translate(-50%, 16px) scale(0.97); }
+            to { opacity: 1; transform: translate(-50%, 0) scale(1); }
           }
           @keyframes copilot-fade-in {
             from { opacity: 0; }
