@@ -459,18 +459,49 @@ export function CopilotToggleButton() {
             />
           </span>
 
-          {/* Left gradient logo badge */}
+          {/* Left gradient logo badge.
+              - If panel is closed → opens it.
+              - If minimized → expands it (no new conversation).
+              - If open and expanded → minimizes (toggle behaviour).
+              While minimized + processing OR with unread messages, show a
+              subtle pulse / badge so the user knows AI work is happening
+              behind the scenes. */}
           <button
             type="button"
-            aria-label="Open naitive AI"
-            onClick={(e) => { e.stopPropagation(); togglePanel(); }}
+            aria-label={isMinimized ? `Expand naitive AI${unreadCount > 0 ? ` (${unreadCount} new)` : ''}` : 'Open naitive AI'}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isMinimized) expandPanel();
+              else togglePanel();
+            }}
             className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-[0_2px_10px_hsl(270_65%_55%/0.45)] cursor-pointer hover:scale-105 active:scale-95 transition-transform"
             style={{
               background:
                 'linear-gradient(to right, hsl(270, 65%, 55%), hsl(220, 70%, 62%))',
             }}
           >
-            <img src={naitiveAiIcon} alt="" className="h-4 w-4 brightness-0 invert" />
+            <img
+              src={naitiveAiIcon}
+              alt=""
+              className={cn(
+                'h-4 w-4 brightness-0 invert',
+                isMinimized && isProcessing && 'animate-pulse',
+              )}
+            />
+            {isMinimized && unreadCount > 0 && (
+              <span
+                aria-hidden="true"
+                className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground shadow"
+              >
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+            {isMinimized && isProcessing && unreadCount === 0 && (
+              <span
+                aria-hidden="true"
+                className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-primary animate-pulse"
+              />
+            )}
           </button>
 
           {/* Search affordance */}
