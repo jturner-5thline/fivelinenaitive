@@ -19,9 +19,11 @@ interface AppLayoutProps {
 function MainContent({
   children,
   className,
+  showCopilotBar,
 }: {
   children: React.ReactNode;
   className?: string;
+  showCopilotBar: boolean;
 }) {
   const { state, setOpen, isMobile } = useSidebar();
 
@@ -66,6 +68,7 @@ function MainContent({
       <div className="relative z-10 flex-1 flex flex-col">
         {children}
       </div>
+      {showCopilotBar && <CopilotToggleButton />}
     </main>
   );
 }
@@ -115,13 +118,12 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
 
       <div className="flex w-full h-full min-h-0 bg-transparent pt-2 pb-2 pl-2 pr-0 gap-1" style={{ isolation: 'auto' }}>
         <AppSidebar />
-        <MainContent className={mainClassName}>{children}</MainContent>
+        <MainContent className={mainClassName} showCopilotBar={!isDashboardPage}>{children}</MainContent>
       </div>
       <TaskAssignmentBanner />
       <PlatformTour />
       {!isDashboardPage && (
         <>
-          <CopilotToggleButton />
           <AICopilotPanel />
         </>
       )}
