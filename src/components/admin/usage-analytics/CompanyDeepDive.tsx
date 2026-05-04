@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowLeft, BarChart3, Download, Search, Sparkles, TrendingUp, DollarSign,
+  ArrowLeft, BarChart3, Download, ExternalLink, Search, Sparkles, TrendingUp, DollarSign,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell, Legend,
@@ -544,9 +545,21 @@ Pick a Suggested pricing that yields a healthy 60-75% gross margin over the cost
               ) : powerUsers.map((u) => {
                 const profile = userMap.get(u.user_id);
                 return (
-                  <TableRow key={u.user_id}>
-                    <TableCell className="font-medium">{profile?.name ?? "Unknown"}</TableCell>
-                    <TableCell className="text-muted-foreground">{profile?.email ?? "—"}</TableCell>
+                   <TableRow key={u.user_id}>
+                     <TableCell className="font-medium">
+                       {profile?.email ? (
+                         <a
+                           href={`mailto:${profile.email}`}
+                           className="inline-flex items-center gap-1 text-primary hover:underline"
+                         >
+                           {profile.name ?? "Unknown"}
+                           <ExternalLink className="h-3 w-3 opacity-60" />
+                         </a>
+                       ) : (
+                         profile?.name ?? "Unknown"
+                       )}
+                     </TableCell>
+                     <TableCell className="text-muted-foreground">{profile?.email ?? "—"}</TableCell>
                     <TableCell className="text-right">{numberFmt.format(u.ai)}</TableCell>
                     <TableCell className="text-right">{numberFmt.format(u.emails)}</TableCell>
                     <TableCell className="text-right">{numberFmt.format(u.lenders)}</TableCell>
@@ -582,7 +595,15 @@ Pick a Suggested pricing that yields a healthy 60-75% gross margin over the cost
                 <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No deal-tagged events.</TableCell></TableRow>
               ) : dealActivity.map((d) => (
                 <TableRow key={d.deal_id}>
-                  <TableCell className="font-medium">{dealMap.get(d.deal_id) ?? d.deal_id.slice(0, 8)}</TableCell>
+                  <TableCell className="font-medium">
+                    <Link
+                      to={`/deal/${d.deal_id}`}
+                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                    >
+                      {dealMap.get(d.deal_id) ?? d.deal_id.slice(0, 8)}
+                      <ExternalLink className="h-3 w-3 opacity-60" />
+                    </Link>
+                  </TableCell>
                   <TableCell className="text-right">{numberFmt.format(d.ai)}</TableCell>
                   <TableCell className="text-right">{numberFmt.format(d.emails)}</TableCell>
                   <TableCell className="text-right">{numberFmt.format(d.lenders)}</TableCell>
