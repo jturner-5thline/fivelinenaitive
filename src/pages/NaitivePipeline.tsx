@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Deal, DealStatus } from '@/types/deal';
 import { DealStageOption } from '@/contexts/DealStagesContext';
 import { CreateNaitiveDealDialog } from '@/components/naitive-pipeline/CreateNaitiveDealDialog';
-import { DealCard } from '@/components/deals/DealCard';
+import { NaitiveDealCard } from '@/components/naitive-pipeline/NaitiveDealCard';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useNaitiveStageMilestones, DealStageMilestone } from '@/hooks/useNaitiveStageMilestones';
 import { NaitiveMilestoneDiamonds } from '@/components/naitive-pipeline/NaitiveMilestoneDiamonds';
@@ -53,7 +53,7 @@ function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleM
 
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="touch-none w-full min-w-0">
-      <DealCard deal={deal} onStatusChange={onStatusChange} compact hideStatus>
+      <NaitiveDealCard deal={deal}>
         {milestones.length > 0 && (
           <div className="px-3 pb-2 pt-1">
             <NaitiveMilestoneDiamonds
@@ -63,7 +63,7 @@ function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleM
             />
           </div>
         )}
-      </DealCard>
+      </NaitiveDealCard>
     </div>
   );
 }
@@ -233,7 +233,7 @@ export default function NaitivePipeline() {
       <DragOverlay>
         {activeDeal ? (
           <div className="opacity-90 rotate-2 scale-105">
-            <DealCard deal={activeDeal} onStatusChange={handleStatusChange} compact hideStatus />
+            <NaitiveDealCard deal={activeDeal} />
           </div>
         ) : null}
       </DragOverlay>
