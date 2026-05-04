@@ -65,10 +65,10 @@ function MainContent({
           backgroundSize: '200px 200px',
         }}
       />
-      <div className="relative z-10 flex-1 flex flex-col">
+      <div className="relative z-10 flex-1 flex flex-col min-h-full">
         {children}
+        {showCopilotBar && <CopilotToggleButton />}
       </div>
-      {showCopilotBar && <CopilotToggleButton />}
     </main>
   );
 }
