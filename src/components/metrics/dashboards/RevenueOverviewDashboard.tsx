@@ -664,7 +664,7 @@ export function RevenueQuarterlySection({ selectedQuarter }: { selectedQuarter: 
       </div>
 
       {/* Drilldown Modal */}
-      <DrilldownModal
+      <RevenueDrilldownModal
         open={!!drilldown}
         onClose={() => setDrilldown(null)}
         drilldown={drilldown}
