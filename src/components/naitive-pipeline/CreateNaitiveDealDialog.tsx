@@ -1,0 +1,297 @@
+import { useState, ReactNode } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Checkbox } from '@/components/ui/checkbox';
+import { CalendarIcon, Loader2 } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { DealStageOption } from '@/contexts/DealStagesContext';
+import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
+
+const ICP_OPTIONS = ['Debt Advisory', 'M&A', 'Equity', 'Placement Agent', 'Broker', 'Other'];
+const PROSPECT_TYPE_OPTIONS = ['Prospect', 'Gatekeeper', 'Connector', 'Market Intelligence'];
+const OWNED_BY_OPTIONS = ['Paz', 'Flor', 'James'];
+const SOURCE_OPTIONS = ['Sequence reply', 'Warm outreach', 'Referral', 'Inbound'];
+const DM_PRESENT_OPTIONS = ['Yes', 'Gatekeeper', 'Unknown'];
+const OUTCOME_OPTIONS = ['Moved forward', 'Not a fit', 'Tabled', 'Feedback only', 'Disqualified'];
+const WHY_NOT_OPTIONS = [
+  'Wrong persona', 'Wrong segment', 'Built own solution', 'Entrenched stack',
+  'Product gap', 'Timing', 'No close attempt made',
+];
+const NEEDS_REASON = new Set(['Not a fit', 'Tabled', 'Disqualified']);
+
+interface Props {
+  trigger: ReactNode;
+  pipelineId: string;
+  stages: DealStageOption[];
+  defaultStage?: string;
+  onCreated?: () => void;
+}
+
+export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultStage, onCreated }: Props) {
+  const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Section 1
+  const [companyName, setCompanyName] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [contactTitle, setContactTitle] = useState('');
+  const [icpCategory, setIcpCategory] = useState('');
+  const [prospectType, setProspectType] = useState('');
+  // Section 2
+  const [ownedBy, setOwnedBy] = useState('');
+  const [source, setSource] = useState('');
+  // Section 3
+  const [stage, setStage] = useState(defaultStage || stages[0]?.id || '');
+  const [nextStep, setNextStep] = useState('');
+  const [nextStepDate, setNextStepDate] = useState<Date | undefined>();
+  const [dmPresent, setDmPresent] = useState('');
+  const [dmName, setDmName] = useState('');
+  // Section 4
+  const [outcome, setOutcome] = useState('');
+  const [whyNot, setWhyNot] = useState<string[]>([]);
+  // Section 5
+  const [painPoints, setPainPoints] = useState('');
+  const [objections, setObjections] = useState('');
+  const [competitors, setCompetitors] = useState('');
+  const [keySignal, setKeySignal] = useState('');
+  const [productGap, setProductGap] = useState('');
+
+  const reset = () => {
+    setCompanyName(''); setContactName(''); setContactTitle('');
+    setIcpCategory(''); setProspectType('');
+    setOwnedBy(''); setSource('');
+    setStage(defaultStage || stages[0]?.id || '');
+    setNextStep(''); setNextStepDate(undefined); setDmPresent(''); setDmName('');
+    setOutcome(''); setWhyNot([]);
+    setPainPoints(''); setObjections(''); setCompetitors(''); setKeySignal(''); setProductGap('');
+  };
+
+  const toggleWhyNot = (opt: string) => {
+    setWhyNot(prev => prev.includes(opt) ? prev.filter(x => x !== opt) : [...prev, opt]);
+  };
+
+  const handleSubmit = async () => {
+    if (!companyName.trim()) return toast.error('Company Name is required');
+    if (!contactName.trim()) return toast.error('Contact Name is required');
+    if (!icpCategory) return toast.error('ICP Category is required');
+    if (!prospectType) return toast.error('Prospect Type is required');
+    if (!ownedBy) return toast.error('Owned By is required');
+    if (!source) return toast.error('Source is required');
+    if (!stage) return toast.error('Current Stage is required');
+
+    setSubmitting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const payload: any = {
+        company: companyName.trim(),
+        contact: contactName.trim(),
+        contact_title: contactTitle.trim() || null,
+        icp_category: icpCategory,
+        prospect_type: prospectType,
+        owned_by: ownedBy,
+        manager: ownedBy,
+        sourced_via: source,
+        stage,
+        next_step: nextStep.trim() || null,
+        next_step_date: nextStepDate ? format(nextStepDate, 'yyyy-MM-dd') : null,
+        dm_present: dmPresent || null,
+        dm_name: dmName.trim() || null,
+        outcome: outcome || null,
+        why_not_moving_forward: NEEDS_REASON.has(outcome) ? whyNot : [],
+        pain_points_confirmed: painPoints.trim() || null,
+        objections_raised: objections.trim() || null,
+        competitors_mentioned: competitors.trim() || null,
+        key_signal: keySignal.trim() || null,
+        product_gap_flagged: productGap.trim() || null,
+        pipeline_id: pipelineId,
+        company_id: FIFTH_LINE_COMPANY_ID,
+        deal_class: 'naitive',
+        user_id: user.id,
+        value: 0,
+        status: 'on-track',
+      };
+
+      const { error } = await supabase.from('deals').insert(payload);
+      if (error) throw error;
+      toast.success('Deal created');
+      reset();
+      setOpen(false);
+      onCreated?.();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || 'Failed to create deal');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const showWhyNot = NEEDS_REASON.has(outcome);
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Create New Deal</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-6 py-2">
+          {/* Section 1 */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Basic Info</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Company Name" required>
+                <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Acme Inc." />
+              </Field>
+              <Field label="Contact Name" required>
+                <Input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Jane Doe" />
+              </Field>
+              <Field label="Contact Title">
+                <Input value={contactTitle} onChange={(e) => setContactTitle(e.target.value)} placeholder="VP Finance" />
+              </Field>
+              <Field label="ICP Category" required>
+                <SimpleSelect value={icpCategory} onChange={setIcpCategory} options={ICP_OPTIONS} placeholder="Select category" />
+              </Field>
+              <Field label="Prospect Type" required className="col-span-2">
+                <SimpleSelect value={prospectType} onChange={setProspectType} options={PROSPECT_TYPE_OPTIONS} placeholder="Select type" />
+              </Field>
+            </div>
+          </section>
+
+          {/* Section 2 */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Ownership</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Owned By" required>
+                <SimpleSelect value={ownedBy} onChange={setOwnedBy} options={OWNED_BY_OPTIONS} placeholder="Select owner" />
+              </Field>
+              <Field label="Source" required>
+                <SimpleSelect value={source} onChange={setSource} options={SOURCE_OPTIONS} placeholder="Select source" />
+              </Field>
+            </div>
+          </section>
+
+          {/* Section 3 */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Stage & Timing</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Current Stage" required>
+                <Select value={stage} onValueChange={setStage}>
+                  <SelectTrigger><SelectValue placeholder="Select stage" /></SelectTrigger>
+                  <SelectContent>
+                    {stages.map(s => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Next Step Date">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn('w-full justify-start text-left font-normal', !nextStepDate && 'text-muted-foreground')}>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {nextStepDate ? format(nextStepDate, 'PPP') : 'Pick a date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={nextStepDate} onSelect={setNextStepDate} initialFocus className={cn('p-3 pointer-events-auto')} />
+                  </PopoverContent>
+                </Popover>
+              </Field>
+              <Field label="Next Step" className="col-span-2">
+                <Input value={nextStep} onChange={(e) => setNextStep(e.target.value)} placeholder="What happens next?" />
+              </Field>
+              <Field label="DM Present">
+                <SimpleSelect value={dmPresent} onChange={setDmPresent} options={DM_PRESENT_OPTIONS} placeholder="Select" />
+              </Field>
+              <Field label="DM Name">
+                <Input value={dmName} onChange={(e) => setDmName(e.target.value)} placeholder="Only if different from Contact" />
+              </Field>
+            </div>
+          </section>
+
+          {/* Section 4 */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Outcome (optional)</h3>
+            <div className="grid grid-cols-1 gap-3">
+              <Field label="Outcome">
+                <SimpleSelect value={outcome} onChange={(v) => { setOutcome(v); if (!NEEDS_REASON.has(v)) setWhyNot([]); }} options={OUTCOME_OPTIONS} placeholder="Select outcome" />
+              </Field>
+              {showWhyNot && (
+                <Field label="Why Not Moving Forward">
+                  <div className="grid grid-cols-2 gap-2 rounded-md border p-3">
+                    {WHY_NOT_OPTIONS.map(opt => (
+                      <label key={opt} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <Checkbox checked={whyNot.includes(opt)} onCheckedChange={() => toggleWhyNot(opt)} />
+                        {opt}
+                      </label>
+                    ))}
+                  </div>
+                </Field>
+              )}
+            </div>
+          </section>
+
+          {/* Section 5 */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Call Intelligence (optional)</h3>
+            <div className="grid grid-cols-1 gap-3">
+              <Field label="Pain Points Confirmed">
+                <Textarea value={painPoints} onChange={(e) => setPainPoints(e.target.value)} placeholder="Max 3 bullets" rows={3} />
+              </Field>
+              <Field label="Objections Raised">
+                <Textarea value={objections} onChange={(e) => setObjections(e.target.value)} placeholder="Max 3 bullets" rows={3} />
+              </Field>
+              <Field label="Competitors or Tools Mentioned">
+                <Input value={competitors} onChange={(e) => setCompetitors(e.target.value)} />
+              </Field>
+              <Field label="Key Signal">
+                <Input value={keySignal} onChange={(e) => setKeySignal(e.target.value)} placeholder="One line — the most important thing they said" />
+              </Field>
+              <Field label="Product Gap Flagged">
+                <Input value={productGap} onChange={(e) => setProductGap(e.target.value)} placeholder="Specific feature they said was missing" />
+              </Field>
+            </div>
+          </section>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={submitting}>
+            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Create
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Field({ label, required, className, children }: { label: string; required?: boolean; className?: string; children: ReactNode }) {
+  return (
+    <div className={cn('space-y-1.5', className)}>
+      <Label className="text-xs">{label}{required && <span className="text-destructive ml-0.5">*</span>}</Label>
+      {children}
+    </div>
+  );
+}
+
+function SimpleSelect({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: string[]; placeholder?: string }) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger><SelectValue placeholder={placeholder} /></SelectTrigger>
+      <SelectContent>
+        {options.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
+}
