@@ -256,7 +256,7 @@ export function CopilotToggleButton() {
         marginTop: 'auto',
       }}
     >
-      <div className="pointer-events-auto w-[min(720px,calc(100%-32px))] flex flex-col items-stretch gap-2">
+      <div className="pointer-events-auto w-[min(432px,calc(100%-32px))] flex flex-col items-stretch gap-2">
         {showDropdown && (
           <div
             id="naitive-unified-suggestions"
