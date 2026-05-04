@@ -246,7 +246,7 @@ export default function NaitivePipeline() {
       <Helmet>
         <title>naitive Pipeline | naitive</title>
       </Helmet>
-      <div className="bg-background">
+      <div className="bg-transparent">
         <DashboardPage
           padding="sm"
           header={

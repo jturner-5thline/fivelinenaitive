@@ -141,48 +141,58 @@ function generateInsights(
 function ConversionChart({ title, data }: { title: string; data: ConversionRow[] }) {
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm">{title}</CardTitle>
+      <CardHeader className="pb-3 pt-5 px-5">
+        <CardTitle className="text-base font-semibold tracking-tight text-foreground">{title}</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="h-64">
+      <CardContent className="px-5 pb-5 pt-1">
+        <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 16, right: 12, left: -10, bottom: 8 }}>
+            <BarChart
+              data={data}
+              layout="vertical"
+              margin={{ top: 8, right: 36, left: 8, bottom: 4 }}
+              barCategoryGap={10}
+            >
               <XAxis
-                dataKey="icp"
-                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                interval={0}
-                angle={-15}
-                textAnchor="end"
-                height={50}
-              />
-              <YAxis
+                type="number"
                 domain={[0, 100]}
                 tickFormatter={(v) => `${v}%`}
-                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                dataKey="icp"
+                type="category"
+                width={120}
+                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={false}
+                tickLine={false}
               />
               <Tooltip
                 cursor={{ fill: 'hsl(var(--muted) / 0.2)' }}
                 contentStyle={{
-                  background: 'hsl(var(--background))',
+                  background: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: 8,
                   fontSize: 12,
+                  color: 'hsl(var(--foreground))',
+                  padding: '8px 10px',
                 }}
                 formatter={(value: any, _name, ctx: any) => {
                   const row = ctx?.payload as ConversionRow;
                   return [`${value}%  (${row.numerator}/${row.denominator})`, 'Conversion'];
                 }}
               />
-              <Bar dataKey="rate" radius={[6, 6, 0, 0]}>
+              <Bar dataKey="rate" radius={[0, 6, 6, 0]}>
                 {data.map((d) => (
                   <Cell key={d.icp} fill={ICP_HEX[d.icp] || ICP_HEX.Other} />
                 ))}
                 <LabelList
                   dataKey="rate"
-                  position="top"
+                  position="right"
                   formatter={(v: number) => `${v}%`}
-                  style={{ fontSize: 10, fill: 'hsl(var(--foreground))' }}
+                  style={{ fontSize: 11, fill: 'hsl(var(--foreground))', fontWeight: 500 }}
                 />
               </Bar>
             </BarChart>
@@ -196,8 +206,8 @@ function ConversionChart({ title, data }: { title: string; data: ConversionRow[]
 function PersonaMatrix({ data }: { data: PersonaRow[] }) {
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm">Persona Output: Who Buys vs. Who Informs</CardTitle>
+      <CardHeader className="pb-3 pt-5 px-5">
+        <CardTitle className="text-base font-semibold tracking-tight text-foreground">Persona Output: Who Buys vs. Who Informs</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-hidden rounded-b-lg">
@@ -244,9 +254,9 @@ export function NaitiveICPLeaderboard({ deals }: { deals: Deal[] }) {
   const insights = useMemo(() => generateInsights(qualToDemo, demoToTrial, persona), [qualToDemo, demoToTrial, persona]);
 
   return (
-    <section className="space-y-3">
-      <div>
-        <h2 className="text-lg font-semibold tracking-tight">ICP Conversion Leaderboard</h2>
+    <section className="space-y-4">
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold tracking-tight text-foreground">ICP Conversion Leaderboard</h2>
         <p className="text-sm text-muted-foreground">
           Where to focus and where to pull back — updated as pipeline moves.
         </p>
