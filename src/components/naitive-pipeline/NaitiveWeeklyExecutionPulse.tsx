@@ -5,7 +5,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { ArrowDown, ArrowUp, Minus, CalendarIcon } from 'lucide-react';
+import { ArrowDown, ArrowUp, Minus, CalendarIcon, ChevronRight } from 'lucide-react';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
+import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
   format, startOfWeek, endOfWeek, subWeeks, subDays, startOfDay, endOfDay,
@@ -206,17 +210,34 @@ function normalizeReasons(raw: unknown): string[] {
   return [];
 }
 
-function topReason(deals: Deal[], from: Date, to: Date): { label: string; count: number } | null {
+interface BlockerDealHit {
+  deal: Deal;
+  reasons: string[]; // full reason strings (incl. any "— detail" suffix)
+}
+
+function topReason(
+  deals: Deal[],
+  from: Date,
+  to: Date,
+): { label: string; count: number; deals: BlockerDealHit[] } | null {
   const counts = new Map<string, number>();
+  const dealsByHead = new Map<string, BlockerDealHit[]>();
   for (const d of deals) {
     try {
       const u = new Date(d.updatedAt);
       if (!inRange(u, from, to)) continue;
       const tokens = normalizeReasons(d.whyNotMovingForward);
+      const seenHeads = new Set<string>();
       for (const tok of tokens) {
         const head = tok.split('—')[0].trim();
         if (!head) continue;
         counts.set(head, (counts.get(head) || 0) + 1);
+        if (!seenHeads.has(head)) {
+          seenHeads.add(head);
+          const arr = dealsByHead.get(head) || [];
+          arr.push({ deal: d, reasons: tokens });
+          dealsByHead.set(head, arr);
+        }
       }
     } catch {
       // skip malformed record
@@ -224,7 +245,8 @@ function topReason(deals: Deal[], from: Date, to: Date): { label: string; count:
   }
   const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
   if (sorted.length === 0 || sorted[0][1] === 0) return null;
-  return { label: sorted[0][0], count: sorted[0][1] };
+  const [label, count] = sorted[0];
+  return { label, count, deals: dealsByHead.get(label) || [] };
 }
 
 function StatCard({ label, value, prev, isPercent }: {
