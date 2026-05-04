@@ -1105,9 +1105,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
 
       {expanded && (
         <div className="min-w-0 max-w-full overflow-x-hidden px-6 pb-5 pl-[64px]">
-          <div className="flex items-center gap-2 mb-3 text-xs text-[hsl(var(--email-text-muted))]">
-            <span>to {email.folder === 'sent' ? (email.to_name || email.to_email) : 'me'}</span>
-          </div>
+          <EmailHeaderDetails email={email} fullData={fullData as any} />
 
           {fullLoading && !alreadyHasFullBody && !resolvedHtml && !resolvedText && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
