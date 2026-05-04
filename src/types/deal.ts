@@ -127,6 +127,7 @@ export interface Deal {
   nextStep?: string;
   nextStepDate?: string | null;
   prospectType?: string;
+  outcome?: string;
 }
 
 export const LENDER_STATUS_CONFIG: Record<LenderStatus, { label: string }> = {
