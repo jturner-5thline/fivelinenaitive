@@ -292,13 +292,20 @@ function StatCard({
   return (
     <GlassCard
       interactive
-      onClick={onClick}
-      className={onClick ? 'cursor-pointer' : undefined}
     >
       <GlassCardHeader title={title} subtitle={subtitle} right={info} />
       <GlassCardBody className="pt-0 pb-5 space-y-2">
         {loading ? (
           <Skeleton className="h-8 w-24" />
+        ) : onClick ? (
+          <button
+            type="button"
+            onClick={onClick}
+            className={`${GLASS_TOKENS.valueClass} cursor-pointer hover:opacity-80 transition-opacity text-left`}
+            style={{ color: GLASS_TOKENS.valueColor }}
+          >
+            {value}
+          </button>
         ) : (
           <p
             className={GLASS_TOKENS.valueClass}
