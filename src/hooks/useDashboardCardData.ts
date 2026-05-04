@@ -14,6 +14,7 @@ export function useDashboardCardData(
   datarailsConfig: Partial<WidgetConfig> | undefined | null,
   timeWindow: TimeWindow,
   entityFilter?: string | null,
+  customRange?: { start: string; end: string },
 ): DashboardCardDataResult {
   const resolvedConfig = useMemo<WidgetConfig | null>(() => {
     if (!datarailsConfig || !datarailsConfig.values || datarailsConfig.values.length === 0) {
@@ -30,11 +31,12 @@ export function useDashboardCardData(
         ...DEFAULT_WIDGET_CONFIG.xAxis,
         ...(datarailsConfig.xAxis ?? {}),
         window: timeWindow,
+        customRange: timeWindow === 'custom' ? customRange : undefined,
       },
       values: datarailsConfig.values,
       filters: datarailsConfig.filters ?? [],
     } as WidgetConfig;
-  }, [datarailsConfig, timeWindow, entityFilter]);
+  }, [datarailsConfig, timeWindow, entityFilter, customRange?.start, customRange?.end]);
 
   const hasFullConfig = !!resolvedConfig;
 
