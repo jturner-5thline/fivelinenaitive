@@ -1,0 +1,1 @@
+ALTER TABLE public.cash_flow_imports ADD COLUMN IF NOT EXISTS credit_facilities jsonb NOT NULL DEFAULT '[]'::jsonb;

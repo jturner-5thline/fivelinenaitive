@@ -1433,6 +1433,7 @@ export type Database = {
       cash_flow_imports: {
         Row: {
           company_id: string
+          credit_facilities: Json
           daily_data: Json
           file_name: string
           id: string
@@ -1445,6 +1446,7 @@ export type Database = {
         }
         Insert: {
           company_id: string
+          credit_facilities?: Json
           daily_data?: Json
           file_name?: string
           id?: string
@@ -1457,6 +1459,7 @@ export type Database = {
         }
         Update: {
           company_id?: string
+          credit_facilities?: Json
           daily_data?: Json
           file_name?: string
           id?: string
