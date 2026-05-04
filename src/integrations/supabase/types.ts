@@ -13101,6 +13101,10 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          period_end: string | null
+          period_key: string
+          period_start: string | null
+          period_type: string
           updated_at: string
           updated_by: string | null
         }
@@ -13109,6 +13113,10 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          period_end?: string | null
+          period_key: string
+          period_start?: string | null
+          period_type: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -13117,6 +13125,10 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          period_end?: string | null
+          period_key?: string
+          period_start?: string | null
+          period_type?: string
           updated_at?: string
           updated_by?: string | null
         }
