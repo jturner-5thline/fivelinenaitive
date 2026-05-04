@@ -349,6 +349,7 @@ export function CopilotToggleButton() {
         )}
 
         <div
+          ref={barRef}
           role="search"
           aria-label="Search or ask naitive AI"
           className={cn(
@@ -446,5 +447,100 @@ export function CopilotToggleButton() {
         </div>
       </div>
     </div>
+    {debug && debugView && createPortal(
+      <div className="pointer-events-none fixed inset-0 z-[100000]">
+        {/* Main content vertical center line */}
+        <div
+          className="absolute top-0 bottom-0"
+          style={{
+            left: `${debugView.mainCenter}px`,
+            width: '1px',
+            background: 'rgba(56, 189, 248, 0.85)',
+            boxShadow: '0 0 6px rgba(56,189,248,0.7)',
+          }}
+        />
+        {/* Bar vertical center line */}
+        <div
+          className="absolute top-0 bottom-0"
+          style={{
+            left: `${debugView.barCenter}px`,
+            width: '1px',
+            background: 'rgba(244, 114, 182, 0.85)',
+            boxShadow: '0 0 6px rgba(244,114,182,0.7)',
+          }}
+        />
+        {/* Main content bounds */}
+        {debugRects && (
+          <div
+            className="absolute"
+            style={{
+              left: `${debugRects.main.left}px`,
+              top: `${debugRects.main.top}px`,
+              width: `${debugRects.main.width}px`,
+              height: `${debugRects.main.height}px`,
+              border: '1px dashed rgba(56,189,248,0.6)',
+            }}
+          />
+        )}
+        {/* Bar bounds */}
+        {debugRects && (
+          <div
+            className="absolute"
+            style={{
+              left: `${debugRects.bar.left}px`,
+              top: `${debugRects.bar.top}px`,
+              width: `${debugRects.bar.width}px`,
+              height: `${debugRects.bar.height}px`,
+              border: '1px solid rgba(244,114,182,0.85)',
+            }}
+          />
+        )}
+        {/* HUD */}
+        <div
+          className="absolute top-3 right-3 rounded-md px-3 py-2 font-mono text-[11px] leading-snug"
+          style={{
+            background: 'rgba(8, 10, 18, 0.85)',
+            color: 'rgba(255,255,255,0.92)',
+            border: '1px solid rgba(255,255,255,0.18)',
+            boxShadow: '0 6px 18px rgba(0,0,0,0.45)',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          <div className="font-sans text-[10px] uppercase tracking-wide text-white/55 mb-1">
+            Bar Center Debug
+          </div>
+          <div>
+            <span className="text-sky-400">main</span> center:{' '}
+            {debugView.mainCenter.toFixed(1)}px
+          </div>
+          <div>
+            <span className="text-pink-400">bar</span> center:{' '}
+            {debugView.barCenter.toFixed(1)}px
+          </div>
+          <div>
+            Δ:{' '}
+            <span style={{
+              color: Math.abs(debugView.delta) <= 1
+                ? 'rgba(74, 222, 128, 0.95)'
+                : Math.abs(debugView.delta) <= 4
+                  ? 'rgba(250, 204, 21, 0.95)'
+                  : 'rgba(248, 113, 113, 0.95)',
+            }}>
+              {debugView.delta >= 0 ? '+' : ''}{debugView.delta.toFixed(1)}px
+            </span>
+          </div>
+          {debugRects && (
+            <div className="text-white/50 mt-1">
+              main: {debugRects.main.width.toFixed(0)}w · bar: {debugRects.bar.width.toFixed(0)}w
+            </div>
+          )}
+          <div className="font-sans text-[10px] text-white/40 mt-1.5">
+            ⇧⌘D to toggle
+          </div>
+        </div>
+      </div>,
+      document.body,
+    )}
+    </>
   );
 }
