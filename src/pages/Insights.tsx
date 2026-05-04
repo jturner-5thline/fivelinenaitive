@@ -97,6 +97,7 @@ import {
   ManagementSnapshotDashboard,
   type EditableManagementSnapshotCardId,
   type ManagementSnapshotEditableConfig,
+  SUB_WIDGET_LABELS,
   SalesBDROIDashboard,
   SalesTeamBoardDashboard,
   ConsolidatedDebtPipelineDashboard,
