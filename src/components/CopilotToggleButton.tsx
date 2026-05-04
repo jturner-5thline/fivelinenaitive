@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import {
   Search as SearchIcon,
   Briefcase,
@@ -66,9 +67,74 @@ export function CopilotToggleButton() {
   const [focused, setFocused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { deals } = useDealsContext();
   const { lenders } = useLenders();
+
+  // ── Debug centering overlay ────────────────────────────────────────────
+  // Toggle with Shift+Ctrl+D / Shift+Cmd+D. Draws the main content's
+  // center line, the bar's center line, and the pixel delta so we can
+  // verify the bar stays centered within the main content module as the
+  // sidebar opens/closes and the viewport resizes.
+  const [debug, setDebug] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem('naitive:bar-debug') === '1';
+  });
+  const [debugRects, setDebugRects] = useState<{
+    main: { left: number; top: number; width: number; height: number };
+    bar: { left: number; top: number; width: number; height: number };
+  } | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.shiftKey && (e.metaKey || e.ctrlKey) && (e.key === 'd' || e.key === 'D')) {
+        e.preventDefault();
+        setDebug((d) => {
+          const next = !d;
+          try { window.localStorage.setItem('naitive:bar-debug', next ? '1' : '0'); } catch {}
+          return next;
+        });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  useEffect(() => {
+    if (!debug) {
+      setDebugRects(null);
+      return;
+    }
+    const barEl = barRef.current;
+    const mainEl = barEl?.closest('main') as HTMLElement | null;
+    if (!barEl || !mainEl) return;
+
+    const update = () => {
+      const m = mainEl.getBoundingClientRect();
+      const b = barEl.getBoundingClientRect();
+      setDebugRects({
+        main: { left: m.left, top: m.top, width: m.width, height: m.height },
+        bar: { left: b.left, top: b.top, width: b.width, height: b.height },
+      });
+    };
+    update();
+
+    const ro = new ResizeObserver(update);
+    ro.observe(mainEl);
+    ro.observe(barEl);
+    ro.observe(document.body);
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    const interval = window.setInterval(update, 250); // catch sidebar transitions
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+      window.clearInterval(interval);
+    };
+  }, [debug, focused, value, isOpen, hasOpenModal]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -171,7 +237,17 @@ export function CopilotToggleButton() {
   const aiIntent = isAiIntent(value);
   const dropdownItemCount = suggestions.length + 1; // +1 for the AI row at index 0
 
+  // Compute debug numbers up-front so the overlay JSX stays simple.
+  const debugView = (() => {
+    if (!debug || !debugRects) return null;
+    const mainCenter = debugRects.main.left + debugRects.main.width / 2;
+    const barCenter = debugRects.bar.left + debugRects.bar.width / 2;
+    const delta = barCenter - mainCenter;
+    return { mainCenter, barCenter, delta };
+  })();
+
   return (
+    <>
     <div
       aria-hidden={false}
       className="pointer-events-none sticky inset-x-0 z-50 mt-auto flex justify-center"
@@ -273,6 +349,7 @@ export function CopilotToggleButton() {
         )}
 
         <div
+          ref={barRef}
           role="search"
           aria-label="Search or ask naitive AI"
           className={cn(
@@ -370,5 +447,100 @@ export function CopilotToggleButton() {
         </div>
       </div>
     </div>
+    {debug && debugView && createPortal(
+      <div className="pointer-events-none fixed inset-0 z-[100000]">
+        {/* Main content vertical center line */}
+        <div
+          className="absolute top-0 bottom-0"
+          style={{
+            left: `${debugView.mainCenter}px`,
+            width: '1px',
+            background: 'rgba(56, 189, 248, 0.85)',
+            boxShadow: '0 0 6px rgba(56,189,248,0.7)',
+          }}
+        />
+        {/* Bar vertical center line */}
+        <div
+          className="absolute top-0 bottom-0"
+          style={{
+            left: `${debugView.barCenter}px`,
+            width: '1px',
+            background: 'rgba(244, 114, 182, 0.85)',
+            boxShadow: '0 0 6px rgba(244,114,182,0.7)',
+          }}
+        />
+        {/* Main content bounds */}
+        {debugRects && (
+          <div
+            className="absolute"
+            style={{
+              left: `${debugRects.main.left}px`,
+              top: `${debugRects.main.top}px`,
+              width: `${debugRects.main.width}px`,
+              height: `${debugRects.main.height}px`,
+              border: '1px dashed rgba(56,189,248,0.6)',
+            }}
+          />
+        )}
+        {/* Bar bounds */}
+        {debugRects && (
+          <div
+            className="absolute"
+            style={{
+              left: `${debugRects.bar.left}px`,
+              top: `${debugRects.bar.top}px`,
+              width: `${debugRects.bar.width}px`,
+              height: `${debugRects.bar.height}px`,
+              border: '1px solid rgba(244,114,182,0.85)',
+            }}
+          />
+        )}
+        {/* HUD */}
+        <div
+          className="absolute top-3 right-3 rounded-md px-3 py-2 font-mono text-[11px] leading-snug"
+          style={{
+            background: 'rgba(8, 10, 18, 0.85)',
+            color: 'rgba(255,255,255,0.92)',
+            border: '1px solid rgba(255,255,255,0.18)',
+            boxShadow: '0 6px 18px rgba(0,0,0,0.45)',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          <div className="font-sans text-[10px] uppercase tracking-wide text-white/55 mb-1">
+            Bar Center Debug
+          </div>
+          <div>
+            <span className="text-sky-400">main</span> center:{' '}
+            {debugView.mainCenter.toFixed(1)}px
+          </div>
+          <div>
+            <span className="text-pink-400">bar</span> center:{' '}
+            {debugView.barCenter.toFixed(1)}px
+          </div>
+          <div>
+            Δ:{' '}
+            <span style={{
+              color: Math.abs(debugView.delta) <= 1
+                ? 'rgba(74, 222, 128, 0.95)'
+                : Math.abs(debugView.delta) <= 4
+                  ? 'rgba(250, 204, 21, 0.95)'
+                  : 'rgba(248, 113, 113, 0.95)',
+            }}>
+              {debugView.delta >= 0 ? '+' : ''}{debugView.delta.toFixed(1)}px
+            </span>
+          </div>
+          {debugRects && (
+            <div className="text-white/50 mt-1">
+              main: {debugRects.main.width.toFixed(0)}w · bar: {debugRects.bar.width.toFixed(0)}w
+            </div>
+          )}
+          <div className="font-sans text-[10px] text-white/40 mt-1.5">
+            ⇧⌘D to toggle
+          </div>
+        </div>
+      </div>,
+      document.body,
+    )}
+    </>
   );
 }
