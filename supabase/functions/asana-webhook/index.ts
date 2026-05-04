@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 const ASANA_API = "https://app.asana.com/api/1.0";
-const TASK_OPT_FIELDS = "completed,name,due_on,assignee,assignee.email";
+const TASK_OPT_FIELDS = "completed,completed_at,name,notes,due_on,due_at,assignee,assignee.email,modified_at";
 
 function getSupabase() {
   return createClient(
@@ -70,8 +70,16 @@ serve(async (req) => {
   try {
     const bodyText = await req.text();
     const hookSignature = req.headers.get("x-hook-signature");
+    const url = new URL(req.url);
+    const urlIntegrationId = url.searchParams.get("integration_id");
 
-    let body: { events?: Array<{ resource?: { gid?: string; resource_type?: string }; action?: string; parent?: { gid?: string } }> };
+    let body: {
+      events?: Array<{
+        resource?: { gid?: string; resource_type?: string };
+        action?: string;
+        parent?: { gid?: string };
+      }>;
+    };
     try {
       body = JSON.parse(bodyText);
     } catch {
@@ -114,66 +122,77 @@ serve(async (req) => {
       }
     }
 
-    // Process task change events
-    for (const event of events) {
-      if (
-        event.resource?.resource_type !== "task" ||
-        event.action !== "changed"
-      ) {
-        continue;
+    // Resolve the integration token once per request, scoped to the webhook's integration
+    let integrationToken: string | null = null;
+    {
+      let integrationId = urlIntegrationId;
+      if (!integrationId) {
+        const { data: wh } = await supabase
+          .from("asana_webhooks")
+          .select("integration_id")
+          .eq("is_active", true)
+          .limit(1)
+          .maybeSingle();
+        integrationId = wh?.integration_id ?? null;
       }
+      if (integrationId) {
+        const { data: integration } = await supabase
+          .from("integrations")
+          .select("config")
+          .eq("id", integrationId)
+          .single();
+        const cfg = integration?.config as Record<string, string> | null;
+        integrationToken = cfg?.api_token ?? null;
+      }
+      if (!integrationToken) {
+        console.error("Asana webhook: no API token resolved for integration", integrationId);
+        return new Response(JSON.stringify({ ok: true, warning: "no_token" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Process task events (changed, deleted, removed)
+    for (const event of events) {
+      if (event.resource?.resource_type !== "task") continue;
+      const action = event.action;
+      if (action !== "changed" && action !== "deleted" && action !== "removed") continue;
 
       const taskGid = event.resource.gid;
       if (!taskGid) continue;
 
-      console.log(`Processing task change for Asana task GID: ${taskGid}`);
+      console.log(`[asana-webhook] event ${action} for task ${taskGid}`);
 
-      // Look up the corresponding naitive task
       const { data: naitiveTask, error: lookupError } = await supabase
         .from("tasks")
-        .select("id, title, status, due_date, assigned_to, asana_task_gid, sync_source")
+        .select("id, title, description, status, due_date, assigned_to, archived_at")
         .eq("asana_task_gid", taskGid)
         .maybeSingle();
 
       if (lookupError) {
-        console.error(`Error looking up task for GID ${taskGid}:`, lookupError);
+        console.error(`Lookup error for GID ${taskGid}:`, lookupError);
         continue;
       }
-
       if (!naitiveTask) {
-        console.log(`No naitive task found for Asana GID ${taskGid}, skipping`);
+        console.log(`No naitive task mapped for Asana GID ${taskGid}`);
         continue;
       }
 
-      // Find the integration token
-      const { data: webhook } = await supabase
-        .from("asana_webhooks")
-        .select("integration_id")
-        .eq("is_active", true)
-        .limit(1)
-        .maybeSingle();
-
-      if (!webhook) {
-        console.error("No active webhook integration found");
+      // Soft-delete on Asana deletion / project removal
+      if (action === "deleted" || action === "removed") {
+        if (!naitiveTask.archived_at) {
+          const { error: archErr } = await supabase
+            .from("tasks")
+            .update({ archived_at: new Date().toISOString() })
+            .eq("id", naitiveTask.id);
+          if (archErr) console.error(`Archive error for ${naitiveTask.id}:`, archErr);
+          else console.log(`[asana-webhook] archived naitive task ${naitiveTask.id}`);
+        }
         continue;
       }
 
-      const { data: integration } = await supabase
-        .from("integrations")
-        .select("config")
-        .eq("id", webhook.integration_id)
-        .single();
-
-      if (!integration?.config) {
-        console.error("Integration config not found");
-        continue;
-      }
-
-      const token = (integration.config as Record<string, string>).api_token;
-      if (!token) {
-        console.error("No API token in integration config");
-        continue;
-      }
+      const token = integrationToken;
 
       // Fetch full task details from Asana
       const asanaRes = await fetch(`${ASANA_API}/tasks/${taskGid}?opt_fields=${TASK_OPT_FIELDS}`, {
@@ -213,14 +232,25 @@ serve(async (req) => {
       }
 
       // 3. Due date
-      const asanaDueOn = asanaTask.due_on || null;
+      // Prefer due_at (datetime) when set; fall back to due_on (date)
+      const asanaDueOn = asanaTask.due_at
+        ? String(asanaTask.due_at).slice(0, 10)
+        : asanaTask.due_on || null;
       const naitiveDueDate = naitiveTask.due_date || null;
       if (asanaDueOn !== naitiveDueDate) {
         updateData.due_date = asanaDueOn;
         hasChanges = true;
       }
 
-      // 4. Assignee (match by email)
+      // 4. Description / notes
+      const asanaNotes = typeof asanaTask.notes === "string" ? asanaTask.notes : null;
+      const naitiveDescription = naitiveTask.description ?? null;
+      if (asanaNotes !== null && asanaNotes !== naitiveDescription) {
+        updateData.description = asanaNotes;
+        hasChanges = true;
+      }
+
+      // 5. Assignee (match by email)
       const asanaAssigneeEmail = asanaTask.assignee?.email || null;
       if (asanaAssigneeEmail) {
         const { data: profile } = await supabase
@@ -232,16 +262,15 @@ serve(async (req) => {
         if (profile?.user_id && profile.user_id !== naitiveTask.assigned_to) {
           updateData.assigned_to = profile.user_id;
           hasChanges = true;
+        } else if (!profile?.user_id) {
+          console.warn(`[asana-webhook] could not map Asana assignee ${asanaAssigneeEmail} for task ${taskGid}`);
         }
       }
 
       if (!hasChanges) {
-        console.log(`Task ${taskGid} no meaningful changes, skipping`);
+        console.log(`[asana-webhook] task ${taskGid}: no diff, skip`);
         continue;
       }
-
-      // Set sync_source to prevent loop: Naitive→Asana sync will skip this update
-      updateData.sync_source = 'asana';
 
       const { error: updateError } = await supabase
         .from("tasks")
@@ -249,20 +278,10 @@ serve(async (req) => {
         .eq("id", naitiveTask.id);
 
       if (updateError) {
-        console.error(`Error updating naitive task ${naitiveTask.id}:`, updateError);
+        console.error(`Update error for naitive task ${naitiveTask.id}:`, updateError);
       } else {
-        console.log(`Synced Asana task ${taskGid} → naitive task ${naitiveTask.id}:`, Object.keys(updateData).filter(k => k !== 'sync_source'));
+        console.log(`[asana-webhook] synced ${taskGid} → ${naitiveTask.id} fields:`, Object.keys(updateData));
       }
-
-      // Clear sync_source after a short delay so subsequent user edits are not blocked
-      // We do this in-line since edge functions are short-lived
-      setTimeout(async () => {
-        await supabase
-          .from("tasks")
-          .update({ sync_source: null })
-          .eq("id", naitiveTask.id)
-          .eq("sync_source", "asana");
-      }, 2000);
     }
 
     return new Response(JSON.stringify({ ok: true }), {
