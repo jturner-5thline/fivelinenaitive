@@ -1066,7 +1066,7 @@ function EmailHeaderDetails({ email, fullData }: { email: MockEmail; fullData: a
 }
 
 // ─── Thread Message Card ─────────────────────────────────────
-function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threadId, threadSubject, threadEmails, dealId, dealName }: { 
+function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threadId, threadSubject, threadEmails, dealId, dealName, onReply, onReplyAll, onForward }: { 
   email: MockEmail; 
   isLatest: boolean; 
   defaultExpanded: boolean;
@@ -1076,6 +1076,9 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
   threadEmails: MockEmail[];
   dealId?: string;
   dealName?: string;
+  onReply?: (email: MockEmail) => void;
+  onReplyAll?: (email: MockEmail) => void;
+  onForward?: (email: MockEmail) => void;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [showQuoted, setShowQuoted] = useState(false);
@@ -1243,6 +1246,40 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
                     {textQuoted}
                   </div>
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* Per-message action row — Reply / Reply All / Forward anchored
+              to THIS specific message, not the thread as a whole. */}
+          {(onReply || onReplyAll || onForward) && (
+            <div className="mt-4 flex items-center gap-2">
+              {onReply && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onReply(email); }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-[hsl(var(--email-border))] text-[hsl(var(--email-text-secondary))] hover:text-[hsl(var(--email-text-primary))] hover:border-[hsl(var(--outlook-blue)/0.4)] hover:bg-[hsl(var(--outlook-blue)/0.06)] transition-colors"
+                >
+                  <Reply className="h-3.5 w-3.5" />
+                  <span>Reply</span>
+                </button>
+              )}
+              {onReplyAll && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onReplyAll(email); }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-[hsl(var(--email-border))] text-[hsl(var(--email-text-secondary))] hover:text-[hsl(var(--email-text-primary))] hover:border-[hsl(var(--outlook-blue)/0.4)] hover:bg-[hsl(var(--outlook-blue)/0.06)] transition-colors"
+                >
+                  <ReplyAll className="h-3.5 w-3.5" />
+                  <span>Reply All</span>
+                </button>
+              )}
+              {onForward && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onForward(email); }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-[hsl(var(--email-border))] text-[hsl(var(--email-text-secondary))] hover:text-[hsl(var(--email-text-primary))] hover:border-[hsl(var(--outlook-blue)/0.4)] hover:bg-[hsl(var(--outlook-blue)/0.06)] transition-colors"
+                >
+                  <Forward className="h-3.5 w-3.5" />
+                  <span>Forward</span>
+                </button>
               )}
             </div>
           )}
@@ -1619,6 +1656,71 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     const latest = thread.latestEmail;
     const fwdSubject = thread.subject.startsWith('Fwd:') ? thread.subject : `Fwd: ${thread.subject}`;
     const fwdBody = `\n\n---------- Forwarded message ----------\nFrom: ${latest.from_name} <${latest.from_email}>\nDate: ${latest.received_at}\nSubject: ${thread.subject}\n\n${latest.body_preview || latest.snippet || ''}`;
+    setReplyTo({ subject: fwdSubject, to_email: '', to_name: '', threadId: thread.threadId });
+    setInlineDraft({
+      to: '',
+      toName: '',
+      subject: fwdSubject,
+      body: fwdBody,
+      cc: '',
+      bcc: '',
+      attachments: [],
+      threadId: thread.threadId,
+    });
+    setShowResumeBanner(false);
+  }, [popOutDraft, thread]);
+
+  // ─── Per-message reply / reply all / forward handlers ────────
+  // Anchored to a specific message in the thread (not just the latest).
+  // Pre-addresses the composer to that message's sender and seeds the
+  // quoted body from that specific message.
+  const handleReplyToMessage = useCallback((msg: MockEmail) => {
+    if (popOutDraft) return;
+    const isOutbound = msg.from_name === 'You';
+    const target = isOutbound
+      ? { to_email: msg.to_email, to_name: msg.to_name }
+      : { to_email: msg.from_email, to_name: msg.from_name };
+    const subject = thread.subject.startsWith('Re:') ? thread.subject : `Re: ${thread.subject}`;
+    setReplyTo({ subject, to_email: target.to_email, to_name: target.to_name, threadId: thread.threadId });
+    setInlineDraft({
+      to: target.to_email,
+      toName: target.to_name,
+      subject,
+      body: '',
+      cc: '',
+      bcc: '',
+      attachments: [],
+      threadId: thread.threadId,
+    });
+    setShowResumeBanner(false);
+  }, [popOutDraft, thread]);
+
+  const handleReplyAllToMessage = useCallback((msg: MockEmail) => {
+    if (popOutDraft) return;
+    const isOutbound = msg.from_name === 'You';
+    const target = isOutbound
+      ? { to_email: msg.to_email, to_name: msg.to_name }
+      : { to_email: msg.from_email, to_name: msg.from_name };
+    const ccEmails = isOutbound ? '' : (msg.to_email && msg.to_email !== target.to_email ? msg.to_email : '');
+    const subject = thread.subject.startsWith('Re:') ? thread.subject : `Re: ${thread.subject}`;
+    setReplyTo({ subject, to_email: target.to_email, to_name: target.to_name, threadId: thread.threadId });
+    setInlineDraft({
+      to: target.to_email,
+      toName: target.to_name,
+      subject,
+      body: '',
+      cc: ccEmails,
+      bcc: '',
+      attachments: [],
+      threadId: thread.threadId,
+    });
+    setShowResumeBanner(false);
+  }, [popOutDraft, thread]);
+
+  const handleForwardMessage = useCallback((msg: MockEmail) => {
+    if (popOutDraft) return;
+    const fwdSubject = thread.subject.startsWith('Fwd:') ? thread.subject : `Fwd: ${thread.subject}`;
+    const fwdBody = `\n\n---------- Forwarded message ----------\nFrom: ${msg.from_name} <${msg.from_email}>\nDate: ${msg.received_at}\nSubject: ${msg.subject || thread.subject}\n\n${msg.body_preview || msg.snippet || ''}`;
     setReplyTo({ subject: fwdSubject, to_email: '', to_name: '', threadId: thread.threadId });
     setInlineDraft({
       to: '',
@@ -2276,6 +2378,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               style={{ wordBreak: 'normal', overflowWrap: 'break-word', whiteSpace: 'normal' }}
             >
               {thread.subject}
+              {totalMessages > 1 && (
+                <span className="ml-2 text-sm font-normal text-[hsl(var(--email-text-muted))]">
+                  — {totalMessages} messages
+                </span>
+              )}
             </h2>
 
             {/* Priority signal context badge — shown when this thread was opened
@@ -2375,71 +2482,67 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               {/* AI-detected lender pass banner */}
               <PassDetectionBanner thread={thread} dealId={dealId} />
 
-              {/* Messages */}
-              {thread.emails.slice(0, shouldAutoCollapse && !olderExpanded ? VISIBLE_RECENT : undefined).map((email, idx) => (
-                <div
-                  key={email.id}
-                  data-deeplink-msg-id={email.id}
-                  className="transition-shadow"
-                >
-                  <ThreadMessage
-                    email={email}
-                    isLatest={idx === 0}
-                    defaultExpanded={
-                      idx === 0
-                      || userExpandedMessages.has(email.id)
-                      || (!!deepLinkMessageId && (email.id === deepLinkMessageId))
-                    }
-                    threadId={thread.threadId}
-                    threadSubject={thread.subject}
-                    threadEmails={thread.emails}
-                    dealId={effectiveDealId}
-                    dealName={effectiveDealName}
-                    onExpandChange={(exp) => {
-                      setUserExpandedMessages(prev => {
-                        const next = new Set(prev);
-                        if (exp) next.add(email.id); else next.delete(email.id);
-                        return next;
-                      });
-                    }}
-                  />
-                </div>
-              ))}
-
-              {/* Collapsed older messages bar */}
-              {hiddenCount > 0 && (
-                <CollapsedMessagesBar count={hiddenCount} onExpand={() => setOlderExpanded(true)} threadEmails={thread.emails} />
-              )}
-
-              {/* Older messages */}
-              {olderExpanded && shouldAutoCollapse && thread.emails.slice(VISIBLE_RECENT).map((email) => (
-                <div
-                  key={email.id}
-                  data-deeplink-msg-id={email.id}
-                  className="transition-shadow"
-                >
-                  <ThreadMessage
-                    email={email}
-                    isLatest={false}
-                    defaultExpanded={
-                      userExpandedMessages.has(email.id)
-                      || (!!deepLinkMessageId && (email.id === deepLinkMessageId))
-                    }
-                    threadId={thread.threadId}
-                    threadSubject={thread.subject}
-                    threadEmails={thread.emails}
-                    dealId={effectiveDealId}
-                    dealName={effectiveDealName}
-                    onExpandChange={(exp) => {
-                      setUserExpandedMessages(prev => {
-                        const next = new Set(prev);
-                        if (exp) next.add(email.id); else next.delete(email.id);
-                        return next;
-                      });
-                    }}
-                  />
-                </div>
-              ))}
+              {/* Messages — rendered chronologically (oldest at top, newest
+                  at bottom). The newest message is expanded by default; all
+                  earlier messages are collapsed and individually expandable.
+                  When the thread is long (>5), the older messages are
+                  hidden behind a "show older" bar at the top. */}
+              {(() => {
+                // thread.emails is stored newest-first; reverse to chronological.
+                const chronological = [...thread.emails].reverse();
+                const newestId = thread.latestEmail.id;
+                const olderHidden = shouldAutoCollapse && !olderExpanded;
+                // When auto-collapsed, hide the oldest messages (top of the
+                // chronological list) and only show the most recent N at the
+                // bottom.
+                const sliceStart = olderHidden
+                  ? Math.max(0, chronological.length - VISIBLE_RECENT)
+                  : 0;
+                const visible = chronological.slice(sliceStart);
+                return (
+                  <>
+                    {olderHidden && hiddenCount > 0 && (
+                      <CollapsedMessagesBar
+                        count={hiddenCount}
+                        onExpand={() => setOlderExpanded(true)}
+                        threadEmails={thread.emails}
+                      />
+                    )}
+                    {visible.map((email) => (
+                      <div
+                        key={email.id}
+                        data-deeplink-msg-id={email.id}
+                        className="transition-shadow"
+                      >
+                        <ThreadMessage
+                          email={email}
+                          isLatest={email.id === newestId}
+                          defaultExpanded={
+                            email.id === newestId
+                            || userExpandedMessages.has(email.id)
+                            || (!!deepLinkMessageId && (email.id === deepLinkMessageId))
+                          }
+                          threadId={thread.threadId}
+                          threadSubject={thread.subject}
+                          threadEmails={thread.emails}
+                          dealId={effectiveDealId}
+                          dealName={effectiveDealName}
+                          onReply={handleReplyToMessage}
+                          onReplyAll={handleReplyAllToMessage}
+                          onForward={handleForwardMessage}
+                          onExpandChange={(exp) => {
+                            setUserExpandedMessages(prev => {
+                              const next = new Set(prev);
+                              if (exp) next.add(email.id); else next.delete(email.id);
+                              return next;
+                            });
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </>
+                );
+              })()}
 
               {/* Resume draft banner */}
               {showResumeBanner && !replyTo && !popOutDraft && (

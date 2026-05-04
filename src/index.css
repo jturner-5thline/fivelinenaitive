@@ -314,6 +314,15 @@
   max-width: 100% !important;
   box-sizing: border-box;
   overflow-wrap: anywhere;
+  /* Some emails arrive with `writing-mode`, `text-orientation`, or
+     `transform: rotate(...)` declarations (signature cards, foreign-language
+     senders, broken templates) that flip the body sideways. Force every
+     descendant back to standard horizontal LTR rendering. */
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+  transform: none !important;
+  rotate: none !important;
+  direction: ltr !important;
 }
 
 .email-html-body {
