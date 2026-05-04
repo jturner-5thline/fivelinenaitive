@@ -8,13 +8,13 @@ import { resetNaitivePipelineCache } from '@/utils/naitivePipelineExclusion';
 const NAITIVE_PIPELINE_NAME = 'naitive Pipeline';
 
 const DEFAULT_NAITIVE_STAGES: DealStageOption[] = [
-  { id: 'prospects', label: 'Prospects', color: 'bg-slate-500' },
-  { id: 'intro-conversations', label: 'Intro Conversations', color: 'bg-blue-500' },
-  { id: 'demo-completed', label: 'Demo Completed', color: 'bg-indigo-500' },
-  { id: 'offer-sent', label: 'Offer Sent', color: 'bg-violet-500' },
-  { id: 'onboarding', label: 'Onboarding', color: 'bg-amber-500' },
-  { id: 'active-customer', label: 'Active Customer', color: 'bg-green-500' },
-  { id: 'close-lost-opportunity', label: 'Close Lost Opportunity', color: 'bg-red-500' },
+  { id: 'qual-booked', label: 'Qual Booked', color: 'bg-slate-500' },
+  { id: 'demo-booked', label: 'Demo Booked', color: 'bg-blue-500' },
+  { id: 'onboarding-booked', label: 'Onboarding Booked', color: 'bg-indigo-500' },
+  { id: 'trial-active', label: 'Trial Active', color: 'bg-violet-500' },
+  { id: 'converted', label: 'Converted', color: 'bg-green-500' },
+  { id: 'closed-lost', label: 'Closed Lost', color: 'bg-red-500' },
+  { id: 'tabled-on-hold', label: 'Tabled — On Hold', color: 'bg-amber-500' },
 ];
 
 interface NaitivePipelineData {
@@ -137,6 +137,21 @@ export function useNaitivePipelineData(): NaitivePipelineData {
       closingDate: d.closing_date || null,
       sourcedVia: d.sourced_via || undefined,
       dealClass: (d.deal_class || 'naitive') as 'standard' | 'naitive',
+      icpCategory: d.icp_category || undefined,
+      prospectType: d.prospect_type || undefined,
+      ownedBy: d.owned_by || undefined,
+      contactTitle: d.contact_title || undefined,
+      nextStep: d.next_step || undefined,
+      nextStepDate: d.next_step_date || undefined,
+      dmPresent: d.dm_present || undefined,
+      dmName: d.dm_name || undefined,
+      outcome: d.outcome || undefined,
+      whyNotMovingForward: d.why_not_moving_forward || undefined,
+      painPointsConfirmed: d.pain_points_confirmed || undefined,
+      objectionsRaised: d.objections_raised || undefined,
+      competitorsMentioned: d.competitors_mentioned || undefined,
+      keySignal: d.key_signal || undefined,
+      productGapFlagged: d.product_gap_flagged || undefined,
       lenders: (d.deal_lenders || []).map((l: any) => ({
         id: l.id,
         name: l.name || '',
