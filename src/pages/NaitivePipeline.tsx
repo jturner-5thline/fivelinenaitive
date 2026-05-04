@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Deal, DealStatus } from '@/types/deal';
 import { DealStageOption } from '@/contexts/DealStagesContext';
 import { CreateNaitiveDealDialog } from '@/components/naitive-pipeline/CreateNaitiveDealDialog';
-import { DealCard } from '@/components/deals/DealCard';
 import { NaitiveDealCard } from '@/components/naitive-pipeline/NaitiveDealCard';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useNaitiveStageMilestones, DealStageMilestone } from '@/hooks/useNaitiveStageMilestones';
