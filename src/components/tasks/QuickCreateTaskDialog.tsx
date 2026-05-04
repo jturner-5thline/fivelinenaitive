@@ -240,6 +240,7 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
         assigned_to: assignedTo,
         recurrence_rule: recurrence,
         recurrence_end_date: resolvedEndDate,
+        deal_id: dealId,
       });
       try {
         window.localStorage.setItem(LAST_ASSIGNEE_KEY, assignedTo);
