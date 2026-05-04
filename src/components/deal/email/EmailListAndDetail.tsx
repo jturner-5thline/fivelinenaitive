@@ -2477,67 +2477,67 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               {/* AI-detected lender pass banner */}
               <PassDetectionBanner thread={thread} dealId={dealId} />
 
-              {/* Messages */}
-              {thread.emails.slice(0, shouldAutoCollapse && !olderExpanded ? VISIBLE_RECENT : undefined).map((email, idx) => (
-                <div
-                  key={email.id}
-                  data-deeplink-msg-id={email.id}
-                  className="transition-shadow"
-                >
-                  <ThreadMessage
-                    email={email}
-                    isLatest={idx === 0}
-                    defaultExpanded={
-                      idx === 0
-                      || userExpandedMessages.has(email.id)
-                      || (!!deepLinkMessageId && (email.id === deepLinkMessageId))
-                    }
-                    threadId={thread.threadId}
-                    threadSubject={thread.subject}
-                    threadEmails={thread.emails}
-                    dealId={effectiveDealId}
-                    dealName={effectiveDealName}
-                    onExpandChange={(exp) => {
-                      setUserExpandedMessages(prev => {
-                        const next = new Set(prev);
-                        if (exp) next.add(email.id); else next.delete(email.id);
-                        return next;
-                      });
-                    }}
-                  />
-                </div>
-              ))}
-
-              {/* Collapsed older messages bar */}
-              {hiddenCount > 0 && (
-                <CollapsedMessagesBar count={hiddenCount} onExpand={() => setOlderExpanded(true)} threadEmails={thread.emails} />
-              )}
-
-              {/* Older messages */}
-              {olderExpanded && shouldAutoCollapse && thread.emails.slice(VISIBLE_RECENT).map((email) => (
-                <div
-                  key={email.id}
-                  data-deeplink-msg-id={email.id}
-                  className="transition-shadow"
-                >
-                  <ThreadMessage
-                    email={email}
-                    isLatest={false}
-                    defaultExpanded={
-                      userExpandedMessages.has(email.id)
-                      || (!!deepLinkMessageId && (email.id === deepLinkMessageId))
-                    }
-                    threadId={thread.threadId}
-                    threadSubject={thread.subject}
-                    threadEmails={thread.emails}
-                    dealId={effectiveDealId}
-                    dealName={effectiveDealName}
-                    onExpandChange={(exp) => {
-                      setUserExpandedMessages(prev => {
-                        const next = new Set(prev);
-                        if (exp) next.add(email.id); else next.delete(email.id);
-                        return next;
-                      });
+              {/* Messages — rendered chronologically (oldest at top, newest
+                  at bottom). The newest message is expanded by default; all
+                  earlier messages are collapsed and individually expandable.
+                  When the thread is long (>5), the older messages are
+                  hidden behind a "show older" bar at the top. */}
+              {(() => {
+                // thread.emails is stored newest-first; reverse to chronological.
+                const chronological = [...thread.emails].reverse();
+                const newestId = thread.latestEmail.id;
+                const olderHidden = shouldAutoCollapse && !olderExpanded;
+                // When auto-collapsed, hide the oldest messages (top of the
+                // chronological list) and only show the most recent N at the
+                // bottom.
+                const sliceStart = olderHidden
+                  ? Math.max(0, chronological.length - VISIBLE_RECENT)
+                  : 0;
+                const visible = chronological.slice(sliceStart);
+                return (
+                  <>
+                    {olderHidden && hiddenCount > 0 && (
+                      <CollapsedMessagesBar
+                        count={hiddenCount}
+                        onExpand={() => setOlderExpanded(true)}
+                        threadEmails={thread.emails}
+                      />
+                    )}
+                    {visible.map((email) => (
+                      <div
+                        key={email.id}
+                        data-deeplink-msg-id={email.id}
+                        className="transition-shadow"
+                      >
+                        <ThreadMessage
+                          email={email}
+                          isLatest={email.id === newestId}
+                          defaultExpanded={
+                            email.id === newestId
+                            || userExpandedMessages.has(email.id)
+                            || (!!deepLinkMessageId && (email.id === deepLinkMessageId))
+                          }
+                          threadId={thread.threadId}
+                          threadSubject={thread.subject}
+                          threadEmails={thread.emails}
+                          dealId={effectiveDealId}
+                          dealName={effectiveDealName}
+                          onReply={handleReplyToMessage}
+                          onReplyAll={handleReplyAllToMessage}
+                          onForward={handleForwardMessage}
+                          onExpandChange={(exp) => {
+                            setUserExpandedMessages(prev => {
+                              const next = new Set(prev);
+                              if (exp) next.add(email.id); else next.delete(email.id);
+                              return next;
+                            });
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </>
+                );
+              })()}
                     }}
                   />
                 </div>
