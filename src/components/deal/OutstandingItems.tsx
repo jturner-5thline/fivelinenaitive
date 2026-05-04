@@ -759,8 +759,8 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
   return (
     <>
       <Card className="h-full flex flex-col">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div className="flex items-center gap-2 min-w-0 shrink-0">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-y-2 space-y-0 pb-2">
+          <div className="flex items-center gap-2 min-w-0 shrink-0 order-1">
             <CardTitle className="text-lg whitespace-nowrap">Outstanding Items</CardTitle>
             {items.length > 0 ? (
               <span className="text-sm font-normal text-muted-foreground">
@@ -773,9 +773,15 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          {/*
+            Responsive toolbar: wraps onto a second line at narrow widths.
+            Order classes guarantee Search → All → Bulk Add always come first
+            so they stay visible on row 1, and the icon-only / requester
+            controls drop to row 2 before anything important is clipped.
+          */}
+          <div className="flex flex-row flex-wrap items-center gap-2 order-2 justify-end ml-auto min-w-0">
             {/* Search */}
-            <div className="relative">
+            <div className="relative order-1">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Search items..."
@@ -786,13 +792,13 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
             </div>
             
             {/* Filter by requester */}
-            <Popover>
+            <Popover>{/* "All" filter — order 2 */}
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
                   className={cn(
-                    'gap-1.5 text-xs h-8',
+                    'gap-1.5 text-xs h-8 order-2',
                     filterByLender.length > 0 && 'border-primary bg-primary/5'
                   )}
                 >
@@ -828,7 +834,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
             
             {/* Group by */}
             <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
-              <SelectTrigger className="h-8 w-8 p-0 flex items-center justify-center text-xs [&>svg:last-child]:hidden" title="Group by">
+              <SelectTrigger className="h-8 w-8 p-0 flex items-center justify-center text-xs [&>svg:last-child]:hidden order-4" title="Group by">
                 <Group className="h-4 w-4" />
               </SelectTrigger>
               <SelectContent>
@@ -844,7 +850,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="h-8 gap-1.5 text-xs"
+                className="h-8 gap-1.5 text-xs order-3 whitespace-nowrap shrink-0"
                 onClick={() => setIsBulkImportOpen(true)}
               >
                 <ClipboardPaste className="h-3.5 w-3.5" />
@@ -855,7 +861,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8"
+              className="h-8 w-8 order-5"
               onClick={() => setIsKanbanOpen(true)}
             >
               <LayoutGrid className="h-4 w-4" />
