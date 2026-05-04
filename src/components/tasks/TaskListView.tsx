@@ -63,16 +63,21 @@ export type TaskColumnId = typeof OPTIONAL_TASK_COLUMNS[number]['id'];
 /** Default columns shown to first-time users — fast triage view. */
 export const DEFAULT_TASK_COLUMNS: TaskColumnId[] = ['priority', 'status'];
 
-const LEADING_TEMPLATE = '20px_20px_20px_20px_20px_minmax(240px,1fr)';
+const LEADING_TEMPLATE = '20px 20px 20px 20px 20px minmax(240px,1fr)';
 const TRAILING_TEMPLATE = '32px';
 
-/** Build the grid-cols class string from the active column set. */
-function buildGridCols(visible: Set<TaskColumnId>): string {
+/** Build the gridTemplateColumns CSS value from the active column set. */
+function buildGridTemplate(visible: Set<TaskColumnId>): string {
   const middle = OPTIONAL_TASK_COLUMNS
     .filter(c => visible.has(c.id))
     .map(c => c.template)
-    .join('_');
-  return `grid-cols-[${LEADING_TEMPLATE}${middle ? '_' + middle : ''}_${TRAILING_TEMPLATE}]`;
+    .join(' ');
+  return [LEADING_TEMPLATE, middle, TRAILING_TEMPLATE].filter(Boolean).join(' ');
+}
+
+/** Convenience: ordered list of currently visible optional columns. */
+function visibleColumns(visible: Set<TaskColumnId>) {
+  return OPTIONAL_TASK_COLUMNS.filter(c => visible.has(c.id));
 }
 
 /** Locked row height — every data row, header row, and add-row uses this. */
