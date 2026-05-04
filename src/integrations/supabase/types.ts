@@ -13095,6 +13095,33 @@ export type Database = {
         }
         Relationships: []
       }
+      naitive_pipeline_narratives: {
+        Row: {
+          company_id: string
+          content: string
+          created_at: string
+          id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_id: string
+          content?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       naitive_stage_milestones: {
         Row: {
           completed: boolean
