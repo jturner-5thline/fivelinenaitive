@@ -513,17 +513,10 @@ export function RevenueQuarterlySection({ selectedQuarter }: { selectedQuarter: 
             setDrilldown({ title: 'FinServ Revenue', monthKey, realmIds: [FINSERV_REALM_ID] })
           }
         />
-        <RevenueBarChart
-          title="Total Revenue"
-          subtitle="Debt + FinServ combined"
-          data={totalRevenue.months}
-          isLoading={totalRevenue.isLoading}
-          total={totalRevenue.total}
-          color="hsl(var(--chart-3))"
-          onBarClick={(monthKey) =>
-            setDrilldown({ title: 'Total Revenue', monthKey, realmIds: [DEBT_REALM_ID, FINSERV_REALM_ID] })
-          }
-        />
+        {/* Third grid slot intentionally left empty so Debt Revenue and
+            FinServ Revenue retain their original column widths and do not
+            reflow after the Total Revenue chart was removed. */}
+        <div aria-hidden="true" />
       </div>
 
       {/* Drilldown Modal */}
