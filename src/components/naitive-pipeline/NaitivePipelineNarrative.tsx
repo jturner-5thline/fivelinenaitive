@@ -638,17 +638,72 @@ function AnalysisPanel({
   );
 }
 
-function HistoryPanel({ rows, currentKey }: { rows: NarrativeRow[]; currentKey: string }) {
-  if (rows.length === 0) {
-    return (
-      <div className="rounded-md border border-dashed border-border p-4 text-xs text-muted-foreground text-center">
-        No saved narratives yet.
-      </div>
-    );
-  }
+function HistoryPanel({
+  rows, currentKey, snapshots, onRestore, currentLabel,
+}: {
+  rows: NarrativeRow[];
+  currentKey: string;
+  snapshots: SnapshotRow[];
+  onRestore: (snap: SnapshotRow) => void;
+  currentLabel: string;
+}) {
   return (
-    <div className="space-y-2">
-      {rows.map((r) => {
+    <div className="space-y-5">
+      {/* Snapshots for the current period */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Autosaved versions · {currentLabel}
+          </p>
+          <span className="text-[10px] text-muted-foreground">Last {MAX_SNAPSHOTS}</span>
+        </div>
+        {snapshots.length === 0 ? (
+          <div className="rounded-md border border-dashed border-border p-3 text-[11px] text-muted-foreground text-center">
+            No autosaved versions yet — edits are snapshotted as you write.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {snapshots.map((s, i) => (
+              <div key={s.id} className="rounded-md border border-border bg-card/40 p-3 space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Badge variant="outline" className="text-[10px]">v{snapshots.length - i}</Badge>
+                    <span className="text-[11px] text-muted-foreground truncate">
+                      {format(new Date(s.created_at), 'MMM d, h:mm a')} · {formatDistanceToNow(new Date(s.created_at), { addSuffix: true })}
+                    </span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2 text-[11px] gap-1"
+                    onClick={() => onRestore(s)}
+                    title="Restore this version"
+                  >
+                    <RotateCcw className="h-3 w-3" /> Restore
+                  </Button>
+                </div>
+                <div
+                  className="text-xs text-foreground/80 line-clamp-3 prose prose-xs dark:prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: s.content || '<em class="text-muted-foreground">Empty</em>' }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Period-level narrative history */}
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+          Past periods
+        </p>
+        {rows.length === 0 ? (
+          <div className="rounded-md border border-dashed border-border p-3 text-[11px] text-muted-foreground text-center">
+            No saved narratives yet.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {rows.map((r) => {
         const isCurrent = r.period_key === currentKey;
         const start = r.period_start ? new Date(r.period_start) : null;
         return (
@@ -674,7 +729,10 @@ function HistoryPanel({ rows, currentKey }: { rows: NarrativeRow[]; currentKey: 
             />
           </div>
         );
-      })}
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
