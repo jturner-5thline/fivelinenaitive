@@ -19,7 +19,8 @@ import { type WidgetConfig, type TimeWindow, type KPIDetailCardConfig, type Nega
 import { KPIDetailCard } from '@/components/metrics/KPIDetailCard';
 import { DraggableGridLayout } from '@/components/metrics/DraggableGridLayout';
 import { RevenueByMonthChart } from '@/components/metrics/RevenueByMonthChart';
-import { type GridLayoutItem } from '@/hooks/useGridLayout';
+import { type GridLayoutItem, useGridLayout } from '@/hooks/useGridLayout';
+import { GripVertical } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -490,6 +491,8 @@ interface ManagementSnapshotDashboardProps {
   quarterOptions: import('@/hooks/useQBQuarterlyRevenue').QuarterOption[];
   /** Additional widget elements (custom widgets) to include in the same grid */
   children?: React.ReactNode;
+  /** Slot for the Executive Dashboard, rendered as a draggable/resizable section. */
+  executiveSlot?: React.ReactNode;
 }
 
 export function ManagementSnapshotDashboard({
@@ -505,6 +508,7 @@ export function ManagementSnapshotDashboard({
   onQuarterChange,
   quarterOptions,
   children,
+  executiveSlot,
 }: ManagementSnapshotDashboardProps) {
   const { data: qbStatus } = useQuickBooksStatus();
 
@@ -582,6 +586,49 @@ export function ManagementSnapshotDashboard({
 
   const visibleCards = allCards.filter(c => !isHidden(c.cardId));
 
+  // Section-level grid: lets the user drag/resize the whole sections
+  // (Revenue Overview, Pipeline Metrics, Signed Deals & AR, Profit by Entity,
+  // Executive Dashboard) when edit mode is on. Persisted per company.
+  const SECTION_IDS = [
+    'revenue-overview',
+    'pipeline-metrics',
+    'signed-deals-ar',
+    'profit-by-entity',
+    'executive-dashboard',
+  ];
+  const SECTION_DEFAULT_LAYOUT: GridLayoutItem[] = [
+    { i: 'revenue-overview',    x: 0, y: 0,  w: 12, h: 7, minW: 6, minH: 4 },
+    { i: 'pipeline-metrics',    x: 0, y: 7,  w: 12, h: 7, minW: 6, minH: 4 },
+    { i: 'signed-deals-ar',     x: 0, y: 14, w: 12, h: 7, minW: 6, minH: 4 },
+    { i: 'profit-by-entity',    x: 0, y: 21, w: 12, h: 7, minW: 6, minH: 4 },
+    { i: 'executive-dashboard', x: 0, y: 28, w: 12, h: 10, minW: 6, minH: 5 },
+  ];
+  const {
+    layout: sectionLayout,
+    saveLayout: saveSectionLayout,
+    isLoaded: sectionLayoutLoaded,
+  } = useGridLayout('weekly-rundown-sections', SECTION_IDS, { allowAllMembers: true });
+
+  // Hydrate from defaults until backend layout loads, so first paint isn't broken.
+  const effectiveSectionLayout = sectionLayoutLoaded && sectionLayout.length
+    ? sectionLayout
+    : SECTION_DEFAULT_LAYOUT;
+
+  const sectionContent: Record<string, React.ReactNode> = {
+    'revenue-overview':    <RevenueQuarterlySection selectedQuarter={selectedQuarter} />,
+    'pipeline-metrics':    <PipelineMetricsSection selectedQuarter={selectedQuarter} />,
+    'signed-deals-ar':     <SignedDealsAndARSection selectedQuarter={selectedQuarter} />,
+    'profit-by-entity':    <ProfitByEntitySection selectedQuarter={selectedQuarter} />,
+    'executive-dashboard': (
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Executive Dashboard</h2>
+        </div>
+        {executiveSlot}
+      </div>
+    ),
+  };
+
   return (
     <div className="space-y-6">
       {/* Top row: Revenue summary KPI tile + Revenue by Month chart side-by-side */}
@@ -636,17 +683,26 @@ export function ManagementSnapshotDashboard({
         </div>
       </div>
 
-      {/* Revenue Quarterly Section */}
-      <RevenueQuarterlySection selectedQuarter={selectedQuarter} />
-
-      {/* Pipeline Metrics Section */}
-      <PipelineMetricsSection selectedQuarter={selectedQuarter} />
-
-      {/* Signed Deals & AR Section */}
-      <SignedDealsAndARSection selectedQuarter={selectedQuarter} />
-
-      {/* Profit by Entity Section */}
-      <ProfitByEntitySection selectedQuarter={selectedQuarter} />
+      {/* Section-level draggable/resizable grid */}
+      <DraggableGridLayout
+        layout={effectiveSectionLayout}
+        onLayoutChange={saveSectionLayout}
+        isEditMode={isEditMode}
+        rowHeight={60}
+        className={cn(isEditMode && 'p-2 rounded-xl border-2 border-dashed border-primary/20')}
+      >
+        {SECTION_IDS.map((id) => (
+          <div key={id} className="relative group h-full overflow-auto">
+            {isEditMode && (
+              <div className="widget-drag-handle absolute top-1 left-1/2 -translate-x-1/2 z-20 cursor-grab active:cursor-grabbing flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/70 backdrop-blur border border-border/50 opacity-70 hover:opacity-100 transition-opacity">
+                <GripVertical className="h-3 w-3 text-muted-foreground" />
+                <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Drag</span>
+              </div>
+            )}
+            {sectionContent[id]}
+          </div>
+        ))}
+      </DraggableGridLayout>
     </div>
   );
 }
