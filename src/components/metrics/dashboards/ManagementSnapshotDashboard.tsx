@@ -763,33 +763,63 @@ export function ManagementSnapshotDashboard({
                 )}
               </div>
             ))}
-            {SECTION_IDS.map((id) => (
-              <div key={id} className="relative group h-full overflow-auto">
+            {visibleSubWidgets.map((id) => (
+              <div key={id} className="relative group h-full overflow-hidden">
             {isEditMode && (
               <>
                 <div className="widget-drag-handle absolute top-1 left-1/2 -translate-x-1/2 z-20 cursor-grab active:cursor-grabbing flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/70 backdrop-blur border border-border/50 opacity-70 hover:opacity-100 transition-opacity">
                   <GripVertical className="h-3 w-3 text-muted-foreground" />
                   <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Drag</span>
                 </div>
-                {onDeleteSection && (
+                {onDeleteSubWidget && (
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label="Remove section"
+                    aria-label={`Remove ${SUB_WIDGET_LABELS[id]}`}
                     className="absolute top-1 right-1 z-30 h-7 w-7 bg-background/70 backdrop-blur border border-border/50 hover:bg-destructive/10 hover:text-destructive opacity-80 hover:opacity-100"
                     onPointerDown={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
                     onTouchStart={(e) => e.stopPropagation()}
-                    onClick={(e) => { e.stopPropagation(); onDeleteSection(id); }}
+                    onClick={(e) => { e.stopPropagation(); onDeleteSubWidget(id); }}
                   >
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 )}
               </>
             )}
-            {sectionContent[id]}
+            {subWidgetRenderers[id]}
               </div>
             ))}
+            {includeExec && (
+              <div key="executive-dashboard" className="relative group h-full overflow-auto">
+                {isEditMode && (
+                  <>
+                    <div className="widget-drag-handle absolute top-1 left-1/2 -translate-x-1/2 z-20 cursor-grab active:cursor-grabbing flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/70 backdrop-blur border border-border/50 opacity-70 hover:opacity-100 transition-opacity">
+                      <GripVertical className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Drag</span>
+                    </div>
+                    {onDeleteSection && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Remove Executive Dashboard"
+                        className="absolute top-1 right-1 z-30 h-7 w-7 bg-background/70 backdrop-blur border border-border/50 hover:bg-destructive/10 hover:text-destructive opacity-80 hover:opacity-100"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
+                        onClick={(e) => { e.stopPropagation(); onDeleteSection('executive-dashboard'); }}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </>
+                )}
+                <div className="space-y-4">
+                  <div><h2 className="text-lg font-semibold text-foreground">Executive Dashboard</h2></div>
+                  {executiveSlot}
+                </div>
+              </div>
+            )}
             {children}
         </DraggableGridLayout>
       </div>
