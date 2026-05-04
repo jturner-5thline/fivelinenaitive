@@ -1073,13 +1073,19 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                             <div>{fmtAbbrev(displayVal)}</div>
                           )}
                           {isOverridden && (
-                            <span
+                            <button
+                              type="button"
                               className="cf-override-badge"
-                              aria-label="Manually overridden"
-                              title="Manually overridden — double-click to clear"
+                              aria-label="Clear manual override"
+                              title="Manually overridden — click badge (or double-click cell) to clear"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (overrideField) onCashOverride!(weekKey, overrideField, null);
+                              }}
+                              style={{ cursor: 'pointer', border: 'none' }}
                             >
                               <Pencil size={9} strokeWidth={2.5} />
-                            </span>
+                            </button>
                           )}
                           {cellCommentsHere.length > 0 && (
                             <span
