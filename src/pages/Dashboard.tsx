@@ -429,9 +429,10 @@ const FullCalendarView = lazy(() =>
 import { NewsFeedPanel } from '@/components/dashboard/NewsFeedPanel';
 import { NewsFeedDialog } from '@/components/dashboard/NewsFeedDialog';
 import { toast } from 'sonner';
-import { NikiDailyBriefingModal } from '@/components/dashboard/NikiDailyBriefingModal';
 import {
   canSeeNikiBriefing,
+  NIKI_USER_ID,
+  NIKI_ASSIGNEE_NAME,
   NIKI_EMAIL,
 } from '@/constants/nikiBriefing';
 import { useDashboardCarouselWidgets } from '@/hooks/useDashboardCarouselWidgets';
@@ -1078,10 +1079,13 @@ export default function Dashboard() {
           <DailyBriefingModal open onOpenChange={handleCarouselDialogOpenChange} />
         )}
         {canSeeNiki && isWidgetActive('niki-briefing') && (
-          <NikiDailyBriefingModal
+          <DailyBriefingModal
             open
             onOpenChange={handleCarouselDialogOpenChange}
             title={isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
+            targetUserId={NIKI_USER_ID}
+            targetAssigneeName={NIKI_ASSIGNEE_NAME}
+            excludeTabs={['financial']}
           />
         )}
         {is5thLine && isWidgetActive('deal-rundown') && (
