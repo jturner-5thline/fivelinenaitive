@@ -66,12 +66,12 @@ export interface NaitiveDealHurdle {
 
 const STAGE_WEIGHT_MAP: Record<string, number> = {
   'qual-booked': 0.1,
-  'qual-booked-2': 0.2,
   'demo-booked': 0.4,
   'onboarding-booked': 0.6,
-  'onboarding': 0.8,
+  'trial-active': 0.8,
   'converted': 1.0,
   'closed-lost': 0,
+  'tabled-on-hold': 0,
 };
 
 const STALLED_THRESHOLD_DAYS = 14;
