@@ -151,9 +151,39 @@ export function ScheduledCashFlowsModal({
   onSave,
   extraCashInCategories = [],
   extraCashOutCategories = [],
+  creditFacilities = [],
+  onCreditFacilitiesChange,
 }: Props) {
   const [drafts, setDrafts] = useState<DraftEntry[]>([]);
   const [saving, setSaving] = useState(false);
+  const [facilityDrafts, setFacilityDrafts] = useState<CreditFacility[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    setFacilityDrafts(creditFacilities.map((f) => ({ ...f })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const addFacility = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    setFacilityDrafts((prev) => [
+      ...prev,
+      {
+        id: `loc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        name: 'New Credit Facility',
+        facility_amount: 0,
+        initial_drawn: 0,
+        start_date: today,
+        end_date: null,
+      },
+    ]);
+  };
+  const updateFacility = (id: string, patch: Partial<CreditFacility>) => {
+    setFacilityDrafts((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+  };
+  const removeFacility = (id: string) => {
+    setFacilityDrafts((prev) => prev.filter((f) => f.id !== id));
+  };
   // Ids of existing entries the user explicitly removed in this session.
   // These — and only these — are deleted on save. This protects against
   // wiping rows added in other surfaces (e.g. inline cell adds) while the
