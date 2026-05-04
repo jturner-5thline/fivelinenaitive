@@ -65,6 +65,7 @@ export type EditableManagementSnapshotCardId =
   | 'finserv-revenue'
   | 'total-revenue'
   | 'total-revenue-detail'
+  | 'revenue-by-month'
   | 'clients-signed-debt'
   | 'clients-signed-finserv'
   | 'outstanding-ar'
