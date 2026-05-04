@@ -360,14 +360,8 @@ export default function NaitivePipeline() {
                       )}
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      <NaitivePipelineKPIStrip kpis={kpis} />
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                        <NaitiveFunnelChart data={funnelData} />
-                        <NaitiveTrendChart data={trendData} />
-                        <NaitivAgingChart data={agingData} />
-                        <NaitivHealthMixChart data={healthMix} />
-                      </div>
+                    <div className="space-y-6">
+                      <NaitiveWeeklyExecutionPulse deals={deals} history={stageHistory} />
                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                         <NaitivePipelineHurdles hurdles={hurdles} />
                         <NaitivePipelineNotifications notifications={notifications} />
