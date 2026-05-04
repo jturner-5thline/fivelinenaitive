@@ -2386,6 +2386,8 @@ export default function Metrics() {
                       hiddenCards={hiddenSnapshotCards}
                       hiddenSections={hiddenSnapshotSections}
                       onDeleteSection={handleDeleteSnapshotSection}
+                      hiddenSubWidgets={hiddenSubWidgets}
+                      onDeleteSubWidget={handleDeleteSubWidget}
                       onTimeWindowChange={(cardId, window) => {
                         setManagementSnapshotCards(prev => {
                           const card = prev[cardId];
