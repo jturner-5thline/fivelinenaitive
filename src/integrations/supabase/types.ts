@@ -13095,6 +13095,36 @@ export type Database = {
         }
         Relationships: []
       }
+      naitive_pipeline_narrative_snapshots: {
+        Row: {
+          company_id: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          period_key: string
+          period_type: string
+        }
+        Insert: {
+          company_id: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          period_key: string
+          period_type: string
+        }
+        Update: {
+          company_id?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          period_key?: string
+          period_type?: string
+        }
+        Relationships: []
+      }
       naitive_pipeline_narratives: {
         Row: {
           company_id: string

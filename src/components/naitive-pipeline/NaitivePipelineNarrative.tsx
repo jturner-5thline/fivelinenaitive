@@ -15,6 +15,7 @@ import {
   Bold as BoldIcon, Italic as ItalicIcon, Underline as UnderlineIcon,
   List, ListOrdered, Link as LinkIcon, Heading2, Loader2, Check,
   Sparkles, RefreshCw, History as HistoryIcon, Pencil,
+  RotateCcw,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
@@ -73,6 +74,16 @@ interface NarrativeRow {
   updated_at: string;
   updated_by: string | null;
 }
+
+interface SnapshotRow {
+  id: string;
+  content: string;
+  created_at: string;
+  created_by: string | null;
+}
+
+const MAX_SNAPSHOTS = 10;
+const SNAPSHOT_MIN_INTERVAL_MS = 60_000; // throttle: at most one snapshot per minute
 
 interface AnalysisResult {
   empty?: boolean;
@@ -145,6 +156,10 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week' }: Props) {
   const saveTimer = useRef<number | null>(null);
   const analysisTimer = useRef<number | null>(null);
   const lastSaved = useRef<string>('');
+  const lastSnapshotAt = useRef<number>(0);
+  const lastSnapshotContent = useRef<string>('');
+
+  const [snapshots, setSnapshots] = useState<SnapshotRow[]>([]);
 
   const editor = useEditor({
     extensions: [
@@ -218,6 +233,76 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week' }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, periodType, current.key, prior.key]);
 
+  // Load snapshots for the current period
+  const loadSnapshots = useCallback(async () => {
+    const { data, error } = await (supabase as any)
+      .from('naitive_pipeline_narrative_snapshots')
+      .select('id, content, created_at, created_by')
+      .eq('company_id', FIFTH_LINE_COMPANY_ID)
+      .eq('period_type', current.type)
+      .eq('period_key', current.key)
+      .order('created_at', { ascending: false })
+      .limit(MAX_SNAPSHOTS);
+    if (error) {
+      console.error('[narrative] snapshots load error', error);
+      return;
+    }
+    setSnapshots((data || []) as SnapshotRow[]);
+  }, [current.type, current.key]);
+
+  useEffect(() => { void loadSnapshots(); }, [loadSnapshots]);
+
+  const recordSnapshot = useCallback(async (html: string) => {
+    if (!html) return;
+    if (html === lastSnapshotContent.current) return;
+    const now = Date.now();
+    if (now - lastSnapshotAt.current < SNAPSHOT_MIN_INTERVAL_MS) return;
+    lastSnapshotAt.current = now;
+    lastSnapshotContent.current = html;
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const { error } = await (supabase as any)
+        .from('naitive_pipeline_narrative_snapshots')
+        .insert({
+          company_id: FIFTH_LINE_COMPANY_ID,
+          period_type: current.type,
+          period_key: current.key,
+          content: html,
+          created_by: userData.user?.id ?? null,
+        });
+      if (error) throw error;
+      // Trim older snapshots beyond MAX_SNAPSHOTS
+      const { data: all } = await (supabase as any)
+        .from('naitive_pipeline_narrative_snapshots')
+        .select('id, created_at')
+        .eq('company_id', FIFTH_LINE_COMPANY_ID)
+        .eq('period_type', current.type)
+        .eq('period_key', current.key)
+        .order('created_at', { ascending: false });
+      const rows = (all || []) as { id: string; created_at: string }[];
+      const stale = rows.slice(MAX_SNAPSHOTS).map((r) => r.id);
+      if (stale.length > 0) {
+        await (supabase as any)
+          .from('naitive_pipeline_narrative_snapshots')
+          .delete()
+          .in('id', stale);
+      }
+      void loadSnapshots();
+    } catch (e) {
+      console.error('[narrative] snapshot failed', e);
+    }
+  }, [current.type, current.key, loadSnapshots]);
+
+  const restoreSnapshot = useCallback((snap: SnapshotRow) => {
+    if (!editor) return;
+    if (!window.confirm('Restore this snapshot? Your current draft will be replaced (and saved as a new snapshot).')) return;
+    // Snapshot the current state first so the user can undo the restore
+    void recordSnapshot(content);
+    editor.commands.setContent(snap.content || '', { emitUpdate: false } as any);
+    setContent(snap.content || '');
+    void persist(snap.content || '');
+  }, [editor, content, recordSnapshot]);
+
   const persist = useCallback(async (html: string) => {
     if (html === lastSaved.current) return;
     setSaveState('saving');
@@ -242,6 +327,8 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week' }: Props) {
       setUpdatedAt(new Date());
       setSaveState('saved');
       window.setTimeout(() => setSaveState((s) => (s === 'saved' ? 'idle' : s)), 1500);
+      // Capture a versioned snapshot (throttled, deduped, capped)
+      void recordSnapshot(html);
     } catch (err) {
       console.error('[narrative] save failed', err);
       setSaveState('error');
@@ -424,7 +511,13 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week' }: Props) {
           </TabsContent>
 
           <TabsContent value="history" className="mt-3 flex-1 overflow-y-auto data-[state=inactive]:hidden">
-            <HistoryPanel rows={history} currentKey={current.key} />
+            <HistoryPanel
+              rows={history}
+              currentKey={current.key}
+              snapshots={snapshots}
+              onRestore={restoreSnapshot}
+              currentLabel={current.label}
+            />
           </TabsContent>
         </Tabs>
       </CardContent>
@@ -545,17 +638,72 @@ function AnalysisPanel({
   );
 }
 
-function HistoryPanel({ rows, currentKey }: { rows: NarrativeRow[]; currentKey: string }) {
-  if (rows.length === 0) {
-    return (
-      <div className="rounded-md border border-dashed border-border p-4 text-xs text-muted-foreground text-center">
-        No saved narratives yet.
-      </div>
-    );
-  }
+function HistoryPanel({
+  rows, currentKey, snapshots, onRestore, currentLabel,
+}: {
+  rows: NarrativeRow[];
+  currentKey: string;
+  snapshots: SnapshotRow[];
+  onRestore: (snap: SnapshotRow) => void;
+  currentLabel: string;
+}) {
   return (
-    <div className="space-y-2">
-      {rows.map((r) => {
+    <div className="space-y-5">
+      {/* Snapshots for the current period */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Autosaved versions · {currentLabel}
+          </p>
+          <span className="text-[10px] text-muted-foreground">Last {MAX_SNAPSHOTS}</span>
+        </div>
+        {snapshots.length === 0 ? (
+          <div className="rounded-md border border-dashed border-border p-3 text-[11px] text-muted-foreground text-center">
+            No autosaved versions yet — edits are snapshotted as you write.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {snapshots.map((s, i) => (
+              <div key={s.id} className="rounded-md border border-border bg-card/40 p-3 space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Badge variant="outline" className="text-[10px]">v{snapshots.length - i}</Badge>
+                    <span className="text-[11px] text-muted-foreground truncate">
+                      {format(new Date(s.created_at), 'MMM d, h:mm a')} · {formatDistanceToNow(new Date(s.created_at), { addSuffix: true })}
+                    </span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2 text-[11px] gap-1"
+                    onClick={() => onRestore(s)}
+                    title="Restore this version"
+                  >
+                    <RotateCcw className="h-3 w-3" /> Restore
+                  </Button>
+                </div>
+                <div
+                  className="text-xs text-foreground/80 line-clamp-3 prose prose-xs dark:prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: s.content || '<em class="text-muted-foreground">Empty</em>' }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Period-level narrative history */}
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+          Past periods
+        </p>
+        {rows.length === 0 ? (
+          <div className="rounded-md border border-dashed border-border p-3 text-[11px] text-muted-foreground text-center">
+            No saved narratives yet.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {rows.map((r) => {
         const isCurrent = r.period_key === currentKey;
         const start = r.period_start ? new Date(r.period_start) : null;
         return (
@@ -581,7 +729,10 @@ function HistoryPanel({ rows, currentKey }: { rows: NarrativeRow[]; currentKey: 
             />
           </div>
         );
-      })}
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
