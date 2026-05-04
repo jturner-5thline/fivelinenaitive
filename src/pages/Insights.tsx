@@ -1508,10 +1508,19 @@ export default function Metrics() {
     const next = [...hiddenSnapshotSections, sectionId];
     saveHiddenSnapshotSections({ items: next });
     const label = SNAPSHOT_SECTION_LABELS[sectionId] ?? 'Section';
+    undoStackRef.current.push({
+      type: 'section',
+      id: sectionId,
+      label,
+      undo: () => saveHiddenSnapshotSections({ items: next.filter(s => s !== sectionId) }),
+    });
     sonnerToast(`${label} removed`, {
       action: {
         label: 'Undo',
-        onClick: () => saveHiddenSnapshotSections({ items: next.filter(s => s !== sectionId) }),
+        onClick: () => {
+          saveHiddenSnapshotSections({ items: next.filter(s => s !== sectionId) });
+          undoStackRef.current = undoStackRef.current.filter(e => !(e.type === 'section' && e.id === sectionId));
+        },
       },
     });
   };
@@ -1553,10 +1562,19 @@ export default function Metrics() {
       const next = [...hiddenSnapshotCards, cardId];
       saveHiddenSnapshotCards({ items: next });
       const label = managementSnapshotCards?.[cardId]?.title ?? 'Widget';
+      undoStackRef.current.push({
+        type: 'card',
+        id: cardId,
+        label,
+        undo: () => saveHiddenSnapshotCards({ items: next.filter(c => c !== cardId) }),
+      });
       sonnerToast(`${label} removed`, {
         action: {
           label: 'Undo',
-          onClick: () => saveHiddenSnapshotCards({ items: next.filter(c => c !== cardId) }),
+          onClick: () => {
+            saveHiddenSnapshotCards({ items: next.filter(c => c !== cardId) });
+            undoStackRef.current = undoStackRef.current.filter(e => !(e.type === 'card' && e.id === cardId));
+          },
         },
       });
     }
