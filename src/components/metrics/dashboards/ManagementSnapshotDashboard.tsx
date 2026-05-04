@@ -704,7 +704,10 @@ export function ManagementSnapshotDashboard({
     'exec-deals-by-status':         { minW: 4, minH: 5, maxH: 12 },
   };
 
-  const visibleSubWidgets = ALL_SUB_WIDGET_IDS.filter(id => !hiddenSubWidgets.includes(id));
+  // 'exec-week-selector' is retired; its layout slot is collapsed.
+  const visibleSubWidgets = ALL_SUB_WIDGET_IDS.filter(
+    id => id !== 'exec-week-selector' && !hiddenSubWidgets.includes(id),
+  );
   const includeExec = !hiddenSections.includes('executive-dashboard');
 
   const UNIFIED_CONSTRAINTS: Record<string, WidgetConstraint> = {
