@@ -12,13 +12,15 @@ export interface Field {
 
 export type Grain = 'day' | 'week' | 'month' | 'quarter' | 'year';
 
-export type TimeWindow = 'mtd' | 'lastMonth' | 'qtd' | 'lastQuarter' | 'ytd' | 'lastYear' | 'ttm' | 'last3Months' | 'last6Months' | 'last12Months' | 'all' | 'custom';
+export type TimeWindow = 'mtd' | 'lastMonth' | 'qtd' | 'lastQuarter' | 'ytd' | 'lastYear' | 'ttm' | 'last3Months' | 'last6Months' | 'last12Months' | 'all' | 'custom' | '7d' | '30d' | '90d';
 
 export interface AxisConfig {
   fieldId: string | null;
   label?: string;
   grain?: Grain;
   window?: TimeWindow;
+  /** Used when window === 'custom' (or for arbitrary ranges driven by the global selector). */
+  customRange?: { start: string; end: string };
   showZeroPeriods?: boolean;
 }
 
