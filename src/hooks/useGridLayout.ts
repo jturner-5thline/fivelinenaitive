@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export interface GridLayoutItem {
   i: string;
@@ -149,13 +150,15 @@ export function useGridLayout(
   // Persist layout to DB
   const persistLayout = useCallback(async (newLayout: GridLayoutItem[]) => {
     if (!canEdit || !company?.id) return;
-    await (supabase
-      .from('dashboard_grid_layouts') as any)
-      .upsert({
-        company_id: company.id,
-        dashboard_id: dashboardId,
-        layout: newLayout,
-      }, { onConflict: 'company_id,dashboard_id' });
+    const { error } = await (supabase as any).rpc('save_dashboard_grid_layout', {
+      _company_id: company.id,
+      _dashboard_id: dashboardId,
+      _layout: newLayout,
+    });
+    if (error) {
+      console.error('[useGridLayout] save failed', error);
+      toast.error('Failed to save layout. Your changes may not persist.');
+    }
   }, [company?.id, dashboardId, canEdit]);
 
   // Save layout — supports immediate mode (skip debounce) for drag/resize stop
@@ -191,14 +194,8 @@ export function useGridLayout(
         saveTimerRef.current = null;
       }
       if (pendingLayoutRef.current && canEdit && company?.id) {
-        // Use sendBeacon for reliability during page unload
-        const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/dashboard_grid_layouts`;
-        const body = JSON.stringify({
-          company_id: company.id,
-          dashboard_id: dashboardId,
-          layout: pendingLayoutRef.current,
-        });
-        navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+        // Synchronous best-effort flush via the authenticated RPC
+        persistLayout(pendingLayoutRef.current);
       }
     };
     window.addEventListener('beforeunload', flushOnUnload);
@@ -218,11 +215,14 @@ export function useGridLayout(
     const def = buildDefaults(defaultWidgetIds);
     setLayout(def);
     if (!company?.id || !canEdit) return;
-    await (supabase
-      .from('dashboard_grid_layouts') as any)
-      .delete()
-      .eq('company_id', company.id)
-      .eq('dashboard_id', dashboardId);
+    const { error } = await (supabase as any).rpc('reset_dashboard_grid_layout', {
+      _company_id: company.id,
+      _dashboard_id: dashboardId,
+    });
+    if (error) {
+      console.error('[useGridLayout] reset failed', error);
+      toast.error('Failed to reset layout.');
+    }
   }, [company?.id, dashboardId, defaultWidgetIds, canEdit]);
 
   return { layout, saveLayout: wrappedSaveLayout, resetLayout, isLoaded, canEdit };
