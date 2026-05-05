@@ -5,8 +5,10 @@ import { GlassCard, GlassCardHeader, GlassCardBody } from '@/components/metrics/
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
-import { Loader2 } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2, ChevronDown } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
 import { QBO_ENTITIES } from '@/config/qboEntities';
 
 // Shared axis / tooltip / legend tokens — mirrors ExecutiveDashboard so the
@@ -34,6 +36,16 @@ const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1000) return `$${(value / 1000).toFixed(0)}k`;
   return `$${value.toFixed(0)}`;
 };
+
+// Distinct line colors for per-entity series — drawn from existing chart
+// palette tokens used elsewhere in Liquid Glass dashboards.
+const ENTITY_COLORS = [
+  'hsl(var(--primary))',
+  'hsl(var(--chart-2, 199 89% 65%))',
+  'hsl(var(--chart-3, 142 70% 55%))',
+  'hsl(var(--chart-4, 38 92% 60%))',
+  'hsl(var(--chart-5, 280 75% 65%))',
+];
 
 type Bucket = 'day' | 'week' | 'month';
 
@@ -91,11 +103,10 @@ export function RevenueByMonthChart({ height = 240 }: { height?: number }) {
   });
 
   // Entity filter — sourced from QuickBooks `realm_id` (each connected QBO
-  // company is a separate realm). 'all' aggregates across realms; specific
-  // realmId filters to that entity only. Records without a realm_id can't
-  // exist in this table (NOT NULL), so the "include in All / exclude from
-  // individual" rule is naturally satisfied.
-  const [entity, setEntity] = useState<string>('all');
+  // company is a separate realm). Empty array = "All" (single aggregate
+  // line). One or more realmIds = one line per selected entity.
+  // Records without a realm_id can't exist in this table (NOT NULL).
+  const [selected, setSelected] = useState<string[]>([]);
 
   const availableRealms = useMemo(() => {
     const set = new Set<string>();
@@ -110,38 +121,71 @@ export function RevenueByMonthChart({ height = 240 }: { height?: number }) {
     });
   }, [availableRealms]);
 
-  const { chartData, bucket, title } = useMemo(() => {
+  const isAll = selected.length === 0;
+
+  const { chartData, bucket, title, seriesKeys } = useMemo(() => {
     if (!start || !end) {
-      return { chartData: [] as { period: string; revenue: number }[], bucket: 'month' as Bucket, title: 'Revenue' };
+      return { chartData: [] as Array<Record<string, number | string>>, bucket: 'month' as Bucket, title: 'Revenue', seriesKeys: [] as string[] };
     }
     const b = pickBucket(start, end);
-    const map = new Map<string, { label: string; amount: number; sortKey: string }>();
+    // Build a per-bucket map. Each bucket holds amounts keyed by series name
+    // ("revenue" for All, or each entity label for multi-entity mode).
+    const map = new Map<string, { label: string; sortKey: string; values: Record<string, number> }>();
+    const allowed = isAll ? null : new Set(selected);
     for (const row of data ?? []) {
       if (!row.txn_date) continue;
-      if (entity !== 'all' && row.realm_id !== entity) continue;
+      if (allowed && (!row.realm_id || !allowed.has(row.realm_id))) continue;
       const d = new Date(row.txn_date + 'T00:00:00');
       const { key, label } = bucketKey(d, b);
-      const existing = map.get(key);
-      const amount = (existing?.amount ?? 0) + (row.total_amt ?? 0);
-      map.set(key, { label, amount, sortKey: key });
+      const seriesKey = isAll
+        ? 'Revenue'
+        : entityOptions.find(o => o.realmId === row.realm_id)?.label ?? 'Other';
+      const existing = map.get(key) ?? { label, sortKey: key, values: {} };
+      existing.values[seriesKey] = (existing.values[seriesKey] ?? 0) + (row.total_amt ?? 0);
+      map.set(key, existing);
     }
+    const seriesSet = new Set<string>();
+    if (isAll) {
+      seriesSet.add('Revenue');
+    } else {
+      for (const realmId of selected) {
+        const lbl = entityOptions.find(o => o.realmId === realmId)?.label;
+        if (lbl) seriesSet.add(lbl);
+      }
+    }
+    const keys = Array.from(seriesSet);
     const arr = Array.from(map.values())
       .sort((a, z) => a.sortKey.localeCompare(z.sortKey))
-      .map(v => ({ period: v.label, revenue: v.amount }));
+      .map(v => {
+        const row: Record<string, number | string> = { period: v.label };
+        for (const k of keys) row[k] = v.values[k] ?? 0;
+        return row;
+      });
     const titleByBucket: Record<Bucket, string> = {
       day: 'Revenue by Day',
       week: 'Revenue by Week',
       month: 'Revenue by Month',
     };
-    return { chartData: arr, bucket: b, title: titleByBucket[b] };
-  }, [data, start, end, entity]);
+    return { chartData: arr, bucket: b, title: titleByBucket[b], seriesKeys: keys };
+  }, [data, start, end, isAll, selected, entityOptions]);
 
-  const activeEntityLabel =
-    entity === 'all'
-      ? 'All Entities'
-      : entityOptions.find(o => o.realmId === entity)?.label ?? 'Entity';
+  const activeEntityLabel = isAll
+    ? 'All Entities'
+    : selected.length === 1
+      ? entityOptions.find(o => o.realmId === selected[0])?.label ?? 'Entity'
+      : `${selected.length} Selected Entities`;
   const fullTitle = `${title} — ${activeEntityLabel}`;
   const showFilter = entityOptions.length > 1;
+
+  const toggleEntity = (realmId: string) => {
+    setSelected(prev => {
+      const next = prev.includes(realmId)
+        ? prev.filter(r => r !== realmId)
+        : [...prev, realmId];
+      return next;
+    });
+  };
+  const selectAll = () => setSelected([]);
 
   return (
     <GlassCard interactive className="h-full">
@@ -150,19 +194,43 @@ export function RevenueByMonthChart({ height = 240 }: { height?: number }) {
         subtitle={rangeLabel}
         right={
           showFilter ? (
-            <Select value={entity} onValueChange={setEntity}>
-              <SelectTrigger className="h-7 w-[130px] text-xs bg-background/40 border-white/10">
-                <SelectValue placeholder="All Entities" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Entities</SelectItem>
-                {entityOptions.map(opt => (
-                  <SelectItem key={opt.realmId} value={opt.realmId}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs bg-background/40 border-white/10 gap-1.5"
+                >
+                  <span className="truncate max-w-[140px]">{activeEntityLabel}</span>
+                  <ChevronDown className="h-3 w-3 opacity-60" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-52 p-1">
+                <button
+                  type="button"
+                  onClick={selectAll}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm text-xs hover:bg-accent text-left"
+                >
+                  <Checkbox checked={isAll} className="pointer-events-none" />
+                  <span>All Entities</span>
+                </button>
+                <div className="my-1 h-px bg-border/60" />
+                {entityOptions.map(opt => {
+                  const checked = selected.includes(opt.realmId);
+                  return (
+                    <button
+                      key={opt.realmId}
+                      type="button"
+                      onClick={() => toggleEntity(opt.realmId)}
+                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm text-xs hover:bg-accent text-left"
+                    >
+                      <Checkbox checked={checked} className="pointer-events-none" />
+                      <span className="truncate">{opt.label}</span>
+                    </button>
+                  );
+                })}
+              </PopoverContent>
+            </Popover>
           ) : null
         }
       />
@@ -182,10 +250,25 @@ export function RevenueByMonthChart({ height = 240 }: { height?: number }) {
               <CartesianGrid strokeDasharray="2 4" stroke={GRID_STROKE} vertical={false} />
               <XAxis dataKey="period" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} interval="preserveStartEnd" />
               <YAxis tickFormatter={formatCurrency} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
-              <Tooltip formatter={(value: number) => [formatCurrency(value), 'Revenue']} contentStyle={TOOLTIP_STYLE} />
+              <Tooltip formatter={(value: number, name: string) => [formatCurrency(value), name]} contentStyle={TOOLTIP_STYLE} />
               <Legend wrapperStyle={LEGEND_STYLE} iconType="circle" iconSize={8} />
-              <Area type="monotone" dataKey="revenue" name="Revenue" fill="hsl(var(--primary) / 0.22)" stroke="transparent" legendType="none" />
-              <Line type="monotone" dataKey="revenue" name="Revenue" stroke="hsl(var(--primary))" strokeWidth={1.75} dot={{ r: 3, fill: 'hsl(var(--primary))', strokeWidth: 0 }} />
+              {isAll && (
+                <Area type="monotone" dataKey="Revenue" name="Revenue" fill="hsl(var(--primary) / 0.22)" stroke="transparent" legendType="none" />
+              )}
+              {seriesKeys.map((key, idx) => {
+                const color = ENTITY_COLORS[idx % ENTITY_COLORS.length];
+                return (
+                  <Line
+                    key={key}
+                    type="monotone"
+                    dataKey={key}
+                    name={key}
+                    stroke={color}
+                    strokeWidth={1.75}
+                    dot={{ r: 3, fill: color, strokeWidth: 0 }}
+                  />
+                );
+              })}
             </ComposedChart>
           </ResponsiveContainer>
           )}
