@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Deal } from '@/types/deal';
 import { PipelineMemoCard } from '@/components/pipeline/memo/PipelineMemoCard';
 import { usePipelineDigests } from '@/hooks/usePipelineDigests';
+import { usePipelineDealTasks } from '@/hooks/usePipelineDealTasks';
 
 interface PipelineMemoViewProps {
   deals: Deal[];
@@ -129,7 +130,8 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
     });
   }, [deals, sortDataQ.data]);
 
-  const { digestMap, isLoading: digestsLoading } = usePipelineDigests(sorted, sorted.length > 0);
+  const { digestMap, rawByDeal, isLoading: digestsLoading } = usePipelineDigests(sorted, sorted.length > 0);
+  const { data: tasksByDeal } = usePipelineDealTasks(dealIds, dealIds.length > 0);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -175,6 +177,8 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
               <PipelineMemoCard
                 deal={deal}
                 digest={digestMap.get(deal.id)}
+                rawDigest={rawByDeal.get(deal.id)}
+                tasks={tasksByDeal?.get(deal.id) || []}
                 isDigestLoading={digestsLoading}
                 showLiveDot={virtualRow.index === 0}
                 onOpenDeal={onOpenDeal}
