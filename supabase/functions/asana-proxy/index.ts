@@ -414,6 +414,55 @@ serve(async (req) => {
         break;
       }
 
+      case "portfolio_goals": {
+        // Fetch goals supported by a specific portfolio.
+        const resolvedToken = await resolveToken(token, integration_id);
+        const portfolioGid = params.portfolio_gid;
+        if (!portfolioGid) {
+          result = { success: false, error: "portfolio_gid is required", goals: [] };
+          break;
+        }
+        const optFields = [
+          "name",
+          "due_on",
+          "permalink_url",
+          "owner.name",
+          "owner.email",
+          "status",
+          "progress_status",
+          "current_status_update.status_type",
+          "metric.current_display_value",
+          "metric.current_number_value",
+          "metric.target_number_value",
+          "metric.initial_number_value",
+          "metric.unit",
+          "time_period.display_name",
+        ].join(",");
+        try {
+          const data = await asanaFetch(
+            `/portfolios/${portfolioGid}/items?opt_fields=${optFields},resource_type`,
+            resolvedToken
+          );
+          const items = (data.data || []).filter((it: any) => it.resource_type === "goal");
+          // Some workspaces don't expose goals as portfolio items; fall back to /goals?portfolio=
+          let goals = items;
+          if (goals.length === 0) {
+            try {
+              const alt = await asanaFetch(
+                `/goals?portfolio=${portfolioGid}&limit=100&opt_fields=${optFields}`,
+                resolvedToken
+              );
+              goals = alt.data || [];
+            } catch (_) { /* ignore */ }
+          }
+          result = { success: true, goals };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "Unknown error fetching portfolio goals";
+          result = { success: false, error: msg, goals: [] };
+        }
+        break;
+      }
+
       default:
         result = { success: false, error: `Unknown action: ${action}` };
     }
