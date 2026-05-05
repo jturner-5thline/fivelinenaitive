@@ -272,16 +272,25 @@ export function AsanaGoalsPortfoliosSection() {
                 const atPct = Math.round((p.atRisk / total) * 100);
                 const offPct = Math.round((p.offTrack / total) * 100);
                 return (
-                  <div key={p.gid} style={{ padding: '6px 8px', borderRadius: 6, background: 'rgba(20,80,160,0.18)', border: '1px solid rgba(40,100,180,0.25)' }}>
+                  <div
+                    key={p.gid}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setOpenPortfolio({ gid: p.gid, name: p.name, url: p.permalink_url })}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setOpenPortfolio({ gid: p.gid, name: p.name, url: p.permalink_url }); }}
+                    style={{ padding: '6px 8px', borderRadius: 6, background: 'rgba(20,80,160,0.18)', border: '1px solid rgba(40,100,180,0.25)', cursor: 'pointer' }}
+                  >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: '#e8f6ff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {p.permalink_url ? (
-                          <a href={p.permalink_url} target="_blank" rel="noreferrer" style={{ color: '#e8f6ff', textDecoration: 'none' }}>
+                          <a href={p.permalink_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: '#e8f6ff', textDecoration: 'none' }}>
                             {p.name} <ExternalLink size={9} style={{ display: 'inline', opacity: 0.5 }} />
                           </a>
                         ) : p.name}
                       </div>
-                      <span style={{ fontSize: 9, color: 'rgba(160,210,255,0.6)', whiteSpace: 'nowrap' }}>{p.projectCount} projects</span>
+                      <span style={{ fontSize: 9, color: 'rgba(160,210,255,0.6)', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                        {p.projectCount} projects <ChevronRight size={10} style={{ opacity: 0.6 }} />
+                      </span>
                     </div>
                     {p.projectCount > 0 ? (
                       <>
