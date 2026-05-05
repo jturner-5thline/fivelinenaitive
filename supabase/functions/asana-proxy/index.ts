@@ -8,6 +8,14 @@ const corsHeaders = {
 
 const ASANA_API = "https://app.asana.com/api/1.0";
 
+// ── In-memory cache for portfolio_milestones ──
+// Survives across requests within a warm edge-function instance.
+const PORTFOLIO_MILESTONES_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const portfolioMilestoneCache = new Map<
+  string,
+  { data: unknown; expiresAt: number }
+>();
+
 async function asanaFetch(path: string, token: string, options: RequestInit = {}) {
   const res = await fetch(`${ASANA_API}${path}`, {
     ...options,
