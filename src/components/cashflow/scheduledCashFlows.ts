@@ -1,5 +1,5 @@
 // Helpers and types for scheduled cash flow entries
-import type { WeeklyData } from './types';
+import type { WeeklyData, WeeklyOverrides } from './types';
 
 export type FrequencyType =
   | 'one_time'
@@ -357,9 +357,10 @@ export function generateOccurrences(
 export function mergeScheduledIntoWeekly(
   weekly: WeeklyData,
   entries: ScheduledCashFlow[],
-  options?: { lockHistoricalThrough?: string },
+  options?: { lockHistoricalThrough?: string; weeklyOverrides?: WeeklyOverrides },
 ): WeeklyData {
   const lockThrough = options?.lockHistoricalThrough ?? null;
+  const overrides = options?.weeklyOverrides || {};
   if ((!entries || entries.length === 0) && !lockThrough) return weekly;
   const sortedKeys = Object.keys(weekly).sort();
   if (sortedKeys.length === 0) return weekly;
@@ -473,9 +474,21 @@ export function mergeScheduledIntoWeekly(
       prevEnd = Number.isFinite(ec) ? ec : prevEnd;
       continue;
     }
-    const begin = prevEnd !== null ? prevEnd : (Number(target['BEGINNING CASH']) || 0);
+    // Manual overrides are authoritative — they win over both the rolled-
+    // forward chain AND the computed Net Change. Beginning Cash override
+    // breaks the chain and starts a new one from the user's value. Ending
+    // Cash override pins the closing balance regardless of inflows/outflows.
+    const ov = overrides[k];
+    const overrideBegin = ov?.beginningCash;
+    const overrideEnd = ov?.endingCash;
+    const begin = overrideBegin !== undefined && overrideBegin !== null
+      ? Number(overrideBegin)
+      : (prevEnd !== null ? prevEnd : (Number(target['BEGINNING CASH']) || 0));
     target['BEGINNING CASH'] = begin;
-    const newEnd = begin + (Number(target['NET CHANGE']) || 0);
+    const computedEnd = begin + (Number(target['NET CHANGE']) || 0);
+    const newEnd = overrideEnd !== undefined && overrideEnd !== null
+      ? Number(overrideEnd)
+      : computedEnd;
     target['ENDING CASH'] = Math.round(newEnd);
     const addlLegacy = Number(target["Add'l Liquidity (Delayed Draw)"]) || 0;
     const addlNew = Number(target['Addl Liquidity Chase Tax Reserve MT Chk']) || 0;
