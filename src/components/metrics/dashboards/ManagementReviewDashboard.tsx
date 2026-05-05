@@ -81,7 +81,7 @@ function NaPlaceholder({ height = 90, label = 'Data unavailable' }: { height?: n
 // ── Chart hook ──
 function useChart(ref: React.RefObject<HTMLCanvasElement | null>, config: any, deps: any[]) {
   useEffect(() => {
-    if (!ref.current) return;
+    if (!ref.current || !config) return;
     setChartDefaults();
     const chart = new ChartJS(ref.current, config);
     return () => chart.destroy();
