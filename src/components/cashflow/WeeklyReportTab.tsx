@@ -335,6 +335,10 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
 
   const [savePlanOpen, setSavePlanOpen] = useState(false);
   const [planName, setPlanName] = useState('');
+  // Live search across line item names. Empty string = show everything.
+  // Section headers and structural rows (spacers, add-row footers, net change)
+  // are kept whenever any matching child row is present in their section.
+  const [lineItemSearch, setLineItemSearch] = useState('');
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const [debtAdvCollapsed, setDebtAdvCollapsed] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
