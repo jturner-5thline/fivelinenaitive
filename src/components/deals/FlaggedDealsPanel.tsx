@@ -15,6 +15,8 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsDemoAccount } from '@/hooks/useIsDemoAccount';
+import { DEMO_FLAGGED_LIMIT } from '@/lib/demoAccount';
 
 interface FlaggedDealsPanelProps {
   deals: Deal[];
@@ -30,7 +32,13 @@ interface FlagAuthor {
 
 export function FlaggedDealsPanel({ deals }: FlaggedDealsPanelProps) {
   const { formatCurrencyValue } = usePreferences();
-  const flaggedDeals = useMemo(() => deals.filter((deal) => deal.isFlagged), [deals]);
+  const isDemoAccount = useIsDemoAccount();
+  const flaggedDeals = useMemo(() => {
+    const all = deals
+      .filter((deal) => deal.isFlagged)
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    return isDemoAccount ? all.slice(0, DEMO_FLAGGED_LIMIT) : all;
+  }, [deals, isDemoAccount]);
   const [flagAuthors, setFlagAuthors] = useState<Record<string, FlagAuthor>>({});
   const [open, setOpen] = useState(false);
 

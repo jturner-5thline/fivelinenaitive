@@ -20,6 +20,8 @@ import { useAgentSuggestions, useDismissAgentSuggestion } from '@/hooks/useAgent
 import { Deal } from '@/types/deal';
 import { cn } from '@/lib/utils';
 import { isLenderEligibleForAttention } from '@/utils/lenderAttentionEligibility';
+import { useIsDemoAccount } from '@/hooks/useIsDemoAccount';
+import { DEMO_NOTIFICATION_LIMIT, DEMO_STALE_LIMIT } from '@/lib/demoAccount';
 
 interface Notification {
   id: string;
@@ -566,6 +568,7 @@ export function NotificationCarousel() {
   const { isRead, markAsRead } = useNotificationReads();
   const { shouldShowStaleAlerts, shouldShowActivity, preferences: notifPrefs } = useNotificationPreferences();
   const { notifications: flexNotifications, isLoading: flexLoading, markAsRead: markFlexAsRead } = useFlexNotifications(10);
+  const isDemoAccount = useIsDemoAccount();
 
   // Calculate stale alerts
   const allStaleAlerts = useMemo(() => 
@@ -573,10 +576,15 @@ export function NotificationCarousel() {
     [deals, appPreferences.lenderUpdateYellowDays]
   );
 
-  const staleAlerts = useMemo(() => 
-    shouldShowStaleAlerts ? allStaleAlerts : [],
-    [shouldShowStaleAlerts, allStaleAlerts]
-  );
+  const staleAlerts = useMemo(() => {
+    if (!shouldShowStaleAlerts) return [];
+    if (isDemoAccount) {
+      return [...allStaleAlerts]
+        .sort((a, b) => b.maxDaysSinceUpdate - a.maxDaysSinceUpdate)
+        .slice(0, DEMO_STALE_LIMIT);
+    }
+    return allStaleAlerts;
+  }, [shouldShowStaleAlerts, allStaleAlerts, isDemoAccount]);
 
   const filteredActivities = useMemo(() => 
     activities.filter(a => shouldShowActivity(a.activity_type)),
@@ -639,8 +647,22 @@ export function NotificationCarousel() {
     });
 
     // Sort by timestamp (newest first)
-    return items.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-  }, [staleAlerts, filteredFlexNotifications, filteredActivities, isRead]);
+    const sorted = items.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    // Demo cap: exactly N deals shown across the notifications surface.
+    if (isDemoAccount) {
+      const seenDealIds = new Set<string>();
+      const capped: Notification[] = [];
+      for (const item of sorted) {
+        const key = item.dealId || item.id;
+        if (seenDealIds.has(key)) continue;
+        seenDealIds.add(key);
+        capped.push(item);
+        if (seenDealIds.size >= DEMO_NOTIFICATION_LIMIT) break;
+      }
+      return capped;
+    }
+    return sorted;
+  }, [staleAlerts, filteredFlexNotifications, filteredActivities, isRead, isDemoAccount]);
 
   const isLoading = activitiesLoading || flexLoading;
 

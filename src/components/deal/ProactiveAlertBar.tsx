@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { differenceInBusinessDays } from 'date-fns';
 import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
+import { useIsDemoAccount } from '@/hooks/useIsDemoAccount';
 
 interface ProactiveAlertBarProps {
   deal: {
@@ -43,6 +44,7 @@ interface Alert {
 
 export function ProactiveAlertBar({ deal, checklistTotal = 0, checklistComplete = 0, outstandingItemsCount = 0, infoRequestCount = 0, onNavigate }: ProactiveAlertBarProps) {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const isDemoAccount = useIsDemoAccount();
 
   const alerts = useMemo(() => {
     const result: Alert[] = [];
@@ -50,6 +52,8 @@ export function ProactiveAlertBar({ deal, checklistTotal = 0, checklistComplete 
     // Suppress all alerts for on-hold or archived deals
     const suppressedStatuses = ['on-hold', 'on_hold', 'archived'];
     if (deal.status && suppressedStatuses.includes(deal.status)) return result;
+    // Demo account: never surface missing-doc / outstanding-item nags.
+    const suppressMissingAndOutstanding = isDemoAccount;
 
     const now = new Date();
 
@@ -91,7 +95,7 @@ export function ProactiveAlertBar({ deal, checklistTotal = 0, checklistComplete 
 
     // Missing docs
     const missingDocs = checklistTotal - checklistComplete;
-    if (checklistTotal > 0 && missingDocs > 0) {
+    if (!suppressMissingAndOutstanding && checklistTotal > 0 && missingDocs > 0) {
       result.push({
         id: 'missing-docs',
         type: 'info',
@@ -103,7 +107,7 @@ export function ProactiveAlertBar({ deal, checklistTotal = 0, checklistComplete 
     }
 
     // Outstanding items
-    if (outstandingItemsCount > 0) {
+    if (!suppressMissingAndOutstanding && outstandingItemsCount > 0) {
       result.push({
         id: 'outstanding-items',
         type: 'warning',
@@ -127,7 +131,7 @@ export function ProactiveAlertBar({ deal, checklistTotal = 0, checklistComplete 
     }
 
     return result;
-  }, [deal, checklistTotal, checklistComplete, outstandingItemsCount, infoRequestCount]);
+  }, [deal, checklistTotal, checklistComplete, outstandingItemsCount, infoRequestCount, isDemoAccount]);
 
   const visibleAlerts = alerts.filter(a => !dismissed.has(a.id));
 

@@ -119,6 +119,7 @@ import { DataRoomV2 } from '@/components/deal/DataRoomV2';
 import { VdrShell } from '@/components/vdr/VdrShell';
 import { DealActivityLogTab } from '@/components/deal/DealActivityLogTab';
 import DealCrmSearch from '@/components/deals/DealCrmSearch';
+import { useIsDemoAccount } from '@/hooks/useIsDemoAccount';
 import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
 import { ClaapMeetingsTab } from '@/components/deal/ClaapMeetingsTab';
 import { ChecklistLinkDialog } from '@/components/deal/ChecklistLinkDialog';
@@ -541,6 +542,7 @@ export default function DealDetail() {
   const canPushToFlex = hasPageAccess('flex_push') && demoCanPushFlex;
   const { formatCurrencyValue, preferences } = usePreferences();
   const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deleteLenderNoteHistory, deleteDeal, deals, isLoading: isDealsLoading, refreshDeals } = useDealsContext();
+  const isDemoAccount = useIsDemoAccount();
   const { activities: activityLogs, logActivity, isLoading: isLoadingActivities } = useActivityLog(id);
   
   // Real-time FLEx activity notifications
@@ -2613,7 +2615,7 @@ export default function DealDetail() {
                     onSave={(value) => updateDeal('company', value)}
                     displayClassName="text-3xl sm:text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
                   />
-                  <BetaBadge featureKey="page_deal_detail" />
+                  {!isDemoAccount && <BetaBadge featureKey="page_deal_detail" />}
                   <Button
                     variant="ghost"
                     size="icon"
@@ -2836,7 +2838,7 @@ export default function DealDetail() {
                     <TabsTrigger value="deal-space" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       <Sparkles className="h-3.5 w-3.5" />
                       Deal Space
-                      <BetaBadge featureKey="page_deal_space" />
+                      {!isDemoAccount && <BetaBadge featureKey="page_deal_space" />}
                     </TabsTrigger>
                     )}
                     <TabsTrigger value="deal-info" className="whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">Deal Info</TabsTrigger>
@@ -2877,10 +2879,12 @@ export default function DealDetail() {
                       <History className="h-3.5 w-3.5" />
                       Activity
                     </TabsTrigger>
-                    <TabsTrigger value="crm-search" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
-                      <Search className="h-3.5 w-3.5" />
-                      CRM Search
-                    </TabsTrigger>
+                    {!isDemoAccount && (
+                      <TabsTrigger value="crm-search" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
+                        <Search className="h-3.5 w-3.5" />
+                        CRM Search
+                      </TabsTrigger>
+                    )}
                   </TabsList>
                   </HintTooltip>
                    <div className="flex items-center gap-2 ml-auto flex-shrink-0">
@@ -3624,7 +3628,7 @@ export default function DealDetail() {
                   }, [])}
 
                   {/* Unified Timeline & Benchmarking */}
-                  {isPanelVisible('activity-timeline') && (
+                  {!isDemoAccount && isPanelVisible('activity-timeline') && (
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
                     <Card className="lg:col-span-2">
                       <CardHeader className="py-3">

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode, useRef } fro
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { isBlockedEmailDomain } from '@/lib/blocked-email-domains';
+import { DEMO_PRIMARY_EMAIL, clearDemoResetFlag, resetDemoUiState } from '@/lib/demoAccount';
 
 interface AuthContextType {
   user: User | null;
@@ -114,6 +115,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // For OAuth logins (Google, etc.), always treat as "remember me"
         // since there's no checkbox shown during OAuth flow
         if (event === 'SIGNED_IN' && session?.user) {
+          // Demo account: clear any cached UI/view state on every fresh login
+          // so each demo session starts from defaults. Scoped to the demo
+          // user; the full-tenant gate runs again client-side via useIsDemoAccount.
+          if (session.user.email?.toLowerCase() === DEMO_PRIMARY_EMAIL) {
+            clearDemoResetFlag();
+            resetDemoUiState();
+          }
           // Only trigger welcome screen on actual new login, not session restoration
           // Check if we already had a session marker (meaning user was already logged in)
           const hadExistingSession = sessionStorage.getItem('naitive_session_active') === 'true';
