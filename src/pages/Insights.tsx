@@ -1592,7 +1592,6 @@ function MetricsInner() {
     'pm-debt-on-board-combined','pm-debt-signed-combined','pm-debt-closed-combined','pm-finserv-deals-on-board','pm-finserv-clients-signed',
     'sd-deals-signed','sd-finserv-clients-signed','sd-outstanding-ar',
     'pe-debt-profit','pe-finserv-profit',
-    'exec-week-selector','exec-deals-by-status',
   ];
   // Executive Dashboard is now broken into individual sub-widgets above; the
   // legacy monolithic block is no longer rendered in the grid.
@@ -1630,9 +1629,6 @@ function MetricsInner() {
       { i: 'sd-finserv-clients-signed', x: 4, y: 20, w: 4, h: 6, minW: 4, minH: 4 },
       { i: 'pe-debt-profit',            x: 0, y: 26, w: 6, h: 6, minW: 4, minH: 4 },
       { i: 'pe-finserv-profit',         x: 6, y: 26, w: 6, h: 6, minW: 4, minH: 4 },
-      // Executive Dashboard tiles
-      { i: 'exec-week-selector',            x: 0, y: 32, w: 4, h: 2, minW: 3, minH: 2 },
-      { i: 'exec-deals-by-status',          x: 0, y: 34, w: 12, h: 6, minW: 4, minH: 5 },
     ];
     return defaults;
   }, []);
