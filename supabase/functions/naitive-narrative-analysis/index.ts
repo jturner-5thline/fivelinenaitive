@@ -41,6 +41,8 @@ const TOOL = {
             worsening: { type: "array", items: { type: "string" }, maxItems: 6 },
             blockers_added: { type: "array", items: { type: "string" }, maxItems: 6 },
             blockers_removed: { type: "array", items: { type: "string" }, maxItems: 6 },
+            accelerators_added: { type: "array", items: { type: "string" }, maxItems: 6 },
+            accelerators_removed: { type: "array", items: { type: "string" }, maxItems: 6 },
             tone: {
               type: "string",
               enum: ["more optimistic", "more cautious", "more urgent", "consistent"],
@@ -54,6 +56,8 @@ const TOOL = {
             "worsening",
             "blockers_added",
             "blockers_removed",
+            "accelerators_added",
+            "accelerators_removed",
             "tone",
             "biggest_shift",
           ],
@@ -158,7 +162,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const system = `You are an executive analyst summarizing how a sales-pipeline narrative has evolved between two reporting periods. Be concise, specific, and grounded ONLY in the narrative text provided. Do NOT invent metrics or facts. If the prior narrative is missing or empty, treat the current narrative as the baseline and call that out in your output.`;
+    const system = `You are an executive analyst summarizing how a sales-pipeline narrative has evolved between two reporting periods. Be concise, specific, and grounded ONLY in the narrative text provided. Do NOT invent metrics or facts. If the prior narrative is missing or empty, treat the current narrative as the baseline and call that out in your output. Track BOTH blockers ("Why Not Moving Forward") and accelerators ("Why Moving Forward") side by side in the weekly comparison.`;
 
     const userMsg = `Mode: ${mode}
 

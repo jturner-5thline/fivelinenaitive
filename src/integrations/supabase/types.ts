@@ -5795,6 +5795,41 @@ export type Database = {
           },
         ]
       }
+      deal_advance_reasons: {
+        Row: {
+          created_at: string
+          created_by: string
+          deal_id: string
+          id: string
+          reason_category: Database["public"]["Enums"]["advance_reason_category"]
+          reason_notes: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          deal_id: string
+          id?: string
+          reason_category: Database["public"]["Enums"]["advance_reason_category"]
+          reason_notes?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          deal_id?: string
+          id?: string
+          reason_category?: Database["public"]["Enums"]["advance_reason_category"]
+          reason_notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_advance_reasons_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_ai_settings: {
         Row: {
           created_at: string
@@ -20752,6 +20787,16 @@ export type Database = {
         }
         Relationships: []
       }
+      v_weekly_advance_reasons: {
+        Row: {
+          last_week_count: number | null
+          reason_category:
+            | Database["public"]["Enums"]["advance_reason_category"]
+            | null
+          this_week_count: number | null
+        }
+        Relationships: []
+      }
       workflow_run_latest: {
         Row: {
           completed_at: string | null
@@ -21150,6 +21195,14 @@ export type Database = {
       }
     }
     Enums: {
+      advance_reason_category:
+        | "budget_confirmed"
+        | "champion_identified"
+        | "timeline_locked"
+        | "technical_fit"
+        | "executive_sponsor"
+        | "competitive_win"
+        | "other"
       app_role: "admin" | "moderator" | "user" | "support_admin"
       channel_type:
         | "Banks"
@@ -21386,6 +21439,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      advance_reason_category: [
+        "budget_confirmed",
+        "champion_identified",
+        "timeline_locked",
+        "technical_fit",
+        "executive_sponsor",
+        "competitive_win",
+        "other",
+      ],
       app_role: ["admin", "moderator", "user", "support_admin"],
       channel_type: [
         "Banks",

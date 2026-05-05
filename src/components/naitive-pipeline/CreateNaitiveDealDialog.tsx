@@ -26,6 +26,9 @@ const WHY_NOT_OPTIONS = [
   'Wrong persona', 'Wrong segment', 'Built own solution', 'Entrenched stack',
   'Product gap', 'Timing', 'No close attempt made',
 ];
+import { ADVANCE_REASON_LABELS, AdvanceReasonCategory } from '@/types/deal';
+const ADVANCE_OPTIONS = Object.keys(ADVANCE_REASON_LABELS) as AdvanceReasonCategory[];
+const ADVANCING_OUTCOMES = new Set(['Moved forward']);
 const NEEDS_REASON = new Set(['Not a fit', 'Tabled', 'Disqualified']);
 const MAX_WHY_NOT = 3;
 const MAX_BULLETS = 3;
@@ -76,6 +79,9 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
   // Section 4
   const [outcome, setOutcome] = useState('');
   const [whyNot, setWhyNot] = useState<string[]>([]);
+  // Why Moving Forward (advance reason) — only logged when outcome = "Moved forward"
+  const [advanceCategory, setAdvanceCategory] = useState<AdvanceReasonCategory | ''>('');
+  const [advanceNotes, setAdvanceNotes] = useState('');
   // Section 5
   const [painPoints, setPainPoints] = useState('');
   const [objections, setObjections] = useState('');
@@ -90,6 +96,7 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
     setStage(defaultStage || stages[0]?.id || '');
     setNextStep(''); setNextStepDate(undefined); setDmPresent(''); setDmName('');
     setOutcome(''); setWhyNot([]);
+    setAdvanceCategory(''); setAdvanceNotes('');
     setPainPoints(''); setObjections(''); setCompetitors(''); setKeySignal(''); setProductGap('');
   };
 
@@ -152,6 +159,26 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
 
       const { error } = await supabase.from('deals').insert(payload);
       if (error) throw error;
+      // If user logged a "Why Moving Forward" reason, persist it now that the
+      // deal exists. We need the new deal id, so re-query by company + user.
+      if (ADVANCING_OUTCOMES.has(outcome) && advanceCategory) {
+        const { data: newDeal } = await supabase
+          .from('deals')
+          .select('id')
+          .eq('company', companyName.trim())
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (newDeal?.id) {
+          await supabase.from('deal_advance_reasons' as any).insert({
+            deal_id: newDeal.id,
+            reason_category: advanceCategory,
+            reason_notes: advanceNotes.trim() || null,
+            created_by: user.id,
+          });
+        }
+      }
       toast.success('Deal created');
       reset();
       setOpen(false);
@@ -165,6 +192,7 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
   };
 
   const showWhyNot = NEEDS_REASON.has(outcome);
+  const showWhyForward = ADVANCING_OUTCOMES.has(outcome);
 
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
@@ -281,6 +309,26 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     {whyNot.length}/{MAX_WHY_NOT} selected
                   </p>
+                </Field>
+              )}
+              {showWhyForward && (
+                <Field label="Why Moving Forward">
+                  <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
+                    <Select value={advanceCategory} onValueChange={(v) => setAdvanceCategory(v as AdvanceReasonCategory)}>
+                      <SelectTrigger><SelectValue placeholder="Pick an accelerator…" /></SelectTrigger>
+                      <SelectContent>
+                        {ADVANCE_OPTIONS.map(c => (
+                          <SelectItem key={c} value={c}>{ADVANCE_REASON_LABELS[c]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Textarea
+                      rows={2}
+                      value={advanceNotes}
+                      onChange={(e) => setAdvanceNotes(e.target.value)}
+                      placeholder="Optional context — what specifically moved this forward?"
+                    />
+                  </div>
                 </Field>
               )}
             </div>

@@ -20,6 +20,9 @@ import {
   CartesianGrid, Legend, ReferenceLine,
 } from 'recharts';
 import type { NaitiveStageHistoryRow } from '@/hooks/useNaitiveStageHistory';
+import { useWorkspaceAdvanceReasons } from '@/hooks/useAdvanceReasons';
+import { ADVANCE_REASON_LABELS, AdvanceReasonCategory, AdvanceReason } from '@/types/deal';
+import { ChevronDown } from 'lucide-react';
 
 type RangeKey = 'this-week' | 'last-week' | 'last-30' | 'last-90' | 'custom';
 
@@ -249,6 +252,38 @@ function topReason(
   return { label, count, deals: dealsByHead.get(label) || [] };
 }
 
+function topAdvance(
+  rows: AdvanceReason[],
+  from: Date,
+  to: Date,
+): { category: AdvanceReasonCategory; count: number } | null {
+  const counts = new Map<AdvanceReasonCategory, number>();
+  for (const r of rows) {
+    const t = new Date(r.createdAt);
+    if (!inRange(t, from, to)) continue;
+    counts.set(r.category, (counts.get(r.category) || 0) + 1);
+  }
+  const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  if (sorted.length === 0) return null;
+  return { category: sorted[0][0], count: sorted[0][1] };
+}
+
+function advanceBreakdown(
+  rows: AdvanceReason[],
+  from: Date,
+  to: Date,
+): { category: AdvanceReasonCategory; count: number }[] {
+  const counts = new Map<AdvanceReasonCategory, number>();
+  for (const r of rows) {
+    const t = new Date(r.createdAt);
+    if (!inRange(t, from, to)) continue;
+    counts.set(r.category, (counts.get(r.category) || 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .map(([category, count]) => ({ category, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
 function StatCard({ label, value, prev, isPercent }: {
   label: string; value: number; prev: number; isPercent?: boolean;
 }) {
@@ -309,6 +344,22 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
   const blockerThis = useMemo(() => topReason(deals, thisWeekFrom, thisWeekTo), [deals]);
   const blockerLast = useMemo(() => topReason(deals, lastWeekFrom, lastWeekTo), [deals]);
   const [blockerOpen, setBlockerOpen] = useState(false);
+
+  // ── Why Moving Forward (accelerator) ───────────────────────────
+  const { rows: advanceRows } = useWorkspaceAdvanceReasons();
+  const accelerator = useMemo(
+    () => topAdvance(advanceRows, thisWeekFrom, thisWeekTo),
+    [advanceRows],
+  );
+  const acceleratorLast = useMemo(
+    () => topAdvance(advanceRows, lastWeekFrom, lastWeekTo),
+    [advanceRows],
+  );
+  const acceleratorBreakdown = useMemo(
+    () => advanceBreakdown(advanceRows, thisWeekFrom, thisWeekTo),
+    [advanceRows],
+  );
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
 
   return (
     <section className="space-y-4">
@@ -412,7 +463,8 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
       </div>
 
       {/* Top blocker callout — clickable drill-down */}
-      <Card className="border-primary/30 bg-primary/5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <Card className="border-primary/30 bg-primary/5">
         <button
           type="button"
           disabled={!blockerThis || blockerThis.deals.length === 0}
@@ -453,6 +505,54 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
           )}
         </button>
       </Card>
+
+        {/* This Week's #1 Accelerator — symmetrical to the blocker card */}
+        <Card className="border-emerald-500/30 bg-emerald-500/5">
+          <div className="p-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                This Week's #1 Accelerator
+              </p>
+              {acceleratorBreakdown.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setBreakdownOpen((v) => !v)}
+                  className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
+                >
+                  {breakdownOpen ? 'Hide' : 'Breakdown'}
+                  <ChevronDown className={cn('h-3 w-3 transition-transform', breakdownOpen && 'rotate-180')} />
+                </button>
+              )}
+            </div>
+            {accelerator ? (
+              <p className="text-sm text-foreground mt-1">
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Top accelerator this week:</span>{' '}
+                <span className="font-semibold">{ADVANCE_REASON_LABELS[accelerator.category]}</span> — {accelerator.count}{' '}
+                {accelerator.count === 1 ? 'deal' : 'deals'}.
+                {acceleratorLast ? (
+                  <span className="text-muted-foreground">
+                    {' '}Last week: {ADVANCE_REASON_LABELS[acceleratorLast.category]} ({acceleratorLast.count}).
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground"> No accelerator logged last week.</span>
+                )}
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground mt-1">No "Why Moving Forward" reasons logged this week yet.</p>
+            )}
+            {breakdownOpen && acceleratorBreakdown.length > 0 && (
+              <ul className="mt-3 space-y-1.5 border-t border-emerald-500/20 pt-2">
+                {acceleratorBreakdown.map((b) => (
+                  <li key={b.category} className="flex items-center justify-between text-xs">
+                    <span className="text-foreground">{ADVANCE_REASON_LABELS[b.category]}</span>
+                    <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{b.count}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </Card>
+      </div>
 
       <Dialog open={blockerOpen} onOpenChange={setBlockerOpen}>
         <DialogContent className="max-w-2xl">
