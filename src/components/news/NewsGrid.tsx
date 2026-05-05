@@ -515,6 +515,13 @@ export function NewsGrid({ defaultLayout, defaultTab }: NewsGridProps) {
             <span>{filteredNews.length} {filteredNews.length === 1 ? 'article' : 'articles'}</span>
           </div>
           {renderArticleGrid(filteredNews)}
+          {hasMore && (
+            <div className="flex justify-center mt-6">
+              <Button variant="outline" size="sm" onClick={loadMore}>
+                Load more
+              </Button>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="watchlist-alerts" className="mt-4">
