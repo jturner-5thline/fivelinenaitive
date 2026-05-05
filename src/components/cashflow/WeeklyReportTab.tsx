@@ -900,7 +900,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                 </tr>
               </thead>
               <tbody>
-              {effectiveRowOrder.map((rowDef) => {
+              {filteredRowOrder.map((rowDef) => {
                 if ('isHeader' in rowDef && rowDef.isHeader) {
                   const isCollapsible = rowDef.section === 'receipts' || rowDef.section === 'disbursements';
                   const isCollapsed = collapsedSections[rowDef.section];
