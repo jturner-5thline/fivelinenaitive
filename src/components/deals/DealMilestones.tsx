@@ -57,7 +57,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
   const [isExpanded, setIsExpanded] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
     const v = window.localStorage.getItem('deal-milestones-expanded');
-    return v === null ? true : v === 'true';
+    return v === null ? false : v === 'true';
   });
   useEffect(() => {
     try {
