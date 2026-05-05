@@ -896,8 +896,8 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                          // when the position values are unavailable.
                          const beginRaw = entry?.['BEGINNING CASH'];
                          const endRaw = entry?.['ENDING CASH'];
-                         const hasBegin = beginRaw !== null && beginRaw !== undefined && beginRaw !== '';
-                         const hasEnd = endRaw !== null && endRaw !== undefined && endRaw !== '';
+                         const hasBegin = beginRaw !== null && beginRaw !== undefined && (beginRaw as unknown) !== '';
+                         const hasEnd = endRaw !== null && endRaw !== undefined && (endRaw as unknown) !== '';
                          const receipts = Number(entry?.['TOTAL RECEIPTS']) || 0;
                          const disb = Number(entry?.['TOTAL DISBURSEMENTS']) || 0;
                          const net = (hasBegin && hasEnd)
@@ -906,8 +906,8 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                          const planEntry = activePlan?.weeklyData?.[weekKey];
                          const planBegin = planEntry?.['BEGINNING CASH'];
                          const planEnd = planEntry?.['ENDING CASH'];
-                         const planHasBegin = planBegin !== null && planBegin !== undefined && planBegin !== '';
-                         const planHasEnd = planEnd !== null && planEnd !== undefined && planEnd !== '';
+                         const planHasBegin = planBegin !== null && planBegin !== undefined && (planBegin as unknown) !== '';
+                         const planHasEnd = planEnd !== null && planEnd !== undefined && (planEnd as unknown) !== '';
                          const planVal = planEntry
                            ? (planHasBegin && planHasEnd
                                ? (Number(planEnd) || 0) - (Number(planBegin) || 0)
