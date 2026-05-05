@@ -200,6 +200,12 @@ function buildDigestFor(
  * Returns a Map<dealId, Deal24hDigest> built from 3 batched queries.
  * Pass it to memo cards via context or props for O(1) per-card reads.
  */
+export interface PipelineDigestRaw {
+  activities: RawActivity[];
+  meetings: RawMeeting[];
+  emails: RawEmail[];
+}
+
 export function usePipelineDigests(deals: Deal[], enabled: boolean = true) {
   const window = useMemo(() => getDailyBriefingWindow('interactive'), []);
   const dealIds = useMemo(() => deals.map(d => d.id).filter(Boolean), [deals]);
@@ -260,9 +266,10 @@ export function usePipelineDigests(deals: Deal[], enabled: boolean = true) {
 
   // Bucket once into a Map<dealId, digest>. Recomputes only when raw or
   // deal list changes — not on every card render.
-  const digestMap = useMemo(() => {
+  const { digestMap, rawByDeal } = useMemo(() => {
     const map = new Map<string, Deal24hDigest>();
-    if (!raw.data) return map;
+    const rawMap = new Map<string, PipelineDigestRaw>();
+    if (!raw.data) return { digestMap: map, rawByDeal: rawMap };
 
     const { activities, meetings, emails, windowLabel } = raw.data;
 
@@ -287,19 +294,26 @@ export function usePipelineDigests(deals: Deal[], enabled: boolean = true) {
       const dealEmails = needle
         ? emails.filter(e => (e.subject || '').toLowerCase().includes(needle))
         : [];
+      const dealActivities = activityByDeal.get(deal.id) || [];
+      const dealMeetings = meetingsByDeal.get(deal.id) || [];
+      rawMap.set(deal.id, {
+        activities: dealActivities,
+        meetings: dealMeetings,
+        emails: dealEmails,
+      });
       map.set(
         deal.id,
         buildDigestFor(
           deal,
-          activityByDeal.get(deal.id) || [],
-          meetingsByDeal.get(deal.id) || [],
+          dealActivities,
+          dealMeetings,
           dealEmails,
           windowLabel,
         ),
       );
     }
-    return map;
+    return { digestMap: map, rawByDeal: rawMap };
   }, [raw.data, deals]);
 
-  return { digestMap, isLoading: raw.isLoading, isError: raw.isError };
+  return { digestMap, rawByDeal, isLoading: raw.isLoading, isError: raw.isError };
 }
