@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -27,6 +27,7 @@ export function CookieConsent() {
   const [isVisible, setIsVisible] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
   const [preferences, setPreferences] = useState<CookiePreferences>(DEFAULT_PREFERENCES);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const consent = localStorage.getItem(COOKIE_CONSENT_KEY);
@@ -57,6 +58,26 @@ export function CookieConsent() {
     saveConsent(DEFAULT_PREFERENCES);
   };
 
+  // Dismissing the banner (X / Escape / backdrop click) is treated as
+  // "necessary only" so the banner does not reappear on the next page load.
+  const handleDismiss = () => {
+    saveConsent(DEFAULT_PREFERENCES);
+  };
+
+  // Escape-to-close
+  useEffect(() => {
+    if (!isVisible) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        handleDismiss();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isVisible]);
+
   const handleSavePreferences = () => {
     saveConsent(preferences);
   };
@@ -68,10 +89,38 @@ export function CookieConsent() {
 
   if (!isVisible) return null;
 
+  // Outside-click dismissal: a transparent backdrop above the page that
+  // catches clicks outside the banner card. Clicks inside the card stop
+  // propagation so they don't trigger the dismiss handler.
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-background/80 backdrop-blur-sm border-t">
-      <Card className="max-w-4xl mx-auto p-6">
-        <div className="flex items-start gap-4">
+    <>
+      <div
+        className="fixed inset-0 z-40 bg-transparent"
+        aria-hidden="true"
+        onClick={handleDismiss}
+      />
+      <div
+        className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-background/80 backdrop-blur-sm border-t"
+        role="dialog"
+        aria-modal="false"
+        aria-label="Cookie consent"
+      >
+        <Card
+          ref={cardRef}
+          className="relative max-w-4xl mx-auto p-6"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Always-visible close button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Dismiss cookie banner"
+            className="absolute right-2 top-2 h-7 w-7"
+            onClick={handleDismiss}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+          <div className="flex items-start gap-4 pr-6">
           <div className="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
             <Cookie className="h-5 w-5 text-primary" />
           </div>
@@ -178,7 +227,8 @@ export function CookieConsent() {
             )}
           </div>
         </div>
-      </Card>
-    </div>
+        </Card>
+      </div>
+    </>
   );
 }
