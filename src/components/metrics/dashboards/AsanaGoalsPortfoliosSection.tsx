@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { ExternalLink, RefreshCw, Loader2, AlertCircle, ChevronRight } from 'lucide-react';
+import { ExternalLink, RefreshCw, Loader2, AlertCircle, ChevronRight, ChevronDown } from 'lucide-react';
 import { useAsanaGoals } from '@/hooks/useAsanaGoals';
 import { useAsanaPortfolios } from '@/hooks/useAsanaPortfolios';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -57,6 +57,32 @@ function fallbackProgressFromStatus(status: string): number | null {
   }
 }
 
+function formatMetric(n: number, unit: string | null): string {
+  if (unit === 'currency') {
+    if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+    if (Math.abs(n) >= 1_000) return `$${(n / 1_000).toFixed(1)}k`;
+    return `$${n.toLocaleString()}`;
+  }
+  if (unit === 'percentage') return `${n}%`;
+  return n.toLocaleString();
+}
+
+function formatProgressSource(src: string | null): string {
+  if (!src) return 'Manual';
+  return src
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function MetricCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: 'rgba(160,210,255,0.5)' }}>{label}</span>
+      <span style={{ fontSize: 10, color: '#e8f6ff', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={value}>{value}</span>
+    </div>
+  );
+}
+
 function RefreshBtn({ onClick, busy }: { onClick: () => void; busy: boolean }) {
   return (
     <button onClick={onClick} disabled={busy}
@@ -76,6 +102,14 @@ export function AsanaGoalsPortfoliosSection() {
   const goals = useAsanaGoals();
   const portfolios = useAsanaPortfolios();
   const [openPortfolio, setOpenPortfolio] = useState<{ gid: string; name: string; url: string | null } | null>(null);
+  const [expandedGoals, setExpandedGoals] = useState<Set<string>>(new Set());
+  const toggleGoalExpanded = (id: string) => {
+    setExpandedGoals(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
   const [portfolioStatusFilter, setPortfolioStatusFilter] = useState<'all' | 'on' | 'at' | 'off'>('all');
 
   const lastSync = goals.lastSyncedAt || portfolios.lastSyncedAt;
@@ -244,16 +278,31 @@ export function AsanaGoalsPortfoliosSection() {
                 const pct = realPct ?? fallbackProgressFromStatus(g.status);
                 const isEstimate = realPct === null && pct !== null;
                 const color = STATUS_COLOR[g.status] || '#4db8ff';
+                const expanded = expandedGoals.has(g.id);
+                const hasMetric = !!g.metric && (g.metric.currentValue !== null || g.metric.targetValue !== null || !!g.metric.currentDisplay);
                 return (
                   <div key={g.id} style={{ padding: '6px 8px', borderRadius: 6, background: 'rgba(20,80,160,0.18)', border: '1px solid rgba(40,100,180,0.25)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                       <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: '#e8f6ff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {g.url ? (
-                            <a href={g.url} target="_blank" rel="noreferrer" style={{ color: '#e8f6ff', textDecoration: 'none' }}>
-                              {g.title} <ExternalLink size={9} style={{ display: 'inline', opacity: 0.5 }} />
-                            </a>
-                          ) : g.title}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#e8f6ff' }}>
+                          {hasMetric && (
+                            <button
+                              type="button"
+                              onClick={() => toggleGoalExpanded(g.id)}
+                              aria-expanded={expanded}
+                              aria-label={expanded ? 'Collapse metric details' : 'Expand metric details'}
+                              style={{ background: 'transparent', border: 'none', padding: 0, color: 'rgba(160,210,255,0.7)', cursor: 'pointer', display: 'inline-flex' }}
+                            >
+                              {expanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                            </button>
+                          )}
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>
+                            {g.url ? (
+                              <a href={g.url} target="_blank" rel="noreferrer" style={{ color: '#e8f6ff', textDecoration: 'none' }}>
+                                {g.title} <ExternalLink size={9} style={{ display: 'inline', opacity: 0.5 }} />
+                              </a>
+                            ) : g.title}
+                          </span>
                         </div>
                         <div style={{ fontSize: 9, color: 'rgba(160,210,255,0.5)', marginTop: 2 }}>
                           {g.owner}{g.due ? ` · due ${g.due}` : ''}{g.timePeriod ? ` · ${g.timePeriod}` : ''}
@@ -277,6 +326,22 @@ export function AsanaGoalsPortfoliosSection() {
                         >
                           {pct}%{isEstimate ? '*' : ''}
                         </span>
+                      </div>
+                    )}
+                    {expanded && hasMetric && g.metric && (
+                      <div style={{
+                        marginTop: 6, padding: '6px 8px', borderRadius: 5,
+                        background: 'rgba(10,50,100,0.35)', border: '1px solid rgba(40,120,200,0.25)',
+                        display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, fontSize: 9,
+                      }}>
+                        <MetricCell label="Current" value={
+                          g.metric.currentDisplay
+                            ?? (g.metric.currentValue !== null ? formatMetric(g.metric.currentValue, g.metric.unit) : '—')
+                        } />
+                        <MetricCell label="Target" value={
+                          g.metric.targetValue !== null ? formatMetric(g.metric.targetValue, g.metric.unit) : '—'
+                        } />
+                        <MetricCell label="Source" value={formatProgressSource(g.metric.progressSource)} />
                       </div>
                     )}
                   </div>
