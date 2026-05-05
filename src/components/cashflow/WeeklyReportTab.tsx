@@ -335,6 +335,10 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
 
   const [savePlanOpen, setSavePlanOpen] = useState(false);
   const [planName, setPlanName] = useState('');
+  // Live search across line item names. Empty string = show everything.
+  // Section headers and structural rows (spacers, add-row footers, net change)
+  // are kept whenever any matching child row is present in their section.
+  const [lineItemSearch, setLineItemSearch] = useState('');
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const [debtAdvCollapsed, setDebtAdvCollapsed] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
@@ -525,6 +529,40 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
     }
     return out;
   }, [customReceiptRows, customDisbursementRows, onAddCustomRow, weeklyData]);
+
+  // Apply the line-item search filter. We keep a row whenever its visible
+  // label (key, label, transferAccount, or facilityName) contains the query.
+  // For section headers / spacers / add-row footers / net change rows we
+  // keep them only if the section still has at least one matching item, so
+  // the table stays structurally coherent while filtering.
+  const filteredRowOrder = useMemo<WeeklyRow[]>(() => {
+    const q = lineItemSearch.trim().toLowerCase();
+    if (!q) return effectiveRowOrder;
+    const matches = (r: WeeklyRow): boolean => {
+      const candidates: Array<string | undefined | null> = [
+        (r as any).label,
+        r.key,
+        (r as any).transferAccount,
+        (r as any).facilityName,
+      ];
+      return candidates.some((c) => typeof c === 'string' && c.toLowerCase().includes(q));
+    };
+    // First pass: identify which "real" rows match.
+    const matchingSections = new Set<string>();
+    for (const r of effectiveRowOrder) {
+      const isStructural =
+        (r as any).isHeader || (r as any).isSpacer || (r as any).isAddRowFooter || (r as any).isNetChange;
+      if (!isStructural && matches(r)) matchingSections.add(r.section);
+    }
+    // Second pass: keep matching detail rows + structural rows whose section has a match.
+    return effectiveRowOrder.filter((r) => {
+      const isStructural =
+        (r as any).isHeader || (r as any).isSpacer || (r as any).isAddRowFooter || (r as any).isNetChange;
+      if (isStructural) return matchingSections.has(r.section);
+      return matches(r);
+    });
+  }, [effectiveRowOrder, lineItemSearch]);
+
   const closeAddCellPopover = useCallback(() => {
     setAddCellPopover(null);
     setAddCellDraft({ description: '', amount: '', flowType: 'cash_in' });
@@ -818,6 +856,40 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
           </div>
           <div className="cf-range-controls">
             <button className="cf-btn cf-btn-secondary" onClick={() => setSavePlanOpen(true)}>Save Plan</button>
+            <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+              <input
+                type="search"
+                value={lineItemSearch}
+                onChange={(e) => setLineItemSearch(e.target.value)}
+                placeholder="Search line items…"
+                aria-label="Search line items"
+                className="cf-select"
+                style={{ minWidth: 200, paddingRight: lineItemSearch ? 24 : undefined }}
+              />
+              {lineItemSearch && (
+                <button
+                  type="button"
+                  onClick={() => setLineItemSearch('')}
+                  aria-label="Clear search"
+                  title="Clear search"
+                  style={{
+                    position: 'absolute',
+                    right: 4,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--color-text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: 2,
+                  }}
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
             <select
               className="cf-select"
               value={activePlanId || ''}
@@ -862,7 +934,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                 </tr>
               </thead>
               <tbody>
-              {effectiveRowOrder.map((rowDef) => {
+              {filteredRowOrder.map((rowDef) => {
                 if ('isHeader' in rowDef && rowDef.isHeader) {
                   const isCollapsible = rowDef.section === 'receipts' || rowDef.section === 'disbursements';
                   const isCollapsed = collapsedSections[rowDef.section];
