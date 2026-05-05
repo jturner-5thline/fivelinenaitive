@@ -37,7 +37,7 @@ function statusColor(status: 'On Track' | 'At Risk' | 'Overdue'): string {
 export function WeeklyRundownOpsProjectsPage() {
   const { data, isLoading, error, refetch } = useOperationalData(true);
   const team = useAsanaOpsTeamMetrics(data ?? null);
-  const { data: asanaMilestones, isLoading: milestonesLoading, error: milestonesError } = useAsanaPortfolioMilestones();
+  const { data: asanaMilestones, isLoading: milestonesLoading, error: milestonesError, forceRefresh: refreshMilestones, isRefreshing: milestonesRefreshing } = useAsanaPortfolioMilestones();
   const [memberDrilldown, setMemberDrilldown] = useState<{ name: string; items: AsanaDrilldownItem[] } | null>(null);
   type MilestoneSortKey = 'title' | 'projectName' | 'assignee' | 'dueDate' | 'status';
   const [milestoneSort, setMilestoneSort] = useState<{ key: MilestoneSortKey; dir: 'asc' | 'desc' }>({ key: 'dueDate', dir: 'asc' });
@@ -205,6 +205,17 @@ export function WeeklyRundownOpsProjectsPage() {
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <h3 className="text-xs font-semibold text-foreground">Upcoming Milestones</h3>
           <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => refreshMilestones()}
+              disabled={milestonesRefreshing || milestonesLoading}
+              className="h-6 px-2 text-[10px] uppercase tracking-wider"
+              title="Re-fetch from Asana (bypasses cache)"
+            >
+              <RefreshCw className={cn('h-3 w-3 mr-1', milestonesRefreshing && 'animate-spin')} />
+              Refresh
+            </Button>
             {(['All', 'On Track', 'At Risk', 'Overdue'] as const).map(s => {
               const active = milestoneStatusFilter === s;
               const count = s === 'All'
