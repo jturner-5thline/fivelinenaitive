@@ -5,8 +5,6 @@ import { PipelineMetricWidget, CombinedPipelineMetricWidget, type PipelineMetric
 import { DealsSignedWidget, FinServClientsSignedWidget, OutstandingARWidget } from './SignedDealsAndARSection';
 import { DebtProfitWidget, FinServProfitWidget } from './ProfitByEntitySection';
 import {
-  ExecTotalActiveDealVolumeWidget,
-  ExecDealsClosedWidget,
   ExecDealsByStatusWidget,
 } from './ExecutiveDashboard';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
@@ -506,8 +504,7 @@ export type WeeklyRundownSubWidgetId =
   // Profit by Entity
   | 'pe-debt-profit' | 'pe-finserv-profit'
   // Executive Dashboard tiles
-  | 'exec-week-selector' | 'exec-total-active-deal-volume'
-  | 'exec-deals-closed' | 'exec-deals-by-status';
+  | 'exec-week-selector' | 'exec-deals-by-status';
 
 export const SUB_WIDGET_LABELS: Record<WeeklyRundownSubWidgetId, string> = {
   'rev-debt': 'Debt Revenue',
@@ -523,8 +520,6 @@ export const SUB_WIDGET_LABELS: Record<WeeklyRundownSubWidgetId, string> = {
   'pe-debt-profit': 'Debt Profit',
   'pe-finserv-profit': 'FinServ Profit',
   'exec-week-selector': 'Executive Week Selector',
-  'exec-total-active-deal-volume': 'Total Active Deal Volume',
-  'exec-deals-closed': 'Deals Closed',
   'exec-deals-by-status': 'Deals By Status',
 };
 
@@ -695,8 +690,6 @@ export function ManagementSnapshotDashboard({
     // the unified header timeframe picker. The id remains for backwards
     // compatibility with persisted layouts but renders nothing.
     'exec-week-selector': null,
-    'exec-total-active-deal-volume': <ExecTotalActiveDealVolumeWidget />,
-    'exec-deals-closed': <ExecDealsClosedWidget />,
     'exec-deals-by-status': <ExecDealsByStatusWidget />,
   };
 
@@ -715,8 +708,6 @@ export function ManagementSnapshotDashboard({
     'pe-finserv-profit':         { minW: 4, minH: 4, maxH: 12 },
     'executive-dashboard':       { minW: 8, minH: 8, maxH: 20 },
     'exec-week-selector':           { minW: 3, minH: 2, maxH: 5 },
-    'exec-total-active-deal-volume':{ minW: 3, minH: 2, maxH: 6 },
-    'exec-deals-closed':            { minW: 3, minH: 2, maxH: 6 },
     'exec-deals-by-status':         { minW: 4, minH: 5, maxH: 12 },
   };
 
