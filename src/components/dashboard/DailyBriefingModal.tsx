@@ -1101,6 +1101,13 @@ function PipelineTab({
           <FollowupsByDeal groups={followupGroups} onNavigate={onNavigate} />
         </Section>
       )}
+      {recentActivity.length > 0 && (
+        <RecentPipelineActivitySection
+          recentActivity={recentActivity}
+          onRowClick={(a) => a?.deal_id && onNavigate(`/deal/${a.deal_id}`)}
+          onNavigate={onNavigate}
+        />
+      )}
       <Suspense
         fallback={
           <div className="pipeline-memo-page rounded-xl py-12 px-4 text-center">
