@@ -170,7 +170,7 @@ function PieLegend({
 }
 
 // ── Derived metrics from real data ─────────────────────────────
-function useDerivedMetrics(data: OperationalData | null, projectFilter: string | null) {
+function useDerivedMetrics(data: OperationalData | null, projectFilters: string[]) {
   return useMemo(() => {
     if (!data) return null;
 
@@ -179,10 +179,12 @@ function useDerivedMetrics(data: OperationalData | null, projectFilter: string |
     const weekStart = startOfWeek(now, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
 
-    // Apply project filter to task lists. Project-level lists stay unfiltered
-    // so the project widgets keep their portfolio-wide context.
+    // Apply project filter (OR logic across selected projects) to task lists.
+    // Project-level lists stay unfiltered so the project widgets keep their
+    // portfolio-wide context.
+    const filterSet = new Set(projectFilters);
     const matchesProject = (t: any) =>
-      !projectFilter || (t.project_name || 'Unknown') === projectFilter;
+      filterSet.size === 0 || filterSet.has(t.project_name || 'Unknown');
     const overdueRaw = (data.overdue ?? []).filter(matchesProject);
     const todayRaw = (data.today ?? []).filter(matchesProject);
     const upcomingRaw = (data.upcoming ?? []).filter(matchesProject);
@@ -313,13 +315,22 @@ function useDerivedMetrics(data: OperationalData | null, projectFilter: string |
       projectsDueBuckets,
       projectsAll: data.projects ?? [],
     };
-  }, [data, projectFilter]);
+  }, [data, projectFilters]);
 }
 
 // ── Main Dashboard ─────────────────────────────────────────────
 export function OperationalDashboard({ data, isLoading, error, onRefetch }: OperationalDashboardProps) {
-  const [projectFilter, setProjectFilter] = useState<string | null>(null);
-  const metrics = useDerivedMetrics(data, projectFilter);
+  const [projectFilters, setProjectFilters] = useState<string[]>([]);
+  const toggleProjectFilter = (project: string | undefined | null) => {
+    if (!project) return;
+    setProjectFilters((prev) =>
+      prev.includes(project) ? prev.filter((p) => p !== project) : [...prev, project],
+    );
+  };
+  const clearProjectFilters = () => setProjectFilters([]);
+  const isProjectSelected = (project: string) => projectFilters.includes(project);
+  const hasProjectFilter = projectFilters.length > 0;
+  const metrics = useDerivedMetrics(data, projectFilters);
   const [drilldown, setDrilldown] = useState<{
     title: string;
     subtitle?: string;
