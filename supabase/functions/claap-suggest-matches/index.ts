@@ -115,6 +115,7 @@ serve(async (req) => {
     (dealLenders || []).forEach((l: any) => { if (l.name) allLenderNames.add(l.name); });
 
     // Get master lender directory (shared + company-scoped) for cross-deal lender matching
+    const _INTERNAL_DOMS_TMP = new Set(["5thline.co", "naitive.co", "gmail.com", "outlook.com", "yahoo.com", "hotmail.com", "icloud.com"]);
     const { data: masterLenders } = await supabase
       .from("master_lenders")
       .select("id, name, email, contact_name")
@@ -129,7 +130,7 @@ serve(async (req) => {
       if (l.name) lenderByName[l.name.toLowerCase()] = { name: l.name, id: l.id };
       if (l.email && typeof l.email === "string") {
         const dom = l.email.split("@")[1]?.toLowerCase().trim();
-        if (dom && !INTERNAL_DOMAINS.has(dom)) {
+        if (dom && !_INTERNAL_DOMS_TMP.has(dom)) {
           (lenderByDomain[dom] = lenderByDomain[dom] || []).push({ name: l.name, id: l.id });
         }
       }
