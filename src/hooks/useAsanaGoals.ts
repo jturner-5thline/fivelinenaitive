@@ -147,7 +147,10 @@ export function useAsanaGoals(): UseAsanaGoalsResult {
   }, [companyId]);
 
   useEffect(() => {
-    if (companyId) void fetchGoals();
+    if (!companyId) return;
+    void fetchGoals();
+    const id = setInterval(() => { void fetchGoals(); }, 6 * 60 * 60 * 1000);
+    return () => clearInterval(id);
   }, [companyId, fetchGoals]);
 
   return { goals, loading, error, lastSyncedAt, configured, refresh: fetchGoals };

@@ -338,6 +338,77 @@ serve(async (req) => {
         break;
       }
 
+      case "list_portfolios": {
+        // List portfolios the connected user owns/can see in a workspace.
+        const resolvedToken = await resolveToken(token, integration_id);
+        const workspace = params.workspace_gid;
+        if (!workspace) {
+          result = { success: false, error: "workspace_gid is required" };
+          break;
+        }
+        try {
+          // Asana requires `owner` for /portfolios listing. Use the connected user.
+          const me = await asanaFetch("/users/me", resolvedToken);
+          const ownerGid = me.data?.gid;
+          if (!ownerGid) {
+            result = { success: false, error: "Could not resolve Asana user", portfolios: [] };
+            break;
+          }
+          const optFields = [
+            "name",
+            "color",
+            "permalink_url",
+            "owner.name",
+            "owner.email",
+            "current_status_update.status_type",
+            "due_on",
+            "start_on",
+          ].join(",");
+          const list = await asanaFetch(
+            `/portfolios?workspace=${workspace}&owner=${ownerGid}&limit=100&opt_fields=${optFields}`,
+            resolvedToken
+          );
+          const portfolios = list.data || [];
+
+          // For each portfolio, fetch items (projects) with status to compute on/at-risk/off
+          const itemFields = "name,resource_type,archived,current_status_update.status_type,permalink_url";
+          const enriched = await Promise.all(
+            portfolios.map(async (p: any) => {
+              try {
+                const items = await asanaFetch(
+                  `/portfolios/${p.gid}/items?opt_fields=${itemFields}`,
+                  resolvedToken
+                );
+                const projects = (items.data || []).filter(
+                  (it: any) => it.resource_type === "project" && !it.archived
+                );
+                let onTrack = 0, atRisk = 0, offTrack = 0, noStatus = 0;
+                for (const proj of projects) {
+                  const st = (proj.current_status_update?.status_type || "").toLowerCase();
+                  if (st === "on_track" || st === "green") onTrack++;
+                  else if (st === "at_risk" || st === "yellow") atRisk++;
+                  else if (st === "off_track" || st === "red" || st === "behind") offTrack++;
+                  else noStatus++;
+                }
+                return {
+                  ...p,
+                  project_count: projects.length,
+                  status_counts: { on_track: onTrack, at_risk: atRisk, off_track: offTrack, no_status: noStatus },
+                };
+              } catch (err) {
+                console.warn(`[list_portfolios] skip portfolio ${p.gid}: ${err}`);
+                return { ...p, project_count: 0, status_counts: { on_track: 0, at_risk: 0, off_track: 0, no_status: 0 } };
+              }
+            })
+          );
+          result = { success: true, portfolios: enriched };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "Unknown error fetching portfolios";
+          result = { success: false, error: msg, portfolios: [] };
+        }
+        break;
+      }
+
       default:
         result = { success: false, error: `Unknown action: ${action}` };
     }
