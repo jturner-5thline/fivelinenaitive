@@ -57,6 +57,32 @@ function fallbackProgressFromStatus(status: string): number | null {
   }
 }
 
+function formatMetric(n: number, unit: string | null): string {
+  if (unit === 'currency') {
+    if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+    if (Math.abs(n) >= 1_000) return `$${(n / 1_000).toFixed(1)}k`;
+    return `$${n.toLocaleString()}`;
+  }
+  if (unit === 'percentage') return `${n}%`;
+  return n.toLocaleString();
+}
+
+function formatProgressSource(src: string | null): string {
+  if (!src) return 'Manual';
+  return src
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function MetricCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: 'rgba(160,210,255,0.5)' }}>{label}</span>
+      <span style={{ fontSize: 10, color: '#e8f6ff', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={value}>{value}</span>
+    </div>
+  );
+}
+
 function RefreshBtn({ onClick, busy }: { onClick: () => void; busy: boolean }) {
   return (
     <button onClick={onClick} disabled={busy}
