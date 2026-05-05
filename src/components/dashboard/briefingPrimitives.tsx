@@ -1,9 +1,10 @@
-import { AlertCircle, ArrowUpRight, ChevronRight, Clock, GitBranch } from 'lucide-react';
+import { AlertCircle, ArrowUpRight, ChevronRight, ChevronDown, Clock, GitBranch } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { supabase } from '@/integrations/supabase/client';
 import type { Deal } from '@/types/deal';
 
 /**
@@ -171,33 +172,296 @@ export function RecentPipelineActivitySection({
   onNavigate?: (path: string) => void;
   emptyMessage?: string;
 }) {
+  const groups = useMemo(() => groupRelatedActivity(recentActivity), [recentActivity]);
+  const noteLenders = useMemo(() => {
+    const set = new Set<string>();
+    for (const g of groups) {
+      if (g.kind === 'lender_notes') {
+        for (const it of g.items) {
+          const n = (it.metadata as any)?.lender_name;
+          if (n) set.add(n);
+        }
+      }
+    }
+    return Array.from(set);
+  }, [groups]);
+  const noteByLender = useLatestLenderNotes(noteLenders);
+
   return (
     <Section title="Recent Pipeline Activity">
-      {recentActivity.length === 0 ? (
+      {groups.length === 0 ? (
         <EmptySection message={emptyMessage} />
       ) : (
-        recentActivity.map((a: any) => (
-          <BriefingRow
-            key={a.id}
-            icon={Clock}
-            title={a.description}
-            subtitle={a.user_display_name || undefined}
-            badge={a.activity_type ? a.activity_type.replace(/_/g, ' ') : undefined}
-            badgeVariant="outline"
-            time={a.created_at ? formatDistanceToNow(new Date(a.created_at), { addSuffix: true }) : undefined}
-            onClick={onRowClick ? () => onRowClick(a) : undefined}
-            extras={
-              onNavigate ? (
-                <DealChip
-                  dealId={a.deal_id}
-                  dealName={a.deal_name || a.metadata?.deal_name || a.metadata?.company}
-                  onNavigate={onNavigate}
-                />
-              ) : undefined
-            }
+        groups.map(g => (
+          <GroupedActivityRow
+            key={g.key}
+            group={g}
+            onRowClick={onRowClick}
+            onNavigate={onNavigate}
+            noteByLender={noteByLender}
           />
         ))
       )}
     </Section>
+  );
+}
+
+// ── Activity grouping ──────────────────────────────────────────
+// We group repeated same-type events for the same deal into one tile.
+// Categories that group:
+//   requested_item_added / requested_item_updated   → "requested_items"
+//   lender_added / lender_removed / lender_stage_change /
+//     lender_substage_change / lender_update         → "lender_updates"
+//   lender_notes_updated                             → "lender_notes"
+// All other activity types render one tile per event (unchanged).
+export type ActivityGroupKind = 'requested_items' | 'lender_updates' | 'lender_notes' | 'single';
+
+export interface ActivityGroup {
+  key: string;
+  kind: ActivityGroupKind;
+  dealId: string | null;
+  dealName: string | null;
+  latestAt: string | null;
+  items: any[]; // original activity rows
+}
+
+const GROUPABLE: Record<string, ActivityGroupKind> = {
+  requested_item_added: 'requested_items',
+  requested_item_updated: 'requested_items',
+  lender_added: 'lender_updates',
+  lender_removed: 'lender_updates',
+  lender_stage_change: 'lender_updates',
+  lender_substage_change: 'lender_updates',
+  lender_update: 'lender_updates',
+  lender_notes_updated: 'lender_notes',
+};
+
+function groupRelatedActivity(rows: any[]): ActivityGroup[] {
+  const out: ActivityGroup[] = [];
+  const groupIndex = new Map<string, ActivityGroup>();
+  // Preserve incoming order (rows are already created_at desc).
+  for (const r of rows) {
+    const kind = GROUPABLE[r.activity_type] ?? 'single';
+    const dealId = r.deal_id ?? null;
+    if (kind === 'single' || !dealId) {
+      out.push({
+        key: `single-${r.id}`,
+        kind: 'single',
+        dealId,
+        dealName: r.deal_name || r.metadata?.deal_name || r.metadata?.company || null,
+        latestAt: r.created_at,
+        items: [r],
+      });
+      continue;
+    }
+    const k = `${kind}:${dealId}`;
+    let g = groupIndex.get(k);
+    if (!g) {
+      g = {
+        key: k,
+        kind,
+        dealId,
+        dealName: r.deal_name || r.metadata?.deal_name || r.metadata?.company || null,
+        latestAt: r.created_at,
+        items: [],
+      };
+      groupIndex.set(k, g);
+      out.push(g);
+    }
+    g.items.push(r);
+    // Keep most recent timestamp (rows are desc, so first wins).
+    if (!g.latestAt || (r.created_at && r.created_at > g.latestAt)) g.latestAt = r.created_at;
+    if (!g.dealName) g.dealName = r.deal_name || r.metadata?.deal_name || r.metadata?.company || null;
+  }
+  return out;
+}
+
+// Resolve the latest lender_notes body per lender_name so grouped lender-note
+// tiles can show what the note actually said, not just "lender updated".
+function useLatestLenderNotes(lenderNames: string[]): Map<string, { body: string; updated_at: string }> {
+  const [map, setMap] = useState<Map<string, { body: string; updated_at: string }>>(new Map());
+  const key = lenderNames.slice().sort().join('|');
+  useEffect(() => {
+    let cancelled = false;
+    if (!lenderNames.length) { setMap(new Map()); return; }
+    (async () => {
+      const { data } = await supabase
+        .from('lender_notes')
+        .select('lender_name, body, updated_at')
+        .in('lender_name', lenderNames)
+        .order('updated_at', { ascending: false })
+        .limit(500);
+      if (cancelled) return;
+      const next = new Map<string, { body: string; updated_at: string }>();
+      for (const row of data ?? []) {
+        if (!next.has(row.lender_name)) {
+          next.set(row.lender_name, { body: row.body ?? '', updated_at: row.updated_at });
+        }
+      }
+      setMap(next);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return map;
+}
+
+function plural(n: number, one: string, many: string) {
+  return n === 1 ? one : many;
+}
+
+function GroupedActivityRow({
+  group,
+  onRowClick,
+  onNavigate,
+  noteByLender,
+}: {
+  group: ActivityGroup;
+  onRowClick?: (activity: any) => void;
+  onNavigate?: (path: string) => void;
+  noteByLender: Map<string, { body: string; updated_at: string }>;
+}) {
+  const { deals } = useDealsContext();
+  const [expanded, setExpanded] = useState(false);
+
+  const resolvedDealName = useMemo(() => {
+    if (group.dealName) return group.dealName;
+    if (!group.dealId) return null;
+    return deals?.find(d => d.id === group.dealId)?.company ?? null;
+  }, [deals, group.dealId, group.dealName]);
+
+  // Single (ungrouped) row → render legacy BriefingRow as before.
+  if (group.kind === 'single') {
+    const a = group.items[0];
+    return (
+      <BriefingRow
+        icon={Clock}
+        title={a.description}
+        subtitle={a.user_display_name || undefined}
+        badge={a.activity_type ? a.activity_type.replace(/_/g, ' ') : undefined}
+        badgeVariant="outline"
+        time={a.created_at ? formatDistanceToNow(new Date(a.created_at), { addSuffix: true }) : undefined}
+        onClick={onRowClick ? () => onRowClick(a) : undefined}
+        extras={
+          onNavigate ? (
+            <DealChip
+              dealId={a.deal_id}
+              dealName={a.deal_name || a.metadata?.deal_name || a.metadata?.company}
+              onNavigate={onNavigate}
+            />
+          ) : undefined
+        }
+      />
+    );
+  }
+
+  const count = group.items.length;
+  const dealLabel = resolvedDealName || 'this deal';
+
+  // Build a one-line summary title per kind.
+  let title = '';
+  let badge = '';
+  if (group.kind === 'requested_items') {
+    title = `${count} requested ${plural(count, 'item', 'items')} updated for ${dealLabel}`;
+    badge = 'requested items';
+  } else if (group.kind === 'lender_updates') {
+    const lenderCount = new Set(
+      group.items.map(i => (i.metadata as any)?.lender_name).filter(Boolean),
+    ).size || count;
+    title = `${lenderCount} ${plural(lenderCount, 'lender', 'lenders')} updated for ${dealLabel}`;
+    badge = 'lender updates';
+  } else {
+    const lenderCount = new Set(
+      group.items.map(i => (i.metadata as any)?.lender_name).filter(Boolean),
+    ).size || count;
+    title = `${lenderCount} lender ${plural(lenderCount, 'note', 'notes')} updated for ${dealLabel}`;
+    badge = 'lender notes';
+  }
+
+  // If only one underlying event, fall back to its native description for
+  // higher fidelity (still rendered through this branch so we keep the
+  // expand affordance off).
+  if (count === 1) {
+    title = group.items[0].description || title;
+  }
+
+  const time = group.latestAt
+    ? formatDistanceToNow(new Date(group.latestAt), { addSuffix: true })
+    : undefined;
+
+  return (
+    <div
+      className={cn(
+        GLASS_ROW,
+        'p-3 transition-all duration-200',
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <div className="p-1.5 rounded-md bg-primary/10 shrink-0 mt-0.5">
+          <Clock className="h-3.5 w-3.5 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-foreground truncate">{title}</p>
+          {onNavigate && (
+            <div className="flex items-center gap-1 mt-1 flex-wrap">
+              <DealChip
+                dealId={group.dealId ?? undefined}
+                dealName={resolvedDealName ?? undefined}
+                onNavigate={onNavigate}
+              />
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Badge variant="outline" className="text-[10px] glass-border-soft">{badge}</Badge>
+          {time && <span className="text-[10px] text-muted-foreground whitespace-nowrap">{time}</span>}
+          {count > 1 ? (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
+              className="p-0.5 rounded hover:bg-white/[0.06] text-muted-foreground/70 hover:text-foreground transition-colors"
+              aria-label={expanded ? 'Hide details' : 'Show details'}
+            >
+              {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+            </button>
+          ) : (
+            onRowClick && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onRowClick(group.items[0]); }}
+                className="p-0.5 rounded hover:bg-white/[0.06] text-muted-foreground/70 hover:text-foreground transition-colors"
+                aria-label="Open"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            )
+          )}
+        </div>
+      </div>
+
+      {expanded && count > 1 && (
+        <ul className="mt-2 ml-8 space-y-1 border-l glass-border-softer pl-3">
+          {group.items.map((it: any) => {
+            const lender = (it.metadata as any)?.lender_name;
+            const noteSnippet =
+              group.kind === 'lender_notes' && lender
+                ? noteByLender.get(lender)?.body
+                : null;
+            const detail =
+              group.kind === 'lender_notes' && noteSnippet
+                ? `${lender || 'Lender'}: ${noteSnippet}`
+                : it.description;
+            return (
+              <li key={it.id} className="text-[11px] text-muted-foreground leading-snug">
+                <span className="text-foreground/80 line-clamp-2">{detail}</span>
+                {it.user_display_name && (
+                  <span className="opacity-60"> — {it.user_display_name}</span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
