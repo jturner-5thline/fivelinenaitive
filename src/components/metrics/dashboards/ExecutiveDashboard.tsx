@@ -157,7 +157,7 @@ function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date }
   }));
 
   return (
-    <GlassCard interactive>
+    <GlassCard interactive className="h-full flex flex-col">
       <GlassCardHeader
         title="Deals by Status"
         subtitle="By total fee · current pipeline"
@@ -178,8 +178,8 @@ function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date }
           </div>
         }
       />
-      <GlassCardBody>
-        <div style={{ height: 170 }}>
+      <GlassCardBody className="flex-1 min-h-0 flex flex-col">
+        <div className="flex-1 min-h-[140px]">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <PieGlassDefs colors={STATUS_COLORS} />
