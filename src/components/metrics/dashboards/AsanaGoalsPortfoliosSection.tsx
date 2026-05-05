@@ -76,6 +76,7 @@ export function AsanaGoalsPortfoliosSection() {
   const goals = useAsanaGoals();
   const portfolios = useAsanaPortfolios();
   const [openPortfolio, setOpenPortfolio] = useState<{ gid: string; name: string; url: string | null } | null>(null);
+  const [portfolioStatusFilter, setPortfolioStatusFilter] = useState<'all' | 'on' | 'at' | 'off'>('all');
 
   const lastSync = goals.lastSyncedAt || portfolios.lastSyncedAt;
 
@@ -112,6 +113,17 @@ export function AsanaGoalsPortfoliosSection() {
   }, [goals.goals, statusFilter, ownerFilter, dueFilter]);
 
   const filtersActive = statusFilter !== 'all' || ownerFilter !== 'all' || dueFilter !== 'all';
+
+  const filteredPortfolios = useMemo(() => {
+    if (portfolioStatusFilter === 'all') return portfolios.portfolios;
+    return portfolios.portfolios.filter(p => {
+      if (portfolioStatusFilter === 'on') return p.onTrack > 0;
+      if (portfolioStatusFilter === 'at') return p.atRisk > 0;
+      if (portfolioStatusFilter === 'off') return p.offTrack > 0;
+      return true;
+    });
+  }, [portfolios.portfolios, portfolioStatusFilter]);
+
   const selectStyle: React.CSSProperties = {
     fontSize: 10, padding: '3px 6px', borderRadius: 5,
     background: 'rgba(20,80,160,0.35)', color: '#d0eaff',
