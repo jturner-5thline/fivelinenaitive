@@ -1,5 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import ChartJS from 'chart.js/auto';
+import { format } from 'date-fns';
+import { RefreshCw, Loader2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
+import { useMetricsData } from '@/hooks/useMetricsData';
+import { isExcludedDealName } from '@/utils/excludedDeals';
 
 // ── Chart.js global defaults (scoped to this dashboard) ──
 const setChartDefaults = () => {
@@ -9,32 +15,27 @@ const setChartDefaults = () => {
   ChartJS.defaults.font.family = 'system-ui, sans-serif';
 };
 
-// ── Static data ──
-const mo = ['Dec-25', 'Jan-26', 'Feb-26', 'Mar-26', 'Apr-26', 'May-26', 'Jun-26'];
-const rev = [153.7, 33.2, 62.0, 229.9, 185.4, 55.4, 269.7];
-const liq = [227, 71, -59, 6, 69, 14, 103];
-const dscr = [-2.88, -9.10, -8.79, -6.30, -3.44, -2.13, -1.32];
-const ttm = [2.4, 1.7, 1.6, 1.7, 1.8, 1.8, 1.6];
-const cfWks = ['Mar 13','Mar 20','Mar 27','Apr 03','Apr 10','Apr 17','Apr 24','May 01','May 08','May 15','May 22','May 29'];
-const cfIn = [123.5,123.0,55.4,44.1,49.3,82.4,51.1,56.1,60.5,38.3,29.3,24.1];
-const cfOut = [170.0,169.5,101.9,88.6,95.8,128.9,97.6,102.6,107.0,84.8,75.8,70.6];
-const cfBal = cfIn.map((v,i) => parseFloat((v - cfOut[i]).toFixed(1)));
-const cfTotLiq = [227,210,195,165,170,185,155,140,130,115,105,95];
-const mo6 = ['Dec-25','Jan-26','Feb-26','Mar-26','Apr-26','May-26'];
-const opBal = [-98,-120,-95,-98,-90,-85];
-const opChg = [20,-22,25,-3,8,5];
-const firmFree = [120,80,30,6,60,20];
-const firmTotal = [190,145,90,70,125,85];
-const dA = [416,414,412,410,408,406,404];
-const dB = [212,205,210,201,193,185,176];
-const dC = [126,116,113,122,104,104,107];
-
 // ── Shared chart options ──
 const gx: any = { ticks: { color: 'rgba(100,160,220,0.45)', font: { size: 9 } }, grid: { display: false }, border: { display: false } };
 const gy: any = { ticks: { color: 'rgba(100,160,220,0.35)', font: { size: 9 } }, grid: { color: 'rgba(20,80,160,0.25)' }, border: { display: false } };
 const def: any = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
-const bcol = mo.map((_,i) => i === 3 ? 'rgba(29,148,255,0.85)' : 'rgba(20,90,170,0.55)');
-const bbrd = mo.map((_,i) => i === 3 ? '#4db8ff' : 'rgba(40,120,200,0.5)');
+
+// ── Formatting ──
+const fmtUSD = (v: number | null | undefined, opts: { unit?: 'auto' | 'k' | 'M' } = {}) => {
+  if (v === null || v === undefined || Number.isNaN(v)) return '—';
+  const unit = opts.unit ?? 'auto';
+  const abs = Math.abs(v);
+  const sign = v < 0 ? '-' : '';
+  if (unit === 'M' || (unit === 'auto' && abs >= 1_000_000)) return `${sign}$${(abs / 1_000_000).toFixed(2)}MM`;
+  if (unit === 'k' || (unit === 'auto' && abs >= 1_000)) return `${sign}$${(abs / 1000).toFixed(1)}K`;
+  return `${sign}$${abs.toFixed(0)}`;
+};
+const fmtDelta = (curr: number | null, prev: number | null): { label: string; positive: boolean } | null => {
+  if (curr === null || prev === null) return null;
+  const d = curr - prev;
+  return { label: `${d >= 0 ? '+' : '−'} ${fmtUSD(Math.abs(d))} vs PM`, positive: d >= 0 };
+};
+const NA_COLOR = 'rgba(160,210,255,0.35)';
 
 // ── Tiny components ──
 function Card({ children, className = '', style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
@@ -64,22 +65,28 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-function StatusBadge({ variant, children }: { variant: 'risk' | 'track'; children: React.ReactNode }) {
-  const s = variant === 'risk'
-    ? { background: 'rgba(255,80,90,0.18)', color: '#ff9aa3', border: '1px solid rgba(255,80,90,0.3)' }
-    : { background: 'rgba(40,220,140,0.15)', color: '#5dffc0', border: '1px solid rgba(40,220,140,0.25)' };
-  return <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 8, ...s }}>{children}</span>;
+function NaPlaceholder({ height = 90, label = 'Data unavailable' }: { height?: number; label?: string }) {
+  return (
+    <div style={{
+      height,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      borderRadius: 6,
+      background: 'rgba(20,60,120,0.25)',
+      border: '1px dashed rgba(80,150,220,0.25)',
+      color: 'rgba(160,210,255,0.5)', fontSize: 10, fontWeight: 600, letterSpacing: '0.6px',
+    }}>{label}</div>
+  );
 }
 
 // ── Chart hook ──
-function useChart(ref: React.RefObject<HTMLCanvasElement | null>, config: any) {
+function useChart(ref: React.RefObject<HTMLCanvasElement | null>, config: any, deps: any[]) {
   useEffect(() => {
     if (!ref.current) return;
     setChartDefaults();
     const chart = new ChartJS(ref.current, config);
     return () => chart.destroy();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, deps);
 }
 
 // ── Dashboard Component ──
