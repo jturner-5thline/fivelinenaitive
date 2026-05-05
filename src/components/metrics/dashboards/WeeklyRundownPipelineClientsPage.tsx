@@ -69,6 +69,7 @@ export function WeeklyRundownPipelineClientsPage() {
         <RecentPipelineActivitySection
           recentActivity={recentActivity}
           onRowClick={handleRowClick}
+          onNavigate={(path) => navigate(path)}
         />
       )}
     </div>
