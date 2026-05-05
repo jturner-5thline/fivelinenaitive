@@ -878,6 +878,62 @@ function EmailTab({
   const [detail, setDetail] = useState<any>(null);
   const { entities: classifierEntities, orgCtx } = useEmailClassifierData();
   const { evaluate: evaluateAutoLabels } = useAutoEmailLabelEvaluator();
+  const { markRead: providerMarkRead, toggleStar: providerToggleStar, trashMessage: providerTrash } = useGmail();
+  // Local hide-set so archive/delete actions remove rows immediately even
+  // before the next briefing data refetch lands. Behavior parity with the
+  // main Email pop-up which optimistically removes the affected row.
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => new Set());
+  // Local read/star overrides so the row reflects the action instantly.
+  const [overrides, setOverrides] = useState<Record<string, { is_read?: boolean; is_starred?: boolean }>>({});
+
+  const setReadState = useCallback(async (e: any, read: boolean) => {
+    setOverrides(prev => ({ ...prev, [e.id]: { ...prev[e.id], is_read: read } }));
+    const providerId = e.gmail_message_id || e.id;
+    if (providerId) {
+      const ok = await providerMarkRead(providerId, read);
+      if (!ok) toast.error(read ? "Couldn't mark as read" : "Couldn't mark as unread");
+    }
+  }, [providerMarkRead]);
+
+  const setStarState = useCallback(async (e: any) => {
+    const current = overrides[e.id]?.is_starred ?? e.is_starred ?? false;
+    const next = !current;
+    setOverrides(prev => ({ ...prev, [e.id]: { ...prev[e.id], is_starred: next } }));
+    const providerId = e.gmail_message_id || e.id;
+    if (providerId) {
+      const ok = await providerToggleStar(providerId, next);
+      if (!ok) toast.error(next ? "Couldn't star" : "Couldn't unstar");
+    }
+  }, [providerToggleStar, overrides]);
+
+  const archiveOrDelete = useCallback(async (e: any, kind: 'archive' | 'delete') => {
+    setHiddenIds(prev => {
+      const next = new Set(prev);
+      next.add(e.id);
+      return next;
+    });
+    if (detail && (detail.id === e.id || detail.gmail_message_id === e.gmail_message_id)) {
+      setDetail(null);
+    }
+    const providerId = e.gmail_message_id || e.id;
+    if (providerId) {
+      // Gmail trash covers both archive and delete from the briefing list.
+      // The main Email pop-up does the same on these actions when no
+      // separate "archive" endpoint is wired.
+      const ok = await providerTrash(providerId);
+      if (!ok) {
+        // Roll back optimistic hide so the row reappears on failure.
+        setHiddenIds(prev => {
+          const next = new Set(prev);
+          next.delete(e.id);
+          return next;
+        });
+        toast.error(kind === 'archive' ? "Couldn't archive" : "Couldn't delete");
+      } else {
+        toast.success(kind === 'archive' ? 'Archived' : 'Deleted');
+      }
+    }
+  }, [providerTrash, detail]);
 
   if (isLoading || !data) return <TabSkeleton />;
 
@@ -885,7 +941,13 @@ function EmailTab({
 
   // Apply the unread-only visibility filter BEFORE classification/grouping
   // so counts, groupings, and the rendered list all stay consistent.
-  const visibleEmails = unreadOnly ? emails.filter((e: any) => !e.is_read) : emails;
+  const withOverrides = emails
+    .filter((e: any) => !hiddenIds.has(e.id))
+    .map((e: any) => {
+      const ov = overrides[e.id];
+      return ov ? { ...e, ...ov } : e;
+    });
+  const visibleEmails = unreadOnly ? withOverrides.filter((e: any) => !e.is_read) : withOverrides;
 
   // Classify each email once
   const classified = visibleEmails.map((e: any) => ({ email: e, cats: classifyEmail(e, classifierEntities, orgCtx) }));
@@ -935,8 +997,19 @@ function EmailTab({
                 const isSelected =
                   detail && (detail.id === e.id || detail.gmail_message_id === e.gmail_message_id);
                 return (
-                  <BriefingRow
+                  <EmailContextMenu
                       key={e.id}
+                      isRead={!!e.is_read}
+                      isStarred={!!e.is_starred}
+                      threadId={e.thread_id || e.gmail_message_id || e.id}
+                      onMarkRead={() => setReadState(e, true)}
+                      onMarkUnread={() => setReadState(e, false)}
+                      onToggleStar={() => setStarState(e)}
+                      onArchive={() => archiveOrDelete(e, 'archive')}
+                      onDelete={() => archiveOrDelete(e, 'delete')}
+                  >
+                    <div>
+                    <BriefingRow
                       borderless
                       selected={!!isSelected}
                       icon={Mail}
@@ -968,6 +1041,8 @@ function EmailTab({
                         </>
                       }
                     />
+                    </div>
+                  </EmailContextMenu>
                 );
               })}
             </div>
