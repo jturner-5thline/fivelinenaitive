@@ -264,6 +264,7 @@ serve(async (req) => {
           result = { success: false, error: "portfolio_gid is required" };
           break;
         }
+        // Inserted helper for list_portfolios is below; this case unchanged.
         const forceRefresh = params.force_refresh === true;
         const cacheKey = `${portfolioGid}:${resolvedToken.slice(-8)}`;
         const now = Date.now();
