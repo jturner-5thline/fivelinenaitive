@@ -55,6 +55,9 @@ export const DEMO_RESET_LOCALSTORAGE_PREFIXES = [
   'tasks-grouping',
   'tasks-view-mode',
   'tasks-sort',
+  // Demo storyline: re-seed Google connection + inbox/calendar state on every
+  // demo login so the two pinned emails and weekly calendar are always fresh.
+  'naitive_gmail_status',
 ] as const;
 
 const DEMO_RESET_FLAG = 'naitive_demo_reset_done';
