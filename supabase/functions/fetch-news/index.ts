@@ -56,7 +56,8 @@ serve(async (req) => {
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
-    
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } }
     });
@@ -69,6 +70,39 @@ serve(async (req) => {
       );
     }
 
+    // Service-role client for cache reads/writes (bypasses RLS).
+    const adminSupabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const CACHE_KEY = 'global';
+    const CACHE_TTL_MS = 15 * 60 * 1000;
+
+    // Allow callers to bypass cache with { forceRefresh: true } in body
+    let forceRefresh = false;
+    let lenderNames: string[] = [];
+    try {
+      const body = await req.clone().json();
+      forceRefresh = !!body?.forceRefresh;
+      lenderNames = body?.lenderNames || [];
+    } catch {
+      // No body
+    }
+
+    if (!forceRefresh) {
+      const { data: cached } = await adminSupabase
+        .from('news_feed_cache')
+        .select('payload, fetched_at')
+        .eq('cache_key', CACHE_KEY)
+        .maybeSingle();
+      if (cached?.payload && cached.fetched_at) {
+        const age = Date.now() - new Date(cached.fetched_at).getTime();
+        if (age < CACHE_TTL_MS) {
+          return new Response(
+            JSON.stringify({ ...(cached.payload as any), cached: true, cachedAt: cached.fetched_at }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    }
+
     const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
     
     if (!perplexityApiKey) {
@@ -77,15 +111,6 @@ serve(async (req) => {
         JSON.stringify({ error: 'Perplexity API key not configured', news: [] }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-    }
-
-    // Parse request body for lender names
-    let lenderNames: string[] = [];
-    try {
-      const body = await req.json();
-      lenderNames = body.lenderNames || [];
-    } catch {
-      // No body or invalid JSON
     }
 
     console.log('Fetching news for lenders:', lenderNames.slice(0, 5).join(', '));
@@ -179,8 +204,21 @@ serve(async (req) => {
 
     console.log(`Returning ${newsItems.length} news items`);
 
+    const payload = { news: newsItems, citations };
+
+    // Write-through cache so subsequent requests for the next 15 min are instant.
+    if (newsItems.length > 0) {
+      try {
+        await adminSupabase
+          .from('news_feed_cache')
+          .upsert({ cache_key: CACHE_KEY, payload, fetched_at: new Date().toISOString() });
+      } catch (e) {
+        console.error('Failed to write news cache:', e);
+      }
+    }
+
     return new Response(
-      JSON.stringify({ news: newsItems, citations }),
+      JSON.stringify({ ...payload, cached: false }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
