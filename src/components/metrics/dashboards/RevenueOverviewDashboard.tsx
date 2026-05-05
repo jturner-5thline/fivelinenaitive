@@ -23,6 +23,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatDistanceToNow } from 'date-fns';
 
 // Entity realm IDs
 const DEBT_REALM_ID = '193514877331929';
@@ -626,6 +627,20 @@ export function RevenueQuarterlySection({ selectedQuarter }: { selectedQuarter: 
     selectedQuarter,
   );
 
+  // Last QuickBooks sync timestamp — drives the "Last synced: X hours ago" footer.
+  const { data: lastQbSync } = useQuery({
+    queryKey: ['revenue-overview-last-qb-sync'],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data } = await (supabase
+        .from('quickbooks_customers') as any)
+        .select('synced_at')
+        .order('synced_at', { ascending: false })
+        .limit(1);
+      return (data?.[0]?.synced_at as string | undefined) ?? null;
+    },
+  });
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -662,6 +677,13 @@ export function RevenueQuarterlySection({ selectedQuarter }: { selectedQuarter: 
             reflow after the Total Revenue chart was removed. */}
         <div aria-hidden="true" />
       </div>
+
+      {/* Last sync footer */}
+      <p className="text-[11px] text-muted-foreground">
+        {lastQbSync
+          ? `Last synced: ${formatDistanceToNow(new Date(lastQbSync), { addSuffix: true })} · auto-syncs every 48 hours`
+          : 'No QuickBooks sync recorded yet · auto-syncs every 48 hours'}
+      </p>
 
       {/* Drilldown Modal */}
       <RevenueDrilldownModal
