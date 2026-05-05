@@ -344,7 +344,24 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
     kind: 'task' | 'project',
     subtitle?: string,
   ) => {
-    setDrilldown({ title, subtitle, items: items as AsanaDrilldownItem[], kind });
+    let filtered = items;
+    if (hasProjectFilter) {
+      const set = new Set(projectFilters);
+      if (kind === 'task') {
+        filtered = items.filter((i: any) => set.has(i.project_name || 'Unknown'));
+      } else {
+        filtered = items.filter((i: any) => set.has((i.name && String(i.name).trim()) || 'Untitled project'));
+      }
+    }
+    const projectSuffix = hasProjectFilter
+      ? ` — ${projectFilters.length === 1 ? projectFilters[0] : `${projectFilters.length} projects`}`
+      : '';
+    setDrilldown({
+      title: `${title}${projectSuffix}`,
+      subtitle,
+      items: filtered as AsanaDrilldownItem[],
+      kind,
+    });
   };
 
   if (isLoading || !data) {
