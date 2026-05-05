@@ -4,10 +4,54 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { getDailyBriefingWindow } from '@/utils/dailyBriefingWindow';
+import { useCompany } from '@/hooks/useCompany';
 
 // ── Shared window (memoized) ──────────────────────────────────
 export function useBriefingWindow() {
   return useMemo(() => getDailyBriefingWindow('interactive'), []);
+}
+
+// ── Active Pipeline resolver ──────────────────────────────────
+// Resolves the company's default ("Active") pipeline id. Used to gate the
+// Deal Rundown / Daily Briefing surfaces so only deals currently in the
+// Active Pipeline appear.
+export function useActivePipelineId(): string | null {
+  const { company } = useCompany();
+  const companyId = company?.id ?? null;
+  const { data } = useQuery({
+    queryKey: ['briefing', 'active-pipeline-id', companyId],
+    enabled: !!companyId,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('deal_pipelines')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('is_default', true)
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return (data?.id as string | undefined) ?? null;
+    },
+  });
+  return data ?? null;
+}
+
+// Shared rundown eligibility: deal must be in the Active Pipeline AND not
+// Archived AND not On Hold. Used by Deal Rundown, Daily Briefing, and
+// Niki's Daily Briefing so all three surfaces stay in sync.
+const RUNDOWN_SUPPRESSED_STATUSES = new Set(['archived', 'on-hold', 'on_hold']);
+export function filterRundownEligibleDeals<T extends { status?: string | null; pipelineId?: string | null }>(
+  deals: T[],
+  activePipelineId: string | null,
+): T[] {
+  if (!activePipelineId) return [];
+  return deals.filter(d => {
+    if ((d as any).pipelineId !== activePipelineId) return false;
+    const status = (d.status || '').toString().toLowerCase();
+    if (RUNDOWN_SUPPRESSED_STATUSES.has(status)) return false;
+    return true;
+  });
 }
 
 // ── Deal scoping helper ───────────────────────────────────────
