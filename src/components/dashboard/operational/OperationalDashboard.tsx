@@ -148,16 +148,18 @@ function useDerivedMetrics(data: OperationalData | null) {
     const completedTasks = data.recentlyCompleted ?? [];
 
     // KPI 1: Milestones due in next 2 weeks (from today + upcoming, filter milestones with due_on in range)
-    const milestonesNext2Weeks = allTasks.filter(t => {
+    const milestonesNext2WeeksItems = allTasks.filter(t => {
       if (t.completed) return false;
       if (!t.due_on) return false;
       const due = parseISO(t.due_on);
       return (isAfter(due, startOfDay(now)) || t.due_on === now.toISOString().slice(0, 10)) &&
         isBefore(due, endOfDay(twoWeeksOut)) && t.is_milestone;
-    }).length;
+    });
+    const milestonesNext2Weeks = milestonesNext2WeeksItems.length;
 
     // KPI 2: Overdue milestones
-    const overdueMilestones = (data.overdue ?? []).filter((t: any) => t.is_milestone).length;
+    const overdueMilestonesItems = (data.overdue ?? []).filter((t: any) => t.is_milestone);
+    const overdueMilestones = overdueMilestonesItems.length;
 
     // KPI 3: Avg time to complete milestone (from recently completed milestones)
     const completedMilestones = completedTasks.filter((t: any) => t.is_milestone && t.completed_at);
@@ -174,34 +176,37 @@ function useDerivedMetrics(data: OperationalData | null) {
     }
 
     // KPI 4: Completed projects
-    const completedProjects = (data.projects ?? []).filter((p: any) =>
+    const completedProjectsItems = (data.projects ?? []).filter((p: any) =>
       p.status_type === 'complete' || p.status_type === 'achieved'
-    ).length;
+    );
+    const completedProjects = completedProjectsItems.length;
 
     // Chart 1: This week's milestones by assignee
-    const thisWeekMilestones = allTasks.filter(t => {
+    const thisWeekMilestonesItems = allTasks.filter(t => {
       if (t.completed) return false;
       if (!t.due_on) return false;
       const due = parseISO(t.due_on);
       return !isBefore(due, startOfDay(weekStart)) && !isAfter(due, endOfDay(weekEnd));
     });
-    const milestoneByAssignee = new Map<string, number>();
-    thisWeekMilestones.forEach(t => {
+    const milestoneByAssignee = new Map<string, any[]>();
+    thisWeekMilestonesItems.forEach(t => {
       const name = t.assignee || 'Unassigned';
-      milestoneByAssignee.set(name, (milestoneByAssignee.get(name) || 0) + 1);
+      if (!milestoneByAssignee.has(name)) milestoneByAssignee.set(name, []);
+      milestoneByAssignee.get(name)!.push(t);
     });
     const milestoneOwnership = Array.from(milestoneByAssignee.entries())
-      .map(([assignee, count]) => ({ assignee, count }))
+      .map(([assignee, items]) => ({ assignee, count: items.length, items }))
       .sort((a, b) => b.count - a.count);
 
-    // Chart 2: Overdue milestones by project
-    const overdueByProject = new Map<string, number>();
+    // Chart 2: Overdue tasks by project
+    const overdueByProject = new Map<string, any[]>();
     (data.overdue ?? []).forEach((t: any) => {
       const proj = t.project_name || 'Unknown';
-      overdueByProject.set(proj, (overdueByProject.get(proj) || 0) + 1);
+      if (!overdueByProject.has(proj)) overdueByProject.set(proj, []);
+      overdueByProject.get(proj)!.push(t);
     });
     const overdueBuckets = Array.from(overdueByProject.entries())
-      .map(([project, count]) => ({ project, count }))
+      .map(([project, items]) => ({ project, count: items.length, items }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 8);
 
@@ -245,22 +250,21 @@ function useDerivedMetrics(data: OperationalData | null) {
       const due = parseISO(p.due_on);
       return isAfter(due, startOfDay(now)) && isBefore(due, endOfDay(twoWeeksOut));
     });
-    const projectsDueBuckets = projectsDueNext2.length > 0
-      ? [{ bucket: 'Due in 2 weeks', count: projectsDueNext2.length }]
-      : [{ bucket: 'Due in 2 weeks', count: 0 }];
+    const projectsDueBuckets = [{ bucket: 'Due in 2 weeks', count: projectsDueNext2.length, items: projectsDueNext2 }];
 
     return {
       kpis: [
-        { label: 'Milestones Next 2 Weeks', value: String(milestonesNext2Weeks), description: 'Open milestones due within 14 days' },
-        { label: 'Overdue Milestones', value: String(overdueMilestones), description: 'Incomplete milestones past due' },
-        { label: 'Avg. Time to Comp. Milestone', value: completedMilestones.length > 0 ? `${avgTimeToComplete.toFixed(2)} d` : '— d', description: 'Avg duration open → completed' },
-        { label: 'Completed Projects', value: String(completedProjects), description: 'Projects with completed status' },
+        { label: 'Milestones Next 2 Weeks', value: String(milestonesNext2Weeks), description: 'Open milestones due within 14 days', items: milestonesNext2WeeksItems, kind: 'task' as const },
+        { label: 'Overdue Milestones', value: String(overdueMilestones), description: 'Incomplete milestones past due', items: overdueMilestonesItems, kind: 'task' as const },
+        { label: 'Avg. Time to Comp. Milestone', value: completedMilestones.length > 0 ? `${avgTimeToComplete.toFixed(2)} d` : '— d', description: 'Avg duration open → completed', items: completedMilestones, kind: 'task' as const },
+        { label: 'Completed Projects', value: String(completedProjects), description: 'Projects with completed status', items: completedProjectsItems, kind: 'project' as const },
       ],
       milestoneOwnership,
       overdueBuckets,
       projectOverview,
       projectStatus,
       projectsDueBuckets,
+      projectsAll: data.projects ?? [],
     };
   }, [data]);
 }
