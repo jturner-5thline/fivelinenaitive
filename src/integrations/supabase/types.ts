@@ -13340,6 +13340,27 @@ export type Database = {
         }
         Relationships: []
       }
+      news_feed_cache: {
+        Row: {
+          cache_key: string
+          fetched_at: string
+          payload: Json
+          updated_at: string
+        }
+        Insert: {
+          cache_key: string
+          fetched_at?: string
+          payload: Json
+          updated_at?: string
+        }
+        Update: {
+          cache_key?: string
+          fetched_at?: string
+          payload?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       news_pinned_sources: {
         Row: {
           created_at: string

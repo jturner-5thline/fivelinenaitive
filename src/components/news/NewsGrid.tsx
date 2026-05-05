@@ -42,7 +42,7 @@ interface NewsGridProps {
 }
 
 export function NewsGrid({ defaultLayout, defaultTab }: NewsGridProps) {
-  const { news, isLoading, error, lastFetched, refetch } = useNews();
+  const { news, allNews, isLoading, error, lastFetched, refetch, hasMore, loadMore } = useNews({ pageSize: 8 });
   const { bookmarkedArticles, isBookmarked, toggleBookmark } = useNewsBookmarks();
   const { isRead, markAsRead } = useNewsReadStatus();
   const { channels, createChannel, updateChannel, deleteChannel } = useNewsChannels();
@@ -90,24 +90,22 @@ export function NewsGrid({ defaultLayout, defaultTab }: NewsGridProps) {
     return items.filter(item => new Date(item.publishedAt) >= cutoff);
   };
 
-  // Category counts
+  // Category counts (use full list so badges reflect totals, not page size)
   const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: news.length };
-    news.forEach(item => {
+    const counts: Record<string, number> = { all: allNews.length };
+    allNews.forEach(item => {
       const cat = item.newsCategory || item.category;
       counts[cat] = (counts[cat] || 0) + 1;
     });
-    // watchlist = items matching alerts or pinned sources
-    counts['watchlist'] = news.filter(item => {
+    counts['watchlist'] = allNews.filter(item => {
       const text = `${item.title} ${item.summary}`;
       return getMatchingAlerts(text).length > 0 || isPinned(item.source);
     }).length;
-    // active-deals count
-    counts['active-deals'] = news.filter(item =>
+    counts['active-deals'] = allNews.filter(item =>
       item.newsCategory === 'active-deals' || item.relevanceReason?.toLowerCase().includes('deal')
     ).length;
     return counts;
-  }, [news, getMatchingAlerts, isPinned]);
+  }, [allNews, getMatchingAlerts, isPinned]);
 
   // Main filtering
   const filteredNews = useMemo(() => {
@@ -258,13 +256,36 @@ export function NewsGrid({ defaultLayout, defaultTab }: NewsGridProps) {
 
   if (isLoading && news.length === 0) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-10 rounded-lg w-full" />
-        <div className="space-y-2">
-          {[...Array(8)].map((_, i) => (
-            <Skeleton key={i} className="h-10 rounded-md w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="rounded-lg border border-border p-4 space-y-3 animate-pulse">
+              <Skeleton className="h-32 w-full rounded-md" />
+              <Skeleton className="h-3 w-1/3" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-3 w-2/3" />
+            </div>
           ))}
         </div>
+      </div>
+    );
+  }
+
+  // Hard error with no cached data — surface retry CTA per spec.
+  if (error && allNews.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <AlertCircle className="h-10 w-10 text-warning mb-3" />
+        <h3 className="text-lg font-medium text-foreground mb-1">
+          News is taking longer than usual to load.
+        </h3>
+        <p className="text-sm text-muted-foreground mb-4">Try refreshing.</p>
+        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
+          {isRefreshing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+          Retry
+        </Button>
       </div>
     );
   }
@@ -494,6 +515,13 @@ export function NewsGrid({ defaultLayout, defaultTab }: NewsGridProps) {
             <span>{filteredNews.length} {filteredNews.length === 1 ? 'article' : 'articles'}</span>
           </div>
           {renderArticleGrid(filteredNews)}
+          {hasMore && (
+            <div className="flex justify-center mt-6">
+              <Button variant="outline" size="sm" onClick={loadMore}>
+                Load more
+              </Button>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="watchlist-alerts" className="mt-4">
