@@ -49,7 +49,7 @@ serve(async (req: Request) => {
         settings: settings || {
           qb_enabled: false,
           hs_enabled: false,
-          interval_hours: 6,
+          interval_hours: 48,
           last_qb_sync: null,
           last_hs_sync: null,
         },
@@ -84,7 +84,7 @@ serve(async (req: Request) => {
           user_id: user.id,
           qb_enabled: qb_enabled ?? false,
           hs_enabled: hs_enabled ?? false,
-          interval_hours: interval_hours ?? 6,
+          interval_hours: interval_hours ?? 48,
           updated_at: new Date().toISOString(),
         }, { onConflict: "user_id" })
         .select()
@@ -110,7 +110,7 @@ serve(async (req: Request) => {
     const results: { userId: string; qbSynced: boolean; hsSynced: boolean }[] = [];
 
     for (const schedule of schedules || []) {
-      const intervalMs = (schedule.interval_hours || 6) * 60 * 60 * 1000;
+      const intervalMs = (schedule.interval_hours || 48) * 60 * 60 * 1000;
       let qbSynced = false;
       let hsSynced = false;
 

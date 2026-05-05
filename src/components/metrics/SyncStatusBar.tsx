@@ -101,7 +101,7 @@ export function SyncStatusBar() {
             <div className="space-y-1.5">
               <Label className="text-sm">Sync Interval</Label>
               <Select
-                value={String(settings?.interval_hours ?? 6)}
+                value={String(settings?.interval_hours ?? 48)}
                 onValueChange={(v) =>
                   updateSettings.mutate({ interval_hours: parseInt(v) })
                 }
@@ -110,18 +110,18 @@ export function SyncStatusBar() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">Every 1 hour</SelectItem>
-                  <SelectItem value="3">Every 3 hours</SelectItem>
                   <SelectItem value="6">Every 6 hours</SelectItem>
                   <SelectItem value="12">Every 12 hours</SelectItem>
                   <SelectItem value="24">Every 24 hours</SelectItem>
+                  <SelectItem value="48">Every 48 hours</SelectItem>
+                  <SelectItem value="72">Every 72 hours</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {(settings?.qb_enabled || settings?.hs_enabled) && (
               <p className="text-[11px] text-muted-foreground">
-                Auto-sync runs every {settings?.interval_hours ?? 6}h for enabled sources.
+                Auto-sync runs every {settings?.interval_hours ?? 48}h for enabled sources.
               </p>
             )}
           </div>
