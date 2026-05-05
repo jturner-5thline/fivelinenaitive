@@ -438,6 +438,8 @@ import {
 import { useDashboardCarouselWidgets } from '@/hooks/useDashboardCarouselWidgets';
 import { useInboxPrefetch } from '@/hooks/useInboxPrefetch';
 import { useInboxCacheStore, selectUnreadCount } from '@/stores/inboxCacheStore';
+import { useQueryClient } from '@tanstack/react-query';
+import { prefetchNewsFeed } from '@/hooks/useNews';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -446,6 +448,14 @@ export default function Dashboard() {
   // opens instantly with cached messages instead of a spinner. Polls
   // every 2 minutes (and on tab focus) to keep new messages flowing in.
   useInboxPrefetch();
+  // Background prefetch the news feed so the News section opens instantly.
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const t = setTimeout(() => {
+      prefetchNewsFeed(queryClient);
+    }, 500);
+    return () => clearTimeout(t);
+  }, [queryClient]);
   // Dev-only: emit a single performance.measure for Dashboard mount
   // latency. View in DevTools → Performance → User Timing, or set
   // `localStorage.setItem('perf:debug','1')` to log to the console.
