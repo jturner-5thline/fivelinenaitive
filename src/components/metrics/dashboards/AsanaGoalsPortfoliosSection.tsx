@@ -252,16 +252,31 @@ export function AsanaGoalsPortfoliosSection() {
                 const pct = realPct ?? fallbackProgressFromStatus(g.status);
                 const isEstimate = realPct === null && pct !== null;
                 const color = STATUS_COLOR[g.status] || '#4db8ff';
+                const expanded = expandedGoals.has(g.id);
+                const hasMetric = !!g.metric && (g.metric.currentValue !== null || g.metric.targetValue !== null || !!g.metric.currentDisplay);
                 return (
                   <div key={g.id} style={{ padding: '6px 8px', borderRadius: 6, background: 'rgba(20,80,160,0.18)', border: '1px solid rgba(40,100,180,0.25)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                       <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: '#e8f6ff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {g.url ? (
-                            <a href={g.url} target="_blank" rel="noreferrer" style={{ color: '#e8f6ff', textDecoration: 'none' }}>
-                              {g.title} <ExternalLink size={9} style={{ display: 'inline', opacity: 0.5 }} />
-                            </a>
-                          ) : g.title}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#e8f6ff' }}>
+                          {hasMetric && (
+                            <button
+                              type="button"
+                              onClick={() => toggleGoalExpanded(g.id)}
+                              aria-expanded={expanded}
+                              aria-label={expanded ? 'Collapse metric details' : 'Expand metric details'}
+                              style={{ background: 'transparent', border: 'none', padding: 0, color: 'rgba(160,210,255,0.7)', cursor: 'pointer', display: 'inline-flex' }}
+                            >
+                              {expanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                            </button>
+                          )}
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>
+                            {g.url ? (
+                              <a href={g.url} target="_blank" rel="noreferrer" style={{ color: '#e8f6ff', textDecoration: 'none' }}>
+                                {g.title} <ExternalLink size={9} style={{ display: 'inline', opacity: 0.5 }} />
+                              </a>
+                            ) : g.title}
+                          </span>
                         </div>
                         <div style={{ fontSize: 9, color: 'rgba(160,210,255,0.5)', marginTop: 2 }}>
                           {g.owner}{g.due ? ` · due ${g.due}` : ''}{g.timePeriod ? ` · ${g.timePeriod}` : ''}
@@ -285,6 +300,22 @@ export function AsanaGoalsPortfoliosSection() {
                         >
                           {pct}%{isEstimate ? '*' : ''}
                         </span>
+                      </div>
+                    )}
+                    {expanded && hasMetric && g.metric && (
+                      <div style={{
+                        marginTop: 6, padding: '6px 8px', borderRadius: 5,
+                        background: 'rgba(10,50,100,0.35)', border: '1px solid rgba(40,120,200,0.25)',
+                        display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, fontSize: 9,
+                      }}>
+                        <MetricCell label="Current" value={
+                          g.metric.currentDisplay
+                            ?? (g.metric.currentValue !== null ? formatMetric(g.metric.currentValue, g.metric.unit) : '—')
+                        } />
+                        <MetricCell label="Target" value={
+                          g.metric.targetValue !== null ? formatMetric(g.metric.targetValue, g.metric.unit) : '—'
+                        } />
+                        <MetricCell label="Source" value={formatProgressSource(g.metric.progressSource)} />
                       </div>
                     )}
                   </div>
