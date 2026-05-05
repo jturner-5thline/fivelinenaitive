@@ -119,7 +119,14 @@ export function WeeklyRundownOpsProjectsPage() {
       )}
 
       {/* Team Task Completion (Asana) */}
-      <div className={cn(GLASS_CARD, 'p-4 mb-4')}>
+      <OperationalDashboard
+        data={data ?? null}
+        isLoading={isLoading}
+        error={error as Error | null}
+        onRefetch={refetch}
+      />
+
+      <div className={cn(GLASS_CARD, 'p-4 mb-4 mt-4')}>
         <h3 className="text-xs font-semibold text-foreground mb-3">Team Task Completion Rate — This Week</h3>
         <p className="text-[10px] text-muted-foreground/60 mb-2">
           Asana tasks due or completed in the current week, per team member.
@@ -308,13 +315,6 @@ export function WeeklyRundownOpsProjectsPage() {
           </Table>
         )}
       </div>
-
-      <OperationalDashboard
-        data={data ?? null}
-        isLoading={isLoading}
-        error={error as Error | null}
-        onRefetch={refetch}
-      />
 
       {memberDrilldown && (
         <AsanaDrilldownDialog
