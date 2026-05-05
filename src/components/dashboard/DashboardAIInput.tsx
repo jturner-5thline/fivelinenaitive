@@ -152,27 +152,12 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
     });
   }, [user]);
 
-  // Auto-show Morning Intelligence Brief once per ET-day on first dashboard chat open.
-  // Triggers if it's ≥6am ET and the brief hasn't been shown today.
-  useEffect(() => {
-    if (autoBriefedRef.current) return;
-    if (messages.length > 0) return;
-    if (!user) return;
-    if (loadingHistory) return;
-    if (!shouldAutoShowIntelBrief(user.id)) return;
-    autoBriefedRef.current = true;
-    markIntelBriefShown(user.id);
-    const briefingMsg: ChatMessage = {
-      role: 'assistant',
-      content: INTEL_BRIEF_MARKER,
-      created_at: new Date().toISOString(),
-    };
-    setMessages([briefingMsg]);
-    // Intentionally do NOT persist to a conversation — the brief is ephemeral
-    // and rebuilds itself live from current data on each render. Persisting
-    // a marker would also rehydrate the chat on next mount and defeat the
-    // "fresh assistant on dashboard mount" reset above.
-  }, [user, messages.length, loadingHistory, setMessages]);
+  // Note: the Morning Intelligence Brief used to auto-inject an assistant
+  // message into the chat on first dashboard open. That counted as a
+  // "preloaded response" and violated the fresh-chat-on-mount contract,
+  // so it has been disabled. Users can still open the brief explicitly
+  // from its dedicated entry points; the dashboard chat now stays empty
+  // until the user types something.
 
   /** Populate input and select [placeholder] if present */
   const populateInput = useCallback((text: string) => {
