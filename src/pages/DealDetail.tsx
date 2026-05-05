@@ -5149,6 +5149,9 @@ export default function DealDetail() {
             <LendersKanban
               lenders={deal.lenders}
               dealId={deal.id}
+              dealName={deal.name}
+              dealCompany={deal.company}
+              onFollowUpSent={() => refreshDeals?.()}
               configuredStages={configuredStages}
               stageGroups={stageGroups}
               passReasons={passReasons}
