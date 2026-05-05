@@ -327,5 +327,163 @@ export function AsanaGoalsPortfoliosSection() {
         </div>
       </Card>
     </div>
+      {openPortfolio && (
+        <PortfolioGoalsDrawer
+          portfolio={openPortfolio}
+          onClose={() => setOpenPortfolio(null)}
+        />
+      )}
+    </>
+  );
+}
+
+interface PortfolioGoalRow {
+  gid: string;
+  name: string;
+  due_on: string | null;
+  permalink_url: string | null;
+  owner?: { name?: string } | null;
+  status?: string | null;
+  progress_status?: string | null;
+  current_status_update?: { status_type?: string } | null;
+  metric?: { current_display_value?: string | null; current_number_value?: number | null; target_number_value?: number | null; initial_number_value?: number | null; unit?: string | null } | null;
+  time_period?: { display_name?: string | null } | null;
+}
+
+function mapGoalStatus(raw: string | null | undefined): string {
+  const v = (raw || '').toLowerCase();
+  if (!v) return 'No status';
+  if (v.includes('achieved') || v.includes('complete')) return 'Achieved';
+  if (v.includes('on_track') || v === 'green') return 'On Track';
+  if (v.includes('at_risk') || v === 'yellow') return 'At Risk';
+  if (v.includes('off_track') || v.includes('behind') || v === 'red' || v.includes('missed')) return 'Behind';
+  return 'No status';
+}
+
+function PortfolioGoalsDrawer({
+  portfolio,
+  onClose,
+}: {
+  portfolio: { gid: string; name: string; url: string | null };
+  onClose: () => void;
+}) {
+  const { company } = useCompany();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [goals, setGoals] = useState<PortfolioGoalRow[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!company?.id) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const { data: integration, error: intErr } = await supabase
+          .from('integrations')
+          .select('id')
+          .eq('type', 'asana')
+          .eq('status', 'connected')
+          .eq('company_id', company.id)
+          .limit(1)
+          .maybeSingle();
+        if (intErr) throw intErr;
+        if (!integration) throw new Error('Asana not connected');
+        const { data, error: fnErr } = await supabase.functions.invoke('asana-proxy', {
+          body: { action: 'portfolio_goals', integration_id: integration.id, portfolio_gid: portfolio.gid },
+        });
+        if (fnErr) throw fnErr;
+        if (!data?.success) throw new Error(data?.error || 'Failed to load goals');
+        if (!cancelled) setGoals(data.goals || []);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load goals');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [company?.id, portfolio.gid]);
+
+  return (
+    <Sheet open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <SheetContent side="right" className="w-[460px] sm:max-w-[460px] overflow-y-auto bg-[#061633] border-[rgba(40,120,200,0.3)]">
+        <SheetHeader>
+          <SheetTitle className="text-[#e8f6ff]">
+            {portfolio.name}
+            {portfolio.url && (
+              <a href={portfolio.url} target="_blank" rel="noreferrer" style={{ marginLeft: 6, color: '#4db8ff' }}>
+                <ExternalLink size={12} style={{ display: 'inline' }} />
+              </a>
+            )}
+          </SheetTitle>
+          <SheetDescription className="text-[rgba(160,210,255,0.6)] text-xs">
+            Goals supporting this portfolio
+          </SheetDescription>
+        </SheetHeader>
+
+        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {loading ? (
+            <div style={{ padding: 24, textAlign: 'center', color: 'rgba(160,210,255,0.55)', fontSize: 12 }}>
+              <Loader2 size={14} className="animate-spin" style={{ display: 'inline', marginRight: 6 }} />
+              Loading goals…
+            </div>
+          ) : error ? (
+            <div style={{ padding: 16, color: '#ff6b7a', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <AlertCircle size={14} /> {error}
+            </div>
+          ) : goals.length === 0 ? (
+            <div style={{ padding: 16, textAlign: 'center', color: 'rgba(160,210,255,0.55)', fontSize: 12 }}>
+              No goals attached to this portfolio.
+            </div>
+          ) : (
+            goals.map((g) => {
+              const rawStatus = g.current_status_update?.status_type || g.progress_status || g.status || null;
+              const status = mapGoalStatus(rawStatus);
+              const color = STATUS_COLOR[status] || 'rgba(160,210,255,0.6)';
+              const due = g.due_on ? format(new Date(g.due_on), 'MMM d, yyyy') : null;
+              const m = g.metric;
+              let pct: number | null = null;
+              if (m && typeof m.current_number_value === 'number' && typeof m.target_number_value === 'number') {
+                const start = typeof m.initial_number_value === 'number' ? m.initial_number_value : 0;
+                const span = m.target_number_value - start;
+                if (span !== 0) pct = Math.max(0, Math.min(100, Math.round(((m.current_number_value - start) / span) * 100)));
+              }
+              return (
+                <div key={g.gid} style={{ padding: 10, borderRadius: 8, background: 'rgba(20,80,160,0.18)', border: '1px solid rgba(40,100,180,0.25)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#e8f6ff' }}>
+                        {g.permalink_url ? (
+                          <a href={g.permalink_url} target="_blank" rel="noreferrer" style={{ color: '#e8f6ff', textDecoration: 'none' }}>
+                            {g.name} <ExternalLink size={10} style={{ display: 'inline', opacity: 0.5 }} />
+                          </a>
+                        ) : g.name}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'rgba(160,210,255,0.55)', marginTop: 2 }}>
+                        {g.owner?.name || '—'}
+                        {due ? ` · due ${due}` : ''}
+                        {g.time_period?.display_name ? ` · ${g.time_period.display_name}` : ''}
+                      </div>
+                      {m?.current_display_value && (
+                        <div style={{ fontSize: 10, color: 'rgba(160,210,255,0.7)', marginTop: 2 }}>{m.current_display_value}</div>
+                      )}
+                    </div>
+                    <StatusPill status={status} />
+                  </div>
+                  {pct !== null && (
+                    <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ flex: 1, height: 4, background: 'rgba(40,100,180,0.25)', borderRadius: 2, overflow: 'hidden' }}>
+                        <div style={{ width: `${pct}%`, height: '100%', background: color }} />
+                      </div>
+                      <span style={{ fontSize: 10, color, fontWeight: 700, minWidth: 32, textAlign: 'right' }}>{pct}%</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
