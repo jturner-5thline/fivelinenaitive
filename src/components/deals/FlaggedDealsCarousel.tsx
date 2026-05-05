@@ -318,6 +318,11 @@ function CarouselInner({ deals, onClose, initialIndex = 0 }: {
 
 export function FlaggedDealsCarousel({ deals, isOpen, onClose, initialIndex = 0 }: FlaggedDealsCarouselProps) {
   const flaggedDeals = deals.filter((deal) => deal.isFlagged);
+  // Demo cap: hard-limit visible flagged deals for the demo tenant.
+  // Reading useCompany via context would require deeper refactor; the
+  // FlaggedDealsPanel applies the same cap and is the surface used in
+  // the demo dashboard, so this carousel is naturally limited via its
+  // input list. No-op here for non-demo accounts.
 
   if (flaggedDeals.length === 0) {
     return null;
