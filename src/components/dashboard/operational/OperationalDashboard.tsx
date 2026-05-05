@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { ChevronRight, MoreHorizontal, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import {
@@ -8,6 +8,7 @@ import {
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { PieGlassDefs, pieGlassFill, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
 import { differenceInDays, parseISO, isAfter, isBefore, addDays, startOfDay, endOfDay, startOfWeek, endOfWeek } from 'date-fns';
+import { AsanaDrilldownDialog, type AsanaDrilldownItem } from './AsanaDrilldownDialog';
 
 // ── Glass surface tokens ───────────────────────────────────────
 const GLASS_CARD = 'bg-white/[0.03] backdrop-blur-xl glass-border-soft rounded-lg';
@@ -54,9 +55,18 @@ interface OperationalDashboardProps {
 }
 
 // ── KPI Card ───────────────────────────────────────────────────
-function KPICard({ label, value, description }: { label: string; value: string; description: string }) {
+function KPICard({ label, value, description, onClick }: { label: string; value: string; description: string; onClick?: () => void }) {
   return (
-    <div className={cn(GLASS_CARD, 'p-4 flex flex-col justify-between min-h-[88px] transition-all hover:border-white/[0.12]')}>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!onClick}
+      className={cn(
+        GLASS_CARD,
+        'p-4 flex flex-col justify-between min-h-[88px] transition-all text-left',
+        onClick ? 'hover:border-white/[0.18] hover:bg-white/[0.05] cursor-pointer' : 'cursor-default',
+      )}
+    >
       <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 leading-tight">
         {label}
       </p>
@@ -64,7 +74,7 @@ function KPICard({ label, value, description }: { label: string; value: string; 
         {value}
       </p>
       <p className="text-[10px] text-muted-foreground/50 mt-1">{description}</p>
-    </div>
+    </button>
   );
 }
 
