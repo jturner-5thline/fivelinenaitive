@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 export type NewsCategory = 'all' | 'watchlist' | 'active-deals' | 'lenders' | 'borrowers' | 'competitors' | 'market' | 'regulatory' | 'sectors';
@@ -300,102 +301,112 @@ const FALLBACK_NEWS: NewsItem[] = [
   },
 ];
 
-const CACHE_KEY = 'news-feed-cache-v5';
-const CACHE_DURATION = 15 * 60 * 1000;
+const CACHE_DURATION_MS = 15 * 60 * 1000;
+const SLOW_LOAD_TIMEOUT_MS = 5_000;
+const DEFAULT_PAGE_SIZE = 8;
 
-interface CachedNews {
-  news: NewsItem[];
-  timestamp: number;
+const enrichNews = (items: NewsItem[]): NewsItem[] =>
+  items.map(item => ({
+    ...item,
+    sourceTier: item.sourceTier || getSourceTier(item.source),
+  }));
+
+export const NEWS_QUERY_KEY = ['news-feed', 'v6'] as const;
+
+export async function fetchNewsFeed(forceRefresh = false): Promise<{ news: NewsItem[]; fetchedAt: Date }> {
+  const { data: lenderData } = await supabase
+    .from('master_lenders')
+    .select('name')
+    .limit(20);
+
+  const lenderNames = lenderData?.map(l => l.name) || [];
+
+  const { data, error: fnError } = await supabase.functions.invoke('fetch-news', {
+    body: { lenderNames, forceRefresh },
+  });
+
+  if (fnError) throw new Error(fnError.message);
+
+  if (data?.news && data.news.length > 0) {
+    return {
+      news: enrichNews(data.news),
+      fetchedAt: data.cachedAt ? new Date(data.cachedAt) : new Date(),
+    };
+  }
+
+  // Upstream returned nothing — fall back so the UI is never blank.
+  return { news: enrichNews(FALLBACK_NEWS), fetchedAt: new Date() };
 }
 
-export function useNews() {
-  const [news, setNews] = useState<NewsItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [lastFetched, setLastFetched] = useState<Date | null>(null);
+/**
+ * Prefetch the news feed into the shared react-query cache. Safe to call from
+ * the dashboard so the News section renders instantly on first open.
+ */
+export function prefetchNewsFeed(queryClient: ReturnType<typeof useQueryClient>) {
+  return queryClient.prefetchQuery({
+    queryKey: NEWS_QUERY_KEY,
+    queryFn: () => fetchNewsFeed(false),
+    staleTime: CACHE_DURATION_MS,
+  });
+}
 
-  const enrichNews = (items: NewsItem[]): NewsItem[] => {
-    return items.map(item => ({
-      ...item,
-      sourceTier: item.sourceTier || getSourceTier(item.source),
-    }));
-  };
+export function useNews(options?: { pageSize?: number }) {
+  const pageSize = options?.pageSize ?? DEFAULT_PAGE_SIZE;
+  const queryClient = useQueryClient();
 
-  const fetchNews = useCallback(async (forceRefresh = false) => {
-    if (!forceRefresh) {
-      try {
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (cached) {
-          const { news: cachedNews, timestamp }: CachedNews = JSON.parse(cached);
-          if (Date.now() - timestamp < CACHE_DURATION) {
-            setNews(enrichNews(cachedNews));
-            setLastFetched(new Date(timestamp));
-            setIsLoading(false);
-            return;
-          }
-        }
-      } catch (e) {
-        console.error('Error reading cache:', e);
-      }
-    }
+  const query = useQuery({
+    queryKey: NEWS_QUERY_KEY,
+    queryFn: () => fetchNewsFeed(false),
+    staleTime: CACHE_DURATION_MS,
+    gcTime: CACHE_DURATION_MS * 2,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
 
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const { data: lenderData } = await supabase
-        .from('master_lenders')
-        .select('name')
-        .limit(20);
-
-      const lenderNames = lenderData?.map(l => l.name) || [];
-
-      const { data, error: fnError } = await supabase.functions.invoke('fetch-news', {
-        body: { lenderNames }
-      });
-
-      if (fnError) {
-        throw new Error(fnError.message);
-      }
-
-      if (data?.news && data.news.length > 0) {
-        const enriched = enrichNews(data.news);
-        setNews(enriched);
-        setLastFetched(new Date());
-        const cacheData: CachedNews = { news: enriched, timestamp: Date.now() };
-        localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
-      } else {
-        setNews(enrichNews(FALLBACK_NEWS));
-        setError('Using cached news data');
-      }
-    } catch (err) {
-      console.error('Error fetching news:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch news');
-      try {
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (cached) {
-          const { news: cachedNews }: CachedNews = JSON.parse(cached);
-          setNews(enrichNews(cachedNews));
-        } else {
-          setNews(enrichNews(FALLBACK_NEWS));
-        }
-      } catch {
-        setNews(enrichNews(FALLBACK_NEWS));
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
+  // Soft "taking longer than usual" timeout: surface a recoverable error
+  // after 5 seconds while the request continues in the background.
+  const [slow, setSlow] = useState(false);
   useEffect(() => {
-    fetchNews();
-  }, [fetchNews]);
+    if (!query.isLoading) {
+      setSlow(false);
+      return;
+    }
+    const t = setTimeout(() => setSlow(true), SLOW_LOAD_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [query.isLoading]);
+
+  // Lazy pagination — render the first N items immediately and reveal more
+  // on demand without re-fetching.
+  const [visibleCount, setVisibleCount] = useState(pageSize);
+  useEffect(() => {
+    setVisibleCount(pageSize);
+  }, [pageSize, query.data?.fetchedAt?.getTime()]);
+
+  const allNews = query.data?.news ?? [];
+  const visibleNews = useMemo(() => allNews.slice(0, visibleCount), [allNews, visibleCount]);
+
+  const hardError = query.isError ? (query.error as Error)?.message ?? 'Failed to fetch news' : null;
+  const slowError = !query.data && query.isLoading && slow
+    ? 'News is taking longer than usual to load. Try refreshing.'
+    : null;
 
   return {
-    news,
-    isLoading,
-    error,
-    lastFetched,
-    refetch: () => fetchNews(true),
+    /** Page-limited list — drives the visible grid. */
+    news: visibleNews,
+    /** Full list — useful for filters/counts. */
+    allNews,
+    isLoading: query.isLoading && !query.data,
+    isFetching: query.isFetching,
+    error: hardError ?? slowError,
+    isSlow: slow,
+    lastFetched: query.data?.fetchedAt ?? null,
+    hasMore: visibleCount < allNews.length,
+    loadMore: () => setVisibleCount(c => Math.min(c + pageSize, allNews.length)),
+    refetch: async () => {
+      // Force a fresh upstream fetch and repopulate the cache.
+      const fresh = await fetchNewsFeed(true);
+      queryClient.setQueryData(NEWS_QUERY_KEY, fresh);
+      return fresh;
+    },
   };
 }
