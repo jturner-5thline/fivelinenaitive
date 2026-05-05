@@ -170,7 +170,7 @@ function PieLegend({
 }
 
 // ── Derived metrics from real data ─────────────────────────────
-function useDerivedMetrics(data: OperationalData | null) {
+function useDerivedMetrics(data: OperationalData | null, projectFilter: string | null) {
   return useMemo(() => {
     if (!data) return null;
 
@@ -179,9 +179,18 @@ function useDerivedMetrics(data: OperationalData | null) {
     const weekStart = startOfWeek(now, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
 
-    // All tasks combined
-    const allTasks = [...(data.overdue ?? []), ...(data.today ?? []), ...(data.upcoming ?? [])];
-    const completedTasks = data.recentlyCompleted ?? [];
+    // Apply project filter to task lists. Project-level lists stay unfiltered
+    // so the project widgets keep their portfolio-wide context.
+    const matchesProject = (t: any) =>
+      !projectFilter || (t.project_name || 'Unknown') === projectFilter;
+    const overdueRaw = (data.overdue ?? []).filter(matchesProject);
+    const todayRaw = (data.today ?? []).filter(matchesProject);
+    const upcomingRaw = (data.upcoming ?? []).filter(matchesProject);
+    const completedRaw = (data.recentlyCompleted ?? []).filter(matchesProject);
+
+    // All tasks combined (filtered)
+    const allTasks = [...overdueRaw, ...todayRaw, ...upcomingRaw];
+    const completedTasks = completedRaw;
 
     // KPI 1: Milestones due in next 2 weeks (from today + upcoming, filter milestones with due_on in range)
     const milestonesNext2WeeksItems = allTasks.filter(t => {
@@ -234,7 +243,8 @@ function useDerivedMetrics(data: OperationalData | null) {
       .map(([assignee, items]) => ({ assignee, count: items.length, items }))
       .sort((a, b) => b.count - a.count);
 
-    // Chart 2: Overdue tasks by project
+    // Chart 2: Overdue tasks by project — always derived from the unfiltered
+    // overdue list so the legend/filter source stays stable.
     const overdueByProject = new Map<string, any[]>();
     (data.overdue ?? []).forEach((t: any) => {
       const proj = t.project_name || 'Unknown';
@@ -303,12 +313,13 @@ function useDerivedMetrics(data: OperationalData | null) {
       projectsDueBuckets,
       projectsAll: data.projects ?? [],
     };
-  }, [data]);
+  }, [data, projectFilter]);
 }
 
 // ── Main Dashboard ─────────────────────────────────────────────
 export function OperationalDashboard({ data, isLoading, error, onRefetch }: OperationalDashboardProps) {
-  const metrics = useDerivedMetrics(data);
+  const [projectFilter, setProjectFilter] = useState<string | null>(null);
+  const metrics = useDerivedMetrics(data, projectFilter);
   const [drilldown, setDrilldown] = useState<{
     title: string;
     subtitle?: string;
