@@ -121,15 +121,30 @@ function ChartCard({
 }
 
 // ── Custom pie legend ──────────────────────────────────────────
-function PieLegend({ items }: { items: { label: string; color: string; count: number }[] }) {
+function PieLegend({
+  items,
+  onItemClick,
+}: {
+  items: { label: string; color: string; count: number }[];
+  onItemClick?: (label: string) => void;
+}) {
   return (
     <div className="flex flex-col gap-1.5 pl-2">
       {items.map((item) => (
-        <div key={item.label} className="flex items-center gap-2 text-[10px]">
+        <button
+          key={item.label}
+          type="button"
+          onClick={onItemClick ? () => onItemClick(item.label) : undefined}
+          disabled={!onItemClick}
+          className={cn(
+            'flex items-center gap-2 text-[10px] text-left rounded px-1 -mx-1 transition-colors',
+            onItemClick ? 'hover:bg-white/[0.05] cursor-pointer' : 'cursor-default',
+          )}
+        >
           <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
           <span className="text-muted-foreground truncate">{item.label}</span>
           <span className="font-semibold text-foreground tabular-nums ml-auto">{item.count}</span>
-        </div>
+        </button>
       ))}
     </div>
   );
