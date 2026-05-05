@@ -711,11 +711,13 @@ export function ManagementSnapshotDashboard({
     'exec-deals-by-status':         { minW: 4, minH: 5, maxH: 12 },
   };
 
-  // 'exec-week-selector' is retired; its layout slot is collapsed.
+  // Executive Dashboard section (and its sub-widgets) has been removed
+  // from the Weekly Rundown. Filter out any exec-* tiles and never
+  // render the legacy executive section, regardless of persisted state.
   const visibleSubWidgets = ALL_SUB_WIDGET_IDS.filter(
-    id => id !== 'exec-week-selector' && !hiddenSubWidgets.includes(id),
+    id => !id.startsWith('exec-') && !hiddenSubWidgets.includes(id),
   );
-  const includeExec = !hiddenSections.includes('executive-dashboard');
+  const includeExec = false;
 
   const UNIFIED_CONSTRAINTS: Record<string, WidgetConstraint> = {
     ...TOP_GRID_CONSTRAINTS,
