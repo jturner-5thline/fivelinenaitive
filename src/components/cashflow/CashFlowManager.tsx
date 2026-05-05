@@ -651,9 +651,9 @@ export function CashFlowManager() {
     () => mergeScheduledIntoWeekly(
       isConfigureFilterActive ? zeroedWeeklyShell : rawWeekly,
       filteredScheduledItems,
-      { lockHistoricalThrough: LAST_HISTORICAL_WEEK_ENDING },
+      { lockHistoricalThrough: LAST_HISTORICAL_WEEK_ENDING, weeklyOverrides },
     ),
-    [rawWeekly, zeroedWeeklyShell, filteredScheduledItems, isConfigureFilterActive],
+    [rawWeekly, zeroedWeeklyShell, filteredScheduledItems, isConfigureFilterActive, weeklyOverrides],
   );
 
   // Overlay Line of Credit availability onto the weekly data:
