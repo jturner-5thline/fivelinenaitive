@@ -535,15 +535,17 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
             <>
               <div className="flex items-center justify-between px-2 pt-1 pb-1">
                 <span className="text-[10px] text-muted-foreground/70">
-                  {projectFilter ? 'Filtering dashboard by project' : 'Click a bar or project to filter the dashboard'}
+                  {hasProjectFilter
+                    ? `Filtering dashboard by ${projectFilters.length} project${projectFilters.length === 1 ? '' : 's'}`
+                    : 'Click bars or legend items to filter (multi-select)'}
                 </span>
-                {projectFilter && (
+                {hasProjectFilter && (
                   <button
                     type="button"
-                    onClick={() => setProjectFilter(null)}
+                    onClick={clearProjectFilters}
                     className="text-[10px] text-primary hover:underline"
                   >
-                    Clear
+                    Clear all
                   </button>
                 )}
               </div>
@@ -564,7 +566,7 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                     tickFormatter={(v: string) => truncateLabel(v, maxLabelChars(Y_AXIS_WIDTH, Y_AXIS_FONT))}
                     onClick={(o: any) => {
                       const v = o?.value;
-                      if (v) setProjectFilter(projectFilter === v ? null : v);
+                      toggleProjectFilter(v);
                     }}
                   />
                   <Tooltip contentStyle={TOOLTIP_STYLE} labelFormatter={(label) => String(label)} />
@@ -574,7 +576,7 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                     name="Overdue"
                     onClick={(entry: any) => {
                       const v = entry?.project;
-                      if (v) setProjectFilter(projectFilter === v ? null : v);
+                      toggleProjectFilter(v);
                     }}
                     style={{ cursor: 'pointer' }}
                   >
@@ -582,7 +584,7 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                       <Cell
                         key={i}
                         fill={CHART_COLORS[i % CHART_COLORS.length]}
-                        fillOpacity={!projectFilter || projectFilter === b.project ? 1 : 0.3}
+                        fillOpacity={!hasProjectFilter || isProjectSelected(b.project) ? 1 : 0.3}
                       />
                     ))}
                   </Bar>
@@ -590,12 +592,12 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
               </ResponsiveContainer>
               <div className="flex flex-wrap gap-1 px-2 pt-2 pb-1">
                 {overdueBuckets.map((b: any, i: number) => {
-                  const active = projectFilter === b.project;
+                  const active = isProjectSelected(b.project);
                   return (
                     <button
                       key={b.project}
                       type="button"
-                      onClick={() => setProjectFilter(active ? null : b.project)}
+                      onClick={() => toggleProjectFilter(b.project)}
                       title={`${b.project} (${b.count} overdue)`}
                       className={cn(
                         'flex items-center gap-1.5 text-[10px] rounded px-1.5 py-0.5 border transition-colors max-w-[180px]',
