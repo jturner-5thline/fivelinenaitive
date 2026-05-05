@@ -382,11 +382,12 @@ export function usePipelineData(enabled: boolean, targetDealOwnerName?: string) 
   const { user } = useAuth();
   const { deals: allDeals } = useDealsContext();
   const window = useBriefingWindow();
+  const activePipelineId = useActivePipelineId();
 
-  const deals = useMemo(
-    () => (targetDealOwnerName ? getDealsForUserName(allDeals, targetDealOwnerName) : allDeals),
-    [allDeals, targetDealOwnerName],
-  );
+  const deals = useMemo(() => {
+    const scoped = targetDealOwnerName ? getDealsForUserName(allDeals, targetDealOwnerName) : allDeals;
+    return filterRundownEligibleDeals(scoped as any[], activePipelineId);
+  }, [allDeals, targetDealOwnerName, activePipelineId]);
   const dealIdSet = useMemo(() => new Set(deals.map(d => d.id)), [deals]);
   const isDelegated = !!targetDealOwnerName;
 
