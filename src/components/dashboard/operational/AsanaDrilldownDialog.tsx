@@ -32,6 +32,10 @@ interface Props {
   items: AsanaDrilldownItem[];
   /** "task" → links to task permalink; "project" → links to project permalink. */
   kind: 'task' | 'project';
+  /** Active dashboard-wide project filter chips that scoped this drill-down. */
+  activeProjectFilters?: string[];
+  /** Called when user clicks the header "Clear" button to reset project filters. */
+  onClearProjectFilters?: () => void;
 }
 
 function fmtDate(iso?: string | null) {
@@ -43,7 +47,16 @@ function fmtDate(iso?: string | null) {
   }
 }
 
-export function AsanaDrilldownDialog({ open, onOpenChange, title, subtitle, items, kind }: Props) {
+export function AsanaDrilldownDialog({
+  open,
+  onOpenChange,
+  title,
+  subtitle,
+  items,
+  kind,
+  activeProjectFilters,
+  onClearProjectFilters,
+}: Props) {
   const [ownerFilter, setOwnerFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
@@ -126,6 +139,30 @@ export function AsanaDrilldownDialog({ open, onOpenChange, title, subtitle, item
         <DialogHeader>
           <DialogTitle className="text-sm">{title}</DialogTitle>
           {subtitle && <p className="text-[11px] text-muted-foreground">{subtitle}</p>}
+          {activeProjectFilters && activeProjectFilters.length > 0 && (
+            <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
+              <span className="text-[10px] text-muted-foreground">
+                Scoped to {activeProjectFilters.length === 1 ? 'project' : `${activeProjectFilters.length} projects`}:
+              </span>
+              {activeProjectFilters.map((p) => (
+                <Badge key={p} variant="secondary" className="text-[10px]">
+                  {p}
+                </Badge>
+              ))}
+              {onClearProjectFilters && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[10px] gap-1"
+                  onClick={onClearProjectFilters}
+                >
+                  <X className="h-3 w-3" />
+                  Clear project filter{activeProjectFilters.length > 1 ? 's' : ''}
+                </Button>
+              )}
+            </div>
+          )}
         </DialogHeader>
 
         {showFilterBar && (
