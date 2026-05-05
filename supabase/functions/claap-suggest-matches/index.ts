@@ -416,6 +416,22 @@ serve(async (req) => {
             });
           }
         }
+        // Direct lender match by attendee email domain (master directory)
+        if (lenderByDomain[domain]) {
+          for (const ld of lenderByDomain[domain]) {
+            const k = `lender:${ld.name}`;
+            if (!seenLabels.has(k)) {
+              seenLabels.add(k);
+              extraSuggestions.push({
+                match_type: "lender",
+                lender_name: ld.name,
+                label: ld.name,
+                score: 80,
+                reasons: [`Attendee domain @${domain} matches lender "${ld.name}" (directory)`],
+              });
+            }
+          }
+        }
         // Lender match by name token vs domain
         for (const lname of allLenderNames) {
           const core = lname.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -433,6 +449,49 @@ serve(async (req) => {
               });
               break;
             }
+          }
+        }
+      }
+
+      // Title-only token overlap with CRM companies & lenders (when no email/domain hit)
+      const titleTokens = new Set(tokenize(meeting.title || ""));
+      if (titleTokens.size > 0) {
+        for (const co of (crmCompanies || [])) {
+          const k = `company:${co.id}`;
+          if (seenLabels.has(k)) continue;
+          const ct = tokenize(co.name || "");
+          if (ct.length === 0) continue;
+          let overlap = 0;
+          const matched: string[] = [];
+          for (const t of ct) if (titleTokens.has(t)) { overlap++; matched.push(t); }
+          if (overlap >= 2 || (overlap === 1 && matched[0].length >= 6 && ct.length === 1)) {
+            seenLabels.add(k);
+            extraSuggestions.push({
+              match_type: "company",
+              company_name: co.name,
+              label: co.name,
+              score: overlap >= 2 ? 55 : 35,
+              reasons: [`Title shares [${matched.join(", ")}] with company "${co.name}"`],
+            });
+          }
+        }
+        for (const lname of allLenderNames) {
+          const k = `lender:${lname}`;
+          if (seenLabels.has(k)) continue;
+          const lt = tokenize(lname);
+          if (lt.length === 0) continue;
+          let overlap = 0;
+          const matched: string[] = [];
+          for (const t of lt) if (titleTokens.has(t)) { overlap++; matched.push(t); }
+          if (overlap >= 2) {
+            seenLabels.add(k);
+            extraSuggestions.push({
+              match_type: "lender",
+              lender_name: lname,
+              label: lname,
+              score: 50,
+              reasons: [`Title mentions lender "${lname}" [${matched.join(", ")}]`],
+            });
           }
         }
       }
