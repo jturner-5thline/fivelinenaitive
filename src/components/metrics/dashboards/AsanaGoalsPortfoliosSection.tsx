@@ -1,8 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { ExternalLink, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
+import { ExternalLink, RefreshCw, Loader2, AlertCircle, ChevronRight } from 'lucide-react';
 import { useAsanaGoals } from '@/hooks/useAsanaGoals';
 import { useAsanaPortfolios } from '@/hooks/useAsanaPortfolios';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/hooks/useCompany';
 
 const ASANA_GOALS_URL = 'https://app.asana.com/0/goals';
 
@@ -72,6 +75,7 @@ function RefreshBtn({ onClick, busy }: { onClick: () => void; busy: boolean }) {
 export function AsanaGoalsPortfoliosSection() {
   const goals = useAsanaGoals();
   const portfolios = useAsanaPortfolios();
+  const [openPortfolio, setOpenPortfolio] = useState<{ gid: string; name: string; url: string | null } | null>(null);
 
   const lastSync = goals.lastSyncedAt || portfolios.lastSyncedAt;
 
