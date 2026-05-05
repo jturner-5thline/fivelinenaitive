@@ -257,11 +257,12 @@ export function PipelineMetricWidget({
 // ---------------------------------------------------------------------------
 // Combined Pipeline Metric tile — shows deal count AND dollar volume side-by-side.
 // ---------------------------------------------------------------------------
-export type CombinedPipelineMetricId = 'debt-on-board-combined' | 'debt-signed-combined';
+export type CombinedPipelineMetricId = 'debt-on-board-combined' | 'debt-signed-combined' | 'debt-closed-combined';
 
 export const COMBINED_PIPELINE_METRIC_LABELS: Record<CombinedPipelineMetricId, string> = {
   'debt-on-board-combined': 'Deals on the Board',
   'debt-signed-combined': 'Deals Signed',
+  'debt-closed-combined': 'Deals Closed',
 };
 
 export function CombinedPipelineMetricWidget({
@@ -287,15 +288,27 @@ export function CombinedPipelineMetricWidget({
         drilldownTitle: 'Deals on the Board — Active Pipeline',
       };
     }
+    if (cardId === 'debt-signed-combined') {
+      return {
+        title: 'Deals Signed',
+        icon: FileCheck,
+        color: 'hsl(var(--chart-3))',
+        count: metrics.debtDealsSigned.count,
+        dollars: metrics.debtDollarSigned.dollarVolume,
+        isLoading: metrics.debtDealsSigned.isLoading || metrics.debtDollarSigned.isLoading,
+        deals: metrics.debtDealsSigned.deals,
+        drilldownTitle: 'Debt Deals Signed — Final Credit Items',
+      };
+    }
     return {
-      title: 'Deals Signed',
+      title: 'Deals Closed',
       icon: FileCheck,
-      color: 'hsl(var(--chart-3))',
-      count: metrics.debtDealsSigned.count,
-      dollars: metrics.debtDollarSigned.dollarVolume,
-      isLoading: metrics.debtDealsSigned.isLoading || metrics.debtDollarSigned.isLoading,
-      deals: metrics.debtDealsSigned.deals,
-      drilldownTitle: 'Debt Deals Signed — Final Credit Items',
+      color: 'hsl(var(--chart-4))',
+      count: metrics.debtDealsClosed.count,
+      dollars: metrics.debtDollarClosed.dollarVolume,
+      isLoading: metrics.debtDealsClosed.isLoading || metrics.debtDollarClosed.isLoading,
+      deals: metrics.debtDealsClosed.deals,
+      drilldownTitle: 'Deals Closed — Funded / Invoiced',
     };
   })();
 

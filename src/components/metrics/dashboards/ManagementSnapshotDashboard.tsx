@@ -499,7 +499,7 @@ export type WeeklyRundownSubWidgetId =
   // Revenue Overview charts
   | 'rev-debt' | 'rev-finserv'
   // Pipeline Metrics KPIs (combined debt count+$ tiles, plus FinServ tiles)
-  | 'pm-debt-on-board-combined' | 'pm-debt-signed-combined'
+  | 'pm-debt-on-board-combined' | 'pm-debt-signed-combined' | 'pm-debt-closed-combined'
   | 'pm-finserv-deals-on-board' | 'pm-finserv-clients-signed'
   // Signed Deals & AR
   | 'sd-deals-signed' | 'sd-finserv-clients-signed' | 'sd-outstanding-ar'
@@ -514,6 +514,7 @@ export const SUB_WIDGET_LABELS: Record<WeeklyRundownSubWidgetId, string> = {
   'rev-finserv': 'FinServ Revenue',
   'pm-debt-on-board-combined': 'Deals on the Board',
   'pm-debt-signed-combined': 'Deals Signed',
+  'pm-debt-closed-combined': 'Deals Closed',
   'pm-finserv-deals-on-board': 'FinServ: Deals on the Board',
   'pm-finserv-clients-signed': 'FinServ Clients Signed',
   'sd-deals-signed': 'Deals Signed',
@@ -682,6 +683,7 @@ export function ManagementSnapshotDashboard({
     'rev-finserv': <FinServRevenueWidget selectedQuarter={selectedQuarter} />,
     'pm-debt-on-board-combined': <CombinedPipelineMetricWidget cardId="debt-on-board-combined" selectedQuarter={selectedQuarter} />,
     'pm-debt-signed-combined':   <CombinedPipelineMetricWidget cardId="debt-signed-combined"   selectedQuarter={selectedQuarter} />,
+    'pm-debt-closed-combined':   <CombinedPipelineMetricWidget cardId="debt-closed-combined"   selectedQuarter={selectedQuarter} />,
     'pm-finserv-deals-on-board': <PipelineMetricWidget cardId="finserv-deals-on-board"  selectedQuarter={selectedQuarter} />,
     'pm-finserv-clients-signed': <PipelineMetricWidget cardId="finserv-clients-signed"  selectedQuarter={selectedQuarter} />,
     'sd-deals-signed': <DealsSignedWidget selectedQuarter={selectedQuarter} />,
@@ -703,6 +705,7 @@ export function ManagementSnapshotDashboard({
     'rev-finserv': { minW: 4, minH: 4, maxH: 12 },
     'pm-debt-on-board-combined': { minW: 3, minH: 2, maxH: 5 },
     'pm-debt-signed-combined':   { minW: 3, minH: 2, maxH: 5 },
+    'pm-debt-closed-combined':   { minW: 3, minH: 2, maxH: 5 },
     'pm-finserv-deals-on-board': { minW: 2, minH: 2, maxH: 5 },
     'pm-finserv-clients-signed': { minW: 2, minH: 2, maxH: 5 },
     'sd-deals-signed':           { minW: 4, minH: 4, maxH: 12 },
