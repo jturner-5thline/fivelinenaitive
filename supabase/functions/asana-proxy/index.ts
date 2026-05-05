@@ -248,9 +248,6 @@ serve(async (req) => {
         break;
       }
 
-      default:
-        result = { success: false, error: `Unknown action: ${action}` };
-
       case "portfolio_milestones": {
         // Fetch milestone-type tasks across all projects in a portfolio.
         const resolvedToken = await resolveToken(token, integration_id);
@@ -302,6 +299,9 @@ serve(async (req) => {
         }
         break;
       }
+
+      default:
+        result = { success: false, error: `Unknown action: ${action}` };
     }
 
     return new Response(JSON.stringify(result), {
