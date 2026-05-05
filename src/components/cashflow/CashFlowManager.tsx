@@ -1003,7 +1003,6 @@ export function CashFlowManager() {
   // Pass `value === null` to clear the override and revert to computed value.
   const handleWeeklyCashOverride = useCallback(
     (weekKey: string, field: 'beginningCash' | 'endingCash', value: number | null) => {
-      if (role !== 'admin') return;
       setWeeklyOverrides(prev => {
         const next = { ...prev };
         const current = { ...(next[weekKey] || {}) };
@@ -1025,7 +1024,7 @@ export function CashFlowManager() {
           : `Override ${field === 'beginningCash' ? 'Beginning' : 'Ending'} Cash → ${value} (${weekKey})`
       );
     },
-    [role, logAction]
+    [logAction]
   );
 
   const handleArchive = useCallback((entry: { title: string; flags: ExportFlag[]; notes: string; weekCount: number; dateRange: string }) => {
