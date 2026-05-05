@@ -1624,8 +1624,9 @@ function MetricsInner() {
       { i: 'pm-debt-on-board-combined', x: 0, y: 18, w: 4, h: 2, minW: 3, minH: 2 },
       { i: 'pm-debt-signed-combined',   x: 4, y: 18, w: 4, h: 2, minW: 3, minH: 2 },
       { i: 'pm-debt-closed-combined',   x: 8, y: 18, w: 4, h: 2, minW: 3, minH: 2 },
-      { i: 'pm-finserv-deals-on-board', x: 0, y: 20, w: 2, h: 2, minW: 2, minH: 2 },
-      { i: 'pm-finserv-clients-signed', x: 2, y: 20, w: 2, h: 2, minW: 2, minH: 2 },
+      // Match the three Deals widgets above (w:4, h:2) so all five KPI cards share the same footprint.
+      { i: 'pm-finserv-deals-on-board', x: 0, y: 20, w: 4, h: 2, minW: 3, minH: 2 },
+      { i: 'pm-finserv-clients-signed', x: 4, y: 20, w: 4, h: 2, minW: 3, minH: 2 },
       { i: 'sd-deals-signed',           x: 0, y: 20, w: 4, h: 6, minW: 3, minH: 3 },
       { i: 'sd-finserv-clients-signed', x: 4, y: 20, w: 4, h: 6, minW: 3, minH: 3 },
       { i: 'exec-deals-by-status',      x: 8, y: 20, w: 4, h: 6, minW: 3, minH: 3 },
