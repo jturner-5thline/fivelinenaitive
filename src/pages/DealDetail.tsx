@@ -2838,7 +2838,7 @@ export default function DealDetail() {
                     <TabsTrigger value="deal-space" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
                       <Sparkles className="h-3.5 w-3.5" />
                       Deal Space
-                      <BetaBadge featureKey="page_deal_space" />
+                      {!isDemoAccount && <BetaBadge featureKey="page_deal_space" />}
                     </TabsTrigger>
                     )}
                     <TabsTrigger value="deal-info" className="whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">Deal Info</TabsTrigger>
