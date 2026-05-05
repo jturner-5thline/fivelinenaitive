@@ -252,6 +252,38 @@ function topReason(
   return { label, count, deals: dealsByHead.get(label) || [] };
 }
 
+function topAdvance(
+  rows: AdvanceReason[],
+  from: Date,
+  to: Date,
+): { category: AdvanceReasonCategory; count: number } | null {
+  const counts = new Map<AdvanceReasonCategory, number>();
+  for (const r of rows) {
+    const t = new Date(r.createdAt);
+    if (!inRange(t, from, to)) continue;
+    counts.set(r.category, (counts.get(r.category) || 0) + 1);
+  }
+  const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  if (sorted.length === 0) return null;
+  return { category: sorted[0][0], count: sorted[0][1] };
+}
+
+function advanceBreakdown(
+  rows: AdvanceReason[],
+  from: Date,
+  to: Date,
+): { category: AdvanceReasonCategory; count: number }[] {
+  const counts = new Map<AdvanceReasonCategory, number>();
+  for (const r of rows) {
+    const t = new Date(r.createdAt);
+    if (!inRange(t, from, to)) continue;
+    counts.set(r.category, (counts.get(r.category) || 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .map(([category, count]) => ({ category, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
 function StatCard({ label, value, prev, isPercent }: {
   label: string; value: number; prev: number; isPercent?: boolean;
 }) {
