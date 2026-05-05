@@ -890,13 +890,29 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                     <tr key={rowDef.key} className="cf-total-row">
                       <td className="cf-label-col">{rowDef.key}</td>
                       {visibleWeeks.map(([weekKey, entry]) => {
-                        const receipts = Number(entry?.['TOTAL RECEIPTS']) || 0;
-                        const disb = Number(entry?.['TOTAL DISBURSEMENTS']) || 0;
-                        const net = receipts - disb;
-                        const planEntry = activePlan?.weeklyData?.[weekKey];
-                        const planVal = planEntry
-                          ? (Number(planEntry?.['TOTAL RECEIPTS']) || 0) - (Number(planEntry?.['TOTAL DISBURSEMENTS']) || 0)
-                          : null;
+                         // NET CHANGE = ENDING CASH − BEGINNING CASH whenever both
+                         // values exist (whether computed or manually overridden).
+                         // Falls back to TOTAL RECEIPTS − TOTAL DISBURSEMENTS only
+                         // when the position values are unavailable.
+                         const beginRaw = entry?.['BEGINNING CASH'];
+                         const endRaw = entry?.['ENDING CASH'];
+                         const hasBegin = beginRaw !== null && beginRaw !== undefined && (beginRaw as unknown) !== '';
+                         const hasEnd = endRaw !== null && endRaw !== undefined && (endRaw as unknown) !== '';
+                         const receipts = Number(entry?.['TOTAL RECEIPTS']) || 0;
+                         const disb = Number(entry?.['TOTAL DISBURSEMENTS']) || 0;
+                         const net = (hasBegin && hasEnd)
+                           ? (Number(endRaw) || 0) - (Number(beginRaw) || 0)
+                           : receipts - disb;
+                         const planEntry = activePlan?.weeklyData?.[weekKey];
+                         const planBegin = planEntry?.['BEGINNING CASH'];
+                         const planEnd = planEntry?.['ENDING CASH'];
+                         const planHasBegin = planBegin !== null && planBegin !== undefined && (planBegin as unknown) !== '';
+                         const planHasEnd = planEnd !== null && planEnd !== undefined && (planEnd as unknown) !== '';
+                         const planVal = planEntry
+                           ? (planHasBegin && planHasEnd
+                               ? (Number(planEnd) || 0) - (Number(planBegin) || 0)
+                               : (Number(planEntry?.['TOTAL RECEIPTS']) || 0) - (Number(planEntry?.['TOTAL DISBURSEMENTS']) || 0))
+                           : null;
                         const ccKey = cellCommentKey('NET CHANGE', weekKey);
                         const cellCommentsHere = cellCommentsByCell[ccKey] || [];
                         const cellCtx: CellCtx = {
