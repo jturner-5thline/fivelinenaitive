@@ -501,6 +501,19 @@ export default function Dashboard() {
     },
     [closeCarousel],
   );
+
+  // Always start the dashboard with the carousel closed. The carousel
+  // store is module-level (Zustand) and is NOT cleared on route change,
+  // so if the user previously had Calendar (or any other widget) open
+  // and navigated away, it would still be `isOpen: true` when they
+  // returned to the dashboard and Calendar — being the first registered
+  // widget — would auto-open. Reset on every dashboard mount so the
+  // landing state is neutral.
+  useEffect(() => {
+    closeCarousel();
+    // Mount-only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   // #24: Always compute firstName regardless of sidebar state
   const firstName = profile?.first_name || (profile?.display_name ? profile.display_name.split(' ')[0] : '') || 'there';
