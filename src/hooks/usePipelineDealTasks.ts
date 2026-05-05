@@ -24,8 +24,8 @@ interface RawTask {
   due_date: string | null;
   status: string;
   archived_at: string | null;
-  assignee_profile?: { display_name: string | null } | null;
-  creator_profile?: { display_name: string | null } | null;
+  assigned_to: string | null;
+  assigned_by: string | null;
 }
 
 interface RawOutstanding {
@@ -80,9 +80,7 @@ export function usePipelineDealTasks(dealIds: string[], enabled: boolean = true)
         chunks.map((ids) =>
           supabase
             .from('tasks')
-            .select(
-              'id, deal_id, title, due_date, status, archived_at, assignee_profile:profiles!tasks_assigned_to_fkey(display_name), creator_profile:profiles!tasks_assigned_by_fkey(display_name)'
-            )
+            .select('id, deal_id, title, due_date, status, archived_at, assigned_to, assigned_by')
             .in('deal_id', ids)
             .is('archived_at', null)
             .neq('status', 'complete')
@@ -105,6 +103,23 @@ export function usePipelineDealTasks(dealIds: string[], enabled: boolean = true)
       const tasks = taskChunks.flatMap((r) => (r.data || [])) as unknown as RawTask[];
       const items = itemChunks.flatMap((r) => (r.data || [])) as unknown as RawOutstanding[];
 
+      // Resolve assignee / creator display names in a single batched query.
+      const userIds = Array.from(
+        new Set(
+          tasks.flatMap((t) => [t.assigned_to, t.assigned_by]).filter(Boolean) as string[],
+        ),
+      );
+      const profileMap = new Map<string, string>();
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, display_name')
+          .in('id', userIds);
+        for (const p of profiles || []) {
+          if (p.id) profileMap.set(p.id, p.display_name || '');
+        }
+      }
+
       const byDeal = new Map<string, DealTaskItem[]>();
       for (const t of tasks) {
         if (!t.deal_id) continue;
@@ -114,8 +129,8 @@ export function usePipelineDealTasks(dealIds: string[], enabled: boolean = true)
           kind: 'task',
           title: t.title,
           dueDate: t.due_date,
-          assignedToName: shortName(t.assignee_profile?.display_name),
-          assignedByName: shortName(t.creator_profile?.display_name),
+          assignedToName: shortName(t.assigned_to ? profileMap.get(t.assigned_to) : null),
+          assignedByName: shortName(t.assigned_by ? profileMap.get(t.assigned_by) : null),
         });
         byDeal.set(t.deal_id, arr);
       }
