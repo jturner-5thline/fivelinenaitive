@@ -647,8 +647,22 @@ export function NotificationCarousel() {
     });
 
     // Sort by timestamp (newest first)
-    return items.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-  }, [staleAlerts, filteredFlexNotifications, filteredActivities, isRead]);
+    const sorted = items.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    // Demo cap: exactly N deals shown across the notifications surface.
+    if (isDemoAccount) {
+      const seenDealIds = new Set<string>();
+      const capped: Notification[] = [];
+      for (const item of sorted) {
+        const key = item.dealId || item.id;
+        if (seenDealIds.has(key)) continue;
+        seenDealIds.add(key);
+        capped.push(item);
+        if (seenDealIds.size >= DEMO_NOTIFICATION_LIMIT) break;
+      }
+      return capped;
+    }
+    return sorted;
+  }, [staleAlerts, filteredFlexNotifications, filteredActivities, isRead, isDemoAccount]);
 
   const isLoading = activitiesLoading || flexLoading;
 
