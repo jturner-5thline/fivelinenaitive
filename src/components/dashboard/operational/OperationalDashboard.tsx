@@ -35,6 +35,25 @@ const TOOLTIP_STYLE = {
   fontSize: 11,
 };
 
+// Approx average glyph width (px) at a given font size for our UI font.
+// 0.55em is a reasonable average for proportional sans-serif labels.
+const AVG_CHAR_PX_PER_FONT_PX = 0.55;
+
+/** Compute a max label length that fits within a YAxis label gutter. */
+function maxLabelChars(axisWidthPx: number, fontSizePx: number, paddingPx = 12): number {
+  const usable = Math.max(0, axisWidthPx - paddingPx);
+  return Math.max(6, Math.floor(usable / (fontSizePx * AVG_CHAR_PX_PER_FONT_PX)));
+}
+
+/** Truncate with an ellipsis if value exceeds maxChars. */
+function truncateLabel(v: string, maxChars: number): string {
+  if (!v) return v;
+  return v.length > maxChars ? v.slice(0, Math.max(1, maxChars - 1)) + '…' : v;
+}
+
+const Y_AXIS_WIDTH = 180;
+const Y_AXIS_FONT = 11;
+
 // ── Types ──────────────────────────────────────────────────────
 interface OperationalData {
   counts: { projects: number; overdue: number; today: number; upcoming: number };
@@ -474,10 +493,10 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                 <YAxis
                   type="category"
                   dataKey="project"
-                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                  tick={{ fontSize: Y_AXIS_FONT, fill: 'hsl(var(--muted-foreground))' }}
                   interval={0}
-                  width={180}
-                  tickFormatter={(v: string) => (v && v.length > 28 ? v.slice(0, 27) + '…' : v)}
+                  width={Y_AXIS_WIDTH}
+                  tickFormatter={(v: string) => truncateLabel(v, maxLabelChars(Y_AXIS_WIDTH, Y_AXIS_FONT))}
                 />
                 <Tooltip contentStyle={TOOLTIP_STYLE} labelFormatter={(label) => String(label)} />
                 <Bar
@@ -524,10 +543,10 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                 <YAxis
                   type="category"
                   dataKey="bucket"
-                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                  tick={{ fontSize: Y_AXIS_FONT, fill: 'hsl(var(--muted-foreground))' }}
                   interval={0}
-                  width={180}
-                  tickFormatter={(v: string) => (v && v.length > 28 ? v.slice(0, 27) + '…' : v)}
+                  width={Y_AXIS_WIDTH}
+                  tickFormatter={(v: string) => truncateLabel(v, maxLabelChars(Y_AXIS_WIDTH, Y_AXIS_FONT))}
                 />
                 <Tooltip contentStyle={TOOLTIP_STYLE} labelFormatter={(label) => String(label)} />
                 <Legend
