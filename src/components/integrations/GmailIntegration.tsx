@@ -155,19 +155,67 @@ export function GmailIntegration({ onDisconnect }: GmailIntegrationProps) {
   useEffect(() => {
     const code = searchParams.get('code');
     const gmailCallback = searchParams.get('gmail_callback');
-    
+    const oauthError = searchParams.get('error');
+    const oauthErrorDesc = searchParams.get('error_description');
+
+    // OAuth provider returned an error (access_denied, redirect_uri_mismatch,
+    // unverified-app block, etc.) BEFORE we ever get a code. Log it and show
+    // a friendly support-routed message instead of a generic toast.
+    if (gmailCallback && oauthError) {
+      const friendly =
+        'There was an issue connecting your Gmail account. This is likely a configuration issue on our end. Please contact support at support@5thline.co and we’ll get this resolved within 24 hours.';
+      toast.error('Gmail connection failed', {
+        description: friendly,
+        duration: 12000,
+      });
+      // Best-effort: log to error_logs so the team can diagnose.
+      void supabase.from('error_logs').insert({
+        error_type: 'gmail_oauth_error',
+        error_message: `${oauthError}${oauthErrorDesc ? `: ${oauthErrorDesc}` : ''}`,
+        user_id: user?.id ?? null,
+        page_url: typeof window !== 'undefined' ? window.location.href : null,
+        metadata: {
+          provider: 'gmail',
+          flow: 'nylas',
+          error: oauthError,
+          error_description: oauthErrorDesc,
+          user_email: user?.email ?? null,
+          source: 'integrations_callback',
+        },
+      });
+      setSearchParams({});
+      return;
+    }
+
     if (code && gmailCallback) {
       exchangeCode(code).then((success) => {
         if (success) {
           toast.success('Gmail connected successfully!');
         } else {
-          toast.error('Failed to connect Gmail');
+          const friendly =
+            'There was an issue connecting your Gmail account. This is likely a configuration issue on our end. Please contact support at support@5thline.co and we’ll get this resolved within 24 hours.';
+          toast.error('Gmail connection failed', {
+            description: friendly,
+            duration: 12000,
+          });
+          void supabase.from('error_logs').insert({
+            error_type: 'gmail_oauth_exchange_failed',
+            error_message: 'Token exchange via gmail-auth failed',
+            user_id: user?.id ?? null,
+            page_url: typeof window !== 'undefined' ? window.location.href : null,
+            metadata: {
+              provider: 'gmail',
+              flow: 'nylas',
+              user_email: user?.email ?? null,
+              source: 'integrations_callback_exchange',
+            },
+          });
         }
         // Clean up URL
         setSearchParams({});
       });
     }
-  }, [searchParams, exchangeCode, setSearchParams]);
+  }, [searchParams, exchangeCode, setSearchParams, user?.id, user?.email]);
 
   // Load messages when connected
   useEffect(() => {
