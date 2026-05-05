@@ -372,6 +372,9 @@ function PortfolioGoalsDrawer({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [goals, setGoals] = useState<PortfolioGoalRow[]>([]);
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [activityLoading, setActivityLoading] = useState(true);
+  const [activityError, setActivityError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -379,6 +382,8 @@ function PortfolioGoalsDrawer({
       if (!company?.id) return;
       setLoading(true);
       setError(null);
+      setActivityLoading(true);
+      setActivityError(null);
       try {
         const { data: integration, error: intErr } = await supabase
           .from('integrations')
@@ -390,16 +395,30 @@ function PortfolioGoalsDrawer({
           .maybeSingle();
         if (intErr) throw intErr;
         if (!integration) throw new Error('Asana not connected');
-        const { data, error: fnErr } = await supabase.functions.invoke('asana-proxy', {
-          body: { action: 'portfolio_goals', integration_id: integration.id, portfolio_gid: portfolio.gid },
-        });
-        if (fnErr) throw fnErr;
-        if (!data?.success) throw new Error(data?.error || 'Failed to load goals');
-        if (!cancelled) setGoals(data.goals || []);
+        const [goalsRes, actRes] = await Promise.all([
+          supabase.functions.invoke('asana-proxy', {
+            body: { action: 'portfolio_goals', integration_id: integration.id, portfolio_gid: portfolio.gid },
+          }),
+          supabase.functions.invoke('asana-proxy', {
+            body: { action: 'portfolio_activity', integration_id: integration.id, portfolio_gid: portfolio.gid, limit: 25 },
+          }),
+        ]);
+        if (goalsRes.error) throw goalsRes.error;
+        if (!goalsRes.data?.success) throw new Error(goalsRes.data?.error || 'Failed to load goals');
+        if (!cancelled) setGoals(goalsRes.data.goals || []);
+
+        if (actRes.error) {
+          if (!cancelled) setActivityError(actRes.error.message);
+        } else if (!actRes.data?.success) {
+          if (!cancelled) setActivityError(actRes.data?.error || 'Failed to load activity');
+        } else if (!cancelled) {
+          setActivity(actRes.data.activity || []);
+        }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load goals');
       } finally {
         if (!cancelled) setLoading(false);
+        if (!cancelled) setActivityLoading(false);
       }
     })();
     return () => { cancelled = true; };
@@ -484,7 +503,73 @@ function PortfolioGoalsDrawer({
             })
           )}
         </div>
+
+        <div style={{ marginTop: 24 }}>
+          <SectionLabel>Recent Activity</SectionLabel>
+          {activityLoading ? (
+            <div style={{ padding: 16, textAlign: 'center', color: 'rgba(160,210,255,0.55)', fontSize: 12 }}>
+              <Loader2 size={12} className="animate-spin" style={{ display: 'inline', marginRight: 6 }} />
+              Loading activity…
+            </div>
+          ) : activityError ? (
+            <div style={{ padding: 12, color: '#ff6b7a', fontSize: 11, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <AlertCircle size={12} /> {activityError}
+            </div>
+          ) : activity.length === 0 ? (
+            <div style={{ padding: 12, textAlign: 'center', color: 'rgba(160,210,255,0.5)', fontSize: 11 }}>
+              No recent updates from Asana.
+            </div>
+          ) : (
+            <div style={{ position: 'relative', paddingLeft: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ position: 'absolute', top: 4, bottom: 4, left: 5, width: 1, background: 'rgba(40,120,200,0.3)' }} />
+              {activity.map((a) => {
+                const status = mapGoalStatus(a.status_type);
+                const color = STATUS_COLOR[status] || 'rgba(160,210,255,0.5)';
+                const when = a.created_at ? format(new Date(a.created_at), 'MMM d, h:mm a') : '';
+                return (
+                  <div key={a.id} style={{ position: 'relative' }}>
+                    <span style={{
+                      position: 'absolute', left: -13, top: 4, width: 9, height: 9, borderRadius: '50%',
+                      background: color, boxShadow: `0 0 0 2px #061633`,
+                    }} />
+                    <div style={{ fontSize: 10, color: 'rgba(160,210,255,0.55)', display: 'flex', justifyContent: 'space-between', gap: 6 }}>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {a.author || 'Asana'} · {when}
+                      </span>
+                      <StatusPill status={status} />
+                    </div>
+                    <div style={{ fontSize: 11, color: '#e8f6ff', marginTop: 2, fontWeight: 600 }}>
+                      {a.goal_url ? (
+                        <a href={a.goal_url} target="_blank" rel="noreferrer" style={{ color: '#e8f6ff', textDecoration: 'none' }}>
+                          {a.goal_name} <ExternalLink size={9} style={{ display: 'inline', opacity: 0.5 }} />
+                        </a>
+                      ) : a.goal_name}
+                    </div>
+                    {(a.title || a.text) && (
+                      <div style={{ fontSize: 10, color: 'rgba(200,225,255,0.75)', marginTop: 2, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {a.title ? <span style={{ fontWeight: 600 }}>{a.title}{a.text ? ' — ' : ''}</span> : null}
+                        {a.text || ''}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </SheetContent>
     </Sheet>
   );
+}
+
+interface ActivityItem {
+  id: string;
+  created_at: string | null;
+  author: string | null;
+  status_type: string | null;
+  title: string | null;
+  text: string | null;
+  goal_gid: string;
+  goal_name: string;
+  goal_url: string | null;
 }
