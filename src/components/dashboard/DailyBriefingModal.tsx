@@ -1370,6 +1370,12 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
   }, [currentIndex]);
 
   const handleNavigate = (path: string) => {
+    // Open deal/company links in a new tab so the briefing modal stays open
+    // and preserves its current state.
+    if (typeof window !== 'undefined' && path.startsWith('/deal/')) {
+      window.open(path, '_blank', 'noopener,noreferrer');
+      return;
+    }
     onOpenChange(false);
     navigate(path);
   };
