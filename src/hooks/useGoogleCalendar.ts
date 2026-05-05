@@ -264,6 +264,14 @@ export function useGoogleCalendar() {
     maxResults?: number;
   }) => {
     if (!user) return null;
+    if (isDemo) {
+      const cals = [DEMO_PRIMARY_CALENDAR];
+      const evts = buildDemoCalendarEvents();
+      setCalendars(cals);
+      setEvents(evts);
+      calendarCache[cacheKey] = { events: evts, calendars: cals, status: { connected: true } };
+      return { calendars: cals, events: evts };
+    }
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('calendar-events', {
@@ -286,7 +294,7 @@ export function useGoogleCalendar() {
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, isDemo, cacheKey]);
 
   const createEvent = useCallback(async (eventData: {
     summary: string;
