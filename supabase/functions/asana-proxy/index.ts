@@ -8,6 +8,14 @@ const corsHeaders = {
 
 const ASANA_API = "https://app.asana.com/api/1.0";
 
+// ── In-memory cache for portfolio_milestones ──
+// Survives across requests within a warm edge-function instance.
+const PORTFOLIO_MILESTONES_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const portfolioMilestoneCache = new Map<
+  string,
+  { data: unknown; expiresAt: number }
+>();
+
 async function asanaFetch(path: string, token: string, options: RequestInit = {}) {
   const res = await fetch(`${ASANA_API}${path}`, {
     ...options,
@@ -256,6 +264,26 @@ serve(async (req) => {
           result = { success: false, error: "portfolio_gid is required" };
           break;
         }
+        const forceRefresh = params.force_refresh === true;
+        const cacheKey = `${portfolioGid}:${resolvedToken.slice(-8)}`;
+        const now = Date.now();
+
+        if (!forceRefresh) {
+          const cached = portfolioMilestoneCache.get(cacheKey);
+          if (cached && cached.expiresAt > now) {
+            console.log(`[portfolio_milestones] cache HIT (${Math.round((cached.expiresAt - now) / 1000)}s remaining)`);
+            result = {
+              ...(cached.data as Record<string, unknown>),
+              cached: true,
+              cache_age_seconds: Math.round(
+                (PORTFOLIO_MILESTONES_TTL_MS - (cached.expiresAt - now)) / 1000,
+              ),
+            };
+            break;
+          }
+        }
+        console.log(`[portfolio_milestones] cache MISS — fetching from Asana`);
+
         try {
           // 1. Get all projects in the portfolio
           const itemsRes = await asanaFetch(
@@ -292,7 +320,17 @@ serve(async (req) => {
           );
 
           const milestones = perProject.flat();
-          result = { success: true, milestones, project_count: projects.length };
+          const payload = {
+            success: true,
+            milestones,
+            project_count: projects.length,
+            fetched_at: new Date().toISOString(),
+          };
+          portfolioMilestoneCache.set(cacheKey, {
+            data: payload,
+            expiresAt: now + PORTFOLIO_MILESTONES_TTL_MS,
+          });
+          result = { ...payload, cached: false };
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Unknown error fetching portfolio milestones";
           result = { success: false, error: msg, milestones: [] };
