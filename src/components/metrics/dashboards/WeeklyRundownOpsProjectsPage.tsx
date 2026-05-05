@@ -1,9 +1,8 @@
-import { RefreshCw, AlertTriangle } from 'lucide-react';
+import { RefreshCw, AlertTriangle, AlertCircle } from 'lucide-react';
 import { useOperationalData } from '@/hooks/useDailyBriefingData';
 import { OperationalDashboard } from '@/components/dashboard/operational/OperationalDashboard';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
-import { useTeamOpsAnalytics } from '@/hooks/useTeamOpsAnalytics';
+import { useAsanaOpsTeamMetrics } from '@/hooks/useAsanaOpsTeamMetrics';
 import { useAsanaPortfolioMilestones } from '@/hooks/useAsanaPortfolioMilestones';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
@@ -26,23 +25,20 @@ function statusColor(status: 'On Track' | 'At Risk' | 'Overdue'): string {
 /**
  * Page 4 of the Weekly Rundown carousel: "Ops & Projects".
  *
- * Reuses the SAME OperationalDashboard component that powers the Daily
- * Briefing modal's "Operational" tab — same Asana data source (the
- * `briefing-operational` edge function via `useOperationalData`), same
- * KPI cards, charts, and section ordering.
+ * 100% Asana-backed. Source: portfolio 1211488283335033 via the
+ * `briefing-operational` edge function (projects/tasks/milestones/statuses)
+ * and `asana-proxy → portfolio_milestones` for the upcoming-milestones table.
  *
- * Team scope: the briefing modal passes `targetAssigneeName` to filter
- * Asana tasks down to a single user (e.g., "Niki Heikali" or
- * jturner-only views). This page intentionally calls
- * `useOperationalData(true)` with NO assignee, so the edge function
- * returns the entire team/company portfolio — overdue, due today,
- * upcoming, and recently completed across all assignees.
+ * No CRM (`tasks`, `wf_tasks`, `deals`, `deal_milestones`) data feeds any
+ * widget on this page.
  */
 export function WeeklyRundownOpsProjectsPage() {
   const { data, isLoading, error, refetch } = useOperationalData(true);
-  const { data: team, isLoading: teamLoading } = useTeamOpsAnalytics();
+  const team = useAsanaOpsTeamMetrics(data ?? null);
   const { data: asanaMilestones, isLoading: milestonesLoading, error: milestonesError } = useAsanaPortfolioMilestones();
-  const navigate = useNavigate();
+
+  const opsError = (error as Error | null) || (data?.error ? new Error(data.error) : null);
+  const showAsanaError = !!opsError && !data;
 
   return (
     <div className="px-4 py-6 max-w-6xl mx-auto">
@@ -50,7 +46,7 @@ export function WeeklyRundownOpsProjectsPage() {
         <div>
           <h2 className="text-base font-semibold text-foreground">Ops & Projects</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Team-wide Asana portfolio · same layout as the Daily Briefing's Operational tab
+            Live from the Asana <span className="font-medium">Projects</span> portfolio
           </p>
         </div>
         <Button
@@ -65,18 +61,30 @@ export function WeeklyRundownOpsProjectsPage() {
         </Button>
       </div>
 
+      {showAsanaError && (
+        <div className={cn(GLASS_CARD, 'flex items-start gap-2 px-4 py-3 mb-4 border border-destructive/30')}>
+          <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+          <p className="text-xs text-foreground">
+            Could not load Asana portfolio data. Check the Asana integration.
+          </p>
+        </div>
+      )}
+
       {/* Capacity Alert */}
-      {team?.capacityAlert && (
+      {team.capacityAlert && (
         <div className={cn(GLASS_CARD, 'flex items-start gap-2 px-4 py-3 mb-4 border border-amber-400/30')}>
           <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
           <p className="text-xs text-foreground">{team.capacityAlert}</p>
         </div>
       )}
 
-      {/* Team Task Completion */}
+      {/* Team Task Completion (Asana) */}
       <div className={cn(GLASS_CARD, 'p-4 mb-4')}>
         <h3 className="text-xs font-semibold text-foreground mb-3">Team Task Completion Rate — This Week</h3>
-        {teamLoading || !team ? (
+        <p className="text-[10px] text-muted-foreground/60 mb-2">
+          Asana tasks due or completed in the current week, per team member.
+        </p>
+        {isLoading && !data ? (
           <div className="text-xs text-muted-foreground/60 py-4">Loading…</div>
         ) : (
           <div className="space-y-2.5">
@@ -86,13 +94,18 @@ export function WeeklyRundownOpsProjectsPage() {
               const color = rateColor(m.rate);
               return (
                 <div key={m.name} className="flex items-center gap-3 text-xs">
-                  <div className="w-24 truncate text-muted-foreground">{m.name}</div>
+                  <div className="w-28 truncate text-muted-foreground">{m.name}</div>
                   <div className="flex-1 h-3 rounded bg-white/[0.04] overflow-hidden">
-                    <div className="h-full rounded transition-all" style={{ width: `${barWidth}%`, backgroundColor: color, opacity: 0.85 }} />
+                    <div
+                      className="h-full rounded transition-all"
+                      style={{ width: `${barWidth}%`, backgroundColor: color, opacity: 0.85 }}
+                    />
                   </div>
                   <div className="w-32 text-right tabular-nums text-muted-foreground">
                     {m.completed}/{m.assigned}
-                    <span className="ml-2 font-semibold" style={{ color }}>{m.assigned > 0 ? `${pct}%` : '—'}</span>
+                    <span className="ml-2 font-semibold" style={{ color }}>
+                      {m.assigned > 0 ? `${pct}%` : '—'}
+                    </span>
                   </div>
                 </div>
               );
@@ -101,46 +114,54 @@ export function WeeklyRundownOpsProjectsPage() {
         )}
       </div>
 
-      {/* Overdue Tasks by Deal */}
+      {/* Overdue Tasks by Asana Project */}
       <div className={cn(GLASS_CARD, 'p-4 mb-4')}>
-        <h3 className="text-xs font-semibold text-foreground mb-3">Deals with Overdue Tasks</h3>
-        {teamLoading || !team ? (
+        <h3 className="text-xs font-semibold text-foreground mb-3">Projects with Overdue Tasks</h3>
+        {isLoading && !data ? (
           <div className="text-xs text-muted-foreground/60 py-4">Loading…</div>
-        ) : team.overdueByDeal.length === 0 ? (
-          <div className="text-xs text-muted-foreground/60 py-4">No overdue tasks across active deals 🎉</div>
+        ) : team.overdueByProject.length === 0 ? (
+          <div className="text-xs text-muted-foreground/60 py-4">No overdue tasks across portfolio projects 🎉</div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-[10px] uppercase tracking-wider h-8">Deal</TableHead>
+                <TableHead className="text-[10px] uppercase tracking-wider h-8">Project</TableHead>
                 <TableHead className="text-[10px] uppercase tracking-wider h-8 text-right"># Overdue</TableHead>
                 <TableHead className="text-[10px] uppercase tracking-wider h-8 text-right">Most Overdue</TableHead>
                 <TableHead className="text-[10px] uppercase tracking-wider h-8">Assigned To</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {team.overdueByDeal.map(row => (
-                <TableRow key={row.dealId} className="cursor-pointer" onClick={() => navigate(`/deals/${row.dealId}`)}>
-                  <TableCell className="py-2 text-xs font-medium">{row.dealName}</TableCell>
-                  <TableCell className="py-2 text-xs text-right tabular-nums">{row.overdueCount}</TableCell>
-                  <TableCell className="py-2 text-xs text-right tabular-nums">{row.mostOverdueDays}d</TableCell>
-                  <TableCell className="py-2 text-xs text-muted-foreground">{row.assignees.join(', ') || '—'}</TableCell>
-                </TableRow>
-              ))}
+              {team.overdueByProject.map(row => {
+                const project = data?.projects?.find((p: any) => p.gid === row.projectGid);
+                const url = project?.permalink_url || null;
+                return (
+                  <TableRow
+                    key={row.projectGid}
+                    className={cn(url && 'cursor-pointer')}
+                    onClick={() => url && window.open(url, '_blank', 'noopener,noreferrer')}
+                  >
+                    <TableCell className="py-2 text-xs font-medium">{row.projectName}</TableCell>
+                    <TableCell className="py-2 text-xs text-right tabular-nums">{row.overdueCount}</TableCell>
+                    <TableCell className="py-2 text-xs text-right tabular-nums">{row.mostOverdueDays}d</TableCell>
+                    <TableCell className="py-2 text-xs text-muted-foreground">
+                      {row.assignees.join(', ') || '—'}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}
       </div>
 
-      {/* Upcoming Milestones */}
+      {/* Upcoming Milestones (Asana portfolio milestone tasks) */}
       <div className={cn(GLASS_CARD, 'p-4 mb-6')}>
         <h3 className="text-xs font-semibold text-foreground mb-3">Upcoming Milestones</h3>
         {milestonesLoading ? (
           <div className="text-xs text-muted-foreground/60 py-4">Loading…</div>
         ) : milestonesError ? (
-          <div className="text-xs text-destructive py-4">
-            Could not load Asana portfolio milestones.
-          </div>
+          <div className="text-xs text-destructive py-4">Could not load Asana portfolio milestones.</div>
         ) : !asanaMilestones || asanaMilestones.length === 0 ? (
           <div className="text-xs text-muted-foreground/60 py-4">No upcoming milestones in the Asana portfolio.</div>
         ) : (
