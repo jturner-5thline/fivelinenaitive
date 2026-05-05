@@ -1288,7 +1288,18 @@ function FollowupRow({
           {item.contact && (
             <span className="inline-flex items-center gap-1">
               <span className="opacity-50">·</span>
-              <span className="truncate max-w-[140px]">{item.contact}</span>
+              {item.contactId ? (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onNavigate(`/contacts/${item.contactId}`); }}
+                  className="truncate max-w-[140px] text-primary hover:underline focus:outline-none focus-visible:underline"
+                  title={`Open contact: ${item.contact}`}
+                >
+                  {item.contact}
+                </button>
+              ) : (
+                <span className="truncate max-w-[140px]">{item.contact}</span>
+              )}
             </span>
           )}
         </div>
