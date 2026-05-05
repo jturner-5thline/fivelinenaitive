@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ExternalLink, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
 import { useAsanaGoals } from '@/hooks/useAsanaGoals';
@@ -75,6 +76,45 @@ export function AsanaGoalsPortfoliosSection() {
 
   const lastSync = goals.lastSyncedAt || portfolios.lastSyncedAt;
 
+  // ── Goals filters ──
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [ownerFilter, setOwnerFilter] = useState<string>('all');
+  const [dueFilter, setDueFilter] = useState<string>('all'); // all | overdue | 30d | 90d | none
+
+  const ownerOptions = useMemo(() => {
+    const set = new Set<string>();
+    goals.goals.forEach(g => g.owner && set.add(g.owner));
+    return Array.from(set).sort();
+  }, [goals.goals]);
+
+  const filteredGoals = useMemo(() => {
+    const today = new Date(); today.setHours(0,0,0,0);
+    return goals.goals.filter(g => {
+      if (statusFilter !== 'all' && g.status !== statusFilter) return false;
+      if (ownerFilter !== 'all' && g.owner !== ownerFilter) return false;
+      if (dueFilter !== 'all') {
+        if (dueFilter === 'none') {
+          if (g.due) return false;
+        } else {
+          if (!g.due) return false;
+          const d = new Date(g.due);
+          const diffDays = Math.floor((d.getTime() - today.getTime()) / 86400000);
+          if (dueFilter === 'overdue' && diffDays >= 0) return false;
+          if (dueFilter === '30d' && (diffDays < 0 || diffDays > 30)) return false;
+          if (dueFilter === '90d' && (diffDays < 0 || diffDays > 90)) return false;
+        }
+      }
+      return true;
+    });
+  }, [goals.goals, statusFilter, ownerFilter, dueFilter]);
+
+  const filtersActive = statusFilter !== 'all' || ownerFilter !== 'all' || dueFilter !== 'all';
+  const selectStyle: React.CSSProperties = {
+    fontSize: 10, padding: '3px 6px', borderRadius: 5,
+    background: 'rgba(20,80,160,0.35)', color: '#d0eaff',
+    border: '1px solid rgba(40,120,200,0.4)', outline: 'none', cursor: 'pointer',
+  };
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 10 }}>
       {/* GOALS */}
@@ -91,6 +131,40 @@ export function AsanaGoalsPortfoliosSection() {
               <RefreshBtn onClick={() => { void goals.refresh(); void portfolios.refresh(); }} busy={goals.loading || portfolios.loading} />
             </div>
           </div>
+
+          {goals.goals.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8, alignItems: 'center' }}>
+              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selectStyle} aria-label="Filter by status">
+                <option value="all">All statuses</option>
+                <option value="On Track">On Track</option>
+                <option value="At Risk">At Risk</option>
+                <option value="Behind">Behind</option>
+                <option value="Achieved">Achieved</option>
+              </select>
+              <select value={ownerFilter} onChange={e => setOwnerFilter(e.target.value)} style={selectStyle} aria-label="Filter by owner">
+                <option value="all">All owners</option>
+                {ownerOptions.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+              <select value={dueFilter} onChange={e => setDueFilter(e.target.value)} style={selectStyle} aria-label="Filter by due date">
+                <option value="all">Any due date</option>
+                <option value="overdue">Overdue</option>
+                <option value="30d">Due in 30 days</option>
+                <option value="90d">Due in 90 days</option>
+                <option value="none">No due date</option>
+              </select>
+              {filtersActive && (
+                <button
+                  onClick={() => { setStatusFilter('all'); setOwnerFilter('all'); setDueFilter('all'); }}
+                  style={{ ...selectStyle, color: '#4db8ff', cursor: 'pointer' }}
+                >
+                  Clear
+                </button>
+              )}
+              <span style={{ marginLeft: 'auto', fontSize: 9, color: 'rgba(160,210,255,0.5)' }}>
+                {filteredGoals.length} of {goals.goals.length}
+              </span>
+            </div>
+          )}
 
           {goals.error ? (
             <div style={{ padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
@@ -113,9 +187,13 @@ export function AsanaGoalsPortfoliosSection() {
                 create one in Asana
               </a>
             </div>
+          ) : filteredGoals.length === 0 ? (
+            <div style={{ padding: 16, textAlign: 'center', color: 'rgba(160,210,255,0.6)', fontSize: 11 }}>
+              No goals match the current filters
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflowY: 'auto' }}>
-              {goals.goals.map(g => {
+              {filteredGoals.map(g => {
                 const pct = progressFromStatus(g.status);
                 const color = STATUS_COLOR[g.status] || '#4db8ff';
                 return (
