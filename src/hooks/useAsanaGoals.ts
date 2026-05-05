@@ -22,6 +22,15 @@ export interface AsanaGoalRow {
   progressPercent: number | null;
   /** Display string for current value (e.g. "42 / 100" or "$1.2M / $5M"). */
   progressDisplay: string | null;
+  /** Structured metric details from Asana, when available. */
+  metric: {
+    currentValue: number | null;
+    targetValue: number | null;
+    initialValue: number | null;
+    unit: string | null;
+    progressSource: string | null;
+    currentDisplay: string | null;
+  } | null;
 }
 
 function mapStatus(raw: string | null | undefined, isCompleted = false): AsanaGoalRow['status'] {
@@ -165,6 +174,14 @@ export function useAsanaGoals(): UseAsanaGoalsResult {
           timePeriod: g.time_period?.display_name || null,
           progressPercent,
           progressDisplay,
+          metric: m ? {
+            currentValue: typeof m.current_number_value === 'number' ? m.current_number_value : null,
+            targetValue: typeof m.target_number_value === 'number' ? m.target_number_value : null,
+            initialValue: typeof m.initial_number_value === 'number' ? m.initial_number_value : null,
+            unit: m.unit || null,
+            progressSource: m.progress_source || null,
+            currentDisplay: m.current_display_value || null,
+          } : null,
         };
       });
 
