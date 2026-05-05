@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 
@@ -48,12 +49,15 @@ function deriveStatus(due: Date, now: Date): AsanaPortfolioMilestone['status'] {
 export function useAsanaPortfolioMilestones(portfolioGid: string = OPS_PROJECTS_PORTFOLIO_GID) {
   const { company } = useCompany();
   const companyId = company?.id ?? null;
+  const queryClient = useQueryClient();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const queryKey = ['asana-portfolio-milestones', companyId, portfolioGid];
 
-  return useQuery({
-    queryKey: ['asana-portfolio-milestones', companyId, portfolioGid],
+  const query = useQuery({
+    queryKey,
     enabled: !!companyId,
     staleTime: 5 * 60 * 1000,
-    queryFn: async (): Promise<AsanaPortfolioMilestone[]> => {
+    queryFn: async ({ meta }): Promise<AsanaPortfolioMilestone[]> => {
       const { data: integration, error: intErr } = await supabase
         .from('integrations')
         .select('id')
@@ -70,6 +74,7 @@ export function useAsanaPortfolioMilestones(portfolioGid: string = OPS_PROJECTS_
           action: 'portfolio_milestones',
           integration_id: integration.id,
           portfolio_gid: portfolioGid,
+          force_refresh: (meta as { forceRefresh?: boolean } | undefined)?.forceRefresh === true,
         },
       });
       if (error) throw error;
@@ -99,4 +104,22 @@ export function useAsanaPortfolioMilestones(portfolioGid: string = OPS_PROJECTS_
         .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
     },
   });
+
+  const forceRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await queryClient.fetchQuery({
+        queryKey,
+        meta: { forceRefresh: true },
+        queryFn: query.refetch as never, // overridden below
+      } as never).catch(() => undefined);
+      // Simpler & reliable: call refetch with meta override via invalidate then refetch.
+      await queryClient.invalidateQueries({ queryKey });
+      await query.refetch();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [queryClient, query, queryKey]);
+
+  return { ...query, forceRefresh, isRefreshing };
 }
