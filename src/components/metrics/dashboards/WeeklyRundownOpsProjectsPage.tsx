@@ -1,5 +1,5 @@
-import { RefreshCw, AlertTriangle, AlertCircle } from 'lucide-react';
-import { useState } from 'react';
+import { RefreshCw, AlertTriangle, AlertCircle, ArrowUp, ArrowDown } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useOperationalData } from '@/hooks/useDailyBriefingData';
 import { OperationalDashboard } from '@/components/dashboard/operational/OperationalDashboard';
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,35 @@ export function WeeklyRundownOpsProjectsPage() {
   const team = useAsanaOpsTeamMetrics(data ?? null);
   const { data: asanaMilestones, isLoading: milestonesLoading, error: milestonesError } = useAsanaPortfolioMilestones();
   const [memberDrilldown, setMemberDrilldown] = useState<{ name: string; items: AsanaDrilldownItem[] } | null>(null);
+  type MilestoneSortKey = 'title' | 'projectName' | 'assignee' | 'dueDate' | 'status';
+  const [milestoneSort, setMilestoneSort] = useState<{ key: MilestoneSortKey; dir: 'asc' | 'desc' }>({ key: 'dueDate', dir: 'asc' });
+  const [milestoneStatusFilter, setMilestoneStatusFilter] = useState<'All' | 'On Track' | 'At Risk' | 'Overdue'>('All');
+
+  const statusRank: Record<'On Track' | 'At Risk' | 'Overdue', number> = { Overdue: 0, 'At Risk': 1, 'On Track': 2 };
+  const visibleMilestones = useMemo(() => {
+    if (!asanaMilestones) return [];
+    const filtered = milestoneStatusFilter === 'All'
+      ? asanaMilestones
+      : asanaMilestones.filter(m => m.status === milestoneStatusFilter);
+    const { key, dir } = milestoneSort;
+    const mult = dir === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      let av: string | number;
+      let bv: string | number;
+      if (key === 'status') { av = statusRank[a.status]; bv = statusRank[b.status]; }
+      else if (key === 'dueDate') { av = a.dueDate; bv = b.dueDate; }
+      else { av = (a[key] || '').toString().toLowerCase(); bv = (b[key] || '').toString().toLowerCase(); }
+      if (av < bv) return -1 * mult;
+      if (av > bv) return 1 * mult;
+      return 0;
+    });
+  }, [asanaMilestones, milestoneSort, milestoneStatusFilter]);
+
+  const toggleMilestoneSort = (key: MilestoneSortKey) => {
+    setMilestoneSort(prev => prev.key === key
+      ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+      : { key, dir: key === 'dueDate' ? 'asc' : 'asc' });
+  };
 
   const opsError = (error as Error | null) || (data?.error ? new Error(data.error) : null);
   const showAsanaError = !!opsError && !data;
@@ -173,26 +202,74 @@ export function WeeklyRundownOpsProjectsPage() {
 
       {/* Upcoming Milestones (Asana portfolio milestone tasks) */}
       <div className={cn(GLASS_CARD, 'p-4 mb-6')}>
-        <h3 className="text-xs font-semibold text-foreground mb-3">Upcoming Milestones</h3>
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+          <h3 className="text-xs font-semibold text-foreground">Upcoming Milestones</h3>
+          <div className="flex items-center gap-1">
+            {(['All', 'On Track', 'At Risk', 'Overdue'] as const).map(s => {
+              const active = milestoneStatusFilter === s;
+              const count = s === 'All'
+                ? (asanaMilestones?.length ?? 0)
+                : (asanaMilestones?.filter(m => m.status === s).length ?? 0);
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setMilestoneStatusFilter(s)}
+                  className={cn(
+                    'px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider transition-colors border',
+                    active
+                      ? 'bg-white/10 text-foreground border-white/20'
+                      : 'bg-transparent text-muted-foreground border-white/5 hover:bg-white/5'
+                  )}
+                >
+                  {s} <span className="opacity-60 ml-0.5">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
         {milestonesLoading ? (
           <div className="text-xs text-muted-foreground/60 py-4">Loading…</div>
         ) : milestonesError ? (
           <div className="text-xs text-destructive py-4">Could not load Asana portfolio milestones.</div>
         ) : !asanaMilestones || asanaMilestones.length === 0 ? (
           <div className="text-xs text-muted-foreground/60 py-4">No upcoming milestones in the Asana portfolio.</div>
+        ) : visibleMilestones.length === 0 ? (
+          <div className="text-xs text-muted-foreground/60 py-4">No milestones match the selected filter.</div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-[10px] uppercase tracking-wider h-8">Milestone</TableHead>
-                <TableHead className="text-[10px] uppercase tracking-wider h-8">Project</TableHead>
-                <TableHead className="text-[10px] uppercase tracking-wider h-8">Assignee</TableHead>
-                <TableHead className="text-[10px] uppercase tracking-wider h-8">Due</TableHead>
-                <TableHead className="text-[10px] uppercase tracking-wider h-8">Status</TableHead>
+                {([
+                  { key: 'title', label: 'Milestone' },
+                  { key: 'projectName', label: 'Project' },
+                  { key: 'assignee', label: 'Assignee' },
+                  { key: 'dueDate', label: 'Due' },
+                  { key: 'status', label: 'Status' },
+                ] as { key: MilestoneSortKey; label: string }[]).map(col => {
+                  const active = milestoneSort.key === col.key;
+                  return (
+                    <TableHead key={col.key} className="text-[10px] uppercase tracking-wider h-8">
+                      <button
+                        type="button"
+                        onClick={() => toggleMilestoneSort(col.key)}
+                        className={cn(
+                          'inline-flex items-center gap-1 hover:text-foreground transition-colors',
+                          active ? 'text-foreground' : 'text-muted-foreground'
+                        )}
+                      >
+                        {col.label}
+                        {active && (milestoneSort.dir === 'asc'
+                          ? <ArrowUp className="h-3 w-3" />
+                          : <ArrowDown className="h-3 w-3" />)}
+                      </button>
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {asanaMilestones.slice(0, 50).map(m => (
+              {visibleMilestones.slice(0, 50).map(m => (
                 <TableRow
                   key={m.id}
                   className={cn(m.url && 'cursor-pointer')}
