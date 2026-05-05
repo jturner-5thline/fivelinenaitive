@@ -11,9 +11,6 @@ import type { DealsCarouselView } from '@/components/dashboard/DealsCarouselDial
 const DailyBriefingModal = lazy(() =>
   import('@/components/dashboard/DailyBriefingModal').then(m => ({ default: m.DailyBriefingModal })),
 );
-const JamesBriefingModal = lazy(() =>
-  import('@/components/dashboard/JamesBriefingModal').then(m => ({ default: m.JamesBriefingModal })),
-);
 // InboxDialog is eagerly imported (NOT lazy) so the modal can paint
 // instantly from the prefetched inbox cache on click. Lazy-loading this
 // chunk previously added 1–2s of network + parse latency between the
@@ -1079,7 +1076,7 @@ export default function Dashboard() {
           <InboxDialog open onOpenChange={handleCarouselDialogOpenChange} />
         )}
         {isJTurner && isWidgetActive('daily-briefing') && (
-          <JamesBriefingModal open onOpenChange={handleCarouselDialogOpenChange} />
+          <DailyBriefingModal open onOpenChange={handleCarouselDialogOpenChange} />
         )}
         {canSeeNiki && isWidgetActive('niki-briefing') && (
           <DailyBriefingModal
