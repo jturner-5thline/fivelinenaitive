@@ -1,6 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { buildDemoCalendarEvents, DEMO_PRIMARY_CALENDAR } from '@/lib/demoSeed';
+
+const isDemoUserEmail = (email?: string | null) =>
+  email === 'demo@5thline.co' || email === 'demo@example.com';
 
 export interface CalendarEvent {
   id: string;
@@ -63,6 +67,7 @@ const calendarCache: Record<
 
 export function useGoogleCalendar() {
   const { user } = useAuth();
+  const isDemo = isDemoUserEmail(user?.email);
   const cacheKey = user?.id || 'anon';
   const cached = calendarCache[cacheKey];
   const [status, setStatus] = useState<CalendarStatus>(cached?.status || { connected: false });
@@ -77,6 +82,20 @@ export function useGoogleCalendar() {
 
   const checkStatus = useCallback(async () => {
     if (!user) { setIsStatusLoading(false); return; }
+    if (isDemo) {
+      const demoStatus: CalendarStatus = {
+        connected: true,
+        connected_at: new Date().toISOString(),
+        email: 'demo@5thline.co',
+      };
+      setStatus(demoStatus);
+      calendarCache[cacheKey] = {
+        ...(calendarCache[cacheKey] || { events: [], calendars: [] }),
+        status: demoStatus,
+      };
+      setIsStatusLoading(false);
+      return;
+    }
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData?.session?.access_token) {
@@ -97,7 +116,7 @@ export function useGoogleCalendar() {
     } finally {
       setIsStatusLoading(false);
     }
-  }, [user, cacheKey]);
+  }, [user, cacheKey, isDemo]);
 
   const connect = useCallback(async () => {
     if (!user) return;
@@ -159,6 +178,12 @@ export function useGoogleCalendar() {
 
   const listCalendars = useCallback(async () => {
     if (!user) return null;
+    if (isDemo) {
+      const cals = [DEMO_PRIMARY_CALENDAR];
+      setCalendars(cals);
+      calendarCache[cacheKey] = { ...(calendarCache[cacheKey] || { events: [], calendars: [] }), calendars: cals };
+      return cals;
+    }
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('calendar-events', {
@@ -176,7 +201,7 @@ export function useGoogleCalendar() {
     } finally {
       setIsLoading(false);
     }
-  }, [user, cacheKey]);
+  }, [user, cacheKey, isDemo]);
 
   const listEvents = useCallback(async (options?: {
     calendarId?: string;
@@ -186,6 +211,12 @@ export function useGoogleCalendar() {
     pageToken?: string;
   }) => {
     if (!user) return null;
+    if (isDemo) {
+      const evts = buildDemoCalendarEvents();
+      setEvents(evts);
+      calendarCache[cacheKey] = { ...(calendarCache[cacheKey] || { events: [], calendars: [] }), events: evts };
+      return { events: evts };
+    }
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('calendar-events', {
@@ -233,6 +264,14 @@ export function useGoogleCalendar() {
     maxResults?: number;
   }) => {
     if (!user) return null;
+    if (isDemo) {
+      const cals = [DEMO_PRIMARY_CALENDAR];
+      const evts = buildDemoCalendarEvents();
+      setCalendars(cals);
+      setEvents(evts);
+      calendarCache[cacheKey] = { events: evts, calendars: cals, status: { connected: true } };
+      return { calendars: cals, events: evts };
+    }
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('calendar-events', {
@@ -255,7 +294,7 @@ export function useGoogleCalendar() {
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, isDemo, cacheKey]);
 
   const createEvent = useCallback(async (eventData: {
     summary: string;

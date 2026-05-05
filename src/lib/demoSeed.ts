@@ -1,0 +1,231 @@
+/**
+ * Demo storyline fixtures for the demo@5thline.co tenant.
+ *
+ * The demo experience pretends Google (Gmail + Calendar) is already
+ * connected and pre-populated with a believable working state. The two
+ * pinned emails drive the headline AI workflows:
+ *
+ *   #1 — Coastal Brands client sends financial materials so the user
+ *        can run "add to data room" and watch the documents appear.
+ *   #2 — Greenfield Capital lender sends an indicative term sheet for
+ *        Vertex Cloud Solutions so the user can run "update deal +
+ *        lender stage" and watch the pipeline move forward.
+ *
+ * Everything below is local, deterministic, and reset on every demo
+ * login. Production tenants never read from this module.
+ */
+
+export const DEMO_EMAIL_1_ID = 'demo-email-client-docs';
+export const DEMO_EMAIL_2_ID = 'demo-email-term-sheet';
+
+/** Real deal records in the demo company that the storyline maps to. */
+export const DEMO_DEAL_CLIENT_DOCS = {
+  id: 'be58e352-b451-44a6-b960-1b5f0585fdba',
+  name: 'Coastal Brands Inc',
+};
+
+export const DEMO_DEAL_TERM_SHEET = {
+  id: '7e03bb68-a254-4b28-a1e9-1ac6d22056ab',
+  name: 'Vertex Cloud Solutions',
+};
+
+/** Pre-baked AI analysis the dashboard / intelligence panel renders without
+ *  hitting the analyze-emails edge function. Shape matches EmailAnalysis. */
+export const DEMO_EMAIL_ANALYSIS: Record<
+  string,
+  {
+    deal_id: string;
+    deal_name: string;
+    category: string;
+    sentiment: string;
+    priority: string;
+    summary: string;
+    suggested_action: string;
+    follow_up_needed: boolean;
+    follow_up_by: string | null;
+    extracted_data: Record<string, unknown>;
+    signals: string[];
+  }
+> = {
+  [DEMO_EMAIL_1_ID]: {
+    deal_id: DEMO_DEAL_CLIENT_DOCS.id,
+    deal_name: DEMO_DEAL_CLIENT_DOCS.name,
+    category: 'due_diligence',
+    sentiment: 'positive',
+    priority: 'high',
+    summary:
+      'Rachel Patel (CFO, Coastal Brands) sent the promised data-room package: Q4 financials, AR aging, customer concentration, cap table, and org chart. Ready to ingest into the Coastal Brands data room.',
+    suggested_action:
+      'Add the 5 attached documents to the Coastal Brands data room and notify the lender group.',
+    follow_up_needed: true,
+    follow_up_by: new Date(Date.now() + 24 * 3600000).toISOString(),
+    extracted_data: {
+      counterparty: 'Coastal Brands Inc.',
+      counterparty_role: 'client',
+      attachments_count: 5,
+      target_data_room: 'Coastal Brands Inc / Lender Diligence',
+      document_categories: ['Financials', 'AR aging', 'Customer concentration', 'Cap table', 'Org chart'],
+    },
+    signals: ['client_materials_received', 'data_room_ingest_ready'],
+  },
+  [DEMO_EMAIL_2_ID]: {
+    deal_id: DEMO_DEAL_TERM_SHEET.id,
+    deal_name: DEMO_DEAL_TERM_SHEET.name,
+    category: 'terms_discussion',
+    sentiment: 'positive',
+    priority: 'high',
+    summary:
+      'Greenfield Capital sent an indicative term sheet on Vertex Cloud Solutions: $18M senior secured (Revolver $5M + TL $13M), SOFR + 450, 4-yr tenor, 1.10x FCCR, 3.50x leverage. Ready to advance to credit committee on the 22nd.',
+    suggested_action:
+      'Update the Vertex Cloud Solutions deal with the term-sheet economics and move Greenfield Capital to the "Term Sheet Received" lender stage.',
+    follow_up_needed: true,
+    follow_up_by: new Date(Date.now() + 48 * 3600000).toISOString(),
+    extracted_data: {
+      counterparty: 'Greenfield Capital',
+      counterparty_role: 'lender',
+      lender_name: 'Greenfield Capital',
+      facility_size_usd: 18_000_000,
+      facility_structure: { revolver_usd: 5_000_000, term_loan_usd: 13_000_000 },
+      pricing: 'SOFR + 450 bps',
+      tenor_years: 4,
+      amortization: '5%/yr, bullet at maturity',
+      covenants: { fccr_min: 1.10, total_leverage_max: 3.50, min_liquidity_usd: 2_000_000 },
+      collateral: 'First lien on all assets',
+      fees: { upfront_bps: 100, unused_bps: 50 },
+      target_lender_stage: 'Term Sheet Received',
+      committee_date: new Date(Date.now() + 14 * 86400000).toISOString(),
+    },
+    signals: ['term_sheet_received', 'lender_stage_advance_pending'],
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Calendar
+// ---------------------------------------------------------------------------
+
+function startOfWeek(d = new Date()): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  const day = x.getDay(); // 0 = Sun
+  x.setDate(x.getDate() - day + 1); // Monday
+  return x;
+}
+
+function dayAt(weekStart: Date, dayOffset: number, hour: number, minute = 0): Date {
+  const d = new Date(weekStart);
+  d.setDate(d.getDate() + dayOffset);
+  d.setHours(hour, minute, 0, 0);
+  return d;
+}
+
+/** Dense, realistic schedule for the current week, pre-tied to the
+ *  storyline emails so the dashboard / morning briefing references them. */
+export function buildDemoCalendarEvents() {
+  const week = startOfWeek();
+
+  type E = {
+    id: string;
+    summary: string;
+    description?: string;
+    location?: string | null;
+    start: Date;
+    end: Date;
+    attendees?: { email: string; display_name?: string }[];
+  };
+
+  const raw: E[] = [
+    // Monday
+    { id: 'demo-evt-1', summary: 'Internal pipeline standup', location: 'Zoom',
+      start: dayAt(week, 0, 9, 0), end: dayAt(week, 0, 9, 30),
+      attendees: [{ email: 'team@5thline.co', display_name: '5th Line Team' }] },
+    { id: 'demo-evt-2', summary: 'Coastal Brands — diligence kickoff',
+      description: 'Walk through the materials Rachel sent over (Q4 financials, AR aging, cap table) and align on data room structure.',
+      location: 'Google Meet',
+      start: dayAt(week, 0, 11, 0), end: dayAt(week, 0, 12, 0),
+      attendees: [
+        { email: 'rachel.patel@coastalbrands.com', display_name: 'Rachel Patel (Coastal Brands)' },
+        { email: 'demo@5thline.co' },
+      ] },
+    { id: 'demo-evt-3', summary: 'Vertex Cloud — Greenfield term sheet review',
+      description: 'Review Greenfield Capital indicative term sheet ($18M senior secured) and align on response.',
+      location: 'Zoom',
+      start: dayAt(week, 0, 15, 0), end: dayAt(week, 0, 16, 0),
+      attendees: [
+        { email: 'mike.rodriguez@greenfieldcap.com', display_name: 'Mike Rodriguez (Greenfield Capital)' },
+        { email: 'lisa.thompson@vertexcloud.io', display_name: 'Lisa Thompson (Vertex Cloud)' },
+        { email: 'demo@5thline.co' },
+      ] },
+    // Tuesday
+    { id: 'demo-evt-4', summary: 'Pinnacle Data — Meridian DD response prep',
+      start: dayAt(week, 1, 10, 0), end: dayAt(week, 1, 11, 0),
+      attendees: [{ email: 'jennifer.wu@meridianbank.com', display_name: 'Jennifer Wu (Meridian Bank)' }] },
+    { id: 'demo-evt-5', summary: '1:1 — David Park',
+      start: dayAt(week, 1, 13, 30), end: dayAt(week, 1, 14, 0),
+      attendees: [{ email: 'david.park@5thline.co', display_name: 'David Park' }] },
+    { id: 'demo-evt-6', summary: 'Summit Capital intro call (Vertex Cloud)',
+      description: 'Inbound interest from Amanda Foster — Vertex Cloud opportunity overview.',
+      start: dayAt(week, 1, 16, 0), end: dayAt(week, 1, 16, 30),
+      attendees: [{ email: 'amanda.foster@summitcap.com', display_name: 'Amanda Foster (Summit Capital)' }] },
+    // Wednesday
+    { id: 'demo-evt-7', summary: 'Coastal Brands — lender Q&A session',
+      description: 'Live Q&A with the Coastal Brands lender group on the data room contents.',
+      start: dayAt(week, 2, 10, 0), end: dayAt(week, 2, 11, 0),
+      attendees: [
+        { email: 'rachel.patel@coastalbrands.com', display_name: 'Rachel Patel (Coastal Brands)' },
+        { email: 'jennifer.wu@meridianbank.com', display_name: 'Jennifer Wu (Meridian Bank)' },
+      ] },
+    { id: 'demo-evt-8', summary: 'Internal deal review — current pipeline',
+      start: dayAt(week, 2, 14, 0), end: dayAt(week, 2, 15, 0) },
+    // Thursday
+    { id: 'demo-evt-9', summary: 'Summit Hospitality — lender update call',
+      description: 'Quarterly lender update call with Summit Hospitality management.',
+      start: dayAt(week, 3, 14, 0), end: dayAt(week, 3, 15, 0),
+      attendees: [{ email: 'david.park@5thline.co', display_name: 'David Park' }] },
+    { id: 'demo-evt-10', summary: 'Redwood Manufacturing — covenant waiver review',
+      start: dayAt(week, 3, 16, 0), end: dayAt(week, 3, 16, 45),
+      attendees: [{ email: 'robert.james@unioncreditgroup.com', display_name: 'Robert James (Union Credit Group)' }] },
+    // Friday
+    { id: 'demo-evt-11', summary: 'Vertex Cloud — Greenfield credit committee prep',
+      description: 'Final prep for the Greenfield Capital credit committee on Vertex Cloud Solutions.',
+      start: dayAt(week, 4, 11, 0), end: dayAt(week, 4, 12, 0),
+      attendees: [{ email: 'mike.rodriguez@greenfieldcap.com', display_name: 'Mike Rodriguez (Greenfield Capital)' }] },
+    { id: 'demo-evt-12', summary: 'Weekly wrap-up & next-week planning',
+      start: dayAt(week, 4, 15, 30), end: dayAt(week, 4, 16, 0) },
+  ];
+
+  return raw.map((e) => ({
+    id: e.id,
+    calendar_id: 'primary',
+    summary: e.summary,
+    description: e.description ?? null,
+    location: e.location ?? null,
+    start: e.start.toISOString(),
+    end: e.end.toISOString(),
+    all_day: false,
+    status: 'confirmed',
+    updated: new Date().toISOString(),
+    created: new Date(Date.now() - 7 * 86400000).toISOString(),
+    html_link: null,
+    hangout_link: null,
+    attendees: (e.attendees || []).map((a) => ({
+      email: a.email,
+      display_name: a.display_name ?? null,
+      response_status: 'accepted',
+      organizer: a.email === 'demo@5thline.co',
+      self: a.email === 'demo@5thline.co',
+    })),
+    organizer: { email: 'demo@5thline.co', displayName: 'Demo (5th Line)' },
+    color_id: null,
+  }));
+}
+
+export const DEMO_PRIMARY_CALENDAR = {
+  id: 'primary',
+  summary: 'demo@5thline.co',
+  description: 'Demo workspace primary calendar',
+  primary: true,
+  background_color: '#3b82f6',
+  foreground_color: '#ffffff',
+  access_role: 'owner',
+  time_zone: 'America/New_York',
+};

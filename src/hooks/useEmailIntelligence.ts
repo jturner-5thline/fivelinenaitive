@@ -3,6 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGmail } from '@/hooks/useGmail';
 import { toast } from 'sonner';
+import { DEMO_EMAIL_ANALYSIS } from '@/lib/demoSeed';
+
+const isDemoUserEmail = (email?: string | null) =>
+  email === 'demo@5thline.co' || email === 'demo@example.com';
 
 export interface EmailIntelligenceSettings {
   auto_tagging: boolean;
@@ -183,6 +187,42 @@ export function useEmailIntelligence() {
   // Fetch and cache emails from Gmail, then load from cache
   const syncEmails = useCallback(async (force = false) => {
     if (!user || !gmailStatus.connected) return;
+
+    // Demo: bypass DB cache + AI analysis. Render the seeded mock inbox
+    // with pre-baked analysis directly so storyline is deterministic.
+    if (isDemoUserEmail(user.email)) {
+      const result = await listMessages({ maxResults: 50 });
+      const msgs = (result?.messages || []) as any[];
+      const enriched: EnrichedEmail[] = msgs.map((m) => {
+        const baked = DEMO_EMAIL_ANALYSIS[m.id];
+        return {
+          id: m.id,
+          gmail_message_id: m.id,
+          thread_id: m.thread_id || null,
+          subject: m.subject || null,
+          snippet: m.snippet || null,
+          body_text: m.body_text || null,
+          from_email: m.from_email || null,
+          from_name: m.from_name || null,
+          to_emails: m.to_emails || null,
+          labels: m.labels || null,
+          is_read: !!m.is_read,
+          is_starred: !!m.is_starred,
+          received_at: m.received_at || null,
+          fetched_at: new Date().toISOString(),
+          analysis: baked
+            ? ({
+                id: `demo-analysis-${m.id}`,
+                email_cache_id: m.id,
+                analyzed_at: new Date().toISOString(),
+                ...baked,
+              } as EmailAnalysis)
+            : undefined,
+        };
+      });
+      setEmails(enriched);
+      return;
+    }
 
     const now = Date.now();
     if (!force && now - lastSyncRef.current < 60_000) return; // debounce 1 min
