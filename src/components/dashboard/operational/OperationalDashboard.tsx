@@ -539,6 +539,7 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
         {/* Chart 5: Projects Due within Next 2 Weeks (bar) */}
         <ChartCard
           title="Projects Due within Next 2 Weeks"
+          className="md:col-span-2 lg:col-span-2"
           onSeeAll={() =>
             openDrilldown(
               'Projects Due within Next 2 Weeks',
@@ -547,31 +548,68 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
             )
           }
         >
-          <ResponsiveContainer width="100%" height={170}>
-            <BarChart data={projectsDueBuckets} margin={{ left: 0, right: 8, top: 8, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="bucket" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} interval={0} />
-              <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} width={28} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} />
-              <Bar
-                dataKey="count"
-                shape={createGlassBarShape({ radius: 3 })}
-                name="Projects Due"
-                onClick={(entry: any) =>
-                  openDrilldown(
-                    'Projects Due within Next 2 Weeks',
-                    (entry?.items || []) as any[],
-                    'project',
-                  )
-                }
-                style={{ cursor: 'pointer' }}
-              >
-                {projectsDueBuckets.map((_, i) => (
-                  <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="flex gap-3 py-1">
+            <div className="w-2/5 max-w-[260px] min-w-0 border-r glass-border-softer pr-3 flex flex-col">
+              <div className="text-[9px] uppercase tracking-wider text-muted-foreground/60 mb-1.5">
+                Projects ({(projectsDueBuckets[0] as any)?.items?.length || 0})
+              </div>
+              {((projectsDueBuckets[0] as any)?.items?.length || 0) === 0 ? (
+                <div className="flex-1 flex items-center justify-center text-[10px] text-muted-foreground/60 text-center px-2">
+                  No projects due in the next 14 days
+                </div>
+              ) : (
+                <ul className="flex-1 overflow-y-auto space-y-1 pr-1" style={{ maxHeight: 160 }}>
+                  {((projectsDueBuckets[0] as any).items as any[]).map((p, i) => (
+                    <li
+                      key={p.gid || p.id || i}
+                      onClick={() =>
+                        openDrilldown(
+                          'Projects Due within Next 2 Weeks',
+                          (projectsDueBuckets[0] as any)?.items || [],
+                          'project',
+                        )
+                      }
+                      className="text-[10px] text-foreground/85 hover:text-foreground truncate cursor-pointer flex items-center gap-1.5"
+                      title={p.name}
+                    >
+                      <span
+                        className="h-1.5 w-1.5 rounded-full shrink-0"
+                        style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
+                      />
+                      <span className="truncate">{p.name || 'Untitled project'}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <ResponsiveContainer width="100%" height={170}>
+                <BarChart data={projectsDueBuckets} margin={{ left: 0, right: 8, top: 8, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="bucket" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} interval={0} />
+                  <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} width={28} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} />
+                  <Bar
+                    dataKey="count"
+                    shape={createGlassBarShape({ radius: 3 })}
+                    name="Projects Due"
+                    onClick={(entry: any) =>
+                      openDrilldown(
+                        'Projects Due within Next 2 Weeks',
+                        (entry?.items || []) as any[],
+                        'project',
+                      )
+                    }
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {projectsDueBuckets.map((_, i) => (
+                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </ChartCard>
       </div>
 
