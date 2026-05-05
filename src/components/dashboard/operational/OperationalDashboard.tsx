@@ -230,8 +230,8 @@ function useDerivedMetrics(data: OperationalData | null) {
     // Chart 3: Projects overview by status groups
     const statusGroups = new Map<string, { onTrack: number; atRisk: number; offTrack: number }>();
     (data.projects ?? []).forEach((p: any) => {
-      // Use a simple bucket based on first word or full name
-      const bucket = p.name?.length > 20 ? p.name.slice(0, 18) + '…' : (p.name || 'Other');
+      // Use the full project name as the bucket key so labels stay readable.
+      const bucket = (p.name && String(p.name).trim()) || 'Untitled project';
       if (!statusGroups.has(bucket)) statusGroups.set(bucket, { onTrack: 0, atRisk: 0, offTrack: 0 });
       const g = statusGroups.get(bucket)!;
       const st = (p.status_type || '').toLowerCase();
@@ -241,8 +241,9 @@ function useDerivedMetrics(data: OperationalData | null) {
       else g.onTrack++; // default to on track if no status
     });
     const projectOverview = Array.from(statusGroups.entries())
-      .map(([bucket, v]) => ({ bucket, ...v }))
-      .slice(0, 6);
+      .map(([bucket, v]) => ({ bucket, ...v, total: v.onTrack + v.atRisk + v.offTrack }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 8);
 
     // Chart 4: Projects by status (pie)
     const statusCounts = { onTrack: 0, atRisk: 0, offTrack: 0, onHold: 0 };
