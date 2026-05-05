@@ -16,6 +16,8 @@ import { useProfile } from '@/hooks/useProfile';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useDashboardLayout } from '@/contexts/DashboardLayoutContext';
 import { useCompany } from '@/hooks/useCompany';
+import { useIsDemoAccount } from '@/hooks/useIsDemoAccount';
+import { DEMO_STALE_LIMIT } from '@/lib/demoAccount';
 import { Deal, STAGE_CONFIG, STATUS_CONFIG } from '@/types/deal';
 import { differenceInDays } from 'date-fns';
 import { stripHtml } from '@/lib/stripHtml';
@@ -35,6 +37,7 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
   const { preferences } = usePreferences();
   const { toggles } = useDashboardLayout();
   const { isAdmin } = useCompany();
+  const isDemoAccount = useIsDemoAccount();
   const [filter, setFilter] = useState<StageFilter>('all');
   const [isOpen, setIsOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -80,7 +83,11 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
     return filtered.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }, [deals, profile, filter, preferences, searchQuery, scope]);
 
-  const displayDeals = maxItems ? myDeals.slice(0, maxItems) : myDeals;
+  // Demo account: cap the "stale" filter to exactly DEMO_STALE_LIMIT deals.
+  const cappedDeals = (isDemoAccount && filter === 'stale')
+    ? myDeals.slice(0, DEMO_STALE_LIMIT)
+    : myDeals;
+  const displayDeals = maxItems ? cappedDeals.slice(0, maxItems) : cappedDeals;
 
   // Count deals by status for filter badges
   const statusCounts = useMemo(() => {
