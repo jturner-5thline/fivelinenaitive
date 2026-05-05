@@ -548,15 +548,42 @@ export function CashFlowManager() {
 
     // 1) Seed historical weeks (deep-copy values so downstream mutations
     //    can't bleed back into the imported constant).
+    //    IMPORTANT: manual Beginning/Ending Cash overrides must apply here too.
+    //    WK 68 is still part of the historical seed, so if we only honor
+    //    overrides in the forward roll-forward pass, the UI appears to save
+    //    and then immediately snaps back to the seeded historical balance.
     let lastHistoricalEnd = 0;
     let lastHistoricalAddl = 0;
     let lastHistoricalWeekNum = 0;
     const historicalKeys = Object.keys(WEEKLY_HISTORICAL_SEED).sort();
     for (const k of historicalKeys) {
       const entry = WEEKLY_HISTORICAL_SEED[k] as any;
-      out[k] = { ...entry };
-      lastHistoricalEnd = Number(entry['ENDING CASH']) || lastHistoricalEnd;
-      lastHistoricalAddl = Number(entry['Addl Liquidity Chase Tax Reserve MT Chk']) || lastHistoricalAddl;
+      const ov = weeklyOverrides?.[k];
+      const seededBegin = Number(entry['BEGINNING CASH']);
+      const seededEnd = Number(entry['ENDING CASH']);
+      const seededNet = Number(entry['NET CHANGE'] ?? entry['TOTAL NET CASH CHANGE']);
+      const seededAddl = Number(
+        entry['Addl Liquidity Chase Tax Reserve MT Chk'] ?? entry["Add'l Liquidity (Delayed Draw)"]
+      ) || 0;
+      const hasBeginningOverride = ov?.beginningCash !== undefined && ov.beginningCash !== null;
+      const hasEndingOverride = ov?.endingCash !== undefined && ov.endingCash !== null;
+      const beginningCash = hasBeginningOverride
+        ? Math.round(Number(ov.beginningCash))
+        : (Number.isFinite(seededBegin) ? Math.round(seededBegin) : 0);
+      const endingCash = hasEndingOverride
+        ? Math.round(Number(ov.endingCash))
+        : (hasBeginningOverride && Number.isFinite(seededNet)
+            ? Math.round(beginningCash + seededNet)
+            : (Number.isFinite(seededEnd) ? Math.round(seededEnd) : beginningCash));
+
+      out[k] = {
+        ...entry,
+        'BEGINNING CASH': beginningCash,
+        'ENDING CASH': endingCash,
+        'TOTAL CASH ON HAND': Math.round(endingCash + seededAddl),
+      };
+      lastHistoricalEnd = endingCash;
+      lastHistoricalAddl = seededAddl || lastHistoricalAddl;
       lastHistoricalWeekNum = Number(entry.week_num) || lastHistoricalWeekNum;
     }
 
