@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ResponsiveContainer, ComposedChart, Area, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
 import { GlassCard, GlassCardHeader, GlassCardBody } from '@/components/metrics/GlassCard';
@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import { Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { QBO_ENTITIES } from '@/config/qboEntities';
 
 // Shared axis / tooltip / legend tokens — mirrors ExecutiveDashboard so the
 // chart looks identical after the move.
@@ -76,7 +78,7 @@ export function RevenueByMonthChart({ height = 240 }: { height?: number }) {
     queryFn: async () => {
       let q = supabase
         .from('quickbooks_invoices')
-        .select('txn_date, total_amt')
+        .select('txn_date, total_amt, realm_id')
         .order('txn_date', { ascending: true });
       if (start) q = q.gte('txn_date', start);
       if (end) q = q.lte('txn_date', end);
@@ -88,6 +90,26 @@ export function RevenueByMonthChart({ height = 240 }: { height?: number }) {
     staleTime: 30_000,
   });
 
+  // Entity filter — sourced from QuickBooks `realm_id` (each connected QBO
+  // company is a separate realm). 'all' aggregates across realms; specific
+  // realmId filters to that entity only. Records without a realm_id can't
+  // exist in this table (NOT NULL), so the "include in All / exclude from
+  // individual" rule is naturally satisfied.
+  const [entity, setEntity] = useState<string>('all');
+
+  const availableRealms = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of data ?? []) if (r.realm_id) set.add(r.realm_id);
+    return Array.from(set);
+  }, [data]);
+
+  const entityOptions = useMemo(() => {
+    return availableRealms.map(realmId => {
+      const known = QBO_ENTITIES.find(e => e.realmId === realmId);
+      return { realmId, label: known?.label ?? `Entity ${realmId.slice(-4)}` };
+    });
+  }, [availableRealms]);
+
   const { chartData, bucket, title } = useMemo(() => {
     if (!start || !end) {
       return { chartData: [] as { period: string; revenue: number }[], bucket: 'month' as Bucket, title: 'Revenue' };
@@ -96,6 +118,7 @@ export function RevenueByMonthChart({ height = 240 }: { height?: number }) {
     const map = new Map<string, { label: string; amount: number; sortKey: string }>();
     for (const row of data ?? []) {
       if (!row.txn_date) continue;
+      if (entity !== 'all' && row.realm_id !== entity) continue;
       const d = new Date(row.txn_date + 'T00:00:00');
       const { key, label } = bucketKey(d, b);
       const existing = map.get(key);
@@ -111,13 +134,40 @@ export function RevenueByMonthChart({ height = 240 }: { height?: number }) {
       month: 'Revenue by Month',
     };
     return { chartData: arr, bucket: b, title: titleByBucket[b] };
-  }, [data, start, end]);
+  }, [data, start, end, entity]);
+
+  const activeEntityLabel =
+    entity === 'all'
+      ? 'All Entities'
+      : entityOptions.find(o => o.realmId === entity)?.label ?? 'Entity';
+  const fullTitle = `${title} — ${activeEntityLabel}`;
+  const showFilter = entityOptions.length > 1;
 
   return (
     <GlassCard interactive className="h-full">
-      <GlassCardHeader title={title} subtitle={rangeLabel} />
+      <GlassCardHeader
+        title={fullTitle}
+        subtitle={rangeLabel}
+        right={
+          showFilter ? (
+            <Select value={entity} onValueChange={setEntity}>
+              <SelectTrigger className="h-7 w-[130px] text-xs bg-background/40 border-white/10">
+                <SelectValue placeholder="All Entities" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Entities</SelectItem>
+                {entityOptions.map(opt => (
+                  <SelectItem key={opt.realmId} value={opt.realmId}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null
+        }
+      />
       <GlassCardBody>
-        <div style={{ height }} role="img" aria-label={`${title}, ${rangeLabel}`}>
+        <div style={{ height }} role="img" aria-label={`${fullTitle}, ${rangeLabel}`}>
           {isLoading ? (
             <div className="h-full w-full flex items-center justify-center text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
