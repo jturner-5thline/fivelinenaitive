@@ -170,7 +170,7 @@ function PieLegend({
 }
 
 // ── Derived metrics from real data ─────────────────────────────
-function useDerivedMetrics(data: OperationalData | null) {
+function useDerivedMetrics(data: OperationalData | null, projectFilter: string | null) {
   return useMemo(() => {
     if (!data) return null;
 
@@ -179,9 +179,18 @@ function useDerivedMetrics(data: OperationalData | null) {
     const weekStart = startOfWeek(now, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
 
-    // All tasks combined
-    const allTasks = [...(data.overdue ?? []), ...(data.today ?? []), ...(data.upcoming ?? [])];
-    const completedTasks = data.recentlyCompleted ?? [];
+    // Apply project filter to task lists. Project-level lists stay unfiltered
+    // so the project widgets keep their portfolio-wide context.
+    const matchesProject = (t: any) =>
+      !projectFilter || (t.project_name || 'Unknown') === projectFilter;
+    const overdueRaw = (data.overdue ?? []).filter(matchesProject);
+    const todayRaw = (data.today ?? []).filter(matchesProject);
+    const upcomingRaw = (data.upcoming ?? []).filter(matchesProject);
+    const completedRaw = (data.recentlyCompleted ?? []).filter(matchesProject);
+
+    // All tasks combined (filtered)
+    const allTasks = [...overdueRaw, ...todayRaw, ...upcomingRaw];
+    const completedTasks = completedRaw;
 
     // KPI 1: Milestones due in next 2 weeks (from today + upcoming, filter milestones with due_on in range)
     const milestonesNext2WeeksItems = allTasks.filter(t => {
@@ -234,7 +243,8 @@ function useDerivedMetrics(data: OperationalData | null) {
       .map(([assignee, items]) => ({ assignee, count: items.length, items }))
       .sort((a, b) => b.count - a.count);
 
-    // Chart 2: Overdue tasks by project
+    // Chart 2: Overdue tasks by project — always derived from the unfiltered
+    // overdue list so the legend/filter source stays stable.
     const overdueByProject = new Map<string, any[]>();
     (data.overdue ?? []).forEach((t: any) => {
       const proj = t.project_name || 'Unknown';
@@ -303,12 +313,13 @@ function useDerivedMetrics(data: OperationalData | null) {
       projectsDueBuckets,
       projectsAll: data.projects ?? [],
     };
-  }, [data]);
+  }, [data, projectFilter]);
 }
 
 // ── Main Dashboard ─────────────────────────────────────────────
 export function OperationalDashboard({ data, isLoading, error, onRefetch }: OperationalDashboardProps) {
-  const metrics = useDerivedMetrics(data);
+  const [projectFilter, setProjectFilter] = useState<string | null>(null);
+  const metrics = useDerivedMetrics(data, projectFilter);
   const [drilldown, setDrilldown] = useState<{
     title: string;
     subtitle?: string;
@@ -384,6 +395,21 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
       {data.partial && (
         <div className="text-[10px] text-amber-400/70 bg-amber-400/[0.06] rounded px-3 py-1.5 border border-amber-400/10">
           Some projects could not be loaded due to rate limits. Showing partial data.
+        </div>
+      )}
+
+      {/* Active project filter banner */}
+      {projectFilter && (
+        <div className="flex items-center gap-2 text-[11px] text-foreground/85 bg-primary/[0.08] border border-primary/20 rounded px-3 py-1.5">
+          <span className="text-muted-foreground">Filtering by project:</span>
+          <span className="font-semibold truncate">{projectFilter}</span>
+          <button
+            type="button"
+            onClick={() => setProjectFilter(null)}
+            className="ml-auto inline-flex items-center gap-1 text-[10px] text-primary hover:underline"
+          >
+            Clear filter
+          </button>
         </div>
       )}
 
@@ -482,42 +508,89 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
           {overdueBuckets.length === 0 ? (
             <div className="flex items-center justify-center h-[170px] text-xs text-muted-foreground/60">No overdue items</div>
           ) : (
-            <ResponsiveContainer width="100%" height={Math.max(170, overdueBuckets.length * 28 + 16)}>
-              <BarChart
-                data={overdueBuckets}
-                layout="vertical"
-                margin={{ left: 4, right: 16, top: 4, bottom: 4 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" vertical stroke="hsl(var(--border))" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
-                <YAxis
-                  type="category"
-                  dataKey="project"
-                  tick={{ fontSize: Y_AXIS_FONT, fill: 'hsl(var(--muted-foreground))' }}
-                  interval={0}
-                  width={Y_AXIS_WIDTH}
-                  tickFormatter={(v: string) => truncateLabel(v, maxLabelChars(Y_AXIS_WIDTH, Y_AXIS_FONT))}
-                />
-                <Tooltip contentStyle={TOOLTIP_STYLE} labelFormatter={(label) => String(label)} />
-                <Bar
-                  dataKey="count"
-                  shape={createGlassBarShape({ radius: 3 })}
-                  name="Overdue"
-                  onClick={(entry: any) =>
-                    openDrilldown(
-                      `Overdue Tasks — ${entry?.project || ''}`,
-                      (entry?.items || []) as any[],
-                      'task',
-                    )
-                  }
-                  style={{ cursor: 'pointer' }}
+            <>
+              <div className="flex items-center justify-between px-2 pt-1 pb-1">
+                <span className="text-[10px] text-muted-foreground/70">
+                  {projectFilter ? 'Filtering dashboard by project' : 'Click a bar or project to filter the dashboard'}
+                </span>
+                {projectFilter && (
+                  <button
+                    type="button"
+                    onClick={() => setProjectFilter(null)}
+                    className="text-[10px] text-primary hover:underline"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <ResponsiveContainer width="100%" height={Math.max(170, overdueBuckets.length * 28 + 16)}>
+                <BarChart
+                  data={overdueBuckets}
+                  layout="vertical"
+                  margin={{ left: 4, right: 16, top: 4, bottom: 4 }}
                 >
-                  {overdueBuckets.map((_, i) => (
-                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+                  <CartesianGrid strokeDasharray="3 3" vertical stroke="hsl(var(--border))" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
+                  <YAxis
+                    type="category"
+                    dataKey="project"
+                    tick={{ fontSize: Y_AXIS_FONT, fill: 'hsl(var(--muted-foreground))', cursor: 'pointer' }}
+                    interval={0}
+                    width={Y_AXIS_WIDTH}
+                    tickFormatter={(v: string) => truncateLabel(v, maxLabelChars(Y_AXIS_WIDTH, Y_AXIS_FONT))}
+                    onClick={(o: any) => {
+                      const v = o?.value;
+                      if (v) setProjectFilter(projectFilter === v ? null : v);
+                    }}
+                  />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} labelFormatter={(label) => String(label)} />
+                  <Bar
+                    dataKey="count"
+                    shape={createGlassBarShape({ radius: 3 })}
+                    name="Overdue"
+                    onClick={(entry: any) => {
+                      const v = entry?.project;
+                      if (v) setProjectFilter(projectFilter === v ? null : v);
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {overdueBuckets.map((b, i) => (
+                      <Cell
+                        key={i}
+                        fill={CHART_COLORS[i % CHART_COLORS.length]}
+                        fillOpacity={!projectFilter || projectFilter === b.project ? 1 : 0.3}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="flex flex-wrap gap-1 px-2 pt-2 pb-1">
+                {overdueBuckets.map((b: any, i: number) => {
+                  const active = projectFilter === b.project;
+                  return (
+                    <button
+                      key={b.project}
+                      type="button"
+                      onClick={() => setProjectFilter(active ? null : b.project)}
+                      title={`${b.project} (${b.count} overdue)`}
+                      className={cn(
+                        'flex items-center gap-1.5 text-[10px] rounded px-1.5 py-0.5 border transition-colors max-w-[180px]',
+                        active
+                          ? 'border-primary/40 bg-primary/[0.12] text-foreground'
+                          : 'border-white/10 bg-white/[0.03] text-muted-foreground hover:text-foreground hover:bg-white/[0.06]',
+                      )}
+                    >
+                      <span
+                        className="h-1.5 w-1.5 rounded-full shrink-0"
+                        style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
+                      />
+                      <span className="truncate">{b.project}</span>
+                      <span className="tabular-nums text-foreground/80">{b.count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
           )}
         </ChartCard>
 
