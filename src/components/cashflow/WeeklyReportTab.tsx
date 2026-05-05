@@ -856,6 +856,40 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
           </div>
           <div className="cf-range-controls">
             <button className="cf-btn cf-btn-secondary" onClick={() => setSavePlanOpen(true)}>Save Plan</button>
+            <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+              <input
+                type="search"
+                value={lineItemSearch}
+                onChange={(e) => setLineItemSearch(e.target.value)}
+                placeholder="Search line items…"
+                aria-label="Search line items"
+                className="cf-select"
+                style={{ minWidth: 200, paddingRight: lineItemSearch ? 24 : undefined }}
+              />
+              {lineItemSearch && (
+                <button
+                  type="button"
+                  onClick={() => setLineItemSearch('')}
+                  aria-label="Clear search"
+                  title="Clear search"
+                  style={{
+                    position: 'absolute',
+                    right: 4,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--color-text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: 2,
+                  }}
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
             <select
               className="cf-select"
               value={activePlanId || ''}
