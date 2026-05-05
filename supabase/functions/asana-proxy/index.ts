@@ -250,6 +250,58 @@ serve(async (req) => {
 
       default:
         result = { success: false, error: `Unknown action: ${action}` };
+
+      case "portfolio_milestones": {
+        // Fetch milestone-type tasks across all projects in a portfolio.
+        const resolvedToken = await resolveToken(token, integration_id);
+        const portfolioGid = params.portfolio_gid;
+        if (!portfolioGid) {
+          result = { success: false, error: "portfolio_gid is required" };
+          break;
+        }
+        try {
+          // 1. Get all projects in the portfolio
+          const itemsRes = await asanaFetch(
+            `/portfolios/${portfolioGid}/items?opt_fields=name,resource_type,archived`,
+            resolvedToken
+          );
+          const projects = (itemsRes.data || []).filter(
+            (p: any) => p.resource_type === "project" && !p.archived
+          );
+
+          // 2. For each project, fetch milestone tasks in parallel
+          const milestoneFields =
+            "name,completed,due_on,due_at,resource_subtype,permalink_url,assignee.name,projects.name";
+          const perProject = await Promise.all(
+            projects.map(async (p: any) => {
+              try {
+                const t = await asanaFetch(
+                  `/tasks?project=${p.gid}&completed_since=now&opt_fields=${milestoneFields}`,
+                  resolvedToken
+                );
+                const milestones = (t.data || []).filter(
+                  (task: any) => task.resource_subtype === "milestone"
+                );
+                return milestones.map((m: any) => ({
+                  ...m,
+                  project_gid: p.gid,
+                  project_name: p.name,
+                }));
+              } catch (err) {
+                console.warn(`[portfolio_milestones] skip project ${p.gid}: ${err}`);
+                return [];
+              }
+            })
+          );
+
+          const milestones = perProject.flat();
+          result = { success: true, milestones, project_count: projects.length };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "Unknown error fetching portfolio milestones";
+          result = { success: false, error: msg, milestones: [] };
+        }
+        break;
+      }
     }
 
     return new Response(JSON.stringify(result), {
