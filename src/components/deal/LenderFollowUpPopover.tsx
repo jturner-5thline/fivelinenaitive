@@ -132,6 +132,39 @@ export function LenderFollowUpPopover({
   const generateDraft = async () => {
     setDrafting(true);
     try {
+      // Try to pull the most recent Gmail thread involving this lender
+      // (by recipient email domain) and this deal name. Best-effort —
+      // failures are silently ignored so the draft still generates.
+      let gmailContext:
+        | { date?: string; from?: string; snippet?: string; subject?: string }
+        | null = null;
+      const recipientEmailForCtx = selectedContact?.email || manualEmail.trim();
+      const domain = recipientEmailForCtx.includes('@')
+        ? recipientEmailForCtx.split('@')[1].trim().toLowerCase()
+        : '';
+      if (domain && dealName) {
+        try {
+          const q = `from:${domain} OR to:${domain} "${dealName}"`;
+          const { data: gmailData } = await supabase.functions.invoke('gmail-messages', {
+            body: { action: 'list', query: q, max_results: 1, search_all_mail: true },
+          });
+          const msg = gmailData?.messages?.[0] || gmailData?.data?.[0] || null;
+          if (msg) {
+            const ts = msg.date || msg.received_at || msg.internal_date;
+            const date = ts ? new Date(typeof ts === 'number' ? ts * 1000 : ts).toLocaleDateString() : undefined;
+            const fromObj = Array.isArray(msg.from) ? msg.from[0] : msg.from;
+            gmailContext = {
+              date,
+              from: fromObj?.email || fromObj?.name || undefined,
+              subject: msg.subject || undefined,
+              snippet: msg.snippet || msg.body_preview || undefined,
+            };
+          }
+        } catch {
+          // ignore — draft will fall through without gmail context.
+        }
+      }
+
       const { data, error } = await supabase.functions.invoke('lender-followup-draft', {
         body: {
           lender_name: lenderName,
@@ -141,6 +174,7 @@ export function LenderFollowUpPopover({
           days_since_last_contact: daysSinceContact,
           contact_name: selectedContact?.name || manualName || '',
           notes: lenderNotes || '',
+          gmail_context: gmailContext,
         },
       });
       if (error) throw error;
