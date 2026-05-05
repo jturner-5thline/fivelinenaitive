@@ -1,7 +1,10 @@
-import { AlertCircle, ChevronRight, Clock } from 'lucide-react';
+import { AlertCircle, ArrowUpRight, ChevronRight, Clock, GitBranch } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useMemo } from 'react';
+import { useDealsContext } from '@/contexts/DealsContext';
+import type { Deal } from '@/types/deal';
 
 /**
  * Shared visual primitives for the Daily Briefing modal AND any other surface
@@ -87,6 +90,68 @@ export function BriefingRow({
 }
 
 /**
+ * Clickable deal chip — resolves a deal by id (preferred) or by company/name
+ * fallback against the user's DealsContext, then navigates to its deal page.
+ * Renders nothing if no match can be resolved.
+ */
+export function DealChip({
+  dealId,
+  dealName,
+  onNavigate,
+}: {
+  dealId?: string | null;
+  dealName?: string | null;
+  onNavigate: (path: string) => void;
+}) {
+  const { deals } = useDealsContext();
+  const deal = useMemo<Deal | null>(() => {
+    if (!deals?.length) return null;
+    if (dealId) {
+      const byId = deals.find(d => d.id === dealId);
+      if (byId) return byId;
+    }
+    if (dealName) {
+      const norm = (s?: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const target = norm(dealName);
+      const exact = deals.find(d => norm(d.company) === target || norm(d.name) === target);
+      if (exact) return exact;
+      const partial = deals.find(d => {
+        const c = norm(d.company);
+        const n = norm(d.name);
+        return (c && (c.includes(target) || target.includes(c)))
+          || (n && (n.includes(target) || target.includes(n)));
+      });
+      if (partial) return partial;
+    }
+    return null;
+  }, [deals, dealId, dealName]);
+
+  if (!deal) return null;
+  const label = deal.company || deal.name;
+  return (
+    <Badge
+      variant="outline"
+      role="button"
+      tabIndex={0}
+      onClick={(e) => { e.stopPropagation(); onNavigate(`/deal/${deal.id}`); }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          onNavigate(`/deal/${deal.id}`);
+        }
+      }}
+      title={`Open deal: ${label}`}
+      className="text-[9px] h-[16px] px-1 gap-0.5 shrink-0 font-medium cursor-pointer bg-primary/10 text-primary border-primary/30 hover:bg-primary/20 hover:border-primary/50 transition-colors inline-flex items-center"
+    >
+      <GitBranch className="h-2.5 w-2.5" />
+      <span className="truncate max-w-[140px]">{label}</span>
+      <ArrowUpRight className="h-2.5 w-2.5" />
+    </Badge>
+  );
+}
+
+/**
  * "Recent Pipeline Activity" section, extracted from DailyBriefingModal so
  * both that modal and the Weekly Rundown carousel render identical markup.
  *
@@ -97,10 +162,13 @@ export function BriefingRow({
 export function RecentPipelineActivitySection({
   recentActivity,
   onRowClick,
+  onNavigate,
   emptyMessage = 'No pipeline activity since 5 PM ET yesterday',
 }: {
   recentActivity: any[];
   onRowClick?: (activity: any) => void;
+  /** Required to render the clickable per-row deal chip. */
+  onNavigate?: (path: string) => void;
   emptyMessage?: string;
 }) {
   return (
@@ -118,6 +186,15 @@ export function RecentPipelineActivitySection({
             badgeVariant="outline"
             time={a.created_at ? formatDistanceToNow(new Date(a.created_at), { addSuffix: true }) : undefined}
             onClick={onRowClick ? () => onRowClick(a) : undefined}
+            extras={
+              onNavigate ? (
+                <DealChip
+                  dealId={a.deal_id}
+                  dealName={a.deal_name || a.metadata?.deal_name || a.metadata?.company}
+                  onNavigate={onNavigate}
+                />
+              ) : undefined
+            }
           />
         ))
       )}

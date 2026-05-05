@@ -42,6 +42,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useMorningFollowups, useFollowupActions, type FollowupDealGroup, type FollowupItem } from '@/hooks/useMorningFollowups';
 import { useDealsContext } from '@/contexts/DealsContext';
 import type { Deal } from '@/types/deal';
+import { RecentPipelineActivitySection } from './briefingPrimitives';
 
 interface DailyBriefingModalProps {
   open: boolean;
@@ -1099,6 +1100,13 @@ function PipelineTab({
         <Section title="Today's Follow-Ups">
           <FollowupsByDeal groups={followupGroups} onNavigate={onNavigate} />
         </Section>
+      )}
+      {recentActivity.length > 0 && (
+        <RecentPipelineActivitySection
+          recentActivity={recentActivity}
+          onRowClick={(a) => a?.deal_id && onNavigate(`/deal/${a.deal_id}`)}
+          onNavigate={onNavigate}
+        />
       )}
       <Suspense
         fallback={
