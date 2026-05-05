@@ -513,6 +513,8 @@ export interface PipelineMetrics {
   debtDollarOnBoard: StageMetricResult;
   debtDealsSigned: StageMetricResult;
   debtDollarSigned: StageMetricResult;
+  debtDealsClosed: StageMetricResult;
+  debtDollarClosed: StageMetricResult;
   finservDealsOnBoard: StageMetricResult;
   finservClientsSigned: StageMetricResult;
 }
@@ -523,6 +525,11 @@ export function usePipelineStageMetrics(quarter: QuarterOption): PipelineMetrics
 
   // Signed metrics remain stage-entry based
   const debtDealsSigned = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, quarter, ACTIVE_PIPELINE_ID);
+  // Deals Closed = unique deals that entered the Funded / Invoiced stage in
+  // the active pipeline within the selected period. (The active pipeline has
+  // a single combined "Funded / Invoiced" stage, so a single stage-entry
+  // metric naturally dedupes deals that touch both Funded and Invoiced.)
+  const debtDealsClosed = useStageEntryMetric(FUNDED_INVOICED_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const finservDealsOnBoard = usePipelineAddedMetric(FINSERV_PIPELINE_ID, quarter);
   const finservClientsSigned = useStageEntryMetric(FS_ACTIVE_CLIENT_STAGE, quarter, FINSERV_PIPELINE_ID);
 
@@ -531,6 +538,8 @@ export function usePipelineStageMetrics(quarter: QuarterOption): PipelineMetrics
     debtDollarOnBoard: dealsOnBoard,
     debtDealsSigned,
     debtDollarSigned: debtDealsSigned,
+    debtDealsClosed,
+    debtDollarClosed: debtDealsClosed,
     finservDealsOnBoard,
     finservClientsSigned,
   };
