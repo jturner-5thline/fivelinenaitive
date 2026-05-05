@@ -292,6 +292,8 @@ function DraggableLenderTile({
 function DroppableColumn({
   group,
   dealId,
+  dealName,
+  dealCompany,
   lenders,
   configuredStages,
   isSaving,
@@ -302,8 +304,11 @@ function DroppableColumn({
   onCardClick,
   showScore,
   scoreConfig,
+  onFollowUpSent,
 }: {
   dealId?: string;
+  dealName?: string;
+  dealCompany?: string;
   group: { id: StageGroup; label: string; color: string };
   lenders: DealLender[];
   configuredStages: { id: string; label: string; group: StageGroup }[];
@@ -315,6 +320,7 @@ function DroppableColumn({
   onCardClick?: (lender: DealLender) => void;
   showScore?: boolean;
   scoreConfig?: LenderScoreConfig;
+  onFollowUpSent?: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: group.id,
@@ -352,6 +358,8 @@ function DroppableColumn({
               key={lender.id}
               lender={lender}
               dealId={dealId}
+              dealName={dealName}
+              dealCompany={dealCompany}
               configuredStages={configuredStages}
               isSaving={isSaving?.(`lender-stage-${lender.id}`)}
               hasFailed={failedSaves?.has(lender.id)}
@@ -361,6 +369,7 @@ function DroppableColumn({
               onClick={onCardClick ? () => onCardClick(lender) : undefined}
               showScore={showScore}
               scoreConfig={scoreConfig}
+              onFollowUpSent={onFollowUpSent}
             />
           ))}
         </div>
