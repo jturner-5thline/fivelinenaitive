@@ -879,6 +879,20 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
           subtitle={drilldown.subtitle}
           items={drilldown.items}
           kind={drilldown.kind}
+          activeProjectFilters={drilldown.activeProjectFilters}
+          onClearProjectFilters={() => {
+            clearProjectFilters();
+            setDrilldown((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    title: prev.baseTitle,
+                    items: prev.sourceItems as AsanaDrilldownItem[],
+                    activeProjectFilters: [],
+                  }
+                : prev,
+            );
+          }}
         />
       )}
     </div>
