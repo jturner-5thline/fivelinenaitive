@@ -197,11 +197,22 @@ export function AsanaGoalsPortfoliosSection() {
                           <div style={{ width: `${atPct}%`, background: STATUS_COLOR['At Risk'] }} />
                           <div style={{ width: `${offPct}%`, background: STATUS_COLOR['Behind'] }} />
                         </div>
-                        <div style={{ marginTop: 3, display: 'flex', gap: 8, fontSize: 9, color: 'rgba(160,210,255,0.6)' }}>
-                          <span style={{ color: STATUS_COLOR['On Track'] }}>● {p.onTrack} on track</span>
-                          <span style={{ color: STATUS_COLOR['At Risk'] }}>● {p.atRisk} at risk</span>
-                          <span style={{ color: STATUS_COLOR['Behind'] }}>● {p.offTrack} off track</span>
+                        <div style={{ marginTop: 4, display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, fontSize: 9 }}>
+                          <div style={{ color: STATUS_COLOR['On Track'], display: 'flex', justifyContent: 'space-between' }}>
+                            <span>● On track</span><span style={{ fontWeight: 700 }}>{p.onTrack} · {onPct}%</span>
+                          </div>
+                          <div style={{ color: STATUS_COLOR['At Risk'], display: 'flex', justifyContent: 'space-between' }}>
+                            <span>● At risk</span><span style={{ fontWeight: 700 }}>{p.atRisk} · {atPct}%</span>
+                          </div>
+                          <div style={{ color: STATUS_COLOR['Behind'], display: 'flex', justifyContent: 'space-between' }}>
+                            <span>● Off track</span><span style={{ fontWeight: 700 }}>{p.offTrack} · {offPct}%</span>
+                          </div>
                         </div>
+                        {p.noStatus > 0 && (
+                          <div style={{ marginTop: 2, fontSize: 9, color: 'rgba(160,210,255,0.45)' }}>
+                            {p.noStatus} no status ({Math.round((p.noStatus / total) * 100)}%)
+                          </div>
+                        )}
                       </>
                     ) : (
                       <div style={{ marginTop: 4, fontSize: 9, color: 'rgba(160,210,255,0.4)' }}>No active projects</div>
