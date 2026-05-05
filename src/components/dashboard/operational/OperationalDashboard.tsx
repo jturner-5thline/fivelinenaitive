@@ -508,42 +508,89 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
           {overdueBuckets.length === 0 ? (
             <div className="flex items-center justify-center h-[170px] text-xs text-muted-foreground/60">No overdue items</div>
           ) : (
-            <ResponsiveContainer width="100%" height={Math.max(170, overdueBuckets.length * 28 + 16)}>
-              <BarChart
-                data={overdueBuckets}
-                layout="vertical"
-                margin={{ left: 4, right: 16, top: 4, bottom: 4 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" vertical stroke="hsl(var(--border))" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
-                <YAxis
-                  type="category"
-                  dataKey="project"
-                  tick={{ fontSize: Y_AXIS_FONT, fill: 'hsl(var(--muted-foreground))' }}
-                  interval={0}
-                  width={Y_AXIS_WIDTH}
-                  tickFormatter={(v: string) => truncateLabel(v, maxLabelChars(Y_AXIS_WIDTH, Y_AXIS_FONT))}
-                />
-                <Tooltip contentStyle={TOOLTIP_STYLE} labelFormatter={(label) => String(label)} />
-                <Bar
-                  dataKey="count"
-                  shape={createGlassBarShape({ radius: 3 })}
-                  name="Overdue"
-                  onClick={(entry: any) =>
-                    openDrilldown(
-                      `Overdue Tasks — ${entry?.project || ''}`,
-                      (entry?.items || []) as any[],
-                      'task',
-                    )
-                  }
-                  style={{ cursor: 'pointer' }}
+            <>
+              <div className="flex items-center justify-between px-2 pt-1 pb-1">
+                <span className="text-[10px] text-muted-foreground/70">
+                  {projectFilter ? 'Filtering dashboard by project' : 'Click a bar or project to filter the dashboard'}
+                </span>
+                {projectFilter && (
+                  <button
+                    type="button"
+                    onClick={() => setProjectFilter(null)}
+                    className="text-[10px] text-primary hover:underline"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <ResponsiveContainer width="100%" height={Math.max(170, overdueBuckets.length * 28 + 16)}>
+                <BarChart
+                  data={overdueBuckets}
+                  layout="vertical"
+                  margin={{ left: 4, right: 16, top: 4, bottom: 4 }}
                 >
-                  {overdueBuckets.map((_, i) => (
-                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+                  <CartesianGrid strokeDasharray="3 3" vertical stroke="hsl(var(--border))" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
+                  <YAxis
+                    type="category"
+                    dataKey="project"
+                    tick={{ fontSize: Y_AXIS_FONT, fill: 'hsl(var(--muted-foreground))', cursor: 'pointer' }}
+                    interval={0}
+                    width={Y_AXIS_WIDTH}
+                    tickFormatter={(v: string) => truncateLabel(v, maxLabelChars(Y_AXIS_WIDTH, Y_AXIS_FONT))}
+                    onClick={(o: any) => {
+                      const v = o?.value;
+                      if (v) setProjectFilter(projectFilter === v ? null : v);
+                    }}
+                  />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} labelFormatter={(label) => String(label)} />
+                  <Bar
+                    dataKey="count"
+                    shape={createGlassBarShape({ radius: 3 })}
+                    name="Overdue"
+                    onClick={(entry: any) => {
+                      const v = entry?.project;
+                      if (v) setProjectFilter(projectFilter === v ? null : v);
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {overdueBuckets.map((b, i) => (
+                      <Cell
+                        key={i}
+                        fill={CHART_COLORS[i % CHART_COLORS.length]}
+                        fillOpacity={!projectFilter || projectFilter === b.project ? 1 : 0.3}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="flex flex-wrap gap-1 px-2 pt-2 pb-1">
+                {overdueBuckets.map((b: any, i: number) => {
+                  const active = projectFilter === b.project;
+                  return (
+                    <button
+                      key={b.project}
+                      type="button"
+                      onClick={() => setProjectFilter(active ? null : b.project)}
+                      title={`${b.project} (${b.count} overdue)`}
+                      className={cn(
+                        'flex items-center gap-1.5 text-[10px] rounded px-1.5 py-0.5 border transition-colors max-w-[180px]',
+                        active
+                          ? 'border-primary/40 bg-primary/[0.12] text-foreground'
+                          : 'border-white/10 bg-white/[0.03] text-muted-foreground hover:text-foreground hover:bg-white/[0.06]',
+                      )}
+                    >
+                      <span
+                        className="h-1.5 w-1.5 rounded-full shrink-0"
+                        style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
+                      />
+                      <span className="truncate">{b.project}</span>
+                      <span className="tabular-nums text-foreground/80">{b.count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
           )}
         </ChartCard>
 
