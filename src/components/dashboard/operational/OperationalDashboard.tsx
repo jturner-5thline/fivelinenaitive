@@ -272,6 +272,21 @@ function useDerivedMetrics(data: OperationalData | null) {
 // ── Main Dashboard ─────────────────────────────────────────────
 export function OperationalDashboard({ data, isLoading, error, onRefetch }: OperationalDashboardProps) {
   const metrics = useDerivedMetrics(data);
+  const [drilldown, setDrilldown] = useState<{
+    title: string;
+    subtitle?: string;
+    items: AsanaDrilldownItem[];
+    kind: 'task' | 'project';
+  } | null>(null);
+
+  const openDrilldown = (
+    title: string,
+    items: any[],
+    kind: 'task' | 'project',
+    subtitle?: string,
+  ) => {
+    setDrilldown({ title, subtitle, items: items as AsanaDrilldownItem[], kind });
+  };
 
   if (isLoading || !data) {
     return (
@@ -314,9 +329,16 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
   if (!metrics) return null;
 
   const { kpis, milestoneOwnership, overdueBuckets, projectOverview, projectStatus, projectsDueBuckets } = metrics;
-
-  const handleSeeAll = () => {
-    // Future: open drilldown or navigate
+  const projectsByStatus = (status: string) => {
+    const want = status.toLowerCase().replace(' ', '_');
+    return (metrics.projectsAll ?? []).filter((p: any) => {
+      const st = (p.status_type || '').toLowerCase().replace(' ', '_');
+      if (status === 'On track') return !st || st === 'on_track' || st === 'green';
+      if (status === 'At risk') return st === 'at_risk' || st === 'yellow';
+      if (status === 'Off track') return st === 'off_track' || st === 'red';
+      if (status === 'On hold') return st === 'on_hold';
+      return st === want;
+    });
   };
 
   return (
@@ -331,14 +353,35 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
       {/* ── Row 1: KPI Summary Cards ──────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
         {kpis.map((kpi) => (
-          <KPICard key={kpi.label} {...kpi} />
+          <KPICard
+            key={kpi.label}
+            label={kpi.label}
+            value={kpi.value}
+            description={kpi.description}
+            onClick={
+              (kpi as any).items && (kpi as any).items.length > 0
+                ? () => openDrilldown(kpi.label, (kpi as any).items, (kpi as any).kind, kpi.description)
+                : undefined
+            }
+          />
         ))}
       </div>
 
       {/* ── Row 2: Charts grid ────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
         {/* Chart 1: This Week's Milestones (pie) */}
-        <ChartCard title="This Week's Milestones" filterCount={milestoneOwnership.length} onSeeAll={handleSeeAll}>
+        <ChartCard
+          title="This Week's Milestones"
+          filterCount={milestoneOwnership.length}
+          onSeeAll={() =>
+            openDrilldown(
+              "This Week's Milestones",
+              milestoneOwnership.flatMap((m: any) => m.items),
+              'task',
+              'All milestones due in the current week',
+            )
+          }
+        >
           {milestoneOwnership.length === 0 ? (
             <div className="flex items-center justify-center h-[160px] text-xs text-muted-foreground/60">No milestones this week</div>
           ) : (
@@ -346,7 +389,25 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
               <ResponsiveContainer width="55%" height={160}>
                 <PieChart>
                   <PieGlassDefs colors={milestoneOwnership.map((_, i) => CHART_COLORS[i % CHART_COLORS.length])} />
-                  <Pie data={milestoneOwnership} dataKey="count" nameKey="assignee" cx="50%" cy="50%" innerRadius={32} outerRadius={60} paddingAngle={3} activeShape={GlassActiveShape}>
+                  <Pie
+                    data={milestoneOwnership}
+                    dataKey="count"
+                    nameKey="assignee"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={32}
+                    outerRadius={60}
+                    paddingAngle={3}
+                    activeShape={GlassActiveShape}
+                    onClick={(entry: any) =>
+                      openDrilldown(
+                        `This Week's Milestones — ${entry?.assignee || 'Unassigned'}`,
+                        (entry?.items || []) as any[],
+                        'task',
+                      )
+                    }
+                    style={{ cursor: 'pointer' }}
+                  >
                     {milestoneOwnership.map((_, i) => (
                       <Cell key={i} fill={pieGlassFill(i)} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={0.25} />
                     ))}
@@ -360,7 +421,17 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
         </ChartCard>
 
         {/* Chart 2: Overdue Milestones (bar) */}
-        <ChartCard title="Overdue Milestones" onSeeAll={handleSeeAll}>
+        <ChartCard
+          title="Overdue Tasks by Project"
+          onSeeAll={() =>
+            openDrilldown(
+              'Overdue Tasks',
+              overdueBuckets.flatMap((b: any) => b.items),
+              'task',
+              'All overdue tasks across portfolio projects',
+            )
+          }
+        >
           {overdueBuckets.length === 0 ? (
             <div className="flex items-center justify-center h-[170px] text-xs text-muted-foreground/60">No overdue items</div>
           ) : (
@@ -370,7 +441,19 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                 <XAxis dataKey="project" tick={{ fontSize: 8, fill: 'hsl(var(--muted-foreground))' }} interval={0} angle={-15} textAnchor="end" height={40} />
                 <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} width={28} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Bar dataKey="count" shape={createGlassBarShape({ radius: 3 })} name="Overdue">
+                <Bar
+                  dataKey="count"
+                  shape={createGlassBarShape({ radius: 3 })}
+                  name="Overdue"
+                  onClick={(entry: any) =>
+                    openDrilldown(
+                      `Overdue Tasks — ${entry?.project || ''}`,
+                      (entry?.items || []) as any[],
+                      'task',
+                    )
+                  }
+                  style={{ cursor: 'pointer' }}
+                >
                   {overdueBuckets.map((_, i) => (
                     <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                   ))}
@@ -381,7 +464,13 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
         </ChartCard>
 
         {/* Chart 3: Projects Overview (grouped bar) */}
-        <ChartCard title="Projects Overview" filterCount={projectOverview.length} onSeeAll={handleSeeAll}>
+        <ChartCard
+          title="Projects Overview"
+          filterCount={projectOverview.length}
+          onSeeAll={() =>
+            openDrilldown('All Projects', metrics.projectsAll ?? [], 'project', 'Every project in the portfolio')
+          }
+        >
           {projectOverview.length === 0 ? (
             <div className="flex items-center justify-center h-[170px] text-xs text-muted-foreground/60">No projects</div>
           ) : (
@@ -401,7 +490,12 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
         </ChartCard>
 
         {/* Chart 4: Projects by Status (pie) */}
-        <ChartCard title="Projects by Status" onSeeAll={handleSeeAll}>
+        <ChartCard
+          title="Projects by Status"
+          onSeeAll={() =>
+            openDrilldown('All Projects', metrics.projectsAll ?? [], 'project')
+          }
+        >
           {projectStatus.length === 0 ? (
             <div className="flex items-center justify-center h-[160px] text-xs text-muted-foreground/60">No project data</div>
           ) : (
@@ -409,7 +503,25 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
               <ResponsiveContainer width="55%" height={160}>
                 <PieChart>
                   <PieGlassDefs colors={projectStatus.map(s => s.color)} />
-                  <Pie data={projectStatus} dataKey="count" nameKey="status" cx="50%" cy="50%" innerRadius={32} outerRadius={60} paddingAngle={3} activeShape={GlassActiveShape}>
+                  <Pie
+                    data={projectStatus}
+                    dataKey="count"
+                    nameKey="status"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={32}
+                    outerRadius={60}
+                    paddingAngle={3}
+                    activeShape={GlassActiveShape}
+                    onClick={(entry: any) =>
+                      openDrilldown(
+                        `Projects — ${entry?.status || ''}`,
+                        projectsByStatus(entry?.status || ''),
+                        'project',
+                      )
+                    }
+                    style={{ cursor: 'pointer' }}
+                  >
                     {projectStatus.map((entry, i) => (
                       <Cell key={i} fill={pieGlassFill(i)} stroke={entry.color} strokeWidth={0.25} />
                     ))}
@@ -423,14 +535,35 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
         </ChartCard>
 
         {/* Chart 5: Projects Due within Next 2 Weeks (bar) */}
-        <ChartCard title="Projects Due within Next 2 Weeks" onSeeAll={handleSeeAll}>
+        <ChartCard
+          title="Projects Due within Next 2 Weeks"
+          onSeeAll={() =>
+            openDrilldown(
+              'Projects Due within Next 2 Weeks',
+              (projectsDueBuckets[0] as any)?.items || [],
+              'project',
+            )
+          }
+        >
           <ResponsiveContainer width="100%" height={170}>
             <BarChart data={projectsDueBuckets} margin={{ left: 0, right: 8, top: 8, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="bucket" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} interval={0} />
               <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} width={28} />
               <Tooltip contentStyle={TOOLTIP_STYLE} />
-              <Bar dataKey="count" shape={createGlassBarShape({ radius: 3 })} name="Projects Due">
+              <Bar
+                dataKey="count"
+                shape={createGlassBarShape({ radius: 3 })}
+                name="Projects Due"
+                onClick={(entry: any) =>
+                  openDrilldown(
+                    'Projects Due within Next 2 Weeks',
+                    (entry?.items || []) as any[],
+                    'project',
+                  )
+                }
+                style={{ cursor: 'pointer' }}
+              >
                 {projectsDueBuckets.map((_, i) => (
                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                 ))}
@@ -439,6 +572,17 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
           </ResponsiveContainer>
         </ChartCard>
       </div>
+
+      {drilldown && (
+        <AsanaDrilldownDialog
+          open={!!drilldown}
+          onOpenChange={(v) => !v && setDrilldown(null)}
+          title={drilldown.title}
+          subtitle={drilldown.subtitle}
+          items={drilldown.items}
+          kind={drilldown.kind}
+        />
+      )}
     </div>
   );
 }
