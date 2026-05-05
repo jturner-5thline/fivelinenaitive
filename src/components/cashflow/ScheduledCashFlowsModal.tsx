@@ -162,6 +162,71 @@ export function ScheduledCashFlowsModal({
   const [saving, setSaving] = useState(false);
   const [facilityDrafts, setFacilityDrafts] = useState<CreditFacility[]>([]);
 
+  type SortKey = 'account' | 'category' | 'description' | 'amount' | 'frequency' | 'date' | 'type';
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
+  const draftDateValue = (d: DraftEntry): string => {
+    if (d.frequency_type === 'one_time') return d.frequency_config?.one_time_date || '';
+    return d.start_date || '';
+  };
+  const sortedDrafts = useMemo(() => {
+    if (!sortKey) return drafts;
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const cmp = (a: DraftEntry, b: DraftEntry): number => {
+      switch (sortKey) {
+        case 'amount':
+          return ((Number(a.amount) || 0) - (Number(b.amount) || 0)) * dir;
+        case 'date': {
+          const av = draftDateValue(a);
+          const bv = draftDateValue(b);
+          if (!av && !bv) return 0;
+          if (!av) return 1;
+          if (!bv) return -1;
+          return av.localeCompare(bv) * dir; // ISO YYYY-MM-DD sorts chronologically
+        }
+        case 'account':
+          return (a.account || '').localeCompare(b.account || '', undefined, { sensitivity: 'base' }) * dir;
+        case 'category':
+          return (a.category || '').localeCompare(b.category || '', undefined, { sensitivity: 'base' }) * dir;
+        case 'description':
+          return (a.notes || '').localeCompare(b.notes || '', undefined, { sensitivity: 'base' }) * dir;
+        case 'frequency':
+          return (a.frequency_type || '').localeCompare(b.frequency_type || '', undefined, { sensitivity: 'base' }) * dir;
+        case 'type':
+          return (a.flow_type || '').localeCompare(b.flow_type || '', undefined, { sensitivity: 'base' }) * dir;
+        default:
+          return 0;
+      }
+    };
+    return [...drafts].sort(cmp);
+  }, [drafts, sortKey, sortDir]);
+
+  const SortHeader = ({ label, k }: { label: string; k: SortKey }) => {
+    const active = sortKey === k;
+    const Icon = active ? (sortDir === 'asc' ? ArrowUp : ArrowDown) : ChevronsUpDown;
+    return (
+      <button
+        type="button"
+        onClick={() => toggleSort(k)}
+        className={cn(
+          'flex items-center gap-1 text-xs uppercase tracking-wide font-medium select-none transition-colors text-left',
+          active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+        )}
+      >
+        <span>{label}</span>
+        <Icon className={cn('h-3 w-3', active ? 'opacity-100' : 'opacity-40')} />
+      </button>
+    );
+  };
+
   useEffect(() => {
     if (!open) return;
     setFacilityDrafts(creditFacilities.map((f) => ({ ...f })));
