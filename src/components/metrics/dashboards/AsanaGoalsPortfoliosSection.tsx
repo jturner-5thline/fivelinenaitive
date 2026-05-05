@@ -81,7 +81,8 @@ export function AsanaGoalsPortfoliosSection() {
   const lastSync = goals.lastSyncedAt || portfolios.lastSyncedAt;
 
   // ── Goals filters ──
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  // Multi-select status filter: empty Set = "All"
+  const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set());
   const [ownerFilter, setOwnerFilter] = useState<string>('all');
   const [dueFilter, setDueFilter] = useState<string>('all'); // all | overdue | 30d | 90d | none
 
@@ -94,7 +95,7 @@ export function AsanaGoalsPortfoliosSection() {
   const filteredGoals = useMemo(() => {
     const today = new Date(); today.setHours(0,0,0,0);
     return goals.goals.filter(g => {
-      if (statusFilter !== 'all' && g.status !== statusFilter) return false;
+      if (statusFilter.size > 0 && !statusFilter.has(g.status)) return false;
       if (ownerFilter !== 'all' && g.owner !== ownerFilter) return false;
       if (dueFilter !== 'all') {
         if (dueFilter === 'none') {
@@ -112,7 +113,17 @@ export function AsanaGoalsPortfoliosSection() {
     });
   }, [goals.goals, statusFilter, ownerFilter, dueFilter]);
 
-  const filtersActive = statusFilter !== 'all' || ownerFilter !== 'all' || dueFilter !== 'all';
+  const filtersActive = statusFilter.size > 0 || ownerFilter !== 'all' || dueFilter !== 'all';
+
+  const toggleStatus = (s: string) => {
+    setStatusFilter(prev => {
+      const next = new Set(prev);
+      if (next.has(s)) next.delete(s); else next.add(s);
+      return next;
+    });
+  };
+
+  const STATUS_OPTIONS = ['On Track', 'At Risk', 'Behind', 'Achieved'] as const;
 
   const filteredPortfolios = useMemo(() => {
     if (portfolioStatusFilter === 'all') return portfolios.portfolios;
@@ -150,13 +161,32 @@ export function AsanaGoalsPortfoliosSection() {
 
           {goals.goals.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8, alignItems: 'center' }}>
-              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selectStyle} aria-label="Filter by status">
-                <option value="all">All statuses</option>
-                <option value="On Track">On Track</option>
-                <option value="At Risk">At Risk</option>
-                <option value="Behind">Behind</option>
-                <option value="Achieved">Achieved</option>
-              </select>
+              <div role="group" aria-label="Filter by status" style={{ display: 'inline-flex', gap: 4 }}>
+                {STATUS_OPTIONS.map(s => {
+                  const active = statusFilter.has(s);
+                  const color = STATUS_COLOR[s] || 'rgba(160,210,255,0.7)';
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => toggleStatus(s)}
+                      aria-pressed={active}
+                      title={active ? `Remove ${s}` : `Add ${s}`}
+                      style={{
+                        fontSize: 9, fontWeight: 700, letterSpacing: '0.4px',
+                        padding: '3px 7px', borderRadius: 5, cursor: 'pointer',
+                        background: active ? `${color}22` : 'rgba(20,80,160,0.25)',
+                        color: active ? color : 'rgba(160,210,255,0.7)',
+                        border: `1px solid ${active ? `${color}66` : 'rgba(40,120,200,0.3)'}`,
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                      }}
+                    >
+                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: color }} />
+                      {s}
+                    </button>
+                  );
+                })}
+              </div>
               <select value={ownerFilter} onChange={e => setOwnerFilter(e.target.value)} style={selectStyle} aria-label="Filter by owner">
                 <option value="all">All owners</option>
                 {ownerOptions.map(o => <option key={o} value={o}>{o}</option>)}
@@ -170,7 +200,7 @@ export function AsanaGoalsPortfoliosSection() {
               </select>
               {filtersActive && (
                 <button
-                  onClick={() => { setStatusFilter('all'); setOwnerFilter('all'); setDueFilter('all'); }}
+                  onClick={() => { setStatusFilter(new Set()); setOwnerFilter('all'); setDueFilter('all'); }}
                   style={{ ...selectStyle, color: '#4db8ff', cursor: 'pointer' }}
                 >
                   Clear
