@@ -119,6 +119,7 @@ import { DataRoomV2 } from '@/components/deal/DataRoomV2';
 import { VdrShell } from '@/components/vdr/VdrShell';
 import { DealActivityLogTab } from '@/components/deal/DealActivityLogTab';
 import DealCrmSearch from '@/components/deals/DealCrmSearch';
+import { useIsDemoAccount } from '@/hooks/useIsDemoAccount';
 import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
 import { ClaapMeetingsTab } from '@/components/deal/ClaapMeetingsTab';
 import { ChecklistLinkDialog } from '@/components/deal/ChecklistLinkDialog';
