@@ -336,6 +336,9 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
     subtitle?: string;
     items: AsanaDrilldownItem[];
     kind: 'task' | 'project';
+    sourceItems: any[];
+    baseTitle: string;
+    activeProjectFilters: string[];
   } | null>(null);
 
   const openDrilldown = (
@@ -361,6 +364,9 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
       subtitle,
       items: filtered as AsanaDrilldownItem[],
       kind,
+      sourceItems: items,
+      baseTitle: title,
+      activeProjectFilters: [...projectFilters],
     });
   };
 
