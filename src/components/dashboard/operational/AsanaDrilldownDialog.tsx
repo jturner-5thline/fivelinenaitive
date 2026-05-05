@@ -13,6 +13,7 @@ export interface AsanaDrilldownItem {
   project_name?: string | null;
   project_permalink_url?: string | null;
   assignee?: string | null;
+  owner?: string | null;
   due_on?: string | null;
   completed?: boolean;
   completed_at?: string | null;
@@ -44,27 +45,80 @@ function fmtDate(iso?: string | null) {
 
 export function AsanaDrilldownDialog({ open, onOpenChange, title, subtitle, items, kind }: Props) {
   const [ownerFilter, setOwnerFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  // Reset filter whenever the dialog closes
+  // Reset filters whenever the dialog closes
   useEffect(() => {
-    if (!open) setOwnerFilter('all');
+    if (!open) {
+      setOwnerFilter('all');
+      setStatusFilter('all');
+    }
   }, [open]);
+
+  // For tasks, "owner" = assignee. For projects, "owner" = project owner.
+  const ownerOf = (i: AsanaDrilldownItem): string =>
+    ((kind === 'project' ? i.owner : i.assignee) || '').trim();
 
   const owners = useMemo(() => {
     const set = new Set<string>();
     items.forEach((i) => {
-      if (i.assignee && i.assignee.trim()) set.add(i.assignee.trim());
+      const o = ownerOf(i);
+      if (o) set.add(o);
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [items]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, kind]);
+
+  const hasUnowned = items.some((i) => !ownerOf(i));
+
+  const STATUS_LABELS: Record<string, string> = {
+    on_track: 'On Track',
+    at_risk: 'At Risk',
+    off_track: 'Off Track',
+    on_hold: 'On Hold',
+    complete: 'Complete',
+  };
+  const normalizeStatus = (raw?: string | null): string => {
+    if (!raw) return '__none__';
+    const s = String(raw).toLowerCase().replace(/\s+/g, '_');
+    if (s in STATUS_LABELS) return s;
+    if (s === 'green') return 'on_track';
+    if (s === 'yellow') return 'at_risk';
+    if (s === 'red') return 'off_track';
+    return s;
+  };
+  const statusLabel = (key: string) =>
+    key === '__none__' ? 'No Status' : STATUS_LABELS[key] || key.replace(/_/g, ' ');
+
+  const statuses = useMemo(() => {
+    if (kind !== 'project') return [];
+    const set = new Set<string>();
+    items.forEach((i) => set.add(normalizeStatus(i.status_type)));
+    return Array.from(set).sort();
+  }, [items, kind]);
 
   const filtered = useMemo(() => {
-    if (ownerFilter === 'all') return items;
-    if (ownerFilter === '__unassigned__') return items.filter((i) => !i.assignee);
-    return items.filter((i) => (i.assignee || '').trim() === ownerFilter);
-  }, [items, ownerFilter]);
+    return items.filter((i) => {
+      if (ownerFilter !== 'all') {
+        const o = ownerOf(i);
+        if (ownerFilter === '__unassigned__') {
+          if (o) return false;
+        } else if (o !== ownerFilter) {
+          return false;
+        }
+      }
+      if (kind === 'project' && statusFilter !== 'all') {
+        if (normalizeStatus(i.status_type) !== statusFilter) return false;
+      }
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, ownerFilter, statusFilter, kind]);
 
-  const showOwnerFilter = kind === 'task' && (owners.length > 1 || items.some((i) => !i.assignee));
+  const showOwnerFilter = owners.length > 1 || hasUnowned;
+  const showStatusFilter = kind === 'project' && statuses.length > 1;
+  const showFilterBar = showOwnerFilter || showStatusFilter;
+  const ownerLabel = kind === 'project' ? 'Owner' : 'Owner';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -74,25 +128,42 @@ export function AsanaDrilldownDialog({ open, onOpenChange, title, subtitle, item
           {subtitle && <p className="text-[11px] text-muted-foreground">{subtitle}</p>}
         </DialogHeader>
 
-        {showOwnerFilter && (
+        {showFilterBar && (
           <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-              <SelectTrigger className="h-7 text-[11px] w-[180px]">
-                <SelectValue placeholder="Owner" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="text-xs">All owners</SelectItem>
-                {owners.map((o) => (
-                  <SelectItem key={o} value={o} className="text-xs">{o}</SelectItem>
-                ))}
-                {items.some((i) => !i.assignee) && (
-                  <SelectItem value="__unassigned__" className="text-xs">Unassigned</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+            {showOwnerFilter && (
+              <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+                <SelectTrigger className="h-7 text-[11px] w-[170px]">
+                  <SelectValue placeholder={ownerLabel} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="text-xs">All owners</SelectItem>
+                  {owners.map((o) => (
+                    <SelectItem key={o} value={o} className="text-xs">{o}</SelectItem>
+                  ))}
+                  {hasUnowned && (
+                    <SelectItem value="__unassigned__" className="text-xs">
+                      {kind === 'project' ? 'No owner' : 'Unassigned'}
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            )}
+            {showStatusFilter && (
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-7 text-[11px] w-[150px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="text-xs">All statuses</SelectItem>
+                  {statuses.map((s) => (
+                    <SelectItem key={s} value={s} className="text-xs">{statusLabel(s)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             {ownerFilter !== 'all' && (
               <Badge variant="secondary" className="text-[10px] gap-1 pr-1">
-                Owner: {ownerFilter === '__unassigned__' ? 'Unassigned' : ownerFilter}
+                {ownerLabel}: {ownerFilter === '__unassigned__' ? (kind === 'project' ? 'No owner' : 'Unassigned') : ownerFilter}
                 <Button
                   type="button"
                   variant="ghost"
@@ -100,6 +171,21 @@ export function AsanaDrilldownDialog({ open, onOpenChange, title, subtitle, item
                   className="h-4 w-4 ml-0.5"
                   onClick={() => setOwnerFilter('all')}
                   aria-label="Clear owner filter"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </Badge>
+            )}
+            {statusFilter !== 'all' && (
+              <Badge variant="secondary" className="text-[10px] gap-1 pr-1">
+                Status: {statusLabel(statusFilter)}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-4 w-4 ml-0.5"
+                  onClick={() => setStatusFilter('all')}
+                  aria-label="Clear status filter"
                 >
                   <X className="h-3 w-3" />
                 </Button>
@@ -114,7 +200,7 @@ export function AsanaDrilldownDialog({ open, onOpenChange, title, subtitle, item
         <div className="flex-1 overflow-auto -mx-6 px-6 mt-2">
           {filtered.length === 0 ? (
             <div className="text-xs text-muted-foreground py-8 text-center">
-              {items.length === 0 ? 'No items in this slice.' : 'No items match the selected owner.'}
+              {items.length === 0 ? 'No items in this slice.' : 'No items match the selected filters.'}
             </div>
           ) : (
             <ul className="divide-y divide-border/50">
