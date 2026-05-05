@@ -114,6 +114,27 @@ serve(async (req) => {
     const allLenderNames = new Set<string>();
     (dealLenders || []).forEach((l: any) => { if (l.name) allLenderNames.add(l.name); });
 
+    // Get master lender directory (shared + company-scoped) for cross-deal lender matching
+    const { data: masterLenders } = await supabase
+      .from("master_lenders")
+      .select("id, name, email, contact_name")
+      .or(`company_id.is.null,company_id.eq.${company_id}`)
+      .limit(15000);
+    (masterLenders || []).forEach((l: any) => { if (l.name) allLenderNames.add(l.name); });
+
+    // Index lenders by email domain (for attendee-domain → lender match)
+    const lenderByDomain: Record<string, { name: string; id: string }[]> = {};
+    const lenderByName: Record<string, { name: string; id: string }> = {};
+    (masterLenders || []).forEach((l: any) => {
+      if (l.name) lenderByName[l.name.toLowerCase()] = { name: l.name, id: l.id };
+      if (l.email && typeof l.email === "string") {
+        const dom = l.email.split("@")[1]?.toLowerCase().trim();
+        if (dom && !INTERNAL_DOMAINS.has(dom)) {
+          (lenderByDomain[dom] = lenderByDomain[dom] || []).push({ name: l.name, id: l.id });
+        }
+      }
+    });
+
     // Get prior feedback for learning
     const { data: priorFeedback } = await supabase
       .from("claap_match_feedback")
