@@ -4,6 +4,7 @@ import { OperationalDashboard } from '@/components/dashboard/operational/Operati
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useTeamOpsAnalytics } from '@/hooks/useTeamOpsAnalytics';
+import { useAsanaPortfolioMilestones } from '@/hooks/useAsanaPortfolioMilestones';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -40,6 +41,7 @@ function statusColor(status: 'On Track' | 'At Risk' | 'Overdue'): string {
 export function WeeklyRundownOpsProjectsPage() {
   const { data, isLoading, error, refetch } = useOperationalData(true);
   const { data: team, isLoading: teamLoading } = useTeamOpsAnalytics();
+  const { data: asanaMilestones, isLoading: milestonesLoading, error: milestonesError } = useAsanaPortfolioMilestones();
   const navigate = useNavigate();
 
   return (
@@ -133,25 +135,33 @@ export function WeeklyRundownOpsProjectsPage() {
       {/* Upcoming Milestones */}
       <div className={cn(GLASS_CARD, 'p-4 mb-6')}>
         <h3 className="text-xs font-semibold text-foreground mb-3">Upcoming Milestones</h3>
-        {teamLoading || !team ? (
+        {milestonesLoading ? (
           <div className="text-xs text-muted-foreground/60 py-4">Loading…</div>
-        ) : team.upcomingMilestones.length === 0 ? (
-          <div className="text-xs text-muted-foreground/60 py-4">No milestones in the next 30 days.</div>
+        ) : milestonesError ? (
+          <div className="text-xs text-destructive py-4">
+            Could not load Asana portfolio milestones.
+          </div>
+        ) : !asanaMilestones || asanaMilestones.length === 0 ? (
+          <div className="text-xs text-muted-foreground/60 py-4">No upcoming milestones in the Asana portfolio.</div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="text-[10px] uppercase tracking-wider h-8">Milestone</TableHead>
-                <TableHead className="text-[10px] uppercase tracking-wider h-8">Deal</TableHead>
+                <TableHead className="text-[10px] uppercase tracking-wider h-8">Project</TableHead>
                 <TableHead className="text-[10px] uppercase tracking-wider h-8">Due</TableHead>
                 <TableHead className="text-[10px] uppercase tracking-wider h-8">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {team.upcomingMilestones.slice(0, 50).map(m => (
-                <TableRow key={m.id} className="cursor-pointer" onClick={() => navigate(`/deals/${m.dealId}`)}>
+              {asanaMilestones.slice(0, 50).map(m => (
+                <TableRow
+                  key={m.id}
+                  className={cn(m.url && 'cursor-pointer')}
+                  onClick={() => m.url && window.open(m.url, '_blank', 'noopener,noreferrer')}
+                >
                   <TableCell className="py-2 text-xs">{m.title}</TableCell>
-                  <TableCell className="py-2 text-xs text-muted-foreground">{m.dealName}</TableCell>
+                  <TableCell className="py-2 text-xs text-muted-foreground">{m.projectName}</TableCell>
                   <TableCell className="py-2 text-xs tabular-nums">{format(parseISO(m.dueDate), 'MMM d')}</TableCell>
                   <TableCell className="py-2 text-xs">
                     <span className="inline-flex items-center gap-1.5">
