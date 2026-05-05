@@ -137,6 +137,35 @@ export interface Deal {
   whyNotMovingForward?: string;
 }
 
+/* ─── Why Moving Forward (advance reasons) ───────────────────── */
+export type AdvanceReasonCategory =
+  | 'budget_confirmed'
+  | 'champion_identified'
+  | 'timeline_locked'
+  | 'technical_fit'
+  | 'executive_sponsor'
+  | 'competitive_win'
+  | 'other';
+
+export interface AdvanceReason {
+  id: string;
+  dealId: string;
+  category: AdvanceReasonCategory;
+  notes?: string | null;
+  createdAt: string;
+  createdBy?: string | null;
+}
+
+export const ADVANCE_REASON_LABELS: Record<AdvanceReasonCategory, string> = {
+  budget_confirmed: 'Budget Confirmed',
+  champion_identified: 'Champion Identified',
+  timeline_locked: 'Timeline Locked',
+  technical_fit: 'Technical Fit',
+  executive_sponsor: 'Executive Sponsor',
+  competitive_win: 'Competitive Win',
+  other: 'Other',
+};
+
 export const LENDER_STATUS_CONFIG: Record<LenderStatus, { label: string }> = {
   'in-review': { label: 'In Review' },
   'terms-issued': { label: 'Terms Issued' },
