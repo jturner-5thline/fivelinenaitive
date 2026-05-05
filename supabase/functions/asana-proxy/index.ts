@@ -239,6 +239,11 @@ serve(async (req) => {
           "liked",
           "metric.current_display_value",
           "metric.progress_source",
+          "metric.current_number_value",
+          "metric.target_number_value",
+          "metric.unit",
+          "metric.precision",
+          "metric.initial_number_value",
           "time_period.display_name",
         ].join(",");
 
