@@ -119,6 +119,7 @@ export function AsanaGoalsPortfoliosSection() {
   };
 
   return (
+    <>
     <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 10 }}>
       {/* GOALS */}
       <Card className="glass-module">
