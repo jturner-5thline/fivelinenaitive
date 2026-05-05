@@ -398,6 +398,21 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
         </div>
       )}
 
+      {/* Active project filter banner */}
+      {projectFilter && (
+        <div className="flex items-center gap-2 text-[11px] text-foreground/85 bg-primary/[0.08] border border-primary/20 rounded px-3 py-1.5">
+          <span className="text-muted-foreground">Filtering by project:</span>
+          <span className="font-semibold truncate">{projectFilter}</span>
+          <button
+            type="button"
+            onClick={() => setProjectFilter(null)}
+            className="ml-auto inline-flex items-center gap-1 text-[10px] text-primary hover:underline"
+          >
+            Clear filter
+          </button>
+        </div>
+      )}
+
       {/* ── Row 1: KPI Summary Cards ──────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
         {kpis.map((kpi) => (
