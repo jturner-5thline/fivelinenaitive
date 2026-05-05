@@ -1589,7 +1589,7 @@ function MetricsInner() {
   // widget across, above, below, or between sections in edit mode.
   const SNAPSHOT_SUB_WIDGET_IDS: import('@/components/metrics/dashboards/ManagementSnapshotDashboard').WeeklyRundownSubWidgetId[] = [
     'rev-debt','rev-finserv',
-    'pm-debt-on-board-combined','pm-debt-signed-combined','pm-finserv-deals-on-board','pm-finserv-clients-signed',
+    'pm-debt-on-board-combined','pm-debt-signed-combined','pm-debt-closed-combined','pm-finserv-deals-on-board','pm-finserv-clients-signed',
     'sd-deals-signed','sd-finserv-clients-signed','sd-outstanding-ar',
     'pe-debt-profit','pe-finserv-profit',
     'exec-week-selector','exec-total-active-deal-volume','exec-deals-closed','exec-deals-by-status',
@@ -1623,8 +1623,9 @@ function MetricsInner() {
       { i: 'sd-outstanding-ar',         x: 8, y: 12, w: 4, h: 6, minW: 3, minH: 4 },
       { i: 'pm-debt-on-board-combined', x: 0, y: 18, w: 4, h: 2, minW: 3, minH: 2 },
       { i: 'pm-debt-signed-combined',   x: 4, y: 18, w: 4, h: 2, minW: 3, minH: 2 },
-      { i: 'pm-finserv-deals-on-board', x: 8, y: 18, w: 2, h: 2, minW: 2, minH: 2 },
-      { i: 'pm-finserv-clients-signed', x: 10, y: 18, w: 2, h: 2, minW: 2, minH: 2 },
+      { i: 'pm-debt-closed-combined',   x: 8, y: 18, w: 4, h: 2, minW: 3, minH: 2 },
+      { i: 'pm-finserv-deals-on-board', x: 0, y: 20, w: 2, h: 2, minW: 2, minH: 2 },
+      { i: 'pm-finserv-clients-signed', x: 2, y: 20, w: 2, h: 2, minW: 2, minH: 2 },
       { i: 'sd-deals-signed',           x: 0, y: 20, w: 4, h: 6, minW: 4, minH: 4 },
       { i: 'sd-finserv-clients-signed', x: 4, y: 20, w: 4, h: 6, minW: 4, minH: 4 },
       { i: 'pe-debt-profit',            x: 0, y: 26, w: 6, h: 6, minW: 4, minH: 4 },
