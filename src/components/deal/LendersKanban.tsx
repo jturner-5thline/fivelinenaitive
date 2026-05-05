@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { SaveIndicator } from '@/components/ui/save-indicator';
 import { CreateLenderTaskButton } from '@/components/deal/CreateLenderTaskButton';
+import { LenderFollowUpPopover } from '@/components/deal/LenderFollowUpPopover';
 
 
 interface LenderMetrics {
@@ -33,6 +34,8 @@ interface LenderMetrics {
 interface LendersKanbanProps {
   lenders: DealLender[];
   dealId?: string;
+  dealName?: string;
+  dealCompany?: string;
   configuredStages: { id: string; label: string; group: StageGroup }[];
   stageGroups: { id: StageGroup; label: string; color: string }[];
   passReasons: PassReasonOption[];
@@ -47,6 +50,8 @@ interface LendersKanbanProps {
   onCardClick?: (lender: DealLender) => void;
   showScore?: boolean;
   scoreConfig?: LenderScoreConfig;
+  /** Optional callback after a follow-up email is sent. */
+  onFollowUpSent?: () => void;
 }
 
 // Helper to get relative time string
@@ -68,6 +73,8 @@ const getRelativeTime = (updatedAt?: string) => {
 function DraggableLenderTile({
   lender,
   dealId,
+  dealName,
+  dealCompany,
   configuredStages,
   isSaving,
   hasFailed,
@@ -77,9 +84,12 @@ function DraggableLenderTile({
   onClick,
   showScore,
   scoreConfig,
+  onFollowUpSent,
 }: {
   lender: DealLender;
   dealId?: string;
+  dealName?: string;
+  dealCompany?: string;
   configuredStages: { id: string; label: string; group: StageGroup }[];
   isSaving?: boolean;
   hasFailed?: boolean;
@@ -89,6 +99,7 @@ function DraggableLenderTile({
   onClick?: () => void;
   showScore?: boolean;
   scoreConfig?: LenderScoreConfig;
+  onFollowUpSent?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: lender.id,
@@ -135,6 +146,19 @@ function DraggableLenderTile({
             dealId={dealId}
             lenderId={lender.id}
             lenderName={lender.name}
+          />
+        )}
+        {dealId && (
+          <LenderFollowUpPopover
+            dealId={dealId}
+            dealName={dealName || ''}
+            company={dealCompany || ''}
+            dealLenderId={lender.id}
+            lenderName={lender.name}
+            lenderStage={configuredStages.find(s => s.id === lender.stage)?.label || lender.stage}
+            lenderNotes={lender.notes}
+            lenderUpdatedAt={lender.updatedAt}
+            onSent={onFollowUpSent}
           />
         )}
         {isSaving && <SaveIndicator isSaving={true} size="sm" />}
