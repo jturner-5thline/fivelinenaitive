@@ -39,6 +39,7 @@ serve(async (req) => {
     } else {
       meetingQuery = meetingQuery
         .in("match_status", ["unmatched", "needs_review"])
+        .is("suggestions_generated_at", null)
         .is("deal_id", null)
         .order("created_at", { ascending: false })
         .limit(limit);
@@ -113,6 +114,28 @@ serve(async (req) => {
     // Build flat lender directory across all deals (for cross-deal lender matching)
     const allLenderNames = new Set<string>();
     (dealLenders || []).forEach((l: any) => { if (l.name) allLenderNames.add(l.name); });
+
+    // Get master lender directory (shared + company-scoped) for cross-deal lender matching
+    const _INTERNAL_DOMS_TMP = new Set(["5thline.co", "naitive.co", "gmail.com", "outlook.com", "yahoo.com", "hotmail.com", "icloud.com"]);
+    const { data: masterLenders } = await supabase
+      .from("master_lenders")
+      .select("id, name, email, contact_name")
+      .or(`company_id.is.null,company_id.eq.${company_id}`)
+      .limit(15000);
+    (masterLenders || []).forEach((l: any) => { if (l.name) allLenderNames.add(l.name); });
+
+    // Index lenders by email domain (for attendee-domain → lender match)
+    const lenderByDomain: Record<string, { name: string; id: string }[]> = {};
+    const lenderByName: Record<string, { name: string; id: string }> = {};
+    (masterLenders || []).forEach((l: any) => {
+      if (l.name) lenderByName[l.name.toLowerCase()] = { name: l.name, id: l.id };
+      if (l.email && typeof l.email === "string") {
+        const dom = l.email.split("@")[1]?.toLowerCase().trim();
+        if (dom && !_INTERNAL_DOMS_TMP.has(dom)) {
+          (lenderByDomain[dom] = lenderByDomain[dom] || []).push({ name: l.name, id: l.id });
+        }
+      }
+    });
 
     // Get prior feedback for learning
     const { data: priorFeedback } = await supabase
@@ -279,10 +302,16 @@ serve(async (req) => {
 
       // Lender matching: any participant domain matches a lender on this deal (by name)
       const lenders = lenderMap[deal.id] || [];
+      const dealCore = dealNameLower.replace(/[^a-z0-9]/g, "");
       for (const participant of meetingParticipants) {
         if (participant.is_internal) continue;
         const pDomain = (participant.domain || "").toLowerCase();
         const pDomainCore = pDomain.replace(/\.(com|io|co|net|org|ai|us|uk)$/i, "").replace(/[^a-z0-9]/g, "");
+        // Attendee domain core matches the deal name → strong signal
+        if (pDomainCore && dealCore.length > 3 && (pDomainCore.includes(dealCore) || dealCore.includes(pDomainCore))) {
+          score += 50;
+          reasons.push(`Attendee domain @${pDomain} matches deal "${deal.company}"`);
+        }
         for (const lender of lenders) {
           if (!lender.name) continue;
           const lenderCore = lender.name.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -394,6 +423,22 @@ serve(async (req) => {
             });
           }
         }
+        // Direct lender match by attendee email domain (master directory)
+        if (lenderByDomain[domain]) {
+          for (const ld of lenderByDomain[domain]) {
+            const k = `lender:${ld.name}`;
+            if (!seenLabels.has(k)) {
+              seenLabels.add(k);
+              extraSuggestions.push({
+                match_type: "lender",
+                lender_name: ld.name,
+                label: ld.name,
+                score: 80,
+                reasons: [`Attendee domain @${domain} matches lender "${ld.name}" (directory)`],
+              });
+            }
+          }
+        }
         // Lender match by name token vs domain
         for (const lname of allLenderNames) {
           const core = lname.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -411,6 +456,49 @@ serve(async (req) => {
               });
               break;
             }
+          }
+        }
+      }
+
+      // Title-only token overlap with CRM companies & lenders (when no email/domain hit)
+      const titleTokens = new Set(tokenize(meeting.title || ""));
+      if (titleTokens.size > 0) {
+        for (const co of (crmCompanies || [])) {
+          const k = `company:${co.id}`;
+          if (seenLabels.has(k)) continue;
+          const ct = tokenize(co.name || "");
+          if (ct.length === 0) continue;
+          let overlap = 0;
+          const matched: string[] = [];
+          for (const t of ct) if (titleTokens.has(t)) { overlap++; matched.push(t); }
+          if (overlap >= 2 || (overlap === 1 && matched[0].length >= 6 && ct.length === 1)) {
+            seenLabels.add(k);
+            extraSuggestions.push({
+              match_type: "company",
+              company_name: co.name,
+              label: co.name,
+              score: overlap >= 2 ? 55 : 35,
+              reasons: [`Title shares [${matched.join(", ")}] with company "${co.name}"`],
+            });
+          }
+        }
+        for (const lname of allLenderNames) {
+          const k = `lender:${lname}`;
+          if (seenLabels.has(k)) continue;
+          const lt = tokenize(lname);
+          if (lt.length === 0) continue;
+          let overlap = 0;
+          const matched: string[] = [];
+          for (const t of lt) if (titleTokens.has(t)) { overlap++; matched.push(t); }
+          if (overlap >= 2) {
+            seenLabels.add(k);
+            extraSuggestions.push({
+              match_type: "lender",
+              lender_name: lname,
+              label: lname,
+              score: 50,
+              reasons: [`Title mentions lender "${lname}" [${matched.join(", ")}]`],
+            });
           }
         }
       }
