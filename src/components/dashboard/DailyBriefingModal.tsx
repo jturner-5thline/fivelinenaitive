@@ -1251,6 +1251,7 @@ function FollowupsByDeal({
                 key={it.key}
                 item={it}
                 onOpenDeal={() => it.dealId && onNavigate(`/deal/${it.dealId}`)}
+                onOpenContact={(id) => onNavigate(`/contacts/${id}`)}
                 onMarkDone={() => markDone.mutate(it)}
                 onSnooze={() => snooze.mutate({ item: it })}
                 pending={markDone.isPending || snooze.isPending}
@@ -1266,12 +1267,14 @@ function FollowupsByDeal({
 function FollowupRow({
   item,
   onOpenDeal,
+  onOpenContact,
   onMarkDone,
   onSnooze,
   pending,
 }: {
   item: FollowupItem;
   onOpenDeal: () => void;
+  onOpenContact: (contactId: string) => void;
   onMarkDone: () => void;
   onSnooze: () => void;
   pending: boolean;
@@ -1288,7 +1291,18 @@ function FollowupRow({
           {item.contact && (
             <span className="inline-flex items-center gap-1">
               <span className="opacity-50">·</span>
-              <span className="truncate max-w-[140px]">{item.contact}</span>
+              {item.contactId ? (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onOpenContact(item.contactId!); }}
+                  className="truncate max-w-[140px] text-primary hover:underline focus:outline-none focus-visible:underline"
+                  title={`Open contact: ${item.contact}`}
+                >
+                  {item.contact}
+                </button>
+              ) : (
+                <span className="truncate max-w-[140px]">{item.contact}</span>
+              )}
             </span>
           )}
         </div>
