@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 
@@ -48,12 +49,18 @@ function deriveStatus(due: Date, now: Date): AsanaPortfolioMilestone['status'] {
 export function useAsanaPortfolioMilestones(portfolioGid: string = OPS_PROJECTS_PORTFOLIO_GID) {
   const { company } = useCompany();
   const companyId = company?.id ?? null;
+  const queryClient = useQueryClient();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const forceRefreshRef = useRef(false);
+  const queryKey = ['asana-portfolio-milestones', companyId, portfolioGid];
 
-  return useQuery({
-    queryKey: ['asana-portfolio-milestones', companyId, portfolioGid],
+  const query = useQuery({
+    queryKey,
     enabled: !!companyId,
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<AsanaPortfolioMilestone[]> => {
+      const force = forceRefreshRef.current;
+      forceRefreshRef.current = false;
       const { data: integration, error: intErr } = await supabase
         .from('integrations')
         .select('id')
@@ -70,6 +77,7 @@ export function useAsanaPortfolioMilestones(portfolioGid: string = OPS_PROJECTS_
           action: 'portfolio_milestones',
           integration_id: integration.id,
           portfolio_gid: portfolioGid,
+          force_refresh: force,
         },
       });
       if (error) throw error;
@@ -99,4 +107,16 @@ export function useAsanaPortfolioMilestones(portfolioGid: string = OPS_PROJECTS_
         .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
     },
   });
+
+  const forceRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      forceRefreshRef.current = true;
+      await query.refetch();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [query]);
+
+  return { ...query, forceRefresh, isRefreshing };
 }
