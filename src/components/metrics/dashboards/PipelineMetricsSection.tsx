@@ -310,18 +310,6 @@ export function CombinedPipelineMetricWidget({
       deals: metrics.debtDealsClosed.deals,
       drilldownTitle: 'Deals Closed — Funded / Invoiced',
     };
-    // (legacy fallthrough removed above)
-    // eslint-disable-next-line no-unreachable
-    return {
-      title: 'Deals Signed',
-      icon: FileCheck,
-      color: 'hsl(var(--chart-3))',
-      count: metrics.debtDealsSigned.count,
-      dollars: metrics.debtDollarSigned.dollarVolume,
-      isLoading: metrics.debtDealsSigned.isLoading || metrics.debtDollarSigned.isLoading,
-      deals: metrics.debtDealsSigned.deals,
-      drilldownTitle: 'Debt Deals Signed — Final Credit Items',
-    };
   })();
 
   const Icon = config.icon;
