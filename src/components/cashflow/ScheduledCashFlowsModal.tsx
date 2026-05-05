@@ -76,6 +76,91 @@ interface Props {
 
 type DraftEntry = Omit<ScheduledCashFlow, 'id' | 'company_id'> & { id?: string; _draftId: string };
 
+/** Format a numeric dollar value as USD with commas, no decimals. */
+function fmtUSDWhole(n: number | null | undefined): string {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return '';
+  return Math.round(v).toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  });
+}
+
+/**
+ * Currency input that shows USD-formatted text when not focused, accepts
+ * raw numeric typing while focused, and commits a rounded whole-dollar
+ * number on blur or Enter. The leading "$" is rendered by the parent.
+ */
+function CurrencyInput({
+  value,
+  onCommit,
+  placeholder,
+  className,
+  ariaLabel,
+}: {
+  value: number | null | undefined;
+  onCommit: (next: number) => void;
+  placeholder?: string;
+  className?: string;
+  ariaLabel?: string;
+}) {
+  const numeric = Number(value) || 0;
+  // Display text — formatted (with thousands separators, no $) when blurred,
+  // raw numeric while editing.
+  const formattedDisplay = numeric > 0 ? Math.round(numeric).toLocaleString('en-US') : '';
+  const [draft, setDraft] = useState<string>(formattedDisplay);
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setDraft(formattedDisplay);
+  }, [formattedDisplay, editing]);
+
+  const commit = () => {
+    const cleaned = draft.replace(/[^0-9.\-]/g, '');
+    if (cleaned === '' || cleaned === '-' || cleaned === '.') {
+      onCommit(0);
+      return;
+    }
+    const parsed = Number(cleaned);
+    if (!Number.isFinite(parsed)) return;
+    onCommit(Math.round(parsed));
+  };
+
+  return (
+    <Input
+      type="text"
+      inputMode="decimal"
+      aria-label={ariaLabel}
+      value={draft}
+      placeholder={placeholder}
+      className={className}
+      onFocus={(e) => {
+        setEditing(true);
+        // Show raw integer for easy editing
+        setDraft(numeric > 0 ? String(Math.round(numeric)) : '');
+        const el = e.currentTarget;
+        requestAnimationFrame(() => el.select());
+      }}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        setEditing(false);
+        commit();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          (e.currentTarget as HTMLInputElement).blur();
+        } else if (e.key === 'Escape') {
+          setDraft(formattedDisplay);
+          setEditing(false);
+          (e.currentTarget as HTMLInputElement).blur();
+        }
+      }}
+    />
+  );
+}
+
 function newDraft(): DraftEntry {
   const today = new Date().toISOString().slice(0, 10);
   return {
