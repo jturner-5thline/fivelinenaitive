@@ -432,7 +432,17 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
                 </PieChart>
               </ResponsiveContainer>
-              <PieLegend items={milestoneOwnership.map((m, i) => ({ label: m.assignee, color: CHART_COLORS[i % CHART_COLORS.length], count: m.count }))} />
+              <PieLegend
+                items={milestoneOwnership.map((m, i) => ({ label: m.assignee, color: CHART_COLORS[i % CHART_COLORS.length], count: m.count }))}
+                onItemClick={(label) => {
+                  const slice = milestoneOwnership.find(m => m.assignee === label);
+                  openDrilldown(
+                    `This Week's Milestones — ${label}`,
+                    (slice?.items || []) as any[],
+                    'task',
+                  );
+                }}
+              />
             </div>
           )}
         </ChartCard>
@@ -546,7 +556,12 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
                 </PieChart>
               </ResponsiveContainer>
-              <PieLegend items={projectStatus.map(s => ({ label: s.status, color: s.color, count: s.count }))} />
+              <PieLegend
+                items={projectStatus.map(s => ({ label: s.status, color: s.color, count: s.count }))}
+                onItemClick={(label) =>
+                  openDrilldown(`Projects — ${label}`, projectsByStatus(label), 'project')
+                }
+              />
             </div>
           )}
         </ChartCard>
