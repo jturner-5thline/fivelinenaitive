@@ -568,6 +568,7 @@ export function NotificationCarousel() {
   const { isRead, markAsRead } = useNotificationReads();
   const { shouldShowStaleAlerts, shouldShowActivity, preferences: notifPrefs } = useNotificationPreferences();
   const { notifications: flexNotifications, isLoading: flexLoading, markAsRead: markFlexAsRead } = useFlexNotifications(10);
+  const isDemoAccount = useIsDemoAccount();
 
   // Calculate stale alerts
   const allStaleAlerts = useMemo(() => 
@@ -575,10 +576,15 @@ export function NotificationCarousel() {
     [deals, appPreferences.lenderUpdateYellowDays]
   );
 
-  const staleAlerts = useMemo(() => 
-    shouldShowStaleAlerts ? allStaleAlerts : [],
-    [shouldShowStaleAlerts, allStaleAlerts]
-  );
+  const staleAlerts = useMemo(() => {
+    if (!shouldShowStaleAlerts) return [];
+    if (isDemoAccount) {
+      return [...allStaleAlerts]
+        .sort((a, b) => b.maxDaysSinceUpdate - a.maxDaysSinceUpdate)
+        .slice(0, DEMO_STALE_LIMIT);
+    }
+    return allStaleAlerts;
+  }, [shouldShowStaleAlerts, allStaleAlerts, isDemoAccount]);
 
   const filteredActivities = useMemo(() => 
     activities.filter(a => shouldShowActivity(a.activity_type)),
