@@ -171,9 +171,36 @@ export function useFollowupActions() {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
-      toast.success('Marked done');
+    onSuccess: (_data, item) => {
       invalidate();
+      toast.success('Marked done', {
+        duration: 6000,
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            try {
+              if (item.source === 'task') {
+                const { error } = await supabase
+                  .from('wf_tasks')
+                  .update({ status: 'open' } as any)
+                  .eq('id', item.sourceId);
+                if (error) throw error;
+              } else {
+                const { error } = await supabase
+                  .from('scheduled_followup_actions')
+                  .update({ status: 'pending', fired_at: null } as any)
+                  .eq('id', item.sourceId);
+                if (error) throw error;
+              }
+              invalidate();
+              toast.success('Restored');
+            } catch (err) {
+              console.error('[followups] undo markDone failed', err);
+              toast.error('Could not undo');
+            }
+          },
+        },
+      });
     },
     onError: (err: any) => {
       console.error('[followups] markDone failed', err);
