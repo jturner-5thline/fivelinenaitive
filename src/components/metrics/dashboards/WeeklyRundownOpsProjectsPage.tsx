@@ -1,4 +1,5 @@
 import { RefreshCw, AlertTriangle, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
 import { useOperationalData } from '@/hooks/useDailyBriefingData';
 import { OperationalDashboard } from '@/components/dashboard/operational/OperationalDashboard';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { useAsanaPortfolioMilestones } from '@/hooks/useAsanaPortfolioMilestones
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { AsanaDrilldownDialog, type AsanaDrilldownItem } from '@/components/dashboard/operational/AsanaDrilldownDialog';
 
 const GLASS_CARD = 'bg-white/[0.03] backdrop-blur-xl glass-border-soft rounded-lg';
 
@@ -36,9 +38,18 @@ export function WeeklyRundownOpsProjectsPage() {
   const { data, isLoading, error, refetch } = useOperationalData(true);
   const team = useAsanaOpsTeamMetrics(data ?? null);
   const { data: asanaMilestones, isLoading: milestonesLoading, error: milestonesError } = useAsanaPortfolioMilestones();
+  const [memberDrilldown, setMemberDrilldown] = useState<{ name: string; items: AsanaDrilldownItem[] } | null>(null);
 
   const opsError = (error as Error | null) || (data?.error ? new Error(data.error) : null);
   const showAsanaError = !!opsError && !data;
+
+  // Build per-member task lists for drill-down (open + recently completed Asana tasks).
+  const tasksByMember = (memberName: string): AsanaDrilldownItem[] => {
+    if (!data) return [];
+    const all = [...(data.overdue ?? []), ...(data.today ?? []), ...(data.upcoming ?? []), ...(data.recentlyCompleted ?? [])];
+    const lower = memberName.toLowerCase();
+    return all.filter((t: any) => (t.assignee || '').toLowerCase().includes(lower.split(' ')[0])) as AsanaDrilldownItem[];
+  };
 
   return (
     <div className="px-4 py-6 max-w-6xl mx-auto">
@@ -93,7 +104,12 @@ export function WeeklyRundownOpsProjectsPage() {
               const barWidth = Math.max(2, Math.min(100, pct));
               const color = rateColor(m.rate);
               return (
-                <div key={m.name} className="flex items-center gap-3 text-xs">
+                <button
+                  key={m.name}
+                  type="button"
+                  onClick={() => setMemberDrilldown({ name: m.name, items: tasksByMember(m.name) })}
+                  className="w-full flex items-center gap-3 text-xs hover:bg-white/[0.03] rounded px-1 py-0.5 -mx-1 transition-colors text-left"
+                >
                   <div className="w-28 truncate text-muted-foreground">{m.name}</div>
                   <div className="flex-1 h-3 rounded bg-white/[0.04] overflow-hidden">
                     <div
@@ -107,7 +123,7 @@ export function WeeklyRundownOpsProjectsPage() {
                       {m.assigned > 0 ? `${pct}%` : '—'}
                     </span>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -203,6 +219,17 @@ export function WeeklyRundownOpsProjectsPage() {
         error={error as Error | null}
         onRefetch={refetch}
       />
+
+      {memberDrilldown && (
+        <AsanaDrilldownDialog
+          open={!!memberDrilldown}
+          onOpenChange={(v) => !v && setMemberDrilldown(null)}
+          title={`Asana tasks — ${memberDrilldown.name}`}
+          subtitle="Open + recently completed tasks across the portfolio"
+          items={memberDrilldown.items}
+          kind="task"
+        />
+      )}
     </div>
   );
 }
