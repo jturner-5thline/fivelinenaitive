@@ -462,12 +462,23 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
           {overdueBuckets.length === 0 ? (
             <div className="flex items-center justify-center h-[170px] text-xs text-muted-foreground/60">No overdue items</div>
           ) : (
-            <ResponsiveContainer width="100%" height={170}>
-              <BarChart data={overdueBuckets} margin={{ left: 0, right: 8, top: 8, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="project" tick={{ fontSize: 8, fill: 'hsl(var(--muted-foreground))' }} interval={0} angle={-15} textAnchor="end" height={40} />
-                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} width={28} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} />
+            <ResponsiveContainer width="100%" height={Math.max(170, overdueBuckets.length * 28 + 16)}>
+              <BarChart
+                data={overdueBuckets}
+                layout="vertical"
+                margin={{ left: 4, right: 16, top: 4, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical stroke="hsl(var(--border))" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
+                <YAxis
+                  type="category"
+                  dataKey="project"
+                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                  interval={0}
+                  width={180}
+                  tickFormatter={(v: string) => (v && v.length > 28 ? v.slice(0, 27) + '…' : v)}
+                />
+                <Tooltip contentStyle={TOOLTIP_STYLE} labelFormatter={(label) => String(label)} />
                 <Bar
                   dataKey="count"
                   shape={createGlassBarShape({ radius: 3 })}
