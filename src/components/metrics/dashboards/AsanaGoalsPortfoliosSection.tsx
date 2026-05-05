@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { ExternalLink, RefreshCw, Loader2, AlertCircle, ChevronRight } from 'lucide-react';
+import { ExternalLink, RefreshCw, Loader2, AlertCircle, ChevronRight, ChevronDown } from 'lucide-react';
 import { useAsanaGoals } from '@/hooks/useAsanaGoals';
 import { useAsanaPortfolios } from '@/hooks/useAsanaPortfolios';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -76,6 +76,14 @@ export function AsanaGoalsPortfoliosSection() {
   const goals = useAsanaGoals();
   const portfolios = useAsanaPortfolios();
   const [openPortfolio, setOpenPortfolio] = useState<{ gid: string; name: string; url: string | null } | null>(null);
+  const [expandedGoals, setExpandedGoals] = useState<Set<string>>(new Set());
+  const toggleGoalExpanded = (id: string) => {
+    setExpandedGoals(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
   const [portfolioStatusFilter, setPortfolioStatusFilter] = useState<'all' | 'on' | 'at' | 'off'>('all');
 
   const lastSync = goals.lastSyncedAt || portfolios.lastSyncedAt;
