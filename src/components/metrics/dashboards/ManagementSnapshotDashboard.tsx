@@ -701,21 +701,22 @@ export function ManagementSnapshotDashboard({
     'pm-debt-closed-combined':   { minW: 3, minH: 2, maxH: 5 },
     'pm-finserv-deals-on-board': { minW: 2, minH: 2, maxH: 5 },
     'pm-finserv-clients-signed': { minW: 2, minH: 2, maxH: 5 },
-    'sd-deals-signed':           { minW: 4, minH: 4, maxH: 12 },
-    'sd-finserv-clients-signed': { minW: 4, minH: 4, maxH: 12 },
+    'sd-deals-signed':           { minW: 3, minH: 3, maxH: 16 },
+    'sd-finserv-clients-signed': { minW: 3, minH: 3, maxH: 16 },
     'sd-outstanding-ar':         { minW: 3, minH: 4, maxH: 12 },
     'pe-debt-profit':            { minW: 4, minH: 4, maxH: 12 },
     'pe-finserv-profit':         { minW: 4, minH: 4, maxH: 12 },
     'executive-dashboard':       { minW: 8, minH: 8, maxH: 20 },
     'exec-week-selector':           { minW: 3, minH: 2, maxH: 5 },
-    'exec-deals-by-status':         { minW: 4, minH: 5, maxH: 12 },
+    'exec-deals-by-status':         { minW: 3, minH: 3, maxH: 16 },
   };
 
-  // Executive Dashboard section (and its sub-widgets) has been removed
-  // from the Weekly Rundown. Filter out any exec-* tiles and never
-  // render the legacy executive section, regardless of persisted state.
+  // The legacy monolithic Executive Dashboard section is removed, as is
+  // the Mon→Sun "Executive Week Selector" tile (replaced by the unified
+  // header timeframe picker). The "Deals by Status" tile remains as an
+  // independently draggable/resizable sub-widget.
   const visibleSubWidgets = ALL_SUB_WIDGET_IDS.filter(
-    id => !id.startsWith('exec-') && !hiddenSubWidgets.includes(id),
+    id => id !== 'exec-week-selector' && !hiddenSubWidgets.includes(id),
   );
   const includeExec = false;
 
