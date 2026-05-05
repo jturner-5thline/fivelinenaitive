@@ -381,6 +381,8 @@ function DroppableColumn({
 export function LendersKanban({
   lenders,
   dealId,
+  dealName,
+  dealCompany,
   configuredStages,
   stageGroups,
   passReasons,
@@ -393,6 +395,7 @@ export function LendersKanban({
   onCardClick,
   showScore,
   scoreConfig,
+  onFollowUpSent,
 }: LendersKanbanProps) {
   const [activeLender, setActiveLender] = useState<DealLender | null>(null);
   const [passReasonDialogOpen, setPassReasonDialogOpen] = useState(false);
@@ -498,6 +501,8 @@ export function LendersKanban({
               key={group.id}
               group={group}
               dealId={dealId}
+              dealName={dealName}
+              dealCompany={dealCompany}
               lenders={getLendersByGroup(group.id)}
               configuredStages={configuredStages}
               isSaving={isSaving}
@@ -508,6 +513,7 @@ export function LendersKanban({
               onCardClick={onCardClick}
               showScore={showScore}
               scoreConfig={scoreConfig}
+              onFollowUpSent={onFollowUpSent}
             />
           ))}
         </div>
