@@ -121,15 +121,30 @@ function ChartCard({
 }
 
 // ── Custom pie legend ──────────────────────────────────────────
-function PieLegend({ items }: { items: { label: string; color: string; count: number }[] }) {
+function PieLegend({
+  items,
+  onItemClick,
+}: {
+  items: { label: string; color: string; count: number }[];
+  onItemClick?: (label: string) => void;
+}) {
   return (
     <div className="flex flex-col gap-1.5 pl-2">
       {items.map((item) => (
-        <div key={item.label} className="flex items-center gap-2 text-[10px]">
+        <button
+          key={item.label}
+          type="button"
+          onClick={onItemClick ? () => onItemClick(item.label) : undefined}
+          disabled={!onItemClick}
+          className={cn(
+            'flex items-center gap-2 text-[10px] text-left rounded px-1 -mx-1 transition-colors',
+            onItemClick ? 'hover:bg-white/[0.05] cursor-pointer' : 'cursor-default',
+          )}
+        >
           <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
           <span className="text-muted-foreground truncate">{item.label}</span>
           <span className="font-semibold text-foreground tabular-nums ml-auto">{item.count}</span>
-        </div>
+        </button>
       ))}
     </div>
   );
@@ -417,7 +432,17 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
                 </PieChart>
               </ResponsiveContainer>
-              <PieLegend items={milestoneOwnership.map((m, i) => ({ label: m.assignee, color: CHART_COLORS[i % CHART_COLORS.length], count: m.count }))} />
+              <PieLegend
+                items={milestoneOwnership.map((m, i) => ({ label: m.assignee, color: CHART_COLORS[i % CHART_COLORS.length], count: m.count }))}
+                onItemClick={(label) => {
+                  const slice = milestoneOwnership.find(m => m.assignee === label);
+                  openDrilldown(
+                    `This Week's Milestones — ${label}`,
+                    (slice?.items || []) as any[],
+                    'task',
+                  );
+                }}
+              />
             </div>
           )}
         </ChartCard>
@@ -482,10 +507,71 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                 <XAxis dataKey="bucket" tick={{ fontSize: 7, fill: 'hsl(var(--muted-foreground))' }} interval={0} angle={-15} textAnchor="end" height={45} />
                 <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} width={28} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Legend wrapperStyle={{ fontSize: 9 }} />
-                <Bar dataKey="onTrack" name="On track" fill={STATUS_COLORS['On track']} radius={[3, 3, 0, 0]} barSize={14} />
-                <Bar dataKey="atRisk" name="At risk" fill={STATUS_COLORS['At risk']} radius={[3, 3, 0, 0]} barSize={14} />
-                <Bar dataKey="offTrack" name="Off track" fill={STATUS_COLORS['Off track']} radius={[3, 3, 0, 0]} barSize={14} />
+                <Legend
+                  wrapperStyle={{ fontSize: 9, cursor: 'pointer' }}
+                  onClick={(entry: any) => {
+                    const map: Record<string, string> = { 'On track': 'On track', 'At risk': 'At risk', 'Off track': 'Off track' };
+                    const label = map[entry?.value] || entry?.value;
+                    if (label) openDrilldown(`Projects — ${label}`, projectsByStatus(label), 'project');
+                  }}
+                />
+                <Bar
+                  dataKey="onTrack"
+                  name="On track"
+                  fill={STATUS_COLORS['On track']}
+                  radius={[3, 3, 0, 0]}
+                  barSize={14}
+                  style={{ cursor: 'pointer' }}
+                  onClick={(entry: any) =>
+                    openDrilldown(
+                      `On track — ${entry?.bucket || ''}`,
+                      (metrics.projectsAll ?? []).filter((p: any) => {
+                        const st = (p.status_type || '').toLowerCase();
+                        const bucket = p.name?.length > 20 ? p.name.slice(0, 18) + '…' : (p.name || 'Other');
+                        return bucket === entry?.bucket && (!st || st === 'on_track' || st === 'on track' || st === 'green');
+                      }),
+                      'project',
+                    )
+                  }
+                />
+                <Bar
+                  dataKey="atRisk"
+                  name="At risk"
+                  fill={STATUS_COLORS['At risk']}
+                  radius={[3, 3, 0, 0]}
+                  barSize={14}
+                  style={{ cursor: 'pointer' }}
+                  onClick={(entry: any) =>
+                    openDrilldown(
+                      `At risk — ${entry?.bucket || ''}`,
+                      (metrics.projectsAll ?? []).filter((p: any) => {
+                        const st = (p.status_type || '').toLowerCase();
+                        const bucket = p.name?.length > 20 ? p.name.slice(0, 18) + '…' : (p.name || 'Other');
+                        return bucket === entry?.bucket && (st === 'at_risk' || st === 'at risk' || st === 'yellow');
+                      }),
+                      'project',
+                    )
+                  }
+                />
+                <Bar
+                  dataKey="offTrack"
+                  name="Off track"
+                  fill={STATUS_COLORS['Off track']}
+                  radius={[3, 3, 0, 0]}
+                  barSize={14}
+                  style={{ cursor: 'pointer' }}
+                  onClick={(entry: any) =>
+                    openDrilldown(
+                      `Off track — ${entry?.bucket || ''}`,
+                      (metrics.projectsAll ?? []).filter((p: any) => {
+                        const st = (p.status_type || '').toLowerCase();
+                        const bucket = p.name?.length > 20 ? p.name.slice(0, 18) + '…' : (p.name || 'Other');
+                        return bucket === entry?.bucket && (st === 'off_track' || st === 'off track' || st === 'red');
+                      }),
+                      'project',
+                    )
+                  }
+                />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -531,7 +617,12 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
                 </PieChart>
               </ResponsiveContainer>
-              <PieLegend items={projectStatus.map(s => ({ label: s.status, color: s.color, count: s.count }))} />
+              <PieLegend
+                items={projectStatus.map(s => ({ label: s.status, color: s.color, count: s.count }))}
+                onItemClick={(label) =>
+                  openDrilldown(`Projects — ${label}`, projectsByStatus(label), 'project')
+                }
+              />
             </div>
           )}
         </ChartCard>

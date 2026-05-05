@@ -1,4 +1,4 @@
-import { RefreshCw, AlertTriangle, AlertCircle, ArrowUp, ArrowDown } from 'lucide-react';
+import { RefreshCw, AlertTriangle, AlertCircle, ArrowUp, ArrowDown, ExternalLink } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useOperationalData } from '@/hooks/useDailyBriefingData';
 import { OperationalDashboard } from '@/components/dashboard/operational/OperationalDashboard';
@@ -39,6 +39,8 @@ export function WeeklyRundownOpsProjectsPage() {
   const team = useAsanaOpsTeamMetrics(data ?? null);
   const { data: asanaMilestones, isLoading: milestonesLoading, error: milestonesError, forceRefresh: refreshMilestones, isRefreshing: milestonesRefreshing } = useAsanaPortfolioMilestones();
   const [memberDrilldown, setMemberDrilldown] = useState<{ name: string; items: AsanaDrilldownItem[] } | null>(null);
+  const [overdueProjectDrilldown, setOverdueProjectDrilldown] = useState<{ project: string; items: AsanaDrilldownItem[] } | null>(null);
+  const [milestoneDrilldown, setMilestoneDrilldown] = useState<{ title: string; subtitle: string; items: AsanaDrilldownItem[] } | null>(null);
   type MilestoneSortKey = 'title' | 'projectName' | 'assignee' | 'dueDate' | 'status';
   const [milestoneSort, setMilestoneSort] = useState<{ key: MilestoneSortKey; dir: 'asc' | 'desc' }>({ key: 'dueDate', dir: 'asc' });
   const [milestoneStatusFilter, setMilestoneStatusFilter] = useState<'All' | 'On Track' | 'At Risk' | 'Overdue'>('All');
@@ -187,17 +189,37 @@ export function WeeklyRundownOpsProjectsPage() {
               {team.overdueByProject.map(row => {
                 const project = data?.projects?.find((p: any) => p.gid === row.projectGid);
                 const url = project?.permalink_url || null;
+                const overdueItems = (data?.overdue ?? []).filter((t: any) =>
+                  (t.project_name || '') === row.projectName
+                ) as AsanaDrilldownItem[];
                 return (
                   <TableRow
                     key={row.projectGid}
-                    className={cn(url && 'cursor-pointer')}
-                    onClick={() => url && window.open(url, '_blank', 'noopener,noreferrer')}
+                    className="cursor-pointer"
+                    onClick={() =>
+                      setOverdueProjectDrilldown({ project: row.projectName, items: overdueItems })
+                    }
                   >
                     <TableCell className="py-2 text-xs font-medium">{row.projectName}</TableCell>
                     <TableCell className="py-2 text-xs text-right tabular-nums">{row.overdueCount}</TableCell>
                     <TableCell className="py-2 text-xs text-right tabular-nums">{row.mostOverdueDays}d</TableCell>
                     <TableCell className="py-2 text-xs text-muted-foreground">
-                      {row.assignees.join(', ') || '—'}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate">{row.assignees.join(', ') || '—'}</span>
+                        {url && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(url, '_blank', 'noopener,noreferrer');
+                            }}
+                            className="text-muted-foreground/50 hover:text-foreground shrink-0"
+                            title="Open in Asana"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -290,8 +312,22 @@ export function WeeklyRundownOpsProjectsPage() {
               {visibleMilestones.slice(0, 50).map(m => (
                 <TableRow
                   key={m.id}
-                  className={cn(m.url && 'cursor-pointer')}
-                  onClick={() => m.url && window.open(m.url, '_blank', 'noopener,noreferrer')}
+                  className="cursor-pointer"
+                  onClick={() =>
+                    setMilestoneDrilldown({
+                      title: `Milestone — ${m.title}`,
+                      subtitle: `${m.projectName}${m.assignee ? ` · ${m.assignee}` : ''}`,
+                      items: [{
+                        gid: String(m.id),
+                        name: m.title,
+                        permalink_url: m.url || null,
+                        project_name: m.projectName,
+                        assignee: m.assignee || null,
+                        due_on: m.dueDate,
+                        is_milestone: true,
+                      } as AsanaDrilldownItem],
+                    })
+                  }
                 >
                   <TableCell className="py-2 text-xs">{m.title}</TableCell>
                   <TableCell className="py-2 text-xs text-muted-foreground">{m.projectName}</TableCell>
@@ -304,10 +340,25 @@ export function WeeklyRundownOpsProjectsPage() {
                   </TableCell>
                   <TableCell className="py-2 text-xs tabular-nums">{format(parseISO(m.dueDate), 'MMM d')}</TableCell>
                   <TableCell className="py-2 text-xs">
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: statusColor(m.status) }} />
-                      <span style={{ color: statusColor(m.status) }}>{m.status}</span>
-                    </span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: statusColor(m.status) }} />
+                        <span style={{ color: statusColor(m.status) }}>{m.status}</span>
+                      </span>
+                      {m.url && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(m.url!, '_blank', 'noopener,noreferrer');
+                          }}
+                          className="text-muted-foreground/50 hover:text-foreground shrink-0"
+                          title="Open in Asana"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -323,6 +374,28 @@ export function WeeklyRundownOpsProjectsPage() {
           title={`Asana tasks — ${memberDrilldown.name}`}
           subtitle="Open + recently completed tasks across the portfolio"
           items={memberDrilldown.items}
+          kind="task"
+        />
+      )}
+
+      {overdueProjectDrilldown && (
+        <AsanaDrilldownDialog
+          open={!!overdueProjectDrilldown}
+          onOpenChange={(v) => !v && setOverdueProjectDrilldown(null)}
+          title={`Overdue tasks — ${overdueProjectDrilldown.project}`}
+          subtitle="All overdue Asana tasks for this project"
+          items={overdueProjectDrilldown.items}
+          kind="task"
+        />
+      )}
+
+      {milestoneDrilldown && (
+        <AsanaDrilldownDialog
+          open={!!milestoneDrilldown}
+          onOpenChange={(v) => !v && setMilestoneDrilldown(null)}
+          title={milestoneDrilldown.title}
+          subtitle={milestoneDrilldown.subtitle}
+          items={milestoneDrilldown.items}
           kind="task"
         />
       )}
