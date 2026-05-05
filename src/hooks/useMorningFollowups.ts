@@ -28,6 +28,10 @@ export interface FollowupItem {
   dealId: string | null;
   title: string;
   dueAt: string | null;
+  /** Primary contact name on the associated deal, if any. */
+  contact?: string | null;
+  /** CRM company id on the associated deal, if any. */
+  companyId?: string | null;
 }
 
 export interface FollowupDealGroup {
@@ -79,7 +83,7 @@ export function useMorningFollowups(enabled: boolean) {
 
       const { data: deals } = await supabase
         .from('deals')
-        .select('id, company, stage, user_id')
+        .select('id, company, stage, user_id, contact, company_id')
         .in('id', dealIds);
       const dealMap = new Map((deals ?? []).map(d => [d.id, d]));
 
@@ -103,6 +107,8 @@ export function useMorningFollowups(enabled: boolean) {
           dealId: d.id,
           title: t.title ?? 'Follow-up task',
           dueAt: t.due_at ?? null,
+          contact: (d as any).contact ?? null,
+          companyId: (d as any).company_id ?? null,
         });
       }
 
@@ -119,6 +125,8 @@ export function useMorningFollowups(enabled: boolean) {
           dealId: d.id,
           title: '3-day follow-up due',
           dueAt: s.scheduled_for ?? null,
+          contact: (d as any).contact ?? null,
+          companyId: (d as any).company_id ?? null,
         });
       }
 
@@ -152,13 +160,13 @@ export function useFollowupActions() {
       if (item.source === 'task') {
         const { error } = await supabase
           .from('wf_tasks')
-          .update({ status: 'done', completed_at: new Date().toISOString() } as any)
+          .update({ status: 'done' } as any)
           .eq('id', item.sourceId);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('scheduled_followup_actions')
-          .update({ status: 'cancelled' } as any)
+          .update({ status: 'cancelled', fired_at: new Date().toISOString() } as any)
           .eq('id', item.sourceId);
         if (error) throw error;
       }
