@@ -409,17 +409,30 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
         </div>
       )}
 
-      {/* Active project filter banner */}
-      {projectFilter && (
-        <div className="flex items-center gap-2 text-[11px] text-foreground/85 bg-primary/[0.08] border border-primary/20 rounded px-3 py-1.5">
-          <span className="text-muted-foreground">Filtering by project:</span>
-          <span className="font-semibold truncate">{projectFilter}</span>
+      {/* Active project filters banner */}
+      {hasProjectFilter && (
+        <div className="flex items-center flex-wrap gap-2 text-[11px] text-foreground/85 bg-primary/[0.08] border border-primary/20 rounded px-3 py-1.5">
+          <span className="text-muted-foreground">
+            Filtering by {projectFilters.length === 1 ? 'project' : `${projectFilters.length} projects`}:
+          </span>
+          {projectFilters.map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => toggleProjectFilter(p)}
+              className="inline-flex items-center gap-1 rounded bg-primary/[0.15] border border-primary/30 px-1.5 py-0.5 hover:bg-primary/[0.22]"
+              title={`Remove ${p}`}
+            >
+              <span className="font-semibold truncate max-w-[200px]">{p}</span>
+              <span className="text-primary">×</span>
+            </button>
+          ))}
           <button
             type="button"
-            onClick={() => setProjectFilter(null)}
+            onClick={clearProjectFilters}
             className="ml-auto inline-flex items-center gap-1 text-[10px] text-primary hover:underline"
           >
-            Clear filter
+            Clear all
           </button>
         </div>
       )}
