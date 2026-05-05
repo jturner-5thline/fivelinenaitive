@@ -186,6 +186,7 @@ export function WeeklyRundownOpsProjectsPage() {
               <TableRow>
                 <TableHead className="text-[10px] uppercase tracking-wider h-8">Milestone</TableHead>
                 <TableHead className="text-[10px] uppercase tracking-wider h-8">Project</TableHead>
+                <TableHead className="text-[10px] uppercase tracking-wider h-8">Assignee</TableHead>
                 <TableHead className="text-[10px] uppercase tracking-wider h-8">Due</TableHead>
                 <TableHead className="text-[10px] uppercase tracking-wider h-8">Status</TableHead>
               </TableRow>
@@ -199,6 +200,13 @@ export function WeeklyRundownOpsProjectsPage() {
                 >
                   <TableCell className="py-2 text-xs">{m.title}</TableCell>
                   <TableCell className="py-2 text-xs text-muted-foreground">{m.projectName}</TableCell>
+                  <TableCell className="py-2 text-xs">
+                    {m.assignee ? (
+                      <span className="text-foreground">{m.assignee}</span>
+                    ) : (
+                      <span className="italic text-muted-foreground/60">Unassigned</span>
+                    )}
+                  </TableCell>
                   <TableCell className="py-2 text-xs tabular-nums">{format(parseISO(m.dueDate), 'MMM d')}</TableCell>
                   <TableCell className="py-2 text-xs">
                     <span className="inline-flex items-center gap-1.5">
