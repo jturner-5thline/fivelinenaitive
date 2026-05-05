@@ -49,6 +49,12 @@ Deno.serve(async (req) => {
     const contactName = String(body.contact_name || '').trim();
     const senderName = String(body.sender_name || 'James').trim();
     const notes = String(body.notes || '').trim();
+    // Optional Gmail context: most recent message in a thread that involves
+    // this lender's email domain and the deal name. Used for "Following up
+    // on your message from [date]…" personalization.
+    const gmail = body.gmail_context && typeof body.gmail_context === 'object'
+      ? body.gmail_context as { date?: string; from?: string; snippet?: string; subject?: string }
+      : null;
 
     if (!lenderName) {
       return new Response(JSON.stringify({ error: 'lender_name required' }), {
@@ -57,31 +63,101 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Pick a category from the stage / staleness.
-    let category = 'Touch Base';
+    // Stage + staleness routing — mirrors the documented playbook so the
+    // popover label and the AI draft stay consistent with what the deal
+    // team expects to see.
     const lc = stage.toLowerCase();
-    if (lc.includes('term') || lc.includes('offer')) category = 'Check on Terms ETA';
-    else if (lc.includes('diligence') || lc.includes('review')) category = 'Confirm Receipt';
-    else if (lc.includes('intro') || lc.includes('teaser') || lc.includes('initial')) category = 'Re-introduce Deal';
-    else if (lastContactDays !== null && lastContactDays >= 7) category = 'Follow Up — Stale';
+    const days = lastContactDays;
+    type Template = { category: string; subject: string; bodyTemplate: (firstName: string) => string };
+    const dn = dealName || company || 'the deal';
+    const fn = (contactName ? contactName.split(' ')[0] : 'there');
+
+    const templateForStage = (): Template => {
+      // Passed / no response 14+ days — overrides everything else.
+      if (lc.includes('passed') || lc.includes('declined') || lc.includes('no response') || (days !== null && days >= 14 && (lc.includes('submit') || lc === ''))) {
+        return {
+          category: 'Final Check-In',
+          subject: `${dn} — Final Check-In`,
+          bodyTemplate: (n) => `Hi ${n},\n\nWanted to check in one last time on ${dn}. If the timing isn't right, no worries — I'd appreciate knowing so we can plan accordingly.\n\nThanks for your time either way.\n\n${senderName}`,
+        };
+      }
+      if (lc.includes('agreement')) {
+        return {
+          category: 'Agreement Status',
+          subject: `${dn} — Agreement Status`,
+          bodyTemplate: (n) => `Hi ${n},\n\nJust checking in on the agreement for ${dn}. Is there anything outstanding on your end before we can finalize? Happy to coordinate.\n\n${senderName}`,
+        };
+      }
+      if (lc.includes('term') || lc.includes('offer') || lc.includes('lol')) {
+        return {
+          category: 'Check on Terms',
+          subject: `${dn} — Terms Follow-Up`,
+          bodyTemplate: (n) => `Hi ${n},\n\nWanted to follow up on the term sheet we received. Do you have a sense of timeline for any revisions or next steps? Happy to discuss.\n\n${senderName}`,
+        };
+      }
+      if (lc.includes('diligence') || lc.includes(' dd') || lc.startsWith('dd')) {
+        return {
+          category: 'DD Check-In',
+          subject: `${dn} DD Update`,
+          bodyTemplate: (n) => `Hi ${n},\n\nFollowing up on the outstanding due diligence items for ${dn}. Happy to set up a call to work through any open questions — let me know what would be most helpful.\n\n${senderName}`,
+        };
+      }
+      if (lc.includes('review')) {
+        return {
+          category: 'Check on Questions',
+          subject: `${dn} — Any Questions?`,
+          bodyTemplate: (n) => `Hi ${n},\n\nJust checking in on ${dn} as you review. Do you have any initial questions or need any additional materials? Happy to jump on a call.\n\n${senderName}`,
+        };
+      }
+      // Submitted bucket (and anything that defaults to "we sent it").
+      if (days !== null && days >= 7) {
+        return {
+          category: 'Gentle Nudge',
+          subject: `${dn} — Checking In`,
+          bodyTemplate: (n) => `Hi ${n},\n\nWanted to follow up on our submission from ${days} days ago. I know things get busy — happy to schedule a quick call to walk through the deal if helpful. Let me know.\n\n${senderName}`,
+        };
+      }
+      return {
+        category: 'Confirm Receipt',
+        subject: `Re: ${dn} — Following Up`,
+        bodyTemplate: (n) => `Hi ${n},\n\nJust wanted to confirm you received ${dn}. Happy to answer any questions or provide additional information. Looking forward to hearing your initial thoughts.\n\n${senderName}`,
+      };
+    };
+
+    const tpl = templateForStage();
+    const category = tpl.category;
+    const baseSubject = tpl.subject;
+    const baseBody = tpl.bodyTemplate(fn);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: 'AI gateway not configured' }), {
-        status: 500,
+      // No AI available — return the deterministic template directly.
+      return new Response(JSON.stringify({ subject: baseSubject, body: baseBody, category }), {
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    // Light AI personalization pass: keep the template's intent + subject,
+    // but allow it to weave in a one-line reference to the most recent
+    // Gmail thread when context is available. Stays tightly constrained
+    // so we don't drift from the playbook copy.
+    const gmailLine = gmail && (gmail.snippet || gmail.subject || gmail.date)
+      ? `Recent thread context — date: ${gmail.date || '(unknown)'}, from: ${gmail.from || '(unknown)'}, subject: ${gmail.subject || '(none)'}, snippet: ${(gmail.snippet || '').slice(0, 300)}`
+      : 'No recent Gmail thread found involving this lender for this deal.';
+
     const system = [
       "You are 5th Line's writing engine for institutional debt deals.",
-      'Draft a short follow-up email from the deal team to a lender contact.',
+      'You are personalizing a pre-approved follow-up email template. Keep the template intent and tone.',
       'Tone: professional, concise, neutral-warm, no fluff, no marketing language.',
       'Hard rules:',
       '- Plain prose, no markdown, no bullets, no headings.',
       '- 3 to 5 short sentences in the body.',
+      '- Keep the subject line within a few words of the suggested subject.',
+      '- If recent thread context is provided, you MAY open with a single sentence like "Following up on your message from [date]…" using the actual date from the context. Otherwise do not invent prior correspondence.',
       '- Never invent numbers, dates, terms, or commitments.',
-      '- Sign off as "' + senderName + '" on its own line.',
+      '- Address the recipient by first name when available, otherwise "Hi there,".',
+      `- Sign off as "${senderName}" on its own line.`,
       'Return STRICT JSON: {"subject": string, "body": string}. No prose outside the JSON.',
     ].join('\n');
 
@@ -89,11 +165,14 @@ Deno.serve(async (req) => {
       `Deal: ${dealName || '(unnamed)'} for ${company || '(client)'}`,
       `Lender: ${lenderName}`,
       `Lender stage: ${stage || '(unknown)'}`,
-      lastContactDays !== null ? `Days since last contact: ${lastContactDays}` : 'No prior contact recorded.',
-      contactName ? `Recipient first name: ${contactName.split(' ')[0]}` : 'Recipient first name: there',
+      days !== null ? `Days since last contact: ${days}` : 'No prior contact recorded.',
+      `Recipient first name: ${fn}`,
       notes ? `Internal notes (do not quote verbatim): ${notes.slice(0, 400)}` : '',
       `Category: ${category}`,
-      'Write the follow-up now.',
+      `Suggested subject: ${baseSubject}`,
+      `Suggested body:\n${baseBody}`,
+      gmailLine,
+      'Personalize the follow-up now, staying close to the suggested copy.',
     ].filter(Boolean).join('\n');
 
     const aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -113,16 +192,18 @@ Deno.serve(async (req) => {
     });
 
     if (!aiResp.ok) {
-      const errText = await aiResp.text().catch(() => '');
-      return new Response(JSON.stringify({ error: `AI gateway error: ${aiResp.status} ${errText.slice(0, 200)}` }), {
-        status: aiResp.status === 429 || aiResp.status === 402 ? aiResp.status : 502,
+      // Fall back to the deterministic template on AI failures so the user
+      // always gets a usable draft.
+      console.error('[lender-followup-draft] AI gateway error', aiResp.status);
+      return new Response(JSON.stringify({ subject: baseSubject, body: baseBody, category }), {
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     const aiJson = await aiResp.json();
     const raw = aiJson?.choices?.[0]?.message?.content || '';
 
-    let subject = `Quick follow-up: ${dealName || company || lenderName}`;
+    let subject = baseSubject;
     let bodyOut = '';
     try {
       const cleaned = raw.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
@@ -134,16 +215,7 @@ Deno.serve(async (req) => {
       bodyOut = raw.trim();
     }
 
-    if (!bodyOut) {
-      bodyOut = [
-        `Hi ${contactName ? contactName.split(' ')[0] : 'there'},`,
-        '',
-        `Just circling back on ${dealName || company}. Wanted to check where things stand on your side.`,
-        'Happy to jump on a quick call or send anything else that would help.',
-        '',
-        senderName,
-      ].join('\n');
-    }
+    if (!bodyOut) bodyOut = baseBody;
 
     return new Response(JSON.stringify({ subject, body: bodyOut, category }), {
       status: 200,
