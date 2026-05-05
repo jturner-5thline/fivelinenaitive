@@ -1281,11 +1281,17 @@ function FollowupRow({
       <ListChecks className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
       <div className="min-w-0 flex-1">
         <div className="text-[13px] text-foreground truncate">{item.title}</div>
-        {item.dueAt && (
-          <div className="text-[10.5px] text-muted-foreground">
-            Due {format(new Date(item.dueAt), 'MMM d, h:mm a')}
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10.5px] text-muted-foreground">
+          {item.dueAt && (
+            <span>Due {format(new Date(item.dueAt), 'MMM d, h:mm a')}</span>
+          )}
+          {item.contact && (
+            <span className="inline-flex items-center gap-1">
+              <span className="opacity-50">·</span>
+              <span className="truncate max-w-[140px]">{item.contact}</span>
+            </span>
+          )}
+        </div>
       </div>
       <span className="px-1.5 py-0.5 rounded text-[10px] font-medium border bg-white/[0.05] text-muted-foreground glass-border-soft whitespace-nowrap">
         {item.source === 'scheduled' ? '3-day' : 'Task'}
