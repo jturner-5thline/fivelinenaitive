@@ -1,114 +1,80 @@
-import type { Deal24hDigest } from '@/hooks/useDeal24hDigest';
-import { Badge } from '@/components/ui/badge';
-import { useState } from 'react';
-
-const PREVIEW_LIMIT = 200;
-
-function stripHtml(input: string): string {
-  if (!input) return '';
-  // Remove tags, decode a few common entities, collapse whitespace.
-  const noTags = input
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<br\s*\/?>(?=)/gi, '\n')
-    .replace(/<\/(p|div|li)>/gi, '\n')
-    .replace(/<[^>]+>/g, '');
-  return noTags
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/[ \t]+/g, ' ')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
-function ParagraphBlock({
-  heading,
-  text,
-}: {
-  heading?: string;
-  text: string;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const clean = stripHtml(text);
-  const isLong = clean.length > PREVIEW_LIMIT;
-  const shown = !isLong || expanded ? clean : `${clean.slice(0, PREVIEW_LIMIT).trimEnd()}…`;
-  return (
-    <div>
-      {heading && (
-        <div className="text-[11px] font-semibold text-primary uppercase tracking-wider mb-1">
-          {heading}
-        </div>
-      )}
-      <p className="text-sm font-normal leading-relaxed text-foreground/90 whitespace-pre-wrap">
-        {shown}
-      </p>
-      {isLong && (
-        <button
-          type="button"
-          onClick={() => setExpanded(v => !v)}
-          className="mt-1 text-[11px] font-medium text-primary hover:underline"
-        >
-          {expanded ? 'Show less ↑' : 'Read more ↓'}
-        </button>
-      )}
-    </div>
-  );
-}
+import type { Deal } from '@/types/deal';
+import type { PipelineDigestRaw } from '@/hooks/usePipelineDigests';
 
 interface ActivityPanelProps {
-  digest: Deal24hDigest | undefined;
+  deal: Deal;
+  rawDigest: PipelineDigestRaw | undefined;
   isLoading: boolean;
 }
 
-export function ActivityPanel({ digest, isLoading }: ActivityPanelProps) {
+type Tone = 'reviewing' | 'onhold' | 'passed' | 'neutral';
+
+const TONE_BAR: Record<Tone, string> = {
+  reviewing: 'bg-emerald-500',
+  onhold: 'bg-amber-500',
+  passed: 'bg-muted-foreground/60',
+  neutral: 'bg-primary/60',
+};
+
+function toneFromStage(stage?: string): Tone {
+  const s = (stage || '').toLowerCase();
+  if (/pass|declin|reject/.test(s)) return 'passed';
+  if (/hold/.test(s)) return 'onhold';
+  if (/review|diligence|terms|ioi|interest/.test(s)) return 'reviewing';
+  return 'neutral';
+}
+
+/**
+ * "Activity · Last 24h" column — renders compact stage-transition lines
+ * (e.g. "PFG → in review (from on-deck)") sourced from the per-deal
+ * activity_logs already loaded by usePipelineDigests().
+ */
+export function ActivityPanel({ deal, rawDigest, isLoading }: ActivityPanelProps) {
   if (isLoading) {
     return (
       <div className="p-5 space-y-2">
         <div className="h-3 w-1/3 rounded bg-muted animate-pulse" />
         <div className="h-3 w-full rounded bg-muted animate-pulse" />
         <div className="h-3 w-5/6 rounded bg-muted animate-pulse" />
-        <div className="h-3 w-2/3 rounded bg-muted animate-pulse" />
       </div>
     );
   }
 
-  const paragraphs = (digest?.prose || []).map(p => ({
-    heading: p.heading,
-    text: p.segments.map(s => s.text).join(''),
-  })).filter(p => stripHtml(p.text).length > 0);
+  const activities = rawDigest?.activities || [];
+  const stageEvents = activities.filter((a) =>
+    ['lender_stage_change', 'stage_change'].includes(a.activity_type),
+  );
 
   return (
-    <div className="p-5 flex flex-col h-full">
+    <div className="p-5 flex flex-col h-full min-w-0">
       <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-3">
         Activity · Last 24h
       </div>
 
-      <div className="space-y-4 flex-1">
-        {paragraphs.length === 0 ? (
-          <p className="text-sm font-normal text-muted-foreground/70 italic">
-            No recent notes
-          </p>
-        ) : (
-          paragraphs.map((p, i) => (
-            <ParagraphBlock key={i} heading={p.heading} text={p.text} />
-          ))
-        )}
-      </div>
-
-      {digest?.tags && digest.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-4 pt-4 border-t border-border">
-          {digest.tags.map((t, i) => {
-            const isComplete = /complete|✓|issued|closed/i.test(t);
-            const isPending = /pending|in progress/i.test(t);
-            const variant = isComplete ? 'green' : isPending ? 'amber' : 'gray';
+      {stageEvents.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          No activity. Deal at <span className="font-semibold text-foreground">{deal.stage || '—'}</span>.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {stageEvents.slice(0, 6).map((a) => {
+            const meta = (a.metadata as any) || {};
+            const lender: string | undefined = meta.lender_name;
+            const from: string | undefined = meta.from;
+            const to: string | undefined = meta.to;
+            const tone = toneFromStage(to);
             return (
-              <Badge key={i} variant={variant} className="text-[10px]">
-                {t}
-              </Badge>
+              <div key={a.id} className="flex gap-2 items-start">
+                <span className={`mt-1 h-3 w-0.5 rounded-sm ${TONE_BAR[tone]} shrink-0`} />
+                <div className="text-xs leading-snug text-foreground">
+                  {lender && <span className="font-semibold">{lender} </span>}
+                  <span className="text-muted-foreground">→ </span>
+                  <span>{to || 'updated'}</span>
+                  {from && (
+                    <span className="text-muted-foreground"> (from {from})</span>
+                  )}
+                </div>
+              </div>
             );
           })}
         </div>
