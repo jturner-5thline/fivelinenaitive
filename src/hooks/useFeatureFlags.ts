@@ -237,6 +237,10 @@ export const usePageAccessFlags = () => {
     // Demo account cannot access certain pages
     if (isDemoAccount && (pageName === 'finance' || pageName === 'workflows' || pageName === 'sales_bd')) return false;
 
+    // Demo tenant: AI Search / Ask naitive AI chat + Copilot drawer are
+    // unconditionally enabled so the storyline workflows always work.
+    if (isDemoAccount && DEMO_ALWAYS_ON_FEATURES.has(pageName)) return true;
+
     // Finance page: restrict to explicit allowlist regardless of feature flag
     if (pageName === 'finance') {
       const email = user?.email?.toLowerCase() ?? '';
