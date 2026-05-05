@@ -30,6 +30,8 @@ export interface FollowupItem {
   dueAt: string | null;
   /** Primary contact name on the associated deal, if any. */
   contact?: string | null;
+  /** CRM contact id resolved via contact_deals, if any. */
+  contactId?: string | null;
   /** CRM company id on the associated deal, if any. */
   companyId?: string | null;
 }
@@ -87,6 +89,24 @@ export function useMorningFollowups(enabled: boolean) {
         .in('id', dealIds);
       const dealMap = new Map((deals ?? []).map(d => [d.id, d]));
 
+      // Resolve a CRM contact id per deal so the displayed contact name can
+      // link to /contacts/:id like other entity references.
+      const { data: contactLinks } = await supabase
+        .from('contact_deals')
+        .select('deal_id, contact_id, created_at, contacts!inner(id, full_name, first_name, last_name)')
+        .in('deal_id', dealIds)
+        .order('created_at', { ascending: true });
+      const dealContactMap = new Map<string, { id: string; name: string }>();
+      for (const link of (contactLinks ?? []) as any[]) {
+        if (dealContactMap.has(link.deal_id)) continue; // first link wins
+        const c = link.contacts;
+        const name =
+          c?.full_name ||
+          [c?.first_name, c?.last_name].filter(Boolean).join(' ').trim() ||
+          null;
+        if (c?.id) dealContactMap.set(link.deal_id, { id: c.id, name: name || '' });
+      }
+
       const groups = new Map<string, FollowupDealGroup>();
       const ensure = (id: string, company: string, stage: string | null) => {
         let g = groups.get(id);
@@ -100,6 +120,7 @@ export function useMorningFollowups(enabled: boolean) {
       for (const t of tasks) {
         const d = t.deal_id ? dealMap.get(t.deal_id) : null;
         if (!d) continue;
+        const linked = dealContactMap.get(d.id);
         ensure(d.id, d.company ?? 'Untitled deal', d.stage ?? null).items.push({
           key: `task-${t.id}`,
           sourceId: String(t.id),
@@ -107,7 +128,8 @@ export function useMorningFollowups(enabled: boolean) {
           dealId: d.id,
           title: t.title ?? 'Follow-up task',
           dueAt: t.due_at ?? null,
-          contact: (d as any).contact ?? null,
+          contact: linked?.name || (d as any).contact || null,
+          contactId: linked?.id ?? null,
           companyId: (d as any).company_id ?? null,
         });
       }
@@ -118,6 +140,7 @@ export function useMorningFollowups(enabled: boolean) {
         // Same gating as the edge function: only include if this user is the
         // deal owner/creator on the row.
         if (d.user_id !== user.id) continue;
+        const linked = dealContactMap.get(d.id);
         ensure(d.id, d.company ?? 'Untitled deal', d.stage ?? null).items.push({
           key: `sched-${s.id}`,
           sourceId: String(s.id),
@@ -125,7 +148,8 @@ export function useMorningFollowups(enabled: boolean) {
           dealId: d.id,
           title: '3-day follow-up due',
           dueAt: s.scheduled_for ?? null,
-          contact: (d as any).contact ?? null,
+          contact: linked?.name || (d as any).contact || null,
+          contactId: linked?.id ?? null,
           companyId: (d as any).company_id ?? null,
         });
       }
