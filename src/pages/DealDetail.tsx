@@ -2274,8 +2274,12 @@ export default function DealDetail() {
     );
   }
 
-  const stageConfig = STAGE_CONFIG[deal.stage];
-  const statusConfig = STATUS_CONFIG[deal.status];
+  // Defensive fallbacks: when AI updates the stage/status to a value that
+  // isn't in the standard config map (e.g. a naitive-pipeline stage), or
+  // during a brief mid-refetch state, these lookups can return undefined
+  // and crash the page on `.badgeColor` / `.label` access.
+  const stageConfig = STAGE_CONFIG[deal.stage] ?? { label: String(deal.stage ?? 'Unknown'), color: 'bg-muted' };
+  const statusConfig = STATUS_CONFIG[deal.status] ?? { label: String(deal.status ?? 'Unknown'), dotColor: 'bg-muted', badgeColor: 'bg-muted' };
 
   const formatValue = (value: number) => formatCurrencyValue(value);
 
