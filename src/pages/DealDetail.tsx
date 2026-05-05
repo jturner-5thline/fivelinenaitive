@@ -5092,11 +5092,11 @@ export default function DealDetail() {
                           </div>
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="text-xs">
-                              {STAGE_CONFIG[dealInfo.stage].label}
+                              {STAGE_CONFIG[dealInfo.stage]?.label ?? String(dealInfo.stage ?? '')}
                             </Badge>
                             <Badge 
                               variant="secondary" 
-                              className={`text-xs ${STATUS_CONFIG[dealInfo.status].badgeColor} text-white`}
+                              className={`text-xs ${STATUS_CONFIG[dealInfo.status]?.badgeColor ?? 'bg-muted'} text-white`}
                             >
                               {STATUS_CONFIG[dealInfo.status].label}
                             </Badge>
