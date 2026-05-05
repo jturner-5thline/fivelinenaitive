@@ -542,6 +542,7 @@ export default function DealDetail() {
   const canPushToFlex = hasPageAccess('flex_push') && demoCanPushFlex;
   const { formatCurrencyValue, preferences } = usePreferences();
   const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deleteLenderNoteHistory, deleteDeal, deals, isLoading: isDealsLoading, refreshDeals } = useDealsContext();
+  const isDemoAccount = useIsDemoAccount();
   const { activities: activityLogs, logActivity, isLoading: isLoadingActivities } = useActivityLog(id);
   
   // Real-time FLEx activity notifications
