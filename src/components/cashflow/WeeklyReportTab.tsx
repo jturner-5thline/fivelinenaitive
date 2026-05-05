@@ -15,6 +15,91 @@ import { useAuth } from '@/contexts/AuthContext';
 import { CashFlowDrilldownModal, type DrilldownContext } from './CashFlowDrilldownModal';
 import type { ScheduledCashFlow } from './scheduledCashFlows';
 
+/**
+ * Editable Beginning/Ending Cash cell with a local draft state.
+ *
+ * The input is bound to internal `draft` state — typed characters are NEVER
+ * round-tripped through the parent's derived weekly value while editing, so
+ * upstream re-renders (recompute, polling, sibling cell saves) can't revert
+ * the in-flight value. We commit the parsed number to the parent only on
+ * blur or Enter. Escape cancels and restores the last committed display.
+ */
+const EditableCashCell = memo(function EditableCashCell({
+  weekKey,
+  field,
+  value,
+  displayVal,
+  isOverridden,
+  onCommit,
+}: {
+  weekKey: string;
+  field: 'beginningCash' | 'endingCash';
+  value: number;
+  displayVal: number;
+  isOverridden: boolean;
+  onCommit: (weekKey: string, field: 'beginningCash' | 'endingCash', value: number | null) => void;
+}) {
+  const formatted = fmtAbbrev(displayVal);
+  const [draft, setDraft] = useState<string>(formatted);
+  const [isEditing, setIsEditing] = useState(false);
+
+  // When NOT editing, mirror parent's authoritative value. While editing,
+ // never overwrite the user's in-flight draft.
+  useEffect(() => {
+    if (!isEditing) setDraft(formatted);
+  }, [formatted, isEditing]);
+
+  const commit = useCallback(() => {
+    const raw = draft.trim();
+    if (raw === '') {
+      onCommit(weekKey, field, null);
+      return;
+    }
+    // Strip thousands separators, currency markers; keep sign + decimal.
+    const cleaned = raw.replace(/[$,\s]/g, '');
+    const parsed = Number(cleaned);
+    if (!Number.isFinite(parsed)) {
+      setDraft(formatted);
+      return;
+    }
+    if (parsed === value && !isOverridden) {
+      setDraft(formatted);
+      return;
+    }
+    onCommit(weekKey, field, parsed);
+  }, [draft, formatted, value, isOverridden, onCommit, weekKey, field]);
+
+  return (
+    <input
+      className={`cf-cell-input ${displayVal > 0 ? 'cf-val-pos' : displayVal < 0 ? 'cf-val-neg' : ''}`}
+      type="text"
+      inputMode="decimal"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onFocus={(e) => {
+        setIsEditing(true);
+        setDraft(value === 0 ? '' : String(value));
+        // Defer select to after value swap
+        const el = e.currentTarget;
+        requestAnimationFrame(() => el.select());
+      }}
+      onBlur={() => {
+        setIsEditing(false);
+        commit();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          (e.currentTarget as HTMLInputElement).blur();
+        } else if (e.key === 'Escape') {
+          setDraft(formatted);
+          setIsEditing(false);
+          (e.currentTarget as HTMLInputElement).blur();
+        }
+      }}
+    />
+  );
+});
+
 interface SidebarItem {
   id?: string;
   name: string;
