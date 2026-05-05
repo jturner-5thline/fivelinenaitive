@@ -260,7 +260,36 @@ export function AsanaGoalsPortfoliosSection() {
       {/* PORTFOLIOS */}
       <Card className="glass-module">
         <div style={{ padding: '10px 14px' }}>
-          <SectionLabel>Portfolios · Asana</SectionLabel>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, gap: 8 }}>
+            <SectionLabel>Portfolios · Asana</SectionLabel>
+            {portfolios.portfolios.length > 0 && (
+              <div style={{ display: 'inline-flex', gap: 4 }}>
+                {([
+                  { key: 'all', label: 'All', color: 'rgba(160,210,255,0.7)' },
+                  { key: 'on', label: 'On track', color: STATUS_COLOR['On Track'] },
+                  { key: 'at', label: 'At risk', color: STATUS_COLOR['At Risk'] },
+                  { key: 'off', label: 'Off track', color: STATUS_COLOR['Behind'] },
+                ] as const).map(opt => {
+                  const active = portfolioStatusFilter === opt.key;
+                  return (
+                    <button
+                      key={opt.key}
+                      onClick={() => setPortfolioStatusFilter(opt.key)}
+                      style={{
+                        fontSize: 9, fontWeight: 700, letterSpacing: '0.4px',
+                        padding: '3px 7px', borderRadius: 5, cursor: 'pointer',
+                        background: active ? `${opt.color}22` : 'rgba(20,80,160,0.25)',
+                        color: active ? opt.color : 'rgba(160,210,255,0.7)',
+                        border: `1px solid ${active ? `${opt.color}66` : 'rgba(40,120,200,0.3)'}`,
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
           {portfolios.error ? (
             <div style={{ padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', color: '#ff6b7a', fontSize: 11 }}>
@@ -277,9 +306,13 @@ export function AsanaGoalsPortfoliosSection() {
             <div style={{ padding: 24, textAlign: 'center', color: 'rgba(160,210,255,0.5)', fontSize: 11 }}>Loading portfolios…</div>
           ) : portfolios.portfolios.length === 0 ? (
             <div style={{ padding: 16, textAlign: 'center', color: 'rgba(160,210,255,0.6)', fontSize: 11 }}>No portfolios available</div>
+          ) : filteredPortfolios.length === 0 ? (
+            <div style={{ padding: 16, textAlign: 'center', color: 'rgba(160,210,255,0.6)', fontSize: 11 }}>
+              No portfolios match this filter
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflowY: 'auto' }}>
-              {portfolios.portfolios.map(p => {
+              {filteredPortfolios.map(p => {
                 const total = p.projectCount || 1;
                 const onPct = Math.round((p.onTrack / total) * 100);
                 const atPct = Math.round((p.atRisk / total) * 100);
