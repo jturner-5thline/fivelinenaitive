@@ -1,6 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { isDemoCompanyId, DEMO_PRIMARY_EMAIL } from "@/lib/demoAccount";
+
+// Always-on AI surfaces for the demo tenant. The Search / "Ask naitive AI"
+// chat bar (chat_widget) and the floating Copilot drawer (copilot_widget)
+// must work on every demo session regardless of the global feature-flag
+// status or any company override, so the storyline workflows are
+// demonstrable end-to-end.
+const DEMO_ALWAYS_ON_FEATURES = new Set([
+  "chat_widget",
+  "copilot_widget",
+]);
+const isDemoEmail = (email?: string | null) =>
+  email === DEMO_PRIMARY_EMAIL || email === "demo@example.com";
 
 export type FeatureStatus = "disabled" | "staging" | "deployed" | "james_only";
 
@@ -115,6 +128,13 @@ export const useFeatureAccess = (featureName: string) => {
   const is5thLineUser = user?.email?.endsWith('@5thline.co') ?? false;
   const isJames = user?.email === 'jturner@5thline.co';
 
+  // Demo tenant: AI search + Copilot are unconditionally enabled so the
+  // storyline ("Search or ask naitive AI" + Copilot drawer) is always
+  // available, even if the global flag is `disabled` or staging.
+  if (isDemoEmail(user?.email) && DEMO_ALWAYS_ON_FEATURES.has(featureName)) {
+    return { hasAccess: true, isLoading: false, is5thLineUser };
+  }
+
   // James-only features
   if (flag?.status === "james_only") {
     return { hasAccess: isJames, isLoading, is5thLineUser };
@@ -216,6 +236,10 @@ export const usePageAccessFlags = () => {
   const hasPageAccess = (pageName: string): boolean => {
     // Demo account cannot access certain pages
     if (isDemoAccount && (pageName === 'finance' || pageName === 'workflows' || pageName === 'sales_bd')) return false;
+
+    // Demo tenant: AI Search / Ask naitive AI chat + Copilot drawer are
+    // unconditionally enabled so the storyline workflows always work.
+    if (isDemoAccount && DEMO_ALWAYS_ON_FEATURES.has(pageName)) return true;
 
     // Finance page: restrict to explicit allowlist regardless of feature flag
     if (pageName === 'finance') {
