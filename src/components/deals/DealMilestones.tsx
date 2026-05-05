@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Plus, Pencil, Trash2, Check, X, ChevronRight, GripVertical } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { DealMilestone, MilestoneStatus, MILESTONE_STATUS_CONFIG } from '@/types/deal';
@@ -54,16 +54,10 @@ interface DealMilestonesProps {
 
 export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorder }: DealMilestonesProps) {
   const [isAdding, setIsAdding] = useState(false);
-  const [isExpanded, setIsExpanded] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return true;
-    const v = window.localStorage.getItem('deal-milestones-expanded');
-    return v === null ? false : v === 'true';
-  });
-  useEffect(() => {
-    try {
-      window.localStorage.setItem('deal-milestones-expanded', String(isExpanded));
-    } catch { /* noop */ }
-  }, [isExpanded]);
+  // Always start collapsed on every page load/refresh. Do not persist
+  // expanded state across reloads — manual expansion only lasts for the
+  // current session of this component instance.
+  const [isExpanded, setIsExpanded] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newDate, setNewDate] = useState<Date | undefined>();
