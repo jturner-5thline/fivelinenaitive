@@ -39,6 +39,7 @@ serve(async (req) => {
     } else {
       meetingQuery = meetingQuery
         .in("match_status", ["unmatched", "needs_review"])
+        .is("suggestions_generated_at", null)
         .is("deal_id", null)
         .order("created_at", { ascending: false })
         .limit(limit);
