@@ -555,30 +555,21 @@ export function ScheduledCashFlowsModal({
               {/* Column Headers */}
               <div className="grid grid-cols-[16px_minmax(0,1.1fr)_minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,2fr)_140px_32px] gap-2 items-center px-2 pb-2 mb-1 border-b border-border">
                 <span />
-                <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
-                  Account
-                </span>
-                <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
-                  Category
-                </span>
-                <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
-                  Description
-                </span>
-                <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
-                  Amount
-                </span>
-                <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
-                  Frequency
-                </span>
-                <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
-                  Type
-                </span>
+                <SortHeader label="Account" k="account" />
+                <SortHeader label="Category" k="category" />
+                <SortHeader label="Description" k="description" />
+                <SortHeader label="Amount" k="amount" />
+                <div className="flex items-center gap-3">
+                  <SortHeader label="Frequency" k="frequency" />
+                  <SortHeader label="Date" k="date" />
+                </div>
+                <SortHeader label="Type" k="type" />
                 <span />
               </div>
 
               {/* Rows */}
               <div className="flex flex-col">
-                {drafts.map((d) => {
+                {sortedDrafts.map((d) => {
                   return (
                     <div
                       key={d._draftId}
