@@ -301,10 +301,16 @@ serve(async (req) => {
 
       // Lender matching: any participant domain matches a lender on this deal (by name)
       const lenders = lenderMap[deal.id] || [];
+      const dealCore = dealNameLower.replace(/[^a-z0-9]/g, "");
       for (const participant of meetingParticipants) {
         if (participant.is_internal) continue;
         const pDomain = (participant.domain || "").toLowerCase();
         const pDomainCore = pDomain.replace(/\.(com|io|co|net|org|ai|us|uk)$/i, "").replace(/[^a-z0-9]/g, "");
+        // Attendee domain core matches the deal name → strong signal
+        if (pDomainCore && dealCore.length > 3 && (pDomainCore.includes(dealCore) || dealCore.includes(pDomainCore))) {
+          score += 50;
+          reasons.push(`Attendee domain @${pDomain} matches deal "${deal.company}"`);
+        }
         for (const lender of lenders) {
           if (!lender.name) continue;
           const lenderCore = lender.name.toLowerCase().replace(/[^a-z0-9]/g, "");
