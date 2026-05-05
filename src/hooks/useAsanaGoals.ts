@@ -18,6 +18,10 @@ export interface AsanaGoalRow {
   source: 'asana';
   /** Asana time period display name (e.g. "Q2 FY26", "H1 FY26", "Q2 2026"). May be null. */
   timePeriod: string | null;
+  /** Real progress 0-100 from Asana metric, when available. */
+  progressPercent: number | null;
+  /** Display string for current value (e.g. "42 / 100" or "$1.2M / $5M"). */
+  progressDisplay: string | null;
 }
 
 function mapStatus(raw: string | null | undefined, isCompleted = false): AsanaGoalRow['status'] {
@@ -44,6 +48,15 @@ interface AsanaGoalApi {
   progress_status?: string | null;
   current_status_update?: { status_type?: string; title?: string } | null;
   time_period?: { display_name?: string | null; gid?: string } | null;
+  metric?: {
+    current_display_value?: string | null;
+    current_number_value?: number | null;
+    target_number_value?: number | null;
+    initial_number_value?: number | null;
+    unit?: string | null;
+    precision?: number | null;
+    progress_source?: string | null;
+  } | null;
 }
 
 export interface UseAsanaGoalsResult {
@@ -117,6 +130,24 @@ export function useAsanaGoals(): UseAsanaGoalsResult {
           g.status ||
           null;
         const status = mapStatus(rawStatus);
+        const m = g.metric || null;
+        let progressPercent: number | null = null;
+        if (m && typeof m.current_number_value === 'number' && typeof m.target_number_value === 'number') {
+          const start = typeof m.initial_number_value === 'number' ? m.initial_number_value : 0;
+          const span = m.target_number_value - start;
+          if (span !== 0) {
+            const raw = ((m.current_number_value - start) / span) * 100;
+            progressPercent = Math.max(0, Math.min(100, Math.round(raw)));
+          } else if (m.current_number_value >= m.target_number_value) {
+            progressPercent = 100;
+          }
+        }
+        if (progressPercent === null && status === 'Achieved') progressPercent = 100;
+        const progressDisplay = m?.current_display_value || (
+          m && typeof m.current_number_value === 'number' && typeof m.target_number_value === 'number'
+            ? `${m.current_number_value} / ${m.target_number_value}${m.unit && m.unit !== 'none' ? ' ' + m.unit : ''}`
+            : null
+        );
         return {
           id: g.gid,
           asanaGid: g.gid,
@@ -132,6 +163,8 @@ export function useAsanaGoals(): UseAsanaGoalsResult {
           syncedAt: now,
           source: 'asana',
           timePeriod: g.time_period?.display_name || null,
+          progressPercent,
+          progressDisplay,
         };
       });
 

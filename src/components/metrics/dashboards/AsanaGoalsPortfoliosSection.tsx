@@ -43,9 +43,8 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
-function progressFromStatus(status: string): number | null {
-  // Asana doesn't expose a simple percent on the Goals API consistently.
-  // Use status-based estimate as a visual hint; null means unknown.
+function fallbackProgressFromStatus(status: string): number | null {
+  // Used only when Asana doesn't return a numeric metric for the goal.
   switch (status) {
     case 'Achieved': return 100;
     case 'On Track': return 70;
@@ -194,7 +193,9 @@ export function AsanaGoalsPortfoliosSection() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflowY: 'auto' }}>
               {filteredGoals.map(g => {
-                const pct = progressFromStatus(g.status);
+                const realPct = g.progressPercent;
+                const pct = realPct ?? fallbackProgressFromStatus(g.status);
+                const isEstimate = realPct === null && pct !== null;
                 const color = STATUS_COLOR[g.status] || '#4db8ff';
                 return (
                   <div key={g.id} style={{ padding: '6px 8px', borderRadius: 6, background: 'rgba(20,80,160,0.18)', border: '1px solid rgba(40,100,180,0.25)' }}>
@@ -210,6 +211,11 @@ export function AsanaGoalsPortfoliosSection() {
                         <div style={{ fontSize: 9, color: 'rgba(160,210,255,0.5)', marginTop: 2 }}>
                           {g.owner}{g.due ? ` · due ${g.due}` : ''}{g.timePeriod ? ` · ${g.timePeriod}` : ''}
                         </div>
+                        {g.progressDisplay && (
+                          <div style={{ fontSize: 9, color: 'rgba(160,210,255,0.7)', marginTop: 2 }}>
+                            {g.progressDisplay}
+                          </div>
+                        )}
                       </div>
                       <StatusPill status={g.status} />
                     </div>
@@ -218,7 +224,12 @@ export function AsanaGoalsPortfoliosSection() {
                         <div style={{ flex: 1, height: 4, background: 'rgba(40,100,180,0.25)', borderRadius: 2, overflow: 'hidden' }}>
                           <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 2 }} />
                         </div>
-                        <span style={{ fontSize: 9, color, fontWeight: 700, minWidth: 28, textAlign: 'right' }}>{pct}%</span>
+                        <span
+                          style={{ fontSize: 9, color, fontWeight: 700, minWidth: 36, textAlign: 'right' }}
+                          title={isEstimate ? 'Estimated from status (no Asana metric set)' : 'Live progress from Asana metric'}
+                        >
+                          {pct}%{isEstimate ? '*' : ''}
+                        </span>
                       </div>
                     )}
                   </div>
