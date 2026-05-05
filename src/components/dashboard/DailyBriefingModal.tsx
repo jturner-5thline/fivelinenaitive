@@ -42,6 +42,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useMorningFollowups, useFollowupActions, type FollowupDealGroup, type FollowupItem } from '@/hooks/useMorningFollowups';
 import { useDealsContext } from '@/contexts/DealsContext';
 import type { Deal } from '@/types/deal';
+import { RecentPipelineActivitySection } from './briefingPrimitives';
 
 interface DailyBriefingModalProps {
   open: boolean;
