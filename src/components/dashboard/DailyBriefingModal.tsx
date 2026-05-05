@@ -32,6 +32,12 @@ import { EmailBodyRenderer } from '@/components/deal/email/EmailBodyRenderer';
 import { useFullEmailMessage, useFullEmailThread } from '@/components/deal/email/useFullEmailMessage';
 import type { EmailThread, MockEmail } from '@/components/deal/email/mockEmailData';
 import { EmailAttachmentsStrip, detectAttachmentFallbackReason } from '@/components/deal/email/EmailAttachmentsStrip';
+// Reuse the exact same right-click menu the main Email pop-up uses so
+// behavior, actions, ordering, and label wiring stay identical between
+// Daily Briefing email rows and the Email widget pop-up.
+import { EmailContextMenu } from '@/components/deal/email/EmailContextMenu';
+import { useGmail } from '@/hooks/useGmail';
+import { toast } from 'sonner';
 // Code-split: keeps the Memo view (and @tanstack/react-virtual) out of the
 // initial Daily Briefing bundle. Only loaded when the user actually opens the
 // Pipeline & Clients tab in Memo mode.
