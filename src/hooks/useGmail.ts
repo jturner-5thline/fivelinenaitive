@@ -18,6 +18,8 @@ interface GmailMessage {
   is_starred: boolean;
   labels: string[];
   received_at: string;
+  has_attachments?: boolean;
+  attachments?: Array<{ filename: string; content_type: string; size: number }>;
 }
 
 interface GmailStatus {
