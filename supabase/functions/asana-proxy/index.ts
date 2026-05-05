@@ -463,6 +463,72 @@ serve(async (req) => {
         break;
       }
 
+      case "portfolio_activity": {
+        // Aggregate recent status updates across all goals supporting a portfolio.
+        const resolvedToken = await resolveToken(token, integration_id);
+        const portfolioGid = params.portfolio_gid;
+        const limit = Math.min(Number(params.limit) || 25, 50);
+        if (!portfolioGid) {
+          result = { success: false, error: "portfolio_gid is required", activity: [] };
+          break;
+        }
+        try {
+          // 1. Get goals attached to portfolio
+          const goalFields = "name,permalink_url,resource_type";
+          let goals: any[] = [];
+          try {
+            const items = await asanaFetch(
+              `/portfolios/${portfolioGid}/items?opt_fields=${goalFields}`,
+              resolvedToken,
+            );
+            goals = (items.data || []).filter((it: any) => it.resource_type === "goal");
+          } catch (_) { /* ignore */ }
+          if (goals.length === 0) {
+            try {
+              const alt = await asanaFetch(
+                `/goals?portfolio=${portfolioGid}&limit=100&opt_fields=${goalFields}`,
+                resolvedToken,
+              );
+              goals = alt.data || [];
+            } catch (_) { /* ignore */ }
+          }
+
+          // 2. Fetch recent status updates per goal in parallel
+          const updFields = "created_at,created_by.name,status_type,title,text,resource_subtype";
+          const perGoal = await Promise.all(
+            goals.slice(0, 25).map(async (g) => {
+              try {
+                const r = await asanaFetch(
+                  `/status_updates?parent=${g.gid}&limit=10&opt_fields=${updFields}`,
+                  resolvedToken,
+                );
+                return ((r.data as any[]) || []).map((u) => ({
+                  id: u.gid,
+                  created_at: u.created_at,
+                  author: u.created_by?.name || null,
+                  status_type: u.status_type || null,
+                  title: u.title || null,
+                  text: u.text || null,
+                  goal_gid: g.gid,
+                  goal_name: g.name,
+                  goal_url: g.permalink_url || null,
+                }));
+              } catch (_) {
+                return [];
+              }
+            }),
+          );
+
+          const flat = perGoal.flat();
+          flat.sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
+          result = { success: true, activity: flat.slice(0, limit) };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "Unknown error fetching portfolio activity";
+          result = { success: false, error: msg, activity: [] };
+        }
+        break;
+      }
+
       default:
         result = { success: false, error: `Unknown action: ${action}` };
     }
