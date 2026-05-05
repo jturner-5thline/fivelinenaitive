@@ -2319,13 +2319,17 @@ export default function DealDetail() {
       // Save current state to history before updating
       setEditHistory(history => [...history, { deal: prev, field, timestamp: new Date() }]);
       let updated = { ...prev, [field]: value, updatedAt: new Date().toISOString() };
-      
-      // Auto-calculate total fee when success fee percent or deal value changes
+
+      // Auto-calculate Total Fee = Deal Size × (Success Fee % / 100).
+      // Recompute reactively whenever either input changes, and persist the
+      // derived totalFee to the DB so it isn't left stale from a prior manual entry.
+      let derivedTotalFee: number | undefined;
       if (field === 'successFeePercent' || field === 'value') {
-        const dealValue = field === 'value' ? (value as number) : prev.value;
-        const successPercent = field === 'successFeePercent' ? (value as number | undefined) : prev.successFeePercent;
-        if (dealValue && successPercent) {
-          updated.totalFee = (successPercent / 100) * dealValue;
+        const dealValue = Number(field === 'value' ? (value as number) : prev.value) || 0;
+        const successPercent = Number(field === 'successFeePercent' ? (value as number | undefined) : prev.successFeePercent) || 0;
+        if (dealValue > 0 && successPercent > 0) {
+          derivedTotalFee = (successPercent / 100) * dealValue;
+          updated.totalFee = derivedTotalFee;
         }
       }
       
@@ -2397,7 +2401,11 @@ export default function DealDetail() {
       
       // Persist to database with loading indicator
       withSavingAsync(`deal-${field}`, async () => {
-        await updateDealInDb(prev.id, { [field]: value } as Partial<Deal>);
+        const patch: Partial<Deal> = { [field]: value } as Partial<Deal>;
+        if (derivedTotalFee !== undefined) {
+          (patch as Partial<Deal>).totalFee = derivedTotalFee;
+        }
+        await updateDealInDb(prev.id, patch);
       });
       
       return updated;
