@@ -507,10 +507,71 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                 <XAxis dataKey="bucket" tick={{ fontSize: 7, fill: 'hsl(var(--muted-foreground))' }} interval={0} angle={-15} textAnchor="end" height={45} />
                 <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} width={28} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Legend wrapperStyle={{ fontSize: 9 }} />
-                <Bar dataKey="onTrack" name="On track" fill={STATUS_COLORS['On track']} radius={[3, 3, 0, 0]} barSize={14} />
-                <Bar dataKey="atRisk" name="At risk" fill={STATUS_COLORS['At risk']} radius={[3, 3, 0, 0]} barSize={14} />
-                <Bar dataKey="offTrack" name="Off track" fill={STATUS_COLORS['Off track']} radius={[3, 3, 0, 0]} barSize={14} />
+                <Legend
+                  wrapperStyle={{ fontSize: 9, cursor: 'pointer' }}
+                  onClick={(entry: any) => {
+                    const map: Record<string, string> = { 'On track': 'On track', 'At risk': 'At risk', 'Off track': 'Off track' };
+                    const label = map[entry?.value] || entry?.value;
+                    if (label) openDrilldown(`Projects — ${label}`, projectsByStatus(label), 'project');
+                  }}
+                />
+                <Bar
+                  dataKey="onTrack"
+                  name="On track"
+                  fill={STATUS_COLORS['On track']}
+                  radius={[3, 3, 0, 0]}
+                  barSize={14}
+                  style={{ cursor: 'pointer' }}
+                  onClick={(entry: any) =>
+                    openDrilldown(
+                      `On track — ${entry?.bucket || ''}`,
+                      (metrics.projectsAll ?? []).filter((p: any) => {
+                        const st = (p.status_type || '').toLowerCase();
+                        const bucket = p.name?.length > 20 ? p.name.slice(0, 18) + '…' : (p.name || 'Other');
+                        return bucket === entry?.bucket && (!st || st === 'on_track' || st === 'on track' || st === 'green');
+                      }),
+                      'project',
+                    )
+                  }
+                />
+                <Bar
+                  dataKey="atRisk"
+                  name="At risk"
+                  fill={STATUS_COLORS['At risk']}
+                  radius={[3, 3, 0, 0]}
+                  barSize={14}
+                  style={{ cursor: 'pointer' }}
+                  onClick={(entry: any) =>
+                    openDrilldown(
+                      `At risk — ${entry?.bucket || ''}`,
+                      (metrics.projectsAll ?? []).filter((p: any) => {
+                        const st = (p.status_type || '').toLowerCase();
+                        const bucket = p.name?.length > 20 ? p.name.slice(0, 18) + '…' : (p.name || 'Other');
+                        return bucket === entry?.bucket && (st === 'at_risk' || st === 'at risk' || st === 'yellow');
+                      }),
+                      'project',
+                    )
+                  }
+                />
+                <Bar
+                  dataKey="offTrack"
+                  name="Off track"
+                  fill={STATUS_COLORS['Off track']}
+                  radius={[3, 3, 0, 0]}
+                  barSize={14}
+                  style={{ cursor: 'pointer' }}
+                  onClick={(entry: any) =>
+                    openDrilldown(
+                      `Off track — ${entry?.bucket || ''}`,
+                      (metrics.projectsAll ?? []).filter((p: any) => {
+                        const st = (p.status_type || '').toLowerCase();
+                        const bucket = p.name?.length > 20 ? p.name.slice(0, 18) + '…' : (p.name || 'Other');
+                        return bucket === entry?.bucket && (st === 'off_track' || st === 'off track' || st === 'red');
+                      }),
+                      'project',
+                    )
+                  }
+                />
               </BarChart>
             </ResponsiveContainer>
           )}
