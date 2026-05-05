@@ -529,6 +529,40 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
     }
     return out;
   }, [customReceiptRows, customDisbursementRows, onAddCustomRow, weeklyData]);
+
+  // Apply the line-item search filter. We keep a row whenever its visible
+  // label (key, label, transferAccount, or facilityName) contains the query.
+  // For section headers / spacers / add-row footers / net change rows we
+  // keep them only if the section still has at least one matching item, so
+  // the table stays structurally coherent while filtering.
+  const filteredRowOrder = useMemo<WeeklyRow[]>(() => {
+    const q = lineItemSearch.trim().toLowerCase();
+    if (!q) return effectiveRowOrder;
+    const matches = (r: WeeklyRow): boolean => {
+      const candidates: Array<string | undefined | null> = [
+        (r as any).label,
+        r.key,
+        (r as any).transferAccount,
+        (r as any).facilityName,
+      ];
+      return candidates.some((c) => typeof c === 'string' && c.toLowerCase().includes(q));
+    };
+    // First pass: identify which "real" rows match.
+    const matchingSections = new Set<string>();
+    for (const r of effectiveRowOrder) {
+      const isStructural =
+        (r as any).isHeader || (r as any).isSpacer || (r as any).isAddRowFooter || (r as any).isNetChange;
+      if (!isStructural && matches(r)) matchingSections.add(r.section);
+    }
+    // Second pass: keep matching detail rows + structural rows whose section has a match.
+    return effectiveRowOrder.filter((r) => {
+      const isStructural =
+        (r as any).isHeader || (r as any).isSpacer || (r as any).isAddRowFooter || (r as any).isNetChange;
+      if (isStructural) return matchingSections.has(r.section);
+      return matches(r);
+    });
+  }, [effectiveRowOrder, lineItemSearch]);
+
   const closeAddCellPopover = useCallback(() => {
     setAddCellPopover(null);
     setAddCellDraft({ description: '', amount: '', flowType: 'cash_in' });
