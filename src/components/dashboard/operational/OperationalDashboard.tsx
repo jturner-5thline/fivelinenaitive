@@ -84,14 +84,16 @@ function ChartCard({
   filterCount,
   onSeeAll,
   children,
+  className,
 }: {
   title: string;
   filterCount?: number;
   onSeeAll?: () => void;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <div className={cn(GLASS_CARD, 'flex flex-col overflow-hidden')}>
+    <div className={cn(GLASS_CARD, 'flex flex-col overflow-hidden', className)}>
       <div className="flex items-center justify-between px-4 pt-3 pb-1">
         <div className="flex items-center gap-2 min-w-0">
           <h3 className="text-xs font-semibold text-foreground truncate">{title}</h3>
