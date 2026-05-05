@@ -230,8 +230,8 @@ function useDerivedMetrics(data: OperationalData | null) {
     // Chart 3: Projects overview by status groups
     const statusGroups = new Map<string, { onTrack: number; atRisk: number; offTrack: number }>();
     (data.projects ?? []).forEach((p: any) => {
-      // Use a simple bucket based on first word or full name
-      const bucket = p.name?.length > 20 ? p.name.slice(0, 18) + '…' : (p.name || 'Other');
+      // Use the full project name as the bucket key so labels stay readable.
+      const bucket = (p.name && String(p.name).trim()) || 'Untitled project';
       if (!statusGroups.has(bucket)) statusGroups.set(bucket, { onTrack: 0, atRisk: 0, offTrack: 0 });
       const g = statusGroups.get(bucket)!;
       const st = (p.status_type || '').toLowerCase();
@@ -241,8 +241,9 @@ function useDerivedMetrics(data: OperationalData | null) {
       else g.onTrack++; // default to on track if no status
     });
     const projectOverview = Array.from(statusGroups.entries())
-      .map(([bucket, v]) => ({ bucket, ...v }))
-      .slice(0, 6);
+      .map(([bucket, v]) => ({ bucket, ...v, total: v.onTrack + v.atRisk + v.offTrack }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 8);
 
     // Chart 4: Projects by status (pie)
     const statusCounts = { onTrack: 0, atRisk: 0, offTrack: 0, onHold: 0 };
@@ -512,12 +513,23 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
           {projectOverview.length === 0 ? (
             <div className="flex items-center justify-center h-[170px] text-xs text-muted-foreground/60">No projects</div>
           ) : (
-            <ResponsiveContainer width="100%" height={170}>
-              <BarChart data={projectOverview} margin={{ left: 0, right: 8, top: 8, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="bucket" tick={{ fontSize: 7, fill: 'hsl(var(--muted-foreground))' }} interval={0} angle={-15} textAnchor="end" height={45} />
-                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} width={28} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} />
+            <ResponsiveContainer width="100%" height={Math.max(180, projectOverview.length * 32 + 32)}>
+              <BarChart
+                data={projectOverview}
+                layout="vertical"
+                margin={{ left: 4, right: 16, top: 4, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical stroke="hsl(var(--border))" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
+                <YAxis
+                  type="category"
+                  dataKey="bucket"
+                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                  interval={0}
+                  width={180}
+                  tickFormatter={(v: string) => (v && v.length > 28 ? v.slice(0, 27) + '…' : v)}
+                />
+                <Tooltip contentStyle={TOOLTIP_STYLE} labelFormatter={(label) => String(label)} />
                 <Legend
                   wrapperStyle={{ fontSize: 9, cursor: 'pointer' }}
                   onClick={(entry: any) => {
@@ -530,15 +542,16 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                   dataKey="onTrack"
                   name="On track"
                   fill={STATUS_COLORS['On track']}
-                  radius={[3, 3, 0, 0]}
-                  barSize={14}
+                  radius={[0, 3, 3, 0]}
+                  barSize={10}
+                  stackId="status"
                   style={{ cursor: 'pointer' }}
                   onClick={(entry: any) =>
                     openDrilldown(
                       `On track — ${entry?.bucket || ''}`,
                       (metrics.projectsAll ?? []).filter((p: any) => {
                         const st = (p.status_type || '').toLowerCase();
-                        const bucket = p.name?.length > 20 ? p.name.slice(0, 18) + '…' : (p.name || 'Other');
+                        const bucket = (p.name && String(p.name).trim()) || 'Untitled project';
                         return bucket === entry?.bucket && (!st || st === 'on_track' || st === 'on track' || st === 'green');
                       }),
                       'project',
@@ -549,15 +562,16 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                   dataKey="atRisk"
                   name="At risk"
                   fill={STATUS_COLORS['At risk']}
-                  radius={[3, 3, 0, 0]}
-                  barSize={14}
+                  radius={[0, 3, 3, 0]}
+                  barSize={10}
+                  stackId="status"
                   style={{ cursor: 'pointer' }}
                   onClick={(entry: any) =>
                     openDrilldown(
                       `At risk — ${entry?.bucket || ''}`,
                       (metrics.projectsAll ?? []).filter((p: any) => {
                         const st = (p.status_type || '').toLowerCase();
-                        const bucket = p.name?.length > 20 ? p.name.slice(0, 18) + '…' : (p.name || 'Other');
+                        const bucket = (p.name && String(p.name).trim()) || 'Untitled project';
                         return bucket === entry?.bucket && (st === 'at_risk' || st === 'at risk' || st === 'yellow');
                       }),
                       'project',
@@ -568,15 +582,16 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                   dataKey="offTrack"
                   name="Off track"
                   fill={STATUS_COLORS['Off track']}
-                  radius={[3, 3, 0, 0]}
-                  barSize={14}
+                  radius={[0, 3, 3, 0]}
+                  barSize={10}
+                  stackId="status"
                   style={{ cursor: 'pointer' }}
                   onClick={(entry: any) =>
                     openDrilldown(
                       `Off track — ${entry?.bucket || ''}`,
                       (metrics.projectsAll ?? []).filter((p: any) => {
                         const st = (p.status_type || '').toLowerCase();
-                        const bucket = p.name?.length > 20 ? p.name.slice(0, 18) + '…' : (p.name || 'Other');
+                        const bucket = (p.name && String(p.name).trim()) || 'Untitled project';
                         return bucket === entry?.bucket && (st === 'off_track' || st === 'off track' || st === 'red');
                       }),
                       'project',
