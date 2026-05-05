@@ -103,10 +103,11 @@ export function DraggableGridLayout({
 
   const layouts = useMemo(() => {
     const constrained = applyConstraints(layout);
+    // Use a single breakpoint with a fixed 12-column grid so widgets keep
+    // their assigned positions across all desktop/tablet widths. Widget
+    // widths/heights scale with the container; positions never reflow.
     return {
       lg: constrained,
-      md: constrained.map(l => ({ ...l, w: Math.min(l.w, 8) })),
-      sm: constrained.map(l => ({ ...l, w: Math.min(l.w, 4), x: 0 })),
     };
   }, [layout, applyConstraints]);
 
@@ -148,8 +149,8 @@ export function DraggableGridLayout({
       <Responsive
         className="layout"
         layouts={layouts}
-        breakpoints={{ lg: 1200, md: 900, sm: 0 }}
-        cols={{ lg: 12, md: 8, sm: 4 }}
+        breakpoints={{ lg: 0 }}
+        cols={{ lg: 12 }}
         rowHeight={rowHeight}
         width={containerWidth}
         isDraggable={isEditMode}
