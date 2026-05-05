@@ -49,11 +49,8 @@ export function WeeklyRundownCarousel({ page1 }: WeeklyRundownCarouselProps) {
 
   const PAGES: { title: string; render: () => ReactNode }[] = [
     { title: 'Weekly Rundown', render: () => page1 },
+    { title: 'Ops & Projects', render: () => <WeeklyRundownOpsProjectsPage /> },
     { title: 'Weekly Cashflow', render: () => <WeeklyRundownReadOnlyCashflow /> },
-    {
-      title: 'Ops & Projects',
-      render: () => <WeeklyRundownOpsProjectsPage />,
-    },
   ];
 
   const goTo = useCallback((dir: -1 | 1) => {
