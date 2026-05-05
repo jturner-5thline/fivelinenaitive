@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
 import { useMetricsData } from '@/hooks/useMetricsData';
 import { isExcludedDealName } from '@/utils/excludedDeals';
+import { AsanaGoalsPortfoliosSection } from './AsanaGoalsPortfoliosSection';
 
 // ── Chart.js global defaults (scoped to this dashboard) ──
 const setChartDefaults = () => {
@@ -395,6 +396,9 @@ export function ManagementReviewDashboard() {
           </div>
         </Card>
       </div>
+
+      {/* Asana Goals & Portfolios */}
+      <AsanaGoalsPortfoliosSection />
     </div>
   );
 }
