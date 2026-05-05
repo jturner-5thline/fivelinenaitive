@@ -431,6 +431,32 @@ export function CashFlowManager() {
   const [weeklyOverrides, setWeeklyOverrides] = useState<WeeklyOverrides>({});
   const [creditFacilities, setCreditFacilities] = useState<CreditFacility[]>([]);
 
+  // Runtime check: confirm role is a valid RoleMode for all navigation flows.
+  // CashFlowManager owns its own role state (FPAWorkspace does not pass it as a prop),
+  // so this guards against future regressions where role might become undefined or
+  // an unexpected value, which would silently break override saves.
+  useEffect(() => {
+    const validRoles: RoleMode[] = ['admin', 'viewer'];
+    const isValid = validRoles.includes(role);
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.info('[CashFlowManager] role check', {
+        role,
+        isValid,
+        companyId: company?.id ?? null,
+        route: typeof window !== 'undefined' ? window.location.pathname + window.location.hash : null,
+      });
+    }
+    if (!isValid) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[CashFlowManager] Invalid role detected: "${String(role)}". ` +
+          `Expected one of ${validRoles.join(', ')}. ` +
+          `Override saves and admin-gated effects may silently no-op.`
+      );
+    }
+  }, [role, company?.id]);
+
   // Auto-save daily data + recurring tags to DB when they change (debounced)
   useEffect(() => {
     if (!company?.id || !dailyLoadedRef.current || role !== 'admin') return;
