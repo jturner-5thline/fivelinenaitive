@@ -260,6 +260,7 @@
   overscroll-behavior-y: auto;
   max-width: 100%;
   width: 100%;
+  max-height: calc(100vh - 260px);
   position: relative;
   scrollbar-gutter: stable both-edges;
 }
@@ -310,8 +311,9 @@
 .cf-grid th {
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: 20;
   background: var(--color-surface-2);
+  background-clip: padding-box;
   font-weight: 600;
   text-align: center;
   color: var(--color-text-muted);
@@ -320,11 +322,23 @@
   letter-spacing: 0.03em;
 }
 
+.cf-grid thead th::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: var(--color-divider);
+  pointer-events: none;
+}
+
 .cf-grid .cf-label-col {
   position: sticky;
   left: 0;
-  z-index: 6;
+  z-index: 15;
   background: var(--color-surface);
+  background-clip: padding-box;
   min-width: 240px;
   max-width: 240px;
   border-right: 1px solid var(--color-divider);
@@ -334,7 +348,7 @@
   text-overflow: ellipsis;
 }
 
-.cf-grid th.cf-label-col { z-index: 7; background: var(--color-surface-2); }
+.cf-grid th.cf-label-col { z-index: 25; background: var(--color-surface-2); }
 .cf-grid thead th:not(.cf-label-col) { min-width: 130px; }
 
 .cf-grid td { text-align: center; font-variant-numeric: tabular-nums; position: relative; }
