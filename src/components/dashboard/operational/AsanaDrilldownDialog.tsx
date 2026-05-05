@@ -1,5 +1,9 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ExternalLink } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { ExternalLink, X } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 export interface AsanaDrilldownItem {
@@ -39,6 +43,29 @@ function fmtDate(iso?: string | null) {
 }
 
 export function AsanaDrilldownDialog({ open, onOpenChange, title, subtitle, items, kind }: Props) {
+  const [ownerFilter, setOwnerFilter] = useState<string>('all');
+
+  // Reset filter whenever the dialog closes
+  useEffect(() => {
+    if (!open) setOwnerFilter('all');
+  }, [open]);
+
+  const owners = useMemo(() => {
+    const set = new Set<string>();
+    items.forEach((i) => {
+      if (i.assignee && i.assignee.trim()) set.add(i.assignee.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [items]);
+
+  const filtered = useMemo(() => {
+    if (ownerFilter === 'all') return items;
+    if (ownerFilter === '__unassigned__') return items.filter((i) => !i.assignee);
+    return items.filter((i) => (i.assignee || '').trim() === ownerFilter);
+  }, [items, ownerFilter]);
+
+  const showOwnerFilter = kind === 'task' && (owners.length > 1 || items.some((i) => !i.assignee));
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
@@ -47,14 +74,51 @@ export function AsanaDrilldownDialog({ open, onOpenChange, title, subtitle, item
           {subtitle && <p className="text-[11px] text-muted-foreground">{subtitle}</p>}
         </DialogHeader>
 
+        {showOwnerFilter && (
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+              <SelectTrigger className="h-7 text-[11px] w-[180px]">
+                <SelectValue placeholder="Owner" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs">All owners</SelectItem>
+                {owners.map((o) => (
+                  <SelectItem key={o} value={o} className="text-xs">{o}</SelectItem>
+                ))}
+                {items.some((i) => !i.assignee) && (
+                  <SelectItem value="__unassigned__" className="text-xs">Unassigned</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+            {ownerFilter !== 'all' && (
+              <Badge variant="secondary" className="text-[10px] gap-1 pr-1">
+                Owner: {ownerFilter === '__unassigned__' ? 'Unassigned' : ownerFilter}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-4 w-4 ml-0.5"
+                  onClick={() => setOwnerFilter('all')}
+                  aria-label="Clear owner filter"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </Badge>
+            )}
+            <span className="text-[10px] text-muted-foreground ml-auto">
+              {filtered.length} of {items.length}
+            </span>
+          </div>
+        )}
+
         <div className="flex-1 overflow-auto -mx-6 px-6 mt-2">
-          {items.length === 0 ? (
+          {filtered.length === 0 ? (
             <div className="text-xs text-muted-foreground py-8 text-center">
-              No items in this slice.
+              {items.length === 0 ? 'No items in this slice.' : 'No items match the selected owner.'}
             </div>
           ) : (
             <ul className="divide-y divide-border/50">
-              {items.map((item) => {
+              {filtered.map((item) => {
                 const url = item.permalink_url || item.project_permalink_url || null;
                 const isOverdue = (item.days_overdue ?? 0) > 0;
                 return (
