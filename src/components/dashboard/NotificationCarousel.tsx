@@ -20,6 +20,8 @@ import { useAgentSuggestions, useDismissAgentSuggestion } from '@/hooks/useAgent
 import { Deal } from '@/types/deal';
 import { cn } from '@/lib/utils';
 import { isLenderEligibleForAttention } from '@/utils/lenderAttentionEligibility';
+import { useIsDemoAccount } from '@/hooks/useIsDemoAccount';
+import { DEMO_NOTIFICATION_LIMIT, DEMO_STALE_LIMIT } from '@/lib/demoAccount';
 
 interface Notification {
   id: string;
