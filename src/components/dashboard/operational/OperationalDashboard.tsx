@@ -170,7 +170,7 @@ function PieLegend({
 }
 
 // ── Derived metrics from real data ─────────────────────────────
-function useDerivedMetrics(data: OperationalData | null, projectFilter: string | null) {
+function useDerivedMetrics(data: OperationalData | null, projectFilters: string[]) {
   return useMemo(() => {
     if (!data) return null;
 
@@ -179,10 +179,12 @@ function useDerivedMetrics(data: OperationalData | null, projectFilter: string |
     const weekStart = startOfWeek(now, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
 
-    // Apply project filter to task lists. Project-level lists stay unfiltered
-    // so the project widgets keep their portfolio-wide context.
+    // Apply project filter (OR logic across selected projects) to task lists.
+    // Project-level lists stay unfiltered so the project widgets keep their
+    // portfolio-wide context.
+    const filterSet = new Set(projectFilters);
     const matchesProject = (t: any) =>
-      !projectFilter || (t.project_name || 'Unknown') === projectFilter;
+      filterSet.size === 0 || filterSet.has(t.project_name || 'Unknown');
     const overdueRaw = (data.overdue ?? []).filter(matchesProject);
     const todayRaw = (data.today ?? []).filter(matchesProject);
     const upcomingRaw = (data.upcoming ?? []).filter(matchesProject);
@@ -313,13 +315,22 @@ function useDerivedMetrics(data: OperationalData | null, projectFilter: string |
       projectsDueBuckets,
       projectsAll: data.projects ?? [],
     };
-  }, [data, projectFilter]);
+  }, [data, projectFilters]);
 }
 
 // ── Main Dashboard ─────────────────────────────────────────────
 export function OperationalDashboard({ data, isLoading, error, onRefetch }: OperationalDashboardProps) {
-  const [projectFilter, setProjectFilter] = useState<string | null>(null);
-  const metrics = useDerivedMetrics(data, projectFilter);
+  const [projectFilters, setProjectFilters] = useState<string[]>([]);
+  const toggleProjectFilter = (project: string | undefined | null) => {
+    if (!project) return;
+    setProjectFilters((prev) =>
+      prev.includes(project) ? prev.filter((p) => p !== project) : [...prev, project],
+    );
+  };
+  const clearProjectFilters = () => setProjectFilters([]);
+  const isProjectSelected = (project: string) => projectFilters.includes(project);
+  const hasProjectFilter = projectFilters.length > 0;
+  const metrics = useDerivedMetrics(data, projectFilters);
   const [drilldown, setDrilldown] = useState<{
     title: string;
     subtitle?: string;
@@ -398,17 +409,30 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
         </div>
       )}
 
-      {/* Active project filter banner */}
-      {projectFilter && (
-        <div className="flex items-center gap-2 text-[11px] text-foreground/85 bg-primary/[0.08] border border-primary/20 rounded px-3 py-1.5">
-          <span className="text-muted-foreground">Filtering by project:</span>
-          <span className="font-semibold truncate">{projectFilter}</span>
+      {/* Active project filters banner */}
+      {hasProjectFilter && (
+        <div className="flex items-center flex-wrap gap-2 text-[11px] text-foreground/85 bg-primary/[0.08] border border-primary/20 rounded px-3 py-1.5">
+          <span className="text-muted-foreground">
+            Filtering by {projectFilters.length === 1 ? 'project' : `${projectFilters.length} projects`}:
+          </span>
+          {projectFilters.map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => toggleProjectFilter(p)}
+              className="inline-flex items-center gap-1 rounded bg-primary/[0.15] border border-primary/30 px-1.5 py-0.5 hover:bg-primary/[0.22]"
+              title={`Remove ${p}`}
+            >
+              <span className="font-semibold truncate max-w-[200px]">{p}</span>
+              <span className="text-primary">×</span>
+            </button>
+          ))}
           <button
             type="button"
-            onClick={() => setProjectFilter(null)}
+            onClick={clearProjectFilters}
             className="ml-auto inline-flex items-center gap-1 text-[10px] text-primary hover:underline"
           >
-            Clear filter
+            Clear all
           </button>
         </div>
       )}
@@ -511,15 +535,17 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
             <>
               <div className="flex items-center justify-between px-2 pt-1 pb-1">
                 <span className="text-[10px] text-muted-foreground/70">
-                  {projectFilter ? 'Filtering dashboard by project' : 'Click a bar or project to filter the dashboard'}
+                  {hasProjectFilter
+                    ? `Filtering dashboard by ${projectFilters.length} project${projectFilters.length === 1 ? '' : 's'}`
+                    : 'Click bars or legend items to filter (multi-select)'}
                 </span>
-                {projectFilter && (
+                {hasProjectFilter && (
                   <button
                     type="button"
-                    onClick={() => setProjectFilter(null)}
+                    onClick={clearProjectFilters}
                     className="text-[10px] text-primary hover:underline"
                   >
-                    Clear
+                    Clear all
                   </button>
                 )}
               </div>
@@ -540,7 +566,7 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                     tickFormatter={(v: string) => truncateLabel(v, maxLabelChars(Y_AXIS_WIDTH, Y_AXIS_FONT))}
                     onClick={(o: any) => {
                       const v = o?.value;
-                      if (v) setProjectFilter(projectFilter === v ? null : v);
+                      toggleProjectFilter(v);
                     }}
                   />
                   <Tooltip contentStyle={TOOLTIP_STYLE} labelFormatter={(label) => String(label)} />
@@ -550,7 +576,7 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                     name="Overdue"
                     onClick={(entry: any) => {
                       const v = entry?.project;
-                      if (v) setProjectFilter(projectFilter === v ? null : v);
+                      toggleProjectFilter(v);
                     }}
                     style={{ cursor: 'pointer' }}
                   >
@@ -558,7 +584,7 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                       <Cell
                         key={i}
                         fill={CHART_COLORS[i % CHART_COLORS.length]}
-                        fillOpacity={!projectFilter || projectFilter === b.project ? 1 : 0.3}
+                        fillOpacity={!hasProjectFilter || isProjectSelected(b.project) ? 1 : 0.3}
                       />
                     ))}
                   </Bar>
@@ -566,12 +592,12 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
               </ResponsiveContainer>
               <div className="flex flex-wrap gap-1 px-2 pt-2 pb-1">
                 {overdueBuckets.map((b: any, i: number) => {
-                  const active = projectFilter === b.project;
+                  const active = isProjectSelected(b.project);
                   return (
                     <button
                       key={b.project}
                       type="button"
-                      onClick={() => setProjectFilter(active ? null : b.project)}
+                      onClick={() => toggleProjectFilter(b.project)}
                       title={`${b.project} (${b.count} overdue)`}
                       className={cn(
                         'flex items-center gap-1.5 text-[10px] rounded px-1.5 py-0.5 border transition-colors max-w-[180px]',
