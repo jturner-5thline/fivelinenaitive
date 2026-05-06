@@ -2291,11 +2291,16 @@ function MetricsInner() {
                   Pipeline performance analytics powered by real deal data
                 </p>
                 <SyncStatusBar />
+                {selectedDashboard === 'management-review' && <ActivePeriodLabel />}
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               {selectedDashboard === 'management-snapshot' && (
                 <InsightsTimeframePicker />
+              )}
+
+              {selectedDashboard === 'management-review' && (
+                <ReportingPeriodPicker />
               )}
 
               {selectedDashboard === 'management-review' && (
