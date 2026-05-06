@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2, SlidersHorizontal, Save as SaveIcon, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2, SlidersHorizontal, Save as SaveIcon, Loader2, Pencil, X as XIcon } from 'lucide-react';
 import { useCompanyDashboardConfig } from '@/hooks/useCompanyDashboardConfig';
 import { toast as sonnerToast } from 'sonner';
 import { useAsanaGoals, type AsanaGoalRow } from '@/hooks/useAsanaGoals';
@@ -494,65 +494,162 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
   const removeKPI = (id: string) => set(prev => ({ ...prev, kpis: prev.kpis.filter(k => k.id !== id) }));
   const addKPI = () => set(prev => ({ ...prev, kpis: [...prev.kpis, { id: uid(), label: 'New KPI', actual: '0', target: '0', format: 'number' }] }));
   const [drillKpi, setDrillKpi] = useState<KpiLike | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const MAX_KPIS = 5;
+  const visibleKpis = s.kpis.slice(0, MAX_KPIS);
+  const canAdd = s.kpis.length < MAX_KPIS;
 
   return (
     <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
-        <SectionTitle right={<Btn icon={Plus} variant="ghost" onClick={addKPI}>Add KPI</Btn>}>KPIs</SectionTitle>
-        <div style={{ display: 'grid', gap: 10 }}>
-          {s.kpis.map(kpi => {
+        <SectionTitle right={
+          <span title={canAdd ? '' : `Max ${MAX_KPIS} KPIs`}>
+            <Btn icon={Plus} variant="ghost" onClick={canAdd ? addKPI : undefined}>Add KPI</Btn>
+          </span>
+        }>KPIs</SectionTitle>
+        <div style={{
+          display: 'grid',
+          gap: 12,
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+        }}>
+          {visibleKpis.map(kpi => {
             const status = deriveStatus(kpi.actual, kpi.target);
             const tone = status === 'Above Plan' ? 'pos' : status === 'On Plan' ? 'neu' : 'neg';
+            const isEditing = editingId === kpi.id;
             return (
               <div
                 key={kpi.id}
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'minmax(160px,1.4fr) auto minmax(110px,1fr) minmax(110px,1fr) 110px 30px',
-                  gap: 10,
-                  alignItems: 'center',
-                  padding: '10px 12px',
+                  position: 'relative',
+                  aspectRatio: '1 / 1',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  padding: '12px 12px 10px',
                   borderRadius: RADIUS,
                   background: 'rgba(255,255,255,0.02)',
-                  border: '1px solid rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.06)',
                   cursor: 'pointer',
+                  overflow: 'hidden',
                 }}
                 role="button"
                 tabIndex={0}
                 title="View metric details"
                 onClick={(e) => {
-                  // Avoid opening the drill-down when interacting with inline editors / delete button
                   const target = e.target as HTMLElement;
-                  if (target.closest('input, select, textarea, button')) return;
+                  if (target.closest('input, select, textarea, button, [data-kpi-edit]')) return;
                   setDrillKpi(kpi as unknown as KpiLike);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     const target = e.target as HTMLElement;
-                    if (target.closest('input, select, textarea, button')) return;
+                    if (target.closest('input, select, textarea, button, [data-kpi-edit]')) return;
                     e.preventDefault();
                     setDrillKpi(kpi as unknown as KpiLike);
                   }
                 }}
               >
-                <input value={kpi.label} onChange={e => updateKPI(kpi.id, { label: e.target.value })} placeholder="Metric label" style={inputStyle} />
-                <Pill tone={tone}>{status}</Pill>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <span style={{ fontSize: 9, color: TEXT_LABEL, textTransform: 'uppercase', letterSpacing: '.08em' }}>Actual</span>
-                  <input value={kpi.actual} onChange={e => updateKPI(kpi.id, { actual: e.target.value })} style={inputStyle} />
-                  <span style={{ fontSize: 11, color: '#dde8f8', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{formatKPI(kpi.actual, kpi.format)}</span>
+                {/* Top-right edit / remove buttons */}
+                <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', gap: 2 }}>
+                  <button
+                    type="button"
+                    aria-label="Edit KPI"
+                    onClick={(e) => { e.stopPropagation(); setEditingId(isEditing ? null : kpi.id); }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: TEXT_LABEL,
+                      cursor: 'pointer',
+                      padding: 4,
+                      borderRadius: 6,
+                      display: 'inline-flex',
+                    }}
+                  >
+                    <Pencil size={12} />
+                  </button>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <span style={{ fontSize: 9, color: TEXT_LABEL, textTransform: 'uppercase', letterSpacing: '.08em' }}>Target</span>
-                  <input value={kpi.target} onChange={e => updateKPI(kpi.id, { target: e.target.value })} style={inputStyle} />
-                  <span style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{formatKPI(kpi.target, kpi.format)}</span>
+
+                {/* Label */}
+                <div style={{
+                  fontSize: 9,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '.08em',
+                  color: TEXT_LABEL,
+                  paddingRight: 22,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}>{kpi.label}</div>
+
+                {/* Value */}
+                <div style={{
+                  fontSize: 24,
+                  fontWeight: 700,
+                  color: TEXT_PRIMARY,
+                  fontVariantNumeric: 'tabular-nums',
+                  lineHeight: 1.1,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}>{formatKPI(kpi.actual, kpi.format)}</div>
+
+                {/* Footer: target + status pill */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 6 }}>
+                  <span style={{ fontSize: 10, color: TEXT_MUTED, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    Target {formatKPI(kpi.target, kpi.format)}
+                  </span>
+                  <Pill tone={tone}>{status}</Pill>
                 </div>
-                <select value={kpi.format} onChange={e => updateKPI(kpi.id, { format: e.target.value as KPIFormat })} style={selectStyle}>
-                  <option value="currency">$ Currency</option>
-                  <option value="percent">% Percent</option>
-                  <option value="number"># Number</option>
-                </select>
-                <Btn icon={Trash2} variant="danger" ariaLabel="Remove KPI" onClick={() => removeKPI(kpi.id)} />
+
+                {/* Inline editor popover */}
+                {isEditing && (
+                  <div
+                    data-kpi-edit
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'rgba(12,18,28,0.96)',
+                      border: '1px solid rgba(120,170,255,0.25)',
+                      borderRadius: RADIUS,
+                      padding: 10,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 6,
+                      zIndex: 2,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: TEXT_LABEL }}>Edit KPI</span>
+                      <button type="button" aria-label="Close editor" onClick={() => setEditingId(null)} style={{ background: 'transparent', border: 'none', color: TEXT_LABEL, cursor: 'pointer', padding: 2, display: 'inline-flex' }}>
+                        <XIcon size={12} />
+                      </button>
+                    </div>
+                    <label style={{ fontSize: 9, color: TEXT_LABEL, textTransform: 'uppercase', letterSpacing: '.08em' }}>Label</label>
+                    <input value={kpi.label} onChange={e => updateKPI(kpi.id, { label: e.target.value })} placeholder="Metric label" style={inputStyle} />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                      <div>
+                        <label style={{ fontSize: 9, color: TEXT_LABEL, textTransform: 'uppercase', letterSpacing: '.08em' }}>Actual</label>
+                        <input value={kpi.actual} onChange={e => updateKPI(kpi.id, { actual: e.target.value })} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 9, color: TEXT_LABEL, textTransform: 'uppercase', letterSpacing: '.08em' }}>Target</label>
+                        <input value={kpi.target} onChange={e => updateKPI(kpi.id, { target: e.target.value })} style={inputStyle} />
+                      </div>
+                    </div>
+                    <label style={{ fontSize: 9, color: TEXT_LABEL, textTransform: 'uppercase', letterSpacing: '.08em' }}>Format</label>
+                    <select value={kpi.format} onChange={e => updateKPI(kpi.id, { format: e.target.value as KPIFormat })} style={selectStyle}>
+                      <option value="currency">$ Currency</option>
+                      <option value="percent">% Percent</option>
+                      <option value="number"># Whole number</option>
+                    </select>
+                    <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Btn icon={Trash2} variant="danger" ariaLabel="Remove KPI" onClick={() => { removeKPI(kpi.id); setEditingId(null); }}>Remove</Btn>
+                      <Btn variant="ghost" onClick={() => setEditingId(null)}>Done</Btn>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
