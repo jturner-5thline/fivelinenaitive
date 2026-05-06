@@ -1747,11 +1747,13 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
           Confidential — For Internal Use Only
         </div>
       </div>
+      <div style={{ height: 1, background: 'rgba(120,170,255,0.12)' }} />
+      <ReportAgendaSection embedded />
     </Card>
   );
 }
 
-function ReportAgendaSection() {
+function ReportAgendaSection({ embedded = false }: { embedded?: boolean } = {}) {
   const STORAGE_KEY = 'qir.agenda.smoothScroll';
   const prefersReduced = typeof window !== 'undefined'
     && typeof window.matchMedia === 'function'
@@ -1806,9 +1808,8 @@ function ReportAgendaSection() {
       default: return;
     }
   };
-  return (
-    <Card className="glass-module qir-page-break">
-      <div style={{ padding: '32px 36px' }}>
+  const inner = (
+    <div style={{ padding: '32px 36px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <SectionTitle>Agenda</SectionTitle>
           <label
@@ -1886,10 +1887,11 @@ function ReportAgendaSection() {
               </a>
             </li>
           ))}
-        </ol>
-      </div>
-    </Card>
+      </ol>
+    </div>
   );
+  if (embedded) return inner;
+  return <Card className="glass-module qir-page-break">{inner}</Card>;
 }
 
 export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdit, reportKey }: {
