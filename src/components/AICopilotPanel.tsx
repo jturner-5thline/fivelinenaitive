@@ -1160,6 +1160,29 @@ export function AICopilotPanel() {
 
       {/* Messages */}
       <div role="log" aria-label="Chat messages" style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Deal recap banner — surfaces prior persisted per-deal memory when reopening the AI on a deal */}
+        {isDealDetail && dealIdFromPath && messages.length === 0 && dealMemory.recent.length > 0 && (() => {
+          const lastUser = [...dealMemory.recent].reverse().find((m) => m.role === 'user');
+          if (!lastUser) return null;
+          const ageMs = Date.now() - new Date(lastUser.created_at).getTime();
+          const days = Math.floor(ageMs / (1000 * 60 * 60 * 24));
+          const hours = Math.floor(ageMs / (1000 * 60 * 60));
+          const ago = days >= 1 ? `${days} day${days === 1 ? '' : 's'} ago` : hours >= 1 ? `${hours} hour${hours === 1 ? '' : 's'} ago` : 'just now';
+          const snippet = lastUser.content.length > 140 ? lastUser.content.slice(0, 140) + '…' : lastUser.content;
+          return (
+            <div style={{
+              padding: '10px 12px', borderRadius: 10,
+              background: 'rgba(126,184,247,0.08)',
+              border: '1px solid rgba(126,184,247,0.25)',
+              fontSize: 12, color: 'var(--foreground)', display: 'flex', flexDirection: 'column', gap: 4,
+            }}>
+              <span style={{ fontWeight: 600, color: 'hsl(var(--muted-foreground))', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Last time on this deal — {ago}
+              </span>
+              <span style={{ color: 'hsl(var(--muted-foreground))' }}>“{snippet}”</span>
+            </div>
+          );
+        })()}
         {messages.length === 0 ? (
           <div
             style={{
