@@ -466,6 +466,15 @@
 
 /* ═══ Liquid Glass Utility Classes ═══ */
 @layer components {
+  /* Shared hover/focus for the Insights DarkNativeSelect component. */
+  .dark-native-select:hover:not(:disabled) {
+    background-color: rgba(30, 100, 190, 0.45) !important;
+    border-color: rgba(80, 160, 230, 0.6) !important;
+  }
+  .dark-native-select:focus-visible {
+    border-color: rgba(120, 190, 255, 0.85) !important;
+    box-shadow: 0 0 0 2px rgba(80, 160, 230, 0.25);
+  }
   /* Glass card base */
   .glass-card {
     background: var(--glass-surface);
