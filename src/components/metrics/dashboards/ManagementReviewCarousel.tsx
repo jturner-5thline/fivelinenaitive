@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, TouchEvent } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, TouchEvent } from 'react';
 import { ManagementReviewDashboard } from './ManagementReviewDashboard';
 import { BenchmarkForecastsPage } from './BenchmarkForecastsPage';
 import { KeyMetricsPage } from './KeyMetricsPage';
@@ -7,12 +7,61 @@ import {
   QuarterlyInsightsReportPage,
   useQuarterlyReportState,
 } from './QuarterlyInsightsReport';
+import { useCompanyDashboardConfig } from '@/hooks/useCompanyDashboardConfig';
+
+type ReportSelection = {
+  period: 'monthly' | 'quarterly';
+  quarter: string;
+  month: string;
+};
+
+const DEFAULT_SELECTION: ReportSelection = {
+  period: 'quarterly',
+  quarter: 'Q1 2026',
+  month: 'January 2026',
+};
+
+function periodSlug(sel: ReportSelection): string {
+  const label = sel.period === 'monthly' ? sel.month : sel.quarter;
+  return `${sel.period}:${(label || 'unknown').replace(/\s+/g, '-').toLowerCase()}`;
+}
 
 function QuarterlyReportSlot({ reportKey, defaultAuthor, persona }: { reportKey: string; defaultAuthor: string; persona: string }) {
-  const { state, setState, reset, save, print, canEdit } = useQuarterlyReportState(
-    { authors: [defaultAuthor] } as any,
-    `qir:${reportKey}`,
+  // Per-tab selection (period + quarter/month) is persisted under a small
+  // dedicated key so all viewers land on the same active period. The actual
+  // report payload is keyed by `qir:<reportKey>:<period>:<label>` so each
+  // (tab × period) combination has its own independent saved blob.
+  const { config: selection, saveConfig: saveSelection, isLoaded: selectionLoaded } =
+    useCompanyDashboardConfig<ReportSelection>(
+      `qir:${reportKey}:selection`,
+      DEFAULT_SELECTION,
+      { allowAllMembers: true },
+    );
+
+  const initial = useMemo(
+    () => ({
+      authors: [defaultAuthor],
+      period: selection.period,
+      quarter: selection.quarter,
+      month: selection.month,
+    } as any),
+    [defaultAuthor, selection.period, selection.quarter, selection.month],
   );
+
+  const dataKey = `qir:${reportKey}:${periodSlug(selection)}`;
+
+  const { state, setState, reset, save, print, canEdit } = useQuarterlyReportState(
+    initial,
+    dataKey,
+    {
+      onSelectionChange: (next) => {
+        saveSelection({ ...selection, ...next });
+      },
+    },
+  );
+
+  if (!selectionLoaded) return null;
+
   return (
     <QuarterlyInsightsReportPage
       s={state}
