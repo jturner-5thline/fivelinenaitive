@@ -1720,10 +1720,6 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
           }}
         >
           <div>
-            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.12em', color: TEXT_LABEL }}>Prepared By</div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: TEXT_PRIMARY, marginTop: 4 }}>{preparedByName}</div>
-          </div>
-          <div>
             <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.12em', color: TEXT_LABEL }}>Date Prepared</div>
             <div style={{ fontSize: 13, fontWeight: 500, color: TEXT_PRIMARY, marginTop: 4 }}>{todayStr}</div>
           </div>
