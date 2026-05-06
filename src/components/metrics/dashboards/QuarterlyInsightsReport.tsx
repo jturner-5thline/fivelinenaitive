@@ -678,7 +678,7 @@ function ReportNarrativeSection({ s, set }: { s: ReportState; set: ReportSetStat
   return (
     <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
-        <SectionTitle>Summary / Quarterly Narrative Update</SectionTitle>
+        <SectionTitle>Narrative / Executive Summary</SectionTitle>
         <textarea
           value={s.narrative}
           onChange={e => set(prev => ({ ...prev, narrative: e.target.value }))}
