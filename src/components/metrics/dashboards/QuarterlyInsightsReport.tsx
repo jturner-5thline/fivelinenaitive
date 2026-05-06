@@ -2259,6 +2259,14 @@ export function QuarterlyReportPrintStyles() {
         .qir-page-break { page-break-after: always; break-after: page; }
         [id^="qir-section-"] { break-before: page; page-break-before: always; }
         [id="qir-section-summary"] { break-before: auto; page-break-before: auto; }
+        /* 8 x 10 inch print target for the report front matter. */
+        @page { size: 8in 10in; margin: 0.4in; }
+        /* Combined Cover + Agenda must fit on a single 8x10 page. */
+        .qir-cover-card { break-inside: avoid; page-break-inside: avoid; }
+        .qir-cover-card .qir-cover-hero { padding: 0.15in 0.1in 0.1in !important; gap: 0.15in !important; }
+        .qir-cover-card .qir-cover-title { font-size: 28pt !important; }
+        .qir-cover-card .qir-agenda-inner { padding: 0.1in 0.1in 0.15in !important; }
+        .qir-cover-card ol > li > a { padding: 6px 10px !important; font-size: 11pt !important; }
       }
     `;
     document.head.appendChild(el);
