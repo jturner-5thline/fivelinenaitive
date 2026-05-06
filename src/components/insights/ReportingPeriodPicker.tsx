@@ -132,3 +132,18 @@ export function ReportingPeriodPicker() {
     </div>
   );
 }
+
+/**
+ * Small inline label shown next to the page title to keep the active
+ * Reporting Period continuously visible per dashboard guidance.
+ */
+export function ActivePeriodLabel() {
+  const { reportingPeriod } = useInsightsTimeframe();
+  if (!reportingPeriod) return null;
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
+      <CalendarRange className="h-3 w-3" aria-hidden />
+      Reporting period: {reportingPeriod.label}
+    </span>
+  );
+}
