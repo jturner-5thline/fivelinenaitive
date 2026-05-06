@@ -25,6 +25,27 @@ import { formatDeltaValue } from '@/hooks/useInsightsComparison';
 import { sendClaudeMessage } from '@/services/claude';
 import { toast } from 'sonner';
 
+// Tiny inline 2-point sparkline that visualises Period A → Period B for a Top Mover row.
+const MoverSparkline = ({ a, b, tone }: { a: number; b: number; tone: 'success' | 'destructive' }) => {
+  const w = 36;
+  const h = 14;
+  const pad = 2;
+  const min = Math.min(a, b);
+  const max = Math.max(a, b);
+  const range = max - min || 1;
+  const y = (v: number) => h - pad - ((v - min) / range) * (h - pad * 2);
+  const x1 = pad;
+  const x2 = w - pad;
+  const stroke = tone === 'success' ? 'hsl(var(--success))' : 'hsl(var(--destructive))';
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="shrink-0" aria-hidden>
+      <line x1={x1} y1={y(a)} x2={x2} y2={y(b)} stroke={stroke} strokeWidth={1.5} strokeLinecap="round" />
+      <circle cx={x1} cy={y(a)} r={1.6} fill={stroke} opacity={0.65} />
+      <circle cx={x2} cy={y(b)} r={1.8} fill={stroke} />
+    </svg>
+  );
+};
+
 interface MetricRow {
   key: string;
   label: string;
@@ -288,9 +309,12 @@ Write 2 short paragraphs of plain-English commentary. Lead with the biggest diff
                       >
                         <span className="flex items-center justify-between gap-2 min-w-0">
                           <span className="font-medium truncate hover:underline underline-offset-2">{m.row.label}</span>
-                          <span className="tabular-nums text-success shrink-0">
-                            {m.pct! >= 0 ? '+' : ''}{m.pct!.toFixed(1)}%
-                            <span className="ml-1 text-[10px] opacity-70">({formatDeltaValue(m.diff, m.row.format)})</span>
+                          <span className="flex items-center gap-1.5 shrink-0">
+                            <MoverSparkline a={m.a} b={m.b} tone="success" />
+                            <span className="tabular-nums text-success">
+                              {m.pct! >= 0 ? '+' : ''}{m.pct!.toFixed(1)}%
+                              <span className="ml-1 text-[10px] opacity-70">({formatDeltaValue(m.diff, m.row.format)})</span>
+                            </span>
                           </span>
                         </span>
                         <span className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground tabular-nums">
@@ -321,9 +345,12 @@ Write 2 short paragraphs of plain-English commentary. Lead with the biggest diff
                       >
                         <span className="flex items-center justify-between gap-2 min-w-0">
                           <span className="font-medium truncate hover:underline underline-offset-2">{m.row.label}</span>
-                          <span className="tabular-nums text-destructive shrink-0">
-                            {m.pct! >= 0 ? '+' : ''}{m.pct!.toFixed(1)}%
-                            <span className="ml-1 text-[10px] opacity-70">({formatDeltaValue(m.diff, m.row.format)})</span>
+                          <span className="flex items-center gap-1.5 shrink-0">
+                            <MoverSparkline a={m.a} b={m.b} tone="destructive" />
+                            <span className="tabular-nums text-destructive">
+                              {m.pct! >= 0 ? '+' : ''}{m.pct!.toFixed(1)}%
+                              <span className="ml-1 text-[10px] opacity-70">({formatDeltaValue(m.diff, m.row.format)})</span>
+                            </span>
                           </span>
                         </span>
                         <span className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground tabular-nums">
