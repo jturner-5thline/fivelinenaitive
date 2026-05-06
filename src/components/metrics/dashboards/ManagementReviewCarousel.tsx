@@ -3,6 +3,7 @@ import { Save as SaveIcon, Check } from 'lucide-react';
 import { AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
+import { toast as sonnerToast } from 'sonner';
 import { ManagementReviewDashboard } from './ManagementReviewDashboard';
 import { BenchmarkForecastsPage } from './BenchmarkForecastsPage';
 import { KeyMetricsPage } from './KeyMetricsPage';
@@ -156,6 +157,13 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
     setJustSaved(true);
     window.setTimeout(() => setJustSaved(false), 1800);
   };
+  const attemptSetActiveIndex = useCallback((nextIndex: number | ((prev: number) => number)) => {
+    if (reportSave.hasUnsavedChanges) {
+      sonnerToast.error('You have unsaved changes. Save the report before leaving this tab.');
+      return;
+    }
+    setActiveIndex(nextIndex);
+  }, [reportSave.hasUnsavedChanges]);
 
   const PAGES: { title: string; tabLabel: string; render: () => JSX.Element }[] = [
     { title: 'Insights Dashboard',                   tabLabel: 'Dashboard',  render: () => <ManagementReviewDashboard isEditMode={isEditMode} onExitEditMode={onExitEditMode} /> },
@@ -167,8 +175,8 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
   ];
 
   const goTo = useCallback((dir: -1 | 1) => {
-    setActiveIndex(prev => (prev + dir + PAGES.length) % PAGES.length);
-  }, [PAGES.length]);
+    attemptSetActiveIndex(prev => (prev + dir + PAGES.length) % PAGES.length);
+  }, [PAGES.length, attemptSetActiveIndex]);
 
   // Keyboard left/right navigation (skip when typing in inputs)
   useEffect(() => {
@@ -223,7 +231,7 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
               key={p.title}
               role="tab"
               aria-selected={active}
-              onClick={() => setActiveIndex(i)}
+              onClick={() => attemptSetActiveIndex(i)}
               style={{
                 fontSize: 11,
                 fontWeight: 600,
