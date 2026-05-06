@@ -302,6 +302,7 @@ const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
   { i: 'monthly-revenue', x: 0, y: 2, w: 6, h: 4, minW: 4, minH: 3 },
   { i: 'pipeline-stage', x: 6, y: 2, w: 3, h: 4, minW: 3, minH: 3 },
   { i: 'ar-aging', x: 9, y: 2, w: 3, h: 4, minW: 3, minH: 3 },
+  { i: 'active-deals-list', x: 0, y: 6, w: 12, h: 5, minW: 6, minH: 3 },
   { i: 'bank-balances', x: 0, y: 6, w: 4, h: 3, minW: 3, minH: 2 },
   { i: 'liabilities', x: 4, y: 6, w: 4, h: 3, minW: 3, minH: 2 },
   { i: 'dscr', x: 8, y: 6, w: 4, h: 3, minW: 3, minH: 2 },
