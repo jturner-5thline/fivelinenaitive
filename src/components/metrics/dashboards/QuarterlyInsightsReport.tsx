@@ -2225,6 +2225,11 @@ export function QuarterlyReportPrintStyles() {
       .qir-unified-report > div > .qir-unified-section + .qir-unified-section {
         border-top: 1px solid rgba(120,170,255,0.10);
       }
+      /* Uniform padding inside every unified section so narrative, KPIs,
+         goals, initiatives, and risks share identical spacing. */
+      .qir-unified-report .qir-unified-section .glass-module > div {
+        padding: 20px 22px !important;
+      }
       .qir-unified-report .qir-unified-section [class*="glass-module"],
       .qir-unified-report .qir-unified-section .glass-module {
         background: transparent !important;
