@@ -1930,18 +1930,17 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
       coverTitlesByPeriod: { ...(prev.coverTitlesByPeriod || {}), [periodKey]: value },
     }));
   return (
-    <Card className="glass-module qir-page-break">
+    <Card className="glass-module qir-page-break qir-cover-card">
       <div
+        className="qir-cover-hero"
         style={{
-          padding: '48px 40px',
-          minHeight: 520,
+          padding: '36px 36px 24px',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between',
-          gap: 32,
+          gap: 20,
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {isAdmin ? (
             <input
               value={titleOverride}
@@ -1962,12 +1961,12 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
             />
           ) : null}
           {!isAdmin && (
-            <div style={{ fontSize: 38, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: '-.5px', lineHeight: 1.1 }}>
+            <div className="qir-cover-title" style={{ fontSize: 34, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: '-.5px', lineHeight: 1.1 }}>
               {title}
             </div>
           )}
 
-          <div style={{ marginTop: 8, fontSize: 18, fontWeight: 600, color: '#7cc8f0', letterSpacing: '.05em' }}>
+          <div style={{ marginTop: 4, fontSize: 16, fontWeight: 600, color: '#7cc8f0', letterSpacing: '.05em' }}>
             {effective.label}
           </div>
         </div>
@@ -1976,8 +1975,8 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-            gap: 18,
-            paddingTop: 18,
+            gap: 14,
+            paddingTop: 12,
             borderTop: '1px solid rgba(120,170,255,0.12)',
           }}
         >
@@ -2071,7 +2070,7 @@ function ReportAgendaSection({ embedded = false }: { embedded?: boolean } = {}) 
     }
   };
   const inner = (
-    <div style={{ padding: '32px 36px' }}>
+    <div className="qir-agenda-inner" style={{ padding: embedded ? '20px 36px 28px' : '32px 36px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <SectionTitle>Agenda</SectionTitle>
           <label
@@ -2260,6 +2259,14 @@ export function QuarterlyReportPrintStyles() {
         .qir-page-break { page-break-after: always; break-after: page; }
         [id^="qir-section-"] { break-before: page; page-break-before: always; }
         [id="qir-section-summary"] { break-before: auto; page-break-before: auto; }
+        /* 8 x 10 inch print target for the report front matter. */
+        @page { size: 8in 10in; margin: 0.4in; }
+        /* Combined Cover + Agenda must fit on a single 8x10 page. */
+        .qir-cover-card { break-inside: avoid; page-break-inside: avoid; }
+        .qir-cover-card .qir-cover-hero { padding: 0.15in 0.1in 0.1in !important; gap: 0.15in !important; }
+        .qir-cover-card .qir-cover-title { font-size: 28pt !important; }
+        .qir-cover-card .qir-agenda-inner { padding: 0.1in 0.1in 0.15in !important; }
+        .qir-cover-card ol > li > a { padding: 6px 10px !important; font-size: 11pt !important; }
       }
     `;
     document.head.appendChild(el);
