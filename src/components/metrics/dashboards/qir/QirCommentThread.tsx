@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { MessageSquare, Send, Trash2, ChevronDown, ChevronUp, Pencil, X, Check, CheckCircle2, RotateCcw } from 'lucide-react';
+import { MessageSquare, Send, Trash2, ChevronDown, ChevronUp, Pencil, X, Check, CheckCircle2, RotateCcw, History } from 'lucide-react';
 import { useQirComments, type QirComment } from '@/hooks/useQirComments';
 import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/contexts/AuthContext';
@@ -45,7 +45,7 @@ function renderBodyWithMentions(text: string): React.ReactNode {
 }
 
 export function QirCommentThread({ reportKey, reportLabel, targetType, targetId, targetLabel, hoverOnly }: Props) {
-  const { comments: all, addComment, deleteComment, updateComment, getThreadState, setThreadResolved } = useQirComments(reportKey);
+  const { comments: all, addComment, deleteComment, updateComment, getThreadState, setThreadResolved, getThreadEvents } = useQirComments(reportKey);
   const { user } = useAuth();
   const { members } = useCompany();
   const [open, setOpen] = useState(false);
@@ -171,6 +171,8 @@ export function QirCommentThread({ reportKey, reportLabel, targetType, targetId,
 
   const count = comments.length;
   const threadState = getThreadState(targetType, targetId);
+  const threadEvents = getThreadEvents(targetType, targetId);
+  const [showLog, setShowLog] = useState(false);
   const isResolved = !!threadState?.resolved_at;
   const iconColor = isResolved
     ? 'rgba(120,210,160,0.9)'
@@ -224,6 +226,50 @@ export function QirCommentThread({ reportKey, reportLabel, targetType, targetId,
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'transparent', border: 'none', color: 'rgba(180,230,200,0.85)', cursor: 'pointer', fontSize: 11 }}>
                 <RotateCcw size={11} /> Reopen
               </button>
+            </div>
+          )}
+          {threadEvents.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <button
+                onClick={() => setShowLog(s => !s)}
+                aria-expanded={showLog}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4, alignSelf: 'flex-start',
+                  background: 'transparent', border: 'none', color: 'rgba(160,200,255,0.6)',
+                  cursor: 'pointer', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.08em',
+                  padding: 0,
+                }}
+              >
+                <History size={11} />
+                {showLog ? 'Hide' : 'Show'} activity ({threadEvents.length})
+                {showLog ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+              </button>
+              {showLog && (
+                <ul role="log" aria-label="Resolve and reopen history" style={{
+                  listStyle: 'none', margin: 0, padding: '6px 8px',
+                  background: 'rgba(6,12,28,0.45)',
+                  border: '1px solid rgba(120,170,255,0.12)', borderRadius: 6,
+                  display: 'flex', flexDirection: 'column', gap: 3,
+                }}>
+                  {threadEvents.slice().reverse().map(e => {
+                    let when = '';
+                    try { when = new Date(e.created_at).toLocaleString(); } catch {}
+                    const isResolve = e.action === 'resolved';
+                    return (
+                      <li key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'rgba(200,225,245,0.8)' }}>
+                        {isResolve
+                          ? <CheckCircle2 size={11} color="rgba(120,210,160,0.9)" />
+                          : <RotateCcw size={11} color="rgba(255,200,120,0.85)" />}
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <strong style={{ color: '#dde8f8' }}>{e.actor_name || 'Unknown'}</strong>{' '}
+                          {isResolve ? 'resolved' : 'reopened'} the thread
+                        </span>
+                        <span style={{ color: 'rgba(160,200,255,0.55)', flexShrink: 0 }}>{when}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           )}
           {comments.map(c => (
