@@ -39,10 +39,11 @@ const INPUT_BORDER = '1px solid rgba(120,170,255,0.18)';
 
 const PEOPLE = [
   'James Turner', 'John Moffitt', 'Florencia Fustinoni', 'Scott Williams',
-  'Mark Kaleniecki', 'Chandler Minaldi', 'Paz Pina', 'McKenzie Clark',
-  'Hayden Krug', 'Jennifer Rivera', 'Tyler Robinson', 'Kris Lawless',
-  'Niki Heikali', 'Siddhi Bhangale', 'Gaby Good',
+  'Mark Kaleniecki', 'Paz Pina', 'McKenzie Clark',
+  'Jennifer Rivera', 'Tyler Robinson', 'Kris Lawless',
+  'Niki Heikali', 'Siddhi Bhangale',
 ];
+const ACTIVE_INITIATIVE_OWNERS = ['James Turner', 'Niki Heikali', 'Florencia Fustinoni', 'Paz Pina', 'McKenzie Clark'];
 const PRIMARY_AUTHORS = ['James Turner', 'Scott Williams', 'John Moffitt'];
 const QUARTERS = ['Q1 2026', 'Q2 2026', 'Q3 2026', 'Q4 2026', 'Q1 2027', 'Q2 2027', 'Q3 2027', 'Q4 2027'];
 const QUARTER_MONTHS: Record<string, string[]> = {
@@ -1244,7 +1245,7 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
             <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: TEXT_LABEL }}>Owner</span>
             <select value={s.initiativeOwnerFilter} onChange={e => set(prev => ({ ...prev, initiativeOwnerFilter: e.target.value }))} style={{ ...selectStyle, width: 180 }}>
               <option value="All">All Owners</option>
-              {PEOPLE.map(person => <option key={person} value={person}>{person}</option>)}
+              {ACTIVE_INITIATIVE_OWNERS.map(person => <option key={person} value={person}>{person}</option>)}
             </select>
           </div>
           <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
@@ -1307,9 +1308,18 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
                     </div>
                   </td>
                   <td style={tdStyle}>
-                    <select value={init.owner} onChange={e => updateInit(init.id, { owner: e.target.value })} style={selectStyle}>
-                      {PEOPLE.map(person => <option key={person} value={person}>{person}</option>)}
-                    </select>
+                    <span
+                      title="To change the owner, update this goal in Asana"
+                      style={{
+                        display: 'inline-block',
+                        padding: '4px 8px',
+                        color: TEXT_PRIMARY,
+                        fontSize: 12,
+                        cursor: 'help',
+                      }}
+                    >
+                      {init.owner || <span style={{ color: TEXT_LABEL }}>—</span>}
+                    </span>
                   </td>
                   <td style={tdStyle}>
                     <Btn icon={Trash2} variant="danger" ariaLabel="Remove initiative" onClick={() => removeInit(init.id)} />
