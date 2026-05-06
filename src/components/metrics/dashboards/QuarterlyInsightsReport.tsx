@@ -2064,14 +2064,6 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
             <ReportNarrativeSection s={s} set={set} />
           </div>
           <div id="qir-section-financials" className="qir-unified-section">
-            <QuickBooksActualsPanel
-              period={s.period}
-              quarter={s.quarter}
-              month={s.month}
-              planRevenue={planRevenue}
-              viewMode={actualsViewMode}
-              onChangeViewMode={setActualsViewMode}
-            />
             <ReportKpisSection s={s} set={set} reportLabel={reportLabel} />
           </div>
           <div id="qir-section-pipeline" className="qir-unified-section">
