@@ -19,6 +19,7 @@ import {
   Lock,
   Pencil,
   Save,
+  Settings2,
   Sparkles,
   TrendingUp,
 } from 'lucide-react';
@@ -43,6 +44,7 @@ import { InsightsDriversPanel } from './InsightsDriversPanel';
 import { InsightsForecastPanel } from './InsightsForecastPanel';
 import { AnomalyHistoryPanel } from './AnomalyHistoryPanel';
 import { DeltaDrillDownDialog, type DrillComparison } from './DeltaDrillDownDialog';
+import { InsightsAlertSettingsDialog } from './InsightsAlertSettingsDialog';
 import { format } from 'date-fns';
 
 function ChangeChip({
@@ -190,6 +192,7 @@ export function InsightsAISummaryCard() {
   const [isLocked, setIsLocked] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState<string>('none');
   const [drill, setDrill] = useState<{ delta: DeltaResult; comparison: DrillComparison } | null>(null);
 
@@ -283,6 +286,15 @@ export function InsightsAISummaryCard() {
             <Button size="sm" variant="outline" onClick={() => setCompareOpen(true)}>
               <GitCompareArrows className="h-3.5 w-3.5 mr-1.5" />
               Compare Periods
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setSettingsOpen(true)}
+              title="Configure thresholds and metric coverage"
+            >
+              <Settings2 className="h-3.5 w-3.5 mr-1.5" />
+              Alert settings
             </Button>
             {narrative && !isLocked && (
               <>
@@ -413,6 +425,7 @@ export function InsightsAISummaryCard() {
         )}
       </CardContent>
       <InsightsCompareDialog open={compareOpen} onOpenChange={setCompareOpen} />
+      <InsightsAlertSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       <DeltaDrillDownDialog
         open={!!drill}
         onOpenChange={open => !open && setDrill(null)}
