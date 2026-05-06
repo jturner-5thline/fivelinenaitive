@@ -1241,7 +1241,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         </div>
         <div key="cashflow-12w" className="h-full">
           <GridShell isEditMode={isEditMode} title="12-Week Cashflow Forecast">
-            <NaPlaceholder height={170} label="Data unavailable — no forecast model is wired" />
+            <CashflowForecastWidget />
           </GridShell>
         </div>
         <div key="debt-rating" className="h-full">
