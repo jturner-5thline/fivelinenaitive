@@ -742,12 +742,12 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       emptyHint: pipelineUnavailableReason,
     },
     {
-      id: 'avg-active-deal-size',
-      l: 'Avg Active Deal Size',
-      live: isCurrentReportingPeriod,
-      v: fmtUSD(avgDealSize),
-      sub: <span style={{ color: 'rgba(160,210,255,0.55)' }}>current live snapshot</span>,
-      emptyHint: pipelineUnavailableReason,
+      id: 'ttm-revenue',
+      l: 'TTM Revenue',
+      live: qbConnected,
+      v: fmtUSD(ttmRevenue),
+      sub: <span style={{ color: 'rgba(160,210,255,0.55)' }}>{format(ttmRange.start, 'MMM d, yyyy')} – {format(ttmRange.end, 'MMM d, yyyy')}</span>,
+      emptyHint: 'TTM revenue unavailable — connect QuickBooks to populate finance data.',
     },
     {
       id: 'ytd-revenue',
