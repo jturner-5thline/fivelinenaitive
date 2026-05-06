@@ -1615,11 +1615,12 @@ export function QuarterlyInsightsReportPage({ s, set, reset, print }: {
       <ReportCoverSection s={s} set={set} />
       <ReportAgendaSection />
       <ReportHeaderSection s={s} set={set} reset={reset} print={print} />
-      <ReportKpisSection s={s} set={set} />
-      <ReportNarrativeSection s={s} set={set} />
-      <ReportGoalsSection s={s} set={set} />
-      <ReportInitiativesSection s={s} set={set} />
-      <ReportRisksSection s={s} set={set} print={print} />
+      <div id="qir-section-summary"><ReportNarrativeSection s={s} set={set} /></div>
+      <div id="qir-section-financials"><ReportKpisSection s={s} set={set} /></div>
+      <div id="qir-section-pipeline"><ReportGoalsSection s={s} set={set} /></div>
+      <div id="qir-section-metrics"><ReportInitiativesSection s={s} set={set} /></div>
+      <div id="qir-section-goals"><ReportRisksSection s={s} set={set} print={print} /></div>
+      <div id="qir-section-commentary" />
       <ReportFooterSection s={s} print={print} />
     </div>
   );
