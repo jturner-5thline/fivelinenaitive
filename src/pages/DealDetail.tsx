@@ -4265,20 +4265,22 @@ export default function DealDetail() {
                                             lenderId={lender.id}
                                             lenderName={lender.name}
                                           />
-                                          <LenderFollowUpPopover
-                                            dealId={deal.id}
-                                            dealName={deal.name}
-                                            company={deal.company}
-                                            dealLenderId={lender.id}
-                                            lenderName={lender.name}
-                                            lenderStage={configuredStages.find(s => s.id === lender.stage)?.label || lender.stage}
-                                            lenderNotes={lender.notes}
-                                            lenderUpdatedAt={lender.updatedAt}
-                                            onSent={() => refreshDeals?.()}
-                                          />
                                         </div>
                                       </div>
                                     </div>
+                                      <div className="absolute bottom-2 right-2 z-10">
+                                        <LenderFollowUpPopover
+                                          dealId={deal.id}
+                                          dealName={deal.name}
+                                          company={deal.company}
+                                          dealLenderId={lender.id}
+                                          lenderName={lender.name}
+                                          lenderStage={configuredStages.find(s => s.id === lender.stage)?.label || lender.stage}
+                                          lenderNotes={lender.notes}
+                                          lenderUpdatedAt={lender.updatedAt}
+                                          onSent={() => refreshDeals?.()}
+                                        />
+                                      </div>
                                   </SortableLenderItem>
                                 );
                               })}
