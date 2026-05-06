@@ -665,6 +665,16 @@ serve(async (req: Request): Promise<Response> => {
         );
 
         if (!updateResponse.ok) {
+          // 404 = message no longer exists upstream (archived externally,
+          // deleted, or stale ID). Treat as a no-op success so the client
+          // can prune its cache instead of surfacing a hard error.
+          if (updateResponse.status === 404) {
+            await updateResponse.text().catch(() => "");
+            return new Response(JSON.stringify({ success: true, missing: true }), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
           return await forwardNylasError(updateResponse, "Failed to mark read/unread");
         }
         await updateResponse.text();
@@ -695,6 +705,13 @@ serve(async (req: Request): Promise<Response> => {
         );
 
         if (!updateResponse.ok) {
+          if (updateResponse.status === 404) {
+            await updateResponse.text().catch(() => "");
+            return new Response(JSON.stringify({ success: true, missing: true }), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
           return await forwardNylasError(updateResponse, "Failed to star/unstar");
         }
         await updateResponse.text();
