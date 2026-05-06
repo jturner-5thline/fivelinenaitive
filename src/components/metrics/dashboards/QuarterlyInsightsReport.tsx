@@ -1440,6 +1440,15 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
           </div>
         )}
       </div>
+      <InsightsDrilldownDrawer
+        open={!!goalsDrill}
+        context={goalsDrill}
+        onClose={() => setGoalsDrill(null)}
+        columns={goalsDrillColumns}
+        rows={goalsDrillRows}
+        rowHref={(g) => g.url || null}
+        emptyHint="No goals match this selection for the active period and owner."
+      />
     </Card>
   );
 }
