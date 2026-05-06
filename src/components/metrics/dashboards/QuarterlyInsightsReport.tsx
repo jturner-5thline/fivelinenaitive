@@ -12,8 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import naitiveLogoDark from '@/assets/naitive-logo-dark.png';
-import { QirCommentThread } from './qir/QirCommentThread';
-import { QirAllCommentsPanel } from './qir/QirAllCommentsPanel';
+import { QirContextualComments } from './qir/QirContextualComments';
 import { QuickBooksActualsPanel, type ActualsViewMode } from './qir/QuickBooksActualsPanel';
 import { KpiDrillDownDialog, type KpiLike } from './qir/KpiDrillDownDialog';
 import {
@@ -519,6 +518,9 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
             return (
               <div
                 key={kpi.id}
+                data-comment-source="kpi"
+                data-comment-source-id={kpi.id}
+                data-comment-source-label={`KPI · ${kpi.label}`}
                 style={{
                   position: 'relative',
                   aspectRatio: '1 / 1',
@@ -1351,7 +1353,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
                       </tr>
                     )}
                     {group.rows.map((goal: AsanaGoalRow, index: number) => (
-                      <tr key={goal.id}>
+                      <tr key={goal.id} data-comment-source="goal" data-comment-source-id={goal.id} data-comment-source-label={`Goal · ${goal.title}`}>
                     <td style={{ ...tdStyle, color: TEXT_LABEL, fontVariantNumeric: 'tabular-nums' }}>{index + 1}</td>
                     <td style={tdStyle}>
                       {goal.url ? (
@@ -1672,7 +1674,7 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
             </thead>
             <tbody>
               {s.risks.map(risk => (
-                <tr key={risk.id}>
+                <tr key={risk.id} data-comment-source="risk" data-comment-source-id={risk.id} data-comment-source-label={`Risk · ${risk.description?.slice(0, 40) || 'Untitled risk'}`}>
                   <td style={{ ...tdStyle, width: '50%' }}>
                     <textarea value={risk.description} onChange={e => updateRisk(risk.id, { description: e.target.value })} placeholder="Describe the risk…" style={taStyle} />
                   </td>
@@ -2048,23 +2050,18 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
     const n = Number(k?.target);
     return Number.isFinite(n) ? n : 0;
   }, [s.kpis]);
+  const rootRef = React.useRef<HTMLDivElement>(null);
   const reportLabel = s.period === 'monthly'
     ? `Monthly Insights Report — ${s.month}`
     : `Quarterly Insights Report — ${s.quarter}`;
-  const sectionThread = (sectionKey: string, label: string) => (
-    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -4 }}>
-      <QirCommentThread reportKey={rk} reportLabel={reportLabel} targetType="section" targetId={sectionKey} targetLabel={label} />
-    </div>
-  );
   return (
-    <div style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, color: TEXT_PRIMARY }}>
+    <div ref={rootRef} style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, color: TEXT_PRIMARY }}>
       <ReportCoverSection s={s} set={set} />
       <ReportHeaderSection s={s} set={set} reset={reset} save={save} print={print} canEdit={canEdit} />
       <Card className="glass-module qir-unified-report">
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div id="qir-section-summary" className="qir-unified-section">
             <ReportNarrativeSection s={s} set={set} />
-            {sectionThread('summary', 'Executive Summary')}
           </div>
           <div id="qir-section-financials" className="qir-unified-section">
             <QuickBooksActualsPanel
@@ -2076,23 +2073,19 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
               onChangeViewMode={setActualsViewMode}
             />
             <ReportKpisSection s={s} set={set} reportLabel={reportLabel} />
-            {sectionThread('financials', 'Revenue & Financial Performance')}
           </div>
           <div id="qir-section-pipeline" className="qir-unified-section">
             <ReportGoalsSection s={s} set={set} />
-            {sectionThread('pipeline', 'Deal Pipeline')}
           </div>
           <div id="qir-section-metrics" className="qir-unified-section">
             <ReportInitiativesSection s={s} set={set} />
-            {sectionThread('metrics', 'Key Metrics')}
           </div>
           <div id="qir-section-goals" className="qir-unified-section">
             <ReportRisksSection s={s} set={set} print={print} />
-            {sectionThread('goals', 'Goals & Milestones')}
           </div>
         </div>
       </Card>
-      <QirAllCommentsPanel reportKey={rk} reportLabel={reportLabel} />
+      <QirContextualComments reportKey={rk} reportLabel={reportLabel} rootRef={rootRef} />
     </div>
   );
 }

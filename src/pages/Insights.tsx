@@ -2477,6 +2477,9 @@ function MetricsInner() {
                 </UITooltip>
               )}
 
+              {/* Slot for dashboard-specific header actions (e.g. QIR Comments notepad). */}
+              <div id="qir-header-actions-slot" className="flex items-center gap-2" />
+
               {isEditMode && canEditMetrics && (
                 <>
                   <Button size="sm" onClick={handleAdd}>
