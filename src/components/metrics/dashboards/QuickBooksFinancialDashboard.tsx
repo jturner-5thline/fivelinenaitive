@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,6 +11,7 @@ import {
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { PieGlassDefs, pieGlassFill, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
 import { DollarSign, Users, FileText, AlertTriangle, TrendingUp, CreditCard, Percent } from 'lucide-react';
+import { InsightsDrilldownDrawer, type DrilldownContext, type DrilldownColumn } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 
 const COLORS = [
   "hsl(var(--primary))",
@@ -32,6 +33,24 @@ const formatCurrency = (value: number) => {
 export function QuickBooksFinancialDashboard() {
   const { data: status } = useQuickBooksStatus();
   const { data: metrics, isLoading } = useQuickBooksMetrics();
+  const [drill, setDrill] = useState<{
+    context: DrilldownContext;
+    columns: DrilldownColumn[];
+    rows: Array<Record<string, unknown>>;
+  } | null>(null);
+
+  const showDrill = (
+    sourceLabel: string,
+    selection: string,
+    rows: Array<{ metric: string; value: string }>,
+  ) => setDrill({
+    context: { sourceId: `qb:${sourceLabel}`, sourceLabel, selection },
+    columns: [
+      { key: 'metric', label: 'Field' },
+      { key: 'value', label: 'Value', align: 'right' },
+    ],
+    rows,
+  });
 
   if (!status?.connected) {
     return (
@@ -67,20 +86,28 @@ export function QuickBooksFinancialDashboard() {
   if (!metrics) return null;
 
   const statCards = [
-    { title: 'Total Revenue', value: formatCurrency(metrics.totalRevenue), icon: DollarSign, color: 'hsl(var(--primary))' },
-    { title: 'Accounts Receivable', value: formatCurrency(metrics.totalAR), icon: FileText, color: 'hsl(var(--chart-2))' },
-    { title: 'Payments Received', value: formatCurrency(metrics.totalPayments), icon: CreditCard, color: 'hsl(var(--success, 142 71% 45%))' },
-    { title: 'Active Customers', value: `${metrics.activeCustomers}`, icon: Users, color: 'hsl(var(--chart-4))' },
-    { title: 'Collection Rate', value: `${metrics.collectionRate.toFixed(1)}%`, icon: Percent, color: 'hsl(var(--chart-3))' },
-    { title: 'Overdue', value: formatCurrency(metrics.overdueAmount), subtitle: `${metrics.overdueCount} invoices`, icon: AlertTriangle, color: 'hsl(var(--destructive))' },
+    { title: 'Total Revenue', value: formatCurrency(metrics.totalRevenue), icon: DollarSign, color: 'hsl(var(--primary))', onClick: () => showDrill('Total Revenue', 'All-time', [{ metric: 'Total Revenue', value: formatCurrency(metrics.totalRevenue) }]) },
+    { title: 'Accounts Receivable', value: formatCurrency(metrics.totalAR), icon: FileText, color: 'hsl(var(--chart-2))', onClick: () => showDrill('Accounts Receivable', 'Outstanding', [{ metric: 'Outstanding A/R', value: formatCurrency(metrics.totalAR) }]) },
+    { title: 'Payments Received', value: formatCurrency(metrics.totalPayments), icon: CreditCard, color: 'hsl(var(--success, 142 71% 45%))', onClick: () => showDrill('Payments Received', 'All-time', [{ metric: 'Payments Received', value: formatCurrency(metrics.totalPayments) }]) },
+    { title: 'Active Customers', value: `${metrics.activeCustomers}`, icon: Users, color: 'hsl(var(--chart-4))', onClick: () => showDrill('Active Customers', 'Currently active', [{ metric: 'Active Customers', value: `${metrics.activeCustomers}` }]) },
+    { title: 'Collection Rate', value: `${metrics.collectionRate.toFixed(1)}%`, icon: Percent, color: 'hsl(var(--chart-3))', onClick: () => showDrill('Collection Rate', 'Payments / Revenue', [
+      { metric: 'Payments', value: formatCurrency(metrics.totalPayments) },
+      { metric: 'Revenue', value: formatCurrency(metrics.totalRevenue) },
+      { metric: 'Collection Rate', value: `${metrics.collectionRate.toFixed(1)}%` },
+    ]) },
+    { title: 'Overdue', value: formatCurrency(metrics.overdueAmount), subtitle: `${metrics.overdueCount} invoices`, icon: AlertTriangle, color: 'hsl(var(--destructive))', onClick: () => showDrill('Overdue Invoices', `${metrics.overdueCount} invoices`, [
+      { metric: 'Overdue Amount', value: formatCurrency(metrics.overdueAmount) },
+      { metric: 'Overdue Count', value: `${metrics.overdueCount}` },
+    ]) },
   ];
 
   return (
+    <>
     <div className="space-y-6">
       {/* Stat Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {statCards.map((card) => (
-          <Card key={card.title}>
+          <Card key={card.title} onClick={card.onClick} className="cursor-pointer hover:border-primary/40 transition-colors">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -116,7 +143,17 @@ export function QuickBooksFinancialDashboard() {
                   <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                   <Tooltip formatter={(v: number, name: string) => [formatCurrency(v), name]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
                   <Legend />
-                  <Bar dataKey="revenue" fill="hsl(var(--primary))" name="Revenue" radius={[3, 3, 0, 0]} />
+                  <Bar
+                    dataKey="revenue"
+                    fill="hsl(var(--primary))"
+                    name="Revenue"
+                    radius={[3, 3, 0, 0]}
+                    cursor="pointer"
+                    onClick={(d: any) => showDrill('Revenue & Payments Trend', d?.month, [
+                      { metric: 'Revenue', value: formatCurrency(Number(d?.revenue) || 0) },
+                      { metric: 'Payments', value: formatCurrency(Number(d?.payments) || 0) },
+                    ])}
+                  />
                   <Line type="monotone" dataKey="payments" stroke="hsl(var(--chart-2))" name="Payments" strokeWidth={1} dot={{ r: 3 }} />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -138,7 +175,15 @@ export function QuickBooksFinancialDashboard() {
                   <XAxis dataKey="bucket" tick={{ fontSize: 11 }} />
                   <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(v: number) => [formatCurrency(v), "Outstanding"]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
-                  <Bar dataKey="value" radius={[3, 3, 0, 0]}>
+                  <Bar
+                    dataKey="value"
+                    radius={[3, 3, 0, 0]}
+                    cursor="pointer"
+                    onClick={(d: any) => showDrill('A/R Aging', d?.bucket, [
+                      { metric: 'Bucket', value: String(d?.bucket ?? '') },
+                      { metric: 'Outstanding', value: formatCurrency(Number(d?.value) || 0) },
+                    ])}
+                  >
                     {metrics.arAgingData.map((entry, index) => (
                       <Cell key={index} fill={index <= 1 ? "hsl(var(--primary))" : index <= 2 ? "hsl(var(--chart-4))" : "hsl(var(--destructive))"} />
                     ))}
@@ -167,7 +212,15 @@ export function QuickBooksFinancialDashboard() {
                     <XAxis type="number" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                     <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 9 }} />
                     <Tooltip formatter={(v: number) => [formatCurrency(v), "Revenue"]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
-                    <Bar dataKey="revenue" shape={createGlassBarShape({ radius: 3 })}>
+                    <Bar
+                      dataKey="revenue"
+                      shape={createGlassBarShape({ radius: 3 })}
+                      cursor="pointer"
+                      onClick={(d: any) => showDrill('Top Customers by Revenue', d?.name, [
+                        { metric: 'Customer', value: String(d?.name ?? '') },
+                        { metric: 'Revenue', value: formatCurrency(Number(d?.revenue) || 0) },
+                      ])}
+                    >
                       {metrics.topCustomers.map((_, index) => (
                         <Cell key={index} fill={COLORS[index % COLORS.length]} />
                       ))}
@@ -205,6 +258,12 @@ export function QuickBooksFinancialDashboard() {
                       label={({ status, count }) => `${status} (${count})`}
                       labelLine={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
                       activeShape={GlassActiveShape}
+                      onClick={(d: any) => showDrill('Invoice Status Breakdown', d?.status, [
+                        { metric: 'Status', value: String(d?.status ?? '') },
+                        { metric: 'Count', value: `${d?.count ?? 0}` },
+                        { metric: 'Value', value: formatCurrency(Number(d?.value) || 0) },
+                      ])}
+                      cursor="pointer"
                     >
                       {metrics.invoiceStatusBreakdown.map((_, index) => (
                         <Cell key={index} fill={pieGlassFill(index)} stroke={COLORS[index % COLORS.length]} strokeWidth={0.25} />
@@ -221,5 +280,14 @@ export function QuickBooksFinancialDashboard() {
         </Card>
       </div>
     </div>
+    <InsightsDrilldownDrawer
+      open={!!drill}
+      onClose={() => setDrill(null)}
+      context={drill?.context ?? null}
+      columns={drill?.columns ?? []}
+      rows={drill?.rows ?? []}
+      emptyHint="No detail records available."
+    />
+    </>
   );
 }
