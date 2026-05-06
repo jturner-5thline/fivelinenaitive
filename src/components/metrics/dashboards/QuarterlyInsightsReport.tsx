@@ -2297,11 +2297,16 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
   s: ReportState;
   set: ReportSetState;
   reset: () => void;
-  save?: () => void;
+  save?: () => Promise<boolean>;
   print: () => void;
   canEdit?: boolean;
   reportKey?: string;
   titlePrefix?: string;
+  activeCompositeKey?: string;
+  fetchedCompositeKey?: string | null;
+  isDirty?: boolean;
+  isSaving?: boolean;
+  unsavedChangesWarning?: string | null;
 }) {
   const rk = reportKey || 'naitive.quarterlyReport.adhoc';
   // Single source of truth: the dashboard header's Reporting Period selector
@@ -2347,9 +2352,10 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
   }, [s.kpis]);
   const rootRef = React.useRef<HTMLDivElement>(null);
   const [justSaved, setJustSaved] = useState(false);
-  const handleSaveClick = () => {
+  const handleSaveClick = async () => {
     if (!save) return;
-    save();
+    const saved = await save();
+    if (!saved) return;
     setJustSaved(true);
     window.setTimeout(() => setJustSaved(false), 1800);
   };
@@ -2358,6 +2364,34 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
     : `Quarterly Insights Report — ${s.quarter}`;
   return (
     <div ref={rootRef} style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, color: TEXT_PRIMARY }}>
+      {unsavedChangesWarning && (
+        <div style={{
+          marginBottom: -4,
+          padding: '10px 14px',
+          borderRadius: 10,
+          background: 'rgba(245, 158, 11, 0.10)',
+          border: '1px solid rgba(245, 158, 11, 0.35)',
+          color: 'rgb(252, 211, 77)',
+          fontSize: 12,
+          lineHeight: 1.5,
+        }}>
+          {unsavedChangesWarning}
+        </div>
+      )}
+      {fetchedCompositeKey && activeCompositeKey && fetchedCompositeKey !== activeCompositeKey && (
+        <div style={{
+          marginBottom: -4,
+          padding: '10px 14px',
+          borderRadius: 10,
+          background: 'rgba(245, 158, 11, 0.10)',
+          border: '1px solid rgba(245, 158, 11, 0.35)',
+          color: 'rgb(252, 211, 77)',
+          fontSize: 12,
+          lineHeight: 1.5,
+        }}>
+          Warning: fetched key <code>{fetchedCompositeKey}</code> differs from active key <code>{activeCompositeKey}</code>.
+        </div>
+      )}
       <ReportHeaderSection s={s} set={set} reset={reset} save={save} print={print} canEdit={canEdit} titlePrefix={titlePrefix} />
       <Card className="glass-module qir-unified-report">
         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -2382,11 +2416,11 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
         <Btn icon={RotateCcw} variant="ghost" onClick={reset}>Reset</Btn>
         <span title={canEdit === false ? 'You do not have permission to save' : 'Save report for everyone'}>
           <Btn
-            icon={justSaved ? Check : SaveIcon}
-            onClick={handleSaveClick}
+            icon={isSaving ? Loader2 : justSaved ? Check : SaveIcon}
+            onClick={() => { void handleSaveClick(); }}
             variant={justSaved ? 'default' : 'default'}
           >
-            {justSaved ? 'Saved' : 'Save'}
+            {isSaving ? 'Saving…' : justSaved ? 'Saved' : isDirty ? 'Save changes' : 'Save'}
           </Btn>
         </span>
       </div>
