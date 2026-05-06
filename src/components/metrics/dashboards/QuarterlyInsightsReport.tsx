@@ -438,7 +438,9 @@ function ReportHeaderSection({ s, set, reset, save, print, canEdit }: { s: Repor
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             {save ? (
-              <Btn icon={SaveIcon} onClick={save} title={canEdit === false ? 'You do not have permission to save' : 'Save report for everyone'}>Save</Btn>
+              <span title={canEdit === false ? 'You do not have permission to save' : 'Save report for everyone'}>
+                <Btn icon={SaveIcon} onClick={save}>Save</Btn>
+              </span>
             ) : null}
             <Btn icon={RotateCcw} variant="ghost" onClick={reset}>Reset</Btn>
             <Btn icon={Printer} onClick={print}>Print / Export</Btn>
