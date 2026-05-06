@@ -86,6 +86,7 @@ import { InfoRequestsPanel } from '@/components/deal/InfoRequestsPanel';
 import { DealManagementTab } from '@/components/deal/DealManagementTab';
 import { CreateTaskButton } from '@/components/deal/CreateTaskButton';
 import { CreateLenderTaskButton } from '@/components/deal/CreateLenderTaskButton';
+import { LenderFollowUpPopover } from '@/components/deal/LenderFollowUpPopover';
 import { SortableAttachmentTile } from '@/components/deal/SortableAttachmentTile';
 import { DroppableAttachmentFolder } from '@/components/deal/DroppableAttachmentFolder';
 import { AttachmentDragOverlay } from '@/components/deal/AttachmentDragOverlay';
@@ -4258,11 +4259,22 @@ export default function DealDetail() {
                                 </div>
                                         </div>
                                         {/* Create Task Button - top right */}
-                                        <div className="flex items-start shrink-0">
+                                        <div className="flex items-start gap-1 shrink-0">
                                           <CreateLenderTaskButton
                                             dealId={deal.id}
                                             lenderId={lender.id}
                                             lenderName={lender.name}
+                                          />
+                                          <LenderFollowUpPopover
+                                            dealId={deal.id}
+                                            dealName={deal.name}
+                                            company={deal.company}
+                                            dealLenderId={lender.id}
+                                            lenderName={lender.name}
+                                            lenderStage={configuredStages.find(s => s.id === lender.stage)?.label || lender.stage}
+                                            lenderNotes={lender.notes}
+                                            lenderUpdatedAt={lender.updatedAt}
+                                            onSent={() => refreshDeals?.()}
                                           />
                                         </div>
                                       </div>
@@ -4299,8 +4311,26 @@ export default function DealDetail() {
                                         : item.requestedBy === lender.name
                                     );
                                     return (
-                                      <div key={lender.id} className="rounded-xl border border-blue-500/25 bg-gradient-to-br from-[hsl(220,30%,10%)] to-[hsl(260,15%,5%)] p-4 shadow-md hover:shadow-lg transition-all">
-                                        <div className="grid grid-cols-[160px_160px_140px_1fr] items-center gap-3">
+                                      <div key={lender.id} className="relative rounded-xl border border-blue-500/25 bg-gradient-to-br from-[hsl(220,30%,10%)] to-[hsl(260,15%,5%)] p-4 shadow-md hover:shadow-lg transition-all">
+                                        <div className="absolute right-3 top-3 flex items-center gap-1 z-10">
+                                          <CreateLenderTaskButton
+                                            dealId={deal.id}
+                                            lenderId={lender.id}
+                                            lenderName={lender.name}
+                                          />
+                                          <LenderFollowUpPopover
+                                            dealId={deal.id}
+                                            dealName={deal.name}
+                                            company={deal.company}
+                                            dealLenderId={lender.id}
+                                            lenderName={lender.name}
+                                            lenderStage={configuredStages.find(s => s.id === lender.stage)?.label || lender.stage}
+                                            lenderNotes={lender.notes}
+                                            lenderUpdatedAt={lender.updatedAt}
+                                            onSent={() => refreshDeals?.()}
+                                          />
+                                        </div>
+                                        <div className="grid grid-cols-[160px_160px_140px_1fr] items-center gap-3 pr-32">
                                           <div className="flex items-center gap-1 group/lender -ml-1">
                                             {scoreConfig.enabled && lender.score != null && (
                                               <Badge variant="outline" className="text-[10px] font-semibold px-1.5 py-0 h-4 shrink-0" style={getScoreStyles(lender.score, scoreConfig).badge}>
