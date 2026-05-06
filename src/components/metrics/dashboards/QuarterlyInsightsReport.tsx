@@ -1577,20 +1577,11 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
     s.coverTitlesByPeriod?.[periodKey] ??
     // Fallback to legacy single field if present and no per-period value yet
     (s.coverTitlesByPeriod && periodKey in s.coverTitlesByPeriod ? '' : s.coverTitle ?? '');
-  const subtitleOverride =
-    s.coverSubtitlesByPeriod?.[periodKey] ??
-    (s.coverSubtitlesByPeriod && periodKey in s.coverSubtitlesByPeriod ? '' : s.coverSubtitle ?? '');
   const title = titleOverride.trim() || defaultCoverTitle(s);
-  const subtitle = subtitleOverride;
   const updateTitle = (value: string) =>
     set(prev => ({
       ...prev,
       coverTitlesByPeriod: { ...(prev.coverTitlesByPeriod || {}), [periodKey]: value },
-    }));
-  const updateSubtitle = (value: string) =>
-    set(prev => ({
-      ...prev,
-      coverSubtitlesByPeriod: { ...(prev.coverSubtitlesByPeriod || {}), [periodKey]: value },
     }));
   return (
     <Card className="glass-module qir-page-break">
@@ -1682,27 +1673,6 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
             <div style={{ fontSize: 38, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: '-.5px', lineHeight: 1.1 }}>
               {title}
             </div>
-          )}
-
-          {isAdmin ? (
-            <input
-              value={subtitleOverride}
-              placeholder="Optional subtitle or tagline"
-              onChange={e => updateSubtitle(e.target.value)}
-              className="qir-no-print"
-              style={{
-                ...inputStyle,
-                fontSize: 16,
-                padding: '6px 12px',
-                background: 'transparent',
-                border: '1px dashed rgba(120,170,255,0.14)',
-                color: TEXT_MUTED,
-                width: '100%',
-              }}
-            />
-          ) : null}
-          {subtitle && (
-            <div style={{ fontSize: 16, color: TEXT_MUTED, fontStyle: 'italic' }}>{subtitle}</div>
           )}
 
           <div style={{ marginTop: 8, fontSize: 18, fontWeight: 600, color: '#7cc8f0', letterSpacing: '.05em' }}>
