@@ -1372,7 +1372,16 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
                 {goalsSG.groups.map((group, gi) => (
                   <React.Fragment key={`g-${gi}-${group.key}`}>
                     {goalsSG.groupBy && (
-                      <tr>
+                      <tr
+                        onClick={() => setGoalsDrill({
+                          sourceId: goalsSG.groupBy === 'statusGroup' ? `goals:status:${group.key}` : 'goals:all',
+                          sourceLabel: `Goals · ${group.key}`,
+                          selection: `${group.rows.length} goal${group.rows.length === 1 ? '' : 's'}`,
+                          periodLabel: activeQuarterLabel || activeHalfLabel || undefined,
+                          filters: [{ label: 'Owner', value: preparedBy }],
+                        })}
+                        style={{ cursor: 'pointer' }}
+                      >
                         <td colSpan={5} style={{ padding: '10px 10px 4px', fontSize: 9, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: TEXT_LABEL, background: 'rgba(255,255,255,0.02)' }}>
                           {group.key} <span style={{ color: TEXT_MUTED, fontWeight: 500 }}>· {group.rows.length}</span>
                         </td>
