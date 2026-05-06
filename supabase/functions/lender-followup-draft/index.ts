@@ -47,7 +47,26 @@ Deno.serve(async (req) => {
       ? Number(body.days_since_last_contact)
       : null;
     const contactName = String(body.contact_name || '').trim();
-    const senderName = String(body.sender_name || 'James').trim();
+    // Resolve sender name from the authenticated user's profile so the
+    // sign-off matches whoever is logged in (no hardcoded fallback name).
+    let senderName = String(body.sender_name || '').trim();
+    if (!senderName) {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name, first_name, last_name, email')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        senderName = (
+          (profile?.display_name as string | undefined)?.trim() ||
+          `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() ||
+          (profile?.email ? String(profile.email).split('@')[0] : '') ||
+          ''
+        );
+      } catch (_e) {
+        // leave senderName empty — the AI will simply omit a name in sign-off.
+      }
+    }
     const notes = String(body.notes || '').trim();
     // Optional Gmail context: most recent message in a thread that involves
     // this lender's email domain and the deal name. Used for "Following up
@@ -70,7 +89,16 @@ Deno.serve(async (req) => {
     const days = lastContactDays;
     type Template = { category: string; subject: string; bodyTemplate: (firstName: string) => string };
     const dn = dealName || company || 'the deal';
-    const fn = (contactName ? contactName.split(' ')[0] : 'there');
+    // Greeting: extract first name from the contact (handles "Cyndi Koan, CFO"
+    // → "Cyndi"). Fall back to "<Lender> Team" rather than a generic "there".
+    const firstNameFromContact = (() => {
+      if (!contactName) return '';
+      const beforeComma = contactName.split(',')[0].trim();
+      const first = beforeComma.split(/\s+/)[0] || '';
+      return first;
+    })();
+    const teamFallback = lenderName ? `${lenderName} Team` : 'there';
+    const fn = firstNameFromContact || teamFallback;
 
     const templateForStage = (): Template => {
       // Passed / no response 14+ days — overrides everything else.
@@ -156,8 +184,10 @@ Deno.serve(async (req) => {
       '- Keep the subject line within a few words of the suggested subject.',
       '- If recent thread context is provided, you MAY open with a single sentence like "Following up on your message from [date]…" using the actual date from the context. Otherwise do not invent prior correspondence.',
       '- Never invent numbers, dates, terms, or commitments.',
-      '- Address the recipient by first name when available, otherwise "Hi there,".',
-      `- Sign off as "${senderName}" on its own line.`,
+      `- Address the recipient as "Hi ${fn}," exactly. Do not substitute a different greeting and do not use placeholders like "[Contact Name]".`,
+      senderName
+        ? `- Sign off as "${senderName}" on its own line.`
+        : '- Do not include a sign-off name; the app will append the user\'s configured signature.',
       'Return STRICT JSON: {"subject": string, "body": string}. No prose outside the JSON.',
     ].join('\n');
 
