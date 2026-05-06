@@ -119,6 +119,8 @@ import { getTimePeriodRange, getTimePeriodLabel, isInRange } from "@/lib/timePer
 import { DatarailsLiveStat, DatarailsLiveChart } from "@/components/metrics/DatarailsLiveWidget";
 import { InsightsLoadingSkeleton, InsightsErrorState } from "@/components/insights/InsightsStateViews";
 import { InsightsAssistantSheet } from "@/components/insights/InsightsAssistantSheet";
+import { ReportingPeriodPicker } from "@/components/insights/ReportingPeriodPicker";
+import { useInsightsTimeframe } from "@/contexts/InsightsTimeframeContext";
 // Dashboard options
 const DASHBOARD_OPTIONS = [
   { id: 'management-snapshot', name: 'Weekly Rundown', isFavorite: true, folder: 'management-insights' as const },
