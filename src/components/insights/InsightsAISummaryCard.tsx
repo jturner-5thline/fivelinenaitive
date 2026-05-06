@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
+  GitCompareArrows,
   Loader2,
   Lock,
   Pencil,
@@ -23,6 +24,7 @@ import {
   type TrendAlert,
 } from '@/hooks/useInsightsComparison';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
+import { InsightsCompareDialog } from './InsightsCompareDialog';
 
 function ChangeChip({
   pct,
@@ -93,6 +95,7 @@ export function InsightsAISummaryCard() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
 
   const headlineDeltas = useMemo(() => deltas.slice(0, 6), [deltas]);
 
@@ -128,6 +131,10 @@ export function InsightsAISummaryCard() {
             <Badge variant="outline" className="ml-1 text-[10px]">{periodLabel}</Badge>
           </CardTitle>
           <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setCompareOpen(true)}>
+              <GitCompareArrows className="h-3.5 w-3.5 mr-1.5" />
+              Compare Periods
+            </Button>
             {narrative && !isLocked && (
               <>
                 <Button
@@ -240,6 +247,7 @@ export function InsightsAISummaryCard() {
           </div>
         )}
       </CardContent>
+      <InsightsCompareDialog open={compareOpen} onOpenChange={setCompareOpen} />
     </Card>
   );
 }
