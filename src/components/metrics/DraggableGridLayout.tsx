@@ -158,11 +158,26 @@ export function DraggableGridLayout({
     }
   }, []);
 
+  const matchesInteractionSelector = useCallback((target: EventTarget | null) => {
+    if (!(target instanceof Element)) return false;
+    const selectors = [draggableHandle, '.react-resizable-handle'].filter(Boolean).join(', ');
+    return selectors.length > 0 && !!target.closest(selectors);
+  }, [draggableHandle]);
+
   return (
     <div
       ref={containerRef}
       className={cn('draggable-grid-wrapper', className)}
       onClickCapture={handleClickCapture}
+      onMouseDownCapture={(e) => {
+        if (matchesInteractionSelector(e.target)) onInteractionStart?.();
+      }}
+      onTouchStartCapture={(e) => {
+        if (matchesInteractionSelector(e.target)) onInteractionStart?.();
+      }}
+      onMouseUpCapture={() => onInteractionEnd?.()}
+      onTouchEndCapture={() => onInteractionEnd?.()}
+      onTouchCancelCapture={() => onInteractionEnd?.()}
     >
       <Responsive
         className="layout"
@@ -175,12 +190,10 @@ export function DraggableGridLayout({
         isResizable={isEditMode && (isResizableEnabled ?? true)}
         draggableHandle={draggableHandle}
         draggableCancel={draggableCancel}
-        onDragStart={onInteractionStart}
         onDragStop={(layout, oldItem, newItem, placeholder, e, element) => {
           onInteractionEnd?.();
           handleDragStop(layout, oldItem, newItem, placeholder, e, element);
         }}
-        onResizeStart={onInteractionStart}
         onResizeStop={(layout, oldItem, newItem, placeholder, e, element) => {
           onInteractionEnd?.();
           handleResizeStop(layout, oldItem, newItem, placeholder, e, element);
