@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, RefreshCw, Info } from 'lucide-react';
 import { useComputedKpi } from '@/hooks/useComputedKpis';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
+import { InsightsDrilldownDrawer } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 import {
   Tooltip,
   TooltipContent,
@@ -22,6 +24,7 @@ function formatCurrency(value: number | null | undefined): string {
 
 export function AvgRevenuePerClientWidget() {
   const { data: kpi, isLoading, error } = useComputedKpi('avg_revenue_per_new_client_signed_ytd');
+  const [open, setOpen] = useState(false);
 
   const isStale = kpi?.status === 'stale' || kpi?.status === 'error';
   const hasError = !!error || kpi?.status === 'error';
@@ -33,10 +36,14 @@ export function AvgRevenuePerClientWidget() {
     : null;
 
   return (
-    <Card className={cn(
-      'h-full flex flex-col bg-card border-border overflow-hidden',
-      isStale && 'border-warning/50',
-    )}>
+    <>
+    <Card
+      onClick={() => !isLoading && kpi && setOpen(true)}
+      className={cn(
+        'h-full flex flex-col bg-card border-border overflow-hidden cursor-pointer hover:border-primary/40 transition-colors',
+        isStale && 'border-warning/50',
+      )}
+    >
       <CardContent className="flex-1 flex flex-col justify-center gap-2 p-4">
         {isLoading ? (
           <div className="flex items-center justify-center h-full min-h-[72px]">
@@ -111,5 +118,27 @@ export function AvgRevenuePerClientWidget() {
         )}
       </CardContent>
     </Card>
+    <InsightsDrilldownDrawer
+      open={open}
+      onClose={() => setOpen(false)}
+      context={{
+        sourceId: 'kpi:avg-rev-per-client',
+        sourceLabel: 'Average Revenue per New Client Signed',
+        selection: mainValue,
+        periodLabel: kpi ? `${kpi.period_start} → ${kpi.period_end}` : undefined,
+      }}
+      columns={[
+        { key: 'metric', label: 'Input' },
+        { key: 'value', label: 'Value', align: 'right' },
+      ]}
+      rows={kpi ? [
+        { metric: 'YTD Total Revenue', value: formatCurrency(kpi.numerator_value) },
+        { metric: 'YTD Deals → Final Credit Items', value: kpi.denominator_value ?? '—' },
+        { metric: 'Average per Client', value: denomIsZero ? '—' : formatCurrency(kpi.metric_value) },
+        { metric: 'Last Refreshed', value: lastRefreshed ?? 'Never' },
+      ] : []}
+      emptyHint="This KPI has no recorded inputs yet."
+    />
+    </>
   );
 }

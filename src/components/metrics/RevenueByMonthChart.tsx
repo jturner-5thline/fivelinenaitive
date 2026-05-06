@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { InsightsDrilldownDrawer } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 import { ResponsiveContainer, ComposedChart, Area, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
 import { GlassCard, GlassCardHeader, GlassCardBody } from '@/components/metrics/GlassCard';
@@ -187,7 +188,32 @@ export function RevenueByMonthChart({ height = 240 }: { height?: number }) {
   };
   const selectAll = () => setSelected([]);
 
+  // Drilldown — click a chart point to see contributing invoices for that bucket
+  const [drill, setDrill] = useState<{ label: string; rows: Array<{ date: string; entity: string; amount: number; doc?: string }> } | null>(null);
+
+  const handleChartClick = (state: any) => {
+    const label = state?.activeLabel as string | undefined;
+    if (!label) return;
+    const matchedBucket = chartData.find((r) => r.period === label);
+    if (!matchedBucket) return;
+    // Reverse-map invoices that fall into this bucket
+    const allowed = isAll ? null : new Set(selected);
+    const rows: Array<{ date: string; entity: string; amount: number; doc?: string }> = [];
+    for (const r of data ?? []) {
+      if (!r.txn_date) continue;
+      if (allowed && (!r.realm_id || !allowed.has(r.realm_id))) continue;
+      const d = new Date(r.txn_date + 'T00:00:00');
+      const { label: bLabel } = bucketKey(d, bucket);
+      if (bLabel !== label) continue;
+      const entity = entityOptions.find(o => o.realmId === r.realm_id)?.label ?? 'Unknown';
+      rows.push({ date: r.txn_date, entity, amount: Number(r.total_amt) || 0 });
+    }
+    rows.sort((a, b) => b.amount - a.amount);
+    setDrill({ label, rows });
+  };
+
   return (
+    <>
     <GlassCard interactive className="h-full">
       <GlassCardHeader
         title={fullTitle}
@@ -246,7 +272,7 @@ export function RevenueByMonthChart({ height = 240 }: { height?: number }) {
             </div>
           ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: -6, bottom: 4 }}>
+            <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: -6, bottom: 4 }} onClick={handleChartClick} style={{ cursor: 'pointer' }}>
               <CartesianGrid strokeDasharray="2 4" stroke={GRID_STROKE} vertical={false} />
               <XAxis dataKey="period" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} interval="preserveStartEnd" />
               <YAxis tickFormatter={formatCurrency} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
@@ -275,5 +301,31 @@ export function RevenueByMonthChart({ height = 240 }: { height?: number }) {
         </div>
       </GlassCardBody>
     </GlassCard>
+    <InsightsDrilldownDrawer
+      open={!!drill}
+      onClose={() => setDrill(null)}
+      context={drill ? {
+        sourceId: 'chart:revenue-by-month',
+        sourceLabel: fullTitle,
+        selection: drill.label,
+        periodLabel: rangeLabel,
+      } : null}
+      columns={[
+        { key: 'date', label: 'Date' },
+        { key: 'entity', label: 'Entity' },
+        { key: 'amount', label: 'Amount', align: 'right', render: (r: any) => formatCurrency(r.amount) },
+      ]}
+      rows={drill?.rows ?? []}
+      emptyHint="No invoices recorded in this bucket."
+      summary={drill ? (
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+          <span style={{ opacity: 0.7 }}>{drill.rows.length} invoice{drill.rows.length === 1 ? '' : 's'}</span>
+          <span style={{ fontWeight: 600 }}>
+            {formatCurrency(drill.rows.reduce((s, r) => s + r.amount, 0))}
+          </span>
+        </div>
+      ) : undefined}
+    />
+    </>
   );
 }

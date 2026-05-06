@@ -23,6 +23,7 @@ import { type WidgetConfig, type TimeWindow, type KPIDetailCardConfig, type Nega
 import { KPIDetailCard } from '@/components/metrics/KPIDetailCard';
 import { DraggableGridLayout, type WidgetConstraint } from '@/components/metrics/DraggableGridLayout';
 import { RevenueByMonthChart } from '@/components/metrics/RevenueByMonthChart';
+import { InsightsDrilldownDrawer } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 import { type GridLayoutItem } from '@/hooks/useGridLayout';
 import { GripVertical } from 'lucide-react';
 import {
@@ -574,6 +575,10 @@ export function ManagementSnapshotDashboard({
   const tf = useInsightsTimeframeOptional();
   const globalTimeWindow = (tf?.timeWindow ?? null) as TimeWindow | null;
   const globalCustomRange = tf?.customRange;
+  const periodLabel = tf?.timeframe?.label ?? selectedQuarter?.label ?? '';
+
+  // Shared drilldown for top-level KPI tiles that don't have their own modal
+  const [kpiDrill, setKpiDrill] = useState<{ label: string } | null>(null);
 
   const resolveEntityName = (entityFilter?: string) => {
     if (!entityFilter || entityFilter === 'all') return null;
@@ -788,6 +793,7 @@ export function ManagementSnapshotDashboard({
                       entityFilter={props.entityFilter}
                       isEditMode={isEditMode}
                       selectedPeriod={selectedQuarter}
+                      onClick={isEditMode ? undefined : () => setKpiDrill({ label: 'Total Revenue' })}
                     />
                   ) : cardId === 'avg-rev-per-client' ? (
                     <AvgRevenuePerClientWidget />
@@ -861,6 +867,20 @@ export function ManagementSnapshotDashboard({
             {children}
         </DraggableGridLayout>
       </div>
+      <InsightsDrilldownDrawer
+        open={!!kpiDrill}
+        onClose={() => setKpiDrill(null)}
+        context={kpiDrill ? {
+          sourceId: 'kpi:total-revenue',
+          sourceLabel: kpiDrill.label,
+          periodLabel,
+        } : null}
+        columns={[
+          { key: 'message', label: 'Detail' },
+        ]}
+        rows={[]}
+        emptyHint="Open the Revenue Overview widgets below to see contributing invoices for the selected period."
+      />
     </div>
   );
 }
