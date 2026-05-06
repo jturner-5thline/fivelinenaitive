@@ -18,7 +18,8 @@ import {
 import { useInsightsDrivers } from '@/hooks/useInsightsDrivers';
 import { useInsightsForecast } from '@/hooks/useInsightsForecast';
 import { useInsightsTargets } from '@/hooks/useInsightsTargets';
-import { format } from 'date-fns';
+import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
+import { format, parseISO } from 'date-fns';
 
 type ChatRole = 'user' | 'assistant';
 interface ChatMsg {
@@ -97,6 +98,7 @@ export function AskAboutPeriodChat() {
   const { drivers } = useInsightsDrivers();
   const { forecasts } = useInsightsForecast();
   const { data: targetRows } = useInsightsTargets();
+  const tf = useInsightsTimeframeOptional();
 
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState('');
@@ -105,7 +107,11 @@ export function AskAboutPeriodChat() {
 
   const targetsForPrompt = useMemo(() => {
     if (!targetRows?.length) return [];
-    const monthKey = format(new Date(), 'yyyy-MM');
+    // Anchor target lookup to the selected Reporting period (timeframe end),
+    // not the wall-clock month — otherwise viewing Q1 2026 would still match
+    // targets for the current month.
+    const anchor = tf?.timeframe.end ? parseISO(tf.timeframe.end) : new Date();
+    const monthKey = format(anchor, 'yyyy-MM');
     const map = new Map<string, { target: number; label: string }>();
     for (const t of targetRows) {
       const exact = t.period_month === monthKey;
@@ -117,7 +123,7 @@ export function AskAboutPeriodChat() {
     return deltas
       .filter(d => map.has(d.key))
       .map(d => ({ label: map.get(d.key)!.label, target: map.get(d.key)!.target, current: d.current, format: d.format }));
-  }, [targetRows, deltas]);
+  }, [targetRows, deltas, tf?.timeframe.end]);
 
   const systemPrompt = useMemo(
     () => buildSystemPrompt(
