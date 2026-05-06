@@ -243,10 +243,14 @@ export interface ReportState {
   initiatives: Initiative[];
   initiativeOwnerFilter: string;
   risks: Risk[];
-  /** Admin-editable cover title override (per reporting period). */
+  /** Legacy single cover title (kept for backward compatibility — migrated into coverTitlesByPeriod on first edit). */
   coverTitle?: string;
-  /** Admin-editable subtitle/tagline (per reporting period). */
+  /** Legacy single subtitle (kept for backward compatibility). */
   coverSubtitle?: string;
+  /** Admin-editable cover title overrides keyed by reporting period label (e.g. "Q1 2026", "April 2026"). */
+  coverTitlesByPeriod?: Record<string, string>;
+  /** Admin-editable subtitle/tagline overrides keyed by reporting period label. */
+  coverSubtitlesByPeriod?: Record<string, string>;
   /** Configurable mapping from report period → Asana Goals time-period labels. */
   asanaGoalFilters?: AsanaGoalFilterTemplates;
   /** Optional manual override for the active report (resets when period changes). */
