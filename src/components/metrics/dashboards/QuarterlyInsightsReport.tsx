@@ -2176,6 +2176,12 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
   const insightsTf = useInsightsTimeframeOptional();
   const reportingPeriod = insightsTf?.reportingPeriod ?? null;
   useEffect(() => {
+    // Per-tab reports (JT/JM/SW) own their selection — they persist
+    // period/quarter/month per (tab × period) and load their own blob.
+    // Do NOT let the global dashboard reporting-period header overwrite
+    // the loaded per-tab selection on mount, or we'd switch to a key
+    // with no saved data and the form would appear blank after refresh.
+    if (reportKey) return;
     if (!reportingPeriod) return;
     const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     if (reportingPeriod.view === 'month') {
