@@ -14,6 +14,7 @@ export interface QirComment {
   author_user_id: string;
   author_name: string | null;
   created_at: string;
+  updated_at?: string;
 }
 
 export function useQirComments(reportKey: string) {
