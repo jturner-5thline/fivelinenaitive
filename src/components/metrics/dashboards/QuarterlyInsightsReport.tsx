@@ -2070,7 +2070,7 @@ function ReportAgendaSection({ embedded = false }: { embedded?: boolean } = {}) 
     }
   };
   const inner = (
-    <div style={{ padding: '32px 36px' }}>
+    <div className="qir-agenda-inner" style={{ padding: embedded ? '20px 36px 28px' : '32px 36px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <SectionTitle>Agenda</SectionTitle>
           <label
