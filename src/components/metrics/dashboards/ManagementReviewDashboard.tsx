@@ -87,7 +87,7 @@ function NaPlaceholder({ height = 90, label = 'Data unavailable' }: { height?: n
 }
 
 // Grid item shell with title bar (also drag handle in edit mode)
-function GridShell({ isEditMode, title, children }: { isEditMode: boolean; title: string; children: React.ReactNode }) {
+function GridShell({ isEditMode, title, children, headerExtra }: { isEditMode: boolean; title: string; children: React.ReactNode; headerExtra?: React.ReactNode }) {
   return (
     <div className="h-full w-full flex flex-col rounded-[10px] overflow-hidden relative"
       style={{ background: 'rgba(10,60,110,0.55)', border: '1px solid rgba(40,120,200,0.28)' }}>
@@ -99,9 +99,12 @@ function GridShell({ isEditMode, title, children }: { isEditMode: boolean; title
         <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'rgba(160,210,255,0.6)' }}>
           {title}
         </div>
-        {isEditMode && (
-          <div style={{ fontSize: 9, color: 'rgba(160,210,255,0.45)' }}>⋮⋮ drag</div>
-        )}
+        <div className="flex items-center gap-2">
+          {headerExtra}
+          {isEditMode && (
+            <div style={{ fontSize: 9, color: 'rgba(160,210,255,0.45)' }}>⋮⋮ drag</div>
+          )}
+        </div>
       </div>
       <div className="flex-1 min-h-0 p-3 overflow-hidden">{children}</div>
     </div>
