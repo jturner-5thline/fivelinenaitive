@@ -283,13 +283,19 @@ Write 2 short paragraphs of plain-English commentary. Lead with the biggest diff
                       <button
                         type="button"
                         onClick={() => focusRow(m.row.key)}
-                        title={`Jump to ${m.row.label} in the grid`}
-                        className="w-full flex items-center justify-between gap-2 text-xs min-w-0 rounded-md px-1.5 py-1 -mx-1.5 hover:bg-success/10 transition-colors text-left"
+                        title={`${m.row.label} — ${periodA}: ${formatDeltaValue(m.a, m.row.format)} · ${periodB}: ${formatDeltaValue(m.b, m.row.format)} (Δ ${formatDeltaValue(m.diff, m.row.format)}). Click to jump to row.`}
+                        className="w-full flex flex-col gap-0.5 text-xs min-w-0 rounded-md px-1.5 py-1 -mx-1.5 hover:bg-success/10 transition-colors text-left"
                       >
-                        <span className="font-medium truncate hover:underline underline-offset-2">{m.row.label}</span>
-                        <span className="tabular-nums text-success shrink-0">
-                          {m.pct! >= 0 ? '+' : ''}{m.pct!.toFixed(1)}%
-                          <span className="ml-1 text-[10px] opacity-70">({formatDeltaValue(m.diff, m.row.format)})</span>
+                        <span className="flex items-center justify-between gap-2 min-w-0">
+                          <span className="font-medium truncate hover:underline underline-offset-2">{m.row.label}</span>
+                          <span className="tabular-nums text-success shrink-0">
+                            {m.pct! >= 0 ? '+' : ''}{m.pct!.toFixed(1)}%
+                            <span className="ml-1 text-[10px] opacity-70">({formatDeltaValue(m.diff, m.row.format)})</span>
+                          </span>
+                        </span>
+                        <span className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground tabular-nums">
+                          <span className="truncate">{periodA}: {formatDeltaValue(m.a, m.row.format)}</span>
+                          <span className="truncate">{periodB}: {formatDeltaValue(m.b, m.row.format)}</span>
                         </span>
                       </button>
                     </li>
@@ -310,13 +316,19 @@ Write 2 short paragraphs of plain-English commentary. Lead with the biggest diff
                       <button
                         type="button"
                         onClick={() => focusRow(m.row.key)}
-                        title={`Jump to ${m.row.label} in the grid`}
-                        className="w-full flex items-center justify-between gap-2 text-xs min-w-0 rounded-md px-1.5 py-1 -mx-1.5 hover:bg-destructive/10 transition-colors text-left"
+                        title={`${m.row.label} — ${periodA}: ${formatDeltaValue(m.a, m.row.format)} · ${periodB}: ${formatDeltaValue(m.b, m.row.format)} (Δ ${formatDeltaValue(m.diff, m.row.format)}). Click to jump to row.`}
+                        className="w-full flex flex-col gap-0.5 text-xs min-w-0 rounded-md px-1.5 py-1 -mx-1.5 hover:bg-destructive/10 transition-colors text-left"
                       >
-                        <span className="font-medium truncate hover:underline underline-offset-2">{m.row.label}</span>
-                        <span className="tabular-nums text-destructive shrink-0">
-                          {m.pct! >= 0 ? '+' : ''}{m.pct!.toFixed(1)}%
-                          <span className="ml-1 text-[10px] opacity-70">({formatDeltaValue(m.diff, m.row.format)})</span>
+                        <span className="flex items-center justify-between gap-2 min-w-0">
+                          <span className="font-medium truncate hover:underline underline-offset-2">{m.row.label}</span>
+                          <span className="tabular-nums text-destructive shrink-0">
+                            {m.pct! >= 0 ? '+' : ''}{m.pct!.toFixed(1)}%
+                            <span className="ml-1 text-[10px] opacity-70">({formatDeltaValue(m.diff, m.row.format)})</span>
+                          </span>
+                        </span>
+                        <span className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground tabular-nums">
+                          <span className="truncate">{periodA}: {formatDeltaValue(m.a, m.row.format)}</span>
+                          <span className="truncate">{periodB}: {formatDeltaValue(m.b, m.row.format)}</span>
                         </span>
                       </button>
                     </li>
