@@ -165,6 +165,9 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [isInteractingWithKeyStatsTile, setIsInteractingWithKeyStatsTile] = useState(false);
   const insightsGridGuardRef = useRef<HTMLDivElement>(null);
+  const releaseKeyStatsGuard = () => {
+    setKeyStatsTileInteraction(false);
+  };
   const setKeyStatsTileInteraction = (next: boolean) => {
     flushSync(() => {
       setIsInteractingWithKeyStatsTile(next);
@@ -174,8 +177,23 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     }
   };
 
-  useEffect(() => () => {
-    insightsGridGuardRef.current?.classList.remove('key-stats-parent-drag-disabled');
+  useEffect(() => {
+    if (!isEditMode) releaseKeyStatsGuard();
+  }, [isEditMode]);
+
+  useEffect(() => {
+    window.addEventListener('pointerup', releaseKeyStatsGuard);
+    window.addEventListener('mouseup', releaseKeyStatsGuard);
+    window.addEventListener('touchend', releaseKeyStatsGuard);
+    window.addEventListener('touchcancel', releaseKeyStatsGuard);
+
+    return () => {
+      insightsGridGuardRef.current?.classList.remove('key-stats-parent-drag-disabled');
+      window.removeEventListener('pointerup', releaseKeyStatsGuard);
+      window.removeEventListener('mouseup', releaseKeyStatsGuard);
+      window.removeEventListener('touchend', releaseKeyStatsGuard);
+      window.removeEventListener('touchcancel', releaseKeyStatsGuard);
+    };
   }, []);
 
   // Persistent, drag/drop + resize layout
