@@ -120,6 +120,7 @@ import { DatarailsLiveStat, DatarailsLiveChart } from "@/components/metrics/Data
 import { InsightsLoadingSkeleton, InsightsErrorState } from "@/components/insights/InsightsStateViews";
 import { InsightsAssistantSheet } from "@/components/insights/InsightsAssistantSheet";
 import { ReportingPeriodPicker, ActivePeriodLabel } from "@/components/insights/ReportingPeriodPicker";
+import { CoverPreviewDialog } from "@/components/insights/CoverPreviewDialog";
 import { useInsightsComparison } from "@/hooks/useInsightsComparison";
 import { exportInsightsCsv, exportInsightsPdf, type InsightsExportContext } from "@/utils/insightsExport";
 import { FileSpreadsheet, FileText } from "lucide-react";
@@ -1401,6 +1402,7 @@ function MetricsInner() {
   const [selectedDashboard, setSelectedDashboard] = useState('management-snapshot');
   const [isEditMode, setIsEditMode] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [coverPreviewOpen, setCoverPreviewOpen] = useState(false);
   const assistantTriggerRef = useRef<HTMLButtonElement>(null);
   const undoStackRef = useRef<Array<{ type: 'card' | 'section'; id: string; label: string; undo: () => void }>>([]);
 
