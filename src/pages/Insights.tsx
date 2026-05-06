@@ -2483,9 +2483,19 @@ function MetricsInner() {
                     <Plus className="h-4 w-4 mr-2" />
                     Add Widget
                   </Button>
-                  <Button size="sm" variant="outline" onClick={resetSnapshotGridLayout}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      if (window.confirm('Reset this dashboard to the default layout? Your current arrangement will be replaced.')) {
+                        resetSnapshotGridLayout();
+                        toast({ title: 'Layout reset to default' });
+                      }
+                    }}
+                    title="Revert this dashboard to the default layout"
+                  >
                     <RotateCcw className="h-4 w-4 mr-2" />
-                    Reset Layout
+                    Reset to Default Layout
                   </Button>
                   {(hiddenSnapshotCards.length + hiddenSnapshotSections.length) > 0 && (
                     <Button
