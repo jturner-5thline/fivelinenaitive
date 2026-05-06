@@ -37,6 +37,26 @@ const gy: any = { ticks: { color: 'rgba(100,160,220,0.35)', font: { size: 9 } },
 const def: any = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
 const NA_COLOR = 'rgba(160,210,255,0.35)';
 
+const renderDelta = (current: number | null, prior: number | null, label: string) => {
+  if (current === null || prior === null) {
+    return <span style={{ color: 'rgba(160,210,255,0.45)' }}>No prior {label} comparison</span>;
+  }
+  const delta = current - prior;
+  const pct = prior === 0 ? null : (delta / Math.abs(prior)) * 100;
+  const positive = delta >= 0;
+  const color = positive ? '#3de89a' : '#ff6b7a';
+  const arrow = positive ? '▲' : '▼';
+  const sign = positive ? '+' : '−';
+  const absDelta = Math.abs(delta);
+  const dollar = `${sign}${fmtUSD(absDelta)}`;
+  const pctStr = pct === null ? '—' : `${sign}${Math.abs(pct).toFixed(1)}%`;
+  return (
+    <span style={{ color, fontWeight: 600 }}>
+      {arrow} {dollar} <span style={{ opacity: 0.85, fontWeight: 500 }}>({pctStr}) vs prior {label}</span>
+    </span>
+  );
+};
+
 type DateRange = { start: Date; end: Date };
 type MonthBucket = { key: string; label: string; start: Date; end: Date };
 type RevenueSeriesPoint = {
@@ -432,6 +452,21 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     return { start, end };
   }, [periodRange.end]);
 
+  // Prior comparable TTM: the immediately preceding 12-month window
+  // (e.g. current TTM May 2025–Apr 2026 → prior TTM May 2024–Apr 2025).
+  const priorTtmRange = useMemo<DateRange>(() => {
+    const end = startOfDay(new Date(ttmRange.start.getFullYear(), ttmRange.start.getMonth(), 0));
+    const start = startOfDay(new Date(end.getFullYear() - 1, end.getMonth() + 1, 1));
+    return { start, end };
+  }, [ttmRange.start]);
+
+  // Prior YTD: same Jan 1 → same month/day cutoff in the prior year.
+  const priorYtdRange = useMemo<DateRange>(() => {
+    const end = startOfDay(new Date(periodRange.end.getFullYear() - 1, periodRange.end.getMonth(), periodRange.end.getDate()));
+    const start = startOfDay(new Date(end.getFullYear(), 0, 1));
+    return { start, end };
+  }, [periodRange.end]);
+
   const ytdSeries = useMemo(() => {
     const buckets = buildMonthBuckets(ytdRange.start, ytdRange.end);
     return buckets.map((bucket) => ({
@@ -474,6 +509,15 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     }));
   }, [qbInvoices, ttmRange]);
   const ttmRevenue = qbConnected ? ttmSeries.reduce((sum, row) => sum + row.revenue, 0) : null;
+
+  const priorTtmRevenue = useMemo(
+    () => qbConnected ? sumAmountInRange(qbInvoices, priorTtmRange, inv => inv.txn_date, inv => inv.total_amt) : null,
+    [qbConnected, qbInvoices, priorTtmRange],
+  );
+  const priorYtdRevenue = useMemo(
+    () => qbConnected ? sumAmountInRange(qbInvoices, priorYtdRange, inv => inv.txn_date, inv => inv.total_amt) : null,
+    [qbConnected, qbInvoices, priorYtdRange],
+  );
 
   const chartMode = reportingPeriod?.view === 'quarter' ? 'quarter' : 'rolling';
   const chartWindowLabel = chartMode === 'quarter'
@@ -797,7 +841,12 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       l: 'TTM Revenue',
       live: qbConnected,
       v: fmtUSD(ttmRevenue),
-      sub: <span style={{ color: 'rgba(160,210,255,0.55)' }}>{format(ttmRange.start, 'MMM d, yyyy')} – {format(ttmRange.end, 'MMM d, yyyy')}</span>,
+      sub: (
+        <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span style={{ color: 'rgba(160,210,255,0.55)' }}>{format(ttmRange.start, 'MMM d, yyyy')} – {format(ttmRange.end, 'MMM d, yyyy')}</span>
+          {renderDelta(ttmRevenue, priorTtmRevenue, 'TTM')}
+        </span>
+      ),
       emptyHint: 'TTM revenue unavailable — connect QuickBooks to populate finance data.',
     },
     {
@@ -805,7 +854,12 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       l: 'YTD Revenue',
       live: qbConnected,
       v: fmtUSD(ytdRevenue),
-      sub: <span style={{ color: 'rgba(160,210,255,0.55)' }}>through {format(periodRange.end, 'MMM d, yyyy')}</span>,
+      sub: (
+        <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span style={{ color: 'rgba(160,210,255,0.55)' }}>through {format(periodRange.end, 'MMM d, yyyy')}</span>
+          {renderDelta(ytdRevenue, priorYtdRevenue, 'YTD')}
+        </span>
+      ),
     },
   ];
 
