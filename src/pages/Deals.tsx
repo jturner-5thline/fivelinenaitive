@@ -841,7 +841,7 @@ export default function Dashboard() {
                 className="opacity-0"
                 style={{ animation: 'fadeInUp 0.4s ease-out 0.3s forwards' }}
               >
-              {showDuplicates ? (
+              {showDuplicates && is5thLine ? (
                 <DuplicatesView clusters={duplicateClusters} onMerge={handleOpenMerge} onDealDeleted={refreshDeals} onNotDuplicate={suppressCluster} />
               ) : showMilestones ? (
                 <DealMilestonesView onBack={() => setShowMilestones(false)} managerFilter={filters.manager} />
