@@ -1,6 +1,9 @@
 import { useMemo } from 'react';
 import { useMetricsData } from '@/hooks/useMetricsData';
 import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
+import { useHubSpotMetrics } from '@/hooks/useHubSpotMetrics';
+import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
+import { differenceInCalendarMonths, subMonths, format as fmt, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 
 export type DeltaDirection = 'up' | 'down' | 'flat';
 
@@ -14,6 +17,8 @@ export interface PeriodDelta {
   prevYear: number;
   /** Direction where "up" is desirable. */
   goodWhen: 'up' | 'down';
+  /** Optional grouping label for UI segmentation. */
+  group?: 'Financials' | 'Pipeline' | 'FinServ' | 'HubSpot' | 'Lenders';
 }
 
 export interface DeltaResult extends PeriodDelta {
@@ -61,24 +66,41 @@ function sentiment(dir: DeltaDirection, goodWhen: 'up' | 'down'): 'improvement' 
 export function useInsightsComparison() {
   const { data: dealMetrics, isLoading: dealsLoading } = useMetricsData();
   const { data: qbMetrics, isLoading: qbLoading } = useQuickBooksMetrics();
+  const { data: hsMetrics, isLoading: hsLoading } = useHubSpotMetrics();
+  const tf = useInsightsTimeframeOptional();
 
   const result = useMemo(() => {
     const monthly = dealMetrics?.monthlyData ?? [];
     const qbMonthly = qbMetrics?.monthlyRevenue ?? [];
+    const hsMonthly = hsMetrics?.dealValueTrend ?? [];
 
-    // Index 11 = current month, 10 = prior month, 0 = same month last year.
-    const cur = monthly[11];
-    const prev = monthly[10];
-    const yoy = monthly[0];
-    const qbCur = qbMonthly[11];
-    const qbPrev = qbMonthly[10];
-    const qbYoy = qbMonthly[0];
+    // Anchor "current" month from the active Insights timeframe (uses end date).
+    // monthly arrays are ordered oldest -> newest with index 11 = current month.
+    const now = new Date();
+    const anchor = tf?.timeframe.end ? parseISO(tf.timeframe.end) : now;
+    const monthsBack = Math.max(0, Math.min(11, differenceInCalendarMonths(now, anchor)));
+    const curIdx = 11 - monthsBack;
+    const prevIdx = curIdx - 1;
+    const yoyIdx = curIdx - 12; // out-of-window when not -12 worth of data
+
+    const pick = <T,>(arr: T[], i: number): T | undefined => (i >= 0 && i < arr.length ? arr[i] : undefined);
+
+    const cur = pick(monthly, curIdx);
+    const prev = pick(monthly, prevIdx);
+    const yoy = pick(monthly, yoyIdx) ?? pick(monthly, 0);
+    const qbCur = pick(qbMonthly, curIdx);
+    const qbPrev = pick(qbMonthly, prevIdx);
+    const qbYoy = pick(qbMonthly, yoyIdx) ?? pick(qbMonthly, 0);
+    const hsCur = pick(hsMonthly, curIdx);
+    const hsPrev = pick(hsMonthly, prevIdx);
+    const hsYoy = pick(hsMonthly, yoyIdx) ?? pick(hsMonthly, 0);
 
     const raw: PeriodDelta[] = [
       {
         key: 'qb-revenue',
         label: 'Revenue',
         format: 'currency',
+        group: 'Financials',
         current: qbCur?.revenue ?? 0,
         prevPeriod: qbPrev?.revenue ?? 0,
         prevYear: qbYoy?.revenue ?? 0,
@@ -88,6 +110,7 @@ export function useInsightsComparison() {
         key: 'qb-payments',
         label: 'Payments Received',
         format: 'currency',
+        group: 'Financials',
         current: qbCur?.payments ?? 0,
         prevPeriod: qbPrev?.payments ?? 0,
         prevYear: qbYoy?.payments ?? 0,
@@ -97,6 +120,7 @@ export function useInsightsComparison() {
         key: 'qb-expenses',
         label: 'Expenses',
         format: 'currency',
+        group: 'Financials',
         current: qbCur?.expenses ?? 0,
         prevPeriod: qbPrev?.expenses ?? 0,
         prevYear: qbYoy?.expenses ?? 0,
@@ -106,6 +130,7 @@ export function useInsightsComparison() {
         key: 'closed-won-value',
         label: 'Closed Won Value',
         format: 'currency',
+        group: 'Pipeline',
         current: cur?.closedWonValue ?? 0,
         prevPeriod: prev?.closedWonValue ?? 0,
         prevYear: yoy?.closedWonValue ?? 0,
@@ -115,6 +140,7 @@ export function useInsightsComparison() {
         key: 'total-fees',
         label: 'Total Fees',
         format: 'currency',
+        group: 'Pipeline',
         current: cur?.totalFees ?? 0,
         prevPeriod: prev?.totalFees ?? 0,
         prevYear: yoy?.totalFees ?? 0,
@@ -124,6 +150,7 @@ export function useInsightsComparison() {
         key: 'deal-count',
         label: 'Deals (period)',
         format: 'number',
+        group: 'Pipeline',
         current: cur?.dealCount ?? 0,
         prevPeriod: prev?.dealCount ?? 0,
         prevYear: yoy?.dealCount ?? 0,
@@ -133,10 +160,53 @@ export function useInsightsComparison() {
         key: 'ar-balance',
         label: 'Accounts Receivable',
         format: 'currency',
+        group: 'Financials',
         current: qbMetrics?.totalAR ?? 0,
         prevPeriod: qbMetrics?.totalAR ?? 0, // snapshot only — no historical AR
         prevYear: qbMetrics?.totalAR ?? 0,
         goodWhen: 'down',
+      },
+      // HubSpot pipeline activity (created in period)
+      {
+        key: 'hs-deal-value',
+        label: 'HubSpot Deal Value (created)',
+        format: 'currency',
+        group: 'HubSpot',
+        current: hsCur?.value ?? 0,
+        prevPeriod: hsPrev?.value ?? 0,
+        prevYear: hsYoy?.value ?? 0,
+        goodWhen: 'up',
+      },
+      {
+        key: 'hs-deal-count',
+        label: 'HubSpot Deals (created)',
+        format: 'number',
+        group: 'HubSpot',
+        current: hsCur?.count ?? 0,
+        prevPeriod: hsPrev?.count ?? 0,
+        prevYear: hsYoy?.count ?? 0,
+        goodWhen: 'up',
+      },
+      // Snapshot-only: HubSpot pipeline + win rate
+      {
+        key: 'hs-pipeline-value',
+        label: 'HubSpot Open Pipeline',
+        format: 'currency',
+        group: 'HubSpot',
+        current: hsMetrics?.totalDealValue ?? 0,
+        prevPeriod: hsMetrics?.totalDealValue ?? 0,
+        prevYear: hsMetrics?.totalDealValue ?? 0,
+        goodWhen: 'up',
+      },
+      {
+        key: 'hs-win-rate',
+        label: 'HubSpot Win Rate',
+        format: 'percent',
+        group: 'HubSpot',
+        current: hsMetrics?.winRate ?? 0,
+        prevPeriod: hsMetrics?.winRate ?? 0,
+        prevYear: hsMetrics?.winRate ?? 0,
+        goodWhen: 'up',
       },
     ];
 
@@ -186,12 +256,17 @@ export function useInsightsComparison() {
     }
 
     return { deltas, alerts };
-  }, [dealMetrics, qbMetrics]);
+  }, [dealMetrics, qbMetrics, hsMetrics, tf?.timeframe.end]);
 
   return {
     deltas: result.deltas,
     alerts: result.alerts,
-    isLoading: dealsLoading || qbLoading,
+    isLoading: dealsLoading || qbLoading || hsLoading,
+    /** Stable key for the active period — used to keep persisted summaries scoped. */
+    periodKey: tf?.timeframe.id === 'custom'
+      ? `custom:${tf?.timeframe.start}_${tf?.timeframe.end}`
+      : (tf?.timeframe.id ?? 'mtd'),
+    periodLabel: tf?.timeframe.label ?? 'Current period',
   };
 }
 
