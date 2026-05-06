@@ -410,7 +410,7 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 
 type ReportSetState = React.Dispatch<React.SetStateAction<ReportState>>;
 
-function ReportHeaderSection({ s, set, reset, print }: { s: ReportState; set: ReportSetState; reset: () => void; print: () => void }) {
+function ReportHeaderSection({ s, set, reset, save, print, canEdit }: { s: ReportState; set: ReportSetState; reset: () => void; save?: () => void; print: () => void; canEdit?: boolean }) {
   // Validation: ensure Month always has a valid selection while in Monthly mode.
   // Covers stale persisted state, programmatic state changes, and quarter switches.
   useEffect(() => {
@@ -437,6 +437,9 @@ function ReportHeaderSection({ s, set, reset, print }: { s: ReportState; set: Re
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
+            {save ? (
+              <Btn icon={SaveIcon} onClick={save} title={canEdit === false ? 'You do not have permission to save' : 'Save report for everyone'}>Save</Btn>
+            ) : null}
             <Btn icon={RotateCcw} variant="ghost" onClick={reset}>Reset</Btn>
             <Btn icon={Printer} onClick={print}>Print / Export</Btn>
           </div>
