@@ -120,6 +120,9 @@ import { DatarailsLiveStat, DatarailsLiveChart } from "@/components/metrics/Data
 import { InsightsLoadingSkeleton, InsightsErrorState } from "@/components/insights/InsightsStateViews";
 import { InsightsAssistantSheet } from "@/components/insights/InsightsAssistantSheet";
 import { ReportingPeriodPicker, ActivePeriodLabel } from "@/components/insights/ReportingPeriodPicker";
+import { useInsightsComparison } from "@/hooks/useInsightsComparison";
+import { exportInsightsCsv, exportInsightsPdf, type InsightsExportContext } from "@/utils/insightsExport";
+import { FileSpreadsheet, FileText } from "lucide-react";
 // Dashboard options
 const DASHBOARD_OPTIONS = [
   { id: 'management-snapshot', name: 'Weekly Rundown', isFavorite: true, folder: 'management-insights' as const },
