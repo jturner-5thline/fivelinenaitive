@@ -1577,20 +1577,11 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
     s.coverTitlesByPeriod?.[periodKey] ??
     // Fallback to legacy single field if present and no per-period value yet
     (s.coverTitlesByPeriod && periodKey in s.coverTitlesByPeriod ? '' : s.coverTitle ?? '');
-  const subtitleOverride =
-    s.coverSubtitlesByPeriod?.[periodKey] ??
-    (s.coverSubtitlesByPeriod && periodKey in s.coverSubtitlesByPeriod ? '' : s.coverSubtitle ?? '');
   const title = titleOverride.trim() || defaultCoverTitle(s);
-  const subtitle = subtitleOverride;
   const updateTitle = (value: string) =>
     set(prev => ({
       ...prev,
       coverTitlesByPeriod: { ...(prev.coverTitlesByPeriod || {}), [periodKey]: value },
-    }));
-  const updateSubtitle = (value: string) =>
-    set(prev => ({
-      ...prev,
-      coverSubtitlesByPeriod: { ...(prev.coverSubtitlesByPeriod || {}), [periodKey]: value },
     }));
   return (
     <Card className="glass-module qir-page-break">
