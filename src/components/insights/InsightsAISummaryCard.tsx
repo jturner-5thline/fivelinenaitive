@@ -42,6 +42,7 @@ import { useRecordAnomalies } from '@/hooks/useAnomalyHistory';
 import { InsightsDriversPanel } from './InsightsDriversPanel';
 import { InsightsForecastPanel } from './InsightsForecastPanel';
 import { AnomalyHistoryPanel } from './AnomalyHistoryPanel';
+import { DeltaDrillDownDialog, type DrillComparison } from './DeltaDrillDownDialog';
 import { format } from 'date-fns';
 
 function ChangeChip({
@@ -50,12 +51,14 @@ function ChangeChip({
   fmt,
   sentiment,
   suffix,
+  onClick,
 }: {
   pct: number | null;
   abs: number;
   fmt: DeltaResult['format'];
   sentiment: 'improvement' | 'decline' | 'neutral';
   suffix: string;
+  onClick?: () => void;
 }) {
   const cls =
     sentiment === 'improvement'
@@ -64,14 +67,32 @@ function ChangeChip({
       ? 'text-destructive'
       : 'text-muted-foreground';
   if (pct == null) {
-    return <span className="text-[10px] text-muted-foreground">— {suffix}</span>;
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={!onClick}
+        className="text-[10px] text-muted-foreground text-left hover:text-foreground disabled:cursor-default"
+      >
+        — {suffix}
+      </button>
+    );
   }
   const Arrow = pct >= 0 ? ArrowUpRight : ArrowDownRight;
   return (
-    <span className={cn('inline-flex items-center gap-0.5 text-[10px] font-medium tabular-nums', cls)}>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!onClick}
+      title={onClick ? 'Click for AI drill-down' : undefined}
+      className={cn(
+        'inline-flex items-center gap-0.5 text-[10px] font-medium tabular-nums hover:underline underline-offset-2 disabled:no-underline disabled:cursor-default',
+        cls,
+      )}
+    >
       <Arrow className="h-3 w-3" />
       {Math.abs(pct).toFixed(1)}% ({formatDeltaValue(abs, fmt)}) {suffix}
-    </span>
+    </button>
   );
 }
 
@@ -170,6 +191,7 @@ export function InsightsAISummaryCard() {
   const [isEditing, setIsEditing] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState<string>('none');
+  const [drill, setDrill] = useState<{ delta: DeltaResult; comparison: DrillComparison } | null>(null);
 
   const headlineDeltas = useMemo(() => deltas.slice(0, 6), [deltas]);
 
@@ -328,6 +350,7 @@ export function InsightsAISummaryCard() {
                 fmt={d.format}
                 sentiment={d.sentimentMoM}
                 suffix="MoM"
+                onClick={() => setDrill({ delta: d, comparison: 'MoM' })}
               />
               <ChangeChip
                 pct={d.pctYoY}
@@ -335,6 +358,7 @@ export function InsightsAISummaryCard() {
                 fmt={d.format}
                 sentiment={d.sentimentYoY}
                 suffix="YoY"
+                onClick={() => setDrill({ delta: d, comparison: 'YoY' })}
               />
             </div>
           ))}
@@ -389,6 +413,12 @@ export function InsightsAISummaryCard() {
         )}
       </CardContent>
       <InsightsCompareDialog open={compareOpen} onOpenChange={setCompareOpen} />
+      <DeltaDrillDownDialog
+        open={!!drill}
+        onOpenChange={open => !open && setDrill(null)}
+        delta={drill?.delta ?? null}
+        comparison={drill?.comparison ?? 'MoM'}
+      />
     </Card>
   );
 }
