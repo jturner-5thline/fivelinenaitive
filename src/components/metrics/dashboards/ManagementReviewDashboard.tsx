@@ -1050,16 +1050,12 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         })}
 
         <div key="monthly-revenue" className="h-full">
-          <GridShell isEditMode={isEditMode} title={`Revenue / Net Cash (${chartWindowLabel})`}>
+          <GridShell isEditMode={isEditMode} title={`TTM Revenue Trend (${chartWindowLabel})`}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%' }}>
-              {qbConnected && monthLabels.length > 0
-                ? <div style={{ position: 'relative', flex: 1, minHeight: 100 }}><canvas ref={rcRef} /></div>
-                : <NaPlaceholder height={148} label={isLoading ? 'Loading…' : 'No live revenue source available'} />}
-              <Sep />
-              <SectionLabel>Net Cash (Revenue − Expenses)</SectionLabel>
-              {qbConnected && monthLabels.length > 0
-                ? <div style={{ position: 'relative', flex: 1, minHeight: 80 }}><canvas ref={ncRef} /></div>
-                : <NaPlaceholder height={108} label={isLoading ? 'Loading…' : 'No live expense source available'} />}
+              <SectionLabel>TTM Revenue (rolling 12 months) — each point shows total revenue for the 12 months ending in that period; all QuickBooks entities combined</SectionLabel>
+              {qbConnected && ttmLabels.length > 0
+                ? <div style={{ position: 'relative', flex: 1, minHeight: 180 }}><canvas ref={ncRef} /></div>
+                : <NaPlaceholder height={200} label={isLoading ? 'Loading…' : 'TTM revenue unavailable — connect QuickBooks to populate finance data.'} />}
             </div>
           </GridShell>
         </div>
