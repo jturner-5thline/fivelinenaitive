@@ -1324,11 +1324,15 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
 function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetState }) {
   const preparedBy = s.authors[0] || 'James Turner';
   // Initiatives sourced live from a user-selectable Asana Portfolio.
-  const DEFAULT_PORTFOLIO_GID = '1212153276296112';
+  const DEFAULT_PORTFOLIO_GID = '1212153276296114';
+  const LEGACY_PORTFOLIO_GIDS = ['1212153276296112'];
   const PORTFOLIO_PREF_KEY = 'qir.initiatives.portfolioGid';
   const [portfolioGid, setPortfolioGid] = useState<string>(() => {
-    try { return localStorage.getItem(PORTFOLIO_PREF_KEY) || DEFAULT_PORTFOLIO_GID; }
-    catch { return DEFAULT_PORTFOLIO_GID; }
+    try {
+      const stored = localStorage.getItem(PORTFOLIO_PREF_KEY);
+      if (!stored || LEGACY_PORTFOLIO_GIDS.includes(stored)) return DEFAULT_PORTFOLIO_GID;
+      return stored;
+    } catch { return DEFAULT_PORTFOLIO_GID; }
   });
   useEffect(() => {
     try { localStorage.setItem(PORTFOLIO_PREF_KEY, portfolioGid); } catch { /* ignore */ }
