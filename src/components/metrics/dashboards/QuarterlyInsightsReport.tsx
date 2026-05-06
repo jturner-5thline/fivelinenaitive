@@ -10,6 +10,7 @@ import naitiveLogoDark from '@/assets/naitive-logo-dark.png';
 import { QirCommentThread } from './qir/QirCommentThread';
 import { QirSectionNotes } from './qir/QirSectionNotes';
 import { QirAllCommentsPanel } from './qir/QirAllCommentsPanel';
+import { QuickBooksActualsPanel, type ActualsViewMode } from './qir/QuickBooksActualsPanel';
 import {
   DEFAULT_ASANA_GOAL_FILTERS,
   type AsanaGoalFilterTemplates,
@@ -1649,6 +1650,12 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
   reportKey?: string;
 }) {
   const rk = reportKey || 'naitive.quarterlyReport.adhoc';
+  const [actualsViewMode, setActualsViewMode] = useState<ActualsViewMode>('plan_vs_actuals');
+  const planRevenue = useMemo(() => {
+    const k = s.kpis.find(x => /revenue/i.test(x.label));
+    const n = Number(k?.target);
+    return Number.isFinite(n) ? n : 0;
+  }, [s.kpis]);
   const reportLabel = s.period === 'monthly'
     ? `Monthly Insights Report — ${s.month}`
     : `Quarterly Insights Report — ${s.quarter}`;
@@ -1669,6 +1676,14 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
       </div>
       <div id="qir-section-financials">
         <QirSectionNotes reportKey={rk} sectionKey="financials" label="Notes — Revenue & Financial Performance" canEdit={canEdit !== false} />
+        <QuickBooksActualsPanel
+          period={s.period}
+          quarter={s.quarter}
+          month={s.month}
+          planRevenue={planRevenue}
+          viewMode={actualsViewMode}
+          onChangeViewMode={setActualsViewMode}
+        />
         <ReportKpisSection s={s} set={set} />
         {sectionThread('financials', 'Revenue & Financial Performance')}
       </div>
