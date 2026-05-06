@@ -1921,7 +1921,6 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
   return (
     <div style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, color: TEXT_PRIMARY }}>
       <ReportCoverSection s={s} set={set} />
-      <ReportAgendaSection />
       <ReportHeaderSection s={s} set={set} reset={reset} save={save} print={print} canEdit={canEdit} />
       <div id="qir-section-summary">
         <QirSectionNotes reportKey={rk} sectionKey="summary" label="Notes — Executive Summary" canEdit={canEdit !== false} />
