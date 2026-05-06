@@ -480,18 +480,69 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         rowHeight={70}
       >
         <div key="kpi-row" className="h-full">
-          <GridShell isEditMode={isEditMode} title="Key Stats">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 8, height: '100%' }}>
-              {kpis.map((k, i) => (
-                <div key={i} style={{ background: 'rgba(10,60,110,0.35)', border: '1px solid rgba(40,120,200,0.22)', borderRadius: 8, padding: '8px 10px' }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'rgba(160,210,255,0.5)', marginBottom: 4 }}>{k.l}</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: k.live ? '#e8f6ff' : NA_COLOR }}>
-                    {k.live ? k.v : 'Data unavailable'}
+          <GridShell
+            isEditMode={isEditMode}
+            title="Key Stats"
+            headerExtra={isEditMode ? (
+              <div className="flex items-center gap-1" onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]">
+                      <Plus className="h-3 w-3 mr-1" /> Add Stat
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="z-50">
+                    {availableToAdd.length === 0 ? (
+                      <DropdownMenuItem disabled>No more stats available</DropdownMenuItem>
+                    ) : availableToAdd.map(k => (
+                      <DropdownMenuItem key={k.id} onClick={() => handleAddKpiTile(k.id)}>
+                        {k.l}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={() => resetKeyStatsLayout()}>
+                  <RotateCcw className="h-3 w-3 mr-1" /> Reset
+                </Button>
+              </div>
+            ) : null}
+          >
+            <DraggableGridLayout
+              layout={keyStatsLayout}
+              onLayoutChange={saveKeyStatsLayout}
+              isEditMode={isEditMode}
+              rowHeight={28}
+              className="key-stats-subgrid"
+            >
+              {keyStatsLayout.map(l => {
+                const k = kpiById.get(l.i);
+                if (!k) return <div key={l.i} />;
+                return (
+                  <div key={l.i} className="h-full">
+                    <div className="relative h-full w-full" style={{ background: 'rgba(10,60,110,0.35)', border: '1px solid rgba(40,120,200,0.22)', borderRadius: 8, padding: '8px 10px', overflow: 'hidden' }}>
+                      <div className={`widget-drag-handle ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}`} style={{ position: 'absolute', inset: 0, zIndex: 1 }} />
+                      {isEditMode && (
+                        <button
+                          aria-label={`Remove ${k.l}`}
+                          onMouseDown={e => e.stopPropagation()}
+                          onClick={(e) => { e.stopPropagation(); handleRemoveKpiTile(k.id); }}
+                          style={{ position: 'absolute', top: 4, right: 4, zIndex: 2, background: 'rgba(220,60,80,0.2)', border: '1px solid rgba(220,60,80,0.4)', borderRadius: 4, padding: '2px 4px', cursor: 'pointer', color: '#ff8a96' }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                      <div style={{ position: 'relative', zIndex: 1, pointerEvents: isEditMode ? 'none' : 'auto' }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'rgba(160,210,255,0.5)', marginBottom: 4 }}>{k.l}</div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: k.live ? '#e8f6ff' : NA_COLOR }}>
+                          {k.live ? k.v : 'Data unavailable'}
+                        </div>
+                        <div style={{ fontSize: 10, marginTop: 2 }}>{k.live ? k.sub : <span style={{ color: NA_COLOR }}>—</span>}</div>
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ fontSize: 10, marginTop: 2 }}>{k.live ? k.sub : <span style={{ color: NA_COLOR }}>—</span>}</div>
-                </div>
-              ))}
-            </div>
+                );
+              })}
+            </DraggableGridLayout>
           </GridShell>
         </div>
 
