@@ -1347,8 +1347,35 @@ const tools = [
 
 // ── Tool selection by context ──────────────────────────────────
 function selectTools(page: string, entityType?: string) {
+  return selectToolsWithScopes(page, entityType, { can_view_insights: true });
+}
+
+// Tool names that surface Insights / analytics / KPI / rollup data.
+// Gated by the can_view_insights scope (page_access_allowlist for "insights").
+const INSIGHTS_RESTRICTED_TOOLS = new Set<string>([
+  "get_pipeline_summary",
+  "get_quickbooks_pnl",
+  "get_revenue_breakdown",
+  "get_outstanding_invoices",
+  "get_outstanding_bills",
+  "get_partner_pipeline_summary",
+  "get_finserv_pipeline_summary",
+  "get_finserv_revenue_summary",
+  "get_referral_attribution",
+]);
+
+function selectToolsWithScopes(
+  page: string,
+  entityType: string | undefined,
+  scopes: { can_view_insights: boolean },
+) {
+  const filterByScopes = (list: any[]) =>
+    scopes.can_view_insights
+      ? list
+      : list.filter((t) => !INSIGHTS_RESTRICTED_TOOLS.has(t.function.name));
+
   // On deal pages, include all tools for full functionality
-  if (entityType === "deal") return tools;
+  if (entityType === "deal") return filterByScopes(tools);
 
   const coreNames = new Set([
     "get_deal", "search_deals", "get_pipeline_summary", "get_activity_log",
@@ -1397,7 +1424,7 @@ function selectTools(page: string, entityType?: string) {
     ["get_deal_lenders", "get_deal_health", "get_deal_call_transcripts", "get_lenders_by_pass_filter"].forEach(n => coreNames.add(n));
   }
 
-  return tools.filter(t => coreNames.has(t.function.name));
+  return filterByScopes(tools.filter((t) => coreNames.has(t.function.name)));
 }
 
 // ── Tool executors ──────────────────────────────────────────────
