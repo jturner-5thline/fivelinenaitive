@@ -1,23 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { formatDistanceToNow } from "date-fns";
 import { Helmet } from "react-helmet-async";
 import {
-  Plug,
-  Info,
-  X,
   Users,
   Mail,
   Calendar,
-  Video,
-  Zap,
   Webhook,
   Linkedin,
   FileText,
@@ -41,18 +32,14 @@ import { useMicrosoft } from "@/hooks/useMicrosoft";
 
 // Components
 import { IntegrationCard, ComingSoonCard, type IntegrationStatus } from "@/components/integrations/IntegrationCard";
+import { ClaapSummaryCard, ZapierSummaryCard, FlexAutomationCard } from "@/components/integrations/IntegrationSummaryCards";
 import { HubSpotSyncSettingsModal } from "@/components/integrations/HubSpotSyncSettingsModal";
 import { QuickBooksSyncSettingsModal } from "@/components/integrations/QuickBooksSyncSettingsModal";
 import { GmailSyncSettingsModal } from "@/components/integrations/GmailSyncSettingsModal";
 import { CalendarSyncSettingsModal } from "@/components/integrations/CalendarSyncSettingsModal";
-import { ClaapIntegration } from "@/components/integrations/ClaapIntegration";
-import { ZapierIntegration } from "@/components/integrations/ZapierIntegration";
 import { AsanaSetupModal } from "@/components/integrations/AsanaSetupModal";
 import { AsanaSyncSettingsModal } from "@/components/integrations/asana/AsanaSyncSettingsModal";
-import { FlexAutoRemovalRules } from "@/components/integrations/FlexAutoRemovalRules";
 import { useCanSeeFlexSync } from "@/hooks/useCanSeeFlexSync";
-
-const BANNER_DISMISSED_KEY = "naitive_integrations_banner_dismissed";
 
 const COMING_SOON_INTEGRATIONS = [
   { key: "docusign", name: "DocuSign", icon: PenTool, description: "Send and manage e-signature envelopes directly from deals" },
@@ -69,9 +56,6 @@ export default function Integrations() {
   const { company, isAdmin: isCompanyAdmin } = useCompany();
   const { canSeeFlexSync } = useCanSeeFlexSync();
   const [searchParams, setSearchParams] = useSearchParams();
-
-  // Banner
-  const [bannerDismissed, setBannerDismissed] = useState(() => localStorage.getItem(BANNER_DISMISSED_KEY) === "true");
 
   // Modals
   const [hubspotModalOpen, setHubspotModalOpen] = useState(false);
@@ -195,11 +179,6 @@ export default function Integrations() {
       .then(() => setHubspotStatus("connected"))
       .catch(() => setHubspotStatus("disconnected"));
   }, []);
-
-  const dismissBanner = () => {
-    setBannerDismissed(true);
-    localStorage.setItem(BANNER_DISMISSED_KEY, "true");
-  };
 
   // === Determine connected integrations ===
   const isHubspotConnected = hubspotStatus === "connected";
@@ -393,28 +372,11 @@ export default function Integrations() {
   if (is5thLine && isClaapConnected) {
     connectedIntegrations.push({
       key: "claap",
-      render: () => (
-        <Card>
-          <CardContent className="p-0">
-            <ClaapIntegration />
-          </CardContent>
-        </Card>
-      ),
+      render: () => <ClaapSummaryCard />,
     });
   }
 
-  if (is5thLine) {
-    connectedIntegrations.push({
-      key: "zapier",
-      render: () => (
-        <Card>
-          <CardContent className="p-0">
-            <ZapierIntegration />
-          </CardContent>
-        </Card>
-      ),
-    });
-  }
+  // Zapier and FLEx surface in the Automation section, not Connected.
 
   if (is5thLine && isAsanaConnected) {
     connectedIntegrations.push({
@@ -530,13 +492,7 @@ export default function Integrations() {
   if (is5thLine && !isClaapConnected) {
     availableIntegrations.push({
       key: "claap",
-      render: () => (
-        <Card>
-          <CardContent className="p-0">
-            <ClaapIntegration />
-          </CardContent>
-        </Card>
-      ),
+      render: () => <ClaapSummaryCard />,
     });
   }
 
@@ -565,78 +521,73 @@ export default function Integrations() {
         <title>Integrations | naitive</title>
       </Helmet>
 
-      <div className="p-6 space-y-6">
+      <div className="mx-auto max-w-6xl px-6 py-8 space-y-10">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Integrations</h1>
-          <p className="text-muted-foreground">
-            Connect and manage external platforms and services
+        <header className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Integrations</h1>
+          <p className="text-sm text-muted-foreground">
+            Connect external systems and monitor sync health. Use Deals, Finance, and other modules to work with synced data.
           </p>
-        </div>
+        </header>
 
-        {/* Info Banner */}
-        {!bannerDismissed && (
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-2.5">
-            <div className="flex items-center gap-2">
-              <Info className="h-4 w-4 text-blue-400 flex-shrink-0" />
-              <p className="text-xs text-muted-foreground">
-                This page is for connecting integrations and monitoring sync health only. To work with synced data, go to Deals, Finance, or other modules.
-              </p>
-            </div>
-            <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={dismissBanner}>
-              <X className="h-3.5 w-3.5" />
-            </Button>
+        {/* 1 — Connected (primary) */}
+        <section className="space-y-3">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Connected
+            </h2>
+            <span className="text-[11px] text-muted-foreground/70 tabular-nums">
+              {totalConnected} active
+            </span>
           </div>
-        )}
-
-        {/* Connected Integrations */}
-        <div>
-          <h2 className="text-lg font-semibold mb-3">
-            Connected Integrations ({totalConnected})
-          </h2>
           {totalConnected === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Plug className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium">No integrations connected yet</h3>
-                <p className="text-sm text-muted-foreground">
-                  Add one from the available integrations below.
-                </p>
-              </CardContent>
-            </Card>
+            <p className="text-sm text-muted-foreground py-6">
+              No integrations connected yet. Add one from below.
+            </p>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {connectedIntegrations.map((item) => (
-                <div key={item.key} className={item.key === 'claap' ? 'md:col-span-2' : ''}>{item.render()}</div>
+                <div key={item.key}>{item.render()}</div>
               ))}
             </div>
           )}
-        </div>
+        </section>
 
-        {/* Available Integrations */}
+        {/* 2 — Available */}
         {availableIntegrations.length > 0 && (
-          <div>
-            <h2 className="text-lg font-semibold mb-3">Available Integrations</h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <section className="space-y-3">
+            <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Available
+            </h2>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {availableIntegrations.map((item) => (
                 <div key={item.key}>{item.render()}</div>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
-        {/* FLEx Auto-Removal Rules — only for FLEx-authorized 5th Line users */}
-        {canSeeFlexSync && (
-          <div>
-            <h2 className="text-lg font-semibold mb-3">FLEx Sync Configuration</h2>
-            <FlexAutoRemovalRules companyId={company?.id ?? null} canEdit={!!isCompanyAdmin} />
-          </div>
+        {/* 3 — Automation & Sync Configuration */}
+        {(is5thLine || canSeeFlexSync) && (
+          <section className="space-y-3">
+            <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Automation & Sync
+            </h2>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {is5thLine && <ZapierSummaryCard />}
+              {canSeeFlexSync && (
+                <FlexAutomationCard companyId={company?.id ?? null} canEdit={!!isCompanyAdmin} />
+              )}
+            </div>
+          </section>
         )}
 
-        {/* Coming Soon */}
-        <div>
-          <h2 className="text-lg font-semibold mb-3">Coming Soon</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {/* 4 — Coming Soon */}
+        <section className="space-y-3">
+          <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Coming Soon
+          </h2>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {COMING_SOON_INTEGRATIONS.map((cs) => (
               <ComingSoonCard
                 key={cs.key}
@@ -649,7 +600,7 @@ export default function Integrations() {
               />
             ))}
           </div>
-        </div>
+        </section>
       </div>
 
       {/* Sync Settings Modals */}
