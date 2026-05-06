@@ -25,6 +25,8 @@ interface DraggableGridLayoutProps {
   className?: string;
   /** Per-widget constraints keyed by layout item id (`i`). */
   constraints?: Record<string, WidgetConstraint>;
+  /** CSS selector for drag handles (defaults to .widget-drag-handle). */
+  draggableHandle?: string;
 }
 
 function mapLayout(currentLayout: any[]): GridLayoutItem[] {
@@ -47,6 +49,7 @@ export function DraggableGridLayout({
   rowHeight = 150,
   className,
   constraints,
+  draggableHandle = '.widget-drag-handle',
 }: DraggableGridLayoutProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(1200);
@@ -155,7 +158,7 @@ export function DraggableGridLayout({
         width={containerWidth}
         isDraggable={isEditMode}
         isResizable={isEditMode}
-        draggableHandle=".widget-drag-handle"
+        draggableHandle={draggableHandle}
         onLayoutChange={handleLayoutChange}
         onDragStop={handleDragStop}
         onResizeStop={handleResizeStop}
