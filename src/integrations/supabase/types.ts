@@ -11995,6 +11995,86 @@ export type Database = {
           },
         ]
       }
+      insights_anomaly_history: {
+        Row: {
+          abs_change: number | null
+          company_id: string | null
+          created_at: string
+          dismissed_at: string | null
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          level: string
+          message: string
+          metric_key: string
+          metric_label: string
+          notes: string | null
+          occurrence_count: number
+          owner_user_id: string
+          pct_change: number | null
+          period_key: string
+          period_label: string
+          resolved_at: string | null
+          signature: string
+          snoozed_until: string | null
+          updated_at: string
+        }
+        Insert: {
+          abs_change?: number | null
+          company_id?: string | null
+          created_at?: string
+          dismissed_at?: string | null
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          level: string
+          message: string
+          metric_key: string
+          metric_label: string
+          notes?: string | null
+          occurrence_count?: number
+          owner_user_id: string
+          pct_change?: number | null
+          period_key: string
+          period_label: string
+          resolved_at?: string | null
+          signature: string
+          snoozed_until?: string | null
+          updated_at?: string
+        }
+        Update: {
+          abs_change?: number | null
+          company_id?: string | null
+          created_at?: string
+          dismissed_at?: string | null
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          level?: string
+          message?: string
+          metric_key?: string
+          metric_label?: string
+          notes?: string | null
+          occurrence_count?: number
+          owner_user_id?: string
+          pct_change?: number | null
+          period_key?: string
+          period_label?: string
+          resolved_at?: string | null
+          signature?: string
+          snoozed_until?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insights_anomaly_history_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       insights_history: {
         Row: {
           active_deals: number | null
@@ -12047,6 +12127,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "insights_history_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insights_metric_targets: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          id: string
+          metric_key: string
+          metric_label: string
+          notes: string | null
+          owner_user_id: string
+          period_month: string | null
+          target_value: number
+          updated_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          metric_key: string
+          metric_label: string
+          notes?: string | null
+          owner_user_id: string
+          period_month?: string | null
+          target_value: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          metric_key?: string
+          metric_label?: string
+          notes?: string | null
+          owner_user_id?: string
+          period_month?: string | null
+          target_value?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insights_metric_targets_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
