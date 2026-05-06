@@ -2233,6 +2233,12 @@ export function QuarterlyReportPrintStyles() {
         border: none !important;
         box-shadow: none !important;
         backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        border-radius: 0 !important;
+        overflow: visible !important;
+      }
+      .qir-unified-report .qir-unified-section .glass-module::before {
+        display: none !important;
       }
       @media print {
         body { background: #ffffff !important; }
