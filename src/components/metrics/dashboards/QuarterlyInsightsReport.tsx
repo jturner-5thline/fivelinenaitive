@@ -3,6 +3,7 @@ import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2, Slide
 import { useCompanyDashboardConfig } from '@/hooks/useCompanyDashboardConfig';
 import { toast as sonnerToast } from 'sonner';
 import { useAsanaGoals, type AsanaGoalRow } from '@/hooks/useAsanaGoals';
+import { useAsanaPortfolioProjects } from '@/hooks/useAsanaPortfolioProjects';
 import { useAsanaGoalFilterPrefs } from '@/hooks/useAsanaGoalFilterPrefs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminRole } from '@/hooks/useAdminRole';
@@ -1269,71 +1270,23 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
 
 function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetState }) {
   const preparedBy = s.authors[0] || 'James Turner';
-  const updateInit = (id: string, patch: Partial<Initiative>) => set(prev => ({ ...prev, initiatives: prev.initiatives.map(init => init.id === id ? { ...init, ...patch } : init) }));
-  const removeInit = (id: string) => set(prev => ({ ...prev, initiatives: prev.initiatives.filter(init => init.id !== id) }));
-  const addInit = () => set(prev => ({ ...prev, initiatives: [...prev.initiatives, { id: uid(), title: '', status: 'On Track', progress: 0, owner: preparedBy }] }));
+  // Initiatives now sourced live from a specific Asana Portfolio.
+  // Portfolio: https://app.asana.com/0/portfolio/1212153040575217/1212153276296112
+  const PORTFOLIO_GID = '1212153276296112';
+  const { projects, loading, error, lastSyncedAt, configured, refresh } = useAsanaPortfolioProjects(PORTFOLIO_GID);
 
-  // Live Asana goals — used to source the Owner display & dropdown options so they
-  // reflect the latest Asana state automatically when the goals data refreshes.
-  const { goals: asanaGoals, lastSyncedAt } = useAsanaGoals();
-  const norm = (v: string) => v.trim().toLowerCase().replace(/\s+/g, ' ');
-
-  // Resolve a "live" owner per initiative by best-effort matching against Asana goals.
-  // 1. Try exact title match (normalized).
-  // 2. Otherwise, if the stored owner matches an Asana goal owner, keep it.
-  // 3. Else fall back to the locally stored owner.
-  const resolveLiveOwner = (init: Initiative): string => {
-    if (!asanaGoals || asanaGoals.length === 0) return init.owner;
-    const titleKey = norm(init.title || '');
-    if (titleKey) {
-      const byTitle = asanaGoals.find(g => norm(g.title || '') === titleKey);
-      if (byTitle?.owner) return byTitle.owner;
-      const byPartial = asanaGoals.find(g => {
-        const t = norm(g.title || '');
-        return t && (t.includes(titleKey) || titleKey.includes(t));
-      });
-      if (byPartial?.owner) return byPartial.owner;
-    }
-    return init.owner;
-  };
-
-  // Live owners set restricted to the active team allowlist; used for the filter dropdown.
-  const liveOwnerOptions = useMemo(() => {
-    const fromAsana = new Set<string>();
-    for (const g of asanaGoals || []) {
-      if (g.owner && ACTIVE_INITIATIVE_OWNERS.includes(g.owner)) fromAsana.add(g.owner);
-    }
-    // Always include owners that currently appear on initiatives (after live resolution)
-    // so the filter never hides a row that's actually on screen.
-    for (const init of s.initiatives) {
-      const live = resolveLiveOwner(init);
-      if (live && ACTIVE_INITIATIVE_OWNERS.includes(live)) fromAsana.add(live);
-    }
-    // Preserve canonical ordering from ACTIVE_INITIATIVE_OWNERS.
-    return ACTIVE_INITIATIVE_OWNERS.filter(o => fromAsana.has(o));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [asanaGoals, s.initiatives]);
-
-  const initsWithLiveOwner = useMemo(
-    () => s.initiatives.map(init => ({ ...init, _liveOwner: resolveLiveOwner(init) })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [s.initiatives, asanaGoals],
-  );
-
-  // Always scope visible initiatives to the currently selected Prepared By
-  // user, so the Initiatives module mirrors the same owner-based logic used
-  // by Goals in this report context.
   const normName = (v: string) => v.trim().toLowerCase().replace(/\s+/g, ' ');
   const preparedByKey = normName(preparedBy);
-  const filteredInits = useMemo(
-    () => initsWithLiveOwner.filter(init => normName(init._liveOwner || init.owner || '') === preparedByKey),
-    [initsWithLiveOwner, preparedByKey],
+
+  const ownedProjects = useMemo(
+    () => projects.filter(p => p.owner && normName(p.owner) === preparedByKey),
+    [projects, preparedByKey],
   );
   const counts = useMemo(() => ({
-    onTrack: filteredInits.filter(init => init.status === 'On Track').length,
-    atRisk: filteredInits.filter(init => init.status === 'At Risk').length,
-    offTrack: filteredInits.filter(init => init.status === 'Off Track').length,
-  }), [filteredInits]);
+    onTrack: ownedProjects.filter(p => p.status === 'On Track').length,
+    atRisk: ownedProjects.filter(p => p.status === 'At Risk').length,
+    offTrack: ownedProjects.filter(p => p.status === 'Off Track').length,
+  }), [ownedProjects]);
 
   const thStyle: React.CSSProperties = { textAlign: 'left', fontSize: 9, fontWeight: 700, color: 'rgba(140,175,200,0.5)', letterSpacing: '.08em', textTransform: 'uppercase', padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)' };
   const tdStyle: React.CSSProperties = { padding: '6px 8px', fontSize: 12, color: TEXT_PRIMARY, verticalAlign: 'middle', borderBottom: '1px solid rgba(255,255,255,0.04)' };
@@ -1341,111 +1294,94 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
   return (
     <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
-        <SectionTitle right={<Btn icon={Plus} variant="ghost" onClick={addInit}>Add Goal</Btn>}>Initiatives</SectionTitle>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: TEXT_LABEL }}>Owner</span>
-            <select
-              value={s.initiativeOwnerFilter}
-              onChange={e => set(prev => ({ ...prev, initiativeOwnerFilter: e.target.value }))}
-              style={{ ...selectStyle, width: 180 }}
-              title={lastSyncedAt ? `Owners sourced from Asana — last synced ${new Date(lastSyncedAt).toLocaleString()}` : 'Owners sourced from Asana'}
-            >
-              <option value="All">All Owners</option>
-              {(liveOwnerOptions.length > 0 ? liveOwnerOptions : ACTIVE_INITIATIVE_OWNERS).map(person => (
-                <option key={person} value={person}>{person}</option>
-              ))}
-            </select>
+        <SectionTitle right={(
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {lastSyncedAt && (
+              <span style={{ fontSize: 10, color: TEXT_LABEL }}>
+                Synced {new Date(lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+            <Btn icon={RefreshCw} variant="ghost" onClick={() => { void refresh(); }}>
+              {loading ? 'Syncing…' : 'Sync'}
+            </Btn>
           </div>
-          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
-            <Pill tone="pos">On Track · {counts.onTrack}</Pill>
-            <Pill tone="neu">At Risk · {counts.atRisk}</Pill>
+        )}>Initiatives</SectionTitle>
+
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 10 }}>
+          Sourced from Asana portfolio · Owner: <span style={{ color: TEXT_PRIMARY, fontWeight: 600 }}>{preparedBy}</span>
+          <span style={{ marginLeft: 8 }}>
+            <Pill tone="pos">On Track · {counts.onTrack}</Pill>{' '}
+            <Pill tone="neu">At Risk · {counts.atRisk}</Pill>{' '}
             <Pill tone="neg">Off Track · {counts.offTrack}</Pill>
-          </div>
+          </span>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Title</th>
-                <th style={{ ...thStyle, width: 130 }}>Status</th>
-                <th style={{ ...thStyle, width: 200 }}>Progress</th>
-                <th style={{ ...thStyle, width: 170 }}>Owner</th>
-                <th style={{ ...thStyle, width: 40 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredInits.map(init => (
-                <tr key={init.id}>
-                  <td style={tdStyle}>
-                    <input value={init.title} onChange={e => updateInit(init.id, { title: e.target.value })} placeholder="Initiative or Asana portfolio link" style={inputStyle} />
-                  </td>
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <select value={init.status} onChange={e => updateInit(init.id, { status: e.target.value })} style={selectStyle}>
-                        {['On Track', 'At Risk', 'Off Track'].map(option => <option key={option} value={option}>{option}</option>)}
-                      </select>
-                      <Pill tone={statusTone(init.status)}>{init.status}</Pill>
-                    </div>
-                  </td>
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={init.progress}
-                        onChange={e => updateInit(init.id, { progress: Math.max(0, Math.min(100, Number(e.target.value) || 0)) })}
-                        style={{ ...inputStyle, width: 60 }}
-                      />
-                      <div style={{ flex: 1, height: 6, borderRadius: RADIUS_PILL, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                        <div
-                          style={{
-                            width: `${init.progress}%`,
-                            height: '100%',
-                            background: init.status === 'Off Track'
-                              ? 'linear-gradient(90deg,#a23838,#f08585)'
-                              : init.status === 'At Risk'
-                                ? 'linear-gradient(90deg,#a37a16,#f0c84a)'
-                                : 'linear-gradient(90deg,#1a8552,#4de8a0)',
-                            transition: 'width .3s',
-                          }}
-                        />
-                      </div>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: TEXT_MUTED, fontVariantNumeric: 'tabular-nums', minWidth: 32, textAlign: 'right' }}>{init.progress}%</span>
-                    </div>
-                  </td>
-                  <td style={tdStyle}>
-                    <span
-                      title={lastSyncedAt
-                        ? `To change the owner, update this goal in Asana (last synced ${new Date(lastSyncedAt).toLocaleString()})`
-                        : 'To change the owner, update this goal in Asana'}
-                      style={{
-                        display: 'inline-block',
-                        padding: '4px 8px',
-                        color: TEXT_PRIMARY,
-                        fontSize: 12,
-                        cursor: 'help',
-                      }}
-                    >
-                      {init._liveOwner || init.owner || <span style={{ color: TEXT_LABEL }}>—</span>}
-                    </span>
-                  </td>
-                  <td style={tdStyle}>
-                    <Btn icon={Trash2} variant="danger" ariaLabel="Remove initiative" onClick={() => removeInit(init.id)} />
-                  </td>
-                </tr>
-              ))}
-              {filteredInits.length === 0 && (
+        {error && (
+          <div style={{ padding: '10px 12px', fontSize: 11, color: '#f08585', background: 'rgba(220,80,80,0.08)', border: '1px solid rgba(220,80,80,0.2)', borderRadius: 8, marginBottom: 10 }}>
+            Asana sync error: {error}
+          </div>
+        )}
+
+        {!configured && !loading ? (
+          <div style={{ padding: '24px 18px', textAlign: 'center', color: TEXT_MUTED, fontSize: 12, border: '1px dashed rgba(120,170,255,0.18)', borderRadius: RADIUS, background: 'rgba(255,255,255,0.02)' }}>
+            <div style={{ fontWeight: 600, color: TEXT_PRIMARY, marginBottom: 4 }}>Asana not connected</div>
+            <div>Connect Asana to sync portfolio initiatives.</div>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+              <thead>
                 <tr>
-                  <td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: TEXT_LABEL, padding: 20 }}>No initiatives match the selected owner.</td>
+                  <th style={{ ...thStyle, width: 36 }}>#</th>
+                  <th style={thStyle}>Title</th>
+                  <th style={{ ...thStyle, width: 130 }}>Status</th>
+                  <th style={{ ...thStyle, width: 170 }}>Owner</th>
+                  <th style={{ ...thStyle, width: 120 }}>Due Date</th>
+                  <th style={{ ...thStyle, width: 70 }}>Source</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {ownedProjects.map((p, idx) => (
+                  <tr key={p.gid}>
+                    <td style={{ ...tdStyle, color: TEXT_LABEL, fontVariantNumeric: 'tabular-nums' }}>{idx + 1}</td>
+                    <td style={tdStyle}>
+                      {p.permalink_url ? (
+                        <a href={p.permalink_url} target="_blank" rel="noopener noreferrer"
+                          style={{ color: TEXT_PRIMARY, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#7cc8f0'; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = TEXT_PRIMARY; }}>
+                          {p.name}
+                          <ExternalLink size={11} style={{ opacity: 0.55 }} />
+                        </a>
+                      ) : (
+                        <span>{p.name}</span>
+                      )}
+                    </td>
+                    <td style={tdStyle}>
+                      <Pill tone={statusTone(p.status === 'Off Track' ? 'Off Track' : p.status === 'At Risk' ? 'At Risk' : p.status === 'On Track' ? 'On Track' : 'On Track')}>{p.status}</Pill>
+                    </td>
+                    <td style={{ ...tdStyle, color: TEXT_PRIMARY }}>{p.owner || <span style={{ color: TEXT_LABEL }}>—</span>}</td>
+                    <td style={{ ...tdStyle, color: TEXT_PRIMARY, fontVariantNumeric: 'tabular-nums' }}>
+                      {p.dueOn || <span style={{ color: TEXT_LABEL }}>—</span>}
+                    </td>
+                    <td style={tdStyle}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', padding: '2px 7px', borderRadius: RADIUS_PILL, color: '#f0a45a', background: 'rgba(240,140,40,0.10)', border: '1px solid rgba(240,140,40,0.22)' }}>
+                        Asana
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {ownedProjects.length === 0 && !loading && (
+                  <tr>
+                    <td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: TEXT_LABEL, padding: 20 }}>
+                      No Asana portfolio initiatives owned by {preparedBy}.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </Card>
   );
