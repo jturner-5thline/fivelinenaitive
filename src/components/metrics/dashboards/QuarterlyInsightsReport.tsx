@@ -2240,6 +2240,10 @@ export function QuarterlyReportPrintStyles() {
       .qir-unified-report .qir-unified-section .glass-module::before {
         display: none !important;
       }
+      .qir-unified-report .qir-unified-section .glass-module > div[style*="position: absolute"],
+      .qir-unified-report .qir-unified-section .glass-module > div:first-child[style*="inset"] {
+        display: none !important;
+      }
       @media print {
         body { background: #ffffff !important; }
         .qir-no-print { display: none !important; }
