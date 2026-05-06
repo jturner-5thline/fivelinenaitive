@@ -2378,6 +2378,11 @@ function MetricsInner() {
             </div>
           </StickyDashboardHeader>
 
+          {/* AI period-over-period summary (management-snapshot dashboards only) */}
+          {selectedDashboard === 'management-snapshot' && (
+            <InsightsAISummaryCard />
+          )}
+
           {/* Dashboard Content - always show pre-built dashboards */}
           <EditableDashboardWrapper isEditMode={isEditMode} onCardEdit={() => { /* edit only via explicit pencil button */ }}>
             {selectedDashboard === 'management-snapshot' && (
