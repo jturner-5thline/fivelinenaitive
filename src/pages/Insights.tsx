@@ -2350,10 +2350,9 @@ function MetricsInner() {
                   Pipeline performance analytics powered by real deal data
                 </p>
                 <SyncStatusBar />
-                {selectedDashboard === 'management-review' && <ActivePeriodLabel />}
               </div>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
               {selectedDashboard === 'management-snapshot' && (
                 <InsightsTimeframePicker />
               )}
@@ -2371,11 +2370,10 @@ function MetricsInner() {
                       aria-label="Preview report Cover"
                       aria-haspopup="dialog"
                       aria-expanded={coverPreviewOpen}
-                      className="h-9 gap-1.5"
+                      className="h-9 w-9 p-0"
                       onClick={() => setCoverPreviewOpen(true)}
                     >
                       <FileText className="h-4 w-4" />
-                      <span className="hidden sm:inline">Cover</span>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>Preview report front matter (Cover)</TooltipContent>
