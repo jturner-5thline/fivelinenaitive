@@ -8,6 +8,7 @@ import {
   LineChart, Line, ComposedChart, Legend, Cell, ReferenceLine,
 } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
+import { InsightsDrilldownDrawer, type DrilldownContext, type DrilldownColumn } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 import {
   useFinServTotalRevenue,
   useFinServQuarterlyProfits,
@@ -110,6 +111,33 @@ function VarianceIndicator({ value, suffix = '' }: { value: number; suffix?: str
 export function FinServFinancialMetricsDashboard() {
   const quarterOpts = useMemo(() => buildQuarterOptions(8), []);
   const [selectedQuarter, setSelectedQuarter] = useState<QuarterOption>(getCurrentQuarter());
+  const [drill, setDrill] = useState<{
+    context: DrilldownContext;
+    columns: DrilldownColumn[];
+    rows: Array<Record<string, unknown>>;
+  } | null>(null);
+
+  const openSinglePoint = (
+    sourceLabel: string,
+    label: string,
+    metricName: string,
+    rawValue: number,
+    formatter: (v: number) => string,
+    extraRows: Array<{ metric: string; value: string }> = [],
+  ) => {
+    setDrill({
+      context: { sourceId: `finserv:${sourceLabel}`, sourceLabel, selection: label, periodLabel: selectedQuarter.label },
+      columns: [
+        { key: 'metric', label: 'Field' },
+        { key: 'value', label: 'Value', align: 'right' },
+      ],
+      rows: [
+        { metric: 'Period', value: label },
+        { metric: metricName, value: formatter(rawValue) },
+        ...extraRows,
+      ],
+    });
+  };
 
   // Data hooks
   const totalRev = useFinServTotalRevenue(selectedQuarter);
@@ -120,6 +148,7 @@ export function FinServFinancialMetricsDashboard() {
   const activeClients = useFinServActiveClients();
 
   return (
+    <>
     <div className="space-y-6">
       {/* Quarter selector */}
       <div className="flex items-center gap-3">
@@ -178,7 +207,14 @@ export function FinServFinancialMetricsDashboard() {
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
                   <Tooltip formatter={(v: number) => [fmtCurrencyFull(v), 'Revenue']} />
-                  <Bar dataKey="amount" fill="hsl(var(--primary))" name="Revenue" shape={createGlassBarShape({ radius: 4 })} />
+                  <Bar
+                    dataKey="amount"
+                    fill="hsl(var(--primary))"
+                    name="Revenue"
+                    shape={createGlassBarShape({ radius: 4 })}
+                    cursor="pointer"
+                    onClick={(d: any) => openSinglePoint('Total Revenue', d?.month, 'Revenue', Number(d?.amount) || 0, fmtCurrencyFull)}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -202,7 +238,14 @@ export function FinServFinancialMetricsDashboard() {
                     <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
                     <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
                     <Tooltip formatter={(v: number) => [fmtCurrencyFull(v), 'Gross Profit']} />
-                    <Bar dataKey="grossProfit" fill="hsl(var(--chart-2))" name="Gross Profit" shape={createGlassBarShape({ radius: 4 })} />
+                    <Bar
+                      dataKey="grossProfit"
+                      fill="hsl(var(--chart-2))"
+                      name="Gross Profit"
+                      shape={createGlassBarShape({ radius: 4 })}
+                      cursor="pointer"
+                      onClick={(d: any) => openSinglePoint('Gross Profit $', d?.quarter, 'Gross Profit', Number(d?.grossProfit) || 0, fmtCurrencyFull)}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -224,7 +267,14 @@ export function FinServFinancialMetricsDashboard() {
                     <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
                     <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} tick={{ fontSize: 10 }} domain={[0, 100]} />
                     <Tooltip formatter={(v: number) => [fmtPct(v), 'Gross Margin']} />
-                    <Bar dataKey="grossMargin" fill="hsl(160, 65%, 50%)" name="Gross Margin %" shape={createGlassBarShape({ radius: 4 })} />
+                    <Bar
+                      dataKey="grossMargin"
+                      fill="hsl(160, 65%, 50%)"
+                      name="Gross Margin %"
+                      shape={createGlassBarShape({ radius: 4 })}
+                      cursor="pointer"
+                      onClick={(d: any) => openSinglePoint('Gross Profit Margin %', d?.quarter, 'Gross Margin', Number(d?.grossMargin) || 0, fmtPct)}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -254,7 +304,14 @@ export function FinServFinancialMetricsDashboard() {
                     />
                     <Tooltip formatter={(v: number) => [fmtCurrencyFull(v), 'Operating Profit']} />
                     <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeWidth={0.75} />
-                    <Bar dataKey="operatingProfit" fill="hsl(var(--primary))" name="Operating Profit" shape={createGlassBarShape({ radius: 4 })}>
+                    <Bar
+                      dataKey="operatingProfit"
+                      fill="hsl(var(--primary))"
+                      name="Operating Profit"
+                      shape={createGlassBarShape({ radius: 4 })}
+                      cursor="pointer"
+                      onClick={(d: any) => openSinglePoint('Operating Profit $', d?.quarter, 'Operating Profit', Number(d?.operatingProfit) || 0, fmtCurrencyFull)}
+                    >
                       {profits.quarters.map((entry, i) => (
                         <Cell key={i} fill={entry.operatingProfit >= 0 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'} />
                       ))}
@@ -281,7 +338,14 @@ export function FinServFinancialMetricsDashboard() {
                     <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} tick={{ fontSize: 10 }} />
                     <Tooltip formatter={(v: number) => [fmtPct(v), 'Operating Margin']} />
                     <ReferenceLine y={0} stroke="hsl(var(--border))" />
-                    <Bar dataKey="operatingMargin" fill="hsl(35, 85%, 55%)" name="Operating Margin %" shape={createGlassBarShape({ radius: 4 })}>
+                    <Bar
+                      dataKey="operatingMargin"
+                      fill="hsl(35, 85%, 55%)"
+                      name="Operating Margin %"
+                      shape={createGlassBarShape({ radius: 4 })}
+                      cursor="pointer"
+                      onClick={(d: any) => openSinglePoint('Operating Margin %', d?.quarter, 'Operating Margin', Number(d?.operatingMargin) || 0, fmtPct)}
+                    >
                       {profits.quarters.map((entry, i) => (
                         <Cell key={i} fill={entry.operatingMargin >= 0 ? 'hsl(35, 85%, 55%)' : 'hsl(var(--destructive))'} />
                       ))}
@@ -310,7 +374,14 @@ export function FinServFinancialMetricsDashboard() {
                   <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
                   <Tooltip formatter={(v: number) => [fmtCurrencyFull(v), 'Free Cash Flow']} />
                   <ReferenceLine y={0} stroke="hsl(var(--border))" />
-                  <Bar dataKey="value" fill="hsl(var(--primary))" name="Cash Flow" shape={createGlassBarShape({ radius: 4 })}>
+                  <Bar
+                    dataKey="value"
+                    fill="hsl(var(--primary))"
+                    name="Cash Flow"
+                    shape={createGlassBarShape({ radius: 4 })}
+                    cursor="pointer"
+                    onClick={(d: any) => openSinglePoint('FinServ Cashflow', d?.month, 'Free Cash Flow', Number(d?.value) || 0, fmtCurrencyFull)}
+                  >
                     {cashflow.points.map((entry, i) => (
                       <Cell key={i} fill={entry.value >= 0 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'} />
                     ))}
@@ -341,7 +412,14 @@ export function FinServFinancialMetricsDashboard() {
                     name === 'Trend' ? v : v,
                     name,
                   ]} />
-                  <Bar dataKey="count" fill="hsl(var(--primary))" name="Active Clients" shape={createGlassBarShape({ radius: 4 })} />
+                  <Bar
+                    dataKey="count"
+                    fill="hsl(var(--primary))"
+                    name="Active Clients"
+                    shape={createGlassBarShape({ radius: 4 })}
+                    cursor="pointer"
+                    onClick={(d: any) => openSinglePoint('Active Clients', d?.month, 'Active Clients', Number(d?.count) || 0, (v) => `${v}`)}
+                  />
                   <Line type="monotone" dataKey="count" stroke="hsl(var(--chart-2))" strokeWidth={1} dot={{ r: 3 }} name="Trend" />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -379,8 +457,41 @@ export function FinServFinancialMetricsDashboard() {
                   />
                   <Legend />
                   <ReferenceLine y={0} stroke="hsl(var(--border))" />
-                  <Bar dataKey="current" fill="hsl(var(--primary))" name={revenueByClient.selectedMonthLabel} shape={createGlassBarShape({ radius: 4, topSegmentKey: 'current', dataKey: 'current' })} />
-                  <Bar dataKey="variance" name="Variance" shape={createGlassBarShape({ radius: 4 })}>
+                  <Bar
+                    dataKey="current"
+                    fill="hsl(var(--primary))"
+                    name={revenueByClient.selectedMonthLabel}
+                    shape={createGlassBarShape({ radius: 4, topSegmentKey: 'current', dataKey: 'current' })}
+                    cursor="pointer"
+                    onClick={(d: any) => openSinglePoint(
+                      'Revenue Change by Client',
+                      d?.client,
+                      revenueByClient.selectedMonthLabel,
+                      Number(d?.current) || 0,
+                      fmtCurrencyFull,
+                      [
+                        { metric: revenueByClient.priorMonthLabel, value: fmtCurrencyFull(Number(d?.prior) || 0) },
+                        { metric: 'Variance', value: fmtCurrencyFull(Number(d?.variance) || 0) },
+                      ],
+                    )}
+                  />
+                  <Bar
+                    dataKey="variance"
+                    name="Variance"
+                    shape={createGlassBarShape({ radius: 4 })}
+                    cursor="pointer"
+                    onClick={(d: any) => openSinglePoint(
+                      'Revenue Change by Client',
+                      d?.client,
+                      'Variance',
+                      Number(d?.variance) || 0,
+                      fmtCurrencyFull,
+                      [
+                        { metric: revenueByClient.selectedMonthLabel, value: fmtCurrencyFull(Number(d?.current) || 0) },
+                        { metric: revenueByClient.priorMonthLabel, value: fmtCurrencyFull(Number(d?.prior) || 0) },
+                      ],
+                    )}
+                  >
                     {revenueByClient.clients.slice(0, 15).map((entry, i) => (
                       <Cell key={i} fill={entry.variance >= 0 ? 'hsl(160, 65%, 50%)' : 'hsl(var(--destructive))'} />
                     ))}
@@ -435,5 +546,14 @@ export function FinServFinancialMetricsDashboard() {
         <PlaceholderWidget title="Profit per Hour" />
       </div>
     </div>
+    <InsightsDrilldownDrawer
+      open={!!drill}
+      onClose={() => setDrill(null)}
+      context={drill?.context ?? null}
+      columns={drill?.columns ?? []}
+      rows={drill?.rows ?? []}
+      emptyHint="No detail records available for this datapoint."
+    />
+    </>
   );
 }

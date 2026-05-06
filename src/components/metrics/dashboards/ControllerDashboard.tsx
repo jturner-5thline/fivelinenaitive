@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -13,6 +13,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
+import { InsightsDrilldownDrawer, type DrilldownContext, type DrilldownColumn } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 
 const DEBT_REALM_ID = '193514877331929';
 const FINSERV_REALM_ID = '9341451968897660';
@@ -180,7 +181,43 @@ export function ControllerDashboard() {
   const firmLiquidity = useFirmLiquidity();
   const creditCards = useCreditCardBalances();
 
+  // Universal drilldown state
+  const [drill, setDrill] = useState<{
+    context: DrilldownContext;
+    columns: DrilldownColumn[];
+    rows: Array<Record<string, unknown>>;
+  } | null>(null);
+
+  const openClientDrill = (label: string, sourceLabel: string, value: number) => {
+    setDrill({
+      context: { sourceId: 'controller:client-revenue', sourceLabel, selection: label },
+      columns: [
+        { key: 'metric', label: 'Field' },
+        { key: 'value', label: 'Value', align: 'right' },
+      ],
+      rows: [
+        { metric: 'Client', value: label },
+        { metric: 'Total Revenue (TTM)', value: formatCurrencyFull(value) },
+      ],
+    });
+  };
+
+  const openAccountDrill = (label: string, sourceLabel: string, value: number) => {
+    setDrill({
+      context: { sourceId: 'controller:account-balance', sourceLabel, selection: label },
+      columns: [
+        { key: 'metric', label: 'Field' },
+        { key: 'value', label: 'Value', align: 'right' },
+      ],
+      rows: [
+        { metric: 'Account', value: label },
+        { metric: 'Current Balance', value: formatCurrencyFull(value) },
+      ],
+    });
+  };
+
   return (
+    <>
     <div className="space-y-6">
       {/* Revenue by client: FinServ + Debt side-by-side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -208,7 +245,13 @@ export function ControllerDashboard() {
                   tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                 />
                 <Tooltip content={<CurrencyTooltip />} />
-                <Bar dataKey="revenue" fill="hsl(var(--primary))" shape={createGlassBarShape({ radius: 3 })} />
+                <Bar
+                  dataKey="revenue"
+                  fill="hsl(var(--primary))"
+                  shape={createGlassBarShape({ radius: 3 })}
+                  cursor="pointer"
+                  onClick={(d: any) => openClientDrill(d?.name, 'FinServ Revenue by Client', Number(d?.revenue) || 0)}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -238,7 +281,13 @@ export function ControllerDashboard() {
                   tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                 />
                 <Tooltip content={<CurrencyTooltip />} />
-                <Bar dataKey="revenue" fill="hsl(var(--chart-2))" shape={createGlassBarShape({ radius: 3 })} />
+                <Bar
+                  dataKey="revenue"
+                  fill="hsl(var(--chart-2))"
+                  shape={createGlassBarShape({ radius: 3 })}
+                  cursor="pointer"
+                  onClick={(d: any) => openClientDrill(d?.name, 'Debt Revenue by Client', Number(d?.revenue) || 0)}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -266,7 +315,13 @@ export function ControllerDashboard() {
                 tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
               />
               <Tooltip content={<CurrencyTooltip />} />
-              <Bar dataKey="balance" fill="hsl(var(--chart-3))" shape={createGlassBarShape({ radius: 3 })} />
+              <Bar
+                dataKey="balance"
+                fill="hsl(var(--chart-3))"
+                shape={createGlassBarShape({ radius: 3 })}
+                cursor="pointer"
+                onClick={(d: any) => openAccountDrill(d?.name, 'Credit Card Balances', Number(d?.balance) || 0)}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -297,11 +352,26 @@ export function ControllerDashboard() {
                 tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
               />
               <Tooltip content={<CurrencyTooltip />} />
-              <Bar dataKey="balance" fill="hsl(var(--chart-4))" shape={createGlassBarShape({ radius: 3 })} />
+              <Bar
+                dataKey="balance"
+                fill="hsl(var(--chart-4))"
+                shape={createGlassBarShape({ radius: 3 })}
+                cursor="pointer"
+                onClick={(d: any) => openAccountDrill(d?.name, 'Firm Liquidity', Number(d?.balance) || 0)}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </ChartCard>
     </div>
+    <InsightsDrilldownDrawer
+      open={!!drill}
+      onClose={() => setDrill(null)}
+      context={drill?.context ?? null}
+      columns={drill?.columns ?? []}
+      rows={drill?.rows ?? []}
+      emptyHint="No detail records available."
+    />
+    </>
   );
 }
