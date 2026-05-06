@@ -1407,7 +1407,7 @@ function selectToolsWithScopes(
     // Always-available deal write actions (gated by confirmation card or low-risk auto-execute).
     "update_deal_status", "update_deal_stage", "update_deal_fields", "add_deal_note", "update_lender_status",
     // Always-available comms context (synced inbox, calendar, recorded meetings).
-    "search_emails", "get_upcoming_events", "get_recent_meetings",
+    "search_emails", "get_upcoming_events", "search_calendar_events", "get_recent_meetings",
     // Always-available email deep-dive (threads, drafts, sent, scheduled, deal-linked).
     "get_email_thread", "get_deal_emails", "list_email_drafts", "get_sent_emails", "get_scheduled_emails",
     // Always-available task & follow-up context.
