@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2, SlidersHorizontal } from 'lucide-react';
+import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2, SlidersHorizontal, Save as SaveIcon, Loader2 } from 'lucide-react';
+import { useCompanyDashboardConfig } from '@/hooks/useCompanyDashboardConfig';
+import { toast as sonnerToast } from 'sonner';
 import { useAsanaGoals, type AsanaGoalRow } from '@/hooks/useAsanaGoals';
 import { useAsanaGoalFilterPrefs } from '@/hooks/useAsanaGoalFilterPrefs';
 import { useAuth } from '@/contexts/AuthContext';
@@ -318,32 +320,57 @@ export function createQuarterlyReportSeed(overrides?: Partial<ReportState>): Rep
 }
 
 export function useQuarterlyReportState(initialState?: ReportState, storageKey?: string) {
-  const buildInitial = (): ReportState => {
-    const base = initialState ? createQuarterlyReportSeed(initialState) : cloneSeed();
-    if (typeof window === 'undefined' || !storageKey) return base;
-    try {
-      const raw = window.localStorage.getItem(storageKey);
-      if (!raw) return base;
-      const saved = JSON.parse(raw) as Partial<ReportState>;
-      return { ...base, ...saved } as ReportState;
-    } catch {
-      return base;
-    }
-  };
-  const [state, setState] = useState<ReportState>(buildInitial);
+  const seed = useMemo<ReportState>(
+    () => (initialState ? createQuarterlyReportSeed(initialState) : cloneSeed()),
+    // intentionally compute once per mount; downstream callers pass a stable seed
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  // Persist company-wide via company_settings.fpa_dashboard_config.
+  // Falls back to in-memory state when no storageKey is provided.
+  const configKey = storageKey || 'naitive.quarterlyReport.adhoc';
+  const { config, saveConfig, isLoaded, canEdit } = useCompanyDashboardConfig<ReportState>(
+    configKey,
+    seed,
+    { allowAllMembers: true },
+  );
+  // Local mirror so typing stays snappy; flushed to company config on change (debounced inside hook)
+  const [state, setStateLocal] = useState<ReportState>(seed);
+  // Hydrate from saved config once it loads — guard with isLoaded so we never
+  // overwrite saved data with the seed default.
+  const hydratedRef = useRef(false);
   useEffect(() => {
-    if (typeof window === 'undefined' || !storageKey) return;
-    try { window.localStorage.setItem(storageKey, JSON.stringify(state)); } catch {}
-  }, [state, storageKey]);
+    if (!isLoaded || hydratedRef.current) return;
+    setStateLocal(config);
+    hydratedRef.current = true;
+  }, [isLoaded, config]);
+
+  const setState: React.Dispatch<React.SetStateAction<ReportState>> = (updater) => {
+    setStateLocal(prev => {
+      const next = typeof updater === 'function'
+        ? (updater as (p: ReportState) => ReportState)(prev)
+        : updater;
+      // Only persist after initial hydration to avoid clobbering with defaults
+      if (hydratedRef.current) saveConfig(next);
+      return next;
+    });
+  };
+
   const reset = () => {
-    const fresh = initialState ? createQuarterlyReportSeed(initialState) : cloneSeed();
-    setState(fresh);
-    if (typeof window !== 'undefined' && storageKey) {
-      try { window.localStorage.removeItem(storageKey); } catch {}
+    setStateLocal(seed);
+    if (hydratedRef.current) saveConfig(seed);
+    sonnerToast.success('Report reset to defaults');
+  };
+  const save = () => {
+    if (!canEdit) {
+      sonnerToast.error('You do not have permission to save this report');
+      return;
     }
+    saveConfig(state);
+    sonnerToast.success('Report saved');
   };
   const print = () => { try { window.print(); } catch {} };
-  return { state, setState, reset, print };
+  return { state, setState, reset, save, print, isLoaded, canEdit };
 }
 
 function formatKPI(value: string, format: KPIFormat): string {
