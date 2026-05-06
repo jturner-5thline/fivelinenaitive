@@ -1645,59 +1645,56 @@ function MetricsInner() {
     return [...SNAPSHOT_CARD_IDS, ...subIds, ...(includeExec ? ['executive-dashboard'] : []), ...widgetIds];
   }, [widgets, hiddenSnapshotCards, includeExec]);
 
-  // Default placement — mirrors the 5th Line Financial Model PDF layout:
-  //   1) Top "Key Stats" summary band (Total Revenue KPI + Monthly Revenue chart)
-  //   2) Entity revenue tiles (Debt / FinServ / Total)
-  //   3) Operational row (signings + outstanding AR)
-  //   4) Profit summary tiles
-  //   5) Mid charts band (stacked revenue + AR detail)
-  //   6) "Next 3 Months" — Debt pipeline KPI row
-  //   7) "Next 3 Months" — FinServ pipeline KPI row
-  //   8) Signed-deal / status tables
-  //   9) Profit charts
+  // Default placement — mirrors the reference layout image:
+  //   • Top-left large 2×2 Key Stats summary block
+  //   • Top-right two small chart cards side-by-side
+  //   • Mid-right wide chart spanning the right section
+  //   • Bottom-left smaller table/list + medium chart adjacent
+  //   • Bottom-right wide chart spanning the right section
+  // Additional existing widgets are preserved below the primary band.
   const unifiedLayoutDefaults = useMemo(() => {
     const defaults: import('@/hooks/useGridLayout').GridLayoutItem[] = [
-      // 1) KEY STATS — top summary band
-      { i: 'total-revenue-detail', x: 0, y: 0,  w: 6, h: 4, minW: 4, minH: 3 },
-      { i: 'revenue-by-month',     x: 6, y: 0,  w: 6, h: 4, minW: 5, minH: 4 },
+      // === PRIMARY REFERENCE BAND ===
+      // Top-left: large Key Stats summary block (≈ 2 cols × 2 rows)
+      { i: 'total-revenue-detail', x: 0, y: 0, w: 6, h: 6, minW: 4, minH: 4 },
 
-      // 2) Entity revenue tiles ("Debt Solutions" / "FinServ" / Total in PDF)
-      { i: 'debt-revenue',         x: 0, y: 4,  w: 4, h: 3, minW: 3, minH: 3 },
-      { i: 'finserv-revenue',      x: 4, y: 4,  w: 4, h: 3, minW: 3, minH: 3 },
-      { i: 'total-revenue',        x: 8, y: 4,  w: 4, h: 3, minW: 3, minH: 3 },
+      // Top-right: two small chart cards side-by-side
+      { i: 'debt-revenue',    x: 6, y: 0, w: 3, h: 3, minW: 3, minH: 3 },
+      { i: 'finserv-revenue', x: 9, y: 0, w: 3, h: 3, minW: 3, minH: 3 },
 
-      // 3) Operational row (signings + AR — analog of PDF's Liquidity row)
-      { i: 'clients-signed-debt',    x: 0, y: 7, w: 4, h: 2, minW: 3, minH: 2 },
-      { i: 'clients-signed-finserv', x: 4, y: 7, w: 4, h: 2, minW: 3, minH: 2 },
-      { i: 'outstanding-ar',         x: 8, y: 7, w: 4, h: 2, minW: 3, minH: 2 },
+      // Mid-right: wide chart spanning the full right section width
+      { i: 'revenue-by-month', x: 6, y: 3, w: 6, h: 3, minW: 5, minH: 3 },
 
-      // 4) Profit summary tiles
-      { i: 'debt-profit',          x: 0, y: 9,  w: 6, h: 3, minW: 3, minH: 3 },
-      { i: 'finserv-profit',       x: 6, y: 9,  w: 6, h: 3, minW: 3, minH: 3 },
+      // Bottom-left: smaller table/list area + medium chart adjacent
+      { i: 'outstanding-ar',         x: 0, y: 6, w: 3, h: 3, minW: 3, minH: 2 },
+      { i: 'total-revenue',          x: 3, y: 6, w: 3, h: 3, minW: 3, minH: 3 },
+      { i: 'clients-signed-debt',    x: 0, y: 9, w: 3, h: 3, minW: 3, minH: 2 },
+      { i: 'clients-signed-finserv', x: 3, y: 9, w: 3, h: 3, minW: 3, minH: 2 },
 
-      // 5) Mid charts band — stacked revenue + AR detail (analog of PDF charts column)
-      { i: 'rev-debt',                  x: 0, y: 12, w: 4, h: 6, minW: 3, minH: 4 },
-      { i: 'rev-finserv',               x: 4, y: 12, w: 4, h: 6, minW: 3, minH: 4 },
-      { i: 'sd-outstanding-ar',         x: 8, y: 12, w: 4, h: 6, minW: 3, minH: 4 },
+      // Bottom-right: wide chart spanning the right section
+      { i: 'sd-outstanding-ar', x: 6, y: 6, w: 6, h: 6, minW: 5, minH: 4 },
 
-      // 6) NEXT 3 MONTHS — Debt pipeline (forward-looking, mirrors PDF "Next 3 Months · Debt Solutions")
-      { i: 'pm-debt-on-board-combined', x: 0, y: 18, w: 4, h: 2, minW: 3, minH: 2 },
-      { i: 'pm-debt-signed-combined',   x: 4, y: 18, w: 4, h: 2, minW: 3, minH: 2 },
-      { i: 'pm-debt-closed-combined',   x: 8, y: 18, w: 4, h: 2, minW: 3, minH: 2 },
+      // === PRESERVED SUPPLEMENTARY WIDGETS (kept below primary band) ===
+      { i: 'debt-profit',    x: 0, y: 12, w: 6, h: 3, minW: 3, minH: 3 },
+      { i: 'finserv-profit', x: 6, y: 12, w: 6, h: 3, minW: 3, minH: 3 },
 
-      // 7) NEXT 3 MONTHS — FinServ pipeline (mirrors PDF "Next 3 Months · FinServ")
-      { i: 'pm-finserv-deals-on-board', x: 0, y: 20, w: 4, h: 2, minW: 3, minH: 2 },
-      { i: 'pm-finserv-clients-signed', x: 4, y: 20, w: 4, h: 2, minW: 3, minH: 2 },
-      { i: 'pm-finserv-active-clients', x: 8, y: 20, w: 4, h: 2, minW: 3, minH: 2 },
+      { i: 'rev-debt',    x: 0, y: 15, w: 6, h: 6, minW: 3, minH: 4 },
+      { i: 'rev-finserv', x: 6, y: 15, w: 6, h: 6, minW: 3, minH: 4 },
 
-      // 8) Signed-deal / status tables (mirrors PDF's lower deal table)
-      { i: 'sd-deals-signed',           x: 0, y: 22, w: 4, h: 6, minW: 3, minH: 3 },
-      { i: 'sd-finserv-clients-signed', x: 4, y: 22, w: 4, h: 6, minW: 3, minH: 3 },
-      { i: 'exec-deals-by-status',      x: 8, y: 22, w: 4, h: 6, minW: 3, minH: 3 },
+      { i: 'pm-debt-on-board-combined', x: 0, y: 21, w: 4, h: 2, minW: 3, minH: 2 },
+      { i: 'pm-debt-signed-combined',   x: 4, y: 21, w: 4, h: 2, minW: 3, minH: 2 },
+      { i: 'pm-debt-closed-combined',   x: 8, y: 21, w: 4, h: 2, minW: 3, minH: 2 },
 
-      // 9) Profit charts
-      { i: 'pe-debt-profit',            x: 0, y: 28, w: 6, h: 6, minW: 4, minH: 4 },
-      { i: 'pe-finserv-profit',         x: 6, y: 28, w: 6, h: 6, minW: 4, minH: 4 },
+      { i: 'pm-finserv-deals-on-board', x: 0, y: 23, w: 4, h: 2, minW: 3, minH: 2 },
+      { i: 'pm-finserv-clients-signed', x: 4, y: 23, w: 4, h: 2, minW: 3, minH: 2 },
+      { i: 'pm-finserv-active-clients', x: 8, y: 23, w: 4, h: 2, minW: 3, minH: 2 },
+
+      { i: 'sd-deals-signed',           x: 0, y: 25, w: 4, h: 6, minW: 3, minH: 3 },
+      { i: 'sd-finserv-clients-signed', x: 4, y: 25, w: 4, h: 6, minW: 3, minH: 3 },
+      { i: 'exec-deals-by-status',      x: 8, y: 25, w: 4, h: 6, minW: 3, minH: 3 },
+
+      { i: 'pe-debt-profit',    x: 0, y: 31, w: 6, h: 6, minW: 4, minH: 4 },
+      { i: 'pe-finserv-profit', x: 6, y: 31, w: 6, h: 6, minW: 4, minH: 4 },
     ];
     return defaults;
   }, []);
@@ -1706,7 +1703,7 @@ function MetricsInner() {
     layout: snapshotGridLayout,
     saveLayout: saveSnapshotGridLayout,
     resetLayout: resetSnapshotGridLayout,
-  } = useGridLayout('management-snapshot-unified-v8', unifiedLayoutIds, {
+  } = useGridLayout('management-snapshot-unified-v9', unifiedLayoutIds, {
     allowAllMembers: true,
     layoutDefaults: unifiedLayoutDefaults,
   });
