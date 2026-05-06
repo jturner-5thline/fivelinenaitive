@@ -1779,8 +1779,43 @@ function ReportAgendaSection() {
   }, [smooth]);
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     e.preventDefault();
+    jumpTo(id);
+  };
+  const linkRefs = React.useRef<Array<HTMLAnchorElement | null>>([]);
+  const jumpTo = React.useCallback((id: string) => {
     const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
+    if (!el) return;
+    el.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
+    // Move focus to the section heading for screen readers / keyboard users.
+    const prevTabIndex = el.getAttribute('tabindex');
+    if (prevTabIndex == null) el.setAttribute('tabindex', '-1');
+    try { (el as HTMLElement).focus({ preventScroll: true }); } catch { (el as HTMLElement).focus(); }
+    if (typeof history !== 'undefined' && history.replaceState) {
+      try { history.replaceState(null, '', `#${id}`); } catch {}
+    }
+  }, [smooth]);
+  const focusIdx = (idx: number) => {
+    const total = AGENDA_SECTIONS.length;
+    const next = ((idx % total) + total) % total;
+    linkRefs.current[next]?.focus();
+  };
+  const onKeyDown = (e: React.KeyboardEvent<HTMLAnchorElement>, idx: number) => {
+    switch (e.key) {
+      case 'ArrowDown':
+      case 'ArrowRight':
+        e.preventDefault(); focusIdx(idx + 1); return;
+      case 'ArrowUp':
+      case 'ArrowLeft':
+        e.preventDefault(); focusIdx(idx - 1); return;
+      case 'Home':
+        e.preventDefault(); focusIdx(0); return;
+      case 'End':
+        e.preventDefault(); focusIdx(AGENDA_SECTIONS.length - 1); return;
+      case 'Enter':
+      case ' ':
+        e.preventDefault(); jumpTo(AGENDA_SECTIONS[idx].id); return;
+      default: return;
+    }
   };
   return (
     <Card className="glass-module qir-page-break">
@@ -1816,12 +1851,19 @@ function ReportAgendaSection() {
             </span>
           </label>
         </div>
-        <ol style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <ol
+          role="list"
+          aria-label="Report sections"
+          style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}
+        >
           {AGENDA_SECTIONS.map((item, idx) => (
             <li key={item.id}>
               <a
                 href={`#${item.id}`}
+                ref={el => { linkRefs.current[idx] = el; }}
                 onClick={e => handleClick(e, item.id)}
+                onKeyDown={e => onKeyDown(e, idx)}
+                aria-label={`${idx + 1}. ${item.label}`}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -1835,9 +1877,20 @@ function ReportAgendaSection() {
                   fontSize: 14,
                   fontWeight: 500,
                   transition: 'background .2s, border-color .2s',
+                  outline: 'none',
                 }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(40,90,150,0.18)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
+                onFocus={e => {
+                  e.currentTarget.style.background = 'rgba(40,90,150,0.22)';
+                  e.currentTarget.style.borderColor = 'rgba(124,200,240,0.55)';
+                  e.currentTarget.style.boxShadow = '0 0 0 2px rgba(124,200,240,0.25)';
+                }}
+                onBlur={e => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               >
                 <span style={{ fontSize: 12, fontWeight: 700, color: '#7cc8f0', minWidth: 22, fontVariantNumeric: 'tabular-nums' }}>{idx + 1}.</span>
                 <span>{item.label}</span>
