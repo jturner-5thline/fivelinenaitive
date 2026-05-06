@@ -30,13 +30,13 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
   const [activeIndex, setActiveIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
 
-  const PAGES: { title: string; render: () => JSX.Element }[] = [
-    { title: 'Insights Dashboard',                          render: () => <ManagementReviewDashboard isEditMode={isEditMode} onExitEditMode={onExitEditMode} /> },
-    { title: 'Benchmark Forecasts',                         render: () => <BenchmarkForecastsPage /> },
-    { title: 'Key Metrics',                                 render: () => <KeyMetricsPage /> },
-    { title: 'Quarterly Insights Report — Report 1',        render: () => <QuarterlyReportSlot reportKey="report-1" /> },
-    { title: 'Quarterly Insights Report — Report 2',        render: () => <QuarterlyReportSlot reportKey="report-2" /> },
-    { title: 'Quarterly Insights Report — Report 3',        render: () => <QuarterlyReportSlot reportKey="report-3" /> },
+  const PAGES: { title: string; tabLabel: string; render: () => JSX.Element }[] = [
+    { title: 'Insights Dashboard',                   tabLabel: 'Dashboard',  render: () => <ManagementReviewDashboard isEditMode={isEditMode} onExitEditMode={onExitEditMode} /> },
+    { title: 'Benchmark Forecasts',                  tabLabel: 'Forecasts',  render: () => <BenchmarkForecastsPage /> },
+    { title: 'Key Metrics',                          tabLabel: 'Key Metrics',render: () => <KeyMetricsPage /> },
+    { title: 'Quarterly Insights Report — Report 1', tabLabel: 'Report 1',   render: () => <QuarterlyReportSlot reportKey="report-1" /> },
+    { title: 'Quarterly Insights Report — Report 2', tabLabel: 'Report 2',   render: () => <QuarterlyReportSlot reportKey="report-2" /> },
+    { title: 'Quarterly Insights Report — Report 3', tabLabel: 'Report 3',   render: () => <QuarterlyReportSlot reportKey="report-3" /> },
   ];
 
   const goTo = useCallback((dir: -1 | 1) => {
@@ -71,7 +71,53 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      {/* Page content (carousel side-arrows removed for a flat single-form view) */}
+      {/* Pill tab navigation — direct jump to any section */}
+      <div
+        role="tablist"
+        aria-label="Insights sections"
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 6,
+          padding: 4,
+          margin: '0 auto 12px',
+          maxWidth: 1200,
+          background: 'rgba(16,28,52,0.55)',
+          border: '0.5px solid rgba(80,140,255,0.18)',
+          borderRadius: 999,
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          width: 'fit-content',
+        }}
+      >
+        {PAGES.map((p, i) => {
+          const active = i === activeIndex;
+          return (
+            <button
+              key={p.title}
+              role="tab"
+              aria-selected={active}
+              onClick={() => setActiveIndex(i)}
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: '0.04em',
+                padding: '6px 14px',
+                borderRadius: 999,
+                border: 'none',
+                cursor: 'pointer',
+                color: active ? '#0a2540' : 'rgba(200,225,255,0.78)',
+                background: active
+                  ? 'linear-gradient(180deg, #7ed0ff, #4db8ff)'
+                  : 'transparent',
+                transition: 'background .15s, color .15s',
+              }}
+            >
+              {p.tabLabel}
+            </button>
+          );
+        })}
+      </div>
       <div style={{ position: 'relative' }}>
         <QuarterlyReportPrintStyles />
         {activePage.render()}
