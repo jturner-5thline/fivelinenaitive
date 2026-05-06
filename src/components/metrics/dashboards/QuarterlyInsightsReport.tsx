@@ -1844,9 +1844,6 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
             <ReportRisksSection s={s} set={set} print={print} />
             {sectionThread('goals', 'Goals & Milestones')}
           </div>
-          <div id="qir-section-commentary" className="qir-unified-section">
-            <ReportFooterSection s={s} print={print} />
-          </div>
         </div>
       </Card>
       <QirAllCommentsPanel reportKey={rk} reportLabel={reportLabel} />
