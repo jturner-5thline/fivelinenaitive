@@ -1,13 +1,43 @@
 import React, { useMemo, useState } from 'react';
-import { MessageSquare, X } from 'lucide-react';
+import { MessageSquare, X, ChevronDown, ChevronRight } from 'lucide-react';
 import { useQirComments } from '@/hooks/useQirComments';
 
 /** Floating "All comments" side panel for the Quarterly Insights Report. */
 export function QirAllCommentsPanel({ reportKey, reportLabel }: { reportKey: string; reportLabel: string }) {
   const { comments } = useQirComments(reportKey);
   const [open, setOpen] = useState(false);
-  const sorted = useMemo(() => [...comments].sort((a, b) => b.created_at.localeCompare(a.created_at)), [comments]);
-  const count = sorted.length;
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [allCollapsed, setAllCollapsed] = useState(false);
+
+  // Group comments into threads keyed by target_type + target_id, ordered within each thread chronologically (oldest -> newest).
+  // Threads themselves are ordered by most recent activity first.
+  const threads = useMemo(() => {
+    const map = new Map<string, { key: string; target_type: string; target_id: string; items: typeof comments }>();
+    for (const c of comments) {
+      const key = `${c.target_type}::${c.target_id}`;
+      let t = map.get(key);
+      if (!t) {
+        t = { key, target_type: c.target_type, target_id: c.target_id, items: [] as any };
+        map.set(key, t);
+      }
+      t.items.push(c);
+    }
+    const arr = Array.from(map.values());
+    arr.forEach(t => t.items.sort((a, b) => a.created_at.localeCompare(b.created_at)));
+    arr.sort((a, b) => {
+      const la = a.items[a.items.length - 1].created_at;
+      const lb = b.items[b.items.length - 1].created_at;
+      return lb.localeCompare(la);
+    });
+    return arr;
+  }, [comments]);
+
+  const count = comments.length;
+
+  const toggle = (k: string) => setCollapsed(prev => ({ ...prev, [k]: !(prev[k] ?? allCollapsed) }));
+  const isCollapsed = (k: string) => collapsed[k] ?? allCollapsed;
+  const expandAll = () => { setAllCollapsed(false); setCollapsed({}); };
+  const collapseAll = () => { setAllCollapsed(true); setCollapsed({}); };
 
   return (
     <>
@@ -59,25 +89,65 @@ export function QirAllCommentsPanel({ reportKey, reportLabel }: { reportKey: str
                 <X size={18} />
               </button>
             </div>
+            {threads.length > 0 && (
+              <div style={{ display: 'flex', gap: 8, padding: '8px 16px', borderBottom: '1px solid rgba(120,170,255,0.1)', fontSize: 11 }}>
+                <button onClick={expandAll} style={{ background: 'transparent', border: '1px solid rgba(120,170,255,0.25)', color: 'rgba(200,225,245,0.85)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>Expand all</button>
+                <button onClick={collapseAll} style={{ background: 'transparent', border: '1px solid rgba(120,170,255,0.25)', color: 'rgba(200,225,245,0.85)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>Collapse all</button>
+                <span style={{ marginLeft: 'auto', color: 'rgba(180,200,230,0.55)', alignSelf: 'center' }}>{threads.length} thread{threads.length === 1 ? '' : 's'} · {count} comment{count === 1 ? '' : 's'}</span>
+              </div>
+            )}
             <div style={{ flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {sorted.length === 0 && (
+              {threads.length === 0 && (
                 <div style={{ color: 'rgba(180,200,230,0.55)', fontSize: 13, textAlign: 'center', padding: '32px 8px' }}>
                   No comments yet. Hover over a KPI or section header to add one.
                 </div>
               )}
-              {sorted.map(c => {
-                let when = '';
-                try { when = new Date(c.created_at).toLocaleString(); } catch {}
+              {threads.map(t => {
+                const collapsedNow = isCollapsed(t.key);
+                const last = t.items[t.items.length - 1];
+                let lastWhen = '';
+                try { lastWhen = new Date(last.created_at).toLocaleString(); } catch {}
                 return (
-                  <div key={c.id} style={{ background: 'rgba(16,28,52,0.6)', border: '1px solid rgba(120,170,255,0.15)', borderRadius: 8, padding: 10 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(180,200,230,0.7)', marginBottom: 4 }}>
-                      <strong style={{ color: '#dde8f8' }}>{c.author_name || 'Unknown'}</strong>
-                      <span>{when}</span>
-                    </div>
-                    <div style={{ fontSize: 11, color: 'rgba(160,200,255,0.55)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 4 }}>
-                      {c.target_type} · {c.target_id}
-                    </div>
-                    <div style={{ fontSize: 13, color: '#dde8f8', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{c.body}</div>
+                  <div key={t.key} style={{ background: 'rgba(16,28,52,0.6)', border: '1px solid rgba(120,170,255,0.15)', borderRadius: 8 }}>
+                    <button
+                      onClick={() => toggle(t.key)}
+                      aria-expanded={!collapsedNow}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                        background: 'transparent', border: 'none', cursor: 'pointer',
+                        padding: '8px 10px', textAlign: 'left',
+                      }}
+                    >
+                      {collapsedNow ? <ChevronRight size={14} color="rgba(200,225,245,0.7)" /> : <ChevronDown size={14} color="rgba(200,225,245,0.7)" />}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 11, color: 'rgba(160,200,255,0.6)', textTransform: 'uppercase', letterSpacing: '.08em' }}>
+                          {t.target_type} · {t.target_id}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'rgba(180,200,230,0.65)', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {t.items.length} message{t.items.length === 1 ? '' : 's'} · last by {last.author_name || 'Unknown'}
+                          </span>
+                          <span style={{ flexShrink: 0 }}>{lastWhen}</span>
+                        </div>
+                      </div>
+                    </button>
+                    {!collapsedNow && (
+                      <div style={{ padding: '0 10px 10px 28px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {t.items.map(c => {
+                          let when = '';
+                          try { when = new Date(c.created_at).toLocaleString(); } catch {}
+                          return (
+                            <div key={c.id} style={{ borderLeft: '2px solid rgba(120,170,255,0.2)', paddingLeft: 8 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(180,200,230,0.7)', marginBottom: 2 }}>
+                                <strong style={{ color: '#dde8f8' }}>{c.author_name || 'Unknown'}</strong>
+                                <span>{when}</span>
+                              </div>
+                              <div style={{ fontSize: 13, color: '#dde8f8', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{c.body}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
