@@ -122,11 +122,36 @@ function GridShell({
 }
 
 // ── Chart hook ──
-function useChart(ref: React.RefObject<HTMLCanvasElement | null>, config: any, deps: any[]) {
+function useChart(
+  ref: React.RefObject<HTMLCanvasElement | null>,
+  config: any,
+  deps: any[],
+  onPointClick?: (index: number, label: string, value: number) => void,
+) {
   useEffect(() => {
     if (!ref.current || !config) return;
     setChartDefaults();
-    const chart = new ChartJS(ref.current, config);
+    const finalConfig = onPointClick
+      ? {
+          ...config,
+          options: {
+            ...(config.options || {}),
+            onHover: (evt: any, els: any[]) => {
+              const target = evt?.native?.target as HTMLElement | undefined;
+              if (target) target.style.cursor = els && els.length ? 'pointer' : 'default';
+            },
+            onClick: (_evt: any, elements: any[], chart: any) => {
+              if (!elements || elements.length === 0) return;
+              const el = elements[0];
+              const idx = el.index ?? 0;
+              const label = String(chart.data.labels?.[idx] ?? '');
+              const value = Number(chart.data.datasets?.[el.datasetIndex ?? 0]?.data?.[idx] ?? 0);
+              onPointClick(idx, label, value);
+            },
+          },
+        }
+      : config;
+    const chart = new ChartJS(ref.current, finalConfig);
     return () => chart.destroy();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
@@ -185,6 +210,16 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const metrics = useMetricsData();
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+
+  // ── Drilldown state ──
+  type DrillRow = Record<string, any>;
+  const [drilldown, setDrilldown] = useState<{
+    context: DrilldownContext;
+    columns: DrilldownColumn<DrillRow>[];
+    rows: DrillRow[];
+    emptyHint?: string;
+  } | null>(null);
+  const closeDrilldown = () => setDrilldown(null);
 
   // Persistent, drag/drop + resize layout
   const {
@@ -318,7 +353,27 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     qbConnected && monthLabels.length > 0
       ? { type: 'bar', data: { labels: monthLabels, datasets: [{ data: monthRevenue, backgroundColor: bcol, borderColor: bbrd, borderWidth: 1, borderRadius: 4 }] }, options: { ...def, scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: (v: number) => fmtUSD(v) } } } } }
       : null,
-    [qbConnected, JSON.stringify(monthLabels), JSON.stringify(monthRevenue)]
+    [qbConnected, JSON.stringify(monthLabels), JSON.stringify(monthRevenue)],
+    (idx, label, value) => {
+      const m = qbMonthly[idx];
+      setDrilldown({
+        context: {
+          sourceId: 'chart:monthly-revenue',
+          sourceLabel: 'Monthly Revenue · QuickBooks',
+          selection: label,
+          periodLabel: label,
+          filters: [{ label: 'Metric', value: 'Revenue' }],
+        },
+        columns: [
+          { key: 'month', label: 'Month' },
+          { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
+          { key: 'expenses', label: 'Expenses', align: 'right', render: (r) => fmtUSD(r.expenses) },
+          { key: 'invoiceCount', label: 'Invoices', align: 'right' },
+        ],
+        rows: m ? [m] : [{ month: label, revenue: value, expenses: 0, invoiceCount: 0 }],
+        emptyHint: 'No invoices recorded for this month.',
+      });
+    }
   );
 
   const netCol = monthNet.map(v => v >= 0 ? 'rgba(30,180,120,0.55)' : 'rgba(220,60,80,0.5)');
@@ -327,14 +382,55 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     qbConnected && monthLabels.length > 0
       ? { type: 'bar', data: { labels: monthLabels, datasets: [{ data: monthNet, backgroundColor: netCol, borderColor: netBrd, borderWidth: 1, borderRadius: 4 }] }, options: { ...def, scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: (v: number) => fmtUSD(v) } } } } }
       : null,
-    [qbConnected, JSON.stringify(monthLabels), JSON.stringify(monthNet)]
+    [qbConnected, JSON.stringify(monthLabels), JSON.stringify(monthNet)],
+    (idx, label, value) => {
+      const m = qbMonthly[idx];
+      setDrilldown({
+        context: {
+          sourceId: 'chart:net-cash',
+          sourceLabel: 'Net Cash · QuickBooks',
+          selection: label,
+          periodLabel: label,
+          filters: [{ label: 'Metric', value: 'Revenue − Expenses' }],
+        },
+        columns: [
+          { key: 'month', label: 'Month' },
+          { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
+          { key: 'expenses', label: 'Expenses', align: 'right', render: (r) => fmtUSD(r.expenses) },
+          { key: 'net', label: 'Net', align: 'right', render: (r) => fmtUSD((r.revenue || 0) - (r.expenses || 0)) },
+        ],
+        rows: m ? [m] : [{ month: label, revenue: 0, expenses: 0, net: value }],
+      });
+    }
   );
 
   useChart(pcRef,
     stageBreakdown.length > 0
       ? { type: 'bar', data: { labels: stageBreakdown.map(s => s.stage), datasets: [{ data: stageBreakdown.map(s => s.value), backgroundColor: 'rgba(29,148,255,0.7)', borderColor: '#4db8ff', borderWidth: 1, borderRadius: 4 }] }, options: { ...def, indexAxis: 'y' as const, scales: { x: { ...gx, ticks: { ...gx.ticks, callback: (v: number) => fmtUSD(v) } }, y: { ...gy } } } }
       : null,
-    [JSON.stringify(stageBreakdown)]
+    [JSON.stringify(stageBreakdown)],
+    (idx, label) => {
+      const stageKey = label.toLowerCase().replace(/\s+/g, '-');
+      const dealsInStage = activeDeals.filter(d => {
+        const pretty = (d.stage || 'unknown').split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        return pretty === label || d.stage === stageKey;
+      });
+      setDrilldown({
+        context: {
+          sourceId: 'chart:pipeline-by-stage',
+          sourceLabel: 'Active Pipeline by Stage',
+          selection: label,
+          filters: [{ label: 'Stage', value: label }],
+        },
+        columns: [
+          { key: 'company', label: 'Deal' },
+          { key: 'stage', label: 'Stage' },
+          { key: 'value', label: 'Value', align: 'right', render: (r) => fmtUSD(Number(r.value || 0)) },
+        ],
+        rows: dealsInStage,
+        emptyHint: 'No active deals in this stage.',
+      });
+    }
   );
 
   const arBuckets = qb.data?.arAgingData || [];
@@ -342,7 +438,23 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     qbConnected && arBuckets.length > 0
       ? { type: 'bar', data: { labels: arBuckets.map(b => b.bucket), datasets: [{ data: arBuckets.map(b => b.value), backgroundColor: arBuckets.map(b => b.bucket === 'current' ? 'rgba(40,220,140,0.6)' : b.bucket === '90+' ? 'rgba(255,90,100,0.7)' : 'rgba(255,190,30,0.6)'), borderWidth: 1, borderRadius: 3 }] }, options: { ...def, scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: (v: number) => fmtUSD(v) } } } } }
       : null,
-    [qbConnected, JSON.stringify(arBuckets)]
+    [qbConnected, JSON.stringify(arBuckets)],
+    (idx, label, value) => {
+      setDrilldown({
+        context: {
+          sourceId: 'chart:ar-aging',
+          sourceLabel: 'A/R Aging · QuickBooks',
+          selection: label,
+          filters: [{ label: 'Bucket', value: label }],
+        },
+        columns: [
+          { key: 'bucket', label: 'Bucket' },
+          { key: 'value', label: 'Outstanding', align: 'right', render: (r) => fmtUSD(Number(r.value || 0)) },
+        ],
+        rows: [{ bucket: label, value }],
+        emptyHint: 'No invoices in this aging bucket.',
+      });
+    }
   );
 
   // KPI registry — each entry is one of the standalone KPI widgets that
@@ -494,7 +606,62 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             <div key={widgetId} className="h-full">
               <GridShell isEditMode={isEditMode} title={k?.l ?? widgetId}>
                 {k ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, height: '100%', justifyContent: 'center' }}>
+                  <div
+                    onClick={() => {
+                      if (isEditMode || !k.live) return;
+                      const reg = STANDALONE_KPI_TO_REGISTRY[widgetId];
+                      let columns: DrilldownColumn[] = [
+                        { key: 'metric', label: 'Metric' },
+                        { key: 'value', label: 'Value', align: 'right' },
+                      ];
+                      let rows: any[] = [{ metric: k.l, value: k.v }];
+                      let emptyHint: string | undefined;
+                      if (reg === 'total-revenue-curr' || reg === 'operating-profit-curr') {
+                        columns = [
+                          { key: 'month', label: 'Month' },
+                          { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
+                          { key: 'expenses', label: 'Expenses', align: 'right', render: (r) => fmtUSD(r.expenses) },
+                          { key: 'net', label: 'Net', align: 'right', render: (r) => fmtUSD((r.revenue || 0) - (r.expenses || 0)) },
+                        ];
+                        rows = qbMonthly.slice(-6);
+                      } else if (reg === 'outstanding-ar') {
+                        columns = [
+                          { key: 'bucket', label: 'Bucket' },
+                          { key: 'value', label: 'Outstanding', align: 'right', render: (r) => fmtUSD(Number(r.value || 0)) },
+                        ];
+                        rows = arBuckets;
+                      } else if (reg === 'active-pipeline-value' || reg === 'avg-active-deal-size') {
+                        columns = [
+                          { key: 'company', label: 'Deal' },
+                          { key: 'stage', label: 'Stage' },
+                          { key: 'value', label: 'Value', align: 'right', render: (r) => fmtUSD(Number(r.value || 0)) },
+                        ];
+                        rows = activeDeals;
+                      } else if (reg === 'ytd-revenue') {
+                        const yyNow = format(new Date(), 'yy');
+                        columns = [
+                          { key: 'month', label: 'Month' },
+                          { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
+                        ];
+                        rows = qbMonthly.filter(m => m.month.endsWith('-' + yyNow));
+                      }
+                      setDrilldown({
+                        context: {
+                          sourceId: `kpi:${reg}`,
+                          sourceLabel: k.l,
+                          selection: k.v,
+                        },
+                        columns,
+                        rows,
+                        emptyHint,
+                      });
+                    }}
+                    style={{
+                      display: 'flex', flexDirection: 'column', gap: 4, height: '100%',
+                      justifyContent: 'center',
+                      cursor: !isEditMode && k.live ? 'pointer' : 'default',
+                    }}
+                  >
                     <div style={{ fontSize: 22, fontWeight: 700, color: k.live ? '#e8f6ff' : NA_COLOR, lineHeight: 1.1 }}>
                       {k.live ? k.v : 'Data unavailable'}
                     </div>
@@ -586,6 +753,15 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
           </GridShell>
         </div>
       </DraggableGridLayout>
+
+      <InsightsDrilldownDrawer
+        open={!!drilldown}
+        onClose={closeDrilldown}
+        context={drilldown?.context ?? null}
+        columns={drilldown?.columns ?? []}
+        rows={drilldown?.rows ?? []}
+        emptyHint={drilldown?.emptyHint}
+      />
     </div>
   );
 }
