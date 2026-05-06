@@ -1356,7 +1356,26 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
                       </tr>
                     )}
                     {group.rows.map((goal: AsanaGoalRow, index: number) => (
-                      <tr key={goal.id} data-comment-source="goal" data-comment-source-id={goal.id} data-comment-source-label={`Goal · ${goal.title}`}>
+                      <tr
+                        key={goal.id}
+                        data-comment-source="goal"
+                        data-comment-source-id={goal.id}
+                        data-comment-source-label={`Goal · ${goal.title}`}
+                        onClick={(e) => {
+                          if ((e.target as HTMLElement).closest('a, button')) return;
+                          setGoalsDrill({
+                            sourceId: `goal:${goal.id}`,
+                            sourceLabel: `Goal · ${goal.title}`,
+                            selection: goal.timePeriod || undefined,
+                            periodLabel: activeQuarterLabel || activeHalfLabel || undefined,
+                            filters: [
+                              { label: 'Owner', value: goal.owner || preparedBy },
+                              { label: 'Status', value: goal.status },
+                            ],
+                          });
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
                     <td style={{ ...tdStyle, color: TEXT_LABEL, fontVariantNumeric: 'tabular-nums' }}>{index + 1}</td>
                     <td style={tdStyle}>
                       {goal.url ? (
