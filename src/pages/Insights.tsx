@@ -2547,6 +2547,14 @@ function MetricsInner() {
             />
           )}
 
+          {/* On-demand Cover preview (Insights Dashboard only) */}
+          {selectedDashboard === 'management-review' && (
+            <CoverPreviewDialog
+              open={coverPreviewOpen}
+              onOpenChange={setCoverPreviewOpen}
+            />
+          )}
+
           {/* Dashboard Content - always show pre-built dashboards */}
           <EditableDashboardWrapper isEditMode={isEditMode} onCardEdit={() => { /* edit only via explicit pencil button */ }}>
             {selectedDashboard === 'management-snapshot' && (
