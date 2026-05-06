@@ -4259,11 +4259,22 @@ export default function DealDetail() {
                                 </div>
                                         </div>
                                         {/* Create Task Button - top right */}
-                                        <div className="flex items-start shrink-0">
+                                        <div className="flex items-start gap-1 shrink-0">
                                           <CreateLenderTaskButton
                                             dealId={deal.id}
                                             lenderId={lender.id}
                                             lenderName={lender.name}
+                                          />
+                                          <LenderFollowUpPopover
+                                            dealId={deal.id}
+                                            dealName={deal.name}
+                                            company={deal.company}
+                                            dealLenderId={lender.id}
+                                            lenderName={lender.name}
+                                            lenderStage={configuredStages.find(s => s.id === lender.stage)?.label || lender.stage}
+                                            lenderNotes={lender.notes}
+                                            lenderUpdatedAt={lender.updatedAt}
+                                            onSent={() => refreshDeals?.()}
                                           />
                                         </div>
                                       </div>
