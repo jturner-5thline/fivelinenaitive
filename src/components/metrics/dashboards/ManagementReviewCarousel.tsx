@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo, TouchEvent } from 'react';
+import { Save as SaveIcon, Check } from 'lucide-react';
 import { ManagementReviewDashboard } from './ManagementReviewDashboard';
 import { BenchmarkForecastsPage } from './BenchmarkForecastsPage';
 import { KeyMetricsPage } from './KeyMetricsPage';
@@ -26,7 +27,7 @@ function periodSlug(sel: ReportSelection): string {
   return `${sel.period}:${(label || 'unknown').replace(/\s+/g, '-').toLowerCase()}`;
 }
 
-function QuarterlyReportSlot({ reportKey, defaultAuthor, persona }: { reportKey: string; defaultAuthor: string; persona: string }) {
+function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady }: { reportKey: string; defaultAuthor: string; persona: string; onSaveReady?: (save: (() => void) | null, canEdit: boolean) => void }) {
   // Per-tab selection (period + quarter/month) is persisted under a small
   // dedicated key so all viewers land on the same active period. The actual
   // report payload is keyed by `qir:<reportKey>:<period>:<label>` so each
@@ -60,6 +61,11 @@ function QuarterlyReportSlot({ reportKey, defaultAuthor, persona }: { reportKey:
     },
   );
 
+  useEffect(() => {
+    onSaveReady?.(save || null, canEdit !== false);
+    return () => onSaveReady?.(null, false);
+  }, [save, canEdit, onSaveReady]);
+
   if (!selectionLoaded) return null;
 
   return (
@@ -67,7 +73,6 @@ function QuarterlyReportSlot({ reportKey, defaultAuthor, persona }: { reportKey:
       s={state}
       set={setState}
       reset={reset}
-      save={save}
       print={print}
       canEdit={canEdit}
       reportKey={reportKey}
@@ -79,14 +84,25 @@ function QuarterlyReportSlot({ reportKey, defaultAuthor, persona }: { reportKey:
 export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }: { isEditMode?: boolean; onExitEditMode?: () => void } = {}) {
   const [activeIndex, setActiveIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
+  const [reportSave, setReportSave] = useState<{ fn: (() => void) | null; canEdit: boolean }>({ fn: null, canEdit: false });
+  const [justSaved, setJustSaved] = useState(false);
+  const handleSaveReady = useCallback((fn: (() => void) | null, canEdit: boolean) => {
+    setReportSave({ fn, canEdit });
+  }, []);
+  const handleSaveClick = () => {
+    if (!reportSave.fn) return;
+    reportSave.fn();
+    setJustSaved(true);
+    window.setTimeout(() => setJustSaved(false), 1800);
+  };
 
   const PAGES: { title: string; tabLabel: string; render: () => JSX.Element }[] = [
     { title: 'Insights Dashboard',                   tabLabel: 'Dashboard',  render: () => <ManagementReviewDashboard isEditMode={isEditMode} onExitEditMode={onExitEditMode} /> },
     { title: 'Benchmark Forecasts',                  tabLabel: 'Forecasts',  render: () => <BenchmarkForecastsPage /> },
     { title: 'Key Metrics',                          tabLabel: 'Key Metrics',render: () => <KeyMetricsPage /> },
-    { title: 'Quarterly Insights Report — JT', tabLabel: 'JT', render: () => <QuarterlyReportSlot reportKey="report-1" defaultAuthor="James Turner"   persona="JT" /> },
-    { title: 'Quarterly Insights Report — JM', tabLabel: 'JM', render: () => <QuarterlyReportSlot reportKey="report-2" defaultAuthor="John Moffitt"   persona="JM" /> },
-    { title: 'Quarterly Insights Report — SW', tabLabel: 'SW', render: () => <QuarterlyReportSlot reportKey="report-3" defaultAuthor="Scott Williams" persona="SW" /> },
+    { title: 'Quarterly Insights Report — JT', tabLabel: 'JT', render: () => <QuarterlyReportSlot reportKey="report-1" defaultAuthor="James Turner"   persona="JT" onSaveReady={handleSaveReady} /> },
+    { title: 'Quarterly Insights Report — JM', tabLabel: 'JM', render: () => <QuarterlyReportSlot reportKey="report-2" defaultAuthor="John Moffitt"   persona="JM" onSaveReady={handleSaveReady} /> },
+    { title: 'Quarterly Insights Report — SW', tabLabel: 'SW', render: () => <QuarterlyReportSlot reportKey="report-3" defaultAuthor="Scott Williams" persona="SW" onSaveReady={handleSaveReady} /> },
   ];
 
   const goTo = useCallback((dir: -1 | 1) => {
@@ -114,6 +130,7 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
   };
 
   const activePage = PAGES[activeIndex];
+  const isReportTab = activeIndex >= 3;
 
   return (
     <div
@@ -122,25 +139,23 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
       onTouchEnd={onTouchEnd}
     >
       {/* Pill tab navigation — direct jump to any section */}
-      <div
-        role="tablist"
-        aria-label="Insights sections"
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 6,
-          padding: 4,
-          margin: '0 auto 12px',
-          maxWidth: 1200,
-          background: 'rgba(16,28,52,0.55)',
-          border: '0.5px solid rgba(80,140,255,0.18)',
-          borderRadius: 999,
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          width: 'fit-content',
-        }}
-      >
-        {PAGES.map((p, i) => {
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 auto 12px', maxWidth: 1200, width: 'fit-content' }}>
+        <div
+          role="tablist"
+          aria-label="Insights sections"
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 6,
+            padding: 4,
+            background: 'rgba(16,28,52,0.55)',
+            border: '0.5px solid rgba(80,140,255,0.18)',
+            borderRadius: 999,
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+          }}
+        >
+          {PAGES.map((p, i) => {
           const active = i === activeIndex;
           return (
             <button
@@ -166,7 +181,39 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
               {p.tabLabel}
             </button>
           );
-        })}
+          })}
+        </div>
+        {isReportTab && (
+          <button
+            type="button"
+            onClick={handleSaveClick}
+            disabled={!reportSave.fn || !reportSave.canEdit}
+            title={reportSave.canEdit ? 'Save report' : 'You do not have permission to save'}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: '0.04em',
+              padding: '6px 14px',
+              borderRadius: 999,
+              border: '0.5px solid rgba(80,140,255,0.18)',
+              cursor: reportSave.fn && reportSave.canEdit ? 'pointer' : 'not-allowed',
+              color: justSaved ? '#0a2540' : 'rgba(200,225,255,0.92)',
+              background: justSaved
+                ? 'linear-gradient(180deg, #7ed0ff, #4db8ff)'
+                : 'rgba(16,28,52,0.55)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              opacity: reportSave.fn && reportSave.canEdit ? 1 : 0.5,
+              transition: 'background .15s, color .15s',
+            }}
+          >
+            {justSaved ? <Check size={12} /> : <SaveIcon size={12} />}
+            {justSaved ? 'Saved' : 'Save'}
+          </button>
+        )}
       </div>
       <div style={{ position: 'relative' }}>
         <QuarterlyReportPrintStyles />
