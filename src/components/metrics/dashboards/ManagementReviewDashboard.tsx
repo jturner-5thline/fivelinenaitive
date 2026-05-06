@@ -485,6 +485,30 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const monthExpenses = revenueSeries.map(point => point.expenses);
   const monthNet = revenueSeries.map(point => point.revenue - point.expenses);
 
+  // TTM Revenue trend: for each bucket in revenueSeries, plot the trailing
+  // 12-month total revenue ending at that bucket's end (sum across all QBO
+  // entities). Each point recalculates its own rolling 12-month window.
+  const ttmTrendSeries = useMemo(() => {
+    return revenueSeries.map((bucket) => {
+      const end = bucket.end;
+      const start = startOfMonth(subMonths(end, 11));
+      const revenue = sumAmountInRange(
+        qbInvoices,
+        { start, end },
+        inv => inv.txn_date,
+        inv => inv.total_amt,
+      );
+      return {
+        key: bucket.key,
+        month: bucket.month,
+        windowStart: start,
+        windowEnd: end,
+        revenue,
+      };
+    });
+  }, [revenueSeries, qbInvoices]);
+  const ttmTrendValues = ttmTrendSeries.map(p => p.revenue);
+
   const pipelineUnavailableReason = isCurrentReportingPeriod
     ? 'No active pipeline records found for the current snapshot.'
     : `Unavailable for ${periodLabel} — no historical pipeline snapshot source exists.`;
