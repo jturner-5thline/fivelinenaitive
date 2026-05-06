@@ -1930,18 +1930,17 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
       coverTitlesByPeriod: { ...(prev.coverTitlesByPeriod || {}), [periodKey]: value },
     }));
   return (
-    <Card className="glass-module qir-page-break">
+    <Card className="glass-module qir-page-break qir-cover-card">
       <div
+        className="qir-cover-hero"
         style={{
-          padding: '48px 40px',
-          minHeight: 520,
+          padding: '36px 36px 24px',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between',
-          gap: 32,
+          gap: 20,
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {isAdmin ? (
             <input
               value={titleOverride}
@@ -1962,12 +1961,12 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
             />
           ) : null}
           {!isAdmin && (
-            <div style={{ fontSize: 38, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: '-.5px', lineHeight: 1.1 }}>
+            <div className="qir-cover-title" style={{ fontSize: 34, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: '-.5px', lineHeight: 1.1 }}>
               {title}
             </div>
           )}
 
-          <div style={{ marginTop: 8, fontSize: 18, fontWeight: 600, color: '#7cc8f0', letterSpacing: '.05em' }}>
+          <div style={{ marginTop: 4, fontSize: 16, fontWeight: 600, color: '#7cc8f0', letterSpacing: '.05em' }}>
             {effective.label}
           </div>
         </div>
@@ -1976,8 +1975,8 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-            gap: 18,
-            paddingTop: 18,
+            gap: 14,
+            paddingTop: 12,
             borderTop: '1px solid rgba(120,170,255,0.12)',
           }}
         >
