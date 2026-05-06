@@ -15,14 +15,24 @@ interface Props {
  * Always included in printed/PDF export.
  */
 export function QirSectionNotes({ reportKey, sectionKey, label = 'Notes', canEdit = true }: Props) {
-  const { body, save } = useQirSectionNote(reportKey, sectionKey);
+  const { body, save, loaded } = useQirSectionNote(reportKey, sectionKey);
+  const [local, setLocal] = React.useState('');
+  const dirtyRef = React.useRef(false);
+  // Hydrate local once body loads, and accept incoming realtime updates while not dirty.
+  React.useEffect(() => {
+    if (!loaded) return;
+    if (!dirtyRef.current) setLocal(body);
+  }, [body, loaded]);
 
-  // Debounced save on change
   const tRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const onChange = (v: string) => {
+    setLocal(v);
+    dirtyRef.current = true;
     if (tRef.current) clearTimeout(tRef.current);
-    // optimistic local edit
-    tRef.current = setTimeout(() => { void save(v); }, 500);
+    tRef.current = setTimeout(() => {
+      void save(v);
+      dirtyRef.current = false;
+    }, 500);
   };
 
   if (!body && !canEdit) return null;
@@ -40,7 +50,7 @@ export function QirSectionNotes({ reportKey, sectionKey, label = 'Notes', canEdi
       </div>
       {canEdit ? (
         <textarea
-          defaultValue={body}
+          value={local}
           onChange={e => onChange(e.target.value)}
           rows={2}
           maxLength={8000}
