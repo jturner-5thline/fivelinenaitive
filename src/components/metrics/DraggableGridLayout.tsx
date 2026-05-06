@@ -33,6 +33,10 @@ interface DraggableGridLayoutProps {
   isDraggableEnabled?: boolean;
   /** Allows temporarily disabling resize without leaving edit mode. */
   isResizableEnabled?: boolean;
+  /** Called when a drag or resize interaction begins. */
+  onInteractionStart?: () => void;
+  /** Called when a drag or resize interaction ends or is cancelled. */
+  onInteractionEnd?: () => void;
 }
 
 function mapLayout(currentLayout: any[]): GridLayoutItem[] {
@@ -59,6 +63,8 @@ export function DraggableGridLayout({
   draggableCancel,
   isDraggableEnabled,
   isResizableEnabled,
+  onInteractionStart,
+  onInteractionEnd,
 }: DraggableGridLayoutProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(1200);
@@ -169,9 +175,17 @@ export function DraggableGridLayout({
         isResizable={isEditMode && (isResizableEnabled ?? true)}
         draggableHandle={draggableHandle}
         draggableCancel={draggableCancel}
+        onDragStart={onInteractionStart}
+        onDragStop={(layout, oldItem, newItem, placeholder, e, element) => {
+          onInteractionEnd?.();
+          handleDragStop(layout, oldItem, newItem, placeholder, e, element);
+        }}
+        onResizeStart={onInteractionStart}
+        onResizeStop={(layout, oldItem, newItem, placeholder, e, element) => {
+          onInteractionEnd?.();
+          handleResizeStop(layout, oldItem, newItem, placeholder, e, element);
+        }}
         onLayoutChange={handleLayoutChange}
-        onDragStop={handleDragStop}
-        onResizeStop={handleResizeStop}
         margin={[16, 16] as [number, number]}
         containerPadding={[0, 0] as [number, number]}
         useCSSTransforms
