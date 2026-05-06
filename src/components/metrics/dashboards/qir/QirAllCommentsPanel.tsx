@@ -1,13 +1,14 @@
 import React, { useMemo, useState } from 'react';
-import { MessageSquare, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { MessageSquare, X, ChevronDown, ChevronRight, CheckCircle2, RotateCcw } from 'lucide-react';
 import { useQirComments } from '@/hooks/useQirComments';
 
 /** Floating "All comments" side panel for the Quarterly Insights Report. */
 export function QirAllCommentsPanel({ reportKey, reportLabel }: { reportKey: string; reportLabel: string }) {
-  const { comments } = useQirComments(reportKey);
+  const { comments, getThreadState, setThreadResolved } = useQirComments(reportKey);
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [allCollapsed, setAllCollapsed] = useState(false);
+  const [filter, setFilter] = useState<'open' | 'resolved' | 'all'>('open');
 
   // Group comments into threads keyed by target_type + target_id, ordered within each thread chronologically (oldest -> newest).
   // Threads themselves are ordered by most recent activity first.
@@ -32,7 +33,16 @@ export function QirAllCommentsPanel({ reportKey, reportLabel }: { reportKey: str
     return arr;
   }, [comments]);
 
+  const visibleThreads = useMemo(() => {
+    if (filter === 'all') return threads;
+    return threads.filter(t => {
+      const resolved = !!getThreadState(t.target_type, t.target_id)?.resolved_at;
+      return filter === 'resolved' ? resolved : !resolved;
+    });
+  }, [threads, filter, getThreadState]);
+
   const count = comments.length;
+  const openCount = threads.filter(t => !getThreadState(t.target_type, t.target_id)?.resolved_at).length;
 
   const toggle = (k: string) => setCollapsed(prev => ({ ...prev, [k]: !(prev[k] ?? allCollapsed) }));
   const isCollapsed = (k: string) => collapsed[k] ?? allCollapsed;
@@ -55,15 +65,15 @@ export function QirAllCommentsPanel({ reportKey, reportLabel }: { reportKey: str
           color: 'rgba(200,225,245,0.9)', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
-        title={count ? `${count} comment${count === 1 ? '' : 's'}` : 'View comments'}
+        title={openCount ? `${openCount} open thread${openCount === 1 ? '' : 's'}` : 'View comments'}
       >
         <MessageSquare size={18} />
-        {count > 0 && (
+        {openCount > 0 && (
           <span style={{
             position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, padding: '0 5px',
             background: 'rgb(80,140,255)', color: 'white', borderRadius: 9, fontSize: 10, fontWeight: 700,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>{count}</span>
+          }}>{openCount}</span>
         )}
       </button>
       {open && (
@@ -91,24 +101,42 @@ export function QirAllCommentsPanel({ reportKey, reportLabel }: { reportKey: str
             </div>
             {threads.length > 0 && (
               <div style={{ display: 'flex', gap: 8, padding: '8px 16px', borderBottom: '1px solid rgba(120,170,255,0.1)', fontSize: 11 }}>
+                {(['open', 'resolved', 'all'] as const).map(f => (
+                  <button key={f} onClick={() => setFilter(f)}
+                    style={{
+                      background: filter === f ? 'rgba(80,140,255,0.2)' : 'transparent',
+                      border: '1px solid ' + (filter === f ? 'rgba(120,170,255,0.45)' : 'rgba(120,170,255,0.2)'),
+                      color: 'rgba(200,225,245,0.85)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
+                      textTransform: 'capitalize',
+                    }}>{f}</button>
+                ))}
+                <span style={{ width: 1, background: 'rgba(120,170,255,0.15)' }} />
                 <button onClick={expandAll} style={{ background: 'transparent', border: '1px solid rgba(120,170,255,0.25)', color: 'rgba(200,225,245,0.85)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>Expand all</button>
                 <button onClick={collapseAll} style={{ background: 'transparent', border: '1px solid rgba(120,170,255,0.25)', color: 'rgba(200,225,245,0.85)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>Collapse all</button>
-                <span style={{ marginLeft: 'auto', color: 'rgba(180,200,230,0.55)', alignSelf: 'center' }}>{threads.length} thread{threads.length === 1 ? '' : 's'} · {count} comment{count === 1 ? '' : 's'}</span>
+                <span style={{ marginLeft: 'auto', color: 'rgba(180,200,230,0.55)', alignSelf: 'center' }}>{visibleThreads.length}/{threads.length} thread{threads.length === 1 ? '' : 's'} · {count} comment{count === 1 ? '' : 's'}</span>
               </div>
             )}
             <div style={{ flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {threads.length === 0 && (
+              {visibleThreads.length === 0 && (
                 <div style={{ color: 'rgba(180,200,230,0.55)', fontSize: 13, textAlign: 'center', padding: '32px 8px' }}>
-                  No comments yet. Hover over a KPI or section header to add one.
+                  {threads.length === 0
+                    ? 'No comments yet. Hover over a KPI or section header to add one.'
+                    : 'No threads match this filter.'}
                 </div>
               )}
-              {threads.map(t => {
+              {visibleThreads.map(t => {
                 const collapsedNow = isCollapsed(t.key);
                 const last = t.items[t.items.length - 1];
                 let lastWhen = '';
                 try { lastWhen = new Date(last.created_at).toLocaleString(); } catch {}
+                const state = getThreadState(t.target_type, t.target_id);
+                const resolved = !!state?.resolved_at;
                 return (
-                  <div key={t.key} style={{ background: 'rgba(16,28,52,0.6)', border: '1px solid rgba(120,170,255,0.15)', borderRadius: 8 }}>
+                  <div key={t.key} style={{
+                    background: resolved ? 'rgba(20,40,30,0.45)' : 'rgba(16,28,52,0.6)',
+                    border: '1px solid ' + (resolved ? 'rgba(120,210,160,0.25)' : 'rgba(120,170,255,0.15)'),
+                    borderRadius: 8, opacity: resolved ? 0.85 : 1,
+                  }}>
                     <button
                       onClick={() => toggle(t.key)}
                       aria-expanded={!collapsedNow}
@@ -120,8 +148,13 @@ export function QirAllCommentsPanel({ reportKey, reportLabel }: { reportKey: str
                     >
                       {collapsedNow ? <ChevronRight size={14} color="rgba(200,225,245,0.7)" /> : <ChevronDown size={14} color="rgba(200,225,245,0.7)" />}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 11, color: 'rgba(160,200,255,0.6)', textTransform: 'uppercase', letterSpacing: '.08em' }}>
-                          {t.target_type} · {t.target_id}
+                        <div style={{ fontSize: 11, color: 'rgba(160,200,255,0.6)', textTransform: 'uppercase', letterSpacing: '.08em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{t.target_type} · {t.target_id}</span>
+                          {resolved && (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: 'rgba(180,230,200,0.95)', textTransform: 'none', letterSpacing: 0 }}>
+                              <CheckCircle2 size={11} /> Resolved
+                            </span>
+                          )}
                         </div>
                         <div style={{ fontSize: 11, color: 'rgba(180,200,230,0.65)', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -146,6 +179,19 @@ export function QirAllCommentsPanel({ reportKey, reportLabel }: { reportKey: str
                             </div>
                           );
                         })}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 4 }}>
+                          <button
+                            onClick={() => setThreadResolved(t.target_type, t.target_id, !resolved).catch(e => console.error(e))}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              background: 'transparent',
+                              color: resolved ? 'rgba(200,225,245,0.85)' : 'rgba(180,230,200,0.9)',
+                              border: '1px solid ' + (resolved ? 'rgba(120,170,255,0.3)' : 'rgba(120,210,160,0.4)'),
+                              borderRadius: 6, padding: '3px 10px', fontSize: 11, cursor: 'pointer',
+                            }}>
+                            {resolved ? (<><RotateCcw size={11} /> Reopen</>) : (<><CheckCircle2 size={11} /> Resolve</>)}
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
