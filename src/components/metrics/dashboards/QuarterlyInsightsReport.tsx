@@ -15,6 +15,7 @@ import naitiveLogoDark from '@/assets/naitive-logo-dark.png';
 import { QirContextualComments } from './qir/QirContextualComments';
 import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext } from '../insights/InsightsDrilldownDrawer';
 import { KpiDrillDownDialog, type KpiLike } from './qir/KpiDrillDownDialog';
+import { QirSummaryView } from './qir/QirSummaryView';
 import {
   DEFAULT_ASANA_GOAL_FILTERS,
   type AsanaGoalFilterTemplates,
