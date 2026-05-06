@@ -1,31 +1,29 @@
 import { useState, useCallback, useRef, useEffect, TouchEvent } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ManagementReviewDashboard } from './ManagementReviewDashboard';
-import { QuarterlyReportPrintStyles } from './QuarterlyInsightsReport';
-import { useInsightsTimeframe } from '@/contexts/InsightsTimeframeContext';
+import { BenchmarkForecastsPage } from './BenchmarkForecastsPage';
+import { KeyMetricsPage } from './KeyMetricsPage';
+import {
+  QuarterlyReportPrintStyles,
+  QuarterlyInsightsReportPage,
+  useQuarterlyReportState,
+} from './QuarterlyInsightsReport';
 
-function EmptyPage({ title, reason }: { title: string; reason: string }) {
-  const { reportingPeriod, timeframe } = useInsightsTimeframe();
-  const periodLabel = reportingPeriod?.label ?? timeframe.label;
+function QuarterlyReportSlot({ reportKey }: { reportKey: string }) {
+  const { state, setState, reset, save, print, canEdit } = useQuarterlyReportState(
+    undefined,
+    `qir:${reportKey}`,
+  );
   return (
-    <div style={{ padding: '40px 0' }}>
-      <div
-        className="rounded-xl"
-        style={{
-          background: '#182535',
-          border: '1px solid rgba(255,255,255,0.07)',
-          padding: '48px 32px',
-          textAlign: 'center',
-          color: 'rgba(190,215,230,0.7)',
-        }}
-      >
-        <div style={{ fontSize: 18, fontWeight: 700, color: '#e8f4ff', marginBottom: 8 }}>{title}</div>
-        <div style={{ fontSize: 12, color: 'rgba(160,190,210,0.6)', marginBottom: 16 }}>
-          Reporting period: {periodLabel}
-        </div>
-        <div style={{ fontSize: 13, maxWidth: 560, margin: '0 auto', lineHeight: 1.5 }}>{reason}</div>
-      </div>
-    </div>
+    <QuarterlyInsightsReportPage
+      s={state}
+      set={setState}
+      reset={reset}
+      save={save}
+      print={print}
+      canEdit={canEdit}
+      reportKey={reportKey}
+    />
   );
 }
 
@@ -35,11 +33,11 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
 
   const PAGES: { title: string; render: () => JSX.Element }[] = [
     { title: 'Insights Dashboard',                          render: () => <ManagementReviewDashboard isEditMode={isEditMode} onExitEditMode={onExitEditMode} /> },
-    { title: 'Benchmark Forecasts',                         render: () => <EmptyPage title="Benchmark Forecasts" reason="No live forecast/benchmark data source is connected for this reporting period. Previous content was based on hardcoded values and has been removed pending a real data source." /> },
-    { title: 'Key Metrics',                                 render: () => <EmptyPage title="Key Metrics" reason="No live source is wired to the period-scoped Reach / Operating / Conservative / Actuals plan grids. Previous content was hardcoded and has been removed." /> },
-    { title: 'Quarterly Insights Report — Report 1',        render: () => <EmptyPage title="Quarterly Insights Report — Report 1" reason="This report previously rendered seeded placeholder content not tied to the header reporting period. It has been cleared until a live data source is wired in." /> },
-    { title: 'Quarterly Insights Report — Report 2',        render: () => <EmptyPage title="Quarterly Insights Report — Report 2" reason="This report previously rendered seeded placeholder content not tied to the header reporting period. It has been cleared until a live data source is wired in." /> },
-    { title: 'Quarterly Insights Report — Report 3',        render: () => <EmptyPage title="Quarterly Insights Report — Report 3" reason="This report previously rendered seeded placeholder content not tied to the header reporting period. It has been cleared until a live data source is wired in." /> },
+    { title: 'Benchmark Forecasts',                         render: () => <BenchmarkForecastsPage /> },
+    { title: 'Key Metrics',                                 render: () => <KeyMetricsPage /> },
+    { title: 'Quarterly Insights Report — Report 1',        render: () => <QuarterlyReportSlot reportKey="report-1" /> },
+    { title: 'Quarterly Insights Report — Report 2',        render: () => <QuarterlyReportSlot reportKey="report-2" /> },
+    { title: 'Quarterly Insights Report — Report 3',        render: () => <QuarterlyReportSlot reportKey="report-3" /> },
   ];
 
   const goTo = useCallback((dir: -1 | 1) => {
