@@ -1604,13 +1604,6 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
           gap: 32,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <img src={naitiveLogoDark} alt="5th Line" style={{ height: 38, width: 'auto' }} />
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.18em', color: TEXT_LABEL }}>
-            5th Line Capital Advisors
-          </div>
-        </div>
-
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {isAdmin && (
             <div
