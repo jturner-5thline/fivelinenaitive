@@ -725,6 +725,25 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
     [ownerGoals]
   );
 
+  // Sort + group controls for Goals.
+  const goalStatusRank: Record<string, number> = { 'Off Track': 0, 'Behind': 0, 'At Risk': 1, 'On Track': 2, 'Achieved': 3 };
+  const goalColumns: SortGroupColumn<AsanaGoalRow>[] = [
+    { id: 'title', label: 'Title', accessor: g => g.title?.toLowerCase() || '', sortable: true },
+    { id: 'owner', label: 'Owner', accessor: g => g.owner || '', sortable: true, groupable: true },
+    { id: 'status', label: 'Status', accessor: g => goalStatusRank[g.status] ?? 99, sortable: true },
+    { id: 'statusGroup', label: 'Status', accessor: g => g.status || '—', groupable: true },
+    { id: 'due', label: 'Due Date', accessor: g => g.due || null, sortable: true },
+    { id: 'period', label: 'Reporting Period', accessor: g => g.timePeriod || '—', groupable: true },
+    { id: 'source', label: 'Source', accessor: g => 'Asana', sortable: true, groupable: true },
+  ];
+  const goalsSG = useSortGroup<AsanaGoalRow>({
+    rows: visibleGoals,
+    columns: goalColumns,
+    defaultSortBy: 'due',
+    defaultSortDir: 'asc',
+    defaultGroupBy: 'statusGroup',
+  });
+
   // Preview counts for both modes — used in the filter editor next to the toggle.
   const matchPreview = useMemo(() => {
     const qSub = activeQuarterLabel.trim().toLowerCase();
