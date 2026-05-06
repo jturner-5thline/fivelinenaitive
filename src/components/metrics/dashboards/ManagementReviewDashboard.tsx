@@ -25,6 +25,8 @@ import { useGridLayout, GridLayoutItem } from '@/hooks/useGridLayout';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext } from '@/components/metrics/insights/InsightsDrilldownDrawer';
+import { useTwelveWeekCashflowForecast } from '@/hooks/useTwelveWeekCashflowForecast';
+import { format as fmtDate } from 'date-fns';
 
 const setChartDefaults = () => {
   ChartJS.defaults.color = 'rgba(120,180,240,0.5)';
