@@ -120,6 +120,7 @@ import { DatarailsLiveStat, DatarailsLiveChart } from "@/components/metrics/Data
 import { InsightsLoadingSkeleton, InsightsErrorState } from "@/components/insights/InsightsStateViews";
 import { InsightsAssistantSheet } from "@/components/insights/InsightsAssistantSheet";
 import { ReportingPeriodPicker, ActivePeriodLabel } from "@/components/insights/ReportingPeriodPicker";
+import { CoverPreviewDialog } from "@/components/insights/CoverPreviewDialog";
 import { useInsightsComparison } from "@/hooks/useInsightsComparison";
 import { exportInsightsCsv, exportInsightsPdf, type InsightsExportContext } from "@/utils/insightsExport";
 import { FileSpreadsheet, FileText } from "lucide-react";
@@ -1401,6 +1402,7 @@ function MetricsInner() {
   const [selectedDashboard, setSelectedDashboard] = useState('management-snapshot');
   const [isEditMode, setIsEditMode] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [coverPreviewOpen, setCoverPreviewOpen] = useState(false);
   const assistantTriggerRef = useRef<HTMLButtonElement>(null);
   const undoStackRef = useRef<Array<{ type: 'card' | 'section'; id: string; label: string; undo: () => void }>>([]);
 
@@ -2364,6 +2366,26 @@ function MetricsInner() {
                 <UITooltip>
                   <TooltipTrigger asChild>
                     <Button
+                      variant="outline"
+                      size="sm"
+                      aria-label="Preview report Cover"
+                      aria-haspopup="dialog"
+                      aria-expanded={coverPreviewOpen}
+                      className="h-9 gap-1.5"
+                      onClick={() => setCoverPreviewOpen(true)}
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span className="hidden sm:inline">Cover</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Preview report front matter (Cover)</TooltipContent>
+                </UITooltip>
+              )}
+
+              {selectedDashboard === 'management-review' && (
+                <UITooltip>
+                  <TooltipTrigger asChild>
+                    <Button
                       ref={assistantTriggerRef}
                       variant="outline"
                       size="sm"
@@ -2522,6 +2544,14 @@ function MetricsInner() {
               open={assistantOpen}
               onOpenChange={setAssistantOpen}
               returnFocusRef={assistantTriggerRef}
+            />
+          )}
+
+          {/* On-demand Cover preview (Insights Dashboard only) */}
+          {selectedDashboard === 'management-review' && (
+            <CoverPreviewDialog
+              open={coverPreviewOpen}
+              onOpenChange={setCoverPreviewOpen}
             />
           )}
 
