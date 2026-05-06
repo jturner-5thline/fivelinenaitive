@@ -867,6 +867,20 @@ export function ManagementSnapshotDashboard({
             {children}
         </DraggableGridLayout>
       </div>
+      <InsightsDrilldownDrawer
+        open={!!kpiDrill}
+        onClose={() => setKpiDrill(null)}
+        context={kpiDrill ? {
+          sourceId: 'kpi:total-revenue',
+          sourceLabel: kpiDrill.label,
+          periodLabel,
+        } : null}
+        columns={[
+          { key: 'message', label: 'Detail' },
+        ]}
+        rows={[]}
+        emptyHint="Open the Revenue Overview widgets below to see contributing invoices for the selected period."
+      />
     </div>
   );
 }
