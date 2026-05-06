@@ -1245,7 +1245,7 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
             <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: TEXT_LABEL }}>Owner</span>
             <select value={s.initiativeOwnerFilter} onChange={e => set(prev => ({ ...prev, initiativeOwnerFilter: e.target.value }))} style={{ ...selectStyle, width: 180 }}>
               <option value="All">All Owners</option>
-              {PEOPLE.map(person => <option key={person} value={person}>{person}</option>)}
+              {ACTIVE_INITIATIVE_OWNERS.map(person => <option key={person} value={person}>{person}</option>)}
             </select>
           </div>
           <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
@@ -1308,9 +1308,18 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
                     </div>
                   </td>
                   <td style={tdStyle}>
-                    <select value={init.owner} onChange={e => updateInit(init.id, { owner: e.target.value })} style={selectStyle}>
-                      {PEOPLE.map(person => <option key={person} value={person}>{person}</option>)}
-                    </select>
+                    <span
+                      title="To change the owner, update this goal in Asana"
+                      style={{
+                        display: 'inline-block',
+                        padding: '4px 8px',
+                        color: TEXT_PRIMARY,
+                        fontSize: 12,
+                        cursor: 'help',
+                      }}
+                    >
+                      {init.owner || <span style={{ color: TEXT_LABEL }}>—</span>}
+                    </span>
                   </td>
                   <td style={tdStyle}>
                     <Btn icon={Trash2} variant="danger" ariaLabel="Remove initiative" onClick={() => removeInit(init.id)} />
