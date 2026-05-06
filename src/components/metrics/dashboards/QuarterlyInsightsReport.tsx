@@ -3,6 +3,7 @@ import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2, Slide
 import { useCompanyDashboardConfig } from '@/hooks/useCompanyDashboardConfig';
 import { toast as sonnerToast } from 'sonner';
 import { useAsanaGoals, type AsanaGoalRow } from '@/hooks/useAsanaGoals';
+import { useAsanaPortfolioProjects } from '@/hooks/useAsanaPortfolioProjects';
 import { useAsanaGoalFilterPrefs } from '@/hooks/useAsanaGoalFilterPrefs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminRole } from '@/hooks/useAdminRole';
