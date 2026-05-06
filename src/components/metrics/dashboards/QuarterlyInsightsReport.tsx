@@ -1850,7 +1850,7 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
           viewMode={actualsViewMode}
           onChangeViewMode={setActualsViewMode}
         />
-        <ReportKpisSection s={s} set={set} />
+        <ReportKpisSection s={s} set={set} reportLabel={reportLabel} />
         {sectionThread('financials', 'Revenue & Financial Performance')}
       </div>
       <div id="qir-section-pipeline">
