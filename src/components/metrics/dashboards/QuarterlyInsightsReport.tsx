@@ -151,7 +151,12 @@ const inputStyle: React.CSSProperties = {
   outline: 'none',
   fontVariantNumeric: 'tabular-nums',
 };
-const selectStyle: React.CSSProperties = { ...inputStyle, appearance: 'none', WebkitAppearance: 'none', cursor: 'pointer' };
+const selectStyle: React.CSSProperties = {
+  ...inputStyle,
+  appearance: 'none', WebkitAppearance: 'none', cursor: 'pointer',
+  // Force the native option panel to render dark (matches platform theme).
+  colorScheme: 'dark',
+};
 
 function Btn({ children, onClick, variant = 'default', icon: Icon, ariaLabel }: {
   children?: React.ReactNode;
