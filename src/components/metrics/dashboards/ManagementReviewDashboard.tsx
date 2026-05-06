@@ -94,13 +94,75 @@ function useChart(ref: React.RefObject<HTMLCanvasElement | null>, config: any, d
   }, deps);
 }
 
+// ── Default grid layout (12 cols, mirrors prior reference layout) ──
+const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
+  { i: 'kpi-row',          x: 0, y: 0,  w: 12, h: 2, minW: 6, minH: 2 },
+  { i: 'monthly-revenue',  x: 0, y: 2,  w: 6,  h: 4, minW: 4, minH: 3 },
+  { i: 'pipeline-stage',   x: 6, y: 2,  w: 3,  h: 4, minW: 3, minH: 3 },
+  { i: 'ar-aging',         x: 9, y: 2,  w: 3,  h: 4, minW: 3, minH: 3 },
+  { i: 'bank-balances',    x: 0, y: 6,  w: 4,  h: 3, minW: 3, minH: 2 },
+  { i: 'liabilities',      x: 4, y: 6,  w: 4,  h: 3, minW: 3, minH: 2 },
+  { i: 'dscr',             x: 8, y: 6,  w: 4,  h: 3, minW: 3, minH: 2 },
+  { i: 'cashflow-12w',     x: 0, y: 9,  w: 6,  h: 4, minW: 4, minH: 3 },
+  { i: 'debt-rating',      x: 6, y: 9,  w: 6,  h: 4, minW: 4, minH: 3 },
+  { i: 'asana-goals',      x: 0, y: 13, w: 12, h: 6, minW: 6, minH: 4 },
+];
+
+const INSIGHTS_LAYOUT_IDS = INSIGHTS_DEFAULT_LAYOUT.map(i => i.i);
+
 // ── Dashboard Component ──
-export function ManagementReviewDashboard() {
+interface ManagementReviewDashboardProps {
+  isEditMode?: boolean;
+  onExitEditMode?: () => void;
+}
+
+export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }: ManagementReviewDashboardProps = {}) {
   const queryClient = useQueryClient();
   const qb = useQuickBooksMetrics();
   const metrics = useMetricsData();
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+
+  // Persistent, drag/drop + resize layout
+  const {
+    layout,
+    saveLayout,
+    resetLayout,
+  } = useGridLayout('insights-management-review-v1', INSIGHTS_LAYOUT_IDS, {
+    allowAllMembers: true,
+    layoutDefaults: INSIGHTS_DEFAULT_LAYOUT,
+  });
+
+  // Snapshot layout on entering edit mode for Cancel
+  const editSnapshotRef = useRef<GridLayoutItem[] | null>(null);
+  const wasEditingRef = useRef(false);
+  useEffect(() => {
+    if (isEditMode && !wasEditingRef.current) {
+      editSnapshotRef.current = layout;
+    }
+    wasEditingRef.current = isEditMode;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditMode]);
+
+  const handleSaveLayout = () => {
+    saveLayout(layout, true);
+    editSnapshotRef.current = null;
+    toast.success('Layout saved');
+    onExitEditMode?.();
+  };
+
+  const handleCancelLayout = () => {
+    if (editSnapshotRef.current) {
+      saveLayout(editSnapshotRef.current, true);
+    }
+    editSnapshotRef.current = null;
+    onExitEditMode?.();
+  };
+
+  const handleResetLayout = async () => {
+    await resetLayout();
+    toast.success('Layout reset to default');
+  };
 
   // Bump lastUpdated when underlying data finishes loading
   useEffect(() => {
