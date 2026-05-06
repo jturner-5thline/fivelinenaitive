@@ -17,6 +17,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
 import { useMetricsData } from '@/hooks/useMetricsData';
 import { useInsightsTimeframe } from '@/contexts/InsightsTimeframeContext';
+import { usePipelineContext } from '@/contexts/PipelineContext';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import { AsanaGoalsPortfoliosSection } from './AsanaGoalsPortfoliosSection';
 import { DraggableGridLayout } from '@/components/metrics/DraggableGridLayout';
