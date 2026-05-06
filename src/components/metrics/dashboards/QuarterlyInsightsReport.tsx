@@ -15,7 +15,6 @@ import naitiveLogoDark from '@/assets/naitive-logo-dark.png';
 import { QirContextualComments } from './qir/QirContextualComments';
 import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext } from '../insights/InsightsDrilldownDrawer';
 import { KpiDrillDownDialog, type KpiLike } from './qir/KpiDrillDownDialog';
-import { QirSummaryView } from './qir/QirSummaryView';
 import {
   DEFAULT_ASANA_GOAL_FILTERS,
   type AsanaGoalFilterTemplates,
@@ -435,53 +434,53 @@ function ReportHeaderSection({ s, set, reset, save, print, canEdit }: { s: Repor
     }
   }, [s.period, s.quarter, s.month, set]);
 
+  const PREPARED_BY_OPTIONS = ['James Turner', 'John Moffitt', 'Scott Williams', 'McKenzie Clark'];
+  const currentPreparedBy = s.authors[0] && PREPARED_BY_OPTIONS.includes(s.authors[0])
+    ? s.authors[0]
+    : 'James Turner';
+  const reportTitle = s.period === 'monthly'
+    ? `Monthly Insights Report — ${monthsForQuarter(s.quarter).includes(s.month) ? s.month : (monthsForQuarter(s.quarter)[0] || s.quarter)}`
+    : `Quarterly Insights Report — ${s.quarter}`;
+  const fieldLabelStyle: React.CSSProperties = {
+    fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
+    letterSpacing: '.1em', color: TEXT_LABEL,
+  };
   return (
     <Card className="glass-module">
-      <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: '-.2px' }}>
-              {s.period === 'monthly'
-                ? `Monthly Insights Report — ${monthsForQuarter(s.quarter).includes(s.month) ? s.month : (monthsForQuarter(s.quarter)[0] || s.quarter)}`
-                : `Quarterly Insights Report — ${s.quarter}`}
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {save ? (
-              <span title={canEdit === false ? 'You do not have permission to save' : 'Save report for everyone'}>
-                <Btn icon={SaveIcon} onClick={save}>Save</Btn>
-              </span>
-            ) : null}
-            <Btn icon={RotateCcw} variant="ghost" onClick={reset}>Reset</Btn>
+      <div style={{
+        padding: '20px 22px',
+        display: 'grid',
+        gap: 16,
+        gridTemplateColumns: 'minmax(280px, 2fr) minmax(140px, 1fr) minmax(160px, 1fr)',
+        alignItems: 'end',
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={fieldLabelStyle}>Report</span>
+          <div style={{ fontSize: 18, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: '-.2px', lineHeight: 1.25 }}>
+            {reportTitle}
           </div>
         </div>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: TEXT_LABEL }}>Date Prepared</span>
-            <input value={s.preparedDate} onChange={e => set(prev => ({ ...prev, preparedDate: e.target.value }))} style={{ ...inputStyle, width: 120 }} />
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: TEXT_LABEL }}>Prepared By</span>
-            {(() => {
-              const PREPARED_BY_OPTIONS = ['James Turner', 'John Moffitt', 'Scott Williams', 'McKenzie Clark'];
-              const current = s.authors[0] && PREPARED_BY_OPTIONS.includes(s.authors[0])
-                ? s.authors[0]
-                : 'James Turner';
-              return (
-                <select
-                  value={current}
-                  onChange={e => set(prev => ({ ...prev, authors: [e.target.value] }))}
-                  style={{ ...selectStyle, width: 140 }}
-                >
-                  {PREPARED_BY_OPTIONS.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              );
-            })()}
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label style={fieldLabelStyle} htmlFor="qir-date-prepared">Date Prepared</label>
+          <input
+            id="qir-date-prepared"
+            value={s.preparedDate}
+            onChange={e => set(prev => ({ ...prev, preparedDate: e.target.value }))}
+            style={{ ...inputStyle, width: '100%' }}
+          />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label style={fieldLabelStyle} htmlFor="qir-prepared-by">Prepared By</label>
+          <select
+            id="qir-prepared-by"
+            value={currentPreparedBy}
+            onChange={e => set(prev => ({ ...prev, authors: [e.target.value] }))}
+            style={{ ...selectStyle, width: '100%' }}
+          >
+            {PREPARED_BY_OPTIONS.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
         </div>
       </div>
     </Card>
@@ -678,7 +677,7 @@ function ReportNarrativeSection({ s, set }: { s: ReportState; set: ReportSetStat
   return (
     <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
-        <SectionTitle>Summary / Quarterly Narrative Update</SectionTitle>
+        <SectionTitle>Narrative / Executive Summary</SectionTitle>
         <textarea
           value={s.narrative}
           onChange={e => set(prev => ({ ...prev, narrative: e.target.value }))}
@@ -2166,17 +2165,6 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
   reportKey?: string;
 }) {
   const rk = reportKey || 'naitive.quarterlyReport.adhoc';
-  const viewModeStorageKey = `qir:viewMode:${rk}`;
-  const [viewMode, setViewMode] = useState<'summary' | 'detailed'>(() => {
-    if (typeof window === 'undefined') return 'summary';
-    try {
-      const v = window.localStorage.getItem(viewModeStorageKey);
-      return v === 'detailed' ? 'detailed' : 'summary';
-    } catch { return 'summary'; }
-  });
-  useEffect(() => {
-    try { window.localStorage.setItem(viewModeStorageKey, viewMode); } catch { /* ignore */ }
-  }, [viewMode, viewModeStorageKey]);
   // Single source of truth: the dashboard header's Reporting Period selector
   // drives s.period / s.quarter / s.month for every section/widget.
   const insightsTf = useInsightsTimeframeOptional();
@@ -2219,46 +2207,6 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
   return (
     <div ref={rootRef} style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, color: TEXT_PRIMARY }}>
       <ReportHeaderSection s={s} set={set} reset={reset} save={save} print={print} canEdit={canEdit} />
-      <div
-        className="qir-no-print"
-        style={{
-          display: 'inline-flex',
-          alignSelf: 'flex-end',
-          padding: 3,
-          background: 'rgba(10,18,36,0.6)',
-          border: '1px solid rgba(120,170,255,0.18)',
-          borderRadius: 999,
-        }}
-      >
-        {(['summary', 'detailed'] as const).map(mode => {
-          const active = viewMode === mode;
-          return (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => setViewMode(mode)}
-              style={{
-                padding: '5px 14px',
-                fontSize: 11,
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '.08em',
-                borderRadius: 999,
-                border: 'none',
-                cursor: 'pointer',
-                background: active ? 'rgba(40,110,180,0.55)' : 'transparent',
-                color: active ? '#e8f4ff' : TEXT_MUTED,
-                transition: 'background .2s, color .2s',
-              }}
-            >
-              {mode === 'summary' ? 'Summary' : 'Detailed'}
-            </button>
-          );
-        })}
-      </div>
-      {viewMode === 'summary' ? (
-        <QirSummaryView s={s} reportLabel={reportLabel} />
-      ) : (
       <Card className="glass-module qir-unified-report">
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div id="qir-section-summary" className="qir-unified-section">
@@ -2278,7 +2226,14 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
           </div>
         </div>
       </Card>
-      )}
+      <div className="qir-no-print" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
+        <Btn icon={RotateCcw} variant="ghost" onClick={reset}>Reset</Btn>
+        {save ? (
+          <span title={canEdit === false ? 'You do not have permission to save' : 'Save report for everyone'}>
+            <Btn icon={SaveIcon} onClick={save}>Save</Btn>
+          </span>
+        ) : null}
+      </div>
       <QirContextualComments reportKey={rk} reportLabel={reportLabel} rootRef={rootRef} />
     </div>
   );

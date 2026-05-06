@@ -1,5 +1,4 @@
 import { useState, useCallback, useRef, useEffect, TouchEvent } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ManagementReviewDashboard } from './ManagementReviewDashboard';
 import { BenchmarkForecastsPage } from './BenchmarkForecastsPage';
 import { KeyMetricsPage } from './KeyMetricsPage';
@@ -72,62 +71,8 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      {/* Floating side navigation arrows + page content (no extra background wrapper) */}
+      {/* Page content (carousel side-arrows removed for a flat single-form view) */}
       <div style={{ position: 'relative' }}>
-        <button
-          onClick={() => goTo(-1)}
-          aria-label="Previous page"
-          className="qir-no-print"
-          style={{
-            position: 'fixed', left: 12, top: '50%', transform: 'translateY(-50%)',
-            width: 44, height: 44, borderRadius: 12,
-            border: '1px solid rgba(80,150,220,0.25)',
-            background: 'rgba(16,28,52,0.75)',
-            backdropFilter: 'blur(20px) saturate(1.4)',
-            WebkitBackdropFilter: 'blur(20px) saturate(1.4)',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)',
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'background .2s, border-color .2s', zIndex: 40,
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(40,110,180,0.55)';
-            e.currentTarget.style.borderColor = 'rgba(120,170,255,0.4)';
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'rgba(16,28,52,0.75)';
-            e.currentTarget.style.borderColor = 'rgba(80,150,220,0.25)';
-          }}
-        >
-          <ChevronLeft size={20} color="rgba(200,225,245,0.9)" />
-        </button>
-
-        <button
-          onClick={() => goTo(1)}
-          aria-label="Next page"
-          className="qir-no-print"
-          style={{
-            position: 'fixed', right: 12, top: '50%', transform: 'translateY(-50%)',
-            width: 44, height: 44, borderRadius: 12,
-            border: '1px solid rgba(80,150,220,0.25)',
-            background: 'rgba(16,28,52,0.75)',
-            backdropFilter: 'blur(20px) saturate(1.4)',
-            WebkitBackdropFilter: 'blur(20px) saturate(1.4)',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)',
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'background .2s, border-color .2s', zIndex: 40,
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(40,110,180,0.55)';
-            e.currentTarget.style.borderColor = 'rgba(120,170,255,0.4)';
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'rgba(16,28,52,0.75)';
-            e.currentTarget.style.borderColor = 'rgba(80,150,220,0.25)';
-          }}
-        >
-          <ChevronRight size={20} color="rgba(200,225,245,0.9)" />
-        </button>
-
         <QuarterlyReportPrintStyles />
         {activePage.render()}
       </div>
