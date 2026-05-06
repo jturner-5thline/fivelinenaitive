@@ -490,6 +490,15 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   }, [qbInvoices, ttmRange]);
   const ttmRevenue = qbConnected ? ttmSeries.reduce((sum, row) => sum + row.revenue, 0) : null;
 
+  const priorTtmRevenue = useMemo(
+    () => qbConnected ? sumAmountInRange(qbInvoices, priorTtmRange, inv => inv.txn_date, inv => inv.total_amt) : null,
+    [qbConnected, qbInvoices, priorTtmRange],
+  );
+  const priorYtdRevenue = useMemo(
+    () => qbConnected ? sumAmountInRange(qbInvoices, priorYtdRange, inv => inv.txn_date, inv => inv.total_amt) : null,
+    [qbConnected, qbInvoices, priorYtdRange],
+  );
+
   const chartMode = reportingPeriod?.view === 'quarter' ? 'quarter' : 'rolling';
   const chartWindowLabel = chartMode === 'quarter'
     ? `${periodLabel} · monthly live data`
