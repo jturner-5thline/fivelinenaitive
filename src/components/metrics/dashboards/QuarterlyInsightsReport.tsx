@@ -1895,6 +1895,36 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
 }) {
   const rk = reportKey || 'naitive.quarterlyReport.adhoc';
   const [actualsViewMode, setActualsViewMode] = useState<ActualsViewMode>('plan_vs_actuals');
+  // Single source of truth: the dashboard header's Reporting Period selector
+  // drives s.period / s.quarter / s.month for every section/widget.
+  const insightsTf = useInsightsTimeframeOptional();
+  const reportingPeriod = insightsTf?.reportingPeriod ?? null;
+  useEffect(() => {
+    if (!reportingPeriod) return;
+    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    if (reportingPeriod.view === 'month') {
+      const m = /^(\d{4})-(\d{2})$/.exec(reportingPeriod.period);
+      if (!m) return;
+      const year = parseInt(m[1], 10);
+      const month1 = parseInt(m[2], 10);
+      const monthLabel = `${MONTH_NAMES[month1 - 1]} ${year}`;
+      const q = Math.floor((month1 - 1) / 3) + 1;
+      const quarterLabel = `Q${q} ${year}`;
+      set(prev => (prev.period === 'monthly' && prev.quarter === quarterLabel && prev.month === monthLabel)
+        ? prev
+        : { ...prev, period: 'monthly', quarter: quarterLabel, month: monthLabel });
+    } else {
+      const m = /^(\d{4})-Q([1-4])$/.exec(reportingPeriod.period);
+      if (!m) return;
+      const year = parseInt(m[1], 10);
+      const q = parseInt(m[2], 10);
+      const quarterLabel = `Q${q} ${year}`;
+      const firstMonthLabel = `${MONTH_NAMES[(q - 1) * 3]} ${year}`;
+      set(prev => (prev.period === 'quarterly' && prev.quarter === quarterLabel && prev.month === firstMonthLabel)
+        ? prev
+        : { ...prev, period: 'quarterly', quarter: quarterLabel, month: firstMonthLabel });
+    }
+  }, [reportingPeriod, set]);
   const planRevenue = useMemo(() => {
     const k = s.kpis.find(x => /revenue/i.test(x.label));
     const n = Number(k?.target);
