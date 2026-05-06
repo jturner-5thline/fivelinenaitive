@@ -11,6 +11,7 @@ import { DraggableGridLayout } from '@/components/metrics/DraggableGridLayout';
 import { useGridLayout, GridLayoutItem } from '@/hooks/useGridLayout';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 
 // ── Chart.js global defaults (scoped to this dashboard) ──
 const setChartDefaults = () => {
