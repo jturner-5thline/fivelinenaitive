@@ -164,11 +164,37 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [isInteractingWithKeyStatsTile, setIsInteractingWithKeyStatsTile] = useState(false);
+  const insightsGridGuardRef = useRef<HTMLDivElement>(null);
+  const releaseKeyStatsGuard = () => {
+    setKeyStatsTileInteraction(false);
+  };
   const setKeyStatsTileInteraction = (next: boolean) => {
     flushSync(() => {
       setIsInteractingWithKeyStatsTile(next);
     });
+    if (insightsGridGuardRef.current) {
+      insightsGridGuardRef.current.classList.toggle('key-stats-parent-drag-disabled', next);
+    }
   };
+
+  useEffect(() => {
+    if (!isEditMode) releaseKeyStatsGuard();
+  }, [isEditMode]);
+
+  useEffect(() => {
+    window.addEventListener('pointerup', releaseKeyStatsGuard);
+    window.addEventListener('mouseup', releaseKeyStatsGuard);
+    window.addEventListener('touchend', releaseKeyStatsGuard);
+    window.addEventListener('touchcancel', releaseKeyStatsGuard);
+
+    return () => {
+      insightsGridGuardRef.current?.classList.remove('key-stats-parent-drag-disabled');
+      window.removeEventListener('pointerup', releaseKeyStatsGuard);
+      window.removeEventListener('mouseup', releaseKeyStatsGuard);
+      window.removeEventListener('touchend', releaseKeyStatsGuard);
+      window.removeEventListener('touchcancel', releaseKeyStatsGuard);
+    };
+  }, []);
 
   // Persistent, drag/drop + resize layout
   const {
@@ -495,13 +521,14 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       )}
 
       {/* Draggable, resizable grid */}
+      <div ref={insightsGridGuardRef}>
       <DraggableGridLayout
         layout={layout}
         onLayoutChange={saveLayout}
         isEditMode={isEditMode}
         rowHeight={70}
         draggableHandle=".widget-drag-handle"
-        draggableCancel=".key-stats-subgrid, .key-stats-body, .key-stats-drag-handle, .key-stats-tile, .key-stats-resize-guard, .react-resizable-handle"
+        draggableCancel=".key-stats-parent-drag-disabled, .key-stats-parent-drag-disabled *, .key-stats-subgrid, .key-stats-body, .key-stats-drag-handle, .key-stats-tile, .key-stats-resize-guard, .react-resizable-handle"
         isDraggableEnabled={!isInteractingWithKeyStatsTile}
       >
         <div key="kpi-row" className="h-full">
@@ -545,6 +572,12 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
               className="key-stats-subgrid key-stats-body"
               draggableHandle=".key-stats-drag-handle"
               draggableCancel=".key-stats-tile-remove, .react-resizable-handle"
+              onInteractionStart={() => {
+                if (isEditMode) setKeyStatsTileInteraction(true);
+              }}
+              onInteractionEnd={() => {
+                if (isEditMode) setKeyStatsTileInteraction(false);
+              }}
             >
               {keyStatsLayout.map(l => {
                 const k = kpiById.get(l.i);
@@ -553,27 +586,20 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                   <div key={l.i} className="h-full">
                     <div
                       className="relative h-full w-full key-stats-resize-guard key-stats-tile"
-                      onPointerEnter={() => {
-                        if (isEditMode) setKeyStatsTileInteraction(true);
-                      }}
-                      onPointerLeave={() => {
-                        if (isEditMode) setKeyStatsTileInteraction(false);
-                      }}
-                      onPointerDownCapture={() => {
-                        if (isEditMode) setKeyStatsTileInteraction(true);
-                      }}
-                      onPointerUpCapture={() => {
-                        if (isEditMode) setKeyStatsTileInteraction(false);
-                      }}
-                      onPointerCancelCapture={() => {
-                        if (isEditMode) setKeyStatsTileInteraction(false);
-                      }}
                       style={{ background: 'rgba(10,60,110,0.35)', border: '1px solid rgba(40,120,200,0.22)', borderRadius: 8, padding: '8px 10px', overflow: 'hidden' }}
                     >
                       {isEditMode && (
                         <div
                           className="key-stats-drag-handle absolute top-1 left-1/2 -translate-x-1/2 z-[3] flex items-center gap-1 rounded-md border border-border/50 bg-background/70 px-2 py-0.5 text-[10px] text-muted-foreground backdrop-blur cursor-grab active:cursor-grabbing"
                           onPointerDownCapture={(e) => {
+                            e.stopPropagation();
+                            setKeyStatsTileInteraction(true);
+                          }}
+                          onMouseDownCapture={(e) => {
+                            e.stopPropagation();
+                            setKeyStatsTileInteraction(true);
+                          }}
+                          onTouchStartCapture={(e) => {
                             e.stopPropagation();
                             setKeyStatsTileInteraction(true);
                           }}
@@ -688,6 +714,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
           </GridShell>
         </div>
       </DraggableGridLayout>
+      </div>
     </div>
   );
 }
