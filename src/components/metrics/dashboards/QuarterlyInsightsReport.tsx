@@ -39,10 +39,11 @@ const INPUT_BORDER = '1px solid rgba(120,170,255,0.18)';
 
 const PEOPLE = [
   'James Turner', 'John Moffitt', 'Florencia Fustinoni', 'Scott Williams',
-  'Mark Kaleniecki', 'Chandler Minaldi', 'Paz Pina', 'McKenzie Clark',
-  'Hayden Krug', 'Jennifer Rivera', 'Tyler Robinson', 'Kris Lawless',
-  'Niki Heikali', 'Siddhi Bhangale', 'Gaby Good',
+  'Mark Kaleniecki', 'Paz Pina', 'McKenzie Clark',
+  'Jennifer Rivera', 'Tyler Robinson', 'Kris Lawless',
+  'Niki Heikali', 'Siddhi Bhangale',
 ];
+const ACTIVE_INITIATIVE_OWNERS = ['James Turner', 'Niki Heikali', 'Florencia Fustinoni', 'Paz Pina', 'McKenzie Clark'];
 const PRIMARY_AUTHORS = ['James Turner', 'Scott Williams', 'John Moffitt'];
 const QUARTERS = ['Q1 2026', 'Q2 2026', 'Q3 2026', 'Q4 2026', 'Q1 2027', 'Q2 2027', 'Q3 2027', 'Q4 2027'];
 const QUARTER_MONTHS: Record<string, string[]> = {
