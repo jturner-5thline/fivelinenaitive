@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef } from 'react';
-import { MessageSquare, Send, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { MessageSquare, Send, Trash2, ChevronDown, ChevronUp, Pencil, X, Check } from 'lucide-react';
 import { useQirComments, type QirComment } from '@/hooks/useQirComments';
 import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/contexts/AuthContext';
@@ -45,7 +45,7 @@ function renderBodyWithMentions(text: string): React.ReactNode {
 }
 
 export function QirCommentThread({ reportKey, reportLabel, targetType, targetId, targetLabel, hoverOnly }: Props) {
-  const { comments: all, addComment, deleteComment } = useQirComments(reportKey);
+  const { comments: all, addComment, deleteComment, updateComment } = useQirComments(reportKey);
   const { user } = useAuth();
   const { members } = useCompany();
   const [open, setOpen] = useState(false);
@@ -138,7 +138,13 @@ export function QirCommentThread({ reportKey, reportLabel, targetType, targetId,
           borderRadius: 8, padding: 10, display: 'flex', flexDirection: 'column', gap: 8,
         }}>
           {comments.map(c => (
-            <CommentRow key={c.id} c={c} canDelete={user?.id === c.author_user_id} onDelete={() => deleteComment(c.id)} />
+            <CommentRow
+              key={c.id}
+              c={c}
+              canModify={user?.id === c.author_user_id}
+              onDelete={() => deleteComment(c.id)}
+              onSave={(body) => updateComment(c.id, body)}
+            />
           ))}
           <div style={{ position: 'relative' }}>
             <textarea
@@ -193,26 +199,85 @@ export function QirCommentThread({ reportKey, reportLabel, targetType, targetId,
   );
 }
 
-function CommentRow({ c, canDelete, onDelete }: { c: QirComment; canDelete: boolean; onDelete: () => void }) {
+function CommentRow({ c, canModify, onDelete, onSave }: { c: QirComment; canModify: boolean; onDelete: () => void; onSave: (body: string) => Promise<void> | void }) {
   let when = '';
   try { when = formatDistanceToNow(new Date(c.created_at), { addSuffix: true }); } catch {}
+  const edited = c.updated_at && c.updated_at !== c.created_at;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(c.body);
+  const [saving, setSaving] = useState(false);
+
+  const startEdit = () => { setDraft(c.body); setEditing(true); };
+  const cancel = () => { setEditing(false); setDraft(c.body); };
+  const save = async () => {
+    const v = draft.trim();
+    if (!v || v === c.body) { setEditing(false); return; }
+    try {
+      setSaving(true);
+      await onSave(v);
+      setEditing(false);
+    } catch (e) {
+      console.error('updateComment failed', e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '4px 0', borderBottom: '1px dashed rgba(120,170,255,0.1)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ fontSize: 11, color: 'rgba(180,200,230,0.85)' }}>
           <strong style={{ color: '#dde8f8' }}>{c.author_name || 'Unknown'}</strong>
-          <span style={{ color: 'rgba(160,200,255,0.55)', marginLeft: 6 }}>{when}</span>
+          <span style={{ color: 'rgba(160,200,255,0.55)', marginLeft: 6 }}>{when}{edited ? ' · edited' : ''}</span>
         </div>
-        {canDelete && (
-          <button onClick={onDelete} title="Delete comment" aria-label="Delete comment"
-            style={{ background: 'transparent', border: 'none', color: 'rgba(180,200,230,0.5)', cursor: 'pointer', padding: 2 }}>
-            <Trash2 size={12} />
-          </button>
+        {canModify && !editing && (
+          <div style={{ display: 'inline-flex', gap: 4 }}>
+            <button onClick={startEdit} title="Edit comment" aria-label="Edit comment"
+              style={{ background: 'transparent', border: 'none', color: 'rgba(180,200,230,0.5)', cursor: 'pointer', padding: 2 }}>
+              <Pencil size={12} />
+            </button>
+            <button onClick={onDelete} title="Delete comment" aria-label="Delete comment"
+              style={{ background: 'transparent', border: 'none', color: 'rgba(180,200,230,0.5)', cursor: 'pointer', padding: 2 }}>
+              <Trash2 size={12} />
+            </button>
+          </div>
+        )}
+        {canModify && editing && (
+          <div style={{ display: 'inline-flex', gap: 4 }}>
+            <button onClick={save} disabled={saving || !draft.trim()} title="Save" aria-label="Save"
+              style={{ background: 'transparent', border: 'none', color: 'rgba(120,200,150,0.85)', cursor: 'pointer', padding: 2 }}>
+              <Check size={13} />
+            </button>
+            <button onClick={cancel} title="Cancel" aria-label="Cancel"
+              style={{ background: 'transparent', border: 'none', color: 'rgba(180,200,230,0.5)', cursor: 'pointer', padding: 2 }}>
+              <X size={13} />
+            </button>
+          </div>
         )}
       </div>
-      <div style={{ fontSize: 12, color: '#dde8f8', whiteSpace: 'pre-wrap', lineHeight: 1.45 }}>
-        {renderBodyWithMentions(c.body)}
-      </div>
+      {editing ? (
+        <textarea
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          rows={2}
+          maxLength={4000}
+          autoFocus
+          onKeyDown={e => {
+            if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+            if ((e.key === 'Enter') && (e.metaKey || e.ctrlKey)) { e.preventDefault(); save(); }
+          }}
+          style={{
+            width: '100%', resize: 'vertical', minHeight: 48,
+            background: 'rgba(6,12,28,0.7)', color: '#dde8f8',
+            border: '1px solid rgba(120,170,255,0.25)', borderRadius: 6,
+            padding: '6px 8px', fontSize: 12, outline: 'none', fontFamily: 'inherit',
+          }}
+        />
+      ) : (
+        <div style={{ fontSize: 12, color: '#dde8f8', whiteSpace: 'pre-wrap', lineHeight: 1.45 }}>
+          {renderBodyWithMentions(c.body)}
+        </div>
+      )}
     </div>
   );
 }
