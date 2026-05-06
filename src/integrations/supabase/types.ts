@@ -15005,6 +15005,42 @@ export type Database = {
         }
         Relationships: []
       }
+      qir_thread_events: {
+        Row: {
+          action: string
+          actor_name: string | null
+          actor_user_id: string
+          company_id: string
+          created_at: string
+          id: string
+          report_key: string
+          target_id: string
+          target_type: string
+        }
+        Insert: {
+          action: string
+          actor_name?: string | null
+          actor_user_id: string
+          company_id: string
+          created_at?: string
+          id?: string
+          report_key: string
+          target_id: string
+          target_type: string
+        }
+        Update: {
+          action?: string
+          actor_name?: string | null
+          actor_user_id?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          report_key?: string
+          target_id?: string
+          target_type?: string
+        }
+        Relationships: []
+      }
       quickbooks_accounts: {
         Row: {
           account_sub_type: string | null
