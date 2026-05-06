@@ -118,6 +118,9 @@ import { getTimePeriodRange, getTimePeriodLabel, isInRange } from "@/lib/timePer
 import { DatarailsLiveStat, DatarailsLiveChart } from "@/components/metrics/DatarailsLiveWidget";
 import { InsightsLoadingSkeleton, InsightsErrorState } from "@/components/insights/InsightsStateViews";
 import { InsightsAISummaryCard } from "@/components/insights/InsightsAISummaryCard";
+import { InsightsDriversPanel } from "@/components/insights/InsightsDriversPanel";
+import { InsightsForecastPanel } from "@/components/insights/InsightsForecastPanel";
+import { AnomalyHistoryPanel } from "@/components/insights/AnomalyHistoryPanel";
 // Dashboard options
 const DASHBOARD_OPTIONS = [
   { id: 'management-snapshot', name: 'Weekly Rundown', isFavorite: true, folder: 'management-insights' as const },
@@ -2380,7 +2383,12 @@ function MetricsInner() {
 
           {/* AI period-over-period summary (management-snapshot dashboards only) */}
           {selectedDashboard === 'management-snapshot' && (
-            <InsightsAISummaryCard />
+            <div className="space-y-4">
+              <InsightsAISummaryCard />
+              <InsightsDriversPanel />
+              <InsightsForecastPanel />
+              <AnomalyHistoryPanel />
+            </div>
           )}
 
           {/* Dashboard Content - always show pre-built dashboards */}
