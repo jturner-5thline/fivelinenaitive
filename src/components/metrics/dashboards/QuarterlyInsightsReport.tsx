@@ -7,6 +7,9 @@ import { useAsanaGoalFilterPrefs } from '@/hooks/useAsanaGoalFilterPrefs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import naitiveLogoDark from '@/assets/naitive-logo-dark.png';
+import { QirCommentThread } from './qir/QirCommentThread';
+import { QirSectionNotes } from './qir/QirSectionNotes';
+import { QirAllCommentsPanel } from './qir/QirAllCommentsPanel';
 import {
   DEFAULT_ASANA_GOAL_FILTERS,
   type AsanaGoalFilterTemplates,
@@ -1636,26 +1639,57 @@ function ReportAgendaSection() {
   );
 }
 
-export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdit }: {
+export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdit, reportKey }: {
   s: ReportState;
   set: ReportSetState;
   reset: () => void;
   save?: () => void;
   print: () => void;
   canEdit?: boolean;
+  reportKey?: string;
 }) {
+  const rk = reportKey || 'naitive.quarterlyReport.adhoc';
+  const reportLabel = s.period === 'monthly'
+    ? `Monthly Insights Report — ${s.month}`
+    : `Quarterly Insights Report — ${s.quarter}`;
+  const sectionThread = (sectionKey: string, label: string) => (
+    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -4 }}>
+      <QirCommentThread reportKey={rk} reportLabel={reportLabel} targetType="section" targetId={sectionKey} targetLabel={label} />
+    </div>
+  );
   return (
     <div style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, color: TEXT_PRIMARY }}>
       <ReportCoverSection s={s} set={set} />
       <ReportAgendaSection />
       <ReportHeaderSection s={s} set={set} reset={reset} save={save} print={print} canEdit={canEdit} />
-      <div id="qir-section-summary"><ReportNarrativeSection s={s} set={set} /></div>
-      <div id="qir-section-financials"><ReportKpisSection s={s} set={set} /></div>
-      <div id="qir-section-pipeline"><ReportGoalsSection s={s} set={set} /></div>
-      <div id="qir-section-metrics"><ReportInitiativesSection s={s} set={set} /></div>
-      <div id="qir-section-goals"><ReportRisksSection s={s} set={set} print={print} /></div>
+      <div id="qir-section-summary">
+        <QirSectionNotes reportKey={rk} sectionKey="summary" label="Notes — Executive Summary" canEdit={canEdit !== false} />
+        <ReportNarrativeSection s={s} set={set} />
+        {sectionThread('summary', 'Executive Summary')}
+      </div>
+      <div id="qir-section-financials">
+        <QirSectionNotes reportKey={rk} sectionKey="financials" label="Notes — Revenue & Financial Performance" canEdit={canEdit !== false} />
+        <ReportKpisSection s={s} set={set} reportKey={rk} reportLabel={reportLabel} />
+        {sectionThread('financials', 'Revenue & Financial Performance')}
+      </div>
+      <div id="qir-section-pipeline">
+        <QirSectionNotes reportKey={rk} sectionKey="pipeline" label="Notes — Deal Pipeline" canEdit={canEdit !== false} />
+        <ReportGoalsSection s={s} set={set} />
+        {sectionThread('pipeline', 'Deal Pipeline')}
+      </div>
+      <div id="qir-section-metrics">
+        <QirSectionNotes reportKey={rk} sectionKey="metrics" label="Notes — Key Metrics" canEdit={canEdit !== false} />
+        <ReportInitiativesSection s={s} set={set} />
+        {sectionThread('metrics', 'Key Metrics')}
+      </div>
+      <div id="qir-section-goals">
+        <QirSectionNotes reportKey={rk} sectionKey="goals" label="Notes — Goals & Milestones" canEdit={canEdit !== false} />
+        <ReportRisksSection s={s} set={set} print={print} />
+        {sectionThread('goals', 'Goals & Milestones')}
+      </div>
       <div id="qir-section-commentary" />
       <ReportFooterSection s={s} print={print} />
+      <QirAllCommentsPanel reportKey={rk} reportLabel={reportLabel} />
     </div>
   );
 }
