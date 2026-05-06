@@ -13,7 +13,6 @@ import { useAdminRole } from '@/hooks/useAdminRole';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import naitiveLogoDark from '@/assets/naitive-logo-dark.png';
 import { QirContextualComments } from './qir/QirContextualComments';
-import { QuickBooksActualsPanel, type ActualsViewMode } from './qir/QuickBooksActualsPanel';
 import { KpiDrillDownDialog, type KpiLike } from './qir/KpiDrillDownDialog';
 import {
   DEFAULT_ASANA_GOAL_FILTERS,
