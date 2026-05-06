@@ -27,6 +27,12 @@ interface DraggableGridLayoutProps {
   constraints?: Record<string, WidgetConstraint>;
   /** CSS selector for drag handles (defaults to .widget-drag-handle). */
   draggableHandle?: string;
+  /** CSS selector for elements that should never trigger dragging. */
+  draggableCancel?: string;
+  /** Allows temporarily disabling drag without leaving edit mode. */
+  isDraggableEnabled?: boolean;
+  /** Allows temporarily disabling resize without leaving edit mode. */
+  isResizableEnabled?: boolean;
 }
 
 function mapLayout(currentLayout: any[]): GridLayoutItem[] {
@@ -50,6 +56,9 @@ export function DraggableGridLayout({
   className,
   constraints,
   draggableHandle = '.widget-drag-handle',
+  draggableCancel,
+  isDraggableEnabled,
+  isResizableEnabled,
 }: DraggableGridLayoutProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(1200);
@@ -156,9 +165,10 @@ export function DraggableGridLayout({
         cols={{ lg: 12 }}
         rowHeight={rowHeight}
         width={containerWidth}
-        isDraggable={isEditMode}
-        isResizable={isEditMode}
+        isDraggable={isEditMode && (isDraggableEnabled ?? true)}
+        isResizable={isEditMode && (isResizableEnabled ?? true)}
         draggableHandle={draggableHandle}
+        draggableCancel={draggableCancel}
         onLayoutChange={handleLayoutChange}
         onDragStop={handleDragStop}
         onResizeStop={handleResizeStop}
