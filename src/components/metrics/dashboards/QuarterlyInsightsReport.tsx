@@ -1418,7 +1418,7 @@ export function QuarterlyInsightsReportPage({ s, set, reset, print }: {
   return (
     <div style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, color: TEXT_PRIMARY }}>
       <ReportCoverSection s={s} set={set} />
-      <ReportAgendaSection s={s} />
+      <ReportAgendaSection />
       <ReportHeaderSection s={s} set={set} reset={reset} print={print} />
       <ReportKpisSection s={s} set={set} />
       <ReportNarrativeSection s={s} set={set} />
