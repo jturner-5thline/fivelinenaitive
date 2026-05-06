@@ -1,23 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { formatDistanceToNow } from "date-fns";
 import { Helmet } from "react-helmet-async";
 import {
-  Plug,
-  Info,
-  X,
   Users,
   Mail,
   Calendar,
-  Video,
-  Zap,
   Webhook,
   Linkedin,
   FileText,
@@ -41,18 +32,14 @@ import { useMicrosoft } from "@/hooks/useMicrosoft";
 
 // Components
 import { IntegrationCard, ComingSoonCard, type IntegrationStatus } from "@/components/integrations/IntegrationCard";
+import { ClaapSummaryCard, ZapierSummaryCard, FlexAutomationCard } from "@/components/integrations/IntegrationSummaryCards";
 import { HubSpotSyncSettingsModal } from "@/components/integrations/HubSpotSyncSettingsModal";
 import { QuickBooksSyncSettingsModal } from "@/components/integrations/QuickBooksSyncSettingsModal";
 import { GmailSyncSettingsModal } from "@/components/integrations/GmailSyncSettingsModal";
 import { CalendarSyncSettingsModal } from "@/components/integrations/CalendarSyncSettingsModal";
-import { ClaapIntegration } from "@/components/integrations/ClaapIntegration";
-import { ZapierIntegration } from "@/components/integrations/ZapierIntegration";
 import { AsanaSetupModal } from "@/components/integrations/AsanaSetupModal";
 import { AsanaSyncSettingsModal } from "@/components/integrations/asana/AsanaSyncSettingsModal";
-import { FlexAutoRemovalRules } from "@/components/integrations/FlexAutoRemovalRules";
 import { useCanSeeFlexSync } from "@/hooks/useCanSeeFlexSync";
-
-const BANNER_DISMISSED_KEY = "naitive_integrations_banner_dismissed";
 
 const COMING_SOON_INTEGRATIONS = [
   { key: "docusign", name: "DocuSign", icon: PenTool, description: "Send and manage e-signature envelopes directly from deals" },
@@ -69,9 +56,6 @@ export default function Integrations() {
   const { company, isAdmin: isCompanyAdmin } = useCompany();
   const { canSeeFlexSync } = useCanSeeFlexSync();
   const [searchParams, setSearchParams] = useSearchParams();
-
-  // Banner
-  const [bannerDismissed, setBannerDismissed] = useState(() => localStorage.getItem(BANNER_DISMISSED_KEY) === "true");
 
   // Modals
   const [hubspotModalOpen, setHubspotModalOpen] = useState(false);
@@ -195,11 +179,6 @@ export default function Integrations() {
       .then(() => setHubspotStatus("connected"))
       .catch(() => setHubspotStatus("disconnected"));
   }, []);
-
-  const dismissBanner = () => {
-    setBannerDismissed(true);
-    localStorage.setItem(BANNER_DISMISSED_KEY, "true");
-  };
 
   // === Determine connected integrations ===
   const isHubspotConnected = hubspotStatus === "connected";
