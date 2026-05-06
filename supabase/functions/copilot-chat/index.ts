@@ -796,6 +796,23 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "search_calendar_events",
+      description: "Search the user's Google Calendar (via Nylas v3) for past or future events by free-text query and/or attendee email. Use when the user asks 'what meetings do I have about <topic/company>', 'past calls with <person>', 'meetings with <attendee>', or needs to find a specific event across a wider window than get_upcoming_events. Filters happen client-side after fetching the window. Requires the user has connected their calendar.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Free-text — matches event title, description, location, attendee names/emails (case-insensitive)." },
+          attendee_email: { type: "string", description: "Optional: only events with this attendee email (partial match)." },
+          days_back: { type: "number", description: "How many days into the past to search. Default 30, max 365." },
+          days_ahead: { type: "number", description: "How many days into the future to search. Default 30, max 365." },
+          limit: { type: "number", description: "Max results to return after filtering. Default 25, max 100." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_recent_meetings",
       description: "Get recent recorded/transcribed meetings (Claap) with summaries, key decisions, next steps, and transcripts. Use when the user asks about a past call, 'what did we discuss with X', or wants meeting context for a deal/company.",
       parameters: {
