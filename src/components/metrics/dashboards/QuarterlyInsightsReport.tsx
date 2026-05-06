@@ -1684,27 +1684,6 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
             </div>
           )}
 
-          {isAdmin ? (
-            <input
-              value={subtitleOverride}
-              placeholder="Optional subtitle or tagline"
-              onChange={e => updateSubtitle(e.target.value)}
-              className="qir-no-print"
-              style={{
-                ...inputStyle,
-                fontSize: 16,
-                padding: '6px 12px',
-                background: 'transparent',
-                border: '1px dashed rgba(120,170,255,0.14)',
-                color: TEXT_MUTED,
-                width: '100%',
-              }}
-            />
-          ) : null}
-          {subtitle && (
-            <div style={{ fontSize: 16, color: TEXT_MUTED, fontStyle: 'italic' }}>{subtitle}</div>
-          )}
-
           <div style={{ marginTop: 8, fontSize: 18, fontWeight: 600, color: '#7cc8f0', letterSpacing: '.05em' }}>
             {periodLabel(s)}
           </div>
