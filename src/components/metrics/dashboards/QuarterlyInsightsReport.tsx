@@ -1669,7 +1669,7 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
       </div>
       <div id="qir-section-financials">
         <QirSectionNotes reportKey={rk} sectionKey="financials" label="Notes — Revenue & Financial Performance" canEdit={canEdit !== false} />
-        <ReportKpisSection s={s} set={set} reportKey={rk} reportLabel={reportLabel} />
+        <ReportKpisSection s={s} set={set} />
         {sectionThread('financials', 'Revenue & Financial Performance')}
       </div>
       <div id="qir-section-pipeline">
