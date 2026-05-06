@@ -45,7 +45,7 @@ import { InsightsForecastPanel } from './InsightsForecastPanel';
 import { AnomalyHistoryPanel } from './AnomalyHistoryPanel';
 import { DeltaDrillDownDialog, type DrillComparison } from './DeltaDrillDownDialog';
 import { InsightsAlertSettingsDialog } from './InsightsAlertSettingsDialog';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 function ChangeChip({
   pct,
@@ -171,7 +171,10 @@ export function InsightsAISummaryCard() {
 
   const targetsForPrompt = useMemo(() => {
     if (!targetRows?.length) return [];
-    const monthKey = format(new Date(), 'yyyy-MM');
+    // Anchor target lookup to the selected Reporting period (timeframe end)
+    // so historical periods don't fall back to today's month.
+    const anchor = tf?.timeframe.end ? parseISO(tf.timeframe.end) : new Date();
+    const monthKey = format(anchor, 'yyyy-MM');
     const map = new Map<string, { target: number; label: string }>();
     for (const t of targetRows) {
       const exact = t.period_month === monthKey;
@@ -183,7 +186,7 @@ export function InsightsAISummaryCard() {
     return deltas
       .filter(d => map.has(d.key))
       .map(d => ({ label: map.get(d.key)!.label, target: map.get(d.key)!.target, current: d.current, format: d.format }));
-  }, [targetRows, deltas]);
+  }, [targetRows, deltas, tf?.timeframe.end]);
 
   // periodLabel sourced from comparison hook (timeframe-aware).
 
