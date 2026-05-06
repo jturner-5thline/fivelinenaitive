@@ -2386,6 +2386,7 @@ function MetricsInner() {
           {selectedDashboard === 'management-snapshot' && (
             <div className="space-y-4">
               <InsightsAISummaryCard />
+              <AskAboutPeriodChat />
               <InsightsDriversPanel />
               <InsightsForecastPanel />
               <AnomalyHistoryPanel />
