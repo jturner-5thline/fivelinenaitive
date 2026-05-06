@@ -1556,6 +1556,27 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
     defaultGroupBy: 'status',
   });
 
+  const [initDrill, setInitDrill] = useState<DrilldownContext | null>(null);
+  const initDrillRows = useMemo<AsanaPortfolioProjectRow[]>(() => {
+    if (!initDrill) return [];
+    if (initDrill.sourceId.startsWith('init:')) {
+      const gid = initDrill.sourceId.slice('init:'.length);
+      return ownedProjects.filter(p => p.gid === gid);
+    }
+    if (initDrill.sourceId.startsWith('init:status:')) {
+      const status = initDrill.sourceId.slice('init:status:'.length);
+      return ownedProjects.filter(p => p.status === status);
+    }
+    if (initDrill.sourceId === 'init:all') return ownedProjects;
+    return [];
+  }, [initDrill, ownedProjects]);
+  const initDrillColumns: DrilldownColumn<AsanaPortfolioProjectRow>[] = [
+    { key: 'name', label: 'Initiative', render: (p) => p.name },
+    { key: 'owner', label: 'Owner', width: 140, render: (p) => p.owner || '—' },
+    { key: 'status', label: 'Status', width: 120, render: (p) => <Pill tone={statusTone(p.status === 'Off Track' ? 'Off Track' : p.status === 'At Risk' ? 'At Risk' : p.status === 'On Track' ? 'On Track' : 'On Track')}>{p.status}</Pill> },
+    { key: 'due', label: 'Due', width: 100, render: (p) => p.dueOn || '—' },
+  ];
+
   const thStyle: React.CSSProperties = { textAlign: 'left', fontSize: 9, fontWeight: 700, color: 'rgba(140,175,200,0.5)', letterSpacing: '.08em', textTransform: 'uppercase', padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)' };
   const tdStyle: React.CSSProperties = { padding: '6px 8px', fontSize: 12, color: TEXT_PRIMARY, verticalAlign: 'middle', borderBottom: '1px solid rgba(255,255,255,0.04)' };
 
