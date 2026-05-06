@@ -9,7 +9,6 @@ import { useAdminRole } from '@/hooks/useAdminRole';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import naitiveLogoDark from '@/assets/naitive-logo-dark.png';
 import { QirCommentThread } from './qir/QirCommentThread';
-import { QirSectionNotes } from './qir/QirSectionNotes';
 import { QirAllCommentsPanel } from './qir/QirAllCommentsPanel';
 import { QuickBooksActualsPanel, type ActualsViewMode } from './qir/QuickBooksActualsPanel';
 import { KpiDrillDownDialog, type KpiLike } from './qir/KpiDrillDownDialog';
@@ -1821,12 +1820,10 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
       <ReportCoverSection s={s} set={set} />
       <ReportHeaderSection s={s} set={set} reset={reset} save={save} print={print} canEdit={canEdit} />
       <div id="qir-section-summary">
-        <QirSectionNotes reportKey={rk} sectionKey="summary" label="Notes — Executive Summary" canEdit={canEdit !== false} />
         <ReportNarrativeSection s={s} set={set} />
         {sectionThread('summary', 'Executive Summary')}
       </div>
       <div id="qir-section-financials">
-        <QirSectionNotes reportKey={rk} sectionKey="financials" label="Notes — Revenue & Financial Performance" canEdit={canEdit !== false} />
         <QuickBooksActualsPanel
           period={s.period}
           quarter={s.quarter}
@@ -1839,17 +1836,14 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
         {sectionThread('financials', 'Revenue & Financial Performance')}
       </div>
       <div id="qir-section-pipeline">
-        <QirSectionNotes reportKey={rk} sectionKey="pipeline" label="Notes — Deal Pipeline" canEdit={canEdit !== false} />
         <ReportGoalsSection s={s} set={set} />
         {sectionThread('pipeline', 'Deal Pipeline')}
       </div>
       <div id="qir-section-metrics">
-        <QirSectionNotes reportKey={rk} sectionKey="metrics" label="Notes — Key Metrics" canEdit={canEdit !== false} />
         <ReportInitiativesSection s={s} set={set} />
         {sectionThread('metrics', 'Key Metrics')}
       </div>
       <div id="qir-section-goals">
-        <QirSectionNotes reportKey={rk} sectionKey="goals" label="Notes — Goals & Milestones" canEdit={canEdit !== false} />
         <ReportRisksSection s={s} set={set} print={print} />
         {sectionThread('goals', 'Goals & Milestones')}
       </div>
