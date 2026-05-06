@@ -796,6 +796,23 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "search_calendar_events",
+      description: "Search the user's Google Calendar (via Nylas v3) for past or future events by free-text query and/or attendee email. Use when the user asks 'what meetings do I have about <topic/company>', 'past calls with <person>', 'meetings with <attendee>', or needs to find a specific event across a wider window than get_upcoming_events. Filters happen client-side after fetching the window. Requires the user has connected their calendar.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Free-text — matches event title, description, location, attendee names/emails (case-insensitive)." },
+          attendee_email: { type: "string", description: "Optional: only events with this attendee email (partial match)." },
+          days_back: { type: "number", description: "How many days into the past to search. Default 30, max 365." },
+          days_ahead: { type: "number", description: "How many days into the future to search. Default 30, max 365." },
+          limit: { type: "number", description: "Max results to return after filtering. Default 25, max 100." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_recent_meetings",
       description: "Get recent recorded/transcribed meetings (Claap) with summaries, key decisions, next steps, and transcripts. Use when the user asks about a past call, 'what did we discuss with X', or wants meeting context for a deal/company.",
       parameters: {
@@ -1390,7 +1407,7 @@ function selectToolsWithScopes(
     // Always-available deal write actions (gated by confirmation card or low-risk auto-execute).
     "update_deal_status", "update_deal_stage", "update_deal_fields", "add_deal_note", "update_lender_status",
     // Always-available comms context (synced inbox, calendar, recorded meetings).
-    "search_emails", "get_upcoming_events", "get_recent_meetings",
+    "search_emails", "get_upcoming_events", "search_calendar_events", "get_recent_meetings",
     // Always-available email deep-dive (threads, drafts, sent, scheduled, deal-linked).
     "get_email_thread", "get_deal_emails", "list_email_drafts", "get_sent_emails", "get_scheduled_emails",
     // Always-available task & follow-up context.
@@ -3359,6 +3376,80 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         return { error: `Calendar fetch failed: ${err?.message || String(err)}` };
       }
     }
+    case "search_calendar_events": {
+      const daysBack = Math.min(Math.max(Number(args.days_back) || 30, 1), 365);
+      const daysAhead = Math.min(Math.max(Number(args.days_ahead) || 30, 0), 365);
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      const query = String(args.query || "").trim().toLowerCase();
+      const attendeeEmail = String(args.attendee_email || "").trim().toLowerCase();
+
+      const { data: tokenRow } = await supabase
+        .from("gmail_tokens").select("grant_id").eq("user_id", userId).maybeSingle();
+      if (!tokenRow?.grant_id) {
+        return { error: "Calendar not connected. Ask the user to connect their Google account in Settings → Integrations." };
+      }
+      const NYLAS_API_KEY = Deno.env.get("NYLAS_API_KEY");
+      if (!NYLAS_API_KEY) return { error: "Calendar service not configured." };
+
+      const start = Math.floor(Date.now() / 1000) - daysBack * 24 * 60 * 60;
+      const end = Math.floor(Date.now() / 1000) + daysAhead * 24 * 60 * 60;
+      // Fetch a wider window then filter locally — Nylas doesn't support server-side text search.
+      const fetchLimit = 200;
+      const url = `https://api.us.nylas.com/v3/grants/${tokenRow.grant_id}/events?calendar_id=primary&start=${start}&end=${end}&limit=${fetchLimit}&expand_recurring=true`;
+
+      try {
+        const resp = await fetch(url, {
+          headers: { Authorization: `Bearer ${NYLAS_API_KEY}`, Accept: "application/json" },
+        });
+        const json = await resp.json();
+        if (!resp.ok) return { error: json?.message || "Failed to search calendar events" };
+        let events = (json.data || []).map((e: any) => ({
+          id: e.id,
+          title: e.title || "(no title)",
+          description: (e.description || "").slice(0, 500) || null,
+          location: e.location || null,
+          start: e.when?.start_time ? new Date(e.when.start_time * 1000).toISOString() : (e.when?.start_date || null),
+          end: e.when?.end_time ? new Date(e.when.end_time * 1000).toISOString() : (e.when?.end_date || null),
+          all_day: !e.when?.start_time && !!e.when?.start_date,
+          organizer: e.organizer || null,
+          attendees: (e.participants || []).map((p: any) => ({ email: p.email, name: p.name || null, status: p.status || null })),
+          conference_link: e.conferencing?.details?.url || null,
+          status: e.status || null,
+        }));
+
+        if (query) {
+          events = events.filter((ev: any) => {
+            const hay = [
+              ev.title || "",
+              ev.description || "",
+              ev.location || "",
+              ...(ev.attendees || []).map((a: any) => `${a.name || ""} ${a.email || ""}`),
+            ].join(" ").toLowerCase();
+            return hay.includes(query);
+          });
+        }
+        if (attendeeEmail) {
+          events = events.filter((ev: any) =>
+            (ev.attendees || []).some((a: any) => (a.email || "").toLowerCase().includes(attendeeEmail))
+          );
+        }
+
+        // Sort: most relevant time first — past events newest-first, future events soonest-first.
+        const nowIso = new Date().toISOString();
+        events.sort((a: any, b: any) => {
+          const aFuture = (a.start || "") >= nowIso;
+          const bFuture = (b.start || "") >= nowIso;
+          if (aFuture && !bFuture) return -1;
+          if (!aFuture && bFuture) return 1;
+          if (aFuture) return String(a.start || "").localeCompare(String(b.start || ""));
+          return String(b.start || "").localeCompare(String(a.start || ""));
+        });
+
+        return { count: events.length, events: events.slice(0, limit), filters: { query: query || null, attendee_email: attendeeEmail || null, days_back: daysBack, days_ahead: daysAhead } };
+      } catch (err: any) {
+        return { error: `Calendar search failed: ${err?.message || String(err)}` };
+      }
+    }
     case "get_recent_meetings": {
       const limit = Math.min(Math.max(Number(args.limit) || 10, 1), 30);
       const sinceDays = Math.min(Math.max(Number(args.since_days) || 30, 1), 365);
@@ -4871,7 +4962,14 @@ Communications context (use whenever the question references emails, calls, meet
 - "Did I email X", "when did I last reply to Y", "what did I send about Z", "did the email go out" → get_sent_emails (includes status + error_message)
 - "What's queued to send", "pending scheduled emails", "what goes out tomorrow" → get_scheduled_emails
 - "What's on my calendar", "do I have a meeting with X", "next call with Y" → get_upcoming_events
+- "What meetings do I have about <topic/company>", "past calls with <person>", "meetings with <attendee>" → search_calendar_events (searches past + future window by query / attendee email)
 - "What did we discuss with X", "summary of the call", "last meeting on this deal" → get_recent_meetings (Claap recordings with summaries + transcripts)
+
+EMAIL & CALENDAR USAGE RULES (IMPORTANT):
+- Only call search_emails / get_email_thread / search_calendar_events / get_upcoming_events when the question CLEARLY needs inbox or calendar data (e.g. "what did X say", "find emails about Y", "meetings with Z", "what's on my calendar"). Do NOT call them for generic deal/lender/task questions answerable from the database.
+- When you DO use email results, ALWAYS cite the source inline using this exact format: "Based on <Sender>'s email from <Mon DD>, …". For threads, cite the most recent relevant message.
+- When you DO use calendar results, cite using: "Per your calendar event '<Title>' on <Mon DD>, …" or "You have <N> meetings about <X>: …".
+- Never fabricate sender names, dates, subjects, or attendees — only use values returned by the tools.
 
 History / audit context (use for "track record", "lifecycle", "why did X happen"):
 - "What's our history with <lender>", "has <lender> done deals like this before", "why did <lender> pass last time" → get_lender_deal_history
