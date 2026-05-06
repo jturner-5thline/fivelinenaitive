@@ -1616,60 +1616,6 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {isAdmin && (
-            <div
-              className="qir-no-print"
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                gap: 8,
-                padding: '8px 10px',
-                marginBottom: 4,
-                border: '1px dashed rgba(120,170,255,0.18)',
-                borderRadius: RADIUS,
-                background: 'rgba(40,90,150,0.06)',
-              }}
-            >
-              <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.14em', color: TEXT_LABEL }}>
-                Reporting Period
-              </span>
-              <select
-                value={s.period}
-                onChange={e => set(prev => ({ ...prev, period: e.target.value as 'monthly' | 'quarterly' }))}
-                style={{ ...inputStyle, padding: '4px 8px', fontSize: 12 }}
-              >
-                <option value="quarterly">Quarterly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-              <select
-                value={s.quarter}
-                onChange={e => {
-                  const newQuarter = e.target.value;
-                  set(prev => {
-                    const validMonths = monthsForQuarter(newQuarter);
-                    const nextMonth = validMonths.includes(prev.month) ? prev.month : (validMonths[0] || prev.month);
-                    return { ...prev, quarter: newQuarter, month: nextMonth };
-                  });
-                }}
-                style={{ ...inputStyle, padding: '4px 8px', fontSize: 12 }}
-              >
-                {QUARTERS.map(q => <option key={q} value={q}>{q}</option>)}
-              </select>
-              {s.period === 'monthly' && (
-                <select
-                  value={monthsForQuarter(s.quarter).includes(s.month) ? s.month : (monthsForQuarter(s.quarter)[0] || '')}
-                  onChange={e => set(prev => ({ ...prev, month: e.target.value }))}
-                  style={{ ...inputStyle, padding: '4px 8px', fontSize: 12 }}
-                >
-                  {monthsForQuarter(s.quarter).map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-              )}
-              <span style={{ fontSize: 11, color: TEXT_MUTED, marginLeft: 'auto' }}>
-                Editing: <strong style={{ color: '#7cc8f0' }}>{periodKey}</strong>
-              </span>
-            </div>
-          )}
           {isAdmin ? (
             <input
               value={titleOverride}
