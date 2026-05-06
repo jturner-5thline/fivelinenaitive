@@ -517,6 +517,7 @@ export interface PipelineMetrics {
   debtDollarClosed: StageMetricResult;
   finservDealsOnBoard: StageMetricResult;
   finservClientsSigned: StageMetricResult;
+  finservActiveClients: StageMetricResult & { mrr: number };
 }
 
 export function usePipelineStageMetrics(quarter: QuarterOption): PipelineMetrics {
@@ -532,6 +533,7 @@ export function usePipelineStageMetrics(quarter: QuarterOption): PipelineMetrics
   const debtDealsClosed = useStageEntryMetric(FUNDED_INVOICED_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const finservDealsOnBoard = usePipelineAddedMetric(FINSERV_PIPELINE_ID, quarter);
   const finservClientsSigned = useStageEntryMetric(FS_ACTIVE_CLIENT_STAGE, quarter, FINSERV_PIPELINE_ID);
+  const finservActiveClients = useFinServActiveClientsCurrent();
 
   return {
     dealsOnBoard,
@@ -542,7 +544,61 @@ export function usePipelineStageMetrics(quarter: QuarterOption): PipelineMetrics
     debtDollarClosed: debtDealsClosed,
     finservDealsOnBoard,
     finservClientsSigned,
+    finservActiveClients,
   };
+}
+
+/**
+ * Current FinServ Active Clients snapshot.
+ * Counts deals where pipeline_id = FinServ and stage = 'fs-active-client',
+ * plus the sum of their MRR. RLS scopes to the user's accessible deals.
+ */
+function useFinServActiveClientsCurrent(): StageMetricResult & { mrr: number } {
+  const { user } = useAuth();
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['finserv-active-clients-current', user?.id],
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from('deals')
+        .select('id, company, value, manager, stage, pipeline_id, created_at, mrr')
+        .eq('pipeline_id', FINSERV_PIPELINE_ID)
+        .eq('stage', FS_ACTIVE_CLIENT_STAGE);
+      if (error) throw error;
+      return rows ?? [];
+    },
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+
+  return useMemo(() => {
+    const loading = isLoading || isFetching;
+    if (!data) return { count: 0, dollarVolume: 0, deals: [], isLoading: loading, mrr: 0 };
+
+    const deals: StageEntryDeal[] = data
+      .filter((d: any) => !isExcludedDealName(d.company))
+      .map((d: any) => ({
+        deal_id: d.id,
+        company: d.company ?? '—',
+        value: Number(d.value) || 0,
+        manager: d.manager,
+        current_stage: d.stage,
+        entered_at: d.created_at,
+        pipeline_id: d.pipeline_id ?? '',
+      }));
+
+    const mrr = data
+      .filter((d: any) => !isExcludedDealName(d.company))
+      .reduce((s: number, d: any) => s + (Number(d.mrr) || 0), 0);
+
+    return {
+      count: deals.length,
+      dollarVolume: deals.reduce((s, d) => s + d.value, 0),
+      deals,
+      isLoading: loading,
+      mrr,
+    };
+  }, [data, isLoading, isFetching]);
 }
 
 /**
