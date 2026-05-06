@@ -3,7 +3,7 @@ import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2, Slide
 import { useCompanyDashboardConfig } from '@/hooks/useCompanyDashboardConfig';
 import { toast as sonnerToast } from 'sonner';
 import { useAsanaGoals, type AsanaGoalRow } from '@/hooks/useAsanaGoals';
-import { useAsanaPortfolioProjects } from '@/hooks/useAsanaPortfolioProjects';
+import { useAsanaPortfolioProjects, type AsanaPortfolioProjectRow } from '@/hooks/useAsanaPortfolioProjects';
 import { useAsanaGoalFilterPrefs } from '@/hooks/useAsanaGoalFilterPrefs';
 import { useSortGroup, type SortGroupColumn } from './qir/useSortGroup';
 import { SortGroupToolbar } from './qir/SortGroupToolbar';
