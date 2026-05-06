@@ -211,6 +211,16 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
+  // ── Drilldown state ──
+  type DrillRow = Record<string, any>;
+  const [drilldown, setDrilldown] = useState<{
+    context: DrilldownContext;
+    columns: DrilldownColumn<DrillRow>[];
+    rows: DrillRow[];
+    emptyHint?: string;
+  } | null>(null);
+  const closeDrilldown = () => setDrilldown(null);
+
   // Persistent, drag/drop + resize layout
   const {
     layout,
@@ -343,7 +353,27 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     qbConnected && monthLabels.length > 0
       ? { type: 'bar', data: { labels: monthLabels, datasets: [{ data: monthRevenue, backgroundColor: bcol, borderColor: bbrd, borderWidth: 1, borderRadius: 4 }] }, options: { ...def, scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: (v: number) => fmtUSD(v) } } } } }
       : null,
-    [qbConnected, JSON.stringify(monthLabels), JSON.stringify(monthRevenue)]
+    [qbConnected, JSON.stringify(monthLabels), JSON.stringify(monthRevenue)],
+    (idx, label, value) => {
+      const m = qbMonthly[idx];
+      setDrilldown({
+        context: {
+          sourceId: 'chart:monthly-revenue',
+          sourceLabel: 'Monthly Revenue · QuickBooks',
+          selection: label,
+          periodLabel: label,
+          filters: [{ label: 'Metric', value: 'Revenue' }],
+        },
+        columns: [
+          { key: 'month', label: 'Month' },
+          { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
+          { key: 'expenses', label: 'Expenses', align: 'right', render: (r) => fmtUSD(r.expenses) },
+          { key: 'invoiceCount', label: 'Invoices', align: 'right' },
+        ],
+        rows: m ? [m] : [{ month: label, revenue: value, expenses: 0, invoiceCount: 0 }],
+        emptyHint: 'No invoices recorded for this month.',
+      });
+    }
   );
 
   const netCol = monthNet.map(v => v >= 0 ? 'rgba(30,180,120,0.55)' : 'rgba(220,60,80,0.5)');
@@ -352,14 +382,55 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     qbConnected && monthLabels.length > 0
       ? { type: 'bar', data: { labels: monthLabels, datasets: [{ data: monthNet, backgroundColor: netCol, borderColor: netBrd, borderWidth: 1, borderRadius: 4 }] }, options: { ...def, scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: (v: number) => fmtUSD(v) } } } } }
       : null,
-    [qbConnected, JSON.stringify(monthLabels), JSON.stringify(monthNet)]
+    [qbConnected, JSON.stringify(monthLabels), JSON.stringify(monthNet)],
+    (idx, label, value) => {
+      const m = qbMonthly[idx];
+      setDrilldown({
+        context: {
+          sourceId: 'chart:net-cash',
+          sourceLabel: 'Net Cash · QuickBooks',
+          selection: label,
+          periodLabel: label,
+          filters: [{ label: 'Metric', value: 'Revenue − Expenses' }],
+        },
+        columns: [
+          { key: 'month', label: 'Month' },
+          { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
+          { key: 'expenses', label: 'Expenses', align: 'right', render: (r) => fmtUSD(r.expenses) },
+          { key: 'net', label: 'Net', align: 'right', render: (r) => fmtUSD((r.revenue || 0) - (r.expenses || 0)) },
+        ],
+        rows: m ? [m] : [{ month: label, revenue: 0, expenses: 0, net: value }],
+      });
+    }
   );
 
   useChart(pcRef,
     stageBreakdown.length > 0
       ? { type: 'bar', data: { labels: stageBreakdown.map(s => s.stage), datasets: [{ data: stageBreakdown.map(s => s.value), backgroundColor: 'rgba(29,148,255,0.7)', borderColor: '#4db8ff', borderWidth: 1, borderRadius: 4 }] }, options: { ...def, indexAxis: 'y' as const, scales: { x: { ...gx, ticks: { ...gx.ticks, callback: (v: number) => fmtUSD(v) } }, y: { ...gy } } } }
       : null,
-    [JSON.stringify(stageBreakdown)]
+    [JSON.stringify(stageBreakdown)],
+    (idx, label) => {
+      const stageKey = label.toLowerCase().replace(/\s+/g, '-');
+      const dealsInStage = activeDeals.filter(d => {
+        const pretty = (d.stage || 'unknown').split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        return pretty === label || d.stage === stageKey;
+      });
+      setDrilldown({
+        context: {
+          sourceId: 'chart:pipeline-by-stage',
+          sourceLabel: 'Active Pipeline by Stage',
+          selection: label,
+          filters: [{ label: 'Stage', value: label }],
+        },
+        columns: [
+          { key: 'company', label: 'Deal' },
+          { key: 'stage', label: 'Stage' },
+          { key: 'value', label: 'Value', align: 'right', render: (r) => fmtUSD(Number(r.value || 0)) },
+        ],
+        rows: dealsInStage,
+        emptyHint: 'No active deals in this stage.',
+      });
+    }
   );
 
   const arBuckets = qb.data?.arAgingData || [];
@@ -367,7 +438,23 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     qbConnected && arBuckets.length > 0
       ? { type: 'bar', data: { labels: arBuckets.map(b => b.bucket), datasets: [{ data: arBuckets.map(b => b.value), backgroundColor: arBuckets.map(b => b.bucket === 'current' ? 'rgba(40,220,140,0.6)' : b.bucket === '90+' ? 'rgba(255,90,100,0.7)' : 'rgba(255,190,30,0.6)'), borderWidth: 1, borderRadius: 3 }] }, options: { ...def, scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: (v: number) => fmtUSD(v) } } } } }
       : null,
-    [qbConnected, JSON.stringify(arBuckets)]
+    [qbConnected, JSON.stringify(arBuckets)],
+    (idx, label, value) => {
+      setDrilldown({
+        context: {
+          sourceId: 'chart:ar-aging',
+          sourceLabel: 'A/R Aging · QuickBooks',
+          selection: label,
+          filters: [{ label: 'Bucket', value: label }],
+        },
+        columns: [
+          { key: 'bucket', label: 'Bucket' },
+          { key: 'value', label: 'Outstanding', align: 'right', render: (r) => fmtUSD(Number(r.value || 0)) },
+        ],
+        rows: [{ bucket: label, value }],
+        emptyHint: 'No invoices in this aging bucket.',
+      });
+    }
   );
 
   // KPI registry — each entry is one of the standalone KPI widgets that
