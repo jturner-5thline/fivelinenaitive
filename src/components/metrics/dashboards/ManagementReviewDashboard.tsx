@@ -432,6 +432,21 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     return { start, end };
   }, [periodRange.end]);
 
+  // Prior comparable TTM: the immediately preceding 12-month window
+  // (e.g. current TTM May 2025–Apr 2026 → prior TTM May 2024–Apr 2025).
+  const priorTtmRange = useMemo<DateRange>(() => {
+    const end = startOfDay(new Date(ttmRange.start.getFullYear(), ttmRange.start.getMonth(), 0));
+    const start = startOfDay(new Date(end.getFullYear() - 1, end.getMonth() + 1, 1));
+    return { start, end };
+  }, [ttmRange.start]);
+
+  // Prior YTD: same Jan 1 → same month/day cutoff in the prior year.
+  const priorYtdRange = useMemo<DateRange>(() => {
+    const end = startOfDay(new Date(periodRange.end.getFullYear() - 1, periodRange.end.getMonth(), periodRange.end.getDate()));
+    const start = startOfDay(new Date(end.getFullYear(), 0, 1));
+    return { start, end };
+  }, [periodRange.end]);
+
   const ytdSeries = useMemo(() => {
     const buckets = buildMonthBuckets(ytdRange.start, ytdRange.end);
     return buckets.map((bucket) => ({
