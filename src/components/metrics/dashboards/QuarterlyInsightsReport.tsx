@@ -1265,9 +1265,58 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
   const removeInit = (id: string) => set(prev => ({ ...prev, initiatives: prev.initiatives.filter(init => init.id !== id) }));
   const addInit = () => set(prev => ({ ...prev, initiatives: [...prev.initiatives, { id: uid(), title: '', status: 'On Track', progress: 0, owner: PEOPLE[0] }] }));
 
+  // Live Asana goals — used to source the Owner display & dropdown options so they
+  // reflect the latest Asana state automatically when the goals data refreshes.
+  const { goals: asanaGoals, lastSyncedAt } = useAsanaGoals();
+  const norm = (v: string) => v.trim().toLowerCase().replace(/\s+/g, ' ');
+
+  // Resolve a "live" owner per initiative by best-effort matching against Asana goals.
+  // 1. Try exact title match (normalized).
+  // 2. Otherwise, if the stored owner matches an Asana goal owner, keep it.
+  // 3. Else fall back to the locally stored owner.
+  const resolveLiveOwner = (init: Initiative): string => {
+    if (!asanaGoals || asanaGoals.length === 0) return init.owner;
+    const titleKey = norm(init.title || '');
+    if (titleKey) {
+      const byTitle = asanaGoals.find(g => norm(g.title || '') === titleKey);
+      if (byTitle?.owner) return byTitle.owner;
+      const byPartial = asanaGoals.find(g => {
+        const t = norm(g.title || '');
+        return t && (t.includes(titleKey) || titleKey.includes(t));
+      });
+      if (byPartial?.owner) return byPartial.owner;
+    }
+    return init.owner;
+  };
+
+  // Live owners set restricted to the active team allowlist; used for the filter dropdown.
+  const liveOwnerOptions = useMemo(() => {
+    const fromAsana = new Set<string>();
+    for (const g of asanaGoals || []) {
+      if (g.owner && ACTIVE_INITIATIVE_OWNERS.includes(g.owner)) fromAsana.add(g.owner);
+    }
+    // Always include owners that currently appear on initiatives (after live resolution)
+    // so the filter never hides a row that's actually on screen.
+    for (const init of s.initiatives) {
+      const live = resolveLiveOwner(init);
+      if (live && ACTIVE_INITIATIVE_OWNERS.includes(live)) fromAsana.add(live);
+    }
+    // Preserve canonical ordering from ACTIVE_INITIATIVE_OWNERS.
+    return ACTIVE_INITIATIVE_OWNERS.filter(o => fromAsana.has(o));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asanaGoals, s.initiatives]);
+
+  const initsWithLiveOwner = useMemo(
+    () => s.initiatives.map(init => ({ ...init, _liveOwner: resolveLiveOwner(init) })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [s.initiatives, asanaGoals],
+  );
+
   const filteredInits = useMemo(
-    () => s.initiativeOwnerFilter === 'All' ? s.initiatives : s.initiatives.filter(init => init.owner === s.initiativeOwnerFilter),
-    [s.initiatives, s.initiativeOwnerFilter],
+    () => s.initiativeOwnerFilter === 'All'
+      ? initsWithLiveOwner
+      : initsWithLiveOwner.filter(init => init._liveOwner === s.initiativeOwnerFilter),
+    [initsWithLiveOwner, s.initiativeOwnerFilter],
   );
   const counts = useMemo(() => ({
     onTrack: filteredInits.filter(init => init.status === 'On Track').length,
@@ -1286,9 +1335,16 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: TEXT_LABEL }}>Owner</span>
-            <select value={s.initiativeOwnerFilter} onChange={e => set(prev => ({ ...prev, initiativeOwnerFilter: e.target.value }))} style={{ ...selectStyle, width: 180 }}>
+            <select
+              value={s.initiativeOwnerFilter}
+              onChange={e => set(prev => ({ ...prev, initiativeOwnerFilter: e.target.value }))}
+              style={{ ...selectStyle, width: 180 }}
+              title={lastSyncedAt ? `Owners sourced from Asana — last synced ${new Date(lastSyncedAt).toLocaleString()}` : 'Owners sourced from Asana'}
+            >
               <option value="All">All Owners</option>
-              {ACTIVE_INITIATIVE_OWNERS.map(person => <option key={person} value={person}>{person}</option>)}
+              {(liveOwnerOptions.length > 0 ? liveOwnerOptions : ACTIVE_INITIATIVE_OWNERS).map(person => (
+                <option key={person} value={person}>{person}</option>
+              ))}
             </select>
           </div>
           <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
@@ -1352,7 +1408,9 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
                   </td>
                   <td style={tdStyle}>
                     <span
-                      title="To change the owner, update this goal in Asana"
+                      title={lastSyncedAt
+                        ? `To change the owner, update this goal in Asana (last synced ${new Date(lastSyncedAt).toLocaleString()})`
+                        : 'To change the owner, update this goal in Asana'}
                       style={{
                         display: 'inline-block',
                         padding: '4px 8px',
@@ -1361,7 +1419,7 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
                         cursor: 'help',
                       }}
                     >
-                      {init.owner || <span style={{ color: TEXT_LABEL }}>—</span>}
+                      {init._liveOwner || init.owner || <span style={{ color: TEXT_LABEL }}>—</span>}
                     </span>
                   </td>
                   <td style={tdStyle}>
