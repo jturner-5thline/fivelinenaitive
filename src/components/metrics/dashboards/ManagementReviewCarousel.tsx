@@ -3,6 +3,7 @@ import { Save as SaveIcon, Check } from 'lucide-react';
 import { AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
+import { toast as sonnerToast } from 'sonner';
 import { ManagementReviewDashboard } from './ManagementReviewDashboard';
 import { BenchmarkForecastsPage } from './BenchmarkForecastsPage';
 import { KeyMetricsPage } from './KeyMetricsPage';
@@ -30,7 +31,7 @@ function periodSlug(sel: ReportSelection): string {
   return `${sel.period}:${(label || 'unknown').replace(/\s+/g, '-').toLowerCase()}`;
 }
 
-function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady }: { reportKey: string; defaultAuthor: string; persona: string; onSaveReady?: (save: (() => void) | null, canEdit: boolean) => void }) {
+function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady }: { reportKey: string; defaultAuthor: string; persona: string; onSaveReady?: (save: (() => Promise<boolean>) | null, canEdit: boolean, hasUnsavedChanges: boolean) => void }) {
   // Per-tab selection (period + quarter/month) is persisted under a small
   // dedicated key so all viewers land on the same active period. The actual
   // report payload is keyed by `qir:<reportKey>:<period>:<label>` so each
@@ -54,7 +55,7 @@ function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady }:
 
   const dataKey = `qir:${reportKey}:${periodSlug(selection)}`;
 
-  const { state, setState, reset, save, print, canEdit } = useQuarterlyReportState(
+  const { state, setState, reset, save, print, canEdit, isDirty, isSaving, activeCompositeKey, fetchedCompositeKey, unsavedChangesWarning } = useQuarterlyReportState(
     initial,
     dataKey,
     {
@@ -65,9 +66,9 @@ function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady }:
   );
 
   useEffect(() => {
-    onSaveReady?.(save || null, canEdit !== false);
-    return () => onSaveReady?.(null, false);
-  }, [save, canEdit, onSaveReady]);
+    onSaveReady?.(save || null, canEdit !== false, isDirty);
+    return () => onSaveReady?.(null, false, false);
+  }, [save, canEdit, isDirty, onSaveReady]);
 
   // Sanity check: confirm the derived composite key matches a saved row.
   // If this (period × tab) has never been saved but other periods for the
@@ -127,9 +128,15 @@ function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady }:
         set={setState}
         reset={reset}
         print={print}
+        save={save}
         canEdit={canEdit}
         reportKey={reportKey}
         titlePrefix={persona}
+        activeCompositeKey={activeCompositeKey}
+        fetchedCompositeKey={fetchedCompositeKey}
+        isDirty={isDirty}
+        isSaving={isSaving}
+        unsavedChangesWarning={unsavedChangesWarning}
       />
     </>
   );
@@ -138,17 +145,25 @@ function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady }:
 export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }: { isEditMode?: boolean; onExitEditMode?: () => void } = {}) {
   const [activeIndex, setActiveIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
-  const [reportSave, setReportSave] = useState<{ fn: (() => void) | null; canEdit: boolean }>({ fn: null, canEdit: false });
+  const [reportSave, setReportSave] = useState<{ fn: (() => Promise<boolean>) | null; canEdit: boolean; hasUnsavedChanges: boolean }>({ fn: null, canEdit: false, hasUnsavedChanges: false });
   const [justSaved, setJustSaved] = useState(false);
-  const handleSaveReady = useCallback((fn: (() => void) | null, canEdit: boolean) => {
-    setReportSave({ fn, canEdit });
+  const handleSaveReady = useCallback((fn: (() => Promise<boolean>) | null, canEdit: boolean, hasUnsavedChanges: boolean) => {
+    setReportSave({ fn, canEdit, hasUnsavedChanges });
   }, []);
-  const handleSaveClick = () => {
+  const handleSaveClick = async () => {
     if (!reportSave.fn) return;
-    reportSave.fn();
+    const saved = await reportSave.fn();
+    if (!saved) return;
     setJustSaved(true);
     window.setTimeout(() => setJustSaved(false), 1800);
   };
+  const attemptSetActiveIndex = useCallback((nextIndex: number | ((prev: number) => number)) => {
+    if (reportSave.hasUnsavedChanges) {
+      sonnerToast.error('You have unsaved changes. Save the report before leaving this tab.');
+      return;
+    }
+    setActiveIndex(nextIndex);
+  }, [reportSave.hasUnsavedChanges]);
 
   const PAGES: { title: string; tabLabel: string; render: () => JSX.Element }[] = [
     { title: 'Insights Dashboard',                   tabLabel: 'Dashboard',  render: () => <ManagementReviewDashboard isEditMode={isEditMode} onExitEditMode={onExitEditMode} /> },
@@ -160,8 +175,8 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
   ];
 
   const goTo = useCallback((dir: -1 | 1) => {
-    setActiveIndex(prev => (prev + dir + PAGES.length) % PAGES.length);
-  }, [PAGES.length]);
+    attemptSetActiveIndex(prev => (prev + dir + PAGES.length) % PAGES.length);
+  }, [PAGES.length, attemptSetActiveIndex]);
 
   // Keyboard left/right navigation (skip when typing in inputs)
   useEffect(() => {
@@ -216,7 +231,7 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
               key={p.title}
               role="tab"
               aria-selected={active}
-              onClick={() => setActiveIndex(i)}
+              onClick={() => attemptSetActiveIndex(i)}
               style={{
                 fontSize: 11,
                 fontWeight: 600,
@@ -240,7 +255,7 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
         {isReportTab && (
           <button
             type="button"
-            onClick={handleSaveClick}
+              onClick={() => { void handleSaveClick(); }}
             disabled={!reportSave.fn || !reportSave.canEdit}
             title={reportSave.canEdit ? 'Save report' : 'You do not have permission to save'}
             style={{
@@ -265,7 +280,7 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
             }}
           >
             {justSaved ? <Check size={12} /> : <SaveIcon size={12} />}
-            {justSaved ? 'Saved' : 'Save'}
+              {justSaved ? 'Saved' : reportSave.hasUnsavedChanges ? 'Save changes' : 'Save'}
           </button>
         )}
       </div>

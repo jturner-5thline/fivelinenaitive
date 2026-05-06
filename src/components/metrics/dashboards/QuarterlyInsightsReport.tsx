@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2, SlidersHorizontal, Save as SaveIcon, Loader2, Pencil, X as XIcon, Check } from 'lucide-react';
-import { useCompanyDashboardConfig } from '@/hooks/useCompanyDashboardConfig';
+import { useCompany } from '@/hooks/useCompany';
 import { toast as sonnerToast } from 'sonner';
 import { useAsanaGoals, type AsanaGoalRow } from '@/hooks/useAsanaGoals';
 import { useAsanaPortfolioProjects, type AsanaPortfolioProjectRow } from '@/hooks/useAsanaPortfolioProjects';
@@ -11,6 +11,7 @@ import { SortGroupToolbar } from './qir/SortGroupToolbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
+import { supabase } from '@/integrations/supabase/client';
 import naitiveLogoDark from '@/assets/naitive-logo-dark.png';
 import { QirContextualComments } from './qir/QirContextualComments';
 import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext } from '../insights/InsightsDrilldownDrawer';
@@ -321,71 +322,203 @@ export function useQuarterlyReportState(
     onSelectionChange?: (sel: { period: 'monthly' | 'quarterly'; quarter: string; month: string }) => void;
   },
 ) {
-  // Recompute the seed whenever the seed inputs (initial selection) change so
-  // a fresh per-period report renders with the correct period header.
+  const { company } = useCompany();
   const seed = useMemo<ReportState>(
     () => (initialState ? createQuarterlyReportSeed(initialState) : cloneSeed()),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [initialState?.period, initialState?.quarter, initialState?.month],
   );
-  // Persist company-wide via company_settings.fpa_dashboard_config.
-  // Falls back to in-memory state when no storageKey is provided.
   const configKey = storageKey || 'naitive.quarterlyReport.adhoc';
-  const { config, saveConfig, isLoaded, canEdit } = useCompanyDashboardConfig<ReportState>(
-    configKey,
-    seed,
-    { allowAllMembers: true },
-  );
-  // Local mirror so typing stays snappy; flushed to company config on change (debounced inside hook)
+  const canEdit = !!company?.id;
   const [state, setStateLocal] = useState<ReportState>(seed);
-  // Track which storage key the local state was last hydrated from so a key
-  // change (e.g. user switched period) re-loads the new blob instead of
-  // keeping stale content from the previously selected period.
-  const hydratedKeyRef = useRef<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [fetchedCompositeKey, setFetchedCompositeKey] = useState<string | null>(null);
+  const [unsavedChangesWarning, setUnsavedChangesWarning] = useState<string | null>(null);
+  const lastLoadedSnapshotRef = useRef<string>(JSON.stringify(seed));
+  const latestStateRef = useRef<ReportState>(seed);
+
   useEffect(() => {
-    if (!isLoaded) return;
-    if (hydratedKeyRef.current === configKey) return;
-    setStateLocal(config);
-    hydratedKeyRef.current = configKey;
-  }, [isLoaded, config, configKey]);
+    latestStateRef.current = state;
+  }, [state]);
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = 'You have unsaved changes.';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const hydrate = async () => {
+      if (!company?.id) {
+        const next = seed;
+        if (cancelled) return;
+        setStateLocal(next);
+        latestStateRef.current = next;
+        lastLoadedSnapshotRef.current = JSON.stringify(next);
+        setFetchedCompositeKey(null);
+        setIsDirty(false);
+        setIsLoaded(true);
+        return;
+      }
+
+      setIsLoaded(false);
+      console.log('[QIR] Fetch key:', configKey);
+
+      try {
+        const { data, error } = await supabase
+          .from('company_settings')
+          .select('fpa_dashboard_config')
+          .eq('company_id', company.id)
+          .maybeSingle();
+
+        if (error) throw error;
+        if (cancelled) return;
+
+        const fpaConfig = (data?.fpa_dashboard_config as Record<string, any>) || {};
+        const exactRow = fpaConfig[configKey] as Partial<ReportState> | undefined;
+        const next = exactRow !== undefined
+          ? { ...seed, ...exactRow }
+          : seed;
+
+        console.log('[QIR] Fetch result:', {
+          activeKey: configKey,
+          fetchedKey: exactRow !== undefined ? configKey : null,
+          found: exactRow !== undefined,
+        });
+
+        setStateLocal(next);
+        latestStateRef.current = next;
+        lastLoadedSnapshotRef.current = JSON.stringify(next);
+        setFetchedCompositeKey(exactRow !== undefined ? configKey : null);
+        setIsDirty(false);
+      } catch (err) {
+        console.error('[QIR] Error loading report config:', err);
+        if (cancelled) return;
+        setStateLocal(seed);
+        latestStateRef.current = seed;
+        lastLoadedSnapshotRef.current = JSON.stringify(seed);
+        setFetchedCompositeKey(null);
+        setIsDirty(false);
+      } finally {
+        if (!cancelled) setIsLoaded(true);
+      }
+    };
+
+    void hydrate();
+    return () => {
+      cancelled = true;
+    };
+  }, [company?.id, configKey, seed]);
 
   const setState: React.Dispatch<React.SetStateAction<ReportState>> = (updater) => {
     setStateLocal(prev => {
       const next = typeof updater === 'function'
         ? (updater as (p: ReportState) => ReportState)(prev)
         : updater;
-      // Detect a period/quarter/month change. When the parent owns the
-      // selection, route the change up and skip persisting into the current
-      // (about-to-be-stale) storage key.
       const selectionChanged =
         prev.period !== next.period ||
         prev.quarter !== next.quarter ||
         prev.month !== next.month;
+
       if (selectionChanged && options?.onSelectionChange) {
+        if (isDirty) {
+          const message = 'You have unsaved changes. Save the report before switching periods.';
+          setUnsavedChangesWarning(message);
+          sonnerToast.error(message);
+          return prev;
+        }
+        setUnsavedChangesWarning(null);
         options.onSelectionChange({ period: next.period, quarter: next.quarter, month: next.month });
-        return prev; // wait for re-hydration under the new key
+        return prev;
       }
-      // Only persist after initial hydration to avoid clobbering with defaults
-      if (hydratedKeyRef.current === configKey) saveConfig(next);
+
+      setUnsavedChangesWarning(null);
+      setIsDirty(JSON.stringify(next) !== lastLoadedSnapshotRef.current);
       return next;
     });
   };
 
+  const save = async (overrideState?: ReportState) => {
+    if (!canEdit || !company?.id) {
+      sonnerToast.error('You do not have permission to save this report');
+      return false;
+    }
+
+    const payload = overrideState ?? latestStateRef.current;
+    console.log('[QIR] Save key:', configKey);
+    setIsSaving(true);
+
+    try {
+      const { error: saveError } = await supabase.rpc('save_fpa_dashboard_config' as any, {
+        _company_id: company.id,
+        _config_key: configKey,
+        _config_value: payload,
+      });
+
+      if (saveError) throw saveError;
+
+      const { data, error: reloadError } = await supabase
+        .from('company_settings')
+        .select('fpa_dashboard_config')
+        .eq('company_id', company.id)
+        .maybeSingle();
+
+      if (reloadError) throw reloadError;
+
+      const fpaConfig = (data?.fpa_dashboard_config as Record<string, any>) || {};
+      const exactRow = fpaConfig[configKey] as Partial<ReportState> | undefined;
+      const next = exactRow !== undefined
+        ? { ...seed, ...exactRow }
+        : payload;
+
+      setStateLocal(next);
+      latestStateRef.current = next;
+      lastLoadedSnapshotRef.current = JSON.stringify(next);
+      setFetchedCompositeKey(exactRow !== undefined ? configKey : null);
+      setIsDirty(false);
+      setUnsavedChangesWarning(null);
+      sonnerToast.success('Report saved');
+      return true;
+    } catch (err) {
+      console.error('[QIR] Error saving report config:', err);
+      sonnerToast.error('Failed to save report');
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const reset = () => {
     setStateLocal(seed);
-    if (hydratedKeyRef.current === configKey) saveConfig(seed);
+    latestStateRef.current = seed;
+    setIsDirty(JSON.stringify(seed) !== lastLoadedSnapshotRef.current);
+    setUnsavedChangesWarning(null);
+    void save(seed);
     sonnerToast.success('Report reset to defaults');
   };
-  const save = () => {
-    if (!canEdit) {
-      sonnerToast.error('You do not have permission to save this report');
-      return;
-    }
-    saveConfig(state);
-    sonnerToast.success('Report saved');
-  };
   const print = () => { try { window.print(); } catch {} };
-  return { state, setState, reset, save, print, isLoaded, canEdit };
+  return {
+    state,
+    setState,
+    reset,
+    save,
+    print,
+    isLoaded,
+    canEdit,
+    isSaving,
+    isDirty,
+    activeCompositeKey: configKey,
+    fetchedCompositeKey,
+    unsavedChangesWarning,
+  };
 }
 
 function formatKPI(value: string, format: KPIFormat): string {
@@ -425,7 +558,7 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 
 type ReportSetState = React.Dispatch<React.SetStateAction<ReportState>>;
 
-function ReportHeaderSection({ s, set, reset, save, print, canEdit, titlePrefix }: { s: ReportState; set: ReportSetState; reset: () => void; save?: () => void; print: () => void; canEdit?: boolean; titlePrefix?: string }) {
+function ReportHeaderSection({ s, set, reset, save, print, canEdit, titlePrefix }: { s: ReportState; set: ReportSetState; reset: () => void; save?: () => Promise<boolean>; print: () => void; canEdit?: boolean; titlePrefix?: string }) {
   // Validation: ensure Month always has a valid selection while in Monthly mode.
   // Covers stale persisted state, programmatic state changes, and quarter switches.
   useEffect(() => {
@@ -2160,15 +2293,20 @@ function ReportAgendaSection({ embedded = false }: { embedded?: boolean } = {}) 
   return <Card className="glass-module qir-page-break">{inner}</Card>;
 }
 
-export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdit, reportKey, titlePrefix }: {
+export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdit, reportKey, titlePrefix, activeCompositeKey, fetchedCompositeKey, isDirty = false, isSaving = false, unsavedChangesWarning }: {
   s: ReportState;
   set: ReportSetState;
   reset: () => void;
-  save?: () => void;
+  save?: () => Promise<boolean>;
   print: () => void;
   canEdit?: boolean;
   reportKey?: string;
   titlePrefix?: string;
+  activeCompositeKey?: string;
+  fetchedCompositeKey?: string | null;
+  isDirty?: boolean;
+  isSaving?: boolean;
+  unsavedChangesWarning?: string | null;
 }) {
   const rk = reportKey || 'naitive.quarterlyReport.adhoc';
   // Single source of truth: the dashboard header's Reporting Period selector
@@ -2214,9 +2352,10 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
   }, [s.kpis]);
   const rootRef = React.useRef<HTMLDivElement>(null);
   const [justSaved, setJustSaved] = useState(false);
-  const handleSaveClick = () => {
+  const handleSaveClick = async () => {
     if (!save) return;
-    save();
+    const saved = await save();
+    if (!saved) return;
     setJustSaved(true);
     window.setTimeout(() => setJustSaved(false), 1800);
   };
@@ -2225,6 +2364,34 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
     : `Quarterly Insights Report — ${s.quarter}`;
   return (
     <div ref={rootRef} style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, color: TEXT_PRIMARY }}>
+      {unsavedChangesWarning && (
+        <div style={{
+          marginBottom: -4,
+          padding: '10px 14px',
+          borderRadius: 10,
+          background: 'rgba(245, 158, 11, 0.10)',
+          border: '1px solid rgba(245, 158, 11, 0.35)',
+          color: 'rgb(252, 211, 77)',
+          fontSize: 12,
+          lineHeight: 1.5,
+        }}>
+          {unsavedChangesWarning}
+        </div>
+      )}
+      {fetchedCompositeKey && activeCompositeKey && fetchedCompositeKey !== activeCompositeKey && (
+        <div style={{
+          marginBottom: -4,
+          padding: '10px 14px',
+          borderRadius: 10,
+          background: 'rgba(245, 158, 11, 0.10)',
+          border: '1px solid rgba(245, 158, 11, 0.35)',
+          color: 'rgb(252, 211, 77)',
+          fontSize: 12,
+          lineHeight: 1.5,
+        }}>
+          Warning: fetched key <code>{fetchedCompositeKey}</code> differs from active key <code>{activeCompositeKey}</code>.
+        </div>
+      )}
       <ReportHeaderSection s={s} set={set} reset={reset} save={save} print={print} canEdit={canEdit} titlePrefix={titlePrefix} />
       <Card className="glass-module qir-unified-report">
         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -2249,11 +2416,11 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
         <Btn icon={RotateCcw} variant="ghost" onClick={reset}>Reset</Btn>
         <span title={canEdit === false ? 'You do not have permission to save' : 'Save report for everyone'}>
           <Btn
-            icon={justSaved ? Check : SaveIcon}
-            onClick={handleSaveClick}
+            icon={isSaving ? Loader2 : justSaved ? Check : SaveIcon}
+            onClick={() => { void handleSaveClick(); }}
             variant={justSaved ? 'default' : 'default'}
           >
-            {justSaved ? 'Saved' : 'Save'}
+            {isSaving ? 'Saving…' : justSaved ? 'Saved' : isDirty ? 'Save changes' : 'Save'}
           </Btn>
         </span>
       </div>
