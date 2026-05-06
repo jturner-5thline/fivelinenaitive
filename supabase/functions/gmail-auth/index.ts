@@ -46,6 +46,12 @@ serve(async (req: Request): Promise<Response> => {
     const { action, code, redirect_uri }: AuthRequest = await req.json();
     console.log(`Nylas auth action: ${action} for user: ${user.id}`);
 
+    // SECURITY/CORRECTNESS: redirect_uri MUST exactly match the URI registered
+    // in the Nylas application. Do NOT vary by user, host, or client input —
+    // any deviation triggers Nylas error 701 invalid_query_params. Pass user
+    // context via the `state` parameter instead.
+    const NYLAS_REDIRECT_URI = "https://naitive.co/integrations?gmail_callback=true";
+
     if (!NYLAS_API_KEY || !NYLAS_CLIENT_ID) {
       return new Response(JSON.stringify({ error: "Nylas integration not configured" }), {
         status: 500,
@@ -55,17 +61,10 @@ serve(async (req: Request): Promise<Response> => {
 
     switch (action) {
       case "get_auth_url": {
-        if (!redirect_uri) {
-          return new Response(JSON.stringify({ error: "redirect_uri is required" }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
-        // Build Nylas v3 Hosted OAuth URL
+        // Build Nylas v3 Hosted OAuth URL — redirect_uri is hardcoded
         const params = new URLSearchParams({
           client_id: NYLAS_CLIENT_ID,
-          redirect_uri: redirect_uri,
+          redirect_uri: NYLAS_REDIRECT_URI,
           response_type: "code",
           provider: "google",
           state: user.id,
@@ -87,13 +86,6 @@ serve(async (req: Request): Promise<Response> => {
           });
         }
 
-        if (!redirect_uri) {
-          return new Response(JSON.stringify({ error: "redirect_uri is required" }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
         // Exchange authorization code for grant
         const tokenResponse = await fetch(`${NYLAS_API_URI}/v3/connect/token`, {
           method: "POST",
@@ -104,7 +96,7 @@ serve(async (req: Request): Promise<Response> => {
             client_id: NYLAS_CLIENT_ID,
             client_secret: NYLAS_API_KEY,
             code: code,
-            redirect_uri: redirect_uri,
+            redirect_uri: NYLAS_REDIRECT_URI,
             grant_type: "authorization_code",
           }),
         });
