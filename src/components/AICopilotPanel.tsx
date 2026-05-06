@@ -1120,14 +1120,27 @@ export function AICopilotPanel() {
           {/* History Dropdown */}
           {showHistory && (
             <div ref={historyRef} role="listbox" aria-label="Conversation history" style={{ position: 'absolute', top: '100%', right: 0, marginTop: 8, width: 300, maxHeight: 320, overflowY: 'auto', background: 'var(--glass-surface)', border: '1px solid var(--glass-border)', borderRadius: 10, boxShadow: '0 12px 32px rgba(0,0,0,0.4)', zIndex: 60, padding: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', borderBottom: '1px solid var(--glass-border)' }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: '0.5px' }}>History</span>
+                {historyItems.length > 0 && (
+                  <button onClick={clearAllConversations} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: 'hsl(var(--muted-foreground))', padding: '2px 4px' }}>
+                    Clear all
+                  </button>
+                )}
+              </div>
               {historyItems.length === 0 ? (
                 <div style={{ padding: '12px 10px', fontSize: 13, color: 'hsl(var(--muted-foreground))', textAlign: 'center' }}>No conversations yet</div>
               ) : (
                 historyItems.map((item) => (
-                  <button key={item.id} role="option" aria-selected={item.id === conversationId} onClick={() => loadConversation(item.id)} style={{ width: '100%', textAlign: 'left', background: item.id === conversationId ? 'rgba(126,184,247,0.1)' : 'none', border: 'none', cursor: 'pointer', padding: '8px 10px', borderRadius: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, transition: 'background 100ms' }} onMouseEnter={(e) => { if (item.id !== conversationId) e.currentTarget.style.background = 'rgba(126,184,247,0.06)'; }} onMouseLeave={(e) => { if (item.id !== conversationId) e.currentTarget.style.background = 'none'; }}>
-                    <span style={{ fontSize: 13, color: 'var(--foreground)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{item.preview}</span>
-                    <span style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', whiteSpace: 'nowrap', flexShrink: 0 }}>{formatRelativeDate(item.date)}</span>
-                  </button>
+                  <div key={item.id} role="option" aria-selected={item.id === conversationId} style={{ display: 'flex', alignItems: 'center', gap: 4, background: item.id === conversationId ? 'rgba(126,184,247,0.1)' : 'none', borderRadius: 6, transition: 'background 100ms' }} onMouseEnter={(e) => { if (item.id !== conversationId) e.currentTarget.style.background = 'rgba(126,184,247,0.06)'; }} onMouseLeave={(e) => { if (item.id !== conversationId) e.currentTarget.style.background = 'none'; }}>
+                    <button onClick={() => loadConversation(item.id)} style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '8px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, color: 'inherit' }}>
+                      <span style={{ fontSize: 13, color: 'var(--foreground)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{item.preview}</span>
+                      <span style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', whiteSpace: 'nowrap', flexShrink: 0 }}>{formatRelativeDate(item.date)}</span>
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); deleteConversation(item.id); }} aria-label="Delete conversation" title="Delete conversation" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: '6px 8px', display: 'flex', borderRadius: 6 }} onMouseEnter={(e) => (e.currentTarget.style.color = 'hsl(var(--destructive, 0 84% 60%))')} onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}>
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 ))
               )}
             </div>
