@@ -653,8 +653,6 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   // - Exclude On Hold and Archived statuses
   const ACTIVE_DEAL_LIST_STAGES = useMemo(() => new Set([
     'final-credit-items',
-    'client-strategy-review',
-    'write-up-pending',
     'submitted-to-lenders',
     'lenders-in-review',
     'terms-issued',
