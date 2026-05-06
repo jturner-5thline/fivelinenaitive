@@ -259,24 +259,6 @@ export function BenchmarkForecastsPage() {
         </div>
       </Card>
 
-      {/* KPI Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: 8, marginBottom: 10 }}>
-        {[
-          { label: 'Actuals Revenue', value: '$1.88MM', color: '#ffc53d', sub: 'Full Year 2026' },
-          { label: 'Actuals Op. Profit', value: '$447.3K', color: '#3de89a', sub: '55% of Op. Plan' },
-          { label: 'Reach Plan Rev.', value: '$3.80MM', color: '#4de8a0', sub: '59% achieved' },
-          { label: 'Operating Plan Rev.', value: '$3.20MM', color: '#5ba3d0', sub: '59% achieved' },
-          { label: 'Gross Margin Actual', value: '77%', color: '#ffc53d', sub: 'vs 84% reach plan' },
-          { label: 'TTM Revenue', value: '$1.88MM', color: '#5ba3d0', sub: 'Q4-2026 actual' },
-        ].map((k, i) => (
-          <Card key={i} style={{ padding: '12px 14px' }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'rgba(140,175,200,0.5)' }}>{k.label}</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: k.color, lineHeight: 1.1, margin: '4px 0 3px' }}>{k.value}</div>
-            <div style={{ fontSize: 10, color: 'rgba(160,190,210,0.4)' }}>{k.sub}</div>
-          </Card>
-        ))}
-      </div>
-
       {/* Main: tables left, charts right */}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.5fr)', gap: 10, marginBottom: 10 }}>
         {/* Left tables */}
