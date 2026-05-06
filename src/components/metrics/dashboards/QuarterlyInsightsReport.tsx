@@ -1600,6 +1600,7 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
                 padding: '4px 8px',
                 fontSize: 11,
                 maxWidth: 220,
+                colorScheme: 'dark',
               }}
               title="Asana portfolio source"
             >
