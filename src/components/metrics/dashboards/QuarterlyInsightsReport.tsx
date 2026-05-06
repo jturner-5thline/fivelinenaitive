@@ -1775,6 +1775,20 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
   const removeRisk = (id: string) => set(prev => ({ ...prev, risks: prev.risks.filter(risk => risk.id !== id) }));
   const addRisk = () => set(prev => ({ ...prev, risks: [...prev.risks, { id: uid(), description: '', mitigation: '' }] }));
 
+  const [riskDrill, setRiskDrill] = useState<DrilldownContext | null>(null);
+  const riskDrillRows = useMemo<Risk[]>(() => {
+    if (!riskDrill) return [];
+    if (riskDrill.sourceId.startsWith('risk:')) {
+      const id = riskDrill.sourceId.slice('risk:'.length);
+      return s.risks.filter(r => r.id === id);
+    }
+    return s.risks;
+  }, [riskDrill, s.risks]);
+  const riskDrillColumns: DrilldownColumn<Risk>[] = [
+    { key: 'description', label: 'Risk', render: (r) => r.description || <span style={{ color: TEXT_LABEL }}>—</span> },
+    { key: 'mitigation', label: 'Mitigation', render: (r) => r.mitigation || <span style={{ color: TEXT_LABEL }}>—</span> },
+  ];
+
   const thStyle: React.CSSProperties = { textAlign: 'left', fontSize: 9, fontWeight: 700, color: 'rgba(140,175,200,0.5)', letterSpacing: '.08em', textTransform: 'uppercase', padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)' };
   const tdStyle: React.CSSProperties = { padding: '8px 10px', verticalAlign: 'top', borderBottom: '1px solid rgba(255,255,255,0.04)' };
   const taStyle: React.CSSProperties = { ...inputStyle, minHeight: 70, lineHeight: 1.5, padding: 10, resize: 'vertical', fontFamily: 'inherit' };
