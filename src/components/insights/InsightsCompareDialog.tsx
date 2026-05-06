@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -68,12 +68,14 @@ export function InsightsCompareDialog({ open, onOpenChange }: Props) {
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Initialize defaults when months become available
-  if (months.length && (!periodA || !months.includes(periodA))) {
-    setTimeout(() => setPeriodA(months[months.length - 1]), 0);
-  }
-  if (months.length >= 2 && (!periodB || !months.includes(periodB))) {
-    setTimeout(() => setPeriodB(months[months.length - 2]), 0);
-  }
+  useEffect(() => {
+    if (months.length && (!periodA || !months.includes(periodA))) {
+      setPeriodA(months[months.length - 1]);
+    }
+    if (months.length >= 2 && (!periodB || !months.includes(periodB))) {
+      setPeriodB(months[months.length - 2]);
+    }
+  }, [months, periodA, periodB]);
 
   const rows: MetricRow[] = useMemo(() => {
     const dm = deal?.monthlyData ?? [];
