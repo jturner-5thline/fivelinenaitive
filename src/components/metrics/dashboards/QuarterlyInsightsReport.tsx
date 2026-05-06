@@ -1507,13 +1507,16 @@ function ReportFooterSection({ s, print }: { s: ReportState; print: () => void }
   );
 }
 
+// NOTE: section IDs are stable storage keys (used by QirSectionNotes / comments).
+// Labels here describe the section the anchor actually scrolls to — keep them
+// aligned with the components rendered under each id in QuarterlyInsightsReportPage.
 const AGENDA_SECTIONS: { id: string; label: string }[] = [
   { id: 'qir-section-summary', label: 'Executive Summary' },
-  { id: 'qir-section-financials', label: 'Revenue & Financial Performance' },
-  { id: 'qir-section-pipeline', label: 'Deal Pipeline' },
-  { id: 'qir-section-metrics', label: 'Key Metrics' },
-  { id: 'qir-section-goals', label: 'Goals & Milestones' },
-  { id: 'qir-section-commentary', label: 'Commentary & Notes' },
+  { id: 'qir-section-financials', label: 'Revenue & Financial Performance — KPIs' },
+  { id: 'qir-section-pipeline', label: 'Goals' },
+  { id: 'qir-section-metrics', label: 'Initiatives' },
+  { id: 'qir-section-goals', label: 'Risks & Mitigation' },
+  { id: 'qir-section-commentary', label: 'Commentary & Footer' },
 ];
 
 function periodLabel(s: ReportState): string {
@@ -1782,8 +1785,9 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
         <ReportRisksSection s={s} set={set} print={print} />
         {sectionThread('goals', 'Goals & Milestones')}
       </div>
-      <div id="qir-section-commentary" />
-      <ReportFooterSection s={s} print={print} />
+      <div id="qir-section-commentary">
+        <ReportFooterSection s={s} print={print} />
+      </div>
       <QirAllCommentsPanel reportKey={rk} reportLabel={reportLabel} />
     </div>
   );
@@ -1796,10 +1800,13 @@ export function QuarterlyReportPrintStyles() {
     const el = document.createElement('style');
     el.id = id;
     el.innerHTML = `
+      [id^="qir-section-"] { scroll-margin-top: 96px; }
       @media print {
         body { background: #ffffff !important; }
         .qir-no-print { display: none !important; }
         .qir-page-break { page-break-after: always; break-after: page; }
+        [id^="qir-section-"] { break-before: page; page-break-before: always; }
+        [id="qir-section-summary"] { break-before: auto; page-break-before: auto; }
       }
     `;
     document.head.appendChild(el);
