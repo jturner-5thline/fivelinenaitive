@@ -91,12 +91,14 @@ function GridShell({
   children,
   headerExtra,
   dragHandleMode = 'header',
+  titleAlign = 'left',
 }: {
   isEditMode: boolean;
   title: string;
   children: React.ReactNode;
   headerExtra?: React.ReactNode;
   dragHandleMode?: 'header' | 'manual';
+  titleAlign?: 'left' | 'center';
 }) {
   return (
     <div className="h-full w-full flex flex-col rounded-[10px] overflow-hidden relative"
@@ -106,7 +108,12 @@ function GridShell({
         className={`px-3 py-2 flex items-center justify-between ${dragHandleMode === 'header' && isEditMode ? 'widget-drag-handle cursor-grab active:cursor-grabbing' : ''}`}
         style={{ borderBottom: '1px solid rgba(40,100,180,0.2)' }}
       >
-        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'rgba(160,210,255,0.6)' }}>
+        <div style={{
+          fontSize: 9, fontWeight: 700, letterSpacing: '1.2px',
+          textTransform: 'uppercase', color: 'rgba(160,210,255,0.6)',
+          flex: titleAlign === 'center' ? 1 : undefined,
+          textAlign: titleAlign === 'center' ? 'center' : 'left',
+        }}>
           {title}
         </div>
         <div className="flex items-center gap-2">
