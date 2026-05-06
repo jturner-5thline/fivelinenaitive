@@ -2297,6 +2297,27 @@ function MetricsInner() {
                 <InsightsTimeframePicker />
               )}
 
+              {selectedDashboard === 'management-snapshot' && (
+                <UITooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      ref={assistantTriggerRef}
+                      variant="outline"
+                      size="sm"
+                      aria-label="Open Insights Assistant"
+                      aria-haspopup="dialog"
+                      aria-expanded={assistantOpen}
+                      className="h-9 gap-1.5 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30 text-primary hover:from-primary/15 hover:to-primary/10"
+                      onClick={() => setAssistantOpen(true)}
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      <span className="hidden sm:inline">Insights</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>AI Summary, Q&amp;A, Drivers, Forecast, Anomalies</TooltipContent>
+                </UITooltip>
+              )}
+
               <DropdownMenu>
                 <UITooltip>
                   <TooltipTrigger asChild>
