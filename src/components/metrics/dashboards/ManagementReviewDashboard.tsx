@@ -516,6 +516,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
               isEditMode={isEditMode}
               rowHeight={28}
               className="key-stats-subgrid"
+              draggableHandle=".key-stats-drag-handle"
             >
               {keyStatsLayout.map(l => {
                 const k = kpiById.get(l.i);
@@ -523,7 +524,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 return (
                   <div key={l.i} className="h-full">
                     <div className="relative h-full w-full" style={{ background: 'rgba(10,60,110,0.35)', border: '1px solid rgba(40,120,200,0.22)', borderRadius: 8, padding: '8px 10px', overflow: 'hidden' }}>
-                      <div className={`widget-drag-handle ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}`} style={{ position: 'absolute', inset: 0, zIndex: 1 }} />
+                      <div className={`key-stats-drag-handle ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}`} style={{ position: 'absolute', inset: 0, zIndex: 1 }} />
                       {isEditMode && (
                         <button
                           aria-label={`Remove ${k.l}`}
