@@ -362,52 +362,77 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         </div>
       </Card>
 
-      {/* KPI Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 8 }}>
-        {kpis.map((k, i) => (
-          <Card key={i}>
-            <div style={{ padding: '8px 12px' }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'rgba(160,210,255,0.5)', marginBottom: 4 }}>{k.l}</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: k.live ? '#e8f6ff' : NA_COLOR }}>
-                {k.live ? k.v : 'Data unavailable'}
-              </div>
-              <div style={{ fontSize: 10, marginTop: 2 }}>{k.live ? k.sub : <span style={{ color: NA_COLOR }}>—</span>}</div>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      {/* Middle: Revenue + Pipeline + AR */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: 10 }}>
-        <Card className="glass-module">
-          <div style={{ padding: '10px 14px' }}>
-            <SectionLabel>Monthly Revenue (last 12 mo · QuickBooks)</SectionLabel>
-            {qbConnected && monthLabels.length > 0
-              ? <div style={{ position: 'relative', height: 148 }}><canvas ref={rcRef} /></div>
-              : <NaPlaceholder height={148} label={isLoading ? 'Loading…' : 'QuickBooks not connected'} />}
-            <Sep />
-            <SectionLabel>Net Cash (Revenue − Expenses)</SectionLabel>
-            {qbConnected && monthLabels.length > 0
-              ? <div style={{ position: 'relative', height: 108 }}><canvas ref={ncRef} /></div>
-              : <NaPlaceholder height={108} label={isLoading ? 'Loading…' : 'Data unavailable'} />}
+      {/* Edit Mode toolbar */}
+      {isEditMode && (
+        <div className="flex items-center gap-2 px-1">
+          <span className="text-xs uppercase tracking-wider" style={{ color: 'rgba(160,210,255,0.7)' }}>
+            Layout edit mode — drag titles to move, drag corners to resize
+          </span>
+          <div className="ml-auto flex gap-2">
+            <Button size="sm" variant="outline" onClick={handleResetLayout}>
+              <RotateCcw className="h-3.5 w-3.5 mr-1" /> Reset to Default
+            </Button>
+            <Button size="sm" variant="ghost" onClick={handleCancelLayout}>
+              <X className="h-3.5 w-3.5 mr-1" /> Cancel
+            </Button>
+            <Button size="sm" onClick={handleSaveLayout}>
+              <Save className="h-3.5 w-3.5 mr-1" /> Save Layout
+            </Button>
           </div>
-        </Card>
+        </div>
+      )}
 
-        <Card className="glass-module">
-          <div style={{ padding: '10px 14px' }}>
-            <SectionLabel>Active Pipeline by Stage</SectionLabel>
+      {/* Draggable, resizable grid */}
+      <DraggableGridLayout
+        layout={layout}
+        onLayoutChange={saveLayout}
+        isEditMode={isEditMode}
+        rowHeight={70}
+      >
+        <div key="kpi-row" className="h-full">
+          <GridShell isEditMode={isEditMode} title="Key Stats">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 8, height: '100%' }}>
+              {kpis.map((k, i) => (
+                <div key={i} style={{ background: 'rgba(10,60,110,0.35)', border: '1px solid rgba(40,120,200,0.22)', borderRadius: 8, padding: '8px 10px' }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'rgba(160,210,255,0.5)', marginBottom: 4 }}>{k.l}</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: k.live ? '#e8f6ff' : NA_COLOR }}>
+                    {k.live ? k.v : 'Data unavailable'}
+                  </div>
+                  <div style={{ fontSize: 10, marginTop: 2 }}>{k.live ? k.sub : <span style={{ color: NA_COLOR }}>—</span>}</div>
+                </div>
+              ))}
+            </div>
+          </GridShell>
+        </div>
+
+        <div key="monthly-revenue" className="h-full">
+          <GridShell isEditMode={isEditMode} title="Monthly Revenue (last 12 mo · QuickBooks)">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%' }}>
+              {qbConnected && monthLabels.length > 0
+                ? <div style={{ position: 'relative', flex: 1, minHeight: 100 }}><canvas ref={rcRef} /></div>
+                : <NaPlaceholder height={148} label={isLoading ? 'Loading…' : 'QuickBooks not connected'} />}
+              <Sep />
+              <SectionLabel>Net Cash (Revenue − Expenses)</SectionLabel>
+              {qbConnected && monthLabels.length > 0
+                ? <div style={{ position: 'relative', flex: 1, minHeight: 80 }}><canvas ref={ncRef} /></div>
+                : <NaPlaceholder height={108} label={isLoading ? 'Loading…' : 'Data unavailable'} />}
+            </div>
+          </GridShell>
+        </div>
+
+        <div key="pipeline-stage" className="h-full">
+          <GridShell isEditMode={isEditMode} title="Active Pipeline by Stage">
             {stageBreakdown.length > 0
-              ? <div style={{ position: 'relative', height: 270 }}><canvas ref={pcRef} /></div>
-              : <NaPlaceholder height={270} label={isLoading ? 'Loading…' : 'No active deals'} />}
+              ? <div style={{ position: 'relative', height: '70%' }}><canvas ref={pcRef} /></div>
+              : <NaPlaceholder height={150} label={isLoading ? 'Loading…' : 'No active deals'} />}
             <Sep />
             <Row label="Active Deals"><span style={{ color: '#4db8ff', fontWeight: 700 }}>{activeDealCount}</span></Row>
             <Row label="Pipeline Value"><span style={{ color: '#4db8ff', fontWeight: 700 }}>{fmtUSD(activePipelineValue)}</span></Row>
-          </div>
-        </Card>
+          </GridShell>
+        </div>
 
-        <Card className="glass-module">
-          <div style={{ padding: '10px 14px' }}>
-            <SectionLabel>A/R Aging</SectionLabel>
+        <div key="ar-aging" className="h-full">
+          <GridShell isEditMode={isEditMode} title="A/R Aging">
             {qbConnected && (qb.data?.arAgingData?.length || 0) > 0
               ? <div style={{ position: 'relative', height: 130 }}><canvas ref={arRef} /></div>
               : <NaPlaceholder height={130} label={isLoading ? 'Loading…' : 'Data unavailable'} />}
@@ -422,49 +447,40 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             <Row label="Active Customers">
               <span style={{ color: '#d0eaff' }}>{qb.data?.activeCustomers ?? '—'}</span>
             </Row>
-          </div>
-        </Card>
-      </div>
+          </GridShell>
+        </div>
 
-      {/* Unavailable financial sources (transparent placeholders) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
-        <Card className="glass-module">
-          <div style={{ padding: '10px 14px' }}>
-            <SectionLabel>Bank Account Balances</SectionLabel>
+        <div key="bank-balances" className="h-full">
+          <GridShell isEditMode={isEditMode} title="Bank Account Balances">
             <NaPlaceholder height={140} label="Data unavailable — connect bank feeds" />
-          </div>
-        </Card>
-        <Card className="glass-module">
-          <div style={{ padding: '10px 14px' }}>
-            <SectionLabel>Liabilities & Debt Service</SectionLabel>
+          </GridShell>
+        </div>
+        <div key="liabilities" className="h-full">
+          <GridShell isEditMode={isEditMode} title="Liabilities & Debt Service">
             <NaPlaceholder height={140} label="Data unavailable — no live debt source" />
-          </div>
-        </Card>
-        <Card className="glass-module">
-          <div style={{ padding: '10px 14px' }}>
-            <SectionLabel>DSCR / Debt Coverage</SectionLabel>
+          </GridShell>
+        </div>
+        <div key="dscr" className="h-full">
+          <GridShell isEditMode={isEditMode} title="DSCR / Debt Coverage">
             <NaPlaceholder height={140} label="Data unavailable — requires debt schedule" />
-          </div>
-        </Card>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
-        <Card className="glass-module">
-          <div style={{ padding: '10px 14px' }}>
-            <SectionLabel>12-Week Cashflow Forecast</SectionLabel>
+          </GridShell>
+        </div>
+        <div key="cashflow-12w" className="h-full">
+          <GridShell isEditMode={isEditMode} title="12-Week Cashflow Forecast">
             <NaPlaceholder height={170} label="Data unavailable — no forecast model wired" />
-          </div>
-        </Card>
-        <Card className="glass-module">
-          <div style={{ padding: '10px 14px' }}>
-            <SectionLabel>Debt by Rating (A/B/C)</SectionLabel>
+          </GridShell>
+        </div>
+        <div key="debt-rating" className="h-full">
+          <GridShell isEditMode={isEditMode} title="Debt by Rating (A/B/C)">
             <NaPlaceholder height={170} label="Data unavailable — requires lender rating field" />
-          </div>
-        </Card>
-      </div>
-
-      {/* Asana Goals & Portfolios */}
-      <AsanaGoalsPortfoliosSection />
+          </GridShell>
+        </div>
+        <div key="asana-goals" className="h-full overflow-auto">
+          <GridShell isEditMode={isEditMode} title="Asana Goals & Portfolios">
+            <AsanaGoalsPortfoliosSection />
+          </GridShell>
+        </div>
+      </DraggableGridLayout>
     </div>
   );
 }
