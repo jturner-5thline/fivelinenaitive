@@ -1674,7 +1674,7 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
             </thead>
             <tbody>
               {s.risks.map(risk => (
-                <tr key={risk.id}>
+                <tr key={risk.id} data-comment-source="risk" data-comment-source-id={risk.id} data-comment-source-label={`Risk · ${risk.description?.slice(0, 40) || 'Untitled risk'}`}>
                   <td style={{ ...tdStyle, width: '50%' }}>
                     <textarea value={risk.description} onChange={e => updateRisk(risk.id, { description: e.target.value })} placeholder="Describe the risk…" style={taStyle} />
                   </td>
