@@ -630,38 +630,62 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     },
   );
 
-  const netCol = monthNet.map(v => v >= 0 ? 'rgba(30,180,120,0.55)' : 'rgba(220,60,80,0.5)');
-  const netBrd = monthNet.map(v => v >= 0 ? 'rgba(50,230,150,0.8)' : 'rgba(255,90,100,0.8)');
+  const ttmLabels = ttmTrendSeries.map(p => p.month);
+  const ttmCol = ttmTrendSeries.map((_p, i) => i === ttmTrendSeries.length - 1 ? 'rgba(29,148,255,0.85)' : 'rgba(20,90,170,0.55)');
+  const ttmBrd = ttmTrendSeries.map((_p, i) => i === ttmTrendSeries.length - 1 ? '#4db8ff' : 'rgba(40,120,200,0.5)');
   useChart(
     ncRef,
-    qbConnected && monthLabels.length > 0
+    qbConnected && ttmLabels.length > 0
       ? {
           type: 'bar',
-          data: { labels: monthLabels, datasets: [{ data: monthNet, backgroundColor: netCol, borderColor: netBrd, borderWidth: 1, borderRadius: 4 }] },
-          options: { ...def, scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: (v: number) => fmtUSD(v) } } } },
+          data: { labels: ttmLabels, datasets: [{ label: 'TTM Revenue', data: ttmTrendValues, backgroundColor: ttmCol, borderColor: ttmBrd, borderWidth: 1, borderRadius: 4 }] },
+          options: {
+            ...def,
+            plugins: {
+              ...((def as any).plugins || {}),
+              tooltip: {
+                callbacks: {
+                  title: (items: any[]) => {
+                    const idx = items?.[0]?.dataIndex ?? 0;
+                    const p = ttmTrendSeries[idx];
+                    if (!p) return '';
+                    return `12 mo ending ${format(p.windowEnd, 'MMM yyyy')}`;
+                  },
+                  label: (item: any) => {
+                    const p = ttmTrendSeries[item.dataIndex];
+                    const range = p ? `${format(p.windowStart, 'MMM d, yyyy')} – ${format(p.windowEnd, 'MMM d, yyyy')}` : '';
+                    return `TTM Revenue: ${fmtUSD(item.parsed.y)}${range ? `  (${range})` : ''}`;
+                  },
+                },
+              },
+            },
+            scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: (v: number) => fmtUSD(v) } } },
+          },
         }
       : null,
-    [qbConnected, JSON.stringify(monthLabels), JSON.stringify(monthNet), periodToken],
+    [qbConnected, JSON.stringify(ttmLabels), JSON.stringify(ttmTrendValues), periodToken],
     (idx, label, value) => {
-      const row = revenueSeries[idx];
+      const p = ttmTrendSeries[idx];
       setDrilldown({
         context: {
-          sourceId: 'chart:net-cash',
-          sourceLabel: 'Net Cash · QuickBooks',
+          sourceId: 'chart:ttm-revenue',
+          sourceLabel: 'TTM Revenue · QuickBooks',
           selection: label,
           periodLabel,
           filters: [
             { label: 'Reporting period', value: periodLabel },
-            { label: 'Metric', value: 'Revenue − Expenses' },
+            { label: 'Metric', value: 'Trailing 12-month revenue (all entities)' },
+            ...(p ? [{ label: 'Window', value: `${format(p.windowStart, 'MMM d, yyyy')} – ${format(p.windowEnd, 'MMM d, yyyy')}` }] : []),
           ],
         },
         columns: [
-          { key: 'month', label: 'Month' },
-          { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
-          { key: 'expenses', label: 'Expenses', align: 'right', render: (r) => fmtUSD(r.expenses) },
-          { key: 'net', label: 'Net', align: 'right', render: (r) => fmtUSD((r.revenue || 0) - (r.expenses || 0)) },
+          { key: 'window', label: 'Window' },
+          { key: 'revenue', label: 'TTM Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
         ],
-        rows: row ? [{ ...row, net: row.revenue - row.expenses }] : [{ month: label, revenue: 0, expenses: 0, net: value }],
+        rows: p
+          ? [{ window: `${format(p.windowStart, 'MMM d, yyyy')} – ${format(p.windowEnd, 'MMM d, yyyy')}`, revenue: p.revenue }]
+          : [{ window: label, revenue: value }],
+        emptyHint: 'No QuickBooks invoice activity recorded for this trailing 12-month window.',
       });
     },
   );
