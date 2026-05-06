@@ -86,6 +86,7 @@ import { InfoRequestsPanel } from '@/components/deal/InfoRequestsPanel';
 import { DealManagementTab } from '@/components/deal/DealManagementTab';
 import { CreateTaskButton } from '@/components/deal/CreateTaskButton';
 import { CreateLenderTaskButton } from '@/components/deal/CreateLenderTaskButton';
+import { LenderFollowUpPopover } from '@/components/deal/LenderFollowUpPopover';
 import { SortableAttachmentTile } from '@/components/deal/SortableAttachmentTile';
 import { DroppableAttachmentFolder } from '@/components/deal/DroppableAttachmentFolder';
 import { AttachmentDragOverlay } from '@/components/deal/AttachmentDragOverlay';
