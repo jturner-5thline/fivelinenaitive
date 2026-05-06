@@ -66,6 +66,8 @@ interface DbDeal {
   manager: string | null;
   created_at: string;
   updated_at: string;
+  pipeline_id: string | null;
+  projected_close_date: string | null;
 }
 
 export function useMetricsData() {
@@ -74,7 +76,7 @@ export function useMetricsData() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('deals')
-        .select('id, company, value, total_fee, status, stage, deal_type, manager, created_at, updated_at')
+        .select('id, company, value, total_fee, status, stage, deal_type, manager, created_at, updated_at, pipeline_id, projected_close_date')
         .order('created_at', { ascending: false });
 
       if (error) throw error;

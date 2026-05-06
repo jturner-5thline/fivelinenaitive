@@ -17,6 +17,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
 import { useMetricsData } from '@/hooks/useMetricsData';
 import { useInsightsTimeframe } from '@/contexts/InsightsTimeframeContext';
+import { usePipelineContext } from '@/contexts/PipelineContext';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import { AsanaGoalsPortfoliosSection } from './AsanaGoalsPortfoliosSection';
 import { DraggableGridLayout } from '@/components/metrics/DraggableGridLayout';
@@ -301,12 +302,13 @@ const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
   { i: 'monthly-revenue', x: 0, y: 2, w: 6, h: 4, minW: 4, minH: 3 },
   { i: 'pipeline-stage', x: 6, y: 2, w: 3, h: 4, minW: 3, minH: 3 },
   { i: 'ar-aging', x: 9, y: 2, w: 3, h: 4, minW: 3, minH: 3 },
-  { i: 'bank-balances', x: 0, y: 6, w: 4, h: 3, minW: 3, minH: 2 },
-  { i: 'liabilities', x: 4, y: 6, w: 4, h: 3, minW: 3, minH: 2 },
-  { i: 'dscr', x: 8, y: 6, w: 4, h: 3, minW: 3, minH: 2 },
-  { i: 'cashflow-12w', x: 0, y: 9, w: 6, h: 4, minW: 4, minH: 3 },
-  { i: 'debt-rating', x: 6, y: 9, w: 6, h: 4, minW: 4, minH: 3 },
-  { i: 'asana-goals', x: 0, y: 13, w: 12, h: 6, minW: 6, minH: 4 },
+  { i: 'active-deals-list', x: 0, y: 6, w: 12, h: 5, minW: 6, minH: 3 },
+  { i: 'bank-balances', x: 0, y: 11, w: 4, h: 3, minW: 3, minH: 2 },
+  { i: 'liabilities', x: 4, y: 11, w: 4, h: 3, minW: 3, minH: 2 },
+  { i: 'dscr', x: 8, y: 11, w: 4, h: 3, minW: 3, minH: 2 },
+  { i: 'cashflow-12w', x: 0, y: 14, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'debt-rating', x: 6, y: 14, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'asana-goals', x: 0, y: 18, w: 12, h: 6, minW: 6, minH: 4 },
 ];
 
 const INSIGHTS_LAYOUT_IDS = INSIGHTS_DEFAULT_LAYOUT.map(i => i.i);
@@ -321,6 +323,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const qb = useQuickBooksMetrics();
   const metrics = useMetricsData();
   const { reportingPeriod, timeframe } = useInsightsTimeframe();
+  const { activePipelineId } = usePipelineContext();
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [drilldown, setDrilldown] = useState<{
@@ -569,6 +572,48 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       : []),
     [allDeals, isCurrentReportingPeriod],
   );
+
+  // Focused active deals list for the "Active Deals" widget:
+  // - Only deals in the active pipeline
+  // - Stages between Final Credit Items and In Due Diligence (inclusive)
+  // - Exclude On Hold and Archived statuses
+  const ACTIVE_DEAL_LIST_STAGES = useMemo(() => new Set([
+    'final-credit-items',
+    'client-strategy-review',
+    'write-up-pending',
+    'submitted-to-lenders',
+    'lenders-in-review',
+    'terms-issued',
+    'in-due-diligence',
+  ]), []);
+
+  const activeDealsList = useMemo(() => {
+    return allDeals
+      .filter((d: any) => {
+        if (!ACTIVE_DEAL_LIST_STAGES.has(d.stage)) return false;
+        if (d.status === 'archived' || d.status === 'on-hold') return false;
+        if (activePipelineId && d.pipeline_id && d.pipeline_id !== activePipelineId) return false;
+        return true;
+      })
+      .sort((a: any, b: any) => {
+        const ad = a.projected_close_date ? new Date(a.projected_close_date).getTime() : Infinity;
+        const bd = b.projected_close_date ? new Date(b.projected_close_date).getTime() : Infinity;
+        return ad - bd;
+      });
+  }, [allDeals, activePipelineId, ACTIVE_DEAL_LIST_STAGES]);
+
+  const statusDisplay = (status: string): { label: string; color: string } | null => {
+    if (status === 'on-track') return { label: 'On Track', color: '#3de89a' };
+    if (status === 'at-risk') return { label: 'At Risk', color: '#ffbe1e' };
+    if (status === 'off-track') return { label: 'Off Track', color: '#ff6b7a' };
+    return null;
+  };
+
+  const formatCloseMonth = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return '—';
+    const d = parseValueDate(dateStr);
+    return d ? format(d, 'MMM yyyy') : '—';
+  };
   const activeDealCount = activeDeals.length;
   const activePipelineValue = activeDeals.reduce((sum, deal) => sum + Number(deal.value || 0), 0);
   const avgDealSize = activeDealCount > 0 ? activePipelineValue / activeDealCount : 0;
@@ -1141,6 +1186,40 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             <Row label="Payments in Period">
               <span style={{ color: '#d0eaff' }}>{qbConnected ? fmtUSD(periodPayments) : '—'}</span>
             </Row>
+          </GridShell>
+        </div>
+
+        <div key="active-deals-list" className="h-full">
+          <GridShell isEditMode={isEditMode} title="Active Deals · Final Credit → In Due Diligence">
+            <div style={{ height: '100%', overflow: 'auto' }}>
+              {activeDealsList.length === 0 ? (
+                <NaPlaceholder height={140} label="No active deals in Final Credit through In Due Diligence." />
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(40,100,180,0.3)' }}>
+                      <th style={{ textAlign: 'left', padding: '6px 8px', color: 'rgba(160,210,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Deal Name</th>
+                      <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(160,210,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Total Fee Revenue</th>
+                      <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(160,210,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Expected Close Month</th>
+                      <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(160,210,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeDealsList.map((d: any) => {
+                      const sd = statusDisplay(d.status);
+                      return (
+                        <tr key={d.id} style={{ borderBottom: '1px solid rgba(40,100,180,0.15)' }}>
+                          <td style={{ padding: '6px 8px', color: '#e8f6ff', fontWeight: 500 }}>{d.company}</td>
+                          <td style={{ padding: '6px 8px', textAlign: 'right', color: '#d0eaff' }}>{fmtUSD(Number(d.total_fee || 0))}</td>
+                          <td style={{ padding: '6px 8px', textAlign: 'right', color: '#d0eaff' }}>{formatCloseMonth(d.projected_close_date)}</td>
+                          <td style={{ padding: '6px 8px', textAlign: 'right', color: sd?.color ?? 'rgba(160,210,255,0.4)', fontWeight: 600 }}>{sd?.label ?? '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </GridShell>
         </div>
 
