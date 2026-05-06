@@ -2381,15 +2381,13 @@ function MetricsInner() {
             </div>
           </StickyDashboardHeader>
 
-          {/* AI period-over-period summary (management-snapshot dashboards only) */}
+          {/* Insights Assistant slide-over (replaces inline AI/driver/forecast/anomaly widgets) */}
           {selectedDashboard === 'management-snapshot' && (
-            <div className="space-y-4">
-              <InsightsAISummaryCard />
-              <AskAboutPeriodChat />
-              <InsightsDriversPanel />
-              <InsightsForecastPanel />
-              <AnomalyHistoryPanel />
-            </div>
+            <InsightsAssistantSheet
+              open={assistantOpen}
+              onOpenChange={setAssistantOpen}
+              returnFocusRef={assistantTriggerRef}
+            />
           )}
 
           {/* Dashboard Content - always show pre-built dashboards */}
