@@ -318,68 +318,6 @@ export function BenchmarkForecastsPage() {
             ]}
           />
 
-          {/* Forecast Range */}
-          <Card style={{ padding: '12px 14px' }}>
-            <Ct>Forecast Range</Ct>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
-              <thead>
-                <tr>{['Metric','Q1','Q2','Q3','Q4','Total'].map(h => (
-                  <th key={h} style={{ color: 'rgba(140,175,200,0.45)', fontWeight: 700, textAlign: h === 'Metric' ? 'left' : 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase' }}>{h}</th>
-                ))}</tr>
-              </thead>
-              <tbody>
-                {[
-                  ['Rev Upper','$1.18MM','$0.76MM','$0.81MM','$1.05MM','$3.80MM'],
-                  ['Rev Lower','$0.64MM','$0.76MM','$0.81MM','$0.99MM','$3.20MM'],
-                ].map((r, i) => (
-                  <tr key={i}>
-                    <td style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', fontStyle: 'italic', color: 'rgba(160,190,210,0.4)', fontSize: 10 }}>{r[0]}</td>
-                    {r.slice(1, 5).map((v, j) => <td key={j} style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', color: 'rgba(190,215,230,0.7)', fontSize: 11 }}>{v}</td>)}
-                    <td style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', fontWeight: 700, color: '#e8f4ff' }}>{r[5]}</td>
-                  </tr>
-                ))}
-                <tr>
-                  <td style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', color: 'rgba(130,165,190,0.55)', fontSize: 10 }}>Spread %</td>
-                  {['84%','0%','0%','6%','18%'].map((v, i) => (
-                    <td key={i} style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: 10, color: v === '0%' ? 'rgba(160,190,210,0.4)' : '#3de89a', fontWeight: i === 4 ? 700 : 400 }}>{v}</td>
-                  ))}
-                </tr>
-                {[
-                  ['GP Upper','$1.06MM','$0.61MM','$0.66MM','$0.85MM','$3.18MM'],
-                  ['GP Lower','$0.54MM','$0.62MM','$0.67MM','$0.82MM','$2.65MM'],
-                ].map((r, i) => (
-                  <tr key={i}>
-                    <td style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', fontStyle: 'italic', color: 'rgba(160,190,210,0.4)', fontSize: 10 }}>{r[0]}</td>
-                    {r.slice(1, 5).map((v, j) => <td key={j} style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', color: 'rgba(190,215,230,0.7)', fontSize: 11 }}>{v}</td>)}
-                    <td style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', fontWeight: 700, color: '#e8f4ff' }}>{r[5]}</td>
-                  </tr>
-                ))}
-                <tr>
-                  <td style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', color: 'rgba(130,165,190,0.55)', fontSize: 10 }}>Spread %</td>
-                  {['98%','-2%','-2%','5%','20%'].map((v, i) => (
-                    <td key={i} style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: 10, color: v.startsWith('-') ? '#ff6b7a' : '#3de89a', fontWeight: i === 4 ? 700 : 400 }}>{v}</td>
-                  ))}
-                </tr>
-                {[
-                  ['OP Upper','$0.75MM','$0.11MM','$0.13MM','$0.22MM','$1.21MM'],
-                  ['OP Lower','$0.23MM','$0.17MM','$0.19MM','$0.22MM','$0.81MM'],
-                ].map((r, i) => (
-                  <tr key={i}>
-                    <td style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', fontStyle: 'italic', color: 'rgba(160,190,210,0.4)', fontSize: 10 }}>{r[0]}</td>
-                    {r.slice(1, 5).map((v, j) => <td key={j} style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', color: 'rgba(190,215,230,0.7)', fontSize: 11 }}>{v}</td>)}
-                    <td style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', fontWeight: 700, color: '#e8f4ff' }}>{r[5]}</td>
-                  </tr>
-                ))}
-                <tr>
-                  <td style={{ textAlign: 'left', padding: '4px 6px', color: 'rgba(130,165,190,0.55)', fontSize: 10 }}>Spread %</td>
-                  {['232%','-34%','-30%','-1%','50%'].map((v, i) => (
-                    <td key={i} style={{ textAlign: 'right', padding: '4px 6px', fontSize: 10, color: v.startsWith('-') ? '#ff6b7a' : '#3de89a', fontWeight: i === 4 ? 700 : 400 }}>{v}</td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
-          </Card>
-
           {/* Actuals 2026 */}
           <PlanTable title="Actuals 2026" pill="Thru Mar-26" pillVariant="a"
             rows={[
