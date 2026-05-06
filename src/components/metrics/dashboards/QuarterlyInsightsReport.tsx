@@ -435,53 +435,53 @@ function ReportHeaderSection({ s, set, reset, save, print, canEdit }: { s: Repor
     }
   }, [s.period, s.quarter, s.month, set]);
 
+  const PREPARED_BY_OPTIONS = ['James Turner', 'John Moffitt', 'Scott Williams', 'McKenzie Clark'];
+  const currentPreparedBy = s.authors[0] && PREPARED_BY_OPTIONS.includes(s.authors[0])
+    ? s.authors[0]
+    : 'James Turner';
+  const reportTitle = s.period === 'monthly'
+    ? `Monthly Insights Report — ${monthsForQuarter(s.quarter).includes(s.month) ? s.month : (monthsForQuarter(s.quarter)[0] || s.quarter)}`
+    : `Quarterly Insights Report — ${s.quarter}`;
+  const fieldLabelStyle: React.CSSProperties = {
+    fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
+    letterSpacing: '.1em', color: TEXT_LABEL,
+  };
   return (
     <Card className="glass-module">
-      <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: '-.2px' }}>
-              {s.period === 'monthly'
-                ? `Monthly Insights Report — ${monthsForQuarter(s.quarter).includes(s.month) ? s.month : (monthsForQuarter(s.quarter)[0] || s.quarter)}`
-                : `Quarterly Insights Report — ${s.quarter}`}
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {save ? (
-              <span title={canEdit === false ? 'You do not have permission to save' : 'Save report for everyone'}>
-                <Btn icon={SaveIcon} onClick={save}>Save</Btn>
-              </span>
-            ) : null}
-            <Btn icon={RotateCcw} variant="ghost" onClick={reset}>Reset</Btn>
+      <div style={{
+        padding: '20px 22px',
+        display: 'grid',
+        gap: 16,
+        gridTemplateColumns: 'minmax(280px, 2fr) minmax(140px, 1fr) minmax(160px, 1fr)',
+        alignItems: 'end',
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={fieldLabelStyle}>Report</span>
+          <div style={{ fontSize: 18, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: '-.2px', lineHeight: 1.25 }}>
+            {reportTitle}
           </div>
         </div>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: TEXT_LABEL }}>Date Prepared</span>
-            <input value={s.preparedDate} onChange={e => set(prev => ({ ...prev, preparedDate: e.target.value }))} style={{ ...inputStyle, width: 120 }} />
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: TEXT_LABEL }}>Prepared By</span>
-            {(() => {
-              const PREPARED_BY_OPTIONS = ['James Turner', 'John Moffitt', 'Scott Williams', 'McKenzie Clark'];
-              const current = s.authors[0] && PREPARED_BY_OPTIONS.includes(s.authors[0])
-                ? s.authors[0]
-                : 'James Turner';
-              return (
-                <select
-                  value={current}
-                  onChange={e => set(prev => ({ ...prev, authors: [e.target.value] }))}
-                  style={{ ...selectStyle, width: 140 }}
-                >
-                  {PREPARED_BY_OPTIONS.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              );
-            })()}
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label style={fieldLabelStyle} htmlFor="qir-date-prepared">Date Prepared</label>
+          <input
+            id="qir-date-prepared"
+            value={s.preparedDate}
+            onChange={e => set(prev => ({ ...prev, preparedDate: e.target.value }))}
+            style={{ ...inputStyle, width: '100%' }}
+          />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label style={fieldLabelStyle} htmlFor="qir-prepared-by">Prepared By</label>
+          <select
+            id="qir-prepared-by"
+            value={currentPreparedBy}
+            onChange={e => set(prev => ({ ...prev, authors: [e.target.value] }))}
+            style={{ ...selectStyle, width: '100%' }}
+          >
+            {PREPARED_BY_OPTIONS.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
         </div>
       </div>
     </Card>
