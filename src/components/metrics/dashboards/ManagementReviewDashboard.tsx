@@ -753,6 +753,15 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
           </GridShell>
         </div>
       </DraggableGridLayout>
+
+      <InsightsDrilldownDrawer
+        open={!!drilldown}
+        onClose={closeDrilldown}
+        context={drilldown?.context ?? null}
+        columns={drilldown?.columns ?? []}
+        rows={drilldown?.rows ?? []}
+        emptyHint={drilldown?.emptyHint}
+      />
     </div>
   );
 }
