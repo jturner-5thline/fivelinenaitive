@@ -869,11 +869,31 @@ export function AICopilotPanel() {
 
       const allMsgs = useCopilotStore.getState().messages;
       await saveConversation(allMsgs);
-      // Persist last user + assistant turn to per-deal memory
+      // Persist last user + assistant turn to per-deal memory + activity timeline
       if (dealIdFromPath) {
         await dealMemory.append('user', text);
         if (assistantContent.trim()) {
           await dealMemory.append('assistant', assistantContent);
+        }
+        // Decision log: every AI exchange on a deal logs to the activity timeline
+        // with the [AI Decision] tag so it's discoverable in the deal's audit trail.
+        try {
+          const summary = `[AI Decision] ${text.slice(0, 200)}${text.length > 200 ? '…' : ''}`;
+          await supabase.from('activity_logs').insert({
+            deal_id: dealIdFromPath,
+            user_id: user?.id ?? null,
+            user_display_name: (user as any)?.user_metadata?.display_name || (user as any)?.email || null,
+            activity_type: 'ai_exchange',
+            description: summary,
+            metadata: {
+              source: 'ask_naitive',
+              prompt: text,
+              response: assistantContent.slice(0, 4000),
+              context_override: contextOverride ? contextOverride.entityId : null,
+            },
+          });
+        } catch (e) {
+          console.warn('[ai-decision-log] insert failed', e);
         }
       }
     } catch (err: any) {
