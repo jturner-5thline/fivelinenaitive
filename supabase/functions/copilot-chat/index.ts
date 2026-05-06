@@ -2146,11 +2146,36 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         const { data } = await supabase.from("deals").select("company, value, stage, deal_type").eq("id", args.deal_id).single();
         dealInfo = data;
       }
+      // Auto-resolve recipient_email from Contacts directory if only a name was given
+      let resolvedEmail: string | null = args.recipient_email || null;
+      let resolvedName: string = args.recipient_name;
+      let resolvedContact: any = null;
+      if (!resolvedEmail && args.recipient_name) {
+        const term = String(args.recipient_name).trim();
+        const { data: matches } = await supabase
+          .from("contacts")
+          .select("id, full_name, first_name, last_name, email, job_title, company_id, primary_company_id")
+          .or(`full_name.ilike.%${term}%,first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%`)
+          .not("email", "is", null)
+          .limit(5);
+        if (matches && matches.length === 1) {
+          resolvedEmail = matches[0].email;
+          resolvedName = matches[0].full_name || resolvedName;
+          resolvedContact = matches[0];
+        } else if (matches && matches.length > 1) {
+          return {
+            action: "draft_email",
+            error: `Multiple contacts match "${term}" — pick one and re-issue draft_email with recipient_email set.`,
+            candidates: matches.map((m: any) => ({ id: m.id, name: m.full_name, email: m.email, title: m.job_title })),
+          };
+        }
+      }
       return {
         action: "draft_email",
         email_type: args.email_type,
-        recipient_name: args.recipient_name,
-        recipient_email: args.recipient_email || null,
+        recipient_name: resolvedName,
+        recipient_email: resolvedEmail,
+        resolved_contact: resolvedContact,
         deal: dealInfo,
         instruction: "Generate the email subject and body. Return ONLY a JSON object with keys: to_name, to_email, subject, body (HTML). Wrap in ```json code block.",
       };
