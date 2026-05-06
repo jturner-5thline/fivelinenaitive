@@ -25,6 +25,7 @@ import {
   PieChart as PieChartIcon, AreaChart, Star, ChevronDown, ChevronRight, LayoutDashboard, Download,
   Folder, FolderPlus, MoreHorizontal, Trash2 as TrashIcon
 } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { RepPerformanceModelGrid } from "@/components/metrics/rep-model/RepPerformanceModelGrid";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
@@ -1395,6 +1396,8 @@ function MetricsInner() {
 
   const [selectedDashboard, setSelectedDashboard] = useState('management-snapshot');
   const [isEditMode, setIsEditMode] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const assistantTriggerRef = useRef<HTMLButtonElement>(null);
   const undoStackRef = useRef<Array<{ type: 'card' | 'section'; id: string; label: string; undo: () => void }>>([]);
 
   // Ctrl/Cmd+Z while in Edit Layout mode undoes most recent widget/section deletion
