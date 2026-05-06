@@ -17,6 +17,14 @@ export interface QirComment {
   updated_at?: string;
 }
 
+export interface QirThreadState {
+  target_type: string;
+  target_id: string;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  resolved_by_name: string | null;
+}
+
 export function useQirComments(reportKey: string) {
   const { company, members } = useCompany();
   const { user } = useAuth();
