@@ -3908,7 +3908,7 @@ export default function DealDetail() {
                                       data-lender-id={lender.id}
                                       data-lender-stale={staleStatus.isStale ? 'true' : undefined}
                                       className={cn(
-                                        'rounded-xl border border-blue-500/25 bg-gradient-to-br from-[hsl(220,30%,10%)] to-[hsl(260,15%,5%)] p-4 shadow-md hover:shadow-lg transition-all',
+                                         'relative rounded-xl border border-blue-500/25 bg-gradient-to-br from-[hsl(220,30%,10%)] to-[hsl(260,15%,5%)] p-4 shadow-md hover:shadow-lg transition-all',
                                         staleStatus.isStale && staleStatus.isUrgent && 'border-destructive/40 shadow-[0_0_12px_2px_hsl(var(--destructive)/0.15)]',
                                         staleStatus.isStale && !staleStatus.isUrgent && 'border-warning/40 shadow-[0_0_12px_2px_hsl(var(--warning)/0.15)]',
                                         shouldAnimate && 'animate-pulse-highlight'
