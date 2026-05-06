@@ -790,11 +790,19 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       recomputesOnPeriodChange: true,
     },
     {
-      widget: 'Active Pipeline Value / Avg Active Deal Size / Active Pipeline by Stage',
+      widget: 'Active Pipeline Value / Active Pipeline by Stage',
       dataSource: 'deals current snapshot',
       queryParams: isCurrentReportingPeriod ? 'current live pipeline snapshot' : 'no historical pipeline snapshot source',
       reportingPeriod: periodLabel,
       state: isCurrentReportingPeriod ? 'live-snapshot' : 'truthful-empty',
+      recomputesOnPeriodChange: true,
+    },
+    {
+      widget: 'TTM Revenue',
+      dataSource: 'quickbooks_invoices (all entities)',
+      queryParams: `txn_date in ${formatRangeLabel(ttmRange)}`,
+      reportingPeriod: periodLabel,
+      state: qbConnected ? 'live-query-cached-recomputed' : 'truthful-empty',
       recomputesOnPeriodChange: true,
     },
     {
@@ -831,7 +839,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       state: 'live-nonfinancial',
       recomputesOnPeriodChange: true,
     },
-  ]), [chartMode, isCurrentReportingPeriod, periodLabel, periodRange, previousRange, qbConnected, ytdRange]);
+  ]), [chartMode, isCurrentReportingPeriod, periodLabel, periodRange, previousRange, qbConnected, ytdRange, ttmRange]);
 
   useEffect(() => {
     console.groupCollapsed(`[Insights period audit] ${periodLabel}`);
