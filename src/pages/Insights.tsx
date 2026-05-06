@@ -1475,7 +1475,41 @@ function MetricsInner() {
   const activeCustomDashboard = customDashboards.find(d => d.id === selectedDashboard);
 
   // ── Global dashboard timeframe (drives every widget on Weekly Rundown) ──
-  const { selectedQuarter: dashboardSelectedQuarter } = useInsightsTimeframe();
+  const { selectedQuarter: dashboardSelectedQuarter, timeframe: insightsTimeframe, reportingPeriod } = useInsightsTimeframe();
+  // Source the metric deltas already used by the dashboard so exports reflect
+  // the exact same data boundaries the user is seeing on screen.
+  const { deltas: insightsDeltas } = useInsightsComparison();
+
+  /** Build a filename/title/data-boundary context from the active Reporting period. */
+  const insightsExportContext = useMemo<InsightsExportContext>(() => {
+    if (reportingPeriod) {
+      return {
+        periodToken: reportingPeriod.period,
+        periodLabel: reportingPeriod.label,
+        start: reportingPeriod.start,
+        end: reportingPeriod.end,
+        granularity: reportingPeriod.view,
+      };
+    }
+    return {
+      periodToken: `${insightsTimeframe.start}_${insightsTimeframe.end}`,
+      periodLabel: insightsTimeframe.label,
+      start: insightsTimeframe.start,
+      end: insightsTimeframe.end,
+      granularity: 'range',
+    };
+  }, [reportingPeriod, insightsTimeframe]);
+
+  const handleExportInsightsCsv = useCallback(() => {
+    const inRange = insightsDeltas; // deltas are already scoped to the active timeframe
+    exportInsightsCsv(insightsExportContext, inRange);
+    sonnerToast.success(`Exported CSV for ${insightsExportContext.periodLabel}`);
+  }, [insightsDeltas, insightsExportContext]);
+
+  const handleExportInsightsPdf = useCallback(() => {
+    exportInsightsPdf(insightsExportContext, insightsDeltas);
+    sonnerToast.success(`Exported PDF for ${insightsExportContext.periodLabel}`);
+  }, [insightsDeltas, insightsExportContext]);
   // Legacy compat: a few places still expect a `quarterOptions` array. Build a
   // single-element list containing the current selection so they keep working.
   const dashboardQuarterOptions = useMemo<QuarterOption[]>(
