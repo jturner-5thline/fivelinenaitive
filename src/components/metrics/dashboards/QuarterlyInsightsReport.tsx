@@ -13,6 +13,7 @@ import { useAdminRole } from '@/hooks/useAdminRole';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import naitiveLogoDark from '@/assets/naitive-logo-dark.png';
 import { QirContextualComments } from './qir/QirContextualComments';
+import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext } from '../insights/InsightsDrilldownDrawer';
 import { KpiDrillDownDialog, type KpiLike } from './qir/KpiDrillDownDialog';
 import {
   DEFAULT_ASANA_GOAL_FILTERS,
@@ -846,6 +847,29 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
     defaultGroupBy: 'statusGroup',
   });
 
+  // Drilldown state — opens a right-side drawer with filtered goal records.
+  const [goalsDrill, setGoalsDrill] = useState<DrilldownContext | null>(null);
+  const goalsDrillRows = useMemo<AsanaGoalRow[]>(() => {
+    if (!goalsDrill) return [];
+    if (goalsDrill.sourceId.startsWith('goal:')) {
+      const id = goalsDrill.sourceId.slice('goal:'.length);
+      return visibleGoals.filter(g => g.id === id);
+    }
+    if (goalsDrill.sourceId.startsWith('goals:status:')) {
+      const status = goalsDrill.sourceId.slice('goals:status:'.length);
+      return visibleGoals.filter(g => g.status === status);
+    }
+    if (goalsDrill.sourceId === 'goals:all') return visibleGoals;
+    return [];
+  }, [goalsDrill, visibleGoals]);
+  const goalsDrillColumns: DrilldownColumn<AsanaGoalRow>[] = [
+    { key: 'title', label: 'Goal', render: (g) => g.title },
+    { key: 'owner', label: 'Owner', width: 140, render: (g) => g.owner || '—' },
+    { key: 'status', label: 'Status', width: 110, render: (g) => <Pill tone={statusTone(g.status)}>{g.status}</Pill> },
+    { key: 'period', label: 'Period', width: 100, render: (g) => g.timePeriod || '—' },
+    { key: 'progress', label: 'Progress', width: 100, align: 'right', render: (g) => g.progressDisplay || (g.progressPercent != null ? `${Math.round(g.progressPercent)}%` : '—') },
+  ];
+
   // Preview counts for both modes — used in the filter editor next to the toggle.
   const matchPreview = useMemo(() => {
     const qSub = activeQuarterLabel.trim().toLowerCase();
@@ -1348,14 +1372,42 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
                 {goalsSG.groups.map((group, gi) => (
                   <React.Fragment key={`g-${gi}-${group.key}`}>
                     {goalsSG.groupBy && (
-                      <tr>
+                      <tr
+                        onClick={() => setGoalsDrill({
+                          sourceId: goalsSG.groupBy === 'statusGroup' ? `goals:status:${group.key}` : 'goals:all',
+                          sourceLabel: `Goals · ${group.key}`,
+                          selection: `${group.rows.length} goal${group.rows.length === 1 ? '' : 's'}`,
+                          periodLabel: activeQuarterLabel || activeHalfLabel || undefined,
+                          filters: [{ label: 'Owner', value: preparedBy }],
+                        })}
+                        style={{ cursor: 'pointer' }}
+                      >
                         <td colSpan={5} style={{ padding: '10px 10px 4px', fontSize: 9, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: TEXT_LABEL, background: 'rgba(255,255,255,0.02)' }}>
                           {group.key} <span style={{ color: TEXT_MUTED, fontWeight: 500 }}>· {group.rows.length}</span>
                         </td>
                       </tr>
                     )}
                     {group.rows.map((goal: AsanaGoalRow, index: number) => (
-                      <tr key={goal.id} data-comment-source="goal" data-comment-source-id={goal.id} data-comment-source-label={`Goal · ${goal.title}`}>
+                      <tr
+                        key={goal.id}
+                        data-comment-source="goal"
+                        data-comment-source-id={goal.id}
+                        data-comment-source-label={`Goal · ${goal.title}`}
+                        onClick={(e) => {
+                          if ((e.target as HTMLElement).closest('a, button')) return;
+                          setGoalsDrill({
+                            sourceId: `goal:${goal.id}`,
+                            sourceLabel: `Goal · ${goal.title}`,
+                            selection: goal.timePeriod || undefined,
+                            periodLabel: activeQuarterLabel || activeHalfLabel || undefined,
+                            filters: [
+                              { label: 'Owner', value: goal.owner || preparedBy },
+                              { label: 'Status', value: goal.status },
+                            ],
+                          });
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
                     <td style={{ ...tdStyle, color: TEXT_LABEL, fontVariantNumeric: 'tabular-nums' }}>{index + 1}</td>
                     <td style={tdStyle}>
                       {goal.url ? (
@@ -1397,6 +1449,15 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
           </div>
         )}
       </div>
+      <InsightsDrilldownDrawer
+        open={!!goalsDrill}
+        context={goalsDrill}
+        onClose={() => setGoalsDrill(null)}
+        columns={goalsDrillColumns}
+        rows={goalsDrillRows}
+        rowHref={(g) => g.url || null}
+        emptyHint="No goals match this selection for the active period and owner."
+      />
     </Card>
   );
 }
@@ -1495,6 +1556,27 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
     defaultGroupBy: 'status',
   });
 
+  const [initDrill, setInitDrill] = useState<DrilldownContext | null>(null);
+  const initDrillRows = useMemo<AsanaPortfolioProjectRow[]>(() => {
+    if (!initDrill) return [];
+    if (initDrill.sourceId.startsWith('init:')) {
+      const gid = initDrill.sourceId.slice('init:'.length);
+      return ownedProjects.filter(p => p.gid === gid);
+    }
+    if (initDrill.sourceId.startsWith('init:status:')) {
+      const status = initDrill.sourceId.slice('init:status:'.length);
+      return ownedProjects.filter(p => p.status === status);
+    }
+    if (initDrill.sourceId === 'init:all') return ownedProjects;
+    return [];
+  }, [initDrill, ownedProjects]);
+  const initDrillColumns: DrilldownColumn<AsanaPortfolioProjectRow>[] = [
+    { key: 'name', label: 'Initiative', render: (p) => p.name },
+    { key: 'owner', label: 'Owner', width: 140, render: (p) => p.owner || '—' },
+    { key: 'status', label: 'Status', width: 120, render: (p) => <Pill tone={statusTone(p.status === 'Off Track' ? 'Off Track' : p.status === 'At Risk' ? 'At Risk' : p.status === 'On Track' ? 'On Track' : 'On Track')}>{p.status}</Pill> },
+    { key: 'due', label: 'Due', width: 100, render: (p) => p.dueOn || '—' },
+  ];
+
   const thStyle: React.CSSProperties = { textAlign: 'left', fontSize: 9, fontWeight: 700, color: 'rgba(140,175,200,0.5)', letterSpacing: '.08em', textTransform: 'uppercase', padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)' };
   const tdStyle: React.CSSProperties = { padding: '6px 8px', fontSize: 12, color: TEXT_PRIMARY, verticalAlign: 'middle', borderBottom: '1px solid rgba(255,255,255,0.04)' };
 
@@ -1542,10 +1624,16 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
 
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 10 }}>
           Sourced from Asana portfolio · Owner: <span style={{ color: TEXT_PRIMARY, fontWeight: 600 }}>{preparedBy}</span>
-          <span style={{ marginLeft: 8 }}>
-            <Pill tone="pos">On Track · {counts.onTrack}</Pill>{' '}
-            <Pill tone="neu">At Risk · {counts.atRisk}</Pill>{' '}
-            <Pill tone="neg">Off Track · {counts.offTrack}</Pill>
+          <span style={{ marginLeft: 8, display: 'inline-flex', gap: 6 }}>
+            <span role="button" style={{ cursor: 'pointer' }} onClick={() => setInitDrill({ sourceId: 'init:status:On Track', sourceLabel: 'Initiatives · On Track', selection: `${counts.onTrack} initiative${counts.onTrack === 1 ? '' : 's'}`, filters: [{ label: 'Owner', value: preparedBy }] })}>
+              <Pill tone="pos">On Track · {counts.onTrack}</Pill>
+            </span>
+            <span role="button" style={{ cursor: 'pointer' }} onClick={() => setInitDrill({ sourceId: 'init:status:At Risk', sourceLabel: 'Initiatives · At Risk', selection: `${counts.atRisk} initiative${counts.atRisk === 1 ? '' : 's'}`, filters: [{ label: 'Owner', value: preparedBy }] })}>
+              <Pill tone="neu">At Risk · {counts.atRisk}</Pill>
+            </span>
+            <span role="button" style={{ cursor: 'pointer' }} onClick={() => setInitDrill({ sourceId: 'init:status:Off Track', sourceLabel: 'Initiatives · Off Track', selection: `${counts.offTrack} initiative${counts.offTrack === 1 ? '' : 's'}`, filters: [{ label: 'Owner', value: preparedBy }] })}>
+              <Pill tone="neg">Off Track · {counts.offTrack}</Pill>
+            </span>
           </span>
         </div>
 
@@ -1596,14 +1684,37 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
                 {initSG.groups.map((group, gi) => (
                   <React.Fragment key={`ig-${gi}-${group.key}`}>
                     {initSG.groupBy && (
-                      <tr>
+                      <tr
+                        onClick={() => setInitDrill({
+                          sourceId: initSG.groupBy === 'status' ? `init:status:${group.key}` : 'init:all',
+                          sourceLabel: `Initiatives · ${group.key}`,
+                          selection: `${group.rows.length} initiative${group.rows.length === 1 ? '' : 's'}`,
+                          filters: [{ label: 'Owner', value: preparedBy }],
+                        })}
+                        style={{ cursor: 'pointer' }}
+                      >
                         <td colSpan={6} style={{ padding: '10px 10px 4px', fontSize: 9, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: TEXT_LABEL, background: 'rgba(255,255,255,0.02)' }}>
                           {group.key} <span style={{ color: TEXT_MUTED, fontWeight: 500 }}>· {group.rows.length}</span>
                         </td>
                       </tr>
                     )}
                     {group.rows.map((p, idx) => (
-                      <tr key={p.gid}>
+                      <tr
+                        key={p.gid}
+                        onClick={(e) => {
+                          if ((e.target as HTMLElement).closest('a, button')) return;
+                          setInitDrill({
+                            sourceId: `init:${p.gid}`,
+                            sourceLabel: `Initiative · ${p.name}`,
+                            selection: p.dueOn ? `Due ${p.dueOn}` : undefined,
+                            filters: [
+                              { label: 'Owner', value: p.owner || preparedBy },
+                              { label: 'Status', value: p.status },
+                            ],
+                          });
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
                     <td style={{ ...tdStyle, color: TEXT_LABEL, fontVariantNumeric: 'tabular-nums' }}>{idx + 1}</td>
                     <td style={tdStyle}>
                       {p.permalink_url ? (
@@ -1646,6 +1757,15 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
           </div>
         )}
       </div>
+      <InsightsDrilldownDrawer
+        open={!!initDrill}
+        context={initDrill}
+        onClose={() => setInitDrill(null)}
+        columns={initDrillColumns}
+        rows={initDrillRows}
+        rowHref={(p) => p.permalink_url || null}
+        emptyHint="No initiatives match this selection in the active Asana portfolio."
+      />
     </Card>
   );
 }
@@ -1655,6 +1775,20 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
   const removeRisk = (id: string) => set(prev => ({ ...prev, risks: prev.risks.filter(risk => risk.id !== id) }));
   const addRisk = () => set(prev => ({ ...prev, risks: [...prev.risks, { id: uid(), description: '', mitigation: '' }] }));
 
+  const [riskDrill, setRiskDrill] = useState<DrilldownContext | null>(null);
+  const riskDrillRows = useMemo<Risk[]>(() => {
+    if (!riskDrill) return [];
+    if (riskDrill.sourceId.startsWith('risk:')) {
+      const id = riskDrill.sourceId.slice('risk:'.length);
+      return s.risks.filter(r => r.id === id);
+    }
+    return s.risks;
+  }, [riskDrill, s.risks]);
+  const riskDrillColumns: DrilldownColumn<Risk>[] = [
+    { key: 'description', label: 'Risk', render: (r) => r.description || <span style={{ color: TEXT_LABEL }}>—</span> },
+    { key: 'mitigation', label: 'Mitigation', render: (r) => r.mitigation || <span style={{ color: TEXT_LABEL }}>—</span> },
+  ];
+
   const thStyle: React.CSSProperties = { textAlign: 'left', fontSize: 9, fontWeight: 700, color: 'rgba(140,175,200,0.5)', letterSpacing: '.08em', textTransform: 'uppercase', padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)' };
   const tdStyle: React.CSSProperties = { padding: '8px 10px', verticalAlign: 'top', borderBottom: '1px solid rgba(255,255,255,0.04)' };
   const taStyle: React.CSSProperties = { ...inputStyle, minHeight: 70, lineHeight: 1.5, padding: 10, resize: 'vertical', fontFamily: 'inherit' };
@@ -1662,7 +1796,12 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
   return (
     <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
-        <SectionTitle right={<Btn icon={Plus} variant="ghost" onClick={addRisk}>Add Risk</Btn>}>
+        <SectionTitle right={(
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn icon={ExternalLink} variant="ghost" onClick={() => setRiskDrill({ sourceId: 'risks:all', sourceLabel: 'Open Risks · All', selection: `${s.risks.length} risk${s.risks.length === 1 ? '' : 's'}` })}>View All</Btn>
+            <Btn icon={Plus} variant="ghost" onClick={addRisk}>Add Risk</Btn>
+          </div>
+        )}>
           Open Risks
         </SectionTitle>
         <div style={{ overflowX: 'auto' }}>
@@ -1684,7 +1823,10 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
                     <textarea value={risk.mitigation} onChange={e => updateRisk(risk.id, { mitigation: e.target.value })} placeholder="Mitigation plan…" style={taStyle} />
                   </td>
                   <td style={tdStyle}>
-                    <Btn icon={Trash2} variant="danger" ariaLabel="Remove risk" onClick={() => removeRisk(risk.id)} />
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <Btn icon={ExternalLink} variant="ghost" ariaLabel="Drill into risk" onClick={() => setRiskDrill({ sourceId: `risk:${risk.id}`, sourceLabel: `Risk · ${risk.description?.slice(0, 60) || 'Untitled risk'}` })} />
+                      <Btn icon={Trash2} variant="danger" ariaLabel="Remove risk" onClick={() => removeRisk(risk.id)} />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -1692,6 +1834,14 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
           </table>
         </div>
       </div>
+      <InsightsDrilldownDrawer
+        open={!!riskDrill}
+        context={riskDrill}
+        onClose={() => setRiskDrill(null)}
+        columns={riskDrillColumns}
+        rows={riskDrillRows}
+        emptyHint="No open risks recorded for this report."
+      />
     </Card>
   );
 }
