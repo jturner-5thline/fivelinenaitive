@@ -1322,7 +1322,6 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
                 { id: 'statusGroup', label: 'Status' },
                 { id: 'owner', label: 'Owner' },
                 { id: 'period', label: 'Time Period' },
-                { id: 'source', label: 'Source' },
               ]}
               sortOptions={[
                 { id: 'title', label: 'Title' },
@@ -1339,7 +1338,6 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
                   <th style={{ ...thStyle, width: 170, cursor: 'pointer' }} onClick={() => goalsSG.toggleSort('owner')}>Owner{goalsSG.indicator('owner')}</th>
                   <th style={{ ...thStyle, width: 110, cursor: 'pointer' }} onClick={() => goalsSG.toggleSort('status')}>Status{goalsSG.indicator('status')}</th>
                   <th style={{ ...thStyle, width: 120, cursor: 'pointer' }} onClick={() => goalsSG.toggleSort('period')}>Time Period{goalsSG.indicator('period')}</th>
-                  <th style={{ ...thStyle, width: 70 }}>Source</th>
                 </tr>
               </thead>
               <tbody>
@@ -1347,7 +1345,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
                   <React.Fragment key={`g-${gi}-${group.key}`}>
                     {goalsSG.groupBy && (
                       <tr>
-                        <td colSpan={6} style={{ padding: '10px 10px 4px', fontSize: 9, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: TEXT_LABEL, background: 'rgba(255,255,255,0.02)' }}>
+                        <td colSpan={5} style={{ padding: '10px 10px 4px', fontSize: 9, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: TEXT_LABEL, background: 'rgba(255,255,255,0.02)' }}>
                           {group.key} <span style={{ color: TEXT_MUTED, fontWeight: 500 }}>· {group.rows.length}</span>
                         </td>
                       </tr>
@@ -1385,24 +1383,6 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
                     </td>
                     <td style={{ ...tdStyle, color: TEXT_PRIMARY }}>
                       {goal.timePeriod || <span style={{ color: TEXT_LABEL }}>—</span>}
-                    </td>
-                    <td style={tdStyle}>
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        fontSize: 9,
-                        fontWeight: 700,
-                        letterSpacing: '.06em',
-                        textTransform: 'uppercase',
-                        padding: '2px 7px',
-                        borderRadius: RADIUS_PILL,
-                        color: '#f0a45a',
-                        background: 'rgba(240,140,40,0.10)',
-                        border: '1px solid rgba(240,140,40,0.22)',
-                      }}>
-                        Asana
-                      </span>
                     </td>
                   </tr>
                     ))}
