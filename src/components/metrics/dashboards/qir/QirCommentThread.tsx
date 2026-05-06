@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { MessageSquare, Send, Trash2, ChevronDown, ChevronUp, Pencil, X, Check } from 'lucide-react';
+import { MessageSquare, Send, Trash2, ChevronDown, ChevronUp, Pencil, X, Check, CheckCircle2, RotateCcw } from 'lucide-react';
 import { useQirComments, type QirComment } from '@/hooks/useQirComments';
 import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/contexts/AuthContext';
@@ -45,7 +45,7 @@ function renderBodyWithMentions(text: string): React.ReactNode {
 }
 
 export function QirCommentThread({ reportKey, reportLabel, targetType, targetId, targetLabel, hoverOnly }: Props) {
-  const { comments: all, addComment, deleteComment, updateComment } = useQirComments(reportKey);
+  const { comments: all, addComment, deleteComment, updateComment, getThreadState, setThreadResolved } = useQirComments(reportKey);
   const { user } = useAuth();
   const { members } = useCompany();
   const [open, setOpen] = useState(false);
@@ -170,7 +170,16 @@ export function QirCommentThread({ reportKey, reportLabel, targetType, targetId,
   const activeMember = candidates[activeIdx];
 
   const count = comments.length;
-  const iconColor = open || count > 0 ? 'rgba(120,170,255,0.85)' : 'rgba(160,200,255,0.45)';
+  const threadState = getThreadState(targetType, targetId);
+  const isResolved = !!threadState?.resolved_at;
+  const iconColor = isResolved
+    ? 'rgba(120,210,160,0.9)'
+    : (open || count > 0 ? 'rgba(120,170,255,0.85)' : 'rgba(160,200,255,0.45)');
+
+  const toggleResolved = async () => {
+    try { await setThreadResolved(targetType, targetId, !isResolved); }
+    catch (e) { console.error('setThreadResolved failed', e); }
+  };
 
   return (
     <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 6, width: '100%' }}>
@@ -187,10 +196,10 @@ export function QirCommentThread({ reportKey, reportLabel, targetType, targetId,
         }}
         onMouseEnter={e => { if (hoverOnly) e.currentTarget.style.opacity = '1'; }}
         onMouseLeave={e => { if (hoverOnly && count === 0 && !open) e.currentTarget.style.opacity = '0'; }}
-        title={count > 0 ? `${count} comment${count === 1 ? '' : 's'}` : 'Add a comment'}
+        title={isResolved ? `Resolved · ${count} comment${count === 1 ? '' : 's'}` : (count > 0 ? `${count} comment${count === 1 ? '' : 's'}` : 'Add a comment')}
         aria-label="Comments"
       >
-        <MessageSquare size={13} />
+        {isResolved ? <CheckCircle2 size={13} /> : <MessageSquare size={13} />}
         {count > 0 ? <span>{count}</span> : null}
         {open ? <ChevronUp size={11} /> : count > 0 ? <ChevronDown size={11} /> : null}
       </button>
@@ -200,6 +209,23 @@ export function QirCommentThread({ reportKey, reportLabel, targetType, targetId,
           border: '1px solid rgba(120,170,255,0.18)',
           borderRadius: 8, padding: 10, display: 'flex', flexDirection: 'column', gap: 8,
         }}>
+          {isResolved && threadState && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6, fontSize: 11,
+              color: 'rgba(180,230,200,0.9)', background: 'rgba(40,120,80,0.15)',
+              border: '1px solid rgba(120,210,160,0.3)', borderRadius: 6, padding: '4px 8px',
+            }}>
+              <CheckCircle2 size={12} />
+              <span style={{ flex: 1 }}>
+                Resolved by {threadState.resolved_by_name || 'someone'}
+                {threadState.resolved_at ? ` · ${(() => { try { return new Date(threadState.resolved_at).toLocaleString(); } catch { return ''; } })()}` : ''}
+              </span>
+              <button onClick={toggleResolved} title="Reopen"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'transparent', border: 'none', color: 'rgba(180,230,200,0.85)', cursor: 'pointer', fontSize: 11 }}>
+                <RotateCcw size={11} /> Reopen
+              </button>
+            </div>
+          )}
           {comments.map(c => (
             <CommentRow
               key={c.id}
@@ -314,6 +340,20 @@ export function QirCommentThread({ reportKey, reportLabel, targetType, targetId,
             )}
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            {!isResolved && count > 0 && (
+              <button
+                onClick={toggleResolved}
+                title="Mark thread as resolved"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4, marginRight: 'auto',
+                  background: 'transparent', color: 'rgba(180,230,200,0.85)',
+                  border: '1px solid rgba(120,210,160,0.35)',
+                  borderRadius: 6, padding: '4px 10px', fontSize: 12, cursor: 'pointer',
+                }}
+              >
+                <CheckCircle2 size={12} /> Resolve
+              </button>
+            )}
             <button
               onClick={submit}
               disabled={!draft.trim() || submitting}
