@@ -1819,37 +1819,41 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
     <div style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, color: TEXT_PRIMARY }}>
       <ReportCoverSection s={s} set={set} />
       <ReportHeaderSection s={s} set={set} reset={reset} save={save} print={print} canEdit={canEdit} />
-      <div id="qir-section-summary">
-        <ReportNarrativeSection s={s} set={set} />
-        {sectionThread('summary', 'Executive Summary')}
-      </div>
-      <div id="qir-section-financials">
-        <QuickBooksActualsPanel
-          period={s.period}
-          quarter={s.quarter}
-          month={s.month}
-          planRevenue={planRevenue}
-          viewMode={actualsViewMode}
-          onChangeViewMode={setActualsViewMode}
-        />
-        <ReportKpisSection s={s} set={set} reportLabel={reportLabel} />
-        {sectionThread('financials', 'Revenue & Financial Performance')}
-      </div>
-      <div id="qir-section-pipeline">
-        <ReportGoalsSection s={s} set={set} />
-        {sectionThread('pipeline', 'Deal Pipeline')}
-      </div>
-      <div id="qir-section-metrics">
-        <ReportInitiativesSection s={s} set={set} />
-        {sectionThread('metrics', 'Key Metrics')}
-      </div>
-      <div id="qir-section-goals">
-        <ReportRisksSection s={s} set={set} print={print} />
-        {sectionThread('goals', 'Goals & Milestones')}
-      </div>
-      <div id="qir-section-commentary">
-        <ReportFooterSection s={s} print={print} />
-      </div>
+      <Card className="glass-module qir-unified-report">
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div id="qir-section-summary" className="qir-unified-section">
+            <ReportNarrativeSection s={s} set={set} />
+            {sectionThread('summary', 'Executive Summary')}
+          </div>
+          <div id="qir-section-financials" className="qir-unified-section">
+            <QuickBooksActualsPanel
+              period={s.period}
+              quarter={s.quarter}
+              month={s.month}
+              planRevenue={planRevenue}
+              viewMode={actualsViewMode}
+              onChangeViewMode={setActualsViewMode}
+            />
+            <ReportKpisSection s={s} set={set} reportLabel={reportLabel} />
+            {sectionThread('financials', 'Revenue & Financial Performance')}
+          </div>
+          <div id="qir-section-pipeline" className="qir-unified-section">
+            <ReportGoalsSection s={s} set={set} />
+            {sectionThread('pipeline', 'Deal Pipeline')}
+          </div>
+          <div id="qir-section-metrics" className="qir-unified-section">
+            <ReportInitiativesSection s={s} set={set} />
+            {sectionThread('metrics', 'Key Metrics')}
+          </div>
+          <div id="qir-section-goals" className="qir-unified-section">
+            <ReportRisksSection s={s} set={set} print={print} />
+            {sectionThread('goals', 'Goals & Milestones')}
+          </div>
+          <div id="qir-section-commentary" className="qir-unified-section">
+            <ReportFooterSection s={s} print={print} />
+          </div>
+        </div>
+      </Card>
       <QirAllCommentsPanel reportKey={rk} reportLabel={reportLabel} />
     </div>
   );
@@ -1863,6 +1867,19 @@ export function QuarterlyReportPrintStyles() {
     el.id = id;
     el.innerHTML = `
       [id^="qir-section-"] { scroll-margin-top: 96px; }
+      /* Unify subsections inside the single Monthly/Quarterly report card. */
+      .qir-unified-report > div > .qir-unified-section + .qir-unified-section {
+        border-top: 1px solid rgba(120,170,255,0.10);
+        margin-top: 8px;
+        padding-top: 16px;
+      }
+      .qir-unified-report .qir-unified-section [class*="glass-module"],
+      .qir-unified-report .qir-unified-section .glass-module {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+      }
       @media print {
         body { background: #ffffff !important; }
         .qir-no-print { display: none !important; }
