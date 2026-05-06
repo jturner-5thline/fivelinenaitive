@@ -937,13 +937,19 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                           { key: 'value', label: 'Outstanding', align: 'right', render: (r) => fmtUSD(Number(r.value || 0)) },
                         ];
                         rows = arBuckets;
-                      } else if (reg === 'active-pipeline-value' || reg === 'avg-active-deal-size') {
+                      } else if (reg === 'active-pipeline-value') {
                         columns = [
                           { key: 'company', label: 'Deal' },
                           { key: 'stage', label: 'Stage' },
                           { key: 'value', label: 'Value', align: 'right', render: (r) => fmtUSD(Number(r.value || 0)) },
                         ];
                         rows = activeDeals;
+                      } else if (reg === 'ttm-revenue') {
+                        columns = [
+                          { key: 'month', label: 'Month' },
+                          { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
+                        ];
+                        rows = ttmSeries;
                       } else if (reg === 'ytd-revenue') {
                         columns = [
                           { key: 'month', label: 'Month' },
