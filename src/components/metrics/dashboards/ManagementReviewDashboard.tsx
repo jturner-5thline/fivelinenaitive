@@ -83,6 +83,28 @@ function NaPlaceholder({ height = 90, label = 'Data unavailable' }: { height?: n
   );
 }
 
+// Grid item shell with title bar (also drag handle in edit mode)
+function GridShell({ isEditMode, title, children }: { isEditMode: boolean; title: string; children: React.ReactNode }) {
+  return (
+    <div className="h-full w-full flex flex-col rounded-[10px] overflow-hidden relative"
+      style={{ background: 'rgba(10,60,110,0.55)', border: '1px solid rgba(40,120,200,0.28)' }}>
+      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,rgba(80,180,255,0.4),transparent)' }} />
+      <div
+        className={`widget-drag-handle px-3 py-2 flex items-center justify-between ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        style={{ borderBottom: '1px solid rgba(40,100,180,0.2)' }}
+      >
+        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'rgba(160,210,255,0.6)' }}>
+          {title}
+        </div>
+        {isEditMode && (
+          <div style={{ fontSize: 9, color: 'rgba(160,210,255,0.45)' }}>⋮⋮ drag</div>
+        )}
+      </div>
+      <div className="flex-1 min-h-0 p-3 overflow-hidden">{children}</div>
+    </div>
+  );
+}
+
 // ── Chart hook ──
 function useChart(ref: React.RefObject<HTMLCanvasElement | null>, config: any, deps: any[]) {
   useEffect(() => {
