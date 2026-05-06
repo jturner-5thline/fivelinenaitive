@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Lock, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useMetricsData } from '@/hooks/useMetricsData';
+import { InsightsDrilldownDrawer, type DrilldownContext, type DrilldownColumn } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}MM`;
@@ -11,14 +13,15 @@ const formatCurrency = (value: number) => {
   return `$${value.toFixed(0)}`;
 };
 
-function KPICard({ title, value, change, changeDirection }: { 
+function KPICard({ title, value, change, changeDirection, onClick }: {
   title: string; 
   value: string; 
   change?: string; 
-  changeDirection?: 'up' | 'down' 
+  changeDirection?: 'up' | 'down';
+  onClick?: () => void;
 }) {
   return (
-    <Card className="glass-module">
+    <Card className="glass-module cursor-pointer hover:border-primary/40 transition-colors" onClick={onClick}>
       <CardContent className="p-4 text-center">
         <p className="text-xs text-muted-foreground mb-1">{title}</p>
         <p className="text-2xl font-bold text-foreground">{value}</p>
@@ -71,6 +74,22 @@ function ErrorCard({ title }: { title: string }) {
 
 export function SalesBDROIDashboard() {
   const { data: metrics, isLoading } = useMetricsData();
+  const [drill, setDrill] = useState<{
+    context: DrilldownContext;
+    columns: DrilldownColumn[];
+    rows: Array<Record<string, unknown>>;
+  } | null>(null);
+
+  const openDrill = (sourceLabel: string, selection: string, rows: Array<Record<string, unknown>>) => {
+    setDrill({
+      context: { sourceId: `sales-bd:${sourceLabel}`, sourceLabel, selection },
+      columns: [
+        { key: 'metric', label: 'Field' },
+        { key: 'value', label: 'Value', align: 'right' },
+      ],
+      rows,
+    });
+  };
 
   if (isLoading) {
     return <div className="animate-pulse text-muted-foreground">Loading...</div>;
@@ -108,6 +127,7 @@ export function SalesBDROIDashboard() {
   ];
 
   return (
+    <>
     <div className="space-y-6">
       {/* Header Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -159,10 +179,21 @@ export function SalesBDROIDashboard() {
 
       {/* KPI Cards Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KPICard title="Sales TTM ROI" value="41.4%" change="vs previous Mo 21% ↑" changeDirection="up" />
-        <KPICard title="Run Rate ROI" value="555.1%" change="vs previous Mo 19% ↑" changeDirection="up" />
-        <KPICard title="YTD Performance to Plan" value="- $88.0K" />
-        <KPICard title="Proj. Performance to Plan" value="- $829.3K" change="vs previous Mo 0.0% ↓" changeDirection="down" />
+        <KPICard title="Sales TTM ROI" value="41.4%" change="vs previous Mo 21% ↑" changeDirection="up" onClick={() => openDrill('Sales TTM ROI', 'Trailing 12 months', [
+          { metric: 'Sales TTM ROI', value: '41.4%' },
+          { metric: 'Change vs prior month', value: '+21%' },
+        ])} />
+        <KPICard title="Run Rate ROI" value="555.1%" change="vs previous Mo 19% ↑" changeDirection="up" onClick={() => openDrill('Run Rate ROI', 'Run rate', [
+          { metric: 'Run Rate ROI', value: '555.1%' },
+          { metric: 'Change vs prior month', value: '+19%' },
+        ])} />
+        <KPICard title="YTD Performance to Plan" value="- $88.0K" onClick={() => openDrill('YTD Performance to Plan', 'Year to date', [
+          { metric: 'Variance vs Plan', value: '- $88.0K' },
+        ])} />
+        <KPICard title="Proj. Performance to Plan" value="- $829.3K" change="vs previous Mo 0.0% ↓" changeDirection="down" onClick={() => openDrill('Projected Performance to Plan', 'Projected full year', [
+          { metric: 'Projected variance', value: '- $829.3K' },
+          { metric: 'Change vs prior month', value: '0.0%' },
+        ])} />
       </div>
 
       {/* Performance & Stats */}
@@ -184,7 +215,15 @@ export function SalesBDROIDashboard() {
               </TableHeader>
               <TableBody>
                 {performanceTable.map((row) => (
-                  <TableRow key={row.metric}>
+                  <TableRow
+                    key={row.metric}
+                    className="cursor-pointer hover:bg-muted/40"
+                    onClick={() => openDrill('Sales Performance', row.metric, [
+                      { metric: 'Actual', value: String(row.actual) },
+                      { metric: 'Forecast', value: String(row.forecast) },
+                      { metric: 'Variance', value: `${row.variance} (${row.variantPct})` },
+                    ])}
+                  >
                     <TableCell className="font-medium text-xs">{row.metric}</TableCell>
                     <TableCell className="text-right text-xs">{row.actual}</TableCell>
                     <TableCell className="text-right text-xs">{row.forecast}</TableCell>
@@ -198,7 +237,15 @@ export function SalesBDROIDashboard() {
               <Table>
                 <TableBody>
                   {expensesTable.map((row) => (
-                    <TableRow key={row.metric}>
+                    <TableRow
+                      key={row.metric}
+                      className="cursor-pointer hover:bg-muted/40"
+                      onClick={() => openDrill('Expenses', row.metric, [
+                        { metric: 'Actual', value: String(row.actual) },
+                        { metric: 'Forecast', value: String(row.forecast) },
+                        { metric: 'Variance', value: `${row.variance} (${row.variantPct})` },
+                      ])}
+                    >
                       <TableCell className="font-medium text-xs">{row.metric}</TableCell>
                       <TableCell className="text-right text-xs">{row.actual}</TableCell>
                       <TableCell className="text-right text-xs">{row.forecast}</TableCell>
@@ -213,14 +260,26 @@ export function SalesBDROIDashboard() {
 
         {/* Deals on Board & Dollars */}
         <div className="space-y-4">
-          <Card className="glass-module">
+          <Card
+            className="glass-module cursor-pointer hover:border-primary/40 transition-colors"
+            onClick={() => openDrill('Deals on Board', 'Current', [
+              { metric: 'Deals on Board', value: '7' },
+              { metric: 'vs previous month', value: '+1' },
+            ])}
+          >
             <CardContent className="p-4 text-center">
               <p className="text-xs text-muted-foreground">Deals on Board</p>
               <p className="text-4xl font-bold text-foreground">7</p>
               <p className="text-success text-sm">vs previous Mo <span className="font-semibold">1 ↑</span></p>
             </CardContent>
           </Card>
-          <Card className="glass-module">
+          <Card
+            className="glass-module cursor-pointer hover:border-primary/40 transition-colors"
+            onClick={() => openDrill('Dollars on Board', 'Current', [
+              { metric: 'Dollars on Board', value: '$39.5MM' },
+              { metric: 'vs previous month', value: '+$5.5MM' },
+            ])}
+          >
             <CardContent className="p-4 text-center">
               <p className="text-xs text-muted-foreground">Dollars on Board</p>
               <p className="text-4xl font-bold text-foreground">$39.5MM</p>
@@ -247,7 +306,16 @@ export function SalesBDROIDashboard() {
               </TableHeader>
               <TableBody>
                 {repBreakdown.map((row) => (
-                  <TableRow key={row.rep}>
+                  <TableRow
+                    key={row.rep}
+                    className="cursor-pointer hover:bg-muted/40"
+                    onClick={() => openDrill('Rep Breakdown', row.rep, [
+                      { metric: 'TTM Revenue', value: row.revenue },
+                      { metric: 'TM ROI', value: row.roi },
+                      { metric: 'Run Rate ROI', value: row.runRateRoi },
+                      { metric: 'Run Rate Revenue', value: row.runRateRev },
+                    ])}
+                  >
                     <TableCell className="font-medium">{row.rep}</TableCell>
                     <TableCell className="text-xs">{row.revenue}</TableCell>
                     <TableCell className={`text-xs ${row.roi.startsWith('-') ? 'text-destructive' : 'text-success'}`}>{row.roi}</TableCell>
@@ -288,5 +356,14 @@ export function SalesBDROIDashboard() {
         <ErrorCard title="TTM CAC (Debt)" />
       </div>
     </div>
+    <InsightsDrilldownDrawer
+      open={!!drill}
+      onClose={() => setDrill(null)}
+      context={drill?.context ?? null}
+      columns={drill?.columns ?? []}
+      rows={drill?.rows ?? []}
+      emptyHint="No detail records available."
+    />
+    </>
   );
 }
