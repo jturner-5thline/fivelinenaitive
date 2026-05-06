@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
 import ChartJS from 'chart.js/auto';
 import { format } from 'date-fns';
-import { RefreshCw, Loader2, Save, RotateCcw, X, Plus, Trash2 } from 'lucide-react';
+import { RefreshCw, Loader2, Save, RotateCcw, X } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
 import { useMetricsData } from '@/hooks/useMetricsData';
@@ -12,9 +11,6 @@ import { DraggableGridLayout } from '@/components/metrics/DraggableGridLayout';
 import { useGridLayout, GridLayoutItem } from '@/hooks/useGridLayout';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 // ── Chart.js global defaults (scoped to this dashboard) ──
 const setChartDefaults = () => {
@@ -135,9 +131,34 @@ function useChart(ref: React.RefObject<HTMLCanvasElement | null>, config: any, d
   }, deps);
 }
 
-// ── Default grid layout (12 cols, mirrors prior reference layout) ──
+// ── Standalone KPI widget IDs (formerly children of the Key Stats container) ──
+// Each one is now an independent top-level dashboard widget that can be
+// dragged, resized, and managed like any other widget.
+const STANDALONE_KPI_IDS = [
+  'kpi-total-revenue-curr',
+  'kpi-operating-profit-curr',
+  'kpi-outstanding-ar',
+  'kpi-active-pipeline-value',
+  'kpi-avg-active-deal-size',
+  'kpi-ytd-revenue',
+] as const;
+
+// Map standalone widget id → registry id (registry keys are bare metric ids).
+const STANDALONE_KPI_TO_REGISTRY: Record<string, string> = {
+  'kpi-total-revenue-curr':     'total-revenue-curr',
+  'kpi-operating-profit-curr':  'operating-profit-curr',
+  'kpi-outstanding-ar':         'outstanding-ar',
+  'kpi-active-pipeline-value':  'active-pipeline-value',
+  'kpi-avg-active-deal-size':   'avg-active-deal-size',
+  'kpi-ytd-revenue':            'ytd-revenue',
+};
+
+// ── Default grid layout (12 cols) ──
+// Top row: six standalone KPI widgets, each 2 cols wide × 2 rows tall.
 const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
-  { i: 'kpi-row',          x: 0, y: 0,  w: 12, h: 2, minW: 6, minH: 2 },
+  ...STANDALONE_KPI_IDS.map((id, i) => ({
+    i: id, x: i * 2, y: 0, w: 2, h: 2, minW: 2, minH: 2, maxH: 4,
+  } as GridLayoutItem)),
   { i: 'monthly-revenue',  x: 0, y: 2,  w: 6,  h: 4, minW: 4, minH: 3 },
   { i: 'pipeline-stage',   x: 6, y: 2,  w: 3,  h: 4, minW: 3, minH: 3 },
   { i: 'ar-aging',         x: 9, y: 2,  w: 3,  h: 4, minW: 3, minH: 3 },
@@ -163,45 +184,13 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const metrics = useMetricsData();
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
-  const [isInteractingWithKeyStatsTile, setIsInteractingWithKeyStatsTile] = useState(false);
-  const insightsGridGuardRef = useRef<HTMLDivElement>(null);
-  const releaseKeyStatsGuard = () => {
-    setKeyStatsTileInteraction(false);
-  };
-  const setKeyStatsTileInteraction = (next: boolean) => {
-    flushSync(() => {
-      setIsInteractingWithKeyStatsTile(next);
-    });
-    if (insightsGridGuardRef.current) {
-      insightsGridGuardRef.current.classList.toggle('key-stats-parent-drag-disabled', next);
-    }
-  };
-
-  useEffect(() => {
-    if (!isEditMode) releaseKeyStatsGuard();
-  }, [isEditMode]);
-
-  useEffect(() => {
-    window.addEventListener('pointerup', releaseKeyStatsGuard);
-    window.addEventListener('mouseup', releaseKeyStatsGuard);
-    window.addEventListener('touchend', releaseKeyStatsGuard);
-    window.addEventListener('touchcancel', releaseKeyStatsGuard);
-
-    return () => {
-      insightsGridGuardRef.current?.classList.remove('key-stats-parent-drag-disabled');
-      window.removeEventListener('pointerup', releaseKeyStatsGuard);
-      window.removeEventListener('mouseup', releaseKeyStatsGuard);
-      window.removeEventListener('touchend', releaseKeyStatsGuard);
-      window.removeEventListener('touchcancel', releaseKeyStatsGuard);
-    };
-  }, []);
 
   // Persistent, drag/drop + resize layout
   const {
     layout,
     saveLayout,
     resetLayout,
-  } = useGridLayout('insights-management-review-v1', INSIGHTS_LAYOUT_IDS, {
+  } = useGridLayout('insights-management-review-v2', INSIGHTS_LAYOUT_IDS, {
     allowAllMembers: true,
     layoutDefaults: INSIGHTS_DEFAULT_LAYOUT,
   });
@@ -355,9 +344,9 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     [qbConnected, JSON.stringify(arBuckets)]
   );
 
-  // KPI tile registry — each entry is a discrete, addable/removable stat
-  // tile. Preserves all existing metric logic; just keys it by id so the
-  // Key Stats container can be configured independently of the dashboard layout.
+  // KPI registry — each entry is one of the standalone KPI widgets that
+  // were formerly children of the (now removed) Key Stats container.
+  // Same metric logic as before, just rendered as top-level widgets.
   type KpiTile = { id: string; l: string; v: string; sub: React.ReactNode; live: boolean };
   const kpiRegistry: KpiTile[] = [
     {
@@ -429,38 +418,6 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     return m;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kpiRegistry.map(k => k.id + '|' + k.v).join(',')]);
-
-  // Persistent layout for the Key Stats sub-grid (tile composition + sizes)
-  const KEY_STATS_DEFAULT_TILE_IDS = [
-    'total-revenue-curr', 'operating-profit-curr', 'outstanding-ar',
-    'active-pipeline-value', 'avg-active-deal-size', 'ytd-revenue',
-  ];
-  const KEY_STATS_DEFAULT_LAYOUT: GridLayoutItem[] = KEY_STATS_DEFAULT_TILE_IDS.map((id, i) => ({
-    i: id, x: (i % 6) * 2, y: Math.floor(i / 6) * 2, w: 2, h: 2, minW: 1, minH: 1,
-  }));
-  const {
-    layout: keyStatsLayout,
-    saveLayout: saveKeyStatsLayout,
-    resetLayout: resetKeyStatsLayout,
-  } = useGridLayout('insights-key-stats-tiles-v1', KEY_STATS_DEFAULT_TILE_IDS, {
-    allowAllMembers: true,
-    layoutDefaults: KEY_STATS_DEFAULT_LAYOUT,
-  });
-
-  const handleAddKpiTile = (id: string) => {
-    if (keyStatsLayout.some(l => l.i === id)) {
-      toast.message('That stat is already in Key Stats');
-      return;
-    }
-    const maxY = keyStatsLayout.reduce((m, l) => Math.max(m, l.y + l.h), 0);
-    const next: GridLayoutItem[] = [...keyStatsLayout, { i: id, x: 0, y: maxY, w: 2, h: 2, minW: 1, minH: 1 }];
-    saveKeyStatsLayout(next, true);
-  };
-  const handleRemoveKpiTile = (id: string) => {
-    saveKeyStatsLayout(keyStatsLayout.filter(l => l.i !== id), true);
-  };
-
-  const availableToAdd = kpiRegistry.filter(k => !keyStatsLayout.some(l => l.i === k.id));
 
   return (
     <div style={{ background: 'transparent', color: '#c8e8ff', fontFamily: 'system-ui, sans-serif', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
