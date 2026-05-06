@@ -307,9 +307,13 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     [qbConnected, JSON.stringify(arBuckets)]
   );
 
-  // KPI tiles (live)
-  const kpis: { l: string; v: string; sub: React.ReactNode; live: boolean }[] = [
+  // KPI tile registry — each entry is a discrete, addable/removable stat
+  // tile. Preserves all existing metric logic; just keys it by id so the
+  // Key Stats container can be configured independently of the dashboard layout.
+  type KpiTile = { id: string; l: string; v: string; sub: React.ReactNode; live: boolean };
+  const kpiRegistry: KpiTile[] = [
     {
+      id: 'total-revenue-curr',
       l: 'Total Revenue (curr mo)', live: qbConnected,
       v: fmtUSD(totalRevCurr),
       sub: (() => {
@@ -318,6 +322,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       })(),
     },
     {
+      id: 'operating-profit-curr',
       l: 'Operating Profit (curr mo)', live: qbConnected,
       v: fmtUSD(opProfitCurr),
       sub: (() => {
@@ -326,6 +331,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       })(),
     },
     {
+      id: 'outstanding-ar',
       l: 'Outstanding A/R', live: qbConnected,
       v: fmtUSD(totalAR),
       sub: <span style={{ color: overdueAR && overdueAR > 0 ? '#ff6b7a' : '#3de89a' }}>
@@ -333,21 +339,80 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       </span>,
     },
     {
+      id: 'active-pipeline-value',
       l: 'Active Pipeline Value', live: true,
       v: fmtUSD(activePipelineValue),
       sub: <span style={{ color: 'rgba(160,210,255,0.55)' }}>{activeDealCount} active deal{activeDealCount === 1 ? '' : 's'}</span>,
     },
     {
+      id: 'avg-active-deal-size',
       l: 'Avg Active Deal Size', live: true,
       v: fmtUSD(avgDealSize),
       sub: <span style={{ color: 'rgba(160,210,255,0.55)' }}>across {activeDealCount}</span>,
     },
     {
+      id: 'ytd-revenue',
       l: 'YTD Revenue', live: qbConnected,
       v: fmtUSD(ytdRevenue),
       sub: <span style={{ color: 'rgba(160,210,255,0.55)' }}>TTM {fmtUSD(ttmRevenue)}</span>,
     },
+    {
+      id: 'ttm-revenue',
+      l: 'TTM Revenue', live: qbConnected,
+      v: fmtUSD(ttmRevenue),
+      sub: <span style={{ color: 'rgba(160,210,255,0.55)' }}>trailing 12 months</span>,
+    },
+    {
+      id: 'active-deal-count',
+      l: 'Active Deals', live: true,
+      v: String(activeDealCount),
+      sub: <span style={{ color: 'rgba(160,210,255,0.55)' }}>open in pipeline</span>,
+    },
+    {
+      id: 'overdue-ar',
+      l: 'Overdue A/R', live: qbConnected,
+      v: fmtUSD(overdueAR),
+      sub: <span style={{ color: 'rgba(160,210,255,0.55)' }}>past due balance</span>,
+    },
   ];
+  const kpiById = useMemo(() => {
+    const m = new Map<string, KpiTile>();
+    kpiRegistry.forEach(k => m.set(k.id, k));
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kpiRegistry.map(k => k.id + '|' + k.v).join(',')]);
+
+  // Persistent layout for the Key Stats sub-grid (tile composition + sizes)
+  const KEY_STATS_DEFAULT_TILE_IDS = [
+    'total-revenue-curr', 'operating-profit-curr', 'outstanding-ar',
+    'active-pipeline-value', 'avg-active-deal-size', 'ytd-revenue',
+  ];
+  const KEY_STATS_DEFAULT_LAYOUT: GridLayoutItem[] = KEY_STATS_DEFAULT_TILE_IDS.map((id, i) => ({
+    i: id, x: (i % 6) * 2, y: Math.floor(i / 6) * 2, w: 2, h: 2, minW: 1, minH: 1,
+  }));
+  const {
+    layout: keyStatsLayout,
+    saveLayout: saveKeyStatsLayout,
+    resetLayout: resetKeyStatsLayout,
+  } = useGridLayout('insights-key-stats-tiles-v1', KEY_STATS_DEFAULT_TILE_IDS, {
+    allowAllMembers: true,
+    layoutDefaults: KEY_STATS_DEFAULT_LAYOUT,
+  });
+
+  const handleAddKpiTile = (id: string) => {
+    if (keyStatsLayout.some(l => l.i === id)) {
+      toast.message('That stat is already in Key Stats');
+      return;
+    }
+    const maxY = keyStatsLayout.reduce((m, l) => Math.max(m, l.y + l.h), 0);
+    const next: GridLayoutItem[] = [...keyStatsLayout, { i: id, x: 0, y: maxY, w: 2, h: 2, minW: 1, minH: 1 }];
+    saveKeyStatsLayout(next, true);
+  };
+  const handleRemoveKpiTile = (id: string) => {
+    saveKeyStatsLayout(keyStatsLayout.filter(l => l.i !== id), true);
+  };
+
+  const availableToAdd = kpiRegistry.filter(k => !keyStatsLayout.some(l => l.i === k.id));
 
   return (
     <div style={{ background: 'transparent', color: '#c8e8ff', fontFamily: 'system-ui, sans-serif', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
