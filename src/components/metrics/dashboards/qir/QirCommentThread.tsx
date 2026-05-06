@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { MessageSquare, Send, Trash2, ChevronDown, ChevronUp, Pencil, X, Check } from 'lucide-react';
 import { useQirComments, type QirComment } from '@/hooks/useQirComments';
 import { useCompany } from '@/hooks/useCompany';
@@ -51,6 +51,7 @@ export function QirCommentThread({ reportKey, reportLabel, targetType, targetId,
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [activeIdx, setActiveIdx] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
@@ -78,20 +79,61 @@ export function QirCommentThread({ reportKey, reportLabel, targetType, targetId,
   const onChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const v = e.target.value;
     setDraft(v);
-    // Detect mention typing (last @ followed by letters with no space yet)
+    // Detect mention typing (last @ followed by any non-space chars; allow empty for `@`)
     const cursor = e.target.selectionStart;
     const upto = v.slice(0, cursor);
-    const m = upto.match(/@([A-Za-z][\w.-]*)$/);
+    const m = upto.match(/@([^\s@"]*)$/);
     setMentionQuery(m ? m[1].toLowerCase() : null);
+    setActiveIdx(0);
+  };
+
+  /**
+   * Fuzzy-score a member against the query. Higher is better.
+   * Combines:
+   *  - prefix bonus (starts-with on display name or any token)
+   *  - substring bonus (contains)
+   *  - subsequence match (chars appear in order, with proximity bonus)
+   */
+  const scoreMember = (m: { display_name?: string; email?: string }, q: string): number => {
+    if (!q) return 1; // any member ranks equally for empty query
+    const name = (m.display_name || '').toLowerCase();
+    const email = (m.email || '').toLowerCase();
+    const local = email.split('@')[0] || '';
+    const tokens = name.split(/\s+/).filter(Boolean);
+    let score = 0;
+    if (name.startsWith(q)) score += 100;
+    if (tokens.some(t => t.startsWith(q))) score += 60;
+    if (local.startsWith(q)) score += 40;
+    if (name.includes(q)) score += 20;
+    if (email.includes(q)) score += 10;
+    // Subsequence match against name
+    let i = 0, j = 0, lastIdx = -1, gaps = 0;
+    while (i < q.length && j < name.length) {
+      if (q[i] === name[j]) {
+        if (lastIdx >= 0) gaps += (j - lastIdx - 1);
+        lastIdx = j;
+        i++;
+      }
+      j++;
+    }
+    if (i === q.length) score += Math.max(0, 30 - gaps); // full subsequence match
+    return score;
   };
 
   const candidates = useMemo(() => {
     if (mentionQuery == null) return [];
     const q = mentionQuery;
     return (members || [])
-      .filter(m => (m.display_name || '').toLowerCase().includes(q))
-      .slice(0, 6);
+      .map(m => ({ m, score: scoreMember(m, q) }))
+      .filter(x => x.score > 0)
+      .sort((a, b) => b.score - a.score || (a.m.display_name || '').localeCompare(b.m.display_name || ''))
+      .slice(0, 8)
+      .map(x => x.m);
   }, [members, mentionQuery]);
+
+  useEffect(() => {
+    if (activeIdx >= candidates.length) setActiveIdx(0);
+  }, [candidates, activeIdx]);
 
   const insertMention = (name: string) => {
     const ta = taRef.current;
@@ -99,12 +141,33 @@ export function QirCommentThread({ reportKey, reportLabel, targetType, targetId,
     const cursor = ta.selectionStart;
     const before = draft.slice(0, cursor);
     const after = draft.slice(cursor);
-    const replaced = before.replace(/@([A-Za-z][\w.-]*)$/, `@"${name}" `);
+    const replaced = before.replace(/@([^\s@"]*)$/, `@"${name}" `);
     const next = replaced + after;
     setDraft(next);
     setMentionQuery(null);
     requestAnimationFrame(() => ta.focus());
   };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (mentionQuery != null && candidates.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault(); setActiveIdx(i => (i + 1) % candidates.length); return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault(); setActiveIdx(i => (i - 1 + candidates.length) % candidates.length); return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        const m = candidates[activeIdx];
+        if (m) insertMention(m.display_name || m.email || '');
+        return;
+      }
+      if (e.key === 'Escape') { e.preventDefault(); setMentionQuery(null); return; }
+    }
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); }
+  };
+
+  const activeMember = candidates[activeIdx];
 
   const count = comments.length;
   const iconColor = open || count > 0 ? 'rgba(120,170,255,0.85)' : 'rgba(160,200,255,0.45)';
@@ -151,6 +214,7 @@ export function QirCommentThread({ reportKey, reportLabel, targetType, targetId,
               ref={taRef}
               value={draft}
               onChange={onChange}
+              onKeyDown={onKeyDown}
               placeholder="Add a comment… use @ to mention"
               rows={2}
               maxLength={4000}
@@ -161,21 +225,91 @@ export function QirCommentThread({ reportKey, reportLabel, targetType, targetId,
                 padding: '6px 8px', fontSize: 12, outline: 'none', fontFamily: 'inherit',
               }}
             />
-            {candidates.length > 0 && (
-              <div style={{
-                position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 4,
-                background: 'rgba(16,28,52,0.96)', border: '1px solid rgba(120,170,255,0.25)',
-                borderRadius: 6, padding: 4, zIndex: 10, maxHeight: 180, overflow: 'auto',
-              }}>
-                {candidates.map(m => (
-                  <button key={m.id} onClick={() => insertMention(m.display_name || m.email || '')}
-                    style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent',
-                      border: 'none', color: '#dde8f8', padding: '4px 8px', fontSize: 12, cursor: 'pointer', borderRadius: 4 }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(80,140,255,0.15)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    {m.display_name || m.email}
-                  </button>
-                ))}
+            {mentionQuery != null && candidates.length > 0 && (
+              <div
+                role="listbox"
+                aria-label="Mention suggestions"
+                style={{
+                  position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 4,
+                  background: 'rgba(16,28,52,0.96)', border: '1px solid rgba(120,170,255,0.25)',
+                  borderRadius: 6, zIndex: 10, maxHeight: 240, overflow: 'hidden',
+                  display: 'flex', flexDirection: 'column',
+                }}
+              >
+                <div style={{ overflow: 'auto', padding: 4 }}>
+                  {candidates.map((m, idx) => {
+                    const active = idx === activeIdx;
+                    const initials = (m.display_name || m.email || '?')
+                      .split(/\s+/).map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+                    return (
+                      <button
+                        key={m.id}
+                        role="option"
+                        aria-selected={active}
+                        onMouseEnter={() => setActiveIdx(idx)}
+                        onMouseDown={(e) => { e.preventDefault(); insertMention(m.display_name || m.email || ''); }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
+                          background: active ? 'rgba(80,140,255,0.18)' : 'transparent',
+                          border: 'none', color: '#dde8f8', padding: '5px 8px', fontSize: 12,
+                          cursor: 'pointer', borderRadius: 4,
+                        }}
+                      >
+                        {m.avatar_url ? (
+                          <img src={m.avatar_url} alt="" width={20} height={20}
+                            style={{ borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
+                        ) : (
+                          <span style={{
+                            width: 20, height: 20, borderRadius: 10, flexShrink: 0,
+                            background: 'rgba(80,140,255,0.25)', color: '#dde8f8',
+                            fontSize: 10, fontWeight: 600, display: 'inline-flex',
+                            alignItems: 'center', justifyContent: 'center',
+                          }}>{initials}</span>
+                        )}
+                        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {m.display_name || m.email}
+                        </span>
+                        {m.display_name && m.email && (
+                          <span style={{ color: 'rgba(160,200,255,0.5)', fontSize: 10, flexShrink: 0 }}>{m.email}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {activeMember && (
+                  <div style={{
+                    borderTop: '1px solid rgba(120,170,255,0.18)',
+                    background: 'rgba(10,18,36,0.7)',
+                    padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 8,
+                    fontSize: 11, color: 'rgba(200,225,245,0.85)',
+                  }}>
+                    {activeMember.avatar_url ? (
+                      <img src={activeMember.avatar_url} alt="" width={24} height={24}
+                        style={{ borderRadius: 12, objectFit: 'cover' }} />
+                    ) : (
+                      <span style={{
+                        width: 24, height: 24, borderRadius: 12,
+                        background: 'rgba(80,140,255,0.25)', color: '#dde8f8',
+                        fontSize: 11, fontWeight: 600, display: 'inline-flex',
+                        alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {(activeMember.display_name || activeMember.email || '?')
+                          .split(/\s+/).map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()}
+                      </span>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: '#dde8f8', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {activeMember.display_name || activeMember.email}
+                      </div>
+                      {activeMember.email && activeMember.display_name && (
+                        <div style={{ color: 'rgba(160,200,255,0.55)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {activeMember.email}
+                        </div>
+                      )}
+                    </div>
+                    <span style={{ color: 'rgba(160,200,255,0.5)', fontSize: 10 }}>↵ to insert · esc</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
