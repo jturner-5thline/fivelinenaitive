@@ -1763,15 +1763,59 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
 }
 
 function ReportAgendaSection() {
+  const STORAGE_KEY = 'qir.agenda.smoothScroll';
+  const prefersReduced = typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const [smooth, setSmooth] = React.useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    const v = window.localStorage.getItem(STORAGE_KEY);
+    if (v === 'true') return true;
+    if (v === 'false') return false;
+    return !prefersReduced;
+  });
+  React.useEffect(() => {
+    try { window.localStorage.setItem(STORAGE_KEY, String(smooth)); } catch {}
+  }, [smooth]);
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     e.preventDefault();
     const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (el) el.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
   };
   return (
     <Card className="glass-module qir-page-break">
       <div style={{ padding: '32px 36px' }}>
-        <SectionTitle>Agenda</SectionTitle>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <SectionTitle>Agenda</SectionTitle>
+          <label
+            className="qir-no-print"
+            title={prefersReduced && smooth ? 'Your system prefers reduced motion' : 'Toggle smooth scrolling for agenda links'}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12,
+              color: 'rgba(200,225,245,0.75)', cursor: 'pointer', userSelect: 'none',
+            }}
+          >
+            <span>Smooth scroll</span>
+            <span
+              role="switch"
+              aria-checked={smooth}
+              tabIndex={0}
+              onClick={() => setSmooth(s => !s)}
+              onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setSmooth(s => !s); } }}
+              style={{
+                position: 'relative', width: 32, height: 18, borderRadius: 9,
+                background: smooth ? 'rgba(80,140,255,0.55)' : 'rgba(120,170,255,0.18)',
+                border: '1px solid rgba(120,170,255,0.3)', transition: 'background .15s',
+                display: 'inline-block',
+              }}
+            >
+              <span style={{
+                position: 'absolute', top: 1, left: smooth ? 15 : 1, width: 14, height: 14,
+                borderRadius: 7, background: '#dde8f8', transition: 'left .15s',
+              }} />
+            </span>
+          </label>
+        </div>
         <ol style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {AGENDA_SECTIONS.map((item, idx) => (
             <li key={item.id}>
