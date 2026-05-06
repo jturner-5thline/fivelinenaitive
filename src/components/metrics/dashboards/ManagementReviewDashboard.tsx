@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ChartJS from 'chart.js/auto';
 import { format } from 'date-fns';
-import { RefreshCw, Loader2, Save, RotateCcw, X } from 'lucide-react';
+import { RefreshCw, Loader2, Save, RotateCcw, X, Plus, Trash2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
 import { useMetricsData } from '@/hooks/useMetricsData';
@@ -11,6 +11,9 @@ import { DraggableGridLayout } from '@/components/metrics/DraggableGridLayout';
 import { useGridLayout, GridLayoutItem } from '@/hooks/useGridLayout';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 // ── Chart.js global defaults (scoped to this dashboard) ──
 const setChartDefaults = () => {
@@ -84,7 +87,7 @@ function NaPlaceholder({ height = 90, label = 'Data unavailable' }: { height?: n
 }
 
 // Grid item shell with title bar (also drag handle in edit mode)
-function GridShell({ isEditMode, title, children }: { isEditMode: boolean; title: string; children: React.ReactNode }) {
+function GridShell({ isEditMode, title, children, headerExtra }: { isEditMode: boolean; title: string; children: React.ReactNode; headerExtra?: React.ReactNode }) {
   return (
     <div className="h-full w-full flex flex-col rounded-[10px] overflow-hidden relative"
       style={{ background: 'rgba(10,60,110,0.55)', border: '1px solid rgba(40,120,200,0.28)' }}>
@@ -96,9 +99,12 @@ function GridShell({ isEditMode, title, children }: { isEditMode: boolean; title
         <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'rgba(160,210,255,0.6)' }}>
           {title}
         </div>
-        {isEditMode && (
-          <div style={{ fontSize: 9, color: 'rgba(160,210,255,0.45)' }}>⋮⋮ drag</div>
-        )}
+        <div className="flex items-center gap-2">
+          {headerExtra}
+          {isEditMode && (
+            <div style={{ fontSize: 9, color: 'rgba(160,210,255,0.45)' }}>⋮⋮ drag</div>
+          )}
+        </div>
       </div>
       <div className="flex-1 min-h-0 p-3 overflow-hidden">{children}</div>
     </div>
@@ -304,9 +310,13 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     [qbConnected, JSON.stringify(arBuckets)]
   );
 
-  // KPI tiles (live)
-  const kpis: { l: string; v: string; sub: React.ReactNode; live: boolean }[] = [
+  // KPI tile registry — each entry is a discrete, addable/removable stat
+  // tile. Preserves all existing metric logic; just keys it by id so the
+  // Key Stats container can be configured independently of the dashboard layout.
+  type KpiTile = { id: string; l: string; v: string; sub: React.ReactNode; live: boolean };
+  const kpiRegistry: KpiTile[] = [
     {
+      id: 'total-revenue-curr',
       l: 'Total Revenue (curr mo)', live: qbConnected,
       v: fmtUSD(totalRevCurr),
       sub: (() => {
@@ -315,6 +325,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       })(),
     },
     {
+      id: 'operating-profit-curr',
       l: 'Operating Profit (curr mo)', live: qbConnected,
       v: fmtUSD(opProfitCurr),
       sub: (() => {
@@ -323,6 +334,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       })(),
     },
     {
+      id: 'outstanding-ar',
       l: 'Outstanding A/R', live: qbConnected,
       v: fmtUSD(totalAR),
       sub: <span style={{ color: overdueAR && overdueAR > 0 ? '#ff6b7a' : '#3de89a' }}>
@@ -330,21 +342,80 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       </span>,
     },
     {
+      id: 'active-pipeline-value',
       l: 'Active Pipeline Value', live: true,
       v: fmtUSD(activePipelineValue),
       sub: <span style={{ color: 'rgba(160,210,255,0.55)' }}>{activeDealCount} active deal{activeDealCount === 1 ? '' : 's'}</span>,
     },
     {
+      id: 'avg-active-deal-size',
       l: 'Avg Active Deal Size', live: true,
       v: fmtUSD(avgDealSize),
       sub: <span style={{ color: 'rgba(160,210,255,0.55)' }}>across {activeDealCount}</span>,
     },
     {
+      id: 'ytd-revenue',
       l: 'YTD Revenue', live: qbConnected,
       v: fmtUSD(ytdRevenue),
       sub: <span style={{ color: 'rgba(160,210,255,0.55)' }}>TTM {fmtUSD(ttmRevenue)}</span>,
     },
+    {
+      id: 'ttm-revenue',
+      l: 'TTM Revenue', live: qbConnected,
+      v: fmtUSD(ttmRevenue),
+      sub: <span style={{ color: 'rgba(160,210,255,0.55)' }}>trailing 12 months</span>,
+    },
+    {
+      id: 'active-deal-count',
+      l: 'Active Deals', live: true,
+      v: String(activeDealCount),
+      sub: <span style={{ color: 'rgba(160,210,255,0.55)' }}>open in pipeline</span>,
+    },
+    {
+      id: 'overdue-ar',
+      l: 'Overdue A/R', live: qbConnected,
+      v: fmtUSD(overdueAR),
+      sub: <span style={{ color: 'rgba(160,210,255,0.55)' }}>past due balance</span>,
+    },
   ];
+  const kpiById = useMemo(() => {
+    const m = new Map<string, KpiTile>();
+    kpiRegistry.forEach(k => m.set(k.id, k));
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kpiRegistry.map(k => k.id + '|' + k.v).join(',')]);
+
+  // Persistent layout for the Key Stats sub-grid (tile composition + sizes)
+  const KEY_STATS_DEFAULT_TILE_IDS = [
+    'total-revenue-curr', 'operating-profit-curr', 'outstanding-ar',
+    'active-pipeline-value', 'avg-active-deal-size', 'ytd-revenue',
+  ];
+  const KEY_STATS_DEFAULT_LAYOUT: GridLayoutItem[] = KEY_STATS_DEFAULT_TILE_IDS.map((id, i) => ({
+    i: id, x: (i % 6) * 2, y: Math.floor(i / 6) * 2, w: 2, h: 2, minW: 1, minH: 1,
+  }));
+  const {
+    layout: keyStatsLayout,
+    saveLayout: saveKeyStatsLayout,
+    resetLayout: resetKeyStatsLayout,
+  } = useGridLayout('insights-key-stats-tiles-v1', KEY_STATS_DEFAULT_TILE_IDS, {
+    allowAllMembers: true,
+    layoutDefaults: KEY_STATS_DEFAULT_LAYOUT,
+  });
+
+  const handleAddKpiTile = (id: string) => {
+    if (keyStatsLayout.some(l => l.i === id)) {
+      toast.message('That stat is already in Key Stats');
+      return;
+    }
+    const maxY = keyStatsLayout.reduce((m, l) => Math.max(m, l.y + l.h), 0);
+    const next: GridLayoutItem[] = [...keyStatsLayout, { i: id, x: 0, y: maxY, w: 2, h: 2, minW: 1, minH: 1 }];
+    saveKeyStatsLayout(next, true);
+  };
+  const handleRemoveKpiTile = (id: string) => {
+    saveKeyStatsLayout(keyStatsLayout.filter(l => l.i !== id), true);
+  };
+
+  const availableToAdd = kpiRegistry.filter(k => !keyStatsLayout.some(l => l.i === k.id));
 
   return (
     <div style={{ background: 'transparent', color: '#c8e8ff', fontFamily: 'system-ui, sans-serif', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -412,18 +483,69 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         rowHeight={70}
       >
         <div key="kpi-row" className="h-full">
-          <GridShell isEditMode={isEditMode} title="Key Stats">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 8, height: '100%' }}>
-              {kpis.map((k, i) => (
-                <div key={i} style={{ background: 'rgba(10,60,110,0.35)', border: '1px solid rgba(40,120,200,0.22)', borderRadius: 8, padding: '8px 10px' }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'rgba(160,210,255,0.5)', marginBottom: 4 }}>{k.l}</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: k.live ? '#e8f6ff' : NA_COLOR }}>
-                    {k.live ? k.v : 'Data unavailable'}
+          <GridShell
+            isEditMode={isEditMode}
+            title="Key Stats"
+            headerExtra={isEditMode ? (
+              <div className="flex items-center gap-1" onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]">
+                      <Plus className="h-3 w-3 mr-1" /> Add Stat
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="z-50">
+                    {availableToAdd.length === 0 ? (
+                      <DropdownMenuItem disabled>No more stats available</DropdownMenuItem>
+                    ) : availableToAdd.map(k => (
+                      <DropdownMenuItem key={k.id} onClick={() => handleAddKpiTile(k.id)}>
+                        {k.l}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={() => resetKeyStatsLayout()}>
+                  <RotateCcw className="h-3 w-3 mr-1" /> Reset
+                </Button>
+              </div>
+            ) : null}
+          >
+            <DraggableGridLayout
+              layout={keyStatsLayout}
+              onLayoutChange={saveKeyStatsLayout}
+              isEditMode={isEditMode}
+              rowHeight={28}
+              className="key-stats-subgrid"
+            >
+              {keyStatsLayout.map(l => {
+                const k = kpiById.get(l.i);
+                if (!k) return <div key={l.i} />;
+                return (
+                  <div key={l.i} className="h-full">
+                    <div className="relative h-full w-full" style={{ background: 'rgba(10,60,110,0.35)', border: '1px solid rgba(40,120,200,0.22)', borderRadius: 8, padding: '8px 10px', overflow: 'hidden' }}>
+                      <div className={`widget-drag-handle ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}`} style={{ position: 'absolute', inset: 0, zIndex: 1 }} />
+                      {isEditMode && (
+                        <button
+                          aria-label={`Remove ${k.l}`}
+                          onMouseDown={e => e.stopPropagation()}
+                          onClick={(e) => { e.stopPropagation(); handleRemoveKpiTile(k.id); }}
+                          style={{ position: 'absolute', top: 4, right: 4, zIndex: 2, background: 'rgba(220,60,80,0.2)', border: '1px solid rgba(220,60,80,0.4)', borderRadius: 4, padding: '2px 4px', cursor: 'pointer', color: '#ff8a96' }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                      <div style={{ position: 'relative', zIndex: 1, pointerEvents: isEditMode ? 'none' : 'auto' }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'rgba(160,210,255,0.5)', marginBottom: 4 }}>{k.l}</div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: k.live ? '#e8f6ff' : NA_COLOR }}>
+                          {k.live ? k.v : 'Data unavailable'}
+                        </div>
+                        <div style={{ fontSize: 10, marginTop: 2 }}>{k.live ? k.sub : <span style={{ color: NA_COLOR }}>—</span>}</div>
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ fontSize: 10, marginTop: 2 }}>{k.live ? k.sub : <span style={{ color: NA_COLOR }}>—</span>}</div>
-                </div>
-              ))}
-            </div>
+                );
+              })}
+            </DraggableGridLayout>
           </GridShell>
         </div>
 
