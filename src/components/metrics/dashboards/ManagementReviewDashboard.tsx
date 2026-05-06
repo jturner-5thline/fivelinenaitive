@@ -150,6 +150,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const metrics = useMetricsData();
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [isInteractingWithKeyStatsTile, setIsInteractingWithKeyStatsTile] = useState(false);
 
   // Persistent, drag/drop + resize layout
   const {
@@ -481,6 +482,8 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         onLayoutChange={saveLayout}
         isEditMode={isEditMode}
         rowHeight={70}
+        draggableCancel=".key-stats-subgrid, .key-stats-drag-handle, .key-stats-resize-guard, .react-resizable-handle"
+        isDraggableEnabled={!isInteractingWithKeyStatsTile}
       >
         <div key="kpi-row" className="h-full">
           <GridShell
@@ -517,17 +520,41 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
               rowHeight={28}
               className="key-stats-subgrid"
               draggableHandle=".key-stats-drag-handle"
+              draggableCancel=".key-stats-tile-remove, .react-resizable-handle"
             >
               {keyStatsLayout.map(l => {
                 const k = kpiById.get(l.i);
                 if (!k) return <div key={l.i} />;
                 return (
                   <div key={l.i} className="h-full">
-                    <div className="relative h-full w-full" style={{ background: 'rgba(10,60,110,0.35)', border: '1px solid rgba(40,120,200,0.22)', borderRadius: 8, padding: '8px 10px', overflow: 'hidden' }}>
-                      <div className={`key-stats-drag-handle ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}`} style={{ position: 'absolute', inset: 0, zIndex: 1 }} />
+                    <div
+                      className="relative h-full w-full key-stats-resize-guard"
+                      onPointerDownCapture={() => setIsInteractingWithKeyStatsTile(true)}
+                      onPointerUpCapture={() => setIsInteractingWithKeyStatsTile(false)}
+                      onPointerCancelCapture={() => setIsInteractingWithKeyStatsTile(false)}
+                      onMouseLeave={() => setIsInteractingWithKeyStatsTile(false)}
+                      style={{ background: 'rgba(10,60,110,0.35)', border: '1px solid rgba(40,120,200,0.22)', borderRadius: 8, padding: '8px 10px', overflow: 'hidden' }}
+                    >
+                      {isEditMode && (
+                        <div
+                          className="key-stats-drag-handle absolute top-1 left-1/2 -translate-x-1/2 z-[3] flex items-center gap-1 rounded-md border border-border/50 bg-background/70 px-2 py-0.5 text-[10px] text-muted-foreground backdrop-blur cursor-grab active:cursor-grabbing"
+                          onPointerDownCapture={(e) => {
+                            e.stopPropagation();
+                            setIsInteractingWithKeyStatsTile(true);
+                          }}
+                          onPointerUpCapture={(e) => {
+                            e.stopPropagation();
+                            setIsInteractingWithKeyStatsTile(false);
+                          }}
+                          onPointerCancelCapture={() => setIsInteractingWithKeyStatsTile(false)}
+                        >
+                          ⋮⋮ Move
+                        </div>
+                      )}
                       {isEditMode && (
                         <button
                           aria-label={`Remove ${k.l}`}
+                          className="key-stats-tile-remove"
                           onMouseDown={e => e.stopPropagation()}
                           onClick={(e) => { e.stopPropagation(); handleRemoveKpiTile(k.id); }}
                           style={{ position: 'absolute', top: 4, right: 4, zIndex: 2, background: 'rgba(220,60,80,0.2)', border: '1px solid rgba(220,60,80,0.4)', borderRadius: 4, padding: '2px 4px', cursor: 'pointer', color: '#ff8a96' }}
@@ -535,7 +562,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                           <Trash2 className="h-3 w-3" />
                         </button>
                       )}
-                      <div style={{ position: 'relative', zIndex: 1, pointerEvents: isEditMode ? 'none' : 'auto' }}>
+                      <div style={{ position: 'relative', zIndex: 1, pointerEvents: isEditMode ? 'none' : 'auto', paddingTop: isEditMode ? 14 : 0 }}>
                         <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'rgba(160,210,255,0.5)', marginBottom: 4 }}>{k.l}</div>
                         <div style={{ fontSize: 16, fontWeight: 700, color: k.live ? '#e8f6ff' : NA_COLOR }}>
                           {k.live ? k.v : 'Data unavailable'}
