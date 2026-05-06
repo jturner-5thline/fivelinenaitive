@@ -1353,7 +1353,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
                       </tr>
                     )}
                     {group.rows.map((goal: AsanaGoalRow, index: number) => (
-                      <tr key={goal.id}>
+                      <tr key={goal.id} data-comment-source="goal" data-comment-source-id={goal.id} data-comment-source-label={`Goal · ${goal.title}`}>
                     <td style={{ ...tdStyle, color: TEXT_LABEL, fontVariantNumeric: 'tabular-nums' }}>{index + 1}</td>
                     <td style={tdStyle}>
                       {goal.url ? (
