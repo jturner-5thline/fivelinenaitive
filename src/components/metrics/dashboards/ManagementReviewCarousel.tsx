@@ -10,7 +10,7 @@ import {
   useQuarterlyReportState,
 } from './QuarterlyInsightsReport';
 
-export function ManagementReviewCarousel() {
+export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }: { isEditMode?: boolean; onExitEditMode?: () => void } = {}) {
   const [activeIndex, setActiveIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const reportOne = useQuarterlyReportState(createQuarterlyReportSeed(), 'naitive.quarterlyReport.v1.report1');
@@ -18,7 +18,7 @@ export function ManagementReviewCarousel() {
   const reportThree = useQuarterlyReportState(createQuarterlyReportSeed(), 'naitive.quarterlyReport.v1.report3');
 
   const PAGES: { title: string; render: () => JSX.Element }[] = [
-    { title: 'Insights Dashboard',                          render: () => <ManagementReviewDashboard /> },
+    { title: 'Insights Dashboard',                          render: () => <ManagementReviewDashboard isEditMode={isEditMode} onExitEditMode={onExitEditMode} /> },
     { title: 'Benchmark Forecasts',                         render: () => <BenchmarkForecastsPage /> },
     { title: 'Key Metrics',                                 render: () => <KeyMetricsPage /> },
     { title: 'Quarterly Insights Report — Report 1',        render: () => <QuarterlyInsightsReportPage s={reportOne.state} set={reportOne.setState} reset={reportOne.reset} save={reportOne.save} canEdit={reportOne.canEdit} print={reportOne.print} reportKey="naitive.quarterlyReport.v1.report1" /> },
