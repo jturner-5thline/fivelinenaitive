@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ChartJS from 'chart.js/auto';
 import { format } from 'date-fns';
-import { RefreshCw, Loader2 } from 'lucide-react';
+import { RefreshCw, Loader2, Save, RotateCcw, X } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
 import { useMetricsData } from '@/hooks/useMetricsData';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import { AsanaGoalsPortfoliosSection } from './AsanaGoalsPortfoliosSection';
+import { DraggableGridLayout } from '@/components/metrics/DraggableGridLayout';
+import { useGridLayout, GridLayoutItem } from '@/hooks/useGridLayout';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 // ── Chart.js global defaults (scoped to this dashboard) ──
 const setChartDefaults = () => {
