@@ -1340,6 +1340,23 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
     offTrack: ownedProjects.filter(p => p.status === 'Off Track').length,
   }), [ownedProjects]);
 
+  const initStatusRank: Record<string, number> = { 'Off Track': 0, 'At Risk': 1, 'On Hold': 2, 'On Track': 3, 'Complete': 4, 'No Status': 5 };
+  const initColumns: SortGroupColumn<AsanaPortfolioProjectRow>[] = [
+    { id: 'name', label: 'Name', accessor: p => p.name?.toLowerCase() || '', sortable: true },
+    { id: 'owner', label: 'Owner', accessor: p => p.owner || '', sortable: true, groupable: true },
+    { id: 'statusSort', label: 'Status', accessor: p => initStatusRank[p.status] ?? 99, sortable: true },
+    { id: 'status', label: 'Status', accessor: p => p.status || '—', groupable: true },
+    { id: 'due', label: 'Due Date', accessor: p => p.dueOn || null, sortable: true },
+    { id: 'source', label: 'Source', accessor: () => 'Asana', groupable: true },
+  ];
+  const initSG = useSortGroup<AsanaPortfolioProjectRow>({
+    rows: ownedProjects,
+    columns: initColumns,
+    defaultSortBy: 'name',
+    defaultSortDir: 'asc',
+    defaultGroupBy: 'status',
+  });
+
   const thStyle: React.CSSProperties = { textAlign: 'left', fontSize: 9, fontWeight: 700, color: 'rgba(140,175,200,0.5)', letterSpacing: '.08em', textTransform: 'uppercase', padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)' };
   const tdStyle: React.CSSProperties = { padding: '6px 8px', fontSize: 12, color: TEXT_PRIMARY, verticalAlign: 'middle', borderBottom: '1px solid rgba(255,255,255,0.04)' };
 
