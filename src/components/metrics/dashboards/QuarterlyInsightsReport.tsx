@@ -1324,7 +1324,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
 function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetState }) {
   const preparedBy = s.authors[0] || 'James Turner';
   // Initiatives sourced live from a user-selectable Asana Portfolio.
-  const DEFAULT_PORTFOLIO_GID = '1212153276296112';
+  const DEFAULT_PORTFOLIO_GID = '1212153276296114';
   const PORTFOLIO_PREF_KEY = 'qir.initiatives.portfolioGid';
   const [portfolioGid, setPortfolioGid] = useState<string>(() => {
     try { return localStorage.getItem(PORTFOLIO_PREF_KEY) || DEFAULT_PORTFOLIO_GID; }
