@@ -348,12 +348,11 @@ serve(async (req: Request): Promise<Response> => {
           { headers }
         );
 
-        const listData = await listResponse.json();
-
         if (!listResponse.ok) {
-          console.error("Nylas list error:", listData);
           const isRateLimit = listResponse.status === 429;
           const isServerError = listResponse.status >= 500;
+          // Drain body safely (Nylas may return HTML on 5xx)
+          await listResponse.text().catch(() => "");
           if (isRateLimit || isServerError) {
             return new Response(JSON.stringify({
               error: isRateLimit ? "RATE_LIMITED" : "SERVICE_UNAVAILABLE",
@@ -365,11 +364,9 @@ serve(async (req: Request): Promise<Response> => {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
-          return new Response(JSON.stringify({ error: listData.message || "Failed to list messages" }), {
-            status: listResponse.status,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+          return forwardNylasError(listResponse, "Failed to list messages");
         }
+        const listData = await listResponse.json();
 
         const items = listData.data || [];
         const messages = items.map((msg: any) => {
@@ -415,22 +412,19 @@ serve(async (req: Request): Promise<Response> => {
           { headers }
         );
 
-        const msgData = await msgResponse.json();
-
         if (!msgResponse.ok) {
           // 404 = message no longer exists in mailbox (deleted, moved, or stale ID).
           // Return a soft null so the client can skip it rather than treating it as a runtime error.
           if (msgResponse.status === 404) {
+            await msgResponse.text().catch(() => "");
             return new Response(JSON.stringify({ message: null, not_found: true }), {
               status: 200,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
-          return new Response(JSON.stringify({ error: msgData.message || "Failed to get message" }), {
-            status: msgResponse.status,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+          return forwardNylasError(msgResponse, "Failed to get message");
         }
+        const msgData = await msgResponse.json();
 
         const msg = msgData.data || msgData;
         const { body_html, body_text } = pickBodyHtmlAndText(msg);
@@ -488,14 +482,10 @@ serve(async (req: Request): Promise<Response> => {
           { headers }
         );
 
-        const threadData = await threadResponse.json();
-
         if (!threadResponse.ok) {
-          return new Response(JSON.stringify({ error: threadData.message || "Failed to get thread" }), {
-            status: threadResponse.status,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+          return forwardNylasError(threadResponse, "Failed to get thread");
         }
+        const threadData = await threadResponse.json();
 
         const rawThread = threadData.data || threadData;
         let rawMessages = Array.isArray(rawThread?.messages)
