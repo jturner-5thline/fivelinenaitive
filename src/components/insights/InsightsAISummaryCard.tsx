@@ -35,6 +35,14 @@ import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContex
 import { InsightsCompareDialog } from './InsightsCompareDialog';
 import { useReportDefinitions } from '@/hooks/useReportDefinitions';
 import { useReportAISummaries, useSaveReportAISummary } from '@/hooks/useReportAISummaries';
+import { useInsightsDrivers } from '@/hooks/useInsightsDrivers';
+import { useInsightsForecast } from '@/hooks/useInsightsForecast';
+import { useInsightsTargets } from '@/hooks/useInsightsTargets';
+import { useRecordAnomalies } from '@/hooks/useAnomalyHistory';
+import { InsightsDriversPanel } from './InsightsDriversPanel';
+import { InsightsForecastPanel } from './InsightsForecastPanel';
+import { AnomalyHistoryPanel } from './AnomalyHistoryPanel';
+import { format } from 'date-fns';
 
 function ChangeChip({
   pct,
@@ -71,6 +79,9 @@ function buildClaudePrompt(
   deltas: DeltaResult[],
   alerts: TrendAlert[],
   periodLabel: string,
+  drivers?: Record<string, { contributors: { name: string; delta: number }[] }>,
+  forecasts?: { label: string; current: number; nextProjection: number; band: number; format: DeltaResult['format'] }[],
+  targets?: { label: string; target: number; current: number; format: DeltaResult['format'] }[],
 ) {
   const lines = deltas.map(d => {
     const cur = formatDeltaValue(d.current, d.format);
@@ -83,6 +94,21 @@ function buildClaudePrompt(
   const alertLines = alerts.length
     ? alerts.map(a => `- [${a.level.toUpperCase()}] ${a.message}`).join('\n')
     : '- No automated trend alerts.';
+  const driverLines: string[] = [];
+  if (drivers) {
+    for (const [k, b] of Object.entries(drivers)) {
+      if (!b.contributors.length) continue;
+      const top = b.contributors.slice(0, 3).map(c => `${c.name} (${c.delta >= 0 ? '+' : ''}${formatDeltaValue(c.delta, 'currency')})`).join(', ');
+      driverLines.push(`- ${k}: ${top}`);
+    }
+  }
+  const fcLines = (forecasts ?? []).map(f =>
+    `- ${f.label}: current ${formatDeltaValue(f.current, f.format)}, next-period projection ${formatDeltaValue(f.nextProjection, f.format)} (±${formatDeltaValue(f.band, f.format)})`,
+  );
+  const tgLines = (targets ?? []).map(t => {
+    const variance = t.current - t.target;
+    return `- ${t.label}: actual ${formatDeltaValue(t.current, t.format)} vs plan ${formatDeltaValue(t.target, t.format)} (Δ ${variance >= 0 ? '+' : ''}${formatDeltaValue(variance, t.format)})`;
+  });
   return `You are writing the executive narrative for the naitive Insights dashboard.
 
 Reporting period: ${periodLabel}
@@ -92,13 +118,50 @@ ${lines.join('\n')}
 
 Auto-detected trend alerts:
 ${alertLines}
+${driverLines.length ? `\nTop driver attribution (largest contributors to MoM change):\n${driverLines.join('\n')}` : ''}
+${fcLines.length ? `\nForward-looking projections (linear, trailing 6mo):\n${fcLines.join('\n')}` : ''}
+${tgLines.length ? `\nPlan / target variance:\n${tgLines.join('\n')}` : ''}
 
-Write a 2-3 paragraph executive summary, in plain English, for senior leadership. Lead with the headline change, quantify with specific deltas, and call out the most important risk. Do not invent data or deal names not present above. Keep under 220 words. No headings, no bullet lists.`;
+Write a 2-3 paragraph executive summary, in plain English, for senior leadership. Lead with the headline change, quantify with specific deltas, attribute the change to the named drivers above, and explicitly call out plan variance and the next-period projection where they materially differ. Do not invent data or deal names not present above. Keep under 260 words. No headings, no bullet lists.`;
 }
 
 export function InsightsAISummaryCard() {
   const { deltas, alerts, isLoading, periodKey, periodLabel } = useInsightsComparison();
   const tf = useInsightsTimeframeOptional();
+  const { drivers } = useInsightsDrivers();
+  const { forecasts } = useInsightsForecast();
+  const { data: targetRows } = useInsightsTargets();
+
+  // Persist detected anomalies into history for trend tracking
+  useRecordAnomalies({
+    alerts,
+    periodKey,
+    periodLabel,
+    detailsByMetric: Object.fromEntries(
+      deltas.flatMap(d => [
+        [`${d.key}-up`, { metricKey: d.key, pct: d.pctMoM, abs: d.changeMoM }],
+        [`${d.key}-warn`, { metricKey: d.key, pct: d.pctMoM, abs: d.changeMoM }],
+        [`${d.key}-crit`, { metricKey: d.key, pct: d.pctMoM, abs: d.changeMoM }],
+      ]),
+    ),
+  });
+
+  const targetsForPrompt = useMemo(() => {
+    if (!targetRows?.length) return [];
+    const monthKey = format(new Date(), 'yyyy-MM');
+    const map = new Map<string, { target: number; label: string }>();
+    for (const t of targetRows) {
+      const exact = t.period_month === monthKey;
+      const def = !t.period_month;
+      if (exact || (def && !map.has(t.metric_key))) {
+        map.set(t.metric_key, { target: Number(t.target_value), label: t.metric_label });
+      }
+    }
+    return deltas
+      .filter(d => map.has(d.key))
+      .map(d => ({ label: map.get(d.key)!.label, target: map.get(d.key)!.target, current: d.current, format: d.format }));
+  }, [targetRows, deltas]);
+
   // periodLabel sourced from comparison hook (timeframe-aware).
 
   const [narrative, setNarrative] = useState<string>('');
@@ -130,7 +193,14 @@ export function InsightsAISummaryCard() {
     if (isGenerating) return;
     setIsGenerating(true);
     try {
-      const prompt = buildClaudePrompt(deltas, alerts, periodLabel);
+      const prompt = buildClaudePrompt(
+        deltas,
+        alerts,
+        periodLabel,
+        drivers,
+        forecasts.map(f => ({ label: f.label, current: f.current, nextProjection: f.nextProjection, band: f.band, format: f.format })),
+        targetsForPrompt,
+      );
       const resp = await sendClaudeMessage({
         messages: [{ role: 'user', content: prompt }],
         context: 'chat',
