@@ -269,17 +269,8 @@ const SEED: ReportState = {
   month: 'January 2026',
   preparedDate: '04/28/2026',
   authors: PRIMARY_AUTHORS,
-  kpis: [
-    { id: 'k1', label: 'Revenue', actual: '4250000', target: '4000000', format: 'currency' },
-    { id: 'k2', label: 'Pipeline', actual: '18500000', target: '20000000', format: 'currency' },
-    { id: 'k3', label: 'Custom Metric', actual: '92', target: '85', format: 'percent' },
-  ],
-  narrative:
-`Q1 2026 closed with revenue 6.3% above plan, driven by stronger-than-expected execution in Debt Capital Markets and continued momentum from the FinServ advisory practice. Two strategic mandates closed inside quarter, contributing meaningful fee income and establishing reference accounts in our priority verticals.
-
-Operationally, the Naitive platform reached internal feature parity for deal management, document intelligence, and lender matching. Adoption across the Debt and FinServ teams now sits at 100% for active engagements, materially shortening turnaround on lender outreach and write-up production.
-
-Looking forward, our Q2 focus is sustaining pipeline velocity, hardening the agentic deal-ops layer, and converting the FinServ pipeline from indication-of-interest to signed engagements. We remain disciplined on opex while continuing to invest in the platform and senior origination capacity.`,
+  kpis: [],
+  narrative: '',
   goals: [
     { id: 'g1', title: 'Close 8 Debt mandates by quarter-end', owner: 'James Turner', status: 'On Track', due: '2026-06-30' },
     { id: 'g2', title: 'Launch FinServ outbound channel — Asana: ABC-1042', owner: 'Scott Williams', status: 'On Track', due: '2026-05-15' },
@@ -294,24 +285,7 @@ Looking forward, our Q2 focus is sustaining pipeline velocity, hardening the age
     { id: 'i3', title: 'Lender Directory Expansion (T1/T2)', status: 'On Track', progress: 88, owner: 'Mark Kaleniecki' },
   ],
   initiativeOwnerFilter: 'All',
-  risks: [
-    {
-      id: 'r1',
-      description: 'Concentration risk: top 3 mandates represent ~58% of forecast Q2 fee revenue.',
-      mitigation: 'Accelerate FinServ pipeline conversion; stagger close dates; build secondary lender coverage.',
-    },
-    {
-      id: 'r2',
-      description: 'Senior originator capacity constrained ahead of Q2 push.',
-      mitigation: 'Active retained search; backfill with contractor coverage on 2 named accounts through May.',
-    },
-    {
-      id: 'r3',
-      description: 'Agentic deal-ops still requires human approval gates — slows latency on long-tail tasks.',
-      mitigation: 'Define low-risk auto-execute scope; ship guarded auto-mode for internal users only in Q2.',
-    },
-    { id: 'r4', description: '', mitigation: '' },
-  ],
+  risks: [],
   asanaGoalFilters: DEFAULT_ASANA_GOAL_FILTERS,
   asanaGoalOverride: null,
   asanaGoalExactMatch: false,
