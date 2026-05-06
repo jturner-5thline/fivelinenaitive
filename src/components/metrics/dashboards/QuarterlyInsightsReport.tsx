@@ -6,6 +6,7 @@ import { useAsanaGoals, type AsanaGoalRow } from '@/hooks/useAsanaGoals';
 import { useAsanaPortfolioProjects } from '@/hooks/useAsanaPortfolioProjects';
 import { useAsanaGoalFilterPrefs } from '@/hooks/useAsanaGoalFilterPrefs';
 import { useSortGroup, type SortGroupColumn } from './qir/useSortGroup';
+import { SortGroupToolbar } from './qir/SortGroupToolbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
