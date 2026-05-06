@@ -3,6 +3,7 @@ import { useMetricsData } from '@/hooks/useMetricsData';
 import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
 import { useHubSpotMetrics } from '@/hooks/useHubSpotMetrics';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
+import { useInsightsAlertConfig, DEFAULT_ALERT_CONFIG } from '@/hooks/useInsightsAlertConfig';
 import { differenceInCalendarMonths, subMonths, format as fmt, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 
 export type DeltaDirection = 'up' | 'down' | 'flat';
@@ -68,6 +69,7 @@ export function useInsightsComparison() {
   const { data: qbMetrics, isLoading: qbLoading } = useQuickBooksMetrics();
   const { data: hsMetrics, isLoading: hsLoading } = useHubSpotMetrics();
   const tf = useInsightsTimeframeOptional();
+  const { config: alertConfig } = useInsightsAlertConfig();
 
   const result = useMemo(() => {
     const monthly = dealMetrics?.monthlyData ?? [];
@@ -210,7 +212,8 @@ export function useInsightsComparison() {
       },
     ];
 
-    const deltas: DeltaResult[] = raw.map(d => {
+    const disabledSet = new Set(alertConfig.disabledMetrics);
+    const allDeltas: DeltaResult[] = raw.map(d => {
       const dirM = direction(d.current, d.prevPeriod);
       const dirY = direction(d.current, d.prevYear);
       return {
@@ -225,27 +228,29 @@ export function useInsightsComparison() {
         sentimentYoY: sentiment(dirY, d.goodWhen),
       };
     });
+    const deltas = allDeltas.filter(d => !disabledSet.has(d.key));
 
-    // Trend alerts: >20% improvement = positive, >10% decline = warning, >25% decline = critical.
+    // Trend alerts: thresholds are user-configurable (see useInsightsAlertConfig).
+    const { positiveThreshold, warningThreshold, criticalThreshold } = alertConfig;
     const alerts: TrendAlert[] = [];
     for (const d of deltas) {
       if (d.pctMoM == null) continue;
       const abs = Math.abs(d.pctMoM);
-      if (d.sentimentMoM === 'improvement' && d.pctMoM !== 0 && abs >= 20) {
+      if (d.sentimentMoM === 'improvement' && d.pctMoM !== 0 && abs >= positiveThreshold) {
         alerts.push({
           id: `${d.key}-up`,
           level: 'positive',
           metric: d.label,
           message: `${d.label} ${d.goodWhen === 'down' ? 'fell' : 'grew'} ${abs.toFixed(0)}% vs. last month`,
         });
-      } else if (d.sentimentMoM === 'decline' && abs >= 25) {
+      } else if (d.sentimentMoM === 'decline' && abs >= criticalThreshold) {
         alerts.push({
           id: `${d.key}-crit`,
           level: 'critical',
           metric: d.label,
           message: `${d.label} ${d.goodWhen === 'down' ? 'increased' : 'fell'} ${abs.toFixed(0)}% vs. last month — investigate`,
         });
-      } else if (d.sentimentMoM === 'decline' && abs >= 10) {
+      } else if (d.sentimentMoM === 'decline' && abs >= warningThreshold) {
         alerts.push({
           id: `${d.key}-warn`,
           level: 'warning',
@@ -255,12 +260,14 @@ export function useInsightsComparison() {
       }
     }
 
-    return { deltas, alerts };
-  }, [dealMetrics, qbMetrics, hsMetrics, tf?.timeframe.end]);
+    return { deltas, alerts, allDeltas };
+  }, [dealMetrics, qbMetrics, hsMetrics, tf?.timeframe.end, alertConfig]);
 
   return {
     deltas: result.deltas,
     alerts: result.alerts,
+    /** All available metrics (incl. disabled) — useful for settings UIs. */
+    allMetrics: result.allDeltas.map(d => ({ key: d.key, label: d.label, group: d.group })),
     isLoading: dealsLoading || qbLoading || hsLoading,
     /** Stable key for the active period — used to keep persisted summaries scoped. */
     periodKey: tf?.timeframe.id === 'custom'
