@@ -518,6 +518,9 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
             return (
               <div
                 key={kpi.id}
+                data-comment-source="kpi"
+                data-comment-source-id={kpi.id}
+                data-comment-source-label={`KPI · ${kpi.label}`}
                 style={{
                   position: 'relative',
                   aspectRatio: '1 / 1',
