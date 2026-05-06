@@ -2130,7 +2130,7 @@ function ReportAgendaSection({ embedded = false }: { embedded?: boolean } = {}) 
   return <Card className="glass-module qir-page-break">{inner}</Card>;
 }
 
-export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdit, reportKey }: {
+export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdit, reportKey, titlePrefix }: {
   s: ReportState;
   set: ReportSetState;
   reset: () => void;
@@ -2138,6 +2138,7 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
   print: () => void;
   canEdit?: boolean;
   reportKey?: string;
+  titlePrefix?: string;
 }) {
   const rk = reportKey || 'naitive.quarterlyReport.adhoc';
   // Single source of truth: the dashboard header's Reporting Period selector
@@ -2181,7 +2182,7 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
     : `Quarterly Insights Report — ${s.quarter}`;
   return (
     <div ref={rootRef} style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, color: TEXT_PRIMARY }}>
-      <ReportHeaderSection s={s} set={set} reset={reset} save={save} print={print} canEdit={canEdit} />
+      <ReportHeaderSection s={s} set={set} reset={reset} save={save} print={print} canEdit={canEdit} titlePrefix={titlePrefix} />
       <Card className="glass-module qir-unified-report">
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div id="qir-section-summary" className="qir-unified-section">
