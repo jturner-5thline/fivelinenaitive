@@ -173,7 +173,16 @@ export function AsanaGoalsPortfoliosSection() {
     fontSize: 10, padding: '3px 6px', borderRadius: 5,
     background: 'rgba(20,80,160,0.35)', color: '#d0eaff',
     border: '1px solid rgba(40,120,200,0.4)', outline: 'none', cursor: 'pointer',
+    // Force the native dropdown panel to render in dark mode (no white bg).
+    colorScheme: 'dark',
+    appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none',
+    paddingRight: 18,
+    backgroundImage:
+      "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%23d0eaff' d='M0 0l5 6 5-6z'/></svg>\")",
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'right 6px center',
   };
+  const optionStyle: React.CSSProperties = { background: '#0f1c34', color: '#d0eaff' };
 
   return (
     <>
@@ -222,15 +231,15 @@ export function AsanaGoalsPortfoliosSection() {
                 })}
               </div>
               <select value={ownerFilter} onChange={e => setOwnerFilter(e.target.value)} style={selectStyle} aria-label="Filter by owner">
-                <option value="all">All owners</option>
-                {ownerOptions.map(o => <option key={o} value={o}>{o}</option>)}
+                <option value="all" style={optionStyle}>All owners</option>
+                {ownerOptions.map(o => <option key={o} value={o} style={optionStyle}>{o}</option>)}
               </select>
               <select value={dueFilter} onChange={e => setDueFilter(e.target.value)} style={selectStyle} aria-label="Filter by due date">
-                <option value="all">Any due date</option>
-                <option value="overdue">Overdue</option>
-                <option value="30d">Due in 30 days</option>
-                <option value="90d">Due in 90 days</option>
-                <option value="none">No due date</option>
+                <option value="all" style={optionStyle}>Any due date</option>
+                <option value="overdue" style={optionStyle}>Overdue</option>
+                <option value="30d" style={optionStyle}>Due in 30 days</option>
+                <option value="90d" style={optionStyle}>Due in 90 days</option>
+                <option value="none" style={optionStyle}>No due date</option>
               </select>
               {filtersActive && (
                 <button
