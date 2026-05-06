@@ -261,7 +261,7 @@ const STANDALONE_KPI_IDS = [
   'kpi-operating-profit-curr',
   'kpi-outstanding-ar',
   'kpi-active-pipeline-value',
-  'kpi-avg-active-deal-size',
+  'kpi-ttm-revenue',
   'kpi-ytd-revenue',
 ] as const;
 
@@ -270,7 +270,7 @@ const STANDALONE_KPI_TO_REGISTRY: Record<string, string> = {
   'kpi-operating-profit-curr': 'operating-profit-curr',
   'kpi-outstanding-ar': 'outstanding-ar',
   'kpi-active-pipeline-value': 'active-pipeline-value',
-  'kpi-avg-active-deal-size': 'avg-active-deal-size',
+  'kpi-ttm-revenue': 'ttm-revenue',
   'kpi-ytd-revenue': 'ytd-revenue',
 };
 
@@ -424,6 +424,14 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     end: periodRange.end,
   }), [periodRange.end]);
 
+  const ttmRange = useMemo<DateRange>(() => {
+    const end = periodRange.end;
+    // Trailing 12 months ending on the selected period end.
+    // e.g. period end 2026-04-30 → start 2025-05-01.
+    const start = startOfDay(new Date(end.getFullYear() - 1, end.getMonth() + 1, 1));
+    return { start, end };
+  }, [periodRange.end]);
+
   const ytdSeries = useMemo(() => {
     const buckets = buildMonthBuckets(ytdRange.start, ytdRange.end);
     return buckets.map((bucket) => ({
@@ -458,7 +466,14 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const opProfitCurr = qbConnected ? periodRevenue - periodExpenses : null;
   const opProfitPrev = qbConnected ? previousRevenue - previousExpenses : null;
   const ytdRevenue = qbConnected ? ytdSeries.reduce((sum, row) => sum + row.revenue, 0) : null;
-  const ttmRevenue = qbConnected ? revenueSeries.reduce((sum, row) => sum + row.revenue, 0) : null;
+  const ttmSeries = useMemo(() => {
+    const buckets = buildMonthBuckets(ttmRange.start, ttmRange.end);
+    return buckets.map((bucket) => ({
+      month: bucket.label,
+      revenue: sumAmountInRange(qbInvoices, bucket, inv => inv.txn_date, inv => inv.total_amt),
+    }));
+  }, [qbInvoices, ttmRange]);
+  const ttmRevenue = qbConnected ? ttmSeries.reduce((sum, row) => sum + row.revenue, 0) : null;
 
   const chartMode = reportingPeriod?.view === 'quarter' ? 'quarter' : 'rolling';
   const chartWindowLabel = chartMode === 'quarter'
