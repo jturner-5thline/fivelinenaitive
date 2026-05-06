@@ -2013,7 +2013,6 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
   reportKey?: string;
 }) {
   const rk = reportKey || 'naitive.quarterlyReport.adhoc';
-  const [actualsViewMode, setActualsViewMode] = useState<ActualsViewMode>('plan_vs_actuals');
   // Single source of truth: the dashboard header's Reporting Period selector
   // drives s.period / s.quarter / s.month for every section/widget.
   const insightsTf = useInsightsTimeframeOptional();
