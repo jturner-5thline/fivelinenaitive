@@ -121,6 +121,7 @@ import { InsightsAISummaryCard } from "@/components/insights/InsightsAISummaryCa
 import { InsightsDriversPanel } from "@/components/insights/InsightsDriversPanel";
 import { InsightsForecastPanel } from "@/components/insights/InsightsForecastPanel";
 import { AnomalyHistoryPanel } from "@/components/insights/AnomalyHistoryPanel";
+import { AskAboutPeriodChat } from "@/components/insights/AskAboutPeriodChat";
 // Dashboard options
 const DASHBOARD_OPTIONS = [
   { id: 'management-snapshot', name: 'Weekly Rundown', isFavorite: true, folder: 'management-insights' as const },
