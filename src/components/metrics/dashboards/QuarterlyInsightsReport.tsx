@@ -1374,6 +1374,32 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
       <div style={{ padding: '16px 18px' }}>
         <SectionTitle right={(
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <select
+              value={portfolioGid}
+              onChange={(e) => setPortfolioGid(e.target.value)}
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                color: TEXT_PRIMARY,
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 6,
+                padding: '4px 8px',
+                fontSize: 11,
+                maxWidth: 220,
+              }}
+              title="Asana portfolio source"
+            >
+              {!availablePortfolios.some(p => p.gid === portfolioGid) && (
+                <option value={portfolioGid}>
+                  {portfolioGid === DEFAULT_PORTFOLIO_GID ? 'Default portfolio' : `Portfolio ${portfolioGid}`}
+                </option>
+              )}
+              {availablePortfolios.map(p => (
+                <option key={p.gid} value={p.gid}>{p.name}</option>
+              ))}
+              {portfoliosLoading && availablePortfolios.length === 0 && (
+                <option value={portfolioGid} disabled>Loading portfolios…</option>
+              )}
+            </select>
             {lastSyncedAt && (
               <span style={{ fontSize: 10, color: TEXT_LABEL }}>
                 Synced {new Date(lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
