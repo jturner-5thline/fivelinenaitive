@@ -14891,6 +14891,81 @@ export type Database = {
         }
         Relationships: []
       }
+      qir_comments: {
+        Row: {
+          author_name: string | null
+          author_user_id: string
+          body: string
+          company_id: string
+          created_at: string
+          id: string
+          mentioned_user_ids: string[]
+          report_key: string
+          target_id: string
+          target_type: string
+          updated_at: string
+        }
+        Insert: {
+          author_name?: string | null
+          author_user_id: string
+          body: string
+          company_id: string
+          created_at?: string
+          id?: string
+          mentioned_user_ids?: string[]
+          report_key: string
+          target_id: string
+          target_type: string
+          updated_at?: string
+        }
+        Update: {
+          author_name?: string | null
+          author_user_id?: string
+          body?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          mentioned_user_ids?: string[]
+          report_key?: string
+          target_id?: string
+          target_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      qir_section_notes: {
+        Row: {
+          body: string
+          company_id: string
+          created_at: string
+          id: string
+          report_key: string
+          section_key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body?: string
+          company_id: string
+          created_at?: string
+          id?: string
+          report_key: string
+          section_key: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          report_key?: string
+          section_key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       quickbooks_accounts: {
         Row: {
           account_sub_type: string | null
