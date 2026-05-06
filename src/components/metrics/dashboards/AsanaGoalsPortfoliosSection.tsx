@@ -231,15 +231,15 @@ export function AsanaGoalsPortfoliosSection() {
                 })}
               </div>
               <select value={ownerFilter} onChange={e => setOwnerFilter(e.target.value)} style={selectStyle} aria-label="Filter by owner">
-                <option value="all">All owners</option>
-                {ownerOptions.map(o => <option key={o} value={o}>{o}</option>)}
+                <option value="all" style={optionStyle}>All owners</option>
+                {ownerOptions.map(o => <option key={o} value={o} style={optionStyle}>{o}</option>)}
               </select>
               <select value={dueFilter} onChange={e => setDueFilter(e.target.value)} style={selectStyle} aria-label="Filter by due date">
-                <option value="all">Any due date</option>
-                <option value="overdue">Overdue</option>
-                <option value="30d">Due in 30 days</option>
-                <option value="90d">Due in 90 days</option>
-                <option value="none">No due date</option>
+                <option value="all" style={optionStyle}>Any due date</option>
+                <option value="overdue" style={optionStyle}>Overdue</option>
+                <option value="30d" style={optionStyle}>Due in 30 days</option>
+                <option value="90d" style={optionStyle}>Due in 90 days</option>
+                <option value="none" style={optionStyle}>No due date</option>
               </select>
               {filtersActive && (
                 <button
