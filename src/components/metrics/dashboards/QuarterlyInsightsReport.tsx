@@ -847,6 +847,29 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
     defaultGroupBy: 'statusGroup',
   });
 
+  // Drilldown state — opens a right-side drawer with filtered goal records.
+  const [goalsDrill, setGoalsDrill] = useState<DrilldownContext | null>(null);
+  const goalsDrillRows = useMemo<AsanaGoalRow[]>(() => {
+    if (!goalsDrill) return [];
+    if (goalsDrill.sourceId.startsWith('goal:')) {
+      const id = goalsDrill.sourceId.slice('goal:'.length);
+      return visibleGoals.filter(g => g.id === id);
+    }
+    if (goalsDrill.sourceId.startsWith('goals:status:')) {
+      const status = goalsDrill.sourceId.slice('goals:status:'.length);
+      return visibleGoals.filter(g => g.status === status);
+    }
+    if (goalsDrill.sourceId === 'goals:all') return visibleGoals;
+    return [];
+  }, [goalsDrill, visibleGoals]);
+  const goalsDrillColumns: DrilldownColumn<AsanaGoalRow>[] = [
+    { key: 'title', label: 'Goal', render: (g) => g.title },
+    { key: 'owner', label: 'Owner', width: 140, render: (g) => g.owner || '—' },
+    { key: 'status', label: 'Status', width: 110, render: (g) => <Pill tone={statusTone(g.status)}>{g.status}</Pill> },
+    { key: 'period', label: 'Period', width: 100, render: (g) => g.timePeriod || '—' },
+    { key: 'progress', label: 'Progress', width: 100, align: 'right', render: (g) => g.progressDisplay || (g.progressPercent != null ? `${Math.round(g.progressPercent)}%` : '—') },
+  ];
+
   // Preview counts for both modes — used in the filter editor next to the toggle.
   const matchPreview = useMemo(() => {
     const qSub = activeQuarterLabel.trim().toLowerCase();
