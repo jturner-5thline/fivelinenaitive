@@ -290,15 +290,18 @@ export function InsightsAISummaryCard() {
               <GitCompareArrows className="h-3.5 w-3.5 mr-1.5" />
               Compare Periods
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setSettingsOpen(true)}
-              title="Configure thresholds and metric coverage"
-            >
-              <Settings2 className="h-3.5 w-3.5 mr-1.5" />
-              Alert settings
-            </Button>
+            {/* Alert settings disabled — kept for future re-enablement */}
+            {false && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setSettingsOpen(true)}
+                title="Configure thresholds and metric coverage"
+              >
+                <Settings2 className="h-3.5 w-3.5 mr-1.5" />
+                Alert settings
+              </Button>
+            )}
             {narrative && !isLocked && (
               <>
                 <Button
