@@ -243,10 +243,14 @@ export interface ReportState {
   initiatives: Initiative[];
   initiativeOwnerFilter: string;
   risks: Risk[];
-  /** Admin-editable cover title override (per reporting period). */
+  /** Legacy single cover title (kept for backward compatibility — migrated into coverTitlesByPeriod on first edit). */
   coverTitle?: string;
-  /** Admin-editable subtitle/tagline (per reporting period). */
+  /** Legacy single subtitle (kept for backward compatibility). */
   coverSubtitle?: string;
+  /** Admin-editable cover title overrides keyed by reporting period label (e.g. "Q1 2026", "April 2026"). */
+  coverTitlesByPeriod?: Record<string, string>;
+  /** Admin-editable subtitle/tagline overrides keyed by reporting period label. */
+  coverSubtitlesByPeriod?: Record<string, string>;
   /** Configurable mapping from report period → Asana Goals time-period labels. */
   asanaGoalFilters?: AsanaGoalFilterTemplates;
   /** Optional manual override for the active report (resets when period changes). */
@@ -1536,8 +1540,26 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
   const todayStr = new Date().toLocaleDateString('en-US', {
     month: 'long', day: 'numeric', year: 'numeric',
   });
-  const title = s.coverTitle?.trim() || defaultCoverTitle(s);
-  const subtitle = s.coverSubtitle ?? '';
+  const periodKey = periodLabel(s);
+  const titleOverride =
+    s.coverTitlesByPeriod?.[periodKey] ??
+    // Fallback to legacy single field if present and no per-period value yet
+    (s.coverTitlesByPeriod && periodKey in s.coverTitlesByPeriod ? '' : s.coverTitle ?? '');
+  const subtitleOverride =
+    s.coverSubtitlesByPeriod?.[periodKey] ??
+    (s.coverSubtitlesByPeriod && periodKey in s.coverSubtitlesByPeriod ? '' : s.coverSubtitle ?? '');
+  const title = titleOverride.trim() || defaultCoverTitle(s);
+  const subtitle = subtitleOverride;
+  const updateTitle = (value: string) =>
+    set(prev => ({
+      ...prev,
+      coverTitlesByPeriod: { ...(prev.coverTitlesByPeriod || {}), [periodKey]: value },
+    }));
+  const updateSubtitle = (value: string) =>
+    set(prev => ({
+      ...prev,
+      coverSubtitlesByPeriod: { ...(prev.coverSubtitlesByPeriod || {}), [periodKey]: value },
+    }));
   return (
     <Card className="glass-module qir-page-break">
       <div
@@ -1560,9 +1582,9 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {isAdmin ? (
             <input
-              value={s.coverTitle ?? ''}
+              value={titleOverride}
               placeholder={defaultCoverTitle(s)}
-              onChange={e => set(prev => ({ ...prev, coverTitle: e.target.value }))}
+              onChange={e => updateTitle(e.target.value)}
               className="qir-no-print"
               style={{
                 ...inputStyle,
@@ -1585,9 +1607,9 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
 
           {isAdmin ? (
             <input
-              value={subtitle}
+              value={subtitleOverride}
               placeholder="Optional subtitle or tagline"
-              onChange={e => set(prev => ({ ...prev, coverSubtitle: e.target.value }))}
+              onChange={e => updateSubtitle(e.target.value)}
               className="qir-no-print"
               style={{
                 ...inputStyle,
