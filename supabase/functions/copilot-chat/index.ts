@@ -3376,6 +3376,80 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         return { error: `Calendar fetch failed: ${err?.message || String(err)}` };
       }
     }
+    case "search_calendar_events": {
+      const daysBack = Math.min(Math.max(Number(args.days_back) || 30, 1), 365);
+      const daysAhead = Math.min(Math.max(Number(args.days_ahead) || 30, 0), 365);
+      const limit = Math.min(Math.max(Number(args.limit) || 25, 1), 100);
+      const query = String(args.query || "").trim().toLowerCase();
+      const attendeeEmail = String(args.attendee_email || "").trim().toLowerCase();
+
+      const { data: tokenRow } = await supabase
+        .from("gmail_tokens").select("grant_id").eq("user_id", userId).maybeSingle();
+      if (!tokenRow?.grant_id) {
+        return { error: "Calendar not connected. Ask the user to connect their Google account in Settings → Integrations." };
+      }
+      const NYLAS_API_KEY = Deno.env.get("NYLAS_API_KEY");
+      if (!NYLAS_API_KEY) return { error: "Calendar service not configured." };
+
+      const start = Math.floor(Date.now() / 1000) - daysBack * 24 * 60 * 60;
+      const end = Math.floor(Date.now() / 1000) + daysAhead * 24 * 60 * 60;
+      // Fetch a wider window then filter locally — Nylas doesn't support server-side text search.
+      const fetchLimit = 200;
+      const url = `https://api.us.nylas.com/v3/grants/${tokenRow.grant_id}/events?calendar_id=primary&start=${start}&end=${end}&limit=${fetchLimit}&expand_recurring=true`;
+
+      try {
+        const resp = await fetch(url, {
+          headers: { Authorization: `Bearer ${NYLAS_API_KEY}`, Accept: "application/json" },
+        });
+        const json = await resp.json();
+        if (!resp.ok) return { error: json?.message || "Failed to search calendar events" };
+        let events = (json.data || []).map((e: any) => ({
+          id: e.id,
+          title: e.title || "(no title)",
+          description: (e.description || "").slice(0, 500) || null,
+          location: e.location || null,
+          start: e.when?.start_time ? new Date(e.when.start_time * 1000).toISOString() : (e.when?.start_date || null),
+          end: e.when?.end_time ? new Date(e.when.end_time * 1000).toISOString() : (e.when?.end_date || null),
+          all_day: !e.when?.start_time && !!e.when?.start_date,
+          organizer: e.organizer || null,
+          attendees: (e.participants || []).map((p: any) => ({ email: p.email, name: p.name || null, status: p.status || null })),
+          conference_link: e.conferencing?.details?.url || null,
+          status: e.status || null,
+        }));
+
+        if (query) {
+          events = events.filter((ev: any) => {
+            const hay = [
+              ev.title || "",
+              ev.description || "",
+              ev.location || "",
+              ...(ev.attendees || []).map((a: any) => `${a.name || ""} ${a.email || ""}`),
+            ].join(" ").toLowerCase();
+            return hay.includes(query);
+          });
+        }
+        if (attendeeEmail) {
+          events = events.filter((ev: any) =>
+            (ev.attendees || []).some((a: any) => (a.email || "").toLowerCase().includes(attendeeEmail))
+          );
+        }
+
+        // Sort: most relevant time first — past events newest-first, future events soonest-first.
+        const nowIso = new Date().toISOString();
+        events.sort((a: any, b: any) => {
+          const aFuture = (a.start || "") >= nowIso;
+          const bFuture = (b.start || "") >= nowIso;
+          if (aFuture && !bFuture) return -1;
+          if (!aFuture && bFuture) return 1;
+          if (aFuture) return String(a.start || "").localeCompare(String(b.start || ""));
+          return String(b.start || "").localeCompare(String(a.start || ""));
+        });
+
+        return { count: events.length, events: events.slice(0, limit), filters: { query: query || null, attendee_email: attendeeEmail || null, days_back: daysBack, days_ahead: daysAhead } };
+      } catch (err: any) {
+        return { error: `Calendar search failed: ${err?.message || String(err)}` };
+      }
+    }
     case "get_recent_meetings": {
       const limit = Math.min(Math.max(Number(args.limit) || 10, 1), 30);
       const sinceDays = Math.min(Math.max(Number(args.since_days) || 30, 1), 365);
