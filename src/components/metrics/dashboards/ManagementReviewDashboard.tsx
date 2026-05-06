@@ -611,7 +611,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
           const k = kpiById.get(STANDALONE_KPI_TO_REGISTRY[widgetId]);
           return (
             <div key={widgetId} className="h-full">
-              <GridShell isEditMode={isEditMode} title={k?.l ?? widgetId}>
+              <GridShell isEditMode={isEditMode} title={k?.l ?? widgetId} titleAlign="center">
                 {k ? (
                   <div
                     onClick={() => {
@@ -665,14 +665,14 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                     }}
                     style={{
                       display: 'flex', flexDirection: 'column', gap: 4, height: '100%',
-                      justifyContent: 'center',
+                      justifyContent: 'center', alignItems: 'center', textAlign: 'center',
                       cursor: !isEditMode && k.live ? 'pointer' : 'default',
                     }}
                   >
-                    <div style={{ fontSize: 22, fontWeight: 700, color: k.live ? '#e8f6ff' : NA_COLOR, lineHeight: 1.1 }}>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: k.live ? '#e8f6ff' : NA_COLOR, lineHeight: 1.1, textAlign: 'center' }}>
                       {k.live ? k.v : 'Data unavailable'}
                     </div>
-                    <div style={{ fontSize: 11 }}>
+                    <div style={{ fontSize: 11, textAlign: 'center' }}>
                       {k.live ? k.sub : <span style={{ color: NA_COLOR }}>—</span>}
                     </div>
                   </div>
