@@ -3377,6 +3377,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       }
     }
     case "get_recent_meetings": {
+      // (handler below — keep existing)
       const limit = Math.min(Math.max(Number(args.limit) || 10, 1), 30);
       const sinceDays = Math.min(Math.max(Number(args.since_days) || 30, 1), 365);
       const sinceIso = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000).toISOString();
