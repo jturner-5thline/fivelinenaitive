@@ -1796,7 +1796,12 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
   return (
     <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
-        <SectionTitle right={<Btn icon={Plus} variant="ghost" onClick={addRisk}>Add Risk</Btn>}>
+        <SectionTitle right={(
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn icon={ExternalLink} variant="ghost" onClick={() => setRiskDrill({ sourceId: 'risks:all', sourceLabel: 'Open Risks · All', selection: `${s.risks.length} risk${s.risks.length === 1 ? '' : 's'}` })}>View All</Btn>
+            <Btn icon={Plus} variant="ghost" onClick={addRisk}>Add Risk</Btn>
+          </div>
+        )}>
           Open Risks
         </SectionTitle>
         <div style={{ overflowX: 'auto' }}>
@@ -1818,7 +1823,10 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
                     <textarea value={risk.mitigation} onChange={e => updateRisk(risk.id, { mitigation: e.target.value })} placeholder="Mitigation plan…" style={taStyle} />
                   </td>
                   <td style={tdStyle}>
-                    <Btn icon={Trash2} variant="danger" ariaLabel="Remove risk" onClick={() => removeRisk(risk.id)} />
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <Btn icon={ExternalLink} variant="ghost" ariaLabel="Drill into risk" onClick={() => setRiskDrill({ sourceId: `risk:${risk.id}`, sourceLabel: `Risk · ${risk.description?.slice(0, 60) || 'Untitled risk'}` })} />
+                      <Btn icon={Trash2} variant="danger" ariaLabel="Remove risk" onClick={() => removeRisk(risk.id)} />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -1826,6 +1834,14 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
           </table>
         </div>
       </div>
+      <InsightsDrilldownDrawer
+        open={!!riskDrill}
+        context={riskDrill}
+        onClose={() => setRiskDrill(null)}
+        columns={riskDrillColumns}
+        rows={riskDrillRows}
+        emptyHint="No open risks recorded for this report."
+      />
     </Card>
   );
 }
