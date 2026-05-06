@@ -793,12 +793,19 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const ttmLabels = ttmTrendSeries.map(p => p.month);
   const ttmCol = ttmTrendSeries.map((_p, i) => i === ttmTrendSeries.length - 1 ? 'rgba(29,148,255,0.85)' : 'rgba(20,90,170,0.55)');
   const ttmBrd = ttmTrendSeries.map((_p, i) => i === ttmTrendSeries.length - 1 ? '#4db8ff' : 'rgba(40,120,200,0.5)');
+  const [trendMode, setTrendMode] = useState<'ttm' | 'monthly'>('ttm');
+  const monthlyTrendLabels = ttmSeries.map(p => p.month);
+  const monthlyTrendValues = ttmSeries.map(p => p.revenue);
+  const monthlyCol = monthlyTrendLabels.map((_l, i) => i === monthlyTrendLabels.length - 1 ? 'rgba(29,148,255,0.85)' : 'rgba(20,90,170,0.55)');
+  const monthlyBrd = monthlyTrendLabels.map((_l, i) => i === monthlyTrendLabels.length - 1 ? '#4db8ff' : 'rgba(40,120,200,0.5)');
   useChart(
     ncRef,
-    qbConnected && ttmLabels.length > 0
+    qbConnected && (trendMode === 'ttm' ? ttmLabels.length > 0 : monthlyTrendLabels.length > 0)
       ? {
           type: 'bar',
-          data: { labels: ttmLabels, datasets: [{ label: 'TTM Revenue', data: ttmTrendValues, backgroundColor: ttmCol, borderColor: ttmBrd, borderWidth: 1, borderRadius: 4 }] },
+          data: trendMode === 'ttm'
+            ? { labels: ttmLabels, datasets: [{ label: 'TTM Revenue', data: ttmTrendValues, backgroundColor: ttmCol, borderColor: ttmBrd, borderWidth: 1, borderRadius: 4 }] }
+            : { labels: monthlyTrendLabels, datasets: [{ label: 'Monthly Revenue', data: monthlyTrendValues, backgroundColor: monthlyCol, borderColor: monthlyBrd, borderWidth: 1, borderRadius: 4 }] },
           options: {
             ...def,
             plugins: {
@@ -807,14 +814,20 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 callbacks: {
                   title: (items: any[]) => {
                     const idx = items?.[0]?.dataIndex ?? 0;
-                    const p = ttmTrendSeries[idx];
-                    if (!p) return '';
-                    return `12 mo ending ${format(p.windowEnd, 'MMM yyyy')}`;
+                    if (trendMode === 'ttm') {
+                      const p = ttmTrendSeries[idx];
+                      if (!p) return '';
+                      return `12 mo ending ${format(p.windowEnd, 'MMM yyyy')}`;
+                    }
+                    return monthlyTrendLabels[idx] ?? '';
                   },
                   label: (item: any) => {
-                    const p = ttmTrendSeries[item.dataIndex];
-                    const range = p ? `${format(p.windowStart, 'MMM d, yyyy')} – ${format(p.windowEnd, 'MMM d, yyyy')}` : '';
-                    return `TTM Revenue: ${fmtUSD(item.parsed.y)}${range ? `  (${range})` : ''}`;
+                    if (trendMode === 'ttm') {
+                      const p = ttmTrendSeries[item.dataIndex];
+                      const range = p ? `${format(p.windowStart, 'MMM d, yyyy')} – ${format(p.windowEnd, 'MMM d, yyyy')}` : '';
+                      return `TTM Revenue: ${fmtUSD(item.parsed.y)}${range ? `  (${range})` : ''}`;
+                    }
+                    return `Monthly Revenue: ${fmtUSD(item.parsed.y)}`;
                   },
                 },
               },
@@ -823,8 +836,26 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
           },
         }
       : null,
-    [qbConnected, JSON.stringify(ttmLabels), JSON.stringify(ttmTrendValues), periodToken],
+    [qbConnected, trendMode, JSON.stringify(ttmLabels), JSON.stringify(ttmTrendValues), JSON.stringify(monthlyTrendLabels), JSON.stringify(monthlyTrendValues), periodToken],
     (idx, label, value) => {
+      if (trendMode === 'monthly') {
+        setDrilldown({
+          context: {
+            sourceId: 'chart:monthly-revenue-trend',
+            sourceLabel: 'Monthly Revenue · QuickBooks',
+            selection: label,
+            periodLabel,
+            filters: [{ label: 'Metric', value: 'Monthly revenue (all entities)' }],
+          },
+          columns: [
+            { key: 'month', label: 'Month' },
+            { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
+          ],
+          rows: [{ month: label, revenue: value }],
+          emptyHint: 'No QuickBooks invoice activity recorded for this month.',
+        });
+        return;
+      }
       const p = ttmTrendSeries[idx];
       setDrilldown({
         context: {
@@ -1210,12 +1241,39 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         })}
 
         <div key="monthly-revenue" className="h-full">
-          <GridShell isEditMode={isEditMode} title={`TTM Revenue Trend (${chartWindowLabel})`}>
+          <GridShell
+            isEditMode={isEditMode}
+            title={trendMode === 'ttm' ? `TTM Revenue Trend (${chartWindowLabel})` : 'Monthly Revenue Trend'}
+            headerExtra={
+              <div style={{ display: 'inline-flex', padding: 2, borderRadius: 999, background: 'rgba(10,40,80,0.6)', border: '1px solid rgba(40,120,200,0.35)' }}>
+                {(['ttm', 'monthly'] as const).map(m => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setTrendMode(m); }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    style={{
+                      fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase',
+                      padding: '3px 9px', borderRadius: 999, border: 'none', cursor: 'pointer',
+                      color: trendMode === m ? '#0a2540' : 'rgba(200,225,255,0.75)',
+                      background: trendMode === m ? 'linear-gradient(180deg, #7ed0ff, #4db8ff)' : 'transparent',
+                    }}
+                  >
+                    {m === 'ttm' ? 'TTM' : 'Monthly'}
+                  </button>
+                ))}
+              </div>
+            }
+          >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%' }}>
-              <SectionLabel>TTM Revenue (rolling 12 months) — each point shows total revenue for the 12 months ending in that period; all QuickBooks entities combined</SectionLabel>
-              {qbConnected && ttmLabels.length > 0
+              <SectionLabel>
+                {trendMode === 'ttm'
+                  ? 'TTM Revenue (rolling 12 months) — each point shows total revenue for the 12 months ending in that period; all QuickBooks entities combined'
+                  : 'Monthly Revenue — each bar shows total revenue for that calendar month across all QuickBooks entities'}
+              </SectionLabel>
+              {qbConnected && (trendMode === 'ttm' ? ttmLabels.length > 0 : monthlyTrendLabels.length > 0)
                 ? <div style={{ position: 'relative', flex: 1, minHeight: 180 }}><canvas ref={ncRef} /></div>
-                : <NaPlaceholder height={200} label={isLoading ? 'Loading…' : 'TTM revenue unavailable — connect QuickBooks to populate finance data.'} />}
+                : <NaPlaceholder height={200} label={isLoading ? 'Loading…' : 'Revenue unavailable — connect QuickBooks to populate finance data.'} />}
             </div>
           </GridShell>
         </div>
