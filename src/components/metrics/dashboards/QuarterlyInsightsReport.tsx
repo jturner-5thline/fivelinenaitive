@@ -1757,6 +1757,15 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
           </div>
         )}
       </div>
+      <InsightsDrilldownDrawer
+        open={!!initDrill}
+        context={initDrill}
+        onClose={() => setInitDrill(null)}
+        columns={initDrillColumns}
+        rows={initDrillRows}
+        rowHref={(p) => p.permalink_url || null}
+        emptyHint="No initiatives match this selection in the active Asana portfolio."
+      />
     </Card>
   );
 }
