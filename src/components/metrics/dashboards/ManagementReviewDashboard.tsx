@@ -841,7 +841,12 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       l: 'TTM Revenue',
       live: qbConnected,
       v: fmtUSD(ttmRevenue),
-      sub: <span style={{ color: 'rgba(160,210,255,0.55)' }}>{format(ttmRange.start, 'MMM d, yyyy')} – {format(ttmRange.end, 'MMM d, yyyy')}</span>,
+      sub: (
+        <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span style={{ color: 'rgba(160,210,255,0.55)' }}>{format(ttmRange.start, 'MMM d, yyyy')} – {format(ttmRange.end, 'MMM d, yyyy')}</span>
+          {renderDelta(ttmRevenue, priorTtmRevenue, 'TTM')}
+        </span>
+      ),
       emptyHint: 'TTM revenue unavailable — connect QuickBooks to populate finance data.',
     },
     {
@@ -849,7 +854,12 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       l: 'YTD Revenue',
       live: qbConnected,
       v: fmtUSD(ytdRevenue),
-      sub: <span style={{ color: 'rgba(160,210,255,0.55)' }}>through {format(periodRange.end, 'MMM d, yyyy')}</span>,
+      sub: (
+        <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span style={{ color: 'rgba(160,210,255,0.55)' }}>through {format(periodRange.end, 'MMM d, yyyy')}</span>
+          {renderDelta(ytdRevenue, priorYtdRevenue, 'YTD')}
+        </span>
+      ),
     },
   ];
 
