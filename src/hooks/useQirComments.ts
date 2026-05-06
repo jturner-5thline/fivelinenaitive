@@ -145,7 +145,34 @@ export function useQirComments(reportKey: string) {
     setComments(prev => prev.filter(c => c.id !== id));
   }, []);
 
-  return { comments, loading, addComment, deleteComment };
+  const updateComment = useCallback(async (id: string, body: string) => {
+    const trimmed = body.trim();
+    if (!trimmed) return;
+    if (trimmed.length > 4000) throw new Error('Comment too long (max 4000 chars)');
+    const mentions = (trimmed.match(/@"([^"]+)"|@([A-Za-z][A-Za-z0-9_.-]*)/g) || [])
+      .map(s => s.replace(/^@"?|"?$/g, ''));
+    const lcMap = new Map<string, string>();
+    for (const m of (members || [])) {
+      if (m.display_name) lcMap.set(m.display_name.toLowerCase().trim(), m.user_id);
+      if (m.email) lcMap.set(m.email.toLowerCase(), m.user_id);
+    }
+    const mentionedIds = Array.from(new Set(
+      mentions.map(n => lcMap.get(n.toLowerCase().trim())).filter(Boolean) as string[]
+    ));
+    const { data, error } = await supabase
+      .from('qir_comments' as any)
+      .update({ body: trimmed, mentioned_user_ids: mentionedIds })
+      .eq('id', id)
+      .select('*')
+      .maybeSingle();
+    if (error) throw error;
+    if (data) {
+      const row = data as any as QirComment;
+      setComments(prev => prev.map(c => c.id === row.id ? row : c));
+    }
+  }, [members]);
+
+  return { comments, loading, addComment, deleteComment, updateComment };
 }
 
 /* ───────────────────── Section notes ───────────────────── */
