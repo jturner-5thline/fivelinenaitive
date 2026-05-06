@@ -13,7 +13,6 @@ import { useAdminRole } from '@/hooks/useAdminRole';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import naitiveLogoDark from '@/assets/naitive-logo-dark.png';
 import { QirContextualComments } from './qir/QirContextualComments';
-import { QuickBooksActualsPanel, type ActualsViewMode } from './qir/QuickBooksActualsPanel';
 import { KpiDrillDownDialog, type KpiLike } from './qir/KpiDrillDownDialog';
 import {
   DEFAULT_ASANA_GOAL_FILTERS,
@@ -2014,7 +2013,6 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
   reportKey?: string;
 }) {
   const rk = reportKey || 'naitive.quarterlyReport.adhoc';
-  const [actualsViewMode, setActualsViewMode] = useState<ActualsViewMode>('plan_vs_actuals');
   // Single source of truth: the dashboard header's Reporting Period selector
   // drives s.period / s.quarter / s.month for every section/widget.
   const insightsTf = useInsightsTimeframeOptional();
@@ -2064,14 +2062,6 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
             <ReportNarrativeSection s={s} set={set} />
           </div>
           <div id="qir-section-financials" className="qir-unified-section">
-            <QuickBooksActualsPanel
-              period={s.period}
-              quarter={s.quarter}
-              month={s.month}
-              planRevenue={planRevenue}
-              viewMode={actualsViewMode}
-              onChangeViewMode={setActualsViewMode}
-            />
             <ReportKpisSection s={s} set={set} reportLabel={reportLabel} />
           </div>
           <div id="qir-section-pipeline" className="qir-unified-section">
