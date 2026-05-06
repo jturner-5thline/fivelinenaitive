@@ -594,6 +594,23 @@ function ReportNarrativeSection({ s, set }: { s: ReportState; set: ReportSetStat
 function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState }) {
   const { goals: asanaGoals, loading, error, lastSyncedAt, configured, refresh } = useAsanaGoals();
   const prefs = useAsanaGoalFilterPrefs();
+  const insightsTf = useInsightsTimeframeOptional();
+  const reportingPeriod = insightsTf?.reportingPeriod ?? null;
+
+  // Derive the active reporting year from the shared header selector first,
+  // falling back to the local report state (quarter/month) if the header
+  // context is unavailable.
+  const activeYear = useMemo<number | null>(() => {
+    if (reportingPeriod) {
+      const m = /(\d{4})/.exec(reportingPeriod.period || '') || /(\d{4})/.exec(reportingPeriod.label || '');
+      if (m) return parseInt(m[1], 10);
+    }
+    const fromQuarter = /(\d{4})/.exec(s.quarter || '');
+    if (fromQuarter) return parseInt(fromQuarter[1], 10);
+    const fromMonth = /(\d{4})/.exec(s.month || '');
+    if (fromMonth) return parseInt(fromMonth[1], 10);
+    return null;
+  }, [reportingPeriod, s.quarter, s.month]);
 
   // When server prefs finish loading, hydrate the per-report state once so
   // downstream code (and persisted localStorage snapshot) stays in sync.
@@ -667,9 +684,39 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
     return false;
   };
 
+  // Extract a year from a goal's time period (e.g. "Q2 FY26", "Q2 2026",
+  // "H1 FY2026"), falling back to the goal's due date year when the time
+  // period string lacks a year token. Returns null when nothing reliable is
+  // available so we can safely exclude the goal.
+  const goalYear = (g: AsanaGoalRow): number | null => {
+    const tp = (g.timePeriod || '').trim();
+    if (tp) {
+      const fy = /fy\s*'?\s*(\d{2,4})/i.exec(tp);
+      if (fy) {
+        const n = fy[1].length === 2 ? 2000 + parseInt(fy[1], 10) : parseInt(fy[1], 10);
+        return n;
+      }
+      const yr = /\b(20\d{2})\b/.exec(tp);
+      if (yr) return parseInt(yr[1], 10);
+      const yr2 = /\b([qh][1-4])\s+'?(\d{2})\b/i.exec(tp);
+      if (yr2) return 2000 + parseInt(yr2[2], 10);
+    }
+    if (g.due) {
+      const m = /^(\d{4})/.exec(g.due);
+      if (m) return parseInt(m[1], 10);
+    }
+    return null;
+  };
+
   const ownerGoals = useMemo(
-    () => asanaGoals.filter(g => g.owner && normalize(g.owner) === preparedByKey),
-    [asanaGoals, preparedByKey]
+    () => asanaGoals.filter(g => {
+      if (!g.owner || normalize(g.owner) !== preparedByKey) return false;
+      if (activeYear == null) return true;
+      const y = goalYear(g);
+      return y === activeYear;
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [asanaGoals, preparedByKey, activeYear]
   );
   const visibleGoals = useMemo(
     () => ownerGoals,
