@@ -288,9 +288,12 @@ Write 2 short paragraphs of plain-English commentary. Lead with the biggest diff
                       >
                         <span className="flex items-center justify-between gap-2 min-w-0">
                           <span className="font-medium truncate hover:underline underline-offset-2">{m.row.label}</span>
-                          <span className="tabular-nums text-success shrink-0">
-                            {m.pct! >= 0 ? '+' : ''}{m.pct!.toFixed(1)}%
-                            <span className="ml-1 text-[10px] opacity-70">({formatDeltaValue(m.diff, m.row.format)})</span>
+                          <span className="flex items-center gap-1.5 shrink-0">
+                            <MoverSparkline a={m.a} b={m.b} tone="success" />
+                            <span className="tabular-nums text-success">
+                              {m.pct! >= 0 ? '+' : ''}{m.pct!.toFixed(1)}%
+                              <span className="ml-1 text-[10px] opacity-70">({formatDeltaValue(m.diff, m.row.format)})</span>
+                            </span>
                           </span>
                         </span>
                         <span className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground tabular-nums">
@@ -321,9 +324,12 @@ Write 2 short paragraphs of plain-English commentary. Lead with the biggest diff
                       >
                         <span className="flex items-center justify-between gap-2 min-w-0">
                           <span className="font-medium truncate hover:underline underline-offset-2">{m.row.label}</span>
-                          <span className="tabular-nums text-destructive shrink-0">
-                            {m.pct! >= 0 ? '+' : ''}{m.pct!.toFixed(1)}%
-                            <span className="ml-1 text-[10px] opacity-70">({formatDeltaValue(m.diff, m.row.format)})</span>
+                          <span className="flex items-center gap-1.5 shrink-0">
+                            <MoverSparkline a={m.a} b={m.b} tone="destructive" />
+                            <span className="tabular-nums text-destructive">
+                              {m.pct! >= 0 ? '+' : ''}{m.pct!.toFixed(1)}%
+                              <span className="ml-1 text-[10px] opacity-70">({formatDeltaValue(m.diff, m.row.format)})</span>
+                            </span>
                           </span>
                         </span>
                         <span className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground tabular-nums">
