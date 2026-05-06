@@ -1800,10 +1800,13 @@ export function QuarterlyReportPrintStyles() {
     const el = document.createElement('style');
     el.id = id;
     el.innerHTML = `
+      [id^="qir-section-"] { scroll-margin-top: 96px; }
       @media print {
         body { background: #ffffff !important; }
         .qir-no-print { display: none !important; }
         .qir-page-break { page-break-after: always; break-after: page; }
+        [id^="qir-section-"] { break-before: page; page-break-before: always; }
+        [id="qir-section-summary"] { break-before: auto; page-break-before: auto; }
       }
     `;
     document.head.appendChild(el);
