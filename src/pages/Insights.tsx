@@ -119,6 +119,7 @@ import { getTimePeriodRange, getTimePeriodLabel, isInRange } from "@/lib/timePer
 import { DatarailsLiveStat, DatarailsLiveChart } from "@/components/metrics/DatarailsLiveWidget";
 import { InsightsLoadingSkeleton, InsightsErrorState } from "@/components/insights/InsightsStateViews";
 import { InsightsAssistantSheet } from "@/components/insights/InsightsAssistantSheet";
+import { ReportingPeriodPicker, ActivePeriodLabel } from "@/components/insights/ReportingPeriodPicker";
 // Dashboard options
 const DASHBOARD_OPTIONS = [
   { id: 'management-snapshot', name: 'Weekly Rundown', isFavorite: true, folder: 'management-insights' as const },
@@ -2290,11 +2291,16 @@ function MetricsInner() {
                   Pipeline performance analytics powered by real deal data
                 </p>
                 <SyncStatusBar />
+                {selectedDashboard === 'management-review' && <ActivePeriodLabel />}
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               {selectedDashboard === 'management-snapshot' && (
                 <InsightsTimeframePicker />
+              )}
+
+              {selectedDashboard === 'management-review' && (
+                <ReportingPeriodPicker />
               )}
 
               {selectedDashboard === 'management-review' && (
