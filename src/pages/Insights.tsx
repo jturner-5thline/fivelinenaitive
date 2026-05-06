@@ -2390,11 +2390,10 @@ function MetricsInner() {
                       aria-label="Open Insights Assistant"
                       aria-haspopup="dialog"
                       aria-expanded={assistantOpen}
-                      className="h-9 gap-1.5 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30 text-primary hover:from-primary/15 hover:to-primary/10"
+                      className="h-9 w-9 p-0 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30 text-primary hover:from-primary/15 hover:to-primary/10"
                       onClick={() => setAssistantOpen(true)}
                     >
                       <Sparkles className="h-4 w-4" />
-                      <span className="hidden sm:inline">Insights</span>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>AI Summary, Q&amp;A, Drivers, Forecast, Anomalies</TooltipContent>
@@ -2410,10 +2409,9 @@ function MetricsInner() {
                           variant="outline"
                           size="sm"
                           aria-label={`Export Insights for ${insightsExportContext.periodLabel}`}
-                          className="h-9 gap-1.5"
+                          className="h-9 w-9 p-0"
                         >
                           <Download className="h-4 w-4" />
-                          <span className="hidden sm:inline">Export</span>
                         </Button>
                       </DropdownMenuTrigger>
                     </TooltipTrigger>
