@@ -458,74 +458,6 @@ function ReportHeaderSection({ s, set, reset, save, print, canEdit }: { s: Repor
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
-          <div style={{ display: 'inline-flex', borderRadius: 8, border: INPUT_BORDER, overflow: 'hidden' }}>
-            {(['monthly', 'quarterly'] as const).map(period => (
-              <button
-                key={period}
-                onClick={() => set(prev => {
-                  if (period === 'monthly') {
-                    const validMonths = monthsForQuarter(prev.quarter);
-                    const monthStillValid = validMonths.includes(prev.month);
-                    return {
-                      ...prev,
-                      period,
-                      month: monthStillValid ? prev.month : (validMonths[0] || ''),
-                    };
-                  }
-                  return { ...prev, period };
-                })}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  textTransform: 'capitalize',
-                  background: s.period === period ? 'rgba(40,110,180,0.55)' : 'transparent',
-                  color: s.period === period ? '#e8f4ff' : TEXT_MUTED,
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                {period}
-              </button>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: TEXT_LABEL }}>Quarter</span>
-            <select
-              value={s.quarter}
-              onChange={e => {
-                const newQuarter = e.target.value;
-                set(prev => {
-                  const validMonths = monthsForQuarter(newQuarter);
-                  // In Monthly mode, always reset Month to the first month of the new Quarter
-                  // so the report title and Month selection update immediately on Quarter change.
-                  // In Quarterly mode, preserve Month if still valid (no visible impact).
-                  const nextMonth = prev.period === 'monthly'
-                    ? (validMonths[0] || '')
-                    : (validMonths.includes(prev.month) ? prev.month : (validMonths[0] || ''));
-                  return { ...prev, quarter: newQuarter, month: nextMonth };
-                });
-              }}
-              style={{ ...selectStyle, width: 130 }}
-            >
-              {QUARTERS.map(q => <option key={q} value={q}>{q}</option>)}
-            </select>
-          </div>
-
-          {s.period === 'monthly' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: TEXT_LABEL }}>Month</span>
-              <select
-                value={monthsForQuarter(s.quarter).includes(s.month) ? s.month : (monthsForQuarter(s.quarter)[0] || '')}
-                onChange={e => set(prev => ({ ...prev, month: e.target.value }))}
-                style={{ ...selectStyle, width: 150 }}
-              >
-                {monthsForQuarter(s.quarter).map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
-            </div>
-          )}
-
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: TEXT_LABEL }}>Date Prepared</span>
             <input value={s.preparedDate} onChange={e => set(prev => ({ ...prev, preparedDate: e.target.value }))} style={{ ...inputStyle, width: 120 }} />
@@ -1616,60 +1548,6 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {isAdmin && (
-            <div
-              className="qir-no-print"
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                gap: 8,
-                padding: '8px 10px',
-                marginBottom: 4,
-                border: '1px dashed rgba(120,170,255,0.18)',
-                borderRadius: RADIUS,
-                background: 'rgba(40,90,150,0.06)',
-              }}
-            >
-              <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.14em', color: TEXT_LABEL }}>
-                Reporting Period
-              </span>
-              <select
-                value={s.period}
-                onChange={e => set(prev => ({ ...prev, period: e.target.value as 'monthly' | 'quarterly' }))}
-                style={{ ...inputStyle, padding: '4px 8px', fontSize: 12 }}
-              >
-                <option value="quarterly">Quarterly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-              <select
-                value={s.quarter}
-                onChange={e => {
-                  const newQuarter = e.target.value;
-                  set(prev => {
-                    const validMonths = monthsForQuarter(newQuarter);
-                    const nextMonth = validMonths.includes(prev.month) ? prev.month : (validMonths[0] || prev.month);
-                    return { ...prev, quarter: newQuarter, month: nextMonth };
-                  });
-                }}
-                style={{ ...inputStyle, padding: '4px 8px', fontSize: 12 }}
-              >
-                {QUARTERS.map(q => <option key={q} value={q}>{q}</option>)}
-              </select>
-              {s.period === 'monthly' && (
-                <select
-                  value={monthsForQuarter(s.quarter).includes(s.month) ? s.month : (monthsForQuarter(s.quarter)[0] || '')}
-                  onChange={e => set(prev => ({ ...prev, month: e.target.value }))}
-                  style={{ ...inputStyle, padding: '4px 8px', fontSize: 12 }}
-                >
-                  {monthsForQuarter(s.quarter).map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-              )}
-              <span style={{ fontSize: 11, color: TEXT_MUTED, marginLeft: 'auto' }}>
-                Editing: <strong style={{ color: '#7cc8f0' }}>{periodKey}</strong>
-              </span>
-            </div>
-          )}
           {isAdmin ? (
             <input
               value={titleOverride}
@@ -1895,6 +1773,36 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
 }) {
   const rk = reportKey || 'naitive.quarterlyReport.adhoc';
   const [actualsViewMode, setActualsViewMode] = useState<ActualsViewMode>('plan_vs_actuals');
+  // Single source of truth: the dashboard header's Reporting Period selector
+  // drives s.period / s.quarter / s.month for every section/widget.
+  const insightsTf = useInsightsTimeframeOptional();
+  const reportingPeriod = insightsTf?.reportingPeriod ?? null;
+  useEffect(() => {
+    if (!reportingPeriod) return;
+    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    if (reportingPeriod.view === 'month') {
+      const m = /^(\d{4})-(\d{2})$/.exec(reportingPeriod.period);
+      if (!m) return;
+      const year = parseInt(m[1], 10);
+      const month1 = parseInt(m[2], 10);
+      const monthLabel = `${MONTH_NAMES[month1 - 1]} ${year}`;
+      const q = Math.floor((month1 - 1) / 3) + 1;
+      const quarterLabel = `Q${q} ${year}`;
+      set(prev => (prev.period === 'monthly' && prev.quarter === quarterLabel && prev.month === monthLabel)
+        ? prev
+        : { ...prev, period: 'monthly', quarter: quarterLabel, month: monthLabel });
+    } else {
+      const m = /^(\d{4})-Q([1-4])$/.exec(reportingPeriod.period);
+      if (!m) return;
+      const year = parseInt(m[1], 10);
+      const q = parseInt(m[2], 10);
+      const quarterLabel = `Q${q} ${year}`;
+      const firstMonthLabel = `${MONTH_NAMES[(q - 1) * 3]} ${year}`;
+      set(prev => (prev.period === 'quarterly' && prev.quarter === quarterLabel && prev.month === firstMonthLabel)
+        ? prev
+        : { ...prev, period: 'quarterly', quarter: quarterLabel, month: firstMonthLabel });
+    }
+  }, [reportingPeriod, set]);
   const planRevenue = useMemo(() => {
     const k = s.kpis.find(x => /revenue/i.test(x.label));
     const n = Number(k?.target);
