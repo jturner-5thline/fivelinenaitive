@@ -1,8 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   AlertTriangle,
   ArrowDownRight,
@@ -11,6 +18,7 @@ import {
   Loader2,
   Lock,
   Pencil,
+  Save,
   Sparkles,
   TrendingUp,
 } from 'lucide-react';
@@ -25,6 +33,8 @@ import {
 } from '@/hooks/useInsightsComparison';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import { InsightsCompareDialog } from './InsightsCompareDialog';
+import { useReportDefinitions } from '@/hooks/useReportDefinitions';
+import { useReportAISummaries, useSaveReportAISummary } from '@/hooks/useReportAISummaries';
 
 function ChangeChip({
   pct,
@@ -87,17 +97,34 @@ Write a 2-3 paragraph executive summary, in plain English, for senior leadership
 }
 
 export function InsightsAISummaryCard() {
-  const { deltas, alerts, isLoading } = useInsightsComparison();
+  const { deltas, alerts, isLoading, periodKey, periodLabel } = useInsightsComparison();
   const tf = useInsightsTimeframeOptional();
-  const periodLabel = tf?.timeframe.label ?? 'Current period';
+  // periodLabel sourced from comparison hook (timeframe-aware).
 
   const [narrative, setNarrative] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [reportTarget, setReportTarget] = useState<string>('none');
 
   const headlineDeltas = useMemo(() => deltas.slice(0, 6), [deltas]);
+
+  const { data: reports } = useReportDefinitions();
+  const { data: existingSummaries } = useReportAISummaries(
+    reportTarget !== 'none' ? reportTarget : undefined,
+  );
+  const saveSummary = useSaveReportAISummary();
+
+  // Hydrate latest narrative for the selected report + period (locked first).
+  useEffect(() => {
+    if (!existingSummaries) return;
+    const match = existingSummaries.find(s => s.period_key === periodKey);
+    if (match && !narrative) {
+      setNarrative(match.narrative);
+      setIsLocked(!!match.locked_at);
+    }
+  }, [existingSummaries, periodKey, narrative]);
 
   const generate = async () => {
     if (isGenerating) return;
@@ -121,6 +148,23 @@ export function InsightsAISummaryCard() {
     }
   };
 
+  const persist = async (lock: boolean) => {
+    if (!narrative.trim()) {
+      toast.error('Generate a summary first');
+      return;
+    }
+    await saveSummary.mutateAsync({
+      reportId: reportTarget !== 'none' ? reportTarget : null,
+      periodKey,
+      periodLabel,
+      narrative,
+      deltas,
+      alerts,
+      lock,
+    });
+    if (lock) setIsLocked(true);
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -131,6 +175,19 @@ export function InsightsAISummaryCard() {
             <Badge variant="outline" className="ml-1 text-[10px]">{periodLabel}</Badge>
           </CardTitle>
           <div className="flex items-center gap-2">
+            {reports && reports.length > 0 && (
+              <Select value={reportTarget} onValueChange={setReportTarget}>
+                <SelectTrigger className="h-9 w-[180px]">
+                  <SelectValue placeholder="Attach to report" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No saved report</SelectItem>
+                  {reports.map(r => (
+                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Button size="sm" variant="outline" onClick={() => setCompareOpen(true)}>
               <GitCompareArrows className="h-3.5 w-3.5 mr-1.5" />
               Compare Periods
@@ -145,7 +202,21 @@ export function InsightsAISummaryCard() {
                   <Pencil className="h-3.5 w-3.5 mr-1.5" />
                   {isEditing ? 'Preview' : 'Edit'}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setIsLocked(true)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => persist(false)}
+                  disabled={saveSummary.isPending}
+                >
+                  <Save className="h-3.5 w-3.5 mr-1.5" />
+                  Save
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => persist(true)}
+                  disabled={saveSummary.isPending}
+                >
                   <Lock className="h-3.5 w-3.5 mr-1.5" />
                   Lock for report
                 </Button>

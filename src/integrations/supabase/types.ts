@@ -16056,6 +16056,69 @@ export type Database = {
           },
         ]
       }
+      report_ai_summaries: {
+        Row: {
+          alerts: Json
+          company_id: string | null
+          created_at: string
+          deltas: Json
+          id: string
+          locked_at: string | null
+          model: string | null
+          narrative: string
+          owner_user_id: string
+          period_key: string
+          period_label: string
+          report_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          alerts?: Json
+          company_id?: string | null
+          created_at?: string
+          deltas?: Json
+          id?: string
+          locked_at?: string | null
+          model?: string | null
+          narrative: string
+          owner_user_id: string
+          period_key: string
+          period_label: string
+          report_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          alerts?: Json
+          company_id?: string | null
+          created_at?: string
+          deltas?: Json
+          id?: string
+          locked_at?: string | null
+          model?: string | null
+          narrative?: string
+          owner_user_id?: string
+          period_key?: string
+          period_label?: string
+          report_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_ai_summaries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_ai_summaries_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "report_definitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_definitions: {
         Row: {
           ai_regenerate_on_run: boolean | null

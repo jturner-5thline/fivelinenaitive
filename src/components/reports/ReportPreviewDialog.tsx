@@ -59,6 +59,7 @@ import {
 } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { ReportAISummaryBlock } from './ReportAISummaryBlock';
 
 interface ReportPreviewDialogProps {
   open: boolean;
@@ -370,6 +371,7 @@ export function ReportPreviewDialog({ open, onOpenChange, report }: ReportPrevie
           </DialogHeader>
 
           <ScrollArea className="flex-1 p-6">
+            <ReportAISummaryBlock report={report} />
             <div className="grid grid-cols-2 gap-4">
               {widgets.map((widget) => (
                 <div
