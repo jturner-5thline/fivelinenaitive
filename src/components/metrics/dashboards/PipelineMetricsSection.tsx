@@ -16,6 +16,13 @@ const formatCurrency = (value: number) => {
   return `$${value.toFixed(0)}`;
 };
 
+/** FinServ-revenue style currency formatter: $X.XK / $X.XM with 1 decimal. */
+const formatFinServCurrency = (value: number) => {
+  if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(value) >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
+  return `$${value.toFixed(0)}`;
+};
+
 /** Combined-widget formatter: shows millions as "MM" per requested format. */
 const formatCurrencyMM = (value: number) => {
   if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}MM`;
@@ -253,7 +260,7 @@ export function PipelineMetricWidget({
       value: metrics.finservActiveClients.count, isLoading: metrics.finservActiveClients.isLoading,
       deals: metrics.finservActiveClients.deals, color: 'hsl(var(--chart-1))',
       drilldownTitle: 'FinServ: Active Clients — Current',
-      secondaryLabel: `MRR: ${formatCurrency(metrics.finservActiveClients.mrr)}`,
+      secondaryLabel: `MRR: ${formatFinServCurrency(metrics.finservActiveClients.mrr)}`,
     },
   };
   const card = map[cardId];
