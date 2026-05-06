@@ -52,11 +52,18 @@ export function KPIDetailCard({
   onClick,
   selectedPeriod,
 }: KPIDetailCardProps) {
-  const mainEntityId = entityFilter && entityFilter !== 'all' ? entityFilter : null;
+  // The main consolidated value (e.g. "Total Revenue") MUST always aggregate
+  // across every QuickBooks-synced entity at the group level. We deliberately
+  // ignore any per-widget `entityFilter` for the main figure so the headline
+  // always reflects the full naitive group total. Per-entity context is still
+  // surfaced via the left/right breakdown tiles, which use their own pinned
+  // `entityId`s (and only fall back to `entityFilter` when none is pinned).
+  const mainEntityId: string | null = null;
+  const fallbackBreakdownEntityId = entityFilter && entityFilter !== 'all' ? entityFilter : null;
   const priorWindow = getPriorWindow(timeWindow);
 
-  const leftEntityId = kpiConfig.left.entityId || mainEntityId;
-  const rightEntityId = kpiConfig.right.entityId || mainEntityId;
+  const leftEntityId = kpiConfig.left.entityId || fallbackBreakdownEntityId;
+  const rightEntityId = kpiConfig.right.entityId || fallbackBreakdownEntityId;
 
   // ── Period selection ────────────────────────────────────────────────
   // When the dashboard supplies an explicit `selectedPeriod` (e.g. the
