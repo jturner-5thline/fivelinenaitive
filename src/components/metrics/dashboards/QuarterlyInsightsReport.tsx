@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2, SlidersHorizontal } from 'lucide-react';
 import { useAsanaGoals, type AsanaGoalRow } from '@/hooks/useAsanaGoals';
 import { useAsanaGoalFilterPrefs } from '@/hooks/useAsanaGoalFilterPrefs';
+import { useAuth } from '@/contexts/AuthContext';
+import { useAdminRole } from '@/hooks/useAdminRole';
+import naitiveLogoDark from '@/assets/naitive-logo-dark.png';
 import {
   DEFAULT_ASANA_GOAL_FILTERS,
   type AsanaGoalFilterTemplates,
@@ -234,6 +237,10 @@ export interface ReportState {
   initiatives: Initiative[];
   initiativeOwnerFilter: string;
   risks: Risk[];
+  /** Admin-editable cover title override (per reporting period). */
+  coverTitle?: string;
+  /** Admin-editable subtitle/tagline (per reporting period). */
+  coverSubtitle?: string;
   /** Configurable mapping from report period → Asana Goals time-period labels. */
   asanaGoalFilters?: AsanaGoalFilterTemplates;
   /** Optional manual override for the active report (resets when period changes). */
@@ -1402,6 +1409,201 @@ function ReportFooterSection({ s, print }: { s: ReportState; print: () => void }
   );
 }
 
+const AGENDA_SECTIONS: { id: string; label: string }[] = [
+  { id: 'qir-section-summary', label: 'Executive Summary' },
+  { id: 'qir-section-financials', label: 'Revenue & Financial Performance' },
+  { id: 'qir-section-pipeline', label: 'Deal Pipeline' },
+  { id: 'qir-section-metrics', label: 'Key Metrics' },
+  { id: 'qir-section-goals', label: 'Goals & Milestones' },
+  { id: 'qir-section-commentary', label: 'Commentary & Notes' },
+];
+
+function periodLabel(s: ReportState): string {
+  if (s.period === 'monthly') {
+    const valid = monthsForQuarter(s.quarter);
+    return valid.includes(s.month) ? s.month : (valid[0] || s.quarter);
+  }
+  return s.quarter;
+}
+
+function defaultCoverTitle(s: ReportState): string {
+  return s.period === 'monthly' ? 'Monthly Insights Report' : 'Quarterly Management Review';
+}
+
+function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState }) {
+  const { user } = useAuth();
+  const { isAdmin } = useAdminRole();
+  const preparedByName =
+    s.authors[0] ||
+    (user?.user_metadata as any)?.full_name ||
+    (user?.user_metadata as any)?.name ||
+    user?.email ||
+    '—';
+  const todayStr = new Date().toLocaleDateString('en-US', {
+    month: 'long', day: 'numeric', year: 'numeric',
+  });
+  const title = s.coverTitle?.trim() || defaultCoverTitle(s);
+  const subtitle = s.coverSubtitle ?? '';
+  return (
+    <Card className="glass-module qir-page-break">
+      <div
+        style={{
+          padding: '48px 40px',
+          minHeight: 520,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          gap: 32,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <img src={naitiveLogoDark} alt="5th Line" style={{ height: 38, width: 'auto' }} />
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.18em', color: TEXT_LABEL }}>
+            5th Line Capital Advisors
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {isAdmin ? (
+            <input
+              value={s.coverTitle ?? ''}
+              placeholder={defaultCoverTitle(s)}
+              onChange={e => set(prev => ({ ...prev, coverTitle: e.target.value }))}
+              className="qir-no-print"
+              style={{
+                ...inputStyle,
+                fontSize: 34,
+                fontWeight: 700,
+                padding: '8px 12px',
+                background: 'transparent',
+                border: '1px dashed rgba(120,170,255,0.18)',
+                color: TEXT_PRIMARY,
+                letterSpacing: '-.5px',
+                width: '100%',
+              }}
+            />
+          ) : null}
+          {!isAdmin && (
+            <div style={{ fontSize: 38, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: '-.5px', lineHeight: 1.1 }}>
+              {title}
+            </div>
+          )}
+
+          {isAdmin ? (
+            <input
+              value={subtitle}
+              placeholder="Optional subtitle or tagline"
+              onChange={e => set(prev => ({ ...prev, coverSubtitle: e.target.value }))}
+              className="qir-no-print"
+              style={{
+                ...inputStyle,
+                fontSize: 16,
+                padding: '6px 12px',
+                background: 'transparent',
+                border: '1px dashed rgba(120,170,255,0.14)',
+                color: TEXT_MUTED,
+                width: '100%',
+              }}
+            />
+          ) : null}
+          {subtitle && (
+            <div style={{ fontSize: 16, color: TEXT_MUTED, fontStyle: 'italic' }}>{subtitle}</div>
+          )}
+
+          <div style={{ marginTop: 8, fontSize: 18, fontWeight: 600, color: '#7cc8f0', letterSpacing: '.05em' }}>
+            {periodLabel(s)}
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+            gap: 18,
+            paddingTop: 18,
+            borderTop: '1px solid rgba(120,170,255,0.12)',
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.12em', color: TEXT_LABEL }}>Prepared By</div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: TEXT_PRIMARY, marginTop: 4 }}>{preparedByName}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.12em', color: TEXT_LABEL }}>Date Prepared</div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: TEXT_PRIMARY, marginTop: 4 }}>{todayStr}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.12em', color: TEXT_LABEL }}>Reporting Period</div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: TEXT_PRIMARY, marginTop: 4 }}>{periodLabel(s)}</div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            fontSize: 10,
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '.18em',
+            color: 'rgba(240,140,40,0.85)',
+            padding: '8px 12px',
+            border: '1px solid rgba(240,140,40,0.22)',
+            borderRadius: RADIUS,
+            display: 'inline-block',
+            alignSelf: 'flex-start',
+            background: 'rgba(240,140,40,0.06)',
+          }}
+        >
+          Confidential — For Internal Use Only
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function ReportAgendaSection() {
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    e.preventDefault();
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  return (
+    <Card className="glass-module qir-page-break">
+      <div style={{ padding: '32px 36px' }}>
+        <SectionTitle>Agenda</SectionTitle>
+        <ol style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {AGENDA_SECTIONS.map((item, idx) => (
+            <li key={item.id}>
+              <a
+                href={`#${item.id}`}
+                onClick={e => handleClick(e, item.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 14,
+                  padding: '10px 14px',
+                  borderRadius: RADIUS,
+                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid rgba(255,255,255,0.05)',
+                  color: TEXT_PRIMARY,
+                  textDecoration: 'none',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  transition: 'background .2s, border-color .2s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(40,90,150,0.18)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
+              >
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#7cc8f0', minWidth: 22, fontVariantNumeric: 'tabular-nums' }}>{idx + 1}.</span>
+                <span>{item.label}</span>
+              </a>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </Card>
+  );
+}
+
 export function QuarterlyInsightsReportPage({ s, set, reset, print }: {
   s: ReportState;
   set: ReportSetState;
@@ -1410,12 +1612,15 @@ export function QuarterlyInsightsReportPage({ s, set, reset, print }: {
 }) {
   return (
     <div style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, color: TEXT_PRIMARY }}>
+      <ReportCoverSection s={s} set={set} />
+      <ReportAgendaSection />
       <ReportHeaderSection s={s} set={set} reset={reset} print={print} />
-      <ReportKpisSection s={s} set={set} />
-      <ReportNarrativeSection s={s} set={set} />
-      <ReportGoalsSection s={s} set={set} />
-      <ReportInitiativesSection s={s} set={set} />
-      <ReportRisksSection s={s} set={set} print={print} />
+      <div id="qir-section-summary"><ReportNarrativeSection s={s} set={set} /></div>
+      <div id="qir-section-financials"><ReportKpisSection s={s} set={set} /></div>
+      <div id="qir-section-pipeline"><ReportGoalsSection s={s} set={set} /></div>
+      <div id="qir-section-metrics"><ReportInitiativesSection s={s} set={set} /></div>
+      <div id="qir-section-goals"><ReportRisksSection s={s} set={set} print={print} /></div>
+      <div id="qir-section-commentary" />
       <ReportFooterSection s={s} print={print} />
     </div>
   );
@@ -1431,6 +1636,7 @@ export function QuarterlyReportPrintStyles() {
       @media print {
         body { background: #ffffff !important; }
         .qir-no-print { display: none !important; }
+        .qir-page-break { page-break-after: always; break-after: page; }
       }
     `;
     document.head.appendChild(el);
