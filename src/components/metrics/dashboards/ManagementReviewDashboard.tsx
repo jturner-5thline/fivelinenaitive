@@ -857,11 +857,11 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       recomputesOnPeriodChange: true,
     },
     {
-      widget: 'Monthly Revenue + Net Cash charts',
-      dataSource: 'quickbooks_invoices + quickbooks_payments + quickbooks_expenses',
+      widget: 'TTM Revenue Trend chart',
+      dataSource: 'quickbooks_invoices (all entities)',
       queryParams: chartMode === 'quarter'
-        ? `monthly buckets in ${formatRangeLabel(periodRange)}`
-        : `12 monthly buckets ending ${format(periodRange.end, 'yyyy-MM-dd')}`,
+        ? `rolling 12-mo windows for each month in ${formatRangeLabel(periodRange)}`
+        : `rolling 12-mo windows for 12 months ending ${format(periodRange.end, 'yyyy-MM-dd')}`,
       reportingPeriod: periodLabel,
       state: qbConnected ? 'live-query-cached-recomputed' : 'truthful-empty',
       recomputesOnPeriodChange: true,
