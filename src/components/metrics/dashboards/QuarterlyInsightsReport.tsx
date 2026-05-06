@@ -2207,6 +2207,13 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
     return Number.isFinite(n) ? n : 0;
   }, [s.kpis]);
   const rootRef = React.useRef<HTMLDivElement>(null);
+  const [justSaved, setJustSaved] = useState(false);
+  const handleSaveClick = () => {
+    if (!save) return;
+    save();
+    setJustSaved(true);
+    window.setTimeout(() => setJustSaved(false), 1800);
+  };
   const reportLabel = s.period === 'monthly'
     ? `Monthly Insights Report — ${s.month}`
     : `Quarterly Insights Report — ${s.quarter}`;
@@ -2234,11 +2241,15 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
       </Card>
       <div className="qir-no-print" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
         <Btn icon={RotateCcw} variant="ghost" onClick={reset}>Reset</Btn>
-        {save ? (
-          <span title={canEdit === false ? 'You do not have permission to save' : 'Save report for everyone'}>
-            <Btn icon={SaveIcon} onClick={save}>Save</Btn>
-          </span>
-        ) : null}
+        <span title={canEdit === false ? 'You do not have permission to save' : 'Save report for everyone'}>
+          <Btn
+            icon={justSaved ? Check : SaveIcon}
+            onClick={handleSaveClick}
+            variant={justSaved ? 'default' : 'default'}
+          >
+            {justSaved ? 'Saved' : 'Save'}
+          </Btn>
+        </span>
       </div>
       <QirContextualComments reportKey={rk} reportLabel={reportLabel} rootRef={rootRef} />
     </div>
