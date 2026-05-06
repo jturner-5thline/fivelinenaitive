@@ -305,12 +305,23 @@ export function createQuarterlyReportSeed(overrides?: Partial<ReportState>): Rep
   };
 }
 
-export function useQuarterlyReportState(initialState?: ReportState, storageKey?: string) {
+export function useQuarterlyReportState(
+  initialState?: ReportState,
+  storageKey?: string,
+  options?: {
+    /** Called when the user changes period/quarter/month inside the report.
+     *  When provided, those selection changes are NOT persisted into the
+     *  current storage key — instead the parent is expected to swap the
+     *  storage key (so a fresh per-period blob is loaded). */
+    onSelectionChange?: (sel: { period: 'monthly' | 'quarterly'; quarter: string; month: string }) => void;
+  },
+) {
+  // Recompute the seed whenever the seed inputs (initial selection) change so
+  // a fresh per-period report renders with the correct period header.
   const seed = useMemo<ReportState>(
     () => (initialState ? createQuarterlyReportSeed(initialState) : cloneSeed()),
-    // intentionally compute once per mount; downstream callers pass a stable seed
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [initialState?.period, initialState?.quarter, initialState?.month],
   );
   // Persist company-wide via company_settings.fpa_dashboard_config.
   // Falls back to in-memory state when no storageKey is provided.
@@ -322,29 +333,42 @@ export function useQuarterlyReportState(initialState?: ReportState, storageKey?:
   );
   // Local mirror so typing stays snappy; flushed to company config on change (debounced inside hook)
   const [state, setStateLocal] = useState<ReportState>(seed);
-  // Hydrate from saved config once it loads — guard with isLoaded so we never
-  // overwrite saved data with the seed default.
-  const hydratedRef = useRef(false);
+  // Track which storage key the local state was last hydrated from so a key
+  // change (e.g. user switched period) re-loads the new blob instead of
+  // keeping stale content from the previously selected period.
+  const hydratedKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!isLoaded || hydratedRef.current) return;
+    if (!isLoaded) return;
+    if (hydratedKeyRef.current === configKey) return;
     setStateLocal(config);
-    hydratedRef.current = true;
-  }, [isLoaded, config]);
+    hydratedKeyRef.current = configKey;
+  }, [isLoaded, config, configKey]);
 
   const setState: React.Dispatch<React.SetStateAction<ReportState>> = (updater) => {
     setStateLocal(prev => {
       const next = typeof updater === 'function'
         ? (updater as (p: ReportState) => ReportState)(prev)
         : updater;
+      // Detect a period/quarter/month change. When the parent owns the
+      // selection, route the change up and skip persisting into the current
+      // (about-to-be-stale) storage key.
+      const selectionChanged =
+        prev.period !== next.period ||
+        prev.quarter !== next.quarter ||
+        prev.month !== next.month;
+      if (selectionChanged && options?.onSelectionChange) {
+        options.onSelectionChange({ period: next.period, quarter: next.quarter, month: next.month });
+        return prev; // wait for re-hydration under the new key
+      }
       // Only persist after initial hydration to avoid clobbering with defaults
-      if (hydratedRef.current) saveConfig(next);
+      if (hydratedKeyRef.current === configKey) saveConfig(next);
       return next;
     });
   };
 
   const reset = () => {
     setStateLocal(seed);
-    if (hydratedRef.current) saveConfig(seed);
+    if (hydratedKeyRef.current === configKey) saveConfig(seed);
     sonnerToast.success('Report reset to defaults');
   };
   const save = () => {

@@ -24,6 +24,8 @@ export function useCompanyDashboardConfig<T extends Record<string, any>>(
   // Load from company_settings.fpa_dashboard_config[configKey]
   useEffect(() => {
     if (!company?.id) return;
+    // Reset loaded flag when key changes so consumers can re-hydrate.
+    setIsLoaded(false);
 
     (async () => {
       try {
@@ -42,6 +44,10 @@ export function useCompanyDashboardConfig<T extends Record<string, any>>(
         const fpaConfig = (data?.fpa_dashboard_config as Record<string, any>) || {};
         if (fpaConfig[configKey] !== undefined) {
           setConfig({ ...defaultValue, ...fpaConfig[configKey] });
+        } else {
+          // No saved value for this key — reset to default so callers don't
+          // see stale data from a previously loaded key.
+          setConfig(defaultValue);
         }
       } catch (err) {
         console.error('Error loading dashboard config:', err);
