@@ -1887,7 +1887,7 @@ function defaultCoverTitle(s: ReportState): string {
   return s.period === 'monthly' ? 'Monthly Insights' : 'Quarterly Insights';
 }
 
-function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState }) {
+export function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState }) {
   const { user } = useAuth();
   const { isAdmin } = useAdminRole();
   const insightsTf = useInsightsTimeframeOptional();
