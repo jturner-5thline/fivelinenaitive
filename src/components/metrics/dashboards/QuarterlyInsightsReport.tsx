@@ -2223,7 +2223,7 @@ export function QuarterlyReportPrintStyles() {
       [id^="qir-section-"] { scroll-margin-top: 96px; }
       /* Unify subsections inside the single Monthly/Quarterly report card. */
       .qir-unified-report > div > .qir-unified-section + .qir-unified-section {
-        border-top: 1px solid rgba(120,170,255,0.10);
+        border-top: 1px solid rgba(120,170,255,0.22);
       }
       /* Uniform padding inside every unified section so narrative, KPIs,
          goals, initiatives, and risks share identical spacing. */
