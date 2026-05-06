@@ -1323,10 +1323,18 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
 
 function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetState }) {
   const preparedBy = s.authors[0] || 'James Turner';
-  // Initiatives now sourced live from a specific Asana Portfolio.
-  // Portfolio: https://app.asana.com/0/portfolio/1212153040575217/1212153276296112
-  const PORTFOLIO_GID = '1212153276296112';
-  const { projects, loading, error, lastSyncedAt, configured, refresh } = useAsanaPortfolioProjects(PORTFOLIO_GID);
+  // Initiatives sourced live from a user-selectable Asana Portfolio.
+  const DEFAULT_PORTFOLIO_GID = '1212153276296112';
+  const PORTFOLIO_PREF_KEY = 'qir.initiatives.portfolioGid';
+  const [portfolioGid, setPortfolioGid] = useState<string>(() => {
+    try { return localStorage.getItem(PORTFOLIO_PREF_KEY) || DEFAULT_PORTFOLIO_GID; }
+    catch { return DEFAULT_PORTFOLIO_GID; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(PORTFOLIO_PREF_KEY, portfolioGid); } catch { /* ignore */ }
+  }, [portfolioGid]);
+  const { portfolios: availablePortfolios, loading: portfoliosLoading } = useAsanaPortfolios();
+  const { projects, loading, error, lastSyncedAt, configured, refresh } = useAsanaPortfolioProjects(portfolioGid);
 
   const normName = (v: string) => v.trim().toLowerCase().replace(/\s+/g, ' ');
   const preparedByKey = normName(preparedBy);
