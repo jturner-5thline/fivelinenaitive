@@ -35,6 +35,8 @@ interface MetricCardConfig {
   deals: StageEntryDeal[];
   color: string;
   drilldownTitle: string;
+  /** Optional secondary value rendered as a sub-label (e.g. "MRR: $18.5k"). */
+  secondaryLabel?: string;
 }
 
 export function MetricKPICard({
@@ -84,6 +86,11 @@ export function MetricKPICard({
               </button>
             )}
           </div>
+          {config.secondaryLabel && !config.isLoading && (
+            <p className="text-[11px] text-muted-foreground font-mono tabular-nums mt-0.5 truncate">
+              {config.secondaryLabel}
+            </p>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -177,7 +184,8 @@ export type PipelineMetricCardId =
   | 'debt-deals-signed'
   | 'debt-dollar-signed'
   | 'finserv-deals-on-board'
-  | 'finserv-clients-signed';
+  | 'finserv-clients-signed'
+  | 'finserv-active-clients';
 
 export const PIPELINE_METRIC_LABELS: Record<PipelineMetricCardId, string> = {
   'deals-on-board': 'Deals on the Board',
@@ -186,6 +194,7 @@ export const PIPELINE_METRIC_LABELS: Record<PipelineMetricCardId, string> = {
   'debt-dollar-signed': 'Debt $ Signed',
   'finserv-deals-on-board': 'FinServ: Deals on the Board',
   'finserv-clients-signed': 'FinServ Clients Signed',
+  'finserv-active-clients': 'FinServ: Active Clients',
 };
 
 /** Single Pipeline Metric KPI tile, self-contained so it can be placed
@@ -238,6 +247,13 @@ export function PipelineMetricWidget({
       value: metrics.finservClientsSigned.count, isLoading: metrics.finservClientsSigned.isLoading,
       deals: metrics.finservClientsSigned.deals, color: 'hsl(var(--success))',
       drilldownTitle: 'FinServ Clients Signed — Active Client',
+    },
+    'finserv-active-clients': {
+      id: 'finserv-active-clients', title: PIPELINE_METRIC_LABELS['finserv-active-clients'], icon: UserCheck,
+      value: metrics.finservActiveClients.count, isLoading: metrics.finservActiveClients.isLoading,
+      deals: metrics.finservActiveClients.deals, color: 'hsl(var(--chart-1))',
+      drilldownTitle: 'FinServ: Active Clients — Current',
+      secondaryLabel: `MRR: ${formatCurrency(metrics.finservActiveClients.mrr)}`,
     },
   };
   const card = map[cardId];
