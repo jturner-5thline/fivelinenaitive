@@ -1624,10 +1624,16 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
 
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 10 }}>
           Sourced from Asana portfolio · Owner: <span style={{ color: TEXT_PRIMARY, fontWeight: 600 }}>{preparedBy}</span>
-          <span style={{ marginLeft: 8 }}>
-            <Pill tone="pos">On Track · {counts.onTrack}</Pill>{' '}
-            <Pill tone="neu">At Risk · {counts.atRisk}</Pill>{' '}
-            <Pill tone="neg">Off Track · {counts.offTrack}</Pill>
+          <span style={{ marginLeft: 8, display: 'inline-flex', gap: 6 }}>
+            <span role="button" style={{ cursor: 'pointer' }} onClick={() => setInitDrill({ sourceId: 'init:status:On Track', sourceLabel: 'Initiatives · On Track', selection: `${counts.onTrack} initiative${counts.onTrack === 1 ? '' : 's'}`, filters: [{ label: 'Owner', value: preparedBy }] })}>
+              <Pill tone="pos">On Track · {counts.onTrack}</Pill>
+            </span>
+            <span role="button" style={{ cursor: 'pointer' }} onClick={() => setInitDrill({ sourceId: 'init:status:At Risk', sourceLabel: 'Initiatives · At Risk', selection: `${counts.atRisk} initiative${counts.atRisk === 1 ? '' : 's'}`, filters: [{ label: 'Owner', value: preparedBy }] })}>
+              <Pill tone="neu">At Risk · {counts.atRisk}</Pill>
+            </span>
+            <span role="button" style={{ cursor: 'pointer' }} onClick={() => setInitDrill({ sourceId: 'init:status:Off Track', sourceLabel: 'Initiatives · Off Track', selection: `${counts.offTrack} initiative${counts.offTrack === 1 ? '' : 's'}`, filters: [{ label: 'Owner', value: preparedBy }] })}>
+              <Pill tone="neg">Off Track · {counts.offTrack}</Pill>
+            </span>
           </span>
         </div>
 
@@ -1678,14 +1684,37 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
                 {initSG.groups.map((group, gi) => (
                   <React.Fragment key={`ig-${gi}-${group.key}`}>
                     {initSG.groupBy && (
-                      <tr>
+                      <tr
+                        onClick={() => setInitDrill({
+                          sourceId: initSG.groupBy === 'status' ? `init:status:${group.key}` : 'init:all',
+                          sourceLabel: `Initiatives · ${group.key}`,
+                          selection: `${group.rows.length} initiative${group.rows.length === 1 ? '' : 's'}`,
+                          filters: [{ label: 'Owner', value: preparedBy }],
+                        })}
+                        style={{ cursor: 'pointer' }}
+                      >
                         <td colSpan={6} style={{ padding: '10px 10px 4px', fontSize: 9, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: TEXT_LABEL, background: 'rgba(255,255,255,0.02)' }}>
                           {group.key} <span style={{ color: TEXT_MUTED, fontWeight: 500 }}>· {group.rows.length}</span>
                         </td>
                       </tr>
                     )}
                     {group.rows.map((p, idx) => (
-                      <tr key={p.gid}>
+                      <tr
+                        key={p.gid}
+                        onClick={(e) => {
+                          if ((e.target as HTMLElement).closest('a, button')) return;
+                          setInitDrill({
+                            sourceId: `init:${p.gid}`,
+                            sourceLabel: `Initiative · ${p.name}`,
+                            selection: p.dueOn ? `Due ${p.dueOn}` : undefined,
+                            filters: [
+                              { label: 'Owner', value: p.owner || preparedBy },
+                              { label: 'Status', value: p.status },
+                            ],
+                          });
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
                     <td style={{ ...tdStyle, color: TEXT_LABEL, fontVariantNumeric: 'tabular-nums' }}>{idx + 1}</td>
                     <td style={tdStyle}>
                       {p.permalink_url ? (
