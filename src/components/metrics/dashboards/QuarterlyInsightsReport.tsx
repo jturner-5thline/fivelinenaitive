@@ -734,14 +734,13 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
     { id: 'owner', label: 'Owner', accessor: g => g.owner || '', sortable: true, groupable: true },
     { id: 'status', label: 'Status', accessor: g => goalStatusRank[g.status] ?? 99, sortable: true },
     { id: 'statusGroup', label: 'Status', accessor: g => g.status || '—', groupable: true },
-    { id: 'due', label: 'Due Date', accessor: g => g.due || null, sortable: true },
-    { id: 'period', label: 'Reporting Period', accessor: g => g.timePeriod || '—', groupable: true },
+    { id: 'period', label: 'Time Period', accessor: g => g.timePeriod || '', sortable: true, groupable: true },
     { id: 'source', label: 'Source', accessor: g => 'Asana', sortable: true, groupable: true },
   ];
   const goalsSG = useSortGroup<AsanaGoalRow>({
     rows: visibleGoals,
     columns: goalColumns,
-    defaultSortBy: 'due',
+    defaultSortBy: 'period',
     defaultSortDir: 'asc',
     defaultGroupBy: 'statusGroup',
   });
@@ -1225,14 +1224,14 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
               groupOptions={[
                 { id: 'statusGroup', label: 'Status' },
                 { id: 'owner', label: 'Owner' },
-                { id: 'period', label: 'Reporting Period' },
+                { id: 'period', label: 'Time Period' },
                 { id: 'source', label: 'Source' },
               ]}
               sortOptions={[
                 { id: 'title', label: 'Title' },
                 { id: 'owner', label: 'Owner' },
                 { id: 'status', label: 'Status' },
-                { id: 'due', label: 'Due Date' },
+                { id: 'period', label: 'Time Period' },
               ]}
             />
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
@@ -1242,7 +1241,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
                   <th style={{ ...thStyle, cursor: 'pointer' }} onClick={() => goalsSG.toggleSort('title')}>Title{goalsSG.indicator('title')}</th>
                   <th style={{ ...thStyle, width: 170, cursor: 'pointer' }} onClick={() => goalsSG.toggleSort('owner')}>Owner{goalsSG.indicator('owner')}</th>
                   <th style={{ ...thStyle, width: 110, cursor: 'pointer' }} onClick={() => goalsSG.toggleSort('status')}>Status{goalsSG.indicator('status')}</th>
-                  <th style={{ ...thStyle, width: 120, cursor: 'pointer' }} onClick={() => goalsSG.toggleSort('due')}>Due Date{goalsSG.indicator('due')}</th>
+                  <th style={{ ...thStyle, width: 120, cursor: 'pointer' }} onClick={() => goalsSG.toggleSort('period')}>Time Period{goalsSG.indicator('period')}</th>
                   <th style={{ ...thStyle, width: 70 }}>Source</th>
                 </tr>
               </thead>
@@ -1287,8 +1286,8 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
                     <td style={tdStyle}>
                       <Pill tone={statusTone(goal.status)}>{goal.status}</Pill>
                     </td>
-                    <td style={{ ...tdStyle, color: TEXT_PRIMARY, fontVariantNumeric: 'tabular-nums' }}>
-                      {goal.due || <span style={{ color: TEXT_LABEL }}>—</span>}
+                    <td style={{ ...tdStyle, color: TEXT_PRIMARY }}>
+                      {goal.timePeriod || <span style={{ color: TEXT_LABEL }}>—</span>}
                     </td>
                     <td style={tdStyle}>
                       <span style={{
