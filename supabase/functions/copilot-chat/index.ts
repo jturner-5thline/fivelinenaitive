@@ -4962,7 +4962,14 @@ Communications context (use whenever the question references emails, calls, meet
 - "Did I email X", "when did I last reply to Y", "what did I send about Z", "did the email go out" → get_sent_emails (includes status + error_message)
 - "What's queued to send", "pending scheduled emails", "what goes out tomorrow" → get_scheduled_emails
 - "What's on my calendar", "do I have a meeting with X", "next call with Y" → get_upcoming_events
+- "What meetings do I have about <topic/company>", "past calls with <person>", "meetings with <attendee>" → search_calendar_events (searches past + future window by query / attendee email)
 - "What did we discuss with X", "summary of the call", "last meeting on this deal" → get_recent_meetings (Claap recordings with summaries + transcripts)
+
+EMAIL & CALENDAR USAGE RULES (IMPORTANT):
+- Only call search_emails / get_email_thread / search_calendar_events / get_upcoming_events when the question CLEARLY needs inbox or calendar data (e.g. "what did X say", "find emails about Y", "meetings with Z", "what's on my calendar"). Do NOT call them for generic deal/lender/task questions answerable from the database.
+- When you DO use email results, ALWAYS cite the source inline using this exact format: "Based on <Sender>'s email from <Mon DD>, …". For threads, cite the most recent relevant message.
+- When you DO use calendar results, cite using: "Per your calendar event '<Title>' on <Mon DD>, …" or "You have <N> meetings about <X>: …".
+- Never fabricate sender names, dates, subjects, or attendees — only use values returned by the tools.
 
 History / audit context (use for "track record", "lifecycle", "why did X happen"):
 - "What's our history with <lender>", "has <lender> done deals like this before", "why did <lender> pass last time" → get_lender_deal_history
