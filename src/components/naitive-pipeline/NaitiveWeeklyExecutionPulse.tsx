@@ -41,6 +41,20 @@ const SEQUENCE_SOURCES = ['Sequence reply'];
 const WARM_SOURCES = ['Warm outreach', 'Referral', 'Inbound'];
 const DM_TARGET_PCT = 60;
 
+/* Canonical naitive pipeline stage order. A "forward" move is any transition
+   to a stage with a STRICTLY GREATER index (excluding terminal/non-progress
+   stages like closed-lost / tabled-on-hold). */
+const STAGE_ORDER = [
+  'prospects', 'qual-booked', 'demo-booked', 'onboarding-booked',
+  'trial-active', 'converted', 'closed-lost', 'tabled-on-hold',
+] as const;
+const FORWARD_STAGES_AFTER_QUAL = new Set([
+  'demo-booked', 'onboarding-booked', 'trial-active', 'converted',
+]);
+function movedForwardOutOfQual(fromStage: string, toStage: string): boolean {
+  return fromStage === 'qual-booked' && FORWARD_STAGES_AFTER_QUAL.has(toStage);
+}
+
 function isDmYes(v?: string) {
   if (!v) return false;
   const s = v.toLowerCase();
@@ -79,6 +93,7 @@ function inRange(d: Date, from: Date, to: Date) {
 }
 
 interface PeriodMetrics {
+  qualsBooked: number;
   qualsHeld: number;
   demosHeld: number;
   demosBooked: number;
@@ -97,14 +112,15 @@ function computeMetrics(
   to: Date,
 ): PeriodMetrics {
   const out: PeriodMetrics = {
-    qualsHeld: 0, demosHeld: 0, demosBooked: 0, trialsStarted: 0, converted: 0,
+    qualsBooked: 0, qualsHeld: 0, demosHeld: 0, demosBooked: 0, trialsStarted: 0, converted: 0,
     fromSequences: 0, fromWarm: 0, dmRate: 0, dmDenominator: 0,
   };
 
   for (const h of history) {
     const t = new Date(h.changedAt);
     if (!inRange(t, from, to)) continue;
-    if (h.fromStage === 'qual-booked' && h.toStage !== 'qual-booked') out.qualsHeld++;
+    if (h.toStage === 'qual-booked' && h.fromStage !== 'qual-booked') out.qualsBooked++;
+    if (movedForwardOutOfQual(h.fromStage, h.toStage)) out.qualsHeld++;
     if (h.fromStage === 'demo-booked' && h.toStage !== 'demo-booked') out.demosHeld++;
     if (h.toStage === 'demo-booked' && h.fromStage !== 'demo-booked') out.demosBooked++;
     if (h.toStage === 'trial-active' && h.fromStage !== 'trial-active') out.trialsStarted++;
@@ -143,7 +159,7 @@ function weeklyBuckets(deals: Deal[], history: NaitiveStageHistoryRow[]) {
 
   const activity = weeks.map((w) => ({
     week: w.label,
-    qualsHeld: 0, demosHeld: 0, demosBooked: 0, trialsStarted: 0, converted: 0,
+    qualsBooked: 0, qualsHeld: 0, demosHeld: 0, demosBooked: 0, trialsStarted: 0, converted: 0,
   }));
   const sources = weeks.map((w) => ({
     week: w.label,
@@ -156,7 +172,8 @@ function weeklyBuckets(deals: Deal[], history: NaitiveStageHistoryRow[]) {
     const wi = weeks.findIndex((w) => t >= w.weekStart && t <= w.weekEnd);
     if (wi === -1) return;
     const row = activity[wi];
-    if (h.fromStage === 'qual-booked' && h.toStage !== 'qual-booked') row.qualsHeld++;
+    if (h.toStage === 'qual-booked' && h.fromStage !== 'qual-booked') row.qualsBooked++;
+    if (movedForwardOutOfQual(h.fromStage, h.toStage)) row.qualsHeld++;
     if (h.fromStage === 'demo-booked' && h.toStage !== 'demo-booked') row.demosHeld++;
     if (h.toStage === 'demo-booked' && h.fromStage !== 'demo-booked') row.demosBooked++;
     if (h.toStage === 'trial-active' && h.fromStage !== 'trial-active') row.trialsStarted++;
@@ -395,7 +412,8 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
       </div>
 
       {/* Core KPI strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <StatCard label="Quals Booked" value={current.qualsBooked} prev={previous.qualsBooked} />
         <StatCard label="Quals Held" value={current.qualsHeld} prev={previous.qualsHeld} />
         <StatCard label="Demos Held" value={current.demosHeld} prev={previous.demosHeld} />
         <StatCard label="Demos Booked" value={current.demosBooked} prev={previous.demosBooked} />
