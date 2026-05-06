@@ -6,6 +6,7 @@ import { useAsanaPortfolios } from '@/hooks/useAsanaPortfolios';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
+import { DarkNativeSelect, DarkOption } from './qir/DarkNativeSelect';
 
 const ASANA_GOALS_URL = 'https://app.asana.com/0/goals';
 
