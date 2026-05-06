@@ -122,11 +122,36 @@ function GridShell({
 }
 
 // ── Chart hook ──
-function useChart(ref: React.RefObject<HTMLCanvasElement | null>, config: any, deps: any[]) {
+function useChart(
+  ref: React.RefObject<HTMLCanvasElement | null>,
+  config: any,
+  deps: any[],
+  onPointClick?: (index: number, label: string, value: number) => void,
+) {
   useEffect(() => {
     if (!ref.current || !config) return;
     setChartDefaults();
-    const chart = new ChartJS(ref.current, config);
+    const finalConfig = onPointClick
+      ? {
+          ...config,
+          options: {
+            ...(config.options || {}),
+            onHover: (evt: any, els: any[]) => {
+              const target = evt?.native?.target as HTMLElement | undefined;
+              if (target) target.style.cursor = els && els.length ? 'pointer' : 'default';
+            },
+            onClick: (_evt: any, elements: any[], chart: any) => {
+              if (!elements || elements.length === 0) return;
+              const el = elements[0];
+              const idx = el.index ?? 0;
+              const label = String(chart.data.labels?.[idx] ?? '');
+              const value = Number(chart.data.datasets?.[el.datasetIndex ?? 0]?.data?.[idx] ?? 0);
+              onPointClick(idx, label, value);
+            },
+          },
+        }
+      : config;
+    const chart = new ChartJS(ref.current, finalConfig);
     return () => chart.destroy();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
