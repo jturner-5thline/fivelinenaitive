@@ -436,10 +436,7 @@ function ReportHeaderSection({ s, set, reset, save, print, canEdit }: { s: Repor
       <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', color: TEXT_LABEL }}>
-              5th Line Capital Advisors
-            </div>
-            <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: TEXT_PRIMARY, letterSpacing: '-.2px' }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: '-.2px' }}>
               {s.period === 'monthly'
                 ? `Monthly Insights Report — ${monthsForQuarter(s.quarter).includes(s.month) ? s.month : (monthsForQuarter(s.quarter)[0] || s.quarter)}`
                 : `Quarterly Insights Report — ${s.quarter}`}
