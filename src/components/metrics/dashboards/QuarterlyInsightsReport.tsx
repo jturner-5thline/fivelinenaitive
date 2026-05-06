@@ -1563,6 +1563,25 @@ function defaultCoverTitle(s: ReportState): string {
 function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState }) {
   const { user } = useAuth();
   const { isAdmin } = useAdminRole();
+  const insightsTf = useInsightsTimeframeOptional();
+  const reportingPeriod = insightsTf?.reportingPeriod ?? null;
+  // Derive cover title + period sub-label from the global header reporting
+  // period when it's set, so the cover stays in sync with the user's choice.
+  const effective = (() => {
+    if (!reportingPeriod) {
+      return { title: defaultCoverTitle(s), label: periodLabel(s) };
+    }
+    if (reportingPeriod.view === 'month') {
+      const m = /^(\d{4})-(\d{2})$/.exec(reportingPeriod.period);
+      let label = reportingPeriod.label;
+      if (m) {
+        const d = new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, 1);
+        label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      }
+      return { title: 'Monthly Insights', label };
+    }
+    return { title: 'Quarterly Insights', label: reportingPeriod.label };
+  })();
   const preparedByName =
     s.authors[0] ||
     (user?.user_metadata as any)?.full_name ||
@@ -1572,12 +1591,12 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
   const todayStr = new Date().toLocaleDateString('en-US', {
     month: 'long', day: 'numeric', year: 'numeric',
   });
-  const periodKey = periodLabel(s);
+  const periodKey = effective.label;
   const titleOverride =
     s.coverTitlesByPeriod?.[periodKey] ??
     // Fallback to legacy single field if present and no per-period value yet
     (s.coverTitlesByPeriod && periodKey in s.coverTitlesByPeriod ? '' : s.coverTitle ?? '');
-  const title = titleOverride.trim() || defaultCoverTitle(s);
+  const title = titleOverride.trim() || effective.title;
   const updateTitle = (value: string) =>
     set(prev => ({
       ...prev,
@@ -1653,7 +1672,7 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
           {isAdmin ? (
             <input
               value={titleOverride}
-              placeholder={defaultCoverTitle(s)}
+              placeholder={effective.title}
               onChange={e => updateTitle(e.target.value)}
               className="qir-no-print"
               style={{
@@ -1676,7 +1695,7 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
           )}
 
           <div style={{ marginTop: 8, fontSize: 18, fontWeight: 600, color: '#7cc8f0', letterSpacing: '.05em' }}>
-            {periodLabel(s)}
+            {effective.label}
           </div>
         </div>
 
