@@ -26,6 +26,14 @@ export function useCompanyDashboardConfig<T extends Record<string, any>>(
     if (!company?.id) return;
     // Reset loaded flag when key changes so consumers can re-hydrate.
     setIsLoaded(false);
+    // Drop any pending debounced save from the *previous* key — otherwise
+    // a save queued under e.g. JT could land in JM's blob after the user
+    // switched tabs.
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    pendingSaveRef.current = false;
 
     (async () => {
       try {
