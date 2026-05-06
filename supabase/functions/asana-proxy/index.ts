@@ -555,19 +555,87 @@ serve(async (req) => {
             `/portfolios/${portfolioGid}/items?opt_fields=${itemFields}`,
             resolvedToken,
           );
-          const projects = (items.data || []).filter(
-            (it: any) => it.resource_type === "project" && !it.archived
-          ).map((p: any) => ({
-            gid: p.gid,
-            name: p.name,
-            permalink_url: p.permalink_url || null,
-            owner: p.owner?.name || null,
-            owner_email: p.owner?.email || null,
-            status_type: p.current_status_update?.status_type || null,
-            status_title: p.current_status_update?.title || null,
-            due_on: p.due_on || p.due_date || null,
-            start_on: p.start_on || null,
-          }));
+          const baseProjects = (items.data || []).filter(
+            (it: any) => it.resource_type === "project" && !it.archived,
+          );
+
+          // Enrich each project with detailed ownership fields (owner, creator,
+          // custom field "Owner", etc.). Asana's portfolio item endpoint can return
+          // null `owner` for projects whose ownership lives in a custom field, so
+          // we need the per-project record to assemble robust owner candidates.
+          const detailFields = [
+            "name",
+            "permalink_url",
+            "owner.name",
+            "owner.email",
+            "created_by.name",
+            "created_by.email",
+            "team.name",
+            "current_status_update.status_type",
+            "current_status_update.title",
+            "current_status_update.author.name",
+            "current_status_update.author.email",
+            "custom_fields.name",
+            "custom_fields.display_value",
+            "custom_fields.people_value.name",
+            "custom_fields.people_value.email",
+            "due_on",
+            "due_date",
+            "start_on",
+          ].join(",");
+
+          const enriched = await Promise.all(
+            baseProjects.map(async (p: any) => {
+              try {
+                const det = await asanaFetch(
+                  `/projects/${p.gid}?opt_fields=${detailFields}`,
+                  resolvedToken,
+                );
+                return { base: p, detail: det.data || {} };
+              } catch (_e) {
+                return { base: p, detail: {} };
+              }
+            }),
+          );
+
+          const projects = enriched.map(({ base, detail }) => {
+            const candidates: Array<{ name: string | null; email: string | null; source: string }> = [];
+            const push = (name: any, email: any, source: string) => {
+              const n = typeof name === "string" ? name.trim() : null;
+              const e = typeof email === "string" ? email.trim() : null;
+              if (n || e) candidates.push({ name: n, email: e, source });
+            };
+            push(detail?.owner?.name, detail?.owner?.email, "owner");
+            push(detail?.created_by?.name, detail?.created_by?.email, "creator");
+            push(detail?.current_status_update?.author?.name, detail?.current_status_update?.author?.email, "status_author");
+
+            const customFields: any[] = Array.isArray(detail?.custom_fields) ? detail.custom_fields : [];
+            for (const cf of customFields) {
+              const fname = (cf?.name || "").toString().toLowerCase();
+              if (!/owner|lead|dri|responsible|prepared/.test(fname)) continue;
+              const people = Array.isArray(cf?.people_value) ? cf.people_value : [];
+              if (people.length) {
+                for (const person of people) push(person?.name, person?.email, `custom:${cf.name}`);
+              } else if (cf?.display_value) {
+                push(cf.display_value, null, `custom:${cf.name}`);
+              }
+            }
+
+            const primary = candidates[0] || { name: null, email: null, source: null };
+            return {
+              gid: base.gid,
+              name: detail?.name || base.name,
+              permalink_url: detail?.permalink_url || base.permalink_url || null,
+              owner: primary.name,
+              owner_email: primary.email,
+              owner_source: primary.source,
+              owner_candidates: candidates,
+              status_type: detail?.current_status_update?.status_type || base.current_status_update?.status_type || null,
+              status_title: detail?.current_status_update?.title || base.current_status_update?.title || null,
+              due_on: detail?.due_on || detail?.due_date || base.due_on || base.due_date || null,
+              start_on: detail?.start_on || base.start_on || null,
+            };
+          });
           result = { success: true, projects };
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Unknown error fetching portfolio projects";
