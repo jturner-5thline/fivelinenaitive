@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2, SlidersHorizontal } from 'lucide-react';
+import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2, SlidersHorizontal, Save as SaveIcon, Loader2 } from 'lucide-react';
+import { useCompanyDashboardConfig } from '@/hooks/useCompanyDashboardConfig';
+import { toast as sonnerToast } from 'sonner';
 import { useAsanaGoals, type AsanaGoalRow } from '@/hooks/useAsanaGoals';
 import { useAsanaGoalFilterPrefs } from '@/hooks/useAsanaGoalFilterPrefs';
 import { useAuth } from '@/contexts/AuthContext';
@@ -318,32 +320,57 @@ export function createQuarterlyReportSeed(overrides?: Partial<ReportState>): Rep
 }
 
 export function useQuarterlyReportState(initialState?: ReportState, storageKey?: string) {
-  const buildInitial = (): ReportState => {
-    const base = initialState ? createQuarterlyReportSeed(initialState) : cloneSeed();
-    if (typeof window === 'undefined' || !storageKey) return base;
-    try {
-      const raw = window.localStorage.getItem(storageKey);
-      if (!raw) return base;
-      const saved = JSON.parse(raw) as Partial<ReportState>;
-      return { ...base, ...saved } as ReportState;
-    } catch {
-      return base;
-    }
-  };
-  const [state, setState] = useState<ReportState>(buildInitial);
+  const seed = useMemo<ReportState>(
+    () => (initialState ? createQuarterlyReportSeed(initialState) : cloneSeed()),
+    // intentionally compute once per mount; downstream callers pass a stable seed
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  // Persist company-wide via company_settings.fpa_dashboard_config.
+  // Falls back to in-memory state when no storageKey is provided.
+  const configKey = storageKey || 'naitive.quarterlyReport.adhoc';
+  const { config, saveConfig, isLoaded, canEdit } = useCompanyDashboardConfig<ReportState>(
+    configKey,
+    seed,
+    { allowAllMembers: true },
+  );
+  // Local mirror so typing stays snappy; flushed to company config on change (debounced inside hook)
+  const [state, setStateLocal] = useState<ReportState>(seed);
+  // Hydrate from saved config once it loads — guard with isLoaded so we never
+  // overwrite saved data with the seed default.
+  const hydratedRef = useRef(false);
   useEffect(() => {
-    if (typeof window === 'undefined' || !storageKey) return;
-    try { window.localStorage.setItem(storageKey, JSON.stringify(state)); } catch {}
-  }, [state, storageKey]);
+    if (!isLoaded || hydratedRef.current) return;
+    setStateLocal(config);
+    hydratedRef.current = true;
+  }, [isLoaded, config]);
+
+  const setState: React.Dispatch<React.SetStateAction<ReportState>> = (updater) => {
+    setStateLocal(prev => {
+      const next = typeof updater === 'function'
+        ? (updater as (p: ReportState) => ReportState)(prev)
+        : updater;
+      // Only persist after initial hydration to avoid clobbering with defaults
+      if (hydratedRef.current) saveConfig(next);
+      return next;
+    });
+  };
+
   const reset = () => {
-    const fresh = initialState ? createQuarterlyReportSeed(initialState) : cloneSeed();
-    setState(fresh);
-    if (typeof window !== 'undefined' && storageKey) {
-      try { window.localStorage.removeItem(storageKey); } catch {}
+    setStateLocal(seed);
+    if (hydratedRef.current) saveConfig(seed);
+    sonnerToast.success('Report reset to defaults');
+  };
+  const save = () => {
+    if (!canEdit) {
+      sonnerToast.error('You do not have permission to save this report');
+      return;
     }
+    saveConfig(state);
+    sonnerToast.success('Report saved');
   };
   const print = () => { try { window.print(); } catch {} };
-  return { state, setState, reset, print };
+  return { state, setState, reset, save, print, isLoaded, canEdit };
 }
 
 function formatKPI(value: string, format: KPIFormat): string {
@@ -383,7 +410,7 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 
 type ReportSetState = React.Dispatch<React.SetStateAction<ReportState>>;
 
-function ReportHeaderSection({ s, set, reset, print }: { s: ReportState; set: ReportSetState; reset: () => void; print: () => void }) {
+function ReportHeaderSection({ s, set, reset, save, print, canEdit }: { s: ReportState; set: ReportSetState; reset: () => void; save?: () => void; print: () => void; canEdit?: boolean }) {
   // Validation: ensure Month always has a valid selection while in Monthly mode.
   // Covers stale persisted state, programmatic state changes, and quarter switches.
   useEffect(() => {
@@ -410,6 +437,11 @@ function ReportHeaderSection({ s, set, reset, print }: { s: ReportState; set: Re
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
+            {save ? (
+              <span title={canEdit === false ? 'You do not have permission to save' : 'Save report for everyone'}>
+                <Btn icon={SaveIcon} onClick={save}>Save</Btn>
+              </span>
+            ) : null}
             <Btn icon={RotateCcw} variant="ghost" onClick={reset}>Reset</Btn>
             <Btn icon={Printer} onClick={print}>Print / Export</Btn>
           </div>
@@ -1604,17 +1636,19 @@ function ReportAgendaSection() {
   );
 }
 
-export function QuarterlyInsightsReportPage({ s, set, reset, print }: {
+export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdit }: {
   s: ReportState;
   set: ReportSetState;
   reset: () => void;
+  save?: () => void;
   print: () => void;
+  canEdit?: boolean;
 }) {
   return (
     <div style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, color: TEXT_PRIMARY }}>
       <ReportCoverSection s={s} set={set} />
       <ReportAgendaSection />
-      <ReportHeaderSection s={s} set={set} reset={reset} print={print} />
+      <ReportHeaderSection s={s} set={set} reset={reset} save={save} print={print} canEdit={canEdit} />
       <div id="qir-section-summary"><ReportNarrativeSection s={s} set={set} /></div>
       <div id="qir-section-financials"><ReportKpisSection s={s} set={set} /></div>
       <div id="qir-section-pipeline"><ReportGoalsSection s={s} set={set} /></div>
