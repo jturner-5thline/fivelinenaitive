@@ -201,6 +201,79 @@ function NaPlaceholder({ height = 90, label = 'Data unavailable' }: { height?: n
   );
 }
 
+function CashflowForecastWidget() {
+  const { weeks, isLoading } = useTwelveWeekCashflowForecast();
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useChart(
+    canvasRef,
+    weeks.length === 0
+      ? null
+      : {
+          type: 'bar',
+          data: {
+            labels: weeks.map((w) => format(new Date(w.weekEnding + 'T00:00:00'), 'MMM d')),
+            datasets: [
+              {
+                label: 'Ending Cash',
+                data: weeks.map((w) => w.endingCash),
+                backgroundColor: 'rgba(80,180,255,0.55)',
+                borderColor: 'rgba(120,200,255,0.85)',
+                borderWidth: 1,
+                borderRadius: 4,
+              },
+            ],
+          },
+          options: {
+            ...def,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  title: (items: any[]) => {
+                    const i = items?.[0]?.dataIndex ?? 0;
+                    const w = weeks[i];
+                    if (!w) return '';
+                    return `Week ending ${format(new Date(w.weekEnding + 'T00:00:00'), 'EEE, MMM d, yyyy')}`;
+                  },
+                  label: (ctx: any) => `Ending Cash: ${fmtUSD(Number(ctx.parsed?.y ?? 0))}`,
+                },
+              },
+            },
+            scales: {
+              x: gx,
+              y: {
+                ...gy,
+                ticks: {
+                  ...gy.ticks,
+                  callback: (v: any) => fmtUSD(Number(v)),
+                },
+              },
+            },
+          },
+        },
+    [weeks],
+  );
+
+  if (isLoading) {
+    return <NaPlaceholder height={170} label="Loading 12-week forecast…" />;
+  }
+  if (!weeks || weeks.length === 0) {
+    return <NaPlaceholder height={170} label="No forecast data — add scheduled cash flows in Finance > Cash Flow" />;
+  }
+
+  return (
+    <div className="h-full w-full flex flex-col gap-2">
+      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+        <canvas ref={canvasRef} />
+      </div>
+      <div style={{ fontSize: 9, color: 'rgba(160,210,255,0.45)', letterSpacing: '0.4px' }}>
+        Source: Finance &gt; Cash Flow — ENDING CASH per week
+      </div>
+    </div>
+  );
+}
+
 function GridShell({
   isEditMode,
   title,
