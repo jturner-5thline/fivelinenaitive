@@ -8,9 +8,9 @@ import {
   useQuarterlyReportState,
 } from './QuarterlyInsightsReport';
 
-function QuarterlyReportSlot({ reportKey }: { reportKey: string }) {
+function QuarterlyReportSlot({ reportKey, defaultAuthor, persona }: { reportKey: string; defaultAuthor: string; persona: string }) {
   const { state, setState, reset, save, print, canEdit } = useQuarterlyReportState(
-    undefined,
+    { authors: [defaultAuthor] } as any,
     `qir:${reportKey}`,
   );
   return (
@@ -22,6 +22,7 @@ function QuarterlyReportSlot({ reportKey }: { reportKey: string }) {
       print={print}
       canEdit={canEdit}
       reportKey={reportKey}
+      titlePrefix={persona}
     />
   );
 }
@@ -34,9 +35,9 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
     { title: 'Insights Dashboard',                   tabLabel: 'Dashboard',  render: () => <ManagementReviewDashboard isEditMode={isEditMode} onExitEditMode={onExitEditMode} /> },
     { title: 'Benchmark Forecasts',                  tabLabel: 'Forecasts',  render: () => <BenchmarkForecastsPage /> },
     { title: 'Key Metrics',                          tabLabel: 'Key Metrics',render: () => <KeyMetricsPage /> },
-    { title: 'Quarterly Insights Report — Report 1', tabLabel: 'Report 1',   render: () => <QuarterlyReportSlot reportKey="report-1" /> },
-    { title: 'Quarterly Insights Report — Report 2', tabLabel: 'Report 2',   render: () => <QuarterlyReportSlot reportKey="report-2" /> },
-    { title: 'Quarterly Insights Report — Report 3', tabLabel: 'Report 3',   render: () => <QuarterlyReportSlot reportKey="report-3" /> },
+    { title: 'Quarterly Insights Report — JT', tabLabel: 'JT', render: () => <QuarterlyReportSlot reportKey="report-1" defaultAuthor="James Turner"   persona="JT" /> },
+    { title: 'Quarterly Insights Report — JM', tabLabel: 'JM', render: () => <QuarterlyReportSlot reportKey="report-2" defaultAuthor="John Moffitt"   persona="JM" /> },
+    { title: 'Quarterly Insights Report — SW', tabLabel: 'SW', render: () => <QuarterlyReportSlot reportKey="report-3" defaultAuthor="Scott Williams" persona="SW" /> },
   ];
 
   const goTo = useCallback((dir: -1 | 1) => {
