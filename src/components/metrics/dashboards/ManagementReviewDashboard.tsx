@@ -37,6 +37,26 @@ const gy: any = { ticks: { color: 'rgba(100,160,220,0.35)', font: { size: 9 } },
 const def: any = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
 const NA_COLOR = 'rgba(160,210,255,0.35)';
 
+const renderDelta = (current: number | null, prior: number | null, label: string) => {
+  if (current === null || prior === null) {
+    return <span style={{ color: 'rgba(160,210,255,0.45)' }}>No prior {label} comparison</span>;
+  }
+  const delta = current - prior;
+  const pct = prior === 0 ? null : (delta / Math.abs(prior)) * 100;
+  const positive = delta >= 0;
+  const color = positive ? '#3de89a' : '#ff6b7a';
+  const arrow = positive ? '▲' : '▼';
+  const sign = positive ? '+' : '−';
+  const absDelta = Math.abs(delta);
+  const dollar = `${sign}${fmtUSD(absDelta)}`;
+  const pctStr = pct === null ? '—' : `${sign}${Math.abs(pct).toFixed(1)}%`;
+  return (
+    <span style={{ color, fontWeight: 600 }}>
+      {arrow} {dollar} <span style={{ opacity: 0.85, fontWeight: 500 }}>({pctStr}) vs prior {label}</span>
+    </span>
+  );
+};
+
 type DateRange = { start: Date; end: Date };
 type MonthBucket = { key: string; label: string; start: Date; end: Date };
 type RevenueSeriesPoint = {
