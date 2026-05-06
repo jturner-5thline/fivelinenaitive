@@ -1189,6 +1189,40 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
           </GridShell>
         </div>
 
+        <div key="active-deals-list" className="h-full">
+          <GridShell isEditMode={isEditMode} title="Active Deals · Final Credit → In Due Diligence">
+            <div style={{ height: '100%', overflow: 'auto' }}>
+              {activeDealsList.length === 0 ? (
+                <NaPlaceholder height={140} label="No active deals in Final Credit through In Due Diligence." />
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(40,100,180,0.3)' }}>
+                      <th style={{ textAlign: 'left', padding: '6px 8px', color: 'rgba(160,210,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Deal Name</th>
+                      <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(160,210,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Total Fee Revenue</th>
+                      <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(160,210,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Expected Close Month</th>
+                      <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(160,210,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeDealsList.map((d: any) => {
+                      const sd = statusDisplay(d.status);
+                      return (
+                        <tr key={d.id} style={{ borderBottom: '1px solid rgba(40,100,180,0.15)' }}>
+                          <td style={{ padding: '6px 8px', color: '#e8f6ff', fontWeight: 500 }}>{d.company}</td>
+                          <td style={{ padding: '6px 8px', textAlign: 'right', color: '#d0eaff' }}>{fmtUSD(Number(d.total_fee || 0))}</td>
+                          <td style={{ padding: '6px 8px', textAlign: 'right', color: '#d0eaff' }}>{formatCloseMonth(d.projected_close_date)}</td>
+                          <td style={{ padding: '6px 8px', textAlign: 'right', color: sd?.color ?? 'rgba(160,210,255,0.4)', fontWeight: 600 }}>{sd?.label ?? '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </GridShell>
+        </div>
+
         <div key="bank-balances" className="h-full">
           <GridShell isEditMode={isEditMode} title="Bank Account Balances">
             <NaPlaceholder height={140} label="Data unavailable — no live period-scoped bank balance source" />
