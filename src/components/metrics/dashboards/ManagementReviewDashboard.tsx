@@ -164,6 +164,11 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [isInteractingWithKeyStatsTile, setIsInteractingWithKeyStatsTile] = useState(false);
+  const setKeyStatsTileInteraction = (next: boolean) => {
+    flushSync(() => {
+      setIsInteractingWithKeyStatsTile(next);
+    });
+  };
 
   // Persistent, drag/drop + resize layout
   const {
@@ -495,15 +500,21 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         onLayoutChange={saveLayout}
         isEditMode={isEditMode}
         rowHeight={70}
-        draggableCancel=".key-stats-subgrid, .key-stats-drag-handle, .key-stats-resize-guard, .react-resizable-handle"
+        draggableHandle=".widget-drag-handle"
+        draggableCancel=".key-stats-subgrid, .key-stats-body, .key-stats-drag-handle, .key-stats-tile, .key-stats-resize-guard, .react-resizable-handle"
         isDraggableEnabled={!isInteractingWithKeyStatsTile}
       >
         <div key="kpi-row" className="h-full">
           <GridShell
             isEditMode={isEditMode}
             title="Key Stats"
+            dragHandleMode="manual"
             headerExtra={isEditMode ? (
               <div className="flex items-center gap-1" onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
+                <div className={`widget-drag-handle inline-flex items-center gap-1 rounded-md border border-border/50 bg-background/70 px-2 py-1 text-[10px] text-muted-foreground backdrop-blur ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}`}>
+                  <span>⋮⋮</span>
+                  <span>Move Widget</span>
+                </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]">
@@ -531,7 +542,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
               onLayoutChange={saveKeyStatsLayout}
               isEditMode={isEditMode}
               rowHeight={28}
-              className="key-stats-subgrid"
+              className="key-stats-subgrid key-stats-body"
               draggableHandle=".key-stats-drag-handle"
               draggableCancel=".key-stats-tile-remove, .react-resizable-handle"
             >
@@ -541,11 +552,22 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 return (
                   <div key={l.i} className="h-full">
                     <div
-                      className="relative h-full w-full key-stats-resize-guard"
-                      onPointerDownCapture={() => setIsInteractingWithKeyStatsTile(true)}
-                      onPointerUpCapture={() => setIsInteractingWithKeyStatsTile(false)}
-                      onPointerCancelCapture={() => setIsInteractingWithKeyStatsTile(false)}
-                      onMouseLeave={() => setIsInteractingWithKeyStatsTile(false)}
+                      className="relative h-full w-full key-stats-resize-guard key-stats-tile"
+                      onPointerEnter={() => {
+                        if (isEditMode) setKeyStatsTileInteraction(true);
+                      }}
+                      onPointerLeave={() => {
+                        if (isEditMode) setKeyStatsTileInteraction(false);
+                      }}
+                      onPointerDownCapture={() => {
+                        if (isEditMode) setKeyStatsTileInteraction(true);
+                      }}
+                      onPointerUpCapture={() => {
+                        if (isEditMode) setKeyStatsTileInteraction(false);
+                      }}
+                      onPointerCancelCapture={() => {
+                        if (isEditMode) setKeyStatsTileInteraction(false);
+                      }}
                       style={{ background: 'rgba(10,60,110,0.35)', border: '1px solid rgba(40,120,200,0.22)', borderRadius: 8, padding: '8px 10px', overflow: 'hidden' }}
                     >
                       {isEditMode && (
@@ -553,13 +575,13 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                           className="key-stats-drag-handle absolute top-1 left-1/2 -translate-x-1/2 z-[3] flex items-center gap-1 rounded-md border border-border/50 bg-background/70 px-2 py-0.5 text-[10px] text-muted-foreground backdrop-blur cursor-grab active:cursor-grabbing"
                           onPointerDownCapture={(e) => {
                             e.stopPropagation();
-                            setIsInteractingWithKeyStatsTile(true);
+                            setKeyStatsTileInteraction(true);
                           }}
                           onPointerUpCapture={(e) => {
                             e.stopPropagation();
-                            setIsInteractingWithKeyStatsTile(false);
+                            setKeyStatsTileInteraction(false);
                           }}
-                          onPointerCancelCapture={() => setIsInteractingWithKeyStatsTile(false)}
+                          onPointerCancelCapture={() => setKeyStatsTileInteraction(false)}
                         >
                           ⋮⋮ Move
                         </div>
