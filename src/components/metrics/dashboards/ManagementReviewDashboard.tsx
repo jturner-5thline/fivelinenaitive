@@ -606,7 +606,62 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             <div key={widgetId} className="h-full">
               <GridShell isEditMode={isEditMode} title={k?.l ?? widgetId}>
                 {k ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, height: '100%', justifyContent: 'center' }}>
+                  <div
+                    onClick={() => {
+                      if (isEditMode || !k.live) return;
+                      const reg = STANDALONE_KPI_TO_REGISTRY[widgetId];
+                      let columns: DrilldownColumn[] = [
+                        { key: 'metric', label: 'Metric' },
+                        { key: 'value', label: 'Value', align: 'right' },
+                      ];
+                      let rows: any[] = [{ metric: k.l, value: k.v }];
+                      let emptyHint: string | undefined;
+                      if (reg === 'total-revenue-curr' || reg === 'operating-profit-curr') {
+                        columns = [
+                          { key: 'month', label: 'Month' },
+                          { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
+                          { key: 'expenses', label: 'Expenses', align: 'right', render: (r) => fmtUSD(r.expenses) },
+                          { key: 'net', label: 'Net', align: 'right', render: (r) => fmtUSD((r.revenue || 0) - (r.expenses || 0)) },
+                        ];
+                        rows = qbMonthly.slice(-6);
+                      } else if (reg === 'outstanding-ar') {
+                        columns = [
+                          { key: 'bucket', label: 'Bucket' },
+                          { key: 'value', label: 'Outstanding', align: 'right', render: (r) => fmtUSD(Number(r.value || 0)) },
+                        ];
+                        rows = arBuckets;
+                      } else if (reg === 'active-pipeline-value' || reg === 'avg-active-deal-size') {
+                        columns = [
+                          { key: 'company', label: 'Deal' },
+                          { key: 'stage', label: 'Stage' },
+                          { key: 'value', label: 'Value', align: 'right', render: (r) => fmtUSD(Number(r.value || 0)) },
+                        ];
+                        rows = activeDeals;
+                      } else if (reg === 'ytd-revenue') {
+                        const yyNow = format(new Date(), 'yy');
+                        columns = [
+                          { key: 'month', label: 'Month' },
+                          { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
+                        ];
+                        rows = qbMonthly.filter(m => m.month.endsWith('-' + yyNow));
+                      }
+                      setDrilldown({
+                        context: {
+                          sourceId: `kpi:${reg}`,
+                          sourceLabel: k.l,
+                          selection: k.v,
+                        },
+                        columns,
+                        rows,
+                        emptyHint,
+                      });
+                    }}
+                    style={{
+                      display: 'flex', flexDirection: 'column', gap: 4, height: '100%',
+                      justifyContent: 'center',
+                      cursor: !isEditMode && k.live ? 'pointer' : 'default',
+                    }}
+                  >
                     <div style={{ fontSize: 22, fontWeight: 700, color: k.live ? '#e8f6ff' : NA_COLOR, lineHeight: 1.1 }}>
                       {k.live ? k.v : 'Data unavailable'}
                     </div>
