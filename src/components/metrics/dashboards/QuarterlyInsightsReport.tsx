@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2, SlidersHorizontal } from 'lucide-react';
 import { useAsanaGoals, type AsanaGoalRow } from '@/hooks/useAsanaGoals';
 import { useAsanaGoalFilterPrefs } from '@/hooks/useAsanaGoalFilterPrefs';
+import { useAuth } from '@/contexts/AuthContext';
+import { useAdminRole } from '@/hooks/useAdminRole';
+import naitiveLogoDark from '@/assets/naitive-logo-dark.png';
 import {
   DEFAULT_ASANA_GOAL_FILTERS,
   type AsanaGoalFilterTemplates,
@@ -234,6 +237,10 @@ export interface ReportState {
   initiatives: Initiative[];
   initiativeOwnerFilter: string;
   risks: Risk[];
+  /** Admin-editable cover title override (per reporting period). */
+  coverTitle?: string;
+  /** Admin-editable subtitle/tagline (per reporting period). */
+  coverSubtitle?: string;
   /** Configurable mapping from report period → Asana Goals time-period labels. */
   asanaGoalFilters?: AsanaGoalFilterTemplates;
   /** Optional manual override for the active report (resets when period changes). */
