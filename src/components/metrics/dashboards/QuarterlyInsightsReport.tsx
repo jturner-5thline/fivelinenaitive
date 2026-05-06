@@ -1557,7 +1557,7 @@ function periodLabel(s: ReportState): string {
 }
 
 function defaultCoverTitle(s: ReportState): string {
-  return s.period === 'monthly' ? 'Monthly Insights Report' : 'Quarterly Management Review';
+  return s.period === 'monthly' ? 'Monthly Insights' : 'Quarterly Insights';
 }
 
 function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState }) {
