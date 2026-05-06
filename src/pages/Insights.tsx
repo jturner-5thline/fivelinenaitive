@@ -25,6 +25,7 @@ import {
   PieChart as PieChartIcon, AreaChart, Star, ChevronDown, ChevronRight, LayoutDashboard, Download,
   Folder, FolderPlus, MoreHorizontal, Trash2 as TrashIcon
 } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { RepPerformanceModelGrid } from "@/components/metrics/rep-model/RepPerformanceModelGrid";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
@@ -117,11 +118,7 @@ import { SyncStatusBar } from "@/components/metrics/SyncStatusBar";
 import { getTimePeriodRange, getTimePeriodLabel, isInRange } from "@/lib/timePeriodUtils";
 import { DatarailsLiveStat, DatarailsLiveChart } from "@/components/metrics/DatarailsLiveWidget";
 import { InsightsLoadingSkeleton, InsightsErrorState } from "@/components/insights/InsightsStateViews";
-import { InsightsAISummaryCard } from "@/components/insights/InsightsAISummaryCard";
-import { InsightsDriversPanel } from "@/components/insights/InsightsDriversPanel";
-import { InsightsForecastPanel } from "@/components/insights/InsightsForecastPanel";
-import { AnomalyHistoryPanel } from "@/components/insights/AnomalyHistoryPanel";
-import { AskAboutPeriodChat } from "@/components/insights/AskAboutPeriodChat";
+import { InsightsAssistantSheet } from "@/components/insights/InsightsAssistantSheet";
 // Dashboard options
 const DASHBOARD_OPTIONS = [
   { id: 'management-snapshot', name: 'Weekly Rundown', isFavorite: true, folder: 'management-insights' as const },
@@ -1399,6 +1396,8 @@ function MetricsInner() {
 
   const [selectedDashboard, setSelectedDashboard] = useState('management-snapshot');
   const [isEditMode, setIsEditMode] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const assistantTriggerRef = useRef<HTMLButtonElement>(null);
   const undoStackRef = useRef<Array<{ type: 'card' | 'section'; id: string; label: string; undo: () => void }>>([]);
 
   // Ctrl/Cmd+Z while in Edit Layout mode undoes most recent widget/section deletion
@@ -2298,6 +2297,27 @@ function MetricsInner() {
                 <InsightsTimeframePicker />
               )}
 
+              {selectedDashboard === 'management-snapshot' && (
+                <UITooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      ref={assistantTriggerRef}
+                      variant="outline"
+                      size="sm"
+                      aria-label="Open Insights Assistant"
+                      aria-haspopup="dialog"
+                      aria-expanded={assistantOpen}
+                      className="h-9 gap-1.5 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30 text-primary hover:from-primary/15 hover:to-primary/10"
+                      onClick={() => setAssistantOpen(true)}
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      <span className="hidden sm:inline">Insights</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>AI Summary, Q&amp;A, Drivers, Forecast, Anomalies</TooltipContent>
+                </UITooltip>
+              )}
+
               <DropdownMenu>
                 <UITooltip>
                   <TooltipTrigger asChild>
@@ -2382,15 +2402,13 @@ function MetricsInner() {
             </div>
           </StickyDashboardHeader>
 
-          {/* AI period-over-period summary (management-snapshot dashboards only) */}
+          {/* Insights Assistant slide-over (replaces inline AI/driver/forecast/anomaly widgets) */}
           {selectedDashboard === 'management-snapshot' && (
-            <div className="space-y-4">
-              <InsightsAISummaryCard />
-              <AskAboutPeriodChat />
-              <InsightsDriversPanel />
-              <InsightsForecastPanel />
-              <AnomalyHistoryPanel />
-            </div>
+            <InsightsAssistantSheet
+              open={assistantOpen}
+              onOpenChange={setAssistantOpen}
+              returnFocusRef={assistantTriggerRef}
+            />
           )}
 
           {/* Dashboard Content - always show pre-built dashboards */}
