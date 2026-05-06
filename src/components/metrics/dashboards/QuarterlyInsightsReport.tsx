@@ -4,6 +4,7 @@ import { useCompanyDashboardConfig } from '@/hooks/useCompanyDashboardConfig';
 import { toast as sonnerToast } from 'sonner';
 import { useAsanaGoals, type AsanaGoalRow } from '@/hooks/useAsanaGoals';
 import { useAsanaPortfolioProjects, type AsanaPortfolioProjectRow } from '@/hooks/useAsanaPortfolioProjects';
+import { useAsanaPortfolios } from '@/hooks/useAsanaPortfolios';
 import { useAsanaGoalFilterPrefs } from '@/hooks/useAsanaGoalFilterPrefs';
 import { useSortGroup, type SortGroupColumn } from './qir/useSortGroup';
 import { SortGroupToolbar } from './qir/SortGroupToolbar';
@@ -1322,10 +1323,18 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
 
 function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetState }) {
   const preparedBy = s.authors[0] || 'James Turner';
-  // Initiatives now sourced live from a specific Asana Portfolio.
-  // Portfolio: https://app.asana.com/0/portfolio/1212153040575217/1212153276296112
-  const PORTFOLIO_GID = '1212153276296112';
-  const { projects, loading, error, lastSyncedAt, configured, refresh } = useAsanaPortfolioProjects(PORTFOLIO_GID);
+  // Initiatives sourced live from a user-selectable Asana Portfolio.
+  const DEFAULT_PORTFOLIO_GID = '1212153276296112';
+  const PORTFOLIO_PREF_KEY = 'qir.initiatives.portfolioGid';
+  const [portfolioGid, setPortfolioGid] = useState<string>(() => {
+    try { return localStorage.getItem(PORTFOLIO_PREF_KEY) || DEFAULT_PORTFOLIO_GID; }
+    catch { return DEFAULT_PORTFOLIO_GID; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(PORTFOLIO_PREF_KEY, portfolioGid); } catch { /* ignore */ }
+  }, [portfolioGid]);
+  const { portfolios: availablePortfolios, loading: portfoliosLoading } = useAsanaPortfolios();
+  const { projects, loading, error, lastSyncedAt, configured, refresh } = useAsanaPortfolioProjects(portfolioGid);
 
   const normName = (v: string) => v.trim().toLowerCase().replace(/\s+/g, ' ');
   const preparedByKey = normName(preparedBy);
@@ -1365,6 +1374,32 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
       <div style={{ padding: '16px 18px' }}>
         <SectionTitle right={(
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <select
+              value={portfolioGid}
+              onChange={(e) => setPortfolioGid(e.target.value)}
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                color: TEXT_PRIMARY,
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 6,
+                padding: '4px 8px',
+                fontSize: 11,
+                maxWidth: 220,
+              }}
+              title="Asana portfolio source"
+            >
+              {!availablePortfolios.some(p => p.gid === portfolioGid) && (
+                <option value={portfolioGid}>
+                  {portfolioGid === DEFAULT_PORTFOLIO_GID ? 'Default portfolio' : `Portfolio ${portfolioGid}`}
+                </option>
+              )}
+              {availablePortfolios.map(p => (
+                <option key={p.gid} value={p.gid}>{p.name}</option>
+              ))}
+              {portfoliosLoading && availablePortfolios.length === 0 && (
+                <option value={portfolioGid} disabled>Loading portfolios…</option>
+              )}
+            </select>
             {lastSyncedAt && (
               <span style={{ fontSize: 10, color: TEXT_LABEL }}>
                 Synced {new Date(lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
