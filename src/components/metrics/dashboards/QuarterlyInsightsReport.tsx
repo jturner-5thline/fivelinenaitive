@@ -11,6 +11,7 @@ import { QirCommentThread } from './qir/QirCommentThread';
 import { QirSectionNotes } from './qir/QirSectionNotes';
 import { QirAllCommentsPanel } from './qir/QirAllCommentsPanel';
 import { QuickBooksActualsPanel, type ActualsViewMode } from './qir/QuickBooksActualsPanel';
+import { KpiDrillDownDialog, type KpiLike } from './qir/KpiDrillDownDialog';
 import {
   DEFAULT_ASANA_GOAL_FILTERS,
   type AsanaGoalFilterTemplates,
@@ -555,10 +556,11 @@ function ReportHeaderSection({ s, set, reset, save, print, canEdit }: { s: Repor
   );
 }
 
-function ReportKpisSection({ s, set }: { s: ReportState; set: ReportSetState }) {
+function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: ReportSetState; reportLabel: string }) {
   const updateKPI = (id: string, patch: Partial<KPI>) => set(prev => ({ ...prev, kpis: prev.kpis.map(k => k.id === id ? { ...k, ...patch } : k) }));
   const removeKPI = (id: string) => set(prev => ({ ...prev, kpis: prev.kpis.filter(k => k.id !== id) }));
   const addKPI = () => set(prev => ({ ...prev, kpis: [...prev.kpis, { id: uid(), label: 'New KPI', actual: '0', target: '0', format: 'number' }] }));
+  const [drillKpi, setDrillKpi] = useState<KpiLike | null>(null);
 
   return (
     <Card className="glass-module">
@@ -580,6 +582,24 @@ function ReportKpisSection({ s, set }: { s: ReportState; set: ReportSetState }) 
                   borderRadius: RADIUS,
                   background: 'rgba(255,255,255,0.02)',
                   border: '1px solid rgba(255,255,255,0.05)',
+                  cursor: 'pointer',
+                }}
+                role="button"
+                tabIndex={0}
+                title="View metric details"
+                onClick={(e) => {
+                  // Avoid opening the drill-down when interacting with inline editors / delete button
+                  const target = e.target as HTMLElement;
+                  if (target.closest('input, select, textarea, button')) return;
+                  setDrillKpi(kpi as unknown as KpiLike);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    const target = e.target as HTMLElement;
+                    if (target.closest('input, select, textarea, button')) return;
+                    e.preventDefault();
+                    setDrillKpi(kpi as unknown as KpiLike);
+                  }
                 }}
               >
                 <input value={kpi.label} onChange={e => updateKPI(kpi.id, { label: e.target.value })} placeholder="Metric label" style={inputStyle} />
@@ -605,6 +625,15 @@ function ReportKpisSection({ s, set }: { s: ReportState; set: ReportSetState }) 
           })}
         </div>
       </div>
+      <KpiDrillDownDialog
+        kpi={drillKpi}
+        open={!!drillKpi}
+        onClose={() => setDrillKpi(null)}
+        period={s.period}
+        quarter={s.quarter}
+        month={s.month}
+        reportLabel={reportLabel}
+      />
     </Card>
   );
 }
@@ -1821,7 +1850,7 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
           viewMode={actualsViewMode}
           onChangeViewMode={setActualsViewMode}
         />
-        <ReportKpisSection s={s} set={set} />
+        <ReportKpisSection s={s} set={set} reportLabel={reportLabel} />
         {sectionThread('financials', 'Revenue & Financial Performance')}
       </div>
       <div id="qir-section-pipeline">
