@@ -619,6 +619,25 @@ export function AICopilotPanel() {
     setShowHistory(false);
   }, [setConversationId, setMessages]);
 
+  const deleteConversation = useCallback(async (id: string) => {
+    await supabase.from('copilot_conversations').delete().eq('id', id);
+    setHistoryItems((prev) => prev.filter((h) => h.id !== id));
+    if (conversationId === id) {
+      setConversationId(null);
+      setMessages([]);
+    }
+  }, [conversationId, setConversationId, setMessages]);
+
+  const clearAllConversations = useCallback(async () => {
+    if (!user) return;
+    if (!window.confirm('Delete all saved conversations? This cannot be undone.')) return;
+    await supabase.from('copilot_conversations').delete().eq('user_id', user.id);
+    setHistoryItems([]);
+    setConversationId(null);
+    setMessages([]);
+    setShowHistory(false);
+  }, [user, setConversationId, setMessages]);
+
   useEffect(() => {
     if (!showHistory) return;
     const handler = (e: MouseEvent) => {
