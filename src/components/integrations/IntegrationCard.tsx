@@ -1,8 +1,5 @@
 import { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,17 +11,22 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Settings2,
   ExternalLink,
-  RefreshCw,
-  Unplug,
-  Play,
   Loader2,
   Bell,
   Check,
+  MoreHorizontal,
   type LucideIcon,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export type IntegrationStatus = 'connected' | 'error' | 'requires_reauth' | 'disconnected';
 
@@ -55,38 +57,41 @@ export interface ComingSoonCardProps {
   isNotifying?: boolean;
 }
 
-function StatusPill({ status }: { status: IntegrationStatus }) {
-  switch (status) {
-    case 'connected':
-      return (
-        <Badge className="bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/10">
-          <span className="h-1.5 w-1.5 rounded-full bg-green-500 mr-1.5" />
-          Connected
-        </Badge>
-      );
-    case 'error':
-      return (
-        <Badge variant="destructive">
-          <span className="h-1.5 w-1.5 rounded-full bg-destructive-foreground mr-1.5" />
-          Error
-        </Badge>
-      );
-    case 'requires_reauth':
-      return (
-        <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 hover:bg-yellow-500/10">
-          <span className="h-1.5 w-1.5 rounded-full bg-yellow-500 mr-1.5" />
-          Requires Reauth
-        </Badge>
-      );
-    default:
-      return (
-        <Badge variant="secondary">
-          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground mr-1.5" />
-          Disconnected
-        </Badge>
-      );
-  }
+/**
+ * Quiet, low-contrast status pill for the redesigned Integrations page.
+ * Avoids saturated fills, glow, or hover state changes.
+ */
+export function StatusPill({ status }: { status: IntegrationStatus }) {
+  const map: Record<IntegrationStatus, { label: string; dot: string; text: string }> = {
+    connected:        { label: 'Connected',  dot: 'bg-emerald-400/80',  text: 'text-emerald-300/90' },
+    requires_reauth:  { label: 'Attention',  dot: 'bg-amber-400/80',    text: 'text-amber-300/90' },
+    error:            { label: 'Error',      dot: 'bg-rose-400/80',     text: 'text-rose-300/90' },
+    disconnected:     { label: 'Inactive',   dot: 'bg-muted-foreground/60', text: 'text-muted-foreground' },
+  };
+  const s = map[status];
+  return (
+    <span className={cn('inline-flex items-center gap-1.5 text-[11px] font-medium', s.text)}>
+      <span className={cn('h-1.5 w-1.5 rounded-full', s.dot)} />
+      {s.label}
+    </span>
+  );
 }
+
+/* Shared surface used by every card on the Integrations page. Subtle contrast,
+   no thick borders, no glow, single hairline divider. */
+function CardSurface({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={cn(
+        'rounded-lg bg-card/40 border border-border/40 px-5 py-4 transition-colors',
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+export { CardSurface };
 
 export function IntegrationCard({
   name,
@@ -132,105 +137,108 @@ export function IntegrationCard({
 
   if (!isConnected && onConnect) {
     return (
-      <Card className="hover:border-primary/50 transition-colors">
-        <CardContent className="p-5">
-          <div className="flex items-start gap-4">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <Icon className="h-5 w-5 text-primary" />
+      <CardSurface className="hover:border-border/70">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <Icon className="h-4 w-4 text-muted-foreground/80 flex-shrink-0" />
+              <h3 className="text-sm font-semibold tracking-tight truncate">{name}</h3>
             </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-sm">{name}</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-              <Button size="sm" className="mt-3" onClick={onConnect}>
-                Connect
-              </Button>
-            </div>
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{description}</p>
           </div>
-        </CardContent>
-      </Card>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onConnect}>
+            Connect
+          </Button>
+        </div>
+      </CardSurface>
     );
   }
 
+  const hasOverflow = !!onTestConnection || !!onDisconnect;
+
   return (
     <>
-      <Card>
-        <CardContent className="p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-4 min-w-0 flex-1">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <Icon className="h-5 w-5 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-semibold text-sm">{name}</h3>
-                  <StatusPill status={status} />
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">{description}</p>
-                {statusDetail && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{statusDetail}</p>
-                )}
-
-                <div className="flex items-center gap-4 mt-2 flex-wrap">
-                  {lastSynced && (
-                    <span className="text-xs text-muted-foreground">
-                      Last synced: {formatDistanceToNow(new Date(lastSynced), { addSuffix: true })}
-                    </span>
-                  )}
-                  {recordCounts && recordCounts.length > 0 && (
-                    <div className="flex items-center gap-3">
-                      {recordCounts.map((rc) => (
-                        <span key={rc.label} className="text-xs text-muted-foreground">
-                          {rc.count} {rc.label}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+      <CardSurface>
+        {/* Top row: icon + name on the left, status on the right */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <Icon className="h-4 w-4 text-muted-foreground/80 flex-shrink-0" />
+            <h3 className="text-sm font-semibold tracking-tight truncate">{name}</h3>
           </div>
+          <StatusPill status={status} />
+        </div>
 
-          {children}
+        {/* Description */}
+        <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{description}</p>
 
-          <div className="flex items-center gap-2 mt-4 flex-wrap">
+        {/* Metadata row: account/email + last sync. Compact, single line. */}
+        {(statusDetail || lastSynced) && (
+          <p className="text-[11px] text-muted-foreground/80 mt-1.5 truncate">
+            {statusDetail}
+            {statusDetail && lastSynced ? ' · ' : ''}
+            {lastSynced && `Synced ${formatDistanceToNow(new Date(lastSynced), { addSuffix: true })}`}
+          </p>
+        )}
+
+        {/* Compact metrics, only when present */}
+        {recordCounts && recordCounts.length > 0 && (
+          <div className="flex items-center gap-4 mt-2.5">
+            {recordCounts.map((rc) => (
+              <div key={rc.label} className="flex items-baseline gap-1.5">
+                <span className="text-sm font-semibold tabular-nums">{rc.count.toLocaleString()}</span>
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{rc.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {children}
+
+        {/* Action row: at most one primary, one secondary, plus overflow */}
+        {(onSyncSettings || externalUrl || hasOverflow) && (
+          <div className="flex items-center gap-1.5 mt-3">
             {onSyncSettings && (
-              <Button variant="outline" size="sm" onClick={onSyncSettings}>
-                <Settings2 className="h-3.5 w-3.5 mr-1.5" />
-                Sync Settings
-              </Button>
-            )}
-            {onTestConnection && (
-              <Button variant="outline" size="sm" onClick={handleTest} disabled={isTesting}>
-                {isTesting ? (
-                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                ) : (
-                  <Play className="h-3.5 w-3.5 mr-1.5" />
-                )}
-                Test Connection
-              </Button>
-            )}
-            {onDisconnect && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-destructive hover:text-destructive"
-                onClick={() => setShowDisconnectDialog(true)}
-              >
-                <Unplug className="h-3.5 w-3.5 mr-1.5" />
-                Disconnect
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={onSyncSettings}>
+                <Settings2 className="h-3 w-3 mr-1.5" />
+                Manage
               </Button>
             )}
             {externalUrl && (
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground" asChild>
                 <a href={externalUrl} target="_blank" rel="noopener noreferrer">
                   {externalLabel || `Open ${name}`}
-                  <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
+                  <ExternalLink className="h-3 w-3 ml-1.5" />
                 </a>
               </Button>
             )}
+            {hasOverflow && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 ml-auto text-muted-foreground hover:text-foreground">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  {onTestConnection && (
+                    <DropdownMenuItem onClick={handleTest} disabled={isTesting}>
+                      {isTesting && <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />}
+                      Test connection
+                    </DropdownMenuItem>
+                  )}
+                  {onDisconnect && (
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onSelect={(e) => { e.preventDefault(); setShowDisconnectDialog(true); }}
+                    >
+                      Disconnect
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </CardSurface>
 
       <AlertDialog open={showDisconnectDialog} onOpenChange={setShowDisconnectDialog}>
         <AlertDialogContent>
@@ -259,48 +267,33 @@ export function IntegrationCard({
 
 export function ComingSoonCard({ name, icon: Icon, description, isNotified, onNotifyMe, isNotifying }: ComingSoonCardProps) {
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Card className="opacity-55 border-muted">
-            <CardContent className="p-5">
-              <div className="flex items-start gap-4">
-                <div className="h-10 w-10 rounded-lg bg-muted/50 flex items-center justify-center flex-shrink-0">
-                  <Icon className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-sm text-muted-foreground">{name}</h3>
-                    <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/10 text-[10px]">
-                      Coming Soon
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-3"
-                    onClick={onNotifyMe}
-                    disabled={isNotified || isNotifying}
-                  >
-                    {isNotifying ? (
-                      <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                    ) : isNotified ? (
-                      <Check className="h-3.5 w-3.5 mr-1.5" />
-                    ) : (
-                      <Bell className="h-3.5 w-3.5 mr-1.5" />
-                    )}
-                    {isNotified ? "You'll be notified" : 'Notify Me'}
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>This integration is on our roadmap. Click &quot;Notify Me&quot; to be alerted when it launches.</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <CardSurface className="opacity-70">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <Icon className="h-4 w-4 text-muted-foreground/70 flex-shrink-0" />
+            <h3 className="text-sm font-medium text-muted-foreground truncate">{name}</h3>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Soon</span>
+          </div>
+          <p className="text-xs text-muted-foreground/80 mt-1 line-clamp-2">{description}</p>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-xs text-muted-foreground hover:text-foreground"
+          onClick={onNotifyMe}
+          disabled={isNotified || isNotifying}
+        >
+          {isNotifying ? (
+            <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+          ) : isNotified ? (
+            <Check className="h-3 w-3 mr-1.5" />
+          ) : (
+            <Bell className="h-3 w-3 mr-1.5" />
+          )}
+          {isNotified ? 'Notified' : 'Notify me'}
+        </Button>
+      </div>
+    </CardSurface>
   );
 }
