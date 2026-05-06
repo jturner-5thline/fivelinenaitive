@@ -1867,6 +1867,19 @@ export function QuarterlyReportPrintStyles() {
     el.id = id;
     el.innerHTML = `
       [id^="qir-section-"] { scroll-margin-top: 96px; }
+      /* Unify subsections inside the single Monthly/Quarterly report card. */
+      .qir-unified-report > div > .qir-unified-section + .qir-unified-section {
+        border-top: 1px solid rgba(120,170,255,0.10);
+        margin-top: 8px;
+        padding-top: 16px;
+      }
+      .qir-unified-report .qir-unified-section [class*="glass-module"],
+      .qir-unified-report .qir-unified-section .glass-module {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+      }
       @media print {
         body { background: #ffffff !important; }
         .qir-no-print { display: none !important; }
