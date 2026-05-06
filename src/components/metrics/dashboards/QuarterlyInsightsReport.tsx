@@ -1636,17 +1636,19 @@ function ReportAgendaSection() {
   );
 }
 
-export function QuarterlyInsightsReportPage({ s, set, reset, print }: {
+export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdit }: {
   s: ReportState;
   set: ReportSetState;
   reset: () => void;
+  save?: () => void;
   print: () => void;
+  canEdit?: boolean;
 }) {
   return (
     <div style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, color: TEXT_PRIMARY }}>
       <ReportCoverSection s={s} set={set} />
       <ReportAgendaSection />
-      <ReportHeaderSection s={s} set={set} reset={reset} print={print} />
+      <ReportHeaderSection s={s} set={set} reset={reset} save={save} print={print} canEdit={canEdit} />
       <div id="qir-section-summary"><ReportNarrativeSection s={s} set={set} /></div>
       <div id="qir-section-financials"><ReportKpisSection s={s} set={set} /></div>
       <div id="qir-section-pipeline"><ReportGoalsSection s={s} set={set} /></div>
