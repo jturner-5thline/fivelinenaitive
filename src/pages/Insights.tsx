@@ -2366,6 +2366,26 @@ function MetricsInner() {
                 <UITooltip>
                   <TooltipTrigger asChild>
                     <Button
+                      variant="outline"
+                      size="sm"
+                      aria-label="Preview report Cover"
+                      aria-haspopup="dialog"
+                      aria-expanded={coverPreviewOpen}
+                      className="h-9 gap-1.5"
+                      onClick={() => setCoverPreviewOpen(true)}
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span className="hidden sm:inline">Cover</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Preview report front matter (Cover)</TooltipContent>
+                </UITooltip>
+              )}
+
+              {selectedDashboard === 'management-review' && (
+                <UITooltip>
+                  <TooltipTrigger asChild>
+                    <Button
                       ref={assistantTriggerRef}
                       variant="outline"
                       size="sm"
