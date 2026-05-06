@@ -322,6 +322,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const qb = useQuickBooksMetrics();
   const metrics = useMetricsData();
   const { reportingPeriod, timeframe } = useInsightsTimeframe();
+  const { activePipelineId } = usePipelineContext();
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [drilldown, setDrilldown] = useState<{
