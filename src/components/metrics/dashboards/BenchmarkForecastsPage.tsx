@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import ChartJS from 'chart.js/auto';
+import { SortableWidgetGrid, SortableItem } from './SortableWidgetGrid';
 
 // ── Chart defaults ──
 const setDefaults = () => {
@@ -345,21 +346,25 @@ export function BenchmarkForecastsPage() {
           <AttainmentTable />
         </div>
 
-        {/* Right charts */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, alignContent: 'start' }}>
-          <ChartCard title="Quarterly Revenue" chartRef={qrevRef} />
-          <ChartCard title="YTD Revenue" chartRef={ytdrevRef} />
-          <ChartCard title="TTM Revenue" chartRef={ttmrevRef} />
-          <ChartCard title="TTM Profit" chartRef={ttmprofRef} />
-          <ChartCard title="Gross Margin %" chartRef={gmRef} />
-          <ChartCard title="Quarterly Profit" chartRef={qprofRef} />
-          <ChartCard title="YTD Profit" chartRef={ytdprofRef} />
-          <ChartCard title="YTD Revenue — Cumulative" chartRef={ytdrevcumRef} />
-          <ChartCard title="Consolidated Revenue — Plans" chartRef={p2revRef} />
-          <ChartCard title="Liquidity by Plan" chartRef={p2liqRef} />
-          <ChartCard title="Dollars Funded YTD" chartRef={p2fundRef} />
-          <ChartCard title="Dollars Signed YTD" chartRef={p2signRef} />
-        </div>
+        {/* Right charts — drag-and-drop reorderable */}
+        <SortableWidgetGrid
+          storageKey="insights.benchmarkForecasts.chartOrder.v1"
+          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, alignContent: 'start' }}
+          items={[
+            { id: 'qrev', render: () => <ChartCard title="Quarterly Revenue" chartRef={qrevRef} /> },
+            { id: 'ytdrev', render: () => <ChartCard title="YTD Revenue" chartRef={ytdrevRef} /> },
+            { id: 'ttmrev', render: () => <ChartCard title="TTM Revenue" chartRef={ttmrevRef} /> },
+            { id: 'ttmprof', render: () => <ChartCard title="TTM Profit" chartRef={ttmprofRef} /> },
+            { id: 'gm', render: () => <ChartCard title="Gross Margin %" chartRef={gmRef} /> },
+            { id: 'qprof', render: () => <ChartCard title="Quarterly Profit" chartRef={qprofRef} /> },
+            { id: 'ytdprof', render: () => <ChartCard title="YTD Profit" chartRef={ytdprofRef} /> },
+            { id: 'ytdrevcum', render: () => <ChartCard title="YTD Revenue — Cumulative" chartRef={ytdrevcumRef} /> },
+            { id: 'p2rev', render: () => <ChartCard title="Consolidated Revenue — Plans" chartRef={p2revRef} /> },
+            { id: 'p2liq', render: () => <ChartCard title="Liquidity by Plan" chartRef={p2liqRef} /> },
+            { id: 'p2fund', render: () => <ChartCard title="Dollars Funded YTD" chartRef={p2fundRef} /> },
+            { id: 'p2sign', render: () => <ChartCard title="Dollars Signed YTD" chartRef={p2signRef} /> },
+          ] as SortableItem[]}
+        />
       </div>
     </div>
   );
