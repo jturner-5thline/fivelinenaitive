@@ -672,9 +672,8 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
     [asanaGoals, preparedByKey]
   );
   const visibleGoals = useMemo(
-    () => ownerGoals.filter(g => matchesPeriod(g.timePeriod)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [ownerGoals, activeQuarterLabel, activeHalfLabel, activeExactMatch]
+    () => ownerGoals,
+    [ownerGoals]
   );
 
   // Preview counts for both modes — used in the filter editor next to the toggle.
@@ -811,9 +810,8 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
       borderRadius: RADIUS,
       background: 'rgba(255,255,255,0.02)',
     }}>
-      <div style={{ fontWeight: 600, color: TEXT_PRIMARY }}>No goals match the current filters</div>
-      <div style={{ marginTop: 4 }}>
-        Filtered by: {preparedBy} · {activeQuarterLabel || '—'} · {activeHalfLabel || '—'}
+      <div style={{ fontWeight: 600, color: TEXT_PRIMARY }}>
+        No Asana goals owned by {preparedBy} for the current selection
       </div>
     </div>
   );
