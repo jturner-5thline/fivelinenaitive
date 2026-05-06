@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowDownRight, ArrowUpRight, Loader2, Sparkles } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Loader2, Sparkles, TrendingDown, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMetricsData } from '@/hooks/useMetricsData';
 import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
@@ -94,6 +94,30 @@ export function InsightsCompareDialog({ open, onOpenChange }: Props) {
   const idxB = months.indexOf(periodB);
 
   const reportLabel = (id: string) => reports?.find(r => r.id === id)?.name ?? null;
+
+  // Top movers: rank rows by absolute % change, then split by sentiment polarity.
+  const topMovers = useMemo(() => {
+    if (idxA < 0 || idxB < 0) return { gainers: [] as any[], losers: [] as any[] };
+    const ranked = rows
+      .map(r => {
+        const a = r.series[idxA] ?? 0;
+        const b = r.series[idxB] ?? 0;
+        const diff = a - b;
+        const pct = pctChange(a, b);
+        const sent = sentiment(a, b, r.goodWhen);
+        return { row: r, a, b, diff, pct, sent };
+      })
+      .filter(m => m.pct != null && m.sent !== 'flat');
+    const gainers = ranked
+      .filter(m => m.sent === 'good')
+      .sort((x, y) => Math.abs(y.pct ?? 0) - Math.abs(x.pct ?? 0))
+      .slice(0, 3);
+    const losers = ranked
+      .filter(m => m.sent === 'bad')
+      .sort((x, y) => Math.abs(y.pct ?? 0) - Math.abs(x.pct ?? 0))
+      .slice(0, 3);
+    return { gainers, losers };
+  }, [rows, idxA, idxB]);
 
   const generateCommentary = async () => {
     if (idxA < 0 || idxB < 0 || isGenerating) return;
@@ -222,6 +246,52 @@ Write 2 short paragraphs of plain-English commentary. Lead with the biggest diff
             })}
           </div>
         </div>
+
+        {/* Top movers */}
+        {(topMovers.gainers.length > 0 || topMovers.losers.length > 0) && (
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-lg border border-success/40 bg-success/5 p-3">
+              <p className="text-xs font-semibold flex items-center gap-1.5 text-success mb-2">
+                <TrendingUp className="h-3.5 w-3.5" /> Top Positive Movers
+              </p>
+              {topMovers.gainers.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground">No positive movers between these periods.</p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {topMovers.gainers.map(m => (
+                    <li key={m.row.key} className="flex items-center justify-between gap-2 text-xs min-w-0">
+                      <span className="font-medium truncate">{m.row.label}</span>
+                      <span className="tabular-nums text-success shrink-0">
+                        {m.pct! >= 0 ? '+' : ''}{m.pct!.toFixed(1)}%
+                        <span className="ml-1 text-[10px] opacity-70">({formatDeltaValue(m.diff, m.row.format)})</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3">
+              <p className="text-xs font-semibold flex items-center gap-1.5 text-destructive mb-2">
+                <TrendingDown className="h-3.5 w-3.5" /> Top Negative Movers
+              </p>
+              {topMovers.losers.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground">No negative movers between these periods.</p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {topMovers.losers.map(m => (
+                    <li key={m.row.key} className="flex items-center justify-between gap-2 text-xs min-w-0">
+                      <span className="font-medium truncate">{m.row.label}</span>
+                      <span className="tabular-nums text-destructive shrink-0">
+                        {m.pct! >= 0 ? '+' : ''}{m.pct!.toFixed(1)}%
+                        <span className="ml-1 text-[10px] opacity-70">({formatDeltaValue(m.diff, m.row.format)})</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* AI commentary */}
         <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-2">
