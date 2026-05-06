@@ -10,6 +10,7 @@ import naitiveLogoDark from '@/assets/naitive-logo-dark.png';
 import { QirCommentThread } from './qir/QirCommentThread';
 import { QirSectionNotes } from './qir/QirSectionNotes';
 import { QirAllCommentsPanel } from './qir/QirAllCommentsPanel';
+import { QuickBooksActualsPanel, type ActualsViewMode } from './qir/QuickBooksActualsPanel';
 import {
   DEFAULT_ASANA_GOAL_FILTERS,
   type AsanaGoalFilterTemplates,
