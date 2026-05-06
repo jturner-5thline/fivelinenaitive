@@ -571,6 +571,48 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       : []),
     [allDeals, isCurrentReportingPeriod],
   );
+
+  // Focused active deals list for the "Active Deals" widget:
+  // - Only deals in the active pipeline
+  // - Stages between Final Credit Items and In Due Diligence (inclusive)
+  // - Exclude On Hold and Archived statuses
+  const ACTIVE_DEAL_LIST_STAGES = useMemo(() => new Set([
+    'final-credit-items',
+    'client-strategy-review',
+    'write-up-pending',
+    'submitted-to-lenders',
+    'lenders-in-review',
+    'terms-issued',
+    'in-due-diligence',
+  ]), []);
+
+  const activeDealsList = useMemo(() => {
+    return allDeals
+      .filter((d: any) => {
+        if (!ACTIVE_DEAL_LIST_STAGES.has(d.stage)) return false;
+        if (d.status === 'archived' || d.status === 'on-hold') return false;
+        if (activePipelineId && d.pipeline_id && d.pipeline_id !== activePipelineId) return false;
+        return true;
+      })
+      .sort((a: any, b: any) => {
+        const ad = a.projected_close_date ? new Date(a.projected_close_date).getTime() : Infinity;
+        const bd = b.projected_close_date ? new Date(b.projected_close_date).getTime() : Infinity;
+        return ad - bd;
+      });
+  }, [allDeals, activePipelineId, ACTIVE_DEAL_LIST_STAGES]);
+
+  const statusDisplay = (status: string): { label: string; color: string } | null => {
+    if (status === 'on-track') return { label: 'On Track', color: '#3de89a' };
+    if (status === 'at-risk') return { label: 'At Risk', color: '#ffbe1e' };
+    if (status === 'off-track') return { label: 'Off Track', color: '#ff6b7a' };
+    return null;
+  };
+
+  const formatCloseMonth = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return '—';
+    const d = parseValueDate(dateStr);
+    return d ? format(d, 'MMM yyyy') : '—';
+  };
   const activeDealCount = activeDeals.length;
   const activePipelineValue = activeDeals.reduce((sum, deal) => sum + Number(deal.value || 0), 0);
   const avgDealSize = activeDealCount > 0 ? activePipelineValue / activeDealCount : 0;
