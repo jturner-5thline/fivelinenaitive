@@ -2166,17 +2166,6 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
   reportKey?: string;
 }) {
   const rk = reportKey || 'naitive.quarterlyReport.adhoc';
-  const viewModeStorageKey = `qir:viewMode:${rk}`;
-  const [viewMode, setViewMode] = useState<'summary' | 'detailed'>(() => {
-    if (typeof window === 'undefined') return 'summary';
-    try {
-      const v = window.localStorage.getItem(viewModeStorageKey);
-      return v === 'detailed' ? 'detailed' : 'summary';
-    } catch { return 'summary'; }
-  });
-  useEffect(() => {
-    try { window.localStorage.setItem(viewModeStorageKey, viewMode); } catch { /* ignore */ }
-  }, [viewMode, viewModeStorageKey]);
   // Single source of truth: the dashboard header's Reporting Period selector
   // drives s.period / s.quarter / s.month for every section/widget.
   const insightsTf = useInsightsTimeframeOptional();
@@ -2219,46 +2208,6 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
   return (
     <div ref={rootRef} style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, color: TEXT_PRIMARY }}>
       <ReportHeaderSection s={s} set={set} reset={reset} save={save} print={print} canEdit={canEdit} />
-      <div
-        className="qir-no-print"
-        style={{
-          display: 'inline-flex',
-          alignSelf: 'flex-end',
-          padding: 3,
-          background: 'rgba(10,18,36,0.6)',
-          border: '1px solid rgba(120,170,255,0.18)',
-          borderRadius: 999,
-        }}
-      >
-        {(['summary', 'detailed'] as const).map(mode => {
-          const active = viewMode === mode;
-          return (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => setViewMode(mode)}
-              style={{
-                padding: '5px 14px',
-                fontSize: 11,
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '.08em',
-                borderRadius: 999,
-                border: 'none',
-                cursor: 'pointer',
-                background: active ? 'rgba(40,110,180,0.55)' : 'transparent',
-                color: active ? '#e8f4ff' : TEXT_MUTED,
-                transition: 'background .2s, color .2s',
-              }}
-            >
-              {mode === 'summary' ? 'Summary' : 'Detailed'}
-            </button>
-          );
-        })}
-      </div>
-      {viewMode === 'summary' ? (
-        <QirSummaryView s={s} reportLabel={reportLabel} />
-      ) : (
       <Card className="glass-module qir-unified-report">
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div id="qir-section-summary" className="qir-unified-section">
@@ -2278,7 +2227,14 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
           </div>
         </div>
       </Card>
-      )}
+      <div className="qir-no-print" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
+        <Btn icon={RotateCcw} variant="ghost" onClick={reset}>Reset</Btn>
+        {save ? (
+          <span title={canEdit === false ? 'You do not have permission to save' : 'Save report for everyone'}>
+            <Btn icon={SaveIcon} onClick={save}>Save</Btn>
+          </span>
+        ) : null}
+      </div>
       <QirContextualComments reportKey={rk} reportLabel={reportLabel} rootRef={rootRef} />
     </div>
   );
