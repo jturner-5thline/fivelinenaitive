@@ -2146,11 +2146,36 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         const { data } = await supabase.from("deals").select("company, value, stage, deal_type").eq("id", args.deal_id).single();
         dealInfo = data;
       }
+      // Auto-resolve recipient_email from Contacts directory if only a name was given
+      let resolvedEmail: string | null = args.recipient_email || null;
+      let resolvedName: string = args.recipient_name;
+      let resolvedContact: any = null;
+      if (!resolvedEmail && args.recipient_name) {
+        const term = String(args.recipient_name).trim();
+        const { data: matches } = await supabase
+          .from("contacts")
+          .select("id, full_name, first_name, last_name, email, job_title, company_id, primary_company_id")
+          .or(`full_name.ilike.%${term}%,first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%`)
+          .not("email", "is", null)
+          .limit(5);
+        if (matches && matches.length === 1) {
+          resolvedEmail = matches[0].email;
+          resolvedName = matches[0].full_name || resolvedName;
+          resolvedContact = matches[0];
+        } else if (matches && matches.length > 1) {
+          return {
+            action: "draft_email",
+            error: `Multiple contacts match "${term}" — pick one and re-issue draft_email with recipient_email set.`,
+            candidates: matches.map((m: any) => ({ id: m.id, name: m.full_name, email: m.email, title: m.job_title })),
+          };
+        }
+      }
       return {
         action: "draft_email",
         email_type: args.email_type,
-        recipient_name: args.recipient_name,
-        recipient_email: args.recipient_email || null,
+        recipient_name: resolvedName,
+        recipient_email: resolvedEmail,
+        resolved_contact: resolvedContact,
         deal: dealInfo,
         instruction: "Generate the email subject and body. Return ONLY a JSON object with keys: to_name, to_email, subject, body (HTML). Wrap in ```json code block.",
       };
@@ -4920,6 +4945,14 @@ CRM list/search context (use these when the user asks about MULTIPLE contacts/co
 - "Find/list contacts at <company>", "who do we know at X", "show me leads/MQLs/customers", "contacts I own" → search_contacts
 - "List companies in <industry>", "show me opportunities", "customers with >$10M revenue", "companies I own" → search_crm_companies
 - "What's the latest with <contact/company/deal>", "recent calls/emails/notes this week", "who have we touched" → get_recent_crm_activities
+
+CONTACT & LENDER RESOLUTION PLAYBOOK (run these automatically whenever the user mentions a person or lender by name — never ask the user to clarify what you can resolve from the directory):
+- Person mentioned by first name, last name, or full name (e.g. "Song Chae", "what did Sarah say") → search_contacts({ query: "<name>" }). If exactly one match, immediately call get_contact_full to retrieve full profile (title, company, email, phone, deals, last activity). If multiple, list the top candidates with company + title and ask the user to pick.
+- Lender mentioned by name (e.g. "Founders First", "is Bain on this deal") → search_lenders({ query: "<name>" }) then get_lender_full for the single best match (profile, deal types, size range, every deal they're on with stage, last contact date, recent notes).
+- "What do we know about <Person>?" → get_contact_full({ search: "<name>" }) PLUS get_recent_crm_activities({ contact_id }) for interaction history. If the person appears to be a lender contact, also call get_lender_full. Combine into one profile answer with: full name, title, company, email, phone, deals they touch, last interaction date.
+- "What do we know about <Lender>?" → get_lender_full({ search: "<name>" }) + get_lender_deal_history. Always cite size range, deal types, every deal they're on with stage, last contact date.
+- "Draft a follow-up to <Person>" / "Email <Person> about …" → call draft_email with recipient_name="<name>" (the tool auto-resolves recipient_email from the Contacts directory). If the tool returns multiple candidates, show them and ask the user to pick before re-issuing draft_email. Never invent an email address.
+- ALWAYS prefer resolving names through the Contacts/Lender directories before answering. Never say "I don't have <person>'s email/title/company" without first calling search_contacts or search_lenders.
 
 Other tools when the question is broader / not entity-specific:
 - Pipeline overview → get_pipeline_summary
