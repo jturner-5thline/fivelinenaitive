@@ -49,7 +49,7 @@ export function MetricKPICard({
   return (
     <Card
       className={cn(
-        'relative group overflow-hidden transition-all duration-200',
+        'relative group overflow-hidden transition-all duration-200 h-full',
         'glass-module',
         'hover:border-primary/40 hover:-translate-y-0.5',
         'hover:shadow-[0_0_20px_hsl(var(--primary)/0.1),0_8px_32px_hsl(0,0%,0%,0.4)]',
@@ -60,7 +60,7 @@ export function MetricKPICard({
         className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
         style={{ background: `linear-gradient(90deg, ${config.color}, transparent)` }}
       />
-      <CardContent className="flex items-center gap-4 p-4">
+      <CardContent className="flex items-center gap-4 p-4 h-full">
         <div
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border/20"
           style={{
