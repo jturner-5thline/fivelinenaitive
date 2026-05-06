@@ -734,14 +734,13 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
     { id: 'owner', label: 'Owner', accessor: g => g.owner || '', sortable: true, groupable: true },
     { id: 'status', label: 'Status', accessor: g => goalStatusRank[g.status] ?? 99, sortable: true },
     { id: 'statusGroup', label: 'Status', accessor: g => g.status || '—', groupable: true },
-    { id: 'due', label: 'Due Date', accessor: g => g.due || null, sortable: true },
-    { id: 'period', label: 'Reporting Period', accessor: g => g.timePeriod || '—', groupable: true },
+    { id: 'period', label: 'Time Period', accessor: g => g.timePeriod || '', sortable: true, groupable: true },
     { id: 'source', label: 'Source', accessor: g => 'Asana', sortable: true, groupable: true },
   ];
   const goalsSG = useSortGroup<AsanaGoalRow>({
     rows: visibleGoals,
     columns: goalColumns,
-    defaultSortBy: 'due',
+    defaultSortBy: 'period',
     defaultSortDir: 'asc',
     defaultGroupBy: 'statusGroup',
   });
