@@ -1268,9 +1268,10 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
 }
 
 function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetState }) {
+  const preparedBy = s.authors[0] || 'James Turner';
   const updateInit = (id: string, patch: Partial<Initiative>) => set(prev => ({ ...prev, initiatives: prev.initiatives.map(init => init.id === id ? { ...init, ...patch } : init) }));
   const removeInit = (id: string) => set(prev => ({ ...prev, initiatives: prev.initiatives.filter(init => init.id !== id) }));
-  const addInit = () => set(prev => ({ ...prev, initiatives: [...prev.initiatives, { id: uid(), title: '', status: 'On Track', progress: 0, owner: PEOPLE[0] }] }));
+  const addInit = () => set(prev => ({ ...prev, initiatives: [...prev.initiatives, { id: uid(), title: '', status: 'On Track', progress: 0, owner: preparedBy }] }));
 
   // Live Asana goals — used to source the Owner display & dropdown options so they
   // reflect the latest Asana state automatically when the goals data refreshes.
@@ -1319,11 +1320,14 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
     [s.initiatives, asanaGoals],
   );
 
+  // Always scope visible initiatives to the currently selected Prepared By
+  // user, so the Initiatives module mirrors the same owner-based logic used
+  // by Goals in this report context.
+  const normName = (v: string) => v.trim().toLowerCase().replace(/\s+/g, ' ');
+  const preparedByKey = normName(preparedBy);
   const filteredInits = useMemo(
-    () => s.initiativeOwnerFilter === 'All'
-      ? initsWithLiveOwner
-      : initsWithLiveOwner.filter(init => init._liveOwner === s.initiativeOwnerFilter),
-    [initsWithLiveOwner, s.initiativeOwnerFilter],
+    () => initsWithLiveOwner.filter(init => normName(init._liveOwner || init.owner || '') === preparedByKey),
+    [initsWithLiveOwner, preparedByKey],
   );
   const counts = useMemo(() => ({
     onTrack: filteredInits.filter(init => init.status === 'On Track').length,
