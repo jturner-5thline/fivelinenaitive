@@ -1483,19 +1483,6 @@ function ReportCoverSection({ s, set }: { s: ReportState; set: ReportSetState })
               }}
             />
           ) : null}
-          <div
-            style={{
-              fontSize: 38,
-              fontWeight: 700,
-              color: TEXT_PRIMARY,
-              letterSpacing: '-.5px',
-              lineHeight: 1.1,
-              display: isAdmin ? 'none' : 'block',
-            }}
-            className="qir-print-only"
-          >
-            {title}
-          </div>
           {!isAdmin && (
             <div style={{ fontSize: 38, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: '-.5px', lineHeight: 1.1 }}>
               {title}
