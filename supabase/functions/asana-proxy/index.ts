@@ -529,6 +529,53 @@ serve(async (req) => {
         break;
       }
 
+      case "portfolio_projects": {
+        // Fetch project items (with status + owner) within a portfolio.
+        const resolvedToken = await resolveToken(token, integration_id);
+        const portfolioGid = params.portfolio_gid;
+        if (!portfolioGid) {
+          result = { success: false, error: "portfolio_gid is required", projects: [] };
+          break;
+        }
+        try {
+          const itemFields = [
+            "name",
+            "resource_type",
+            "archived",
+            "permalink_url",
+            "owner.name",
+            "owner.email",
+            "current_status_update.status_type",
+            "current_status_update.title",
+            "due_date",
+            "due_on",
+            "start_on",
+          ].join(",");
+          const items = await asanaFetch(
+            `/portfolios/${portfolioGid}/items?opt_fields=${itemFields}`,
+            resolvedToken,
+          );
+          const projects = (items.data || []).filter(
+            (it: any) => it.resource_type === "project" && !it.archived
+          ).map((p: any) => ({
+            gid: p.gid,
+            name: p.name,
+            permalink_url: p.permalink_url || null,
+            owner: p.owner?.name || null,
+            owner_email: p.owner?.email || null,
+            status_type: p.current_status_update?.status_type || null,
+            status_title: p.current_status_update?.title || null,
+            due_on: p.due_on || p.due_date || null,
+            start_on: p.start_on || null,
+          }));
+          result = { success: true, projects };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "Unknown error fetching portfolio projects";
+          result = { success: false, error: msg, projects: [] };
+        }
+        break;
+      }
+
       default:
         result = { success: false, error: `Unknown action: ${action}` };
     }
