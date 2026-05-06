@@ -489,7 +489,10 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   // 12-month total revenue ending at that bucket's end (sum across all QBO
   // entities). Each point recalculates its own rolling 12-month window.
   const ttmTrendSeries = useMemo(() => {
-    return revenueSeries.map((bucket) => {
+    const buckets = reportingPeriod?.view === 'quarter'
+      ? buildMonthBuckets(periodRange.start, periodRange.end)
+      : buildTrailingMonthBuckets(periodRange.end, 12);
+    return buckets.map((bucket) => {
       const end = bucket.end;
       const start = startOfMonth(subMonths(end, 11));
       const revenue = sumAmountInRange(
@@ -500,13 +503,13 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       );
       return {
         key: bucket.key,
-        month: bucket.month,
+        month: bucket.label,
         windowStart: start,
         windowEnd: end,
         revenue,
       };
     });
-  }, [revenueSeries, qbInvoices]);
+  }, [periodRange, qbInvoices, reportingPeriod?.view]);
   const ttmTrendValues = ttmTrendSeries.map(p => p.revenue);
 
   const pipelineUnavailableReason = isCurrentReportingPeriod
