@@ -91,12 +91,14 @@ function GridShell({
   children,
   headerExtra,
   dragHandleMode = 'header',
+  titleAlign = 'left',
 }: {
   isEditMode: boolean;
   title: string;
   children: React.ReactNode;
   headerExtra?: React.ReactNode;
   dragHandleMode?: 'header' | 'manual';
+  titleAlign?: 'left' | 'center';
 }) {
   return (
     <div className="h-full w-full flex flex-col rounded-[10px] overflow-hidden relative"
@@ -106,7 +108,12 @@ function GridShell({
         className={`px-3 py-2 flex items-center justify-between ${dragHandleMode === 'header' && isEditMode ? 'widget-drag-handle cursor-grab active:cursor-grabbing' : ''}`}
         style={{ borderBottom: '1px solid rgba(40,100,180,0.2)' }}
       >
-        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'rgba(160,210,255,0.6)' }}>
+        <div style={{
+          fontSize: 9, fontWeight: 700, letterSpacing: '1.2px',
+          textTransform: 'uppercase', color: 'rgba(160,210,255,0.6)',
+          flex: titleAlign === 'center' ? 1 : undefined,
+          textAlign: titleAlign === 'center' ? 'center' : 'left',
+        }}>
           {title}
         </div>
         <div className="flex items-center gap-2">
@@ -604,7 +611,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
           const k = kpiById.get(STANDALONE_KPI_TO_REGISTRY[widgetId]);
           return (
             <div key={widgetId} className="h-full">
-              <GridShell isEditMode={isEditMode} title={k?.l ?? widgetId}>
+              <GridShell isEditMode={isEditMode} title={k?.l ?? widgetId} titleAlign="center">
                 {k ? (
                   <div
                     onClick={() => {
@@ -658,14 +665,14 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                     }}
                     style={{
                       display: 'flex', flexDirection: 'column', gap: 4, height: '100%',
-                      justifyContent: 'center',
+                      justifyContent: 'center', alignItems: 'center', textAlign: 'center',
                       cursor: !isEditMode && k.live ? 'pointer' : 'default',
                     }}
                   >
-                    <div style={{ fontSize: 22, fontWeight: 700, color: k.live ? '#e8f6ff' : NA_COLOR, lineHeight: 1.1 }}>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: k.live ? '#e8f6ff' : NA_COLOR, lineHeight: 1.1, textAlign: 'center' }}>
                       {k.live ? k.v : 'Data unavailable'}
                     </div>
-                    <div style={{ fontSize: 11 }}>
+                    <div style={{ fontSize: 11, textAlign: 'center' }}>
                       {k.live ? k.sub : <span style={{ color: NA_COLOR }}>—</span>}
                     </div>
                   </div>
