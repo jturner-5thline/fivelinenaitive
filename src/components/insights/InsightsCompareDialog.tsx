@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -66,6 +66,18 @@ export function InsightsCompareDialog({ open, onOpenChange }: Props) {
   const [reportB, setReportB] = useState<string>('none');
   const [narrative, setNarrative] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [highlightedKey, setHighlightedKey] = useState<string | null>(null);
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const focusRow = (key: string) => {
+    const el = rowRefs.current[key];
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    setHighlightedKey(key);
+    window.clearTimeout((focusRow as any)._t);
+    (focusRow as any)._t = window.setTimeout(() => setHighlightedKey(null), 2200);
+  };
 
   // Initialize defaults when months become available
   useEffect(() => {
@@ -226,8 +238,16 @@ Write 2 short paragraphs of plain-English commentary. Lead with the biggest diff
               const cls =
                 sent === 'good' ? 'text-success' : sent === 'bad' ? 'text-destructive' : 'text-muted-foreground';
               const Arrow = diff >= 0 ? ArrowUpRight : ArrowDownRight;
+              const isHighlighted = highlightedKey === r.key;
               return (
-                <div key={r.key} className="grid grid-cols-[1.4fr_1fr_1fr_1fr] items-center px-3 py-2 text-sm">
+                <div
+                  key={r.key}
+                  ref={el => (rowRefs.current[r.key] = el)}
+                  className={cn(
+                    'grid grid-cols-[1.4fr_1fr_1fr_1fr] items-center px-3 py-2 text-sm transition-colors duration-500',
+                    isHighlighted && 'bg-primary/15 ring-1 ring-inset ring-primary/40',
+                  )}
+                >
                   <div>
                     <span className="font-medium">{r.label}</span>
                     <Badge variant="outline" className="ml-2 text-[9px] uppercase">
@@ -259,12 +279,19 @@ Write 2 short paragraphs of plain-English commentary. Lead with the biggest diff
               ) : (
                 <ul className="space-y-1.5">
                   {topMovers.gainers.map(m => (
-                    <li key={m.row.key} className="flex items-center justify-between gap-2 text-xs min-w-0">
-                      <span className="font-medium truncate">{m.row.label}</span>
-                      <span className="tabular-nums text-success shrink-0">
-                        {m.pct! >= 0 ? '+' : ''}{m.pct!.toFixed(1)}%
-                        <span className="ml-1 text-[10px] opacity-70">({formatDeltaValue(m.diff, m.row.format)})</span>
-                      </span>
+                    <li key={m.row.key}>
+                      <button
+                        type="button"
+                        onClick={() => focusRow(m.row.key)}
+                        title={`Jump to ${m.row.label} in the grid`}
+                        className="w-full flex items-center justify-between gap-2 text-xs min-w-0 rounded-md px-1.5 py-1 -mx-1.5 hover:bg-success/10 transition-colors text-left"
+                      >
+                        <span className="font-medium truncate hover:underline underline-offset-2">{m.row.label}</span>
+                        <span className="tabular-nums text-success shrink-0">
+                          {m.pct! >= 0 ? '+' : ''}{m.pct!.toFixed(1)}%
+                          <span className="ml-1 text-[10px] opacity-70">({formatDeltaValue(m.diff, m.row.format)})</span>
+                        </span>
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -279,12 +306,19 @@ Write 2 short paragraphs of plain-English commentary. Lead with the biggest diff
               ) : (
                 <ul className="space-y-1.5">
                   {topMovers.losers.map(m => (
-                    <li key={m.row.key} className="flex items-center justify-between gap-2 text-xs min-w-0">
-                      <span className="font-medium truncate">{m.row.label}</span>
-                      <span className="tabular-nums text-destructive shrink-0">
-                        {m.pct! >= 0 ? '+' : ''}{m.pct!.toFixed(1)}%
-                        <span className="ml-1 text-[10px] opacity-70">({formatDeltaValue(m.diff, m.row.format)})</span>
-                      </span>
+                    <li key={m.row.key}>
+                      <button
+                        type="button"
+                        onClick={() => focusRow(m.row.key)}
+                        title={`Jump to ${m.row.label} in the grid`}
+                        className="w-full flex items-center justify-between gap-2 text-xs min-w-0 rounded-md px-1.5 py-1 -mx-1.5 hover:bg-destructive/10 transition-colors text-left"
+                      >
+                        <span className="font-medium truncate hover:underline underline-offset-2">{m.row.label}</span>
+                        <span className="tabular-nums text-destructive shrink-0">
+                          {m.pct! >= 0 ? '+' : ''}{m.pct!.toFixed(1)}%
+                          <span className="ml-1 text-[10px] opacity-70">({formatDeltaValue(m.diff, m.row.format)})</span>
+                        </span>
+                      </button>
                     </li>
                   ))}
                 </ul>
