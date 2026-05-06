@@ -9,7 +9,6 @@ import { useAdminRole } from '@/hooks/useAdminRole';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import naitiveLogoDark from '@/assets/naitive-logo-dark.png';
 import { QirCommentThread } from './qir/QirCommentThread';
-import { QirSectionNotes } from './qir/QirSectionNotes';
 import { QirAllCommentsPanel } from './qir/QirAllCommentsPanel';
 import { QuickBooksActualsPanel, type ActualsViewMode } from './qir/QuickBooksActualsPanel';
 import { KpiDrillDownDialog, type KpiLike } from './qir/KpiDrillDownDialog';
