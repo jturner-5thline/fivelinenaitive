@@ -2297,7 +2297,7 @@ function MetricsInner() {
                 <InsightsTimeframePicker />
               )}
 
-              {selectedDashboard === 'management-snapshot' && (
+              {selectedDashboard === 'management-review' && (
                 <UITooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -2402,8 +2402,8 @@ function MetricsInner() {
             </div>
           </StickyDashboardHeader>
 
-          {/* Insights Assistant slide-over (replaces inline AI/driver/forecast/anomaly widgets) */}
-          {selectedDashboard === 'management-snapshot' && (
+          {/* Insights Assistant slide-over (Insights Dashboard only) */}
+          {selectedDashboard === 'management-review' && (
             <InsightsAssistantSheet
               open={assistantOpen}
               onOpenChange={setAssistantOpen}
