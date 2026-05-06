@@ -21,9 +21,9 @@ export function ManagementReviewCarousel() {
     { title: 'Insights Dashboard',                          render: () => <ManagementReviewDashboard /> },
     { title: 'Benchmark Forecasts',                         render: () => <BenchmarkForecastsPage /> },
     { title: 'Key Metrics',                                 render: () => <KeyMetricsPage /> },
-    { title: 'Quarterly Insights Report — Report 1',        render: () => <QuarterlyInsightsReportPage s={reportOne.state} set={reportOne.setState} reset={reportOne.reset} save={reportOne.save} canEdit={reportOne.canEdit} print={reportOne.print} /> },
-    { title: 'Quarterly Insights Report — Report 2',        render: () => <QuarterlyInsightsReportPage s={reportTwo.state} set={reportTwo.setState} reset={reportTwo.reset} save={reportTwo.save} canEdit={reportTwo.canEdit} print={reportTwo.print} /> },
-    { title: 'Quarterly Insights Report — Report 3',        render: () => <QuarterlyInsightsReportPage s={reportThree.state} set={reportThree.setState} reset={reportThree.reset} save={reportThree.save} canEdit={reportThree.canEdit} print={reportThree.print} /> },
+    { title: 'Quarterly Insights Report — Report 1',        render: () => <QuarterlyInsightsReportPage s={reportOne.state} set={reportOne.setState} reset={reportOne.reset} save={reportOne.save} canEdit={reportOne.canEdit} print={reportOne.print} reportKey="naitive.quarterlyReport.v1.report1" /> },
+    { title: 'Quarterly Insights Report — Report 2',        render: () => <QuarterlyInsightsReportPage s={reportTwo.state} set={reportTwo.setState} reset={reportTwo.reset} save={reportTwo.save} canEdit={reportTwo.canEdit} print={reportTwo.print} reportKey="naitive.quarterlyReport.v1.report2" /> },
+    { title: 'Quarterly Insights Report — Report 3',        render: () => <QuarterlyInsightsReportPage s={reportThree.state} set={reportThree.setState} reset={reportThree.reset} save={reportThree.save} canEdit={reportThree.canEdit} print={reportThree.print} reportKey="naitive.quarterlyReport.v1.report3" /> },
   ];
 
   const goTo = useCallback((dir: -1 | 1) => {
