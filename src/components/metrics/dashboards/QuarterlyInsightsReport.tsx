@@ -525,8 +525,11 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
                   aspectRatio: '1 / 1',
                   display: 'flex',
                   flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  padding: '12px 12px 10px',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  gap: 8,
+                  padding: 14,
                   borderRadius: RADIUS,
                   background: 'rgba(255,255,255,0.02)',
                   border: '1px solid rgba(255,255,255,0.06)',
@@ -577,7 +580,7 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
                   textTransform: 'uppercase',
                   letterSpacing: '.08em',
                   color: TEXT_LABEL,
-                  paddingRight: 22,
+                  maxWidth: '100%',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -593,11 +596,12 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
+                  maxWidth: '100%',
                 }}>{formatKPI(kpi.actual, kpi.format)}</div>
 
                 {/* Footer: target + status pill */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 6 }}>
-                  <span style={{ fontSize: 10, color: TEXT_MUTED, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, maxWidth: '100%' }}>
+                  <span style={{ fontSize: 10, color: TEXT_MUTED, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
                     Target {formatKPI(kpi.target, kpi.format)}
                   </span>
                   <Pill tone={tone}>{status}</Pill>
