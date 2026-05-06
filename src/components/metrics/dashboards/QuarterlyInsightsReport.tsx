@@ -396,7 +396,7 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 
 type ReportSetState = React.Dispatch<React.SetStateAction<ReportState>>;
 
-function ReportHeaderSection({ s, set, reset, save, print, canEdit }: { s: ReportState; set: ReportSetState; reset: () => void; save?: () => void; print: () => void; canEdit?: boolean }) {
+function ReportHeaderSection({ s, set, reset, save, print, canEdit, titlePrefix }: { s: ReportState; set: ReportSetState; reset: () => void; save?: () => void; print: () => void; canEdit?: boolean; titlePrefix?: string }) {
   // Validation: ensure Month always has a valid selection while in Monthly mode.
   // Covers stale persisted state, programmatic state changes, and quarter switches.
   useEffect(() => {
@@ -412,9 +412,10 @@ function ReportHeaderSection({ s, set, reset, save, print, canEdit }: { s: Repor
   const currentPreparedBy = s.authors[0] && PREPARED_BY_OPTIONS.includes(s.authors[0])
     ? s.authors[0]
     : 'James Turner';
-  const reportTitle = s.period === 'monthly'
+  const baseTitle = s.period === 'monthly'
     ? `Monthly Insights Report — ${monthsForQuarter(s.quarter).includes(s.month) ? s.month : (monthsForQuarter(s.quarter)[0] || s.quarter)}`
     : `Quarterly Insights Report — ${s.quarter}`;
+  const reportTitle = titlePrefix ? `${baseTitle} (${titlePrefix})` : baseTitle;
   const fieldLabelStyle: React.CSSProperties = {
     fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
     letterSpacing: '.1em', color: TEXT_LABEL,
@@ -2129,7 +2130,7 @@ function ReportAgendaSection({ embedded = false }: { embedded?: boolean } = {}) 
   return <Card className="glass-module qir-page-break">{inner}</Card>;
 }
 
-export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdit, reportKey }: {
+export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdit, reportKey, titlePrefix }: {
   s: ReportState;
   set: ReportSetState;
   reset: () => void;
@@ -2137,6 +2138,7 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
   print: () => void;
   canEdit?: boolean;
   reportKey?: string;
+  titlePrefix?: string;
 }) {
   const rk = reportKey || 'naitive.quarterlyReport.adhoc';
   // Single source of truth: the dashboard header's Reporting Period selector
@@ -2180,7 +2182,7 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
     : `Quarterly Insights Report — ${s.quarter}`;
   return (
     <div ref={rootRef} style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, color: TEXT_PRIMARY }}>
-      <ReportHeaderSection s={s} set={set} reset={reset} save={save} print={print} canEdit={canEdit} />
+      <ReportHeaderSection s={s} set={set} reset={reset} save={save} print={print} canEdit={canEdit} titlePrefix={titlePrefix} />
       <Card className="glass-module qir-unified-report">
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div id="qir-section-summary" className="qir-unified-section">
