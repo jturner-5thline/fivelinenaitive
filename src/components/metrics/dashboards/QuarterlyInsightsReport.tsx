@@ -451,7 +451,6 @@ function ReportHeaderSection({ s, set, reset, save, print, canEdit }: { s: Repor
               </span>
             ) : null}
             <Btn icon={RotateCcw} variant="ghost" onClick={reset}>Reset</Btn>
-            <Btn icon={Printer} onClick={print}>Print / Export</Btn>
           </div>
         </div>
 
@@ -1663,7 +1662,7 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
   return (
     <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
-        <SectionTitle right={<div style={{ display: 'flex', gap: 8 }}><Btn icon={Plus} variant="ghost" onClick={addRisk}>Add Risk</Btn><Btn icon={Printer} onClick={print}>Print / Export</Btn></div>}>
+        <SectionTitle right={<Btn icon={Plus} variant="ghost" onClick={addRisk}>Add Risk</Btn>}>
           Open Risks
         </SectionTitle>
         <div style={{ overflowX: 'auto' }}>
