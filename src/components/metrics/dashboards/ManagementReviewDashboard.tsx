@@ -478,122 +478,36 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       )}
 
       {/* Draggable, resizable grid */}
-      <div ref={insightsGridGuardRef}>
       <DraggableGridLayout
         layout={layout}
         onLayoutChange={saveLayout}
         isEditMode={isEditMode}
         rowHeight={70}
         draggableHandle=".widget-drag-handle"
-        draggableCancel=".key-stats-parent-drag-disabled, .key-stats-parent-drag-disabled *, .key-stats-subgrid, .key-stats-body, .key-stats-drag-handle, .key-stats-tile, .key-stats-resize-guard, .react-resizable-handle"
-        isDraggableEnabled={!isInteractingWithKeyStatsTile}
+        draggableCancel=".react-resizable-handle"
       >
-        <div key="kpi-row" className="h-full">
-          <GridShell
-            isEditMode={isEditMode}
-            title="Key Stats"
-            dragHandleMode="manual"
-            headerExtra={isEditMode ? (
-              <div className="flex items-center gap-1" onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
-                <div className={`widget-drag-handle inline-flex items-center gap-1 rounded-md border border-border/50 bg-background/70 px-2 py-1 text-[10px] text-muted-foreground backdrop-blur ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}`}>
-                  <span>⋮⋮</span>
-                  <span>Move Widget</span>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]">
-                      <Plus className="h-3 w-3 mr-1" /> Add Stat
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="z-50">
-                    {availableToAdd.length === 0 ? (
-                      <DropdownMenuItem disabled>No more stats available</DropdownMenuItem>
-                    ) : availableToAdd.map(k => (
-                      <DropdownMenuItem key={k.id} onClick={() => handleAddKpiTile(k.id)}>
-                        {k.l}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={() => resetKeyStatsLayout()}>
-                  <RotateCcw className="h-3 w-3 mr-1" /> Reset
-                </Button>
-              </div>
-            ) : null}
-          >
-            <DraggableGridLayout
-              layout={keyStatsLayout}
-              onLayoutChange={saveKeyStatsLayout}
-              isEditMode={isEditMode}
-              rowHeight={28}
-              className="key-stats-subgrid key-stats-body"
-              draggableHandle=".key-stats-drag-handle"
-              draggableCancel=".key-stats-tile-remove, .react-resizable-handle"
-              onInteractionStart={() => {
-                if (isEditMode) setKeyStatsTileInteraction(true);
-              }}
-              onInteractionEnd={() => {
-                if (isEditMode) setKeyStatsTileInteraction(false);
-              }}
-            >
-              {keyStatsLayout.map(l => {
-                const k = kpiById.get(l.i);
-                if (!k) return <div key={l.i} />;
-                return (
-                  <div key={l.i} className="h-full">
-                    <div
-                      className="relative h-full w-full key-stats-resize-guard key-stats-tile"
-                      style={{ background: 'rgba(10,60,110,0.35)', border: '1px solid rgba(40,120,200,0.22)', borderRadius: 8, padding: '8px 10px', overflow: 'hidden' }}
-                    >
-                      {isEditMode && (
-                        <div
-                          className="key-stats-drag-handle absolute top-1 left-1/2 -translate-x-1/2 z-[3] flex items-center gap-1 rounded-md border border-border/50 bg-background/70 px-2 py-0.5 text-[10px] text-muted-foreground backdrop-blur cursor-grab active:cursor-grabbing"
-                          onPointerDownCapture={(e) => {
-                            e.stopPropagation();
-                            setKeyStatsTileInteraction(true);
-                          }}
-                          onMouseDownCapture={(e) => {
-                            e.stopPropagation();
-                            setKeyStatsTileInteraction(true);
-                          }}
-                          onTouchStartCapture={(e) => {
-                            e.stopPropagation();
-                            setKeyStatsTileInteraction(true);
-                          }}
-                          onPointerUpCapture={(e) => {
-                            e.stopPropagation();
-                            setKeyStatsTileInteraction(false);
-                          }}
-                          onPointerCancelCapture={() => setKeyStatsTileInteraction(false)}
-                        >
-                          ⋮⋮ Move
-                        </div>
-                      )}
-                      {isEditMode && (
-                        <button
-                          aria-label={`Remove ${k.l}`}
-                          className="key-stats-tile-remove"
-                          onMouseDown={e => e.stopPropagation()}
-                          onClick={(e) => { e.stopPropagation(); handleRemoveKpiTile(k.id); }}
-                          style={{ position: 'absolute', top: 4, right: 4, zIndex: 2, background: 'rgba(220,60,80,0.2)', border: '1px solid rgba(220,60,80,0.4)', borderRadius: 4, padding: '2px 4px', cursor: 'pointer', color: '#ff8a96' }}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      )}
-                      <div style={{ position: 'relative', zIndex: 1, pointerEvents: isEditMode ? 'none' : 'auto', paddingTop: isEditMode ? 14 : 0 }}>
-                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'rgba(160,210,255,0.5)', marginBottom: 4 }}>{k.l}</div>
-                        <div style={{ fontSize: 16, fontWeight: 700, color: k.live ? '#e8f6ff' : NA_COLOR }}>
-                          {k.live ? k.v : 'Data unavailable'}
-                        </div>
-                        <div style={{ fontSize: 10, marginTop: 2 }}>{k.live ? k.sub : <span style={{ color: NA_COLOR }}>—</span>}</div>
-                      </div>
+        {/* Six standalone KPI widgets (formerly children of Key Stats). */}
+        {STANDALONE_KPI_IDS.map((widgetId) => {
+          const k = kpiById.get(STANDALONE_KPI_TO_REGISTRY[widgetId]);
+          return (
+            <div key={widgetId} className="h-full">
+              <GridShell isEditMode={isEditMode} title={k?.l ?? widgetId}>
+                {k ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, height: '100%', justifyContent: 'center' }}>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: k.live ? '#e8f6ff' : NA_COLOR, lineHeight: 1.1 }}>
+                      {k.live ? k.v : 'Data unavailable'}
+                    </div>
+                    <div style={{ fontSize: 11 }}>
+                      {k.live ? k.sub : <span style={{ color: NA_COLOR }}>—</span>}
                     </div>
                   </div>
-                );
-              })}
-            </DraggableGridLayout>
-          </GridShell>
-        </div>
+                ) : (
+                  <NaPlaceholder height={100} label="Metric unavailable" />
+                )}
+              </GridShell>
+            </div>
+          );
+        })}
 
         <div key="monthly-revenue" className="h-full">
           <GridShell isEditMode={isEditMode} title="Monthly Revenue (last 12 mo · QuickBooks)">
@@ -671,7 +585,6 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
           </GridShell>
         </div>
       </DraggableGridLayout>
-      </div>
     </div>
   );
 }
