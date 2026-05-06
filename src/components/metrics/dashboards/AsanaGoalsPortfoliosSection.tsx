@@ -230,17 +230,17 @@ export function AsanaGoalsPortfoliosSection() {
                   );
                 })}
               </div>
-              <select value={ownerFilter} onChange={e => setOwnerFilter(e.target.value)} style={selectStyle} aria-label="Filter by owner">
-                <option value="all" style={optionStyle}>All owners</option>
-                {ownerOptions.map(o => <option key={o} value={o} style={optionStyle}>{o}</option>)}
-              </select>
-              <select value={dueFilter} onChange={e => setDueFilter(e.target.value)} style={selectStyle} aria-label="Filter by due date">
-                <option value="all" style={optionStyle}>Any due date</option>
-                <option value="overdue" style={optionStyle}>Overdue</option>
-                <option value="30d" style={optionStyle}>Due in 30 days</option>
-                <option value="90d" style={optionStyle}>Due in 90 days</option>
-                <option value="none" style={optionStyle}>No due date</option>
-              </select>
+              <DarkNativeSelect value={ownerFilter} onChange={e => setOwnerFilter(e.target.value)} aria-label="Filter by owner">
+                <DarkOption value="all">All owners</DarkOption>
+                {ownerOptions.map(o => <DarkOption key={o} value={o}>{o}</DarkOption>)}
+              </DarkNativeSelect>
+              <DarkNativeSelect value={dueFilter} onChange={e => setDueFilter(e.target.value)} aria-label="Filter by due date">
+                <DarkOption value="all">Any due date</DarkOption>
+                <DarkOption value="overdue">Overdue</DarkOption>
+                <DarkOption value="30d">Due in 30 days</DarkOption>
+                <DarkOption value="90d">Due in 90 days</DarkOption>
+                <DarkOption value="none">No due date</DarkOption>
+              </DarkNativeSelect>
               {filtersActive && (
                 <button
                   onClick={() => { setStatusFilter(new Set()); setOwnerFilter('all'); setDueFilter('all'); }}
