@@ -17,11 +17,20 @@ export interface QirComment {
   updated_at?: string;
 }
 
+export interface QirThreadState {
+  target_type: string;
+  target_id: string;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  resolved_by_name: string | null;
+}
+
 export function useQirComments(reportKey: string) {
   const { company, members } = useCompany();
   const { user } = useAuth();
   const [comments, setComments] = useState<QirComment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [threads, setThreads] = useState<QirThreadState[]>([]);
 
   // Initial fetch
   useEffect(() => {
@@ -39,6 +48,53 @@ export function useQirComments(reportKey: string) {
       setLoading(false);
     })();
     return () => { alive = false; };
+  }, [company?.id, reportKey]);
+
+  // Initial fetch — thread state
+  useEffect(() => {
+    if (!company?.id) return;
+    let alive = true;
+    (async () => {
+      const { data } = await supabase
+        .from('qir_comment_threads' as any)
+        .select('target_type,target_id,resolved_at,resolved_by,resolved_by_name')
+        .eq('company_id', company.id)
+        .eq('report_key', reportKey);
+      if (!alive) return;
+      if (data) setThreads(data as any as QirThreadState[]);
+    })();
+    return () => { alive = false; };
+  }, [company?.id, reportKey]);
+
+  // Realtime — thread state
+  useEffect(() => {
+    if (!company?.id) return;
+    const ch = supabase
+      .channel(`qir-threads-${reportKey}-${company.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'qir_comment_threads', filter: `company_id=eq.${company.id}` }, (payload) => {
+        const row = (payload.new || payload.old) as any;
+        if (!row || row.report_key !== reportKey) return;
+        if (payload.eventType === 'DELETE') {
+          setThreads(prev => prev.filter(t => !(t.target_type === row.target_type && t.target_id === row.target_id)));
+        } else {
+          const next: QirThreadState = {
+            target_type: row.target_type,
+            target_id: row.target_id,
+            resolved_at: row.resolved_at,
+            resolved_by: row.resolved_by,
+            resolved_by_name: row.resolved_by_name,
+          };
+          setThreads(prev => {
+            const i = prev.findIndex(t => t.target_type === next.target_type && t.target_id === next.target_id);
+            if (i === -1) return [...prev, next];
+            const copy = prev.slice();
+            copy[i] = next;
+            return copy;
+          });
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
   }, [company?.id, reportKey]);
 
   // Realtime
@@ -173,7 +229,44 @@ export function useQirComments(reportKey: string) {
     }
   }, [members]);
 
-  return { comments, loading, addComment, deleteComment, updateComment };
+  const setThreadResolved = useCallback(async (target_type: string, target_id: string, resolved: boolean) => {
+    if (!company?.id || !user?.id) return;
+    const authorName = (user.user_metadata as any)?.full_name
+      || (user.user_metadata as any)?.name
+      || user.email
+      || null;
+    const payload = {
+      company_id: company.id,
+      report_key: reportKey,
+      target_type,
+      target_id,
+      resolved_at: resolved ? new Date().toISOString() : null,
+      resolved_by: resolved ? user.id : null,
+      resolved_by_name: resolved ? authorName : null,
+    };
+    // Optimistic update
+    setThreads(prev => {
+      const i = prev.findIndex(t => t.target_type === target_type && t.target_id === target_id);
+      const next: QirThreadState = {
+        target_type, target_id,
+        resolved_at: payload.resolved_at,
+        resolved_by: payload.resolved_by,
+        resolved_by_name: payload.resolved_by_name,
+      };
+      if (i === -1) return [...prev, next];
+      const copy = prev.slice(); copy[i] = next; return copy;
+    });
+    const { error } = await supabase
+      .from('qir_comment_threads' as any)
+      .upsert(payload, { onConflict: 'company_id,report_key,target_type,target_id' });
+    if (error) throw error;
+  }, [company?.id, user, reportKey]);
+
+  const getThreadState = useCallback((target_type: string, target_id: string): QirThreadState | null => {
+    return threads.find(t => t.target_type === target_type && t.target_id === target_id) || null;
+  }, [threads]);
+
+  return { comments, loading, addComment, deleteComment, updateComment, threads, getThreadState, setThreadResolved };
 }
 
 /* ───────────────────── Section notes ───────────────────── */

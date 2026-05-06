@@ -14891,6 +14891,45 @@ export type Database = {
         }
         Relationships: []
       }
+      qir_comment_threads: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          report_key: string
+          resolved_at: string | null
+          resolved_by: string | null
+          resolved_by_name: string | null
+          target_id: string
+          target_type: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          report_key: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_by_name?: string | null
+          target_id: string
+          target_type: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          report_key?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_by_name?: string | null
+          target_id?: string
+          target_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       qir_comments: {
         Row: {
           author_name: string | null
