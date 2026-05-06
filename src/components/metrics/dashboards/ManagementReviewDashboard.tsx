@@ -374,8 +374,7 @@ const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
     i: id, x: i * 2, y: 0, w: 2, h: 2, minW: 2, minH: 2, maxH: 4,
   } as GridLayoutItem)),
   { i: 'monthly-revenue', x: 0, y: 2, w: 6, h: 4, minW: 4, minH: 3 },
-  { i: 'pipeline-stage', x: 6, y: 2, w: 3, h: 4, minW: 3, minH: 3 },
-  { i: 'ar-aging', x: 9, y: 2, w: 3, h: 4, minW: 3, minH: 3 },
+  { i: 'ar-aging', x: 6, y: 2, w: 6, h: 4, minW: 3, minH: 3 },
   { i: 'active-deals-list', x: 0, y: 6, w: 12, h: 5, minW: 6, minH: 3 },
   { i: 'bank-balances', x: 0, y: 11, w: 4, h: 3, minW: 3, minH: 2 },
   { i: 'liabilities', x: 4, y: 11, w: 4, h: 3, minW: 3, minH: 2 },
@@ -1228,17 +1227,6 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 ? <div style={{ position: 'relative', flex: 1, minHeight: 180 }}><canvas ref={ncRef} /></div>
                 : <NaPlaceholder height={200} label={isLoading ? 'Loading…' : 'TTM revenue unavailable — connect QuickBooks to populate finance data.'} />}
             </div>
-          </GridShell>
-        </div>
-
-        <div key="pipeline-stage" className="h-full">
-          <GridShell isEditMode={isEditMode} title={`Active Pipeline by Stage${isCurrentReportingPeriod ? '' : ' · unavailable for selected period'}`}>
-            {stageBreakdown.length > 0
-              ? <div style={{ position: 'relative', height: '70%' }}><canvas ref={pcRef} /></div>
-              : <NaPlaceholder height={150} label={isLoading ? 'Loading…' : pipelineUnavailableReason} />}
-            <Sep />
-            <Row label="Active Deals"><span style={{ color: '#4db8ff', fontWeight: 700 }}>{isCurrentReportingPeriod ? activeDealCount : '—'}</span></Row>
-            <Row label="Pipeline Value"><span style={{ color: '#4db8ff', fontWeight: 700 }}>{isCurrentReportingPeriod ? fmtUSD(activePipelineValue) : '—'}</span></Row>
           </GridShell>
         </div>
 
