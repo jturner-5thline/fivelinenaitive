@@ -1589,7 +1589,7 @@ function MetricsInner() {
   // widget across, above, below, or between sections in edit mode.
   const SNAPSHOT_SUB_WIDGET_IDS: import('@/components/metrics/dashboards/ManagementSnapshotDashboard').WeeklyRundownSubWidgetId[] = [
     'rev-debt','rev-finserv',
-    'pm-debt-on-board-combined','pm-debt-signed-combined','pm-debt-closed-combined','pm-finserv-deals-on-board','pm-finserv-clients-signed',
+    'pm-debt-on-board-combined','pm-debt-signed-combined','pm-debt-closed-combined','pm-finserv-deals-on-board','pm-finserv-clients-signed','pm-finserv-active-clients',
     'sd-deals-signed','sd-finserv-clients-signed','sd-outstanding-ar',
     'pe-debt-profit','pe-finserv-profit',
     'exec-deals-by-status',
@@ -1627,6 +1627,7 @@ function MetricsInner() {
       // Match the three Deals widgets above (w:4, h:2) so all five KPI cards share the same footprint.
       { i: 'pm-finserv-deals-on-board', x: 0, y: 20, w: 4, h: 2, minW: 3, minH: 2 },
       { i: 'pm-finserv-clients-signed', x: 4, y: 20, w: 4, h: 2, minW: 3, minH: 2 },
+      { i: 'pm-finserv-active-clients', x: 8, y: 20, w: 4, h: 2, minW: 3, minH: 2 },
       { i: 'sd-deals-signed',           x: 0, y: 20, w: 4, h: 6, minW: 3, minH: 3 },
       { i: 'sd-finserv-clients-signed', x: 4, y: 20, w: 4, h: 6, minW: 3, minH: 3 },
       { i: 'exec-deals-by-status',      x: 8, y: 20, w: 4, h: 6, minW: 3, minH: 3 },
