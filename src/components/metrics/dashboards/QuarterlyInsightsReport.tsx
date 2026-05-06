@@ -558,7 +558,7 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 
 type ReportSetState = React.Dispatch<React.SetStateAction<ReportState>>;
 
-function ReportHeaderSection({ s, set, reset, save, print, canEdit, titlePrefix }: { s: ReportState; set: ReportSetState; reset: () => void; save?: () => void; print: () => void; canEdit?: boolean; titlePrefix?: string }) {
+function ReportHeaderSection({ s, set, reset, save, print, canEdit, titlePrefix }: { s: ReportState; set: ReportSetState; reset: () => void; save?: () => Promise<boolean>; print: () => void; canEdit?: boolean; titlePrefix?: string }) {
   // Validation: ensure Month always has a valid selection while in Monthly mode.
   // Covers stale persisted state, programmatic state changes, and quarter switches.
   useEffect(() => {
@@ -2293,7 +2293,7 @@ function ReportAgendaSection({ embedded = false }: { embedded?: boolean } = {}) 
   return <Card className="glass-module qir-page-break">{inner}</Card>;
 }
 
-export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdit, reportKey, titlePrefix }: {
+export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdit, reportKey, titlePrefix, activeCompositeKey, fetchedCompositeKey, isDirty = false, isSaving = false, unsavedChangesWarning }: {
   s: ReportState;
   set: ReportSetState;
   reset: () => void;
