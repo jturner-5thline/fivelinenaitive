@@ -1398,20 +1398,48 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
+            <SortGroupToolbar
+              groupBy={initSG.groupBy}
+              setGroupBy={initSG.setGroupBy}
+              sortBy={initSG.sortBy}
+              sortDir={initSG.sortDir}
+              setSortBy={initSG.setSortBy}
+              setSortDir={initSG.setSortDir}
+              groupOptions={[
+                { id: 'status', label: 'Status' },
+                { id: 'owner', label: 'Owner' },
+                { id: 'source', label: 'Source' },
+              ]}
+              sortOptions={[
+                { id: 'name', label: 'Name' },
+                { id: 'owner', label: 'Owner' },
+                { id: 'statusSort', label: 'Status' },
+                { id: 'due', label: 'Due Date' },
+              ]}
+            />
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
               <thead>
                 <tr>
                   <th style={{ ...thStyle, width: 36 }}>#</th>
-                  <th style={thStyle}>Title</th>
-                  <th style={{ ...thStyle, width: 130 }}>Status</th>
-                  <th style={{ ...thStyle, width: 170 }}>Owner</th>
-                  <th style={{ ...thStyle, width: 120 }}>Due Date</th>
+                  <th style={{ ...thStyle, cursor: 'pointer' }} onClick={() => initSG.toggleSort('name')}>Title{initSG.indicator('name')}</th>
+                  <th style={{ ...thStyle, width: 130, cursor: 'pointer' }} onClick={() => initSG.toggleSort('statusSort')}>Status{initSG.indicator('statusSort')}</th>
+                  <th style={{ ...thStyle, width: 170, cursor: 'pointer' }} onClick={() => initSG.toggleSort('owner')}>Owner{initSG.indicator('owner')}</th>
+                  <th style={{ ...thStyle, width: 120, cursor: 'pointer' }} onClick={() => initSG.toggleSort('due')}>Due Date{initSG.indicator('due')}</th>
                   <th style={{ ...thStyle, width: 70 }}>Source</th>
                 </tr>
               </thead>
               <tbody>
-                {ownedProjects.map((p, idx) => (
-                  <tr key={p.gid}>
+                {initSG.groups.map((group, gi) => (
+                  <React.Fragment key={`ig-${gi}-${group.key}`}>
+                    {initSG.groupBy && (
+                      <tr>
+                        <td colSpan={6} style={{ padding: '10px 10px 4px', fontSize: 9, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: TEXT_LABEL, background: 'rgba(255,255,255,0.02)' }}>
+                          {group.key} <span style={{ color: TEXT_MUTED, fontWeight: 500 }}>· {group.rows.length}</span>
+                        </td>
+                      </tr>
+                    )}
+                    {group.rows.map((p, idx) => (
+                      <tr key={p.gid}>
                     <td style={{ ...tdStyle, color: TEXT_LABEL, fontVariantNumeric: 'tabular-nums' }}>{idx + 1}</td>
                     <td style={tdStyle}>
                       {p.permalink_url ? (
@@ -1439,6 +1467,8 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
                       </span>
                     </td>
                   </tr>
+                    ))}
+                  </React.Fragment>
                 ))}
                 {ownedProjects.length === 0 && !loading && (
                   <tr>
