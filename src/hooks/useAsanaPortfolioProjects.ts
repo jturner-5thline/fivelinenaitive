@@ -8,6 +8,8 @@ export interface AsanaPortfolioProjectRow {
   permalink_url: string | null;
   owner: string | null;
   ownerEmail: string | null;
+  ownerSource: string | null;
+  ownerCandidates: Array<{ name: string | null; email: string | null; source: string | null }>;
   status: 'On Track' | 'At Risk' | 'Off Track' | 'On Hold' | 'Complete' | 'No Status';
   rawStatus: string | null;
   dueOn: string | null;
@@ -81,6 +83,8 @@ export function useAsanaPortfolioProjects(portfolioGid: string | null): UseAsana
         permalink_url: p.permalink_url || null,
         owner: p.owner || null,
         ownerEmail: p.owner_email || null,
+        ownerSource: p.owner_source || null,
+        ownerCandidates: Array.isArray(p.owner_candidates) ? p.owner_candidates : [],
         status: mapStatus(p.status_type),
         rawStatus: p.status_type || null,
         dueOn: p.due_on || null,

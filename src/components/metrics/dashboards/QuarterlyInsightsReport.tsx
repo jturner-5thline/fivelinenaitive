@@ -1416,13 +1416,58 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
   const { portfolios: availablePortfolios, loading: portfoliosLoading } = useAsanaPortfolios();
   const { projects, loading, error, lastSyncedAt, configured, refresh } = useAsanaPortfolioProjects(portfolioGid);
 
-  const normName = (v: string) => v.trim().toLowerCase().replace(/\s+/g, ' ');
+  const normName = (v: string) => (v || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const normEmail = (v: string) => (v || '').trim().toLowerCase();
+  // Known email aliases per Prepared By user. Lets us match initiatives whose
+  // Asana owner field returns only an email or a slightly different display name.
+  const PREPARED_BY_ALIASES: Record<string, { names: string[]; emails: string[] }> = {
+    'james turner': {
+      names: ['james turner', 'jturner', 'james t', 'james turner jr'],
+      emails: ['james@5thline.com', 'jturner@5thline.com', 'james.turner@5thline.com', 'james@naitive.co', 'jturner@naitive.co'],
+    },
+    'john moffitt': { names: ['john moffitt', 'jmoffitt'], emails: ['john@5thline.com', 'john.moffitt@5thline.com'] },
+    'scott williams': { names: ['scott williams'], emails: ['scott@5thline.com', 'scott.williams@5thline.com'] },
+    'mckenzie clark': { names: ['mckenzie clark'], emails: ['mckenzie@5thline.com', 'mckenzie.clark@5thline.com'] },
+  };
   const preparedByKey = normName(preparedBy);
+  const aliases = PREPARED_BY_ALIASES[preparedByKey] || { names: [preparedByKey], emails: [] };
+  const aliasNameSet = new Set([preparedByKey, ...aliases.names.map(normName)]);
+  const aliasEmailSet = new Set(aliases.emails.map(normEmail));
+
+  const projectMatchesPreparedBy = (p: AsanaPortfolioProjectRow): boolean => {
+    const pool: Array<{ name: string | null; email: string | null }> = [
+      { name: p.owner, email: p.ownerEmail },
+      ...((p.ownerCandidates || []) as Array<{ name: string | null; email: string | null }>),
+    ];
+    for (const c of pool) {
+      if (c.name && aliasNameSet.has(normName(c.name))) return true;
+      if (c.email && aliasEmailSet.has(normEmail(c.email))) return true;
+    }
+    return false;
+  };
 
   const ownedProjects = useMemo(
-    () => projects.filter(p => p.owner && normName(p.owner) === preparedByKey),
+    () => projects.filter(projectMatchesPreparedBy),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [projects, preparedByKey],
   );
+
+  // Debug: surface owner mapping per project so we can audit James-Turner-owned
+  // initiatives that aren't matching. View in browser console.
+  useEffect(() => {
+    if (!projects.length) return;
+    // eslint-disable-next-line no-console
+    console.debug('[Initiatives] portfolio=%s preparedBy=%s', portfolioGid, preparedBy,
+      projects.map(p => ({
+        name: p.name,
+        owner: p.owner,
+        ownerEmail: p.ownerEmail,
+        ownerSource: p.ownerSource,
+        candidates: p.ownerCandidates,
+        matched: projectMatchesPreparedBy(p),
+      })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects, preparedByKey, portfolioGid]);
   const counts = useMemo(() => ({
     onTrack: ownedProjects.filter(p => p.status === 'On Track').length,
     atRisk: ownedProjects.filter(p => p.status === 'At Risk').length,
