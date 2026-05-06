@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import ChartJS from 'chart.js/auto';
 import { format } from 'date-fns';
 import { RefreshCw, Loader2, Save, RotateCcw, X, Plus, Trash2 } from 'lucide-react';
@@ -87,13 +88,25 @@ function NaPlaceholder({ height = 90, label = 'Data unavailable' }: { height?: n
 }
 
 // Grid item shell with title bar (also drag handle in edit mode)
-function GridShell({ isEditMode, title, children, headerExtra }: { isEditMode: boolean; title: string; children: React.ReactNode; headerExtra?: React.ReactNode }) {
+function GridShell({
+  isEditMode,
+  title,
+  children,
+  headerExtra,
+  dragHandleMode = 'header',
+}: {
+  isEditMode: boolean;
+  title: string;
+  children: React.ReactNode;
+  headerExtra?: React.ReactNode;
+  dragHandleMode?: 'header' | 'manual';
+}) {
   return (
     <div className="h-full w-full flex flex-col rounded-[10px] overflow-hidden relative"
       style={{ background: 'rgba(10,60,110,0.55)', border: '1px solid rgba(40,120,200,0.28)' }}>
       <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,rgba(80,180,255,0.4),transparent)' }} />
       <div
-        className={`widget-drag-handle px-3 py-2 flex items-center justify-between ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        className={`px-3 py-2 flex items-center justify-between ${dragHandleMode === 'header' && isEditMode ? 'widget-drag-handle cursor-grab active:cursor-grabbing' : ''}`}
         style={{ borderBottom: '1px solid rgba(40,100,180,0.2)' }}
       >
         <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'rgba(160,210,255,0.6)' }}>
@@ -101,7 +114,7 @@ function GridShell({ isEditMode, title, children, headerExtra }: { isEditMode: b
         </div>
         <div className="flex items-center gap-2">
           {headerExtra}
-          {isEditMode && (
+          {dragHandleMode === 'header' && isEditMode && (
             <div style={{ fontSize: 9, color: 'rgba(160,210,255,0.45)' }}>⋮⋮ drag</div>
           )}
         </div>
