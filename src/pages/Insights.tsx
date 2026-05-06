@@ -120,6 +120,9 @@ import { DatarailsLiveStat, DatarailsLiveChart } from "@/components/metrics/Data
 import { InsightsLoadingSkeleton, InsightsErrorState } from "@/components/insights/InsightsStateViews";
 import { InsightsAssistantSheet } from "@/components/insights/InsightsAssistantSheet";
 import { ReportingPeriodPicker, ActivePeriodLabel } from "@/components/insights/ReportingPeriodPicker";
+import { useInsightsComparison } from "@/hooks/useInsightsComparison";
+import { exportInsightsCsv, exportInsightsPdf, type InsightsExportContext } from "@/utils/insightsExport";
+import { FileSpreadsheet, FileText } from "lucide-react";
 // Dashboard options
 const DASHBOARD_OPTIONS = [
   { id: 'management-snapshot', name: 'Weekly Rundown', isFavorite: true, folder: 'management-insights' as const },
@@ -1472,7 +1475,41 @@ function MetricsInner() {
   const activeCustomDashboard = customDashboards.find(d => d.id === selectedDashboard);
 
   // ── Global dashboard timeframe (drives every widget on Weekly Rundown) ──
-  const { selectedQuarter: dashboardSelectedQuarter } = useInsightsTimeframe();
+  const { selectedQuarter: dashboardSelectedQuarter, timeframe: insightsTimeframe, reportingPeriod } = useInsightsTimeframe();
+  // Source the metric deltas already used by the dashboard so exports reflect
+  // the exact same data boundaries the user is seeing on screen.
+  const { deltas: insightsDeltas } = useInsightsComparison();
+
+  /** Build a filename/title/data-boundary context from the active Reporting period. */
+  const insightsExportContext = useMemo<InsightsExportContext>(() => {
+    if (reportingPeriod) {
+      return {
+        periodToken: reportingPeriod.period,
+        periodLabel: reportingPeriod.label,
+        start: reportingPeriod.start,
+        end: reportingPeriod.end,
+        granularity: reportingPeriod.view,
+      };
+    }
+    return {
+      periodToken: `${insightsTimeframe.start}_${insightsTimeframe.end}`,
+      periodLabel: insightsTimeframe.label,
+      start: insightsTimeframe.start,
+      end: insightsTimeframe.end,
+      granularity: 'range',
+    };
+  }, [reportingPeriod, insightsTimeframe]);
+
+  const handleExportInsightsCsv = useCallback(() => {
+    const inRange = insightsDeltas; // deltas are already scoped to the active timeframe
+    exportInsightsCsv(insightsExportContext, inRange);
+    sonnerToast.success(`Exported CSV for ${insightsExportContext.periodLabel}`);
+  }, [insightsDeltas, insightsExportContext]);
+
+  const handleExportInsightsPdf = useCallback(() => {
+    exportInsightsPdf(insightsExportContext, insightsDeltas);
+    sonnerToast.success(`Exported PDF for ${insightsExportContext.periodLabel}`);
+  }, [insightsDeltas, insightsExportContext]);
   // Legacy compat: a few places still expect a `quarterOptions` array. Build a
   // single-element list containing the current selection so they keep working.
   const dashboardQuarterOptions = useMemo<QuarterOption[]>(
@@ -2322,6 +2359,44 @@ function MetricsInner() {
                   </TooltipTrigger>
                   <TooltipContent>AI Summary, Q&amp;A, Drivers, Forecast, Anomalies</TooltipContent>
                 </UITooltip>
+              )}
+
+              {selectedDashboard === 'management-review' && (
+                <DropdownMenu>
+                  <UITooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          aria-label={`Export Insights for ${insightsExportContext.periodLabel}`}
+                          className="h-9 gap-1.5"
+                        >
+                          <Download className="h-4 w-4" />
+                          <span className="hidden sm:inline">Export</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>Export {insightsExportContext.periodLabel}</TooltipContent>
+                  </UITooltip>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <div className="px-2 py-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {insightsExportContext.periodLabel}
+                      <div className="text-[10px] normal-case tracking-normal text-muted-foreground/70">
+                        {insightsExportContext.start} → {insightsExportContext.end}
+                      </div>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleExportInsightsCsv}>
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      Export CSV
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleExportInsightsPdf}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Export PDF
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
 
               <DropdownMenu>
