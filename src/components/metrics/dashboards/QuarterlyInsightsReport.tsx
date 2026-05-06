@@ -3,8 +3,10 @@ import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2, Slide
 import { useCompanyDashboardConfig } from '@/hooks/useCompanyDashboardConfig';
 import { toast as sonnerToast } from 'sonner';
 import { useAsanaGoals, type AsanaGoalRow } from '@/hooks/useAsanaGoals';
-import { useAsanaPortfolioProjects } from '@/hooks/useAsanaPortfolioProjects';
+import { useAsanaPortfolioProjects, type AsanaPortfolioProjectRow } from '@/hooks/useAsanaPortfolioProjects';
 import { useAsanaGoalFilterPrefs } from '@/hooks/useAsanaGoalFilterPrefs';
+import { useSortGroup, type SortGroupColumn } from './qir/useSortGroup';
+import { SortGroupToolbar } from './qir/SortGroupToolbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
@@ -724,6 +726,25 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
     [ownerGoals]
   );
 
+  // Sort + group controls for Goals.
+  const goalStatusRank: Record<string, number> = { 'Off Track': 0, 'Behind': 0, 'At Risk': 1, 'On Track': 2, 'Achieved': 3 };
+  const goalColumns: SortGroupColumn<AsanaGoalRow>[] = [
+    { id: 'title', label: 'Title', accessor: g => g.title?.toLowerCase() || '', sortable: true },
+    { id: 'owner', label: 'Owner', accessor: g => g.owner || '', sortable: true, groupable: true },
+    { id: 'status', label: 'Status', accessor: g => goalStatusRank[g.status] ?? 99, sortable: true },
+    { id: 'statusGroup', label: 'Status', accessor: g => g.status || '—', groupable: true },
+    { id: 'due', label: 'Due Date', accessor: g => g.due || null, sortable: true },
+    { id: 'period', label: 'Reporting Period', accessor: g => g.timePeriod || '—', groupable: true },
+    { id: 'source', label: 'Source', accessor: g => 'Asana', sortable: true, groupable: true },
+  ];
+  const goalsSG = useSortGroup<AsanaGoalRow>({
+    rows: visibleGoals,
+    columns: goalColumns,
+    defaultSortBy: 'due',
+    defaultSortDir: 'asc',
+    defaultGroupBy: 'statusGroup',
+  });
+
   // Preview counts for both modes — used in the filter editor next to the toggle.
   const matchPreview = useMemo(() => {
     const qSub = activeQuarterLabel.trim().toLowerCase();
@@ -1193,20 +1214,49 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
         {error && renderError()}
         {showSkeleton ? renderSkeleton() : showEmpty ? renderEmpty() : showFilteredEmpty ? renderFilteredEmpty() : (
           <div style={{ overflowX: 'auto' }}>
+            <SortGroupToolbar
+              groupBy={goalsSG.groupBy}
+              setGroupBy={goalsSG.setGroupBy}
+              sortBy={goalsSG.sortBy}
+              sortDir={goalsSG.sortDir}
+              setSortBy={goalsSG.setSortBy}
+              setSortDir={goalsSG.setSortDir}
+              groupOptions={[
+                { id: 'statusGroup', label: 'Status' },
+                { id: 'owner', label: 'Owner' },
+                { id: 'period', label: 'Reporting Period' },
+                { id: 'source', label: 'Source' },
+              ]}
+              sortOptions={[
+                { id: 'title', label: 'Title' },
+                { id: 'owner', label: 'Owner' },
+                { id: 'status', label: 'Status' },
+                { id: 'due', label: 'Due Date' },
+              ]}
+            />
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
               <thead>
                 <tr>
                   <th style={{ ...thStyle, width: 36 }}>#</th>
-                  <th style={thStyle}>Title</th>
-                  <th style={{ ...thStyle, width: 170 }}>Owner</th>
-                  <th style={{ ...thStyle, width: 110 }}>Status</th>
-                  <th style={{ ...thStyle, width: 120 }}>Due Date</th>
+                  <th style={{ ...thStyle, cursor: 'pointer' }} onClick={() => goalsSG.toggleSort('title')}>Title{goalsSG.indicator('title')}</th>
+                  <th style={{ ...thStyle, width: 170, cursor: 'pointer' }} onClick={() => goalsSG.toggleSort('owner')}>Owner{goalsSG.indicator('owner')}</th>
+                  <th style={{ ...thStyle, width: 110, cursor: 'pointer' }} onClick={() => goalsSG.toggleSort('status')}>Status{goalsSG.indicator('status')}</th>
+                  <th style={{ ...thStyle, width: 120, cursor: 'pointer' }} onClick={() => goalsSG.toggleSort('due')}>Due Date{goalsSG.indicator('due')}</th>
                   <th style={{ ...thStyle, width: 70 }}>Source</th>
                 </tr>
               </thead>
               <tbody>
-                {visibleGoals.map((goal: AsanaGoalRow, index: number) => (
-                  <tr key={goal.id}>
+                {goalsSG.groups.map((group, gi) => (
+                  <React.Fragment key={`g-${gi}-${group.key}`}>
+                    {goalsSG.groupBy && (
+                      <tr>
+                        <td colSpan={6} style={{ padding: '10px 10px 4px', fontSize: 9, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: TEXT_LABEL, background: 'rgba(255,255,255,0.02)' }}>
+                          {group.key} <span style={{ color: TEXT_MUTED, fontWeight: 500 }}>· {group.rows.length}</span>
+                        </td>
+                      </tr>
+                    )}
+                    {group.rows.map((goal: AsanaGoalRow, index: number) => (
+                      <tr key={goal.id}>
                     <td style={{ ...tdStyle, color: TEXT_LABEL, fontVariantNumeric: 'tabular-nums' }}>{index + 1}</td>
                     <td style={tdStyle}>
                       {goal.url ? (
@@ -1258,6 +1308,8 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
                       </span>
                     </td>
                   </tr>
+                    ))}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
@@ -1287,6 +1339,23 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
     atRisk: ownedProjects.filter(p => p.status === 'At Risk').length,
     offTrack: ownedProjects.filter(p => p.status === 'Off Track').length,
   }), [ownedProjects]);
+
+  const initStatusRank: Record<string, number> = { 'Off Track': 0, 'At Risk': 1, 'On Hold': 2, 'On Track': 3, 'Complete': 4, 'No Status': 5 };
+  const initColumns: SortGroupColumn<AsanaPortfolioProjectRow>[] = [
+    { id: 'name', label: 'Name', accessor: p => p.name?.toLowerCase() || '', sortable: true },
+    { id: 'owner', label: 'Owner', accessor: p => p.owner || '', sortable: true, groupable: true },
+    { id: 'statusSort', label: 'Status', accessor: p => initStatusRank[p.status] ?? 99, sortable: true },
+    { id: 'status', label: 'Status', accessor: p => p.status || '—', groupable: true },
+    { id: 'due', label: 'Due Date', accessor: p => p.dueOn || null, sortable: true },
+    { id: 'source', label: 'Source', accessor: () => 'Asana', groupable: true },
+  ];
+  const initSG = useSortGroup<AsanaPortfolioProjectRow>({
+    rows: ownedProjects,
+    columns: initColumns,
+    defaultSortBy: 'name',
+    defaultSortDir: 'asc',
+    defaultGroupBy: 'status',
+  });
 
   const thStyle: React.CSSProperties = { textAlign: 'left', fontSize: 9, fontWeight: 700, color: 'rgba(140,175,200,0.5)', letterSpacing: '.08em', textTransform: 'uppercase', padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)' };
   const tdStyle: React.CSSProperties = { padding: '6px 8px', fontSize: 12, color: TEXT_PRIMARY, verticalAlign: 'middle', borderBottom: '1px solid rgba(255,255,255,0.04)' };
@@ -1329,20 +1398,48 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
+            <SortGroupToolbar
+              groupBy={initSG.groupBy}
+              setGroupBy={initSG.setGroupBy}
+              sortBy={initSG.sortBy}
+              sortDir={initSG.sortDir}
+              setSortBy={initSG.setSortBy}
+              setSortDir={initSG.setSortDir}
+              groupOptions={[
+                { id: 'status', label: 'Status' },
+                { id: 'owner', label: 'Owner' },
+                { id: 'source', label: 'Source' },
+              ]}
+              sortOptions={[
+                { id: 'name', label: 'Name' },
+                { id: 'owner', label: 'Owner' },
+                { id: 'statusSort', label: 'Status' },
+                { id: 'due', label: 'Due Date' },
+              ]}
+            />
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
               <thead>
                 <tr>
                   <th style={{ ...thStyle, width: 36 }}>#</th>
-                  <th style={thStyle}>Title</th>
-                  <th style={{ ...thStyle, width: 130 }}>Status</th>
-                  <th style={{ ...thStyle, width: 170 }}>Owner</th>
-                  <th style={{ ...thStyle, width: 120 }}>Due Date</th>
+                  <th style={{ ...thStyle, cursor: 'pointer' }} onClick={() => initSG.toggleSort('name')}>Title{initSG.indicator('name')}</th>
+                  <th style={{ ...thStyle, width: 130, cursor: 'pointer' }} onClick={() => initSG.toggleSort('statusSort')}>Status{initSG.indicator('statusSort')}</th>
+                  <th style={{ ...thStyle, width: 170, cursor: 'pointer' }} onClick={() => initSG.toggleSort('owner')}>Owner{initSG.indicator('owner')}</th>
+                  <th style={{ ...thStyle, width: 120, cursor: 'pointer' }} onClick={() => initSG.toggleSort('due')}>Due Date{initSG.indicator('due')}</th>
                   <th style={{ ...thStyle, width: 70 }}>Source</th>
                 </tr>
               </thead>
               <tbody>
-                {ownedProjects.map((p, idx) => (
-                  <tr key={p.gid}>
+                {initSG.groups.map((group, gi) => (
+                  <React.Fragment key={`ig-${gi}-${group.key}`}>
+                    {initSG.groupBy && (
+                      <tr>
+                        <td colSpan={6} style={{ padding: '10px 10px 4px', fontSize: 9, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: TEXT_LABEL, background: 'rgba(255,255,255,0.02)' }}>
+                          {group.key} <span style={{ color: TEXT_MUTED, fontWeight: 500 }}>· {group.rows.length}</span>
+                        </td>
+                      </tr>
+                    )}
+                    {group.rows.map((p, idx) => (
+                      <tr key={p.gid}>
                     <td style={{ ...tdStyle, color: TEXT_LABEL, fontVariantNumeric: 'tabular-nums' }}>{idx + 1}</td>
                     <td style={tdStyle}>
                       {p.permalink_url ? (
@@ -1370,6 +1467,8 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
                       </span>
                     </td>
                   </tr>
+                    ))}
+                  </React.Fragment>
                 ))}
                 {ownedProjects.length === 0 && !loading && (
                   <tr>
