@@ -4733,11 +4733,71 @@ serve(async (req) => {
     const activeTab = context?.activeTab || null;
     const banners = context?.banners || [];
 
+    // ── Permission scope resolution (server-side authorization) ──
+    // Resolve the current user's feature scopes BEFORE any retrieval, context
+    // assembly, or model call. These scopes gate which tools we expose to the
+    // model and which tool calls we will actually execute.
+    const userEmailLower = (profile?.email || user.email || "").toLowerCase();
+    let canViewInsights = false;
+    try {
+      // 5thline.co users always have access (matches in-app guard semantics).
+      if (userEmailLower.endsWith("@5thline.co")) {
+        canViewInsights = true;
+      } else if (userEmailLower) {
+        const { data: allowRows } = await supabaseAdmin
+          .from("page_access_allowlist")
+          .select("email")
+          .eq("page_key", "insights");
+        canViewInsights = (allowRows || []).some(
+          (r: any) => (r.email || "").toLowerCase() === userEmailLower,
+        );
+      }
+    } catch (e) {
+      console.warn("[copilot-chat] insights scope resolve failed", e);
+      canViewInsights = false;
+    }
+    const scopes = {
+      can_view_deals: true,
+      can_view_contacts: true,
+      can_view_tasks: true,
+      can_view_activities: true,
+      can_view_insights: canViewInsights,
+    };
+
     // Pre-fetch a compact, prompt-ready snapshot of the current page/entity so
     // the model can answer immediately instead of always going through tools.
-    const prefetched = await prefetchPageContext(supabaseUser, { page, entityType, entityId });
+    // If the user lacks Insights access, do NOT pre-fetch context for the
+    // Insights page — that block must never reach the model.
+    const prefetched = (!scopes.can_view_insights && page.toLowerCase().includes("insight"))
+      ? { block: "", label: null }
+      : await prefetchPageContext(supabaseUser, { page, entityType, entityId });
 
-    const systemPrompt = `${copilotPrefix ? copilotPrefix + "\n\n" : ""}You are the naitive AI Copilot — an intelligent digital worker embedded in a deal management platform for private credit and debt capital markets professionals. You autonomously run workflows for both single deals and multi-deal / portfolio reporting, not just a chat assistant.
+    const askNaitivePermissionBlock = `\n\nASK NAITIVE — PERMISSION BOUNDARIES (STRICT, AUTHORITATIVE):
+You are Ask naitive, the AI assistant inside the naitive platform.
+You must only answer using the permission-filtered context provided for the current authenticated user and workspace.
+
+Current user feature scopes (authoritative — do not question, do not infer beyond):
+- can_view_deals: ${scopes.can_view_deals}
+- can_view_contacts: ${scopes.can_view_contacts}
+- can_view_tasks: ${scopes.can_view_tasks}
+- can_view_activities: ${scopes.can_view_activities}
+- can_view_insights: ${scopes.can_view_insights}
+
+Hard rules:
+- Treat the provided feature scopes as strict authorization boundaries.
+- If the user's question requires data outside the allowed scopes, do not answer with details.
+- If can_view_insights is false or missing, you must NOT provide any information derived from Insights, including analytics, KPIs, trends, performance summaries, charts, rollups, dashboards, pipeline aggregates, revenue/EBITDA breakdowns, AR/AP aging, partner/referral attribution, FinServ pipeline rollups, or any Insights-only activity. This applies to direct asks ("show me insights", "KPIs", "trends") AND indirect asks ("how are we trending this month?", "summarize performance", "what's the pipeline value?") whose answer would require Insights-only data.
+- Do not infer, estimate, or guess restricted information from partial context.
+- Do not use outside knowledge or unstated assumptions about workspace data.
+- If the provided context is insufficient, say so.
+- If access is not allowed, state that the user does not have permission to access that information.
+
+Behavior when blocked:
+- Reply with a normal assistant message such as: "You do not have permission to access Insights data in this workspace." in the FIRST sentence.
+- Do not throw an app error. Do not leak partial analytics. Do not reveal hidden data, internal permissions, or restricted summaries.
+- You may still help with anything inside the user's allowed scopes (deals, contacts, tasks, activities, communications, etc.).\n`;
+
+    const systemPrompt = `${copilotPrefix ? copilotPrefix + "\n\n" : ""}You are the naitive AI Copilot — an intelligent digital worker embedded in a deal management platform for private credit and debt capital markets professionals. You autonomously run workflows for both single deals and multi-deal / portfolio reporting, not just a chat assistant.${askNaitivePermissionBlock}
 
 CURRENT CONTEXT:
 - Page: ${page}
@@ -5204,7 +5264,7 @@ ${orgPreferencesSection}`;
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
-    const selectedTools = selectTools(page, entityType);
+    const selectedTools = selectToolsWithScopes(page, entityType, scopes);
 
     // ── Streaming tool loop ──
     // Opens a response stream immediately so the client sees tokens as they arrive,
@@ -5255,7 +5315,18 @@ ${orgPreferencesSection}`;
                   ? JSON.parse(tc.function.arguments)
                   : tc.function.arguments;
               } catch { /* empty args */ }
-              const result = await executeTool(supabaseUser, tc.function.name, args, userId);
+              // Server-side authorization: refuse restricted tools even if the
+              // model attempts to call them despite being filtered out.
+              let result: any;
+              if (!scopes.can_view_insights && INSIGHTS_RESTRICTED_TOOLS.has(tc.function.name)) {
+                result = {
+                  error: "permission_denied",
+                  message:
+                    "You do not have permission to access Insights data in this workspace.",
+                };
+              } else {
+                result = await executeTool(supabaseUser, tc.function.name, args, userId);
+              }
               apiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) });
             }
             continue; // Next turn
