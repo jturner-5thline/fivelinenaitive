@@ -858,24 +858,39 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             const dealChip = dealName || workflowAnalysis?.likely_deal?.name;
             const contactChip = workflowAnalysis?.likely_contact?.name
               || thread.latestEmail.from_name;
-            const lenderChip = workflowAnalysis?.likely_lender_firm?.name;
+            const rawLenderChip = workflowAnalysis?.likely_lender_firm?.name;
+            // Suppress 5th Line as a lender — it's our own firm, not a lender.
+            const normalizedLender = (rawLenderChip || '')
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, ' ')
+              .trim();
+            const isInternalFirm =
+              normalizedLender === '5th line' ||
+              normalizedLender === '5th line capital' ||
+              normalizedLender === 'fifth line' ||
+              normalizedLender === 'fifth line capital' ||
+              normalizedLender.startsWith('5th line ') ||
+              normalizedLender.startsWith('fifth line ');
+            const lenderChip = isInternalFirm ? null : rawLenderChip;
             if (!dealChip && !contactChip && !lenderChip) return null;
             return (
-              <div className="flex flex-wrap items-center gap-1.5 -mt-1">
+              <div
+                className="flex flex-nowrap items-center gap-1.5 -mt-1 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
                 {dealChip && (
-                  <span className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] text-primary max-w-[180px]">
                     <Briefcase className="h-2.5 w-2.5 shrink-0" />
                     <span className="truncate">Deal: {dealChip}</span>
                   </span>
                 )}
                 {contactChip && (
-                  <span className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[11px] text-sky-300">
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[11px] text-sky-300 max-w-[180px]">
                     <UserIcon className="h-2.5 w-2.5 shrink-0" />
                     <span className="truncate">Contact: {contactChip}</span>
                   </span>
                 )}
                 {lenderChip && (
-                  <span className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-300">
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-300 max-w-[180px]">
                     <Building2 className="h-2.5 w-2.5 shrink-0" />
                     <span className="truncate">Lender: {lenderChip}</span>
                   </span>
