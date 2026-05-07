@@ -2451,7 +2451,7 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
     ? `Monthly Insights Report — ${s.month}`
     : `Quarterly Insights Report — ${s.quarter}`;
   return (
-    <div ref={rootRef} style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, color: TEXT_PRIMARY }}>
+    <div ref={rootRef} className="qir-report-canvas" style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24, color: TEXT_PRIMARY }}>
       {unsavedChangesWarning && (
         <div style={{
           marginBottom: -4,
