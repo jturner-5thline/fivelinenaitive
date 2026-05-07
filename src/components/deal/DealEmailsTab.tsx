@@ -1681,10 +1681,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             toolbar into this element when a thread is open so the entire
             mail UI shares one unified horizontal header row instead of
             stacking a second action bar above the message body. */}
-        <div id="email-detail-toolbar-slot" className="flex items-center gap-0.5 min-w-0 overflow-hidden shrink" />
-
-        <div className="flex-1" />
-
+        <div id="email-detail-toolbar-slot" className="flex items-center gap-0.5 min-w-0 shrink overflow-hidden" />
         {/* Keyboard shortcuts help */}
         <Popover open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
           <PopoverTrigger asChild>
