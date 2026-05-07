@@ -49,6 +49,16 @@ function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady }:
       period: selection.period,
       quarter: selection.quarter,
       month: selection.month,
+      // Each (tab × period) is its own independent report. Do NOT pre-fill
+      // seed defaults for goals/initiatives/risks/kpis — those come from
+      // the saved blob for this exact composite key, or remain empty
+      // until the user fills them in for THIS specific period. Without
+      // this, adjacent months (e.g. Mar 2026 vs Apr 2026) show identical
+      // seed values and look like duplicate reports.
+      goals: [],
+      initiatives: [],
+      risks: [],
+      kpis: [],
     } as any),
     [defaultAuthor, selection.period, selection.quarter, selection.month],
   );
