@@ -2634,7 +2634,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
           {/* Inline reply — Outlook style with blue separator */}
           {replyTo && (
-            <div className="border-t-2 border-[hsl(var(--outlook-blue))]">
+            <div className="border-t-2 border-[hsl(var(--outlook-blue))] shrink-0 flex flex-col h-[min(92vh,980px)] md:h-[min(88vh,980px)]">
               <InlineReplyComposer
                 replyTo={replyTo}
                 onSend={handleSendFromComposer}
