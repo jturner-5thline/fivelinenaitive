@@ -427,17 +427,61 @@ export default function Lenders() {
     setIsDetailOpen(true);
   };
 
-  // Filter lenders based on active deals filter and advanced filters
-  // Note: text search is now handled server-side via the hook's searchQuery option
+  // Filter lenders: advanced filters → AI filter → active-deals → text search.
+  // Text search runs client-side across many fields (real-time substring match).
   const filteredLenders = useMemo(() => {
-    // First apply advanced filters (client-side for complex logic)
-    const advancedFiltered = applyLenderFilters(masterLenders, advancedFilters);
-    
-    // Then apply active deals filter only (search is server-side now)
-    if (!showActiveDealsOnly) return advancedFiltered;
-    
-    return advancedFiltered.filter(lender => activeDealCounts[lender.name]);
-  }, [masterLenders, advancedFilters, showActiveDealsOnly, activeDealCounts]);
+    let list = applyLenderFilters(masterLenders, advancedFilters);
+
+    if (aiFilter && aiFilter.names.size) {
+      list = list.filter((l) => aiFilter.names.has(l.name.toLowerCase().trim()));
+    }
+
+    if (showActiveDealsOnly) {
+      list = list.filter((lender) => activeDealCounts[lender.name]);
+    }
+
+    const q = debouncedSearchQuery.trim().toLowerCase();
+    if (!q) return list;
+
+    const matches = (val: unknown): boolean => {
+      if (val == null) return false;
+      if (Array.isArray(val)) return val.some((v) => matches(v));
+      if (typeof val === 'number') return String(val).includes(q);
+      if (typeof val === 'string') return val.toLowerCase().includes(q);
+      return false;
+    };
+
+    return list.filter((l) => {
+      const dealHistory = lenderDealIndex[l.name.toLowerCase().trim()] || '';
+      const dealSize = `${l.min_deal ?? ''} ${l.max_deal ?? ''} ${formatCurrency(l.min_deal)} ${formatCurrency(l.max_deal)}`;
+      return (
+        matches(l.name) ||
+        matches(l.contact_name) ||
+        matches(l.email) ||
+        matches(l.contact_title) ||
+        matches(l.contact_phone) ||
+        matches(l.geo) ||
+        matches(l.lender_type) ||
+        matches(l.tier) ||
+        matches(l.industries) ||
+        matches(l.industries_to_avoid) ||
+        matches(l.loan_types) ||
+        matches(l.deal_structure_notes) ||
+        matches(l.company_requirements) ||
+        matches(l.upfront_checklist) ||
+        matches(l.post_term_sheet_checklist) ||
+        matches(l.sub_debt) ||
+        matches(l.cash_burn) ||
+        matches(l.sponsorship) ||
+        matches(l.b2b_b2c) ||
+        matches(l.refinancing) ||
+        matches(l.relationship_owners) ||
+        matches(l.referral_lender) ||
+        matches(dealSize) ||
+        matches(dealHistory)
+      );
+    });
+  }, [masterLenders, advancedFilters, showActiveDealsOnly, activeDealCounts, debouncedSearchQuery, lenderDealIndex, aiFilter]);
 
   // Sort filtered lenders - memoized to prevent re-sorting on every render
   const sortedLenders = useMemo(() => {
