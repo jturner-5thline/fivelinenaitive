@@ -256,7 +256,7 @@ function Toolbar({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-0.5 px-1.5 py-1 border-b bg-muted/30">
+    <div className="flex flex-wrap items-center gap-0.5 px-1.5 py-1 border-b border-white/10 bg-white/[0.04]">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
