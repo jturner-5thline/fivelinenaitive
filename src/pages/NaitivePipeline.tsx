@@ -365,7 +365,7 @@ export default function NaitivePipeline() {
                     <div className="space-y-6">
                       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
                         <div className="xl:col-span-5 min-w-0 order-1">
-                          <NaitivePipelineNarrative />
+                          <NaitivePipelineNarrative deals={deals} />
                         </div>
                         <div className="xl:col-span-7 min-w-0 order-2">
                           <NaitiveWeeklyExecutionPulse deals={deals} history={stageHistory} />
