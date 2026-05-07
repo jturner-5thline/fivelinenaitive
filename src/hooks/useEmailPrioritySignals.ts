@@ -130,12 +130,12 @@ async function dispatchNotifications(
     try {
       const { data: link } = await supabase
         .from('deal_emails')
-        .select('deal_id, deals(id, name)')
+        .select('deal_id, deals(id, company)')
         .eq('gmail_message_id', email.id)
         .maybeSingle();
       if (link?.deal_id) {
         dealId = link.deal_id as string;
-        dealName = (link as any).deals?.name || dealName;
+        dealName = (link as any).deals?.company || dealName;
       }
     } catch {
       /* ignore — notification can still fire without a deal link */
