@@ -771,7 +771,8 @@ export function EmailUnifiedAiAction({
               if (!text && !suggestion) setFocused(false);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Ask AI about this email..."
+            placeholder="Ask naitive ai..."
+            aria-label="Ask naitive ai"
             disabled={routing || creating}
             className={cn(
               'pr-9 h-9 text-[12.5px] rounded-lg border-0 bg-transparent',
