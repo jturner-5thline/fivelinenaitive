@@ -62,6 +62,13 @@ export interface WorkflowAnalysis {
   suggested_tasks?: Array<{
     title: string;
     why: string;
+    /**
+     * Optional richer task body. Populated for call-commitment tasks with
+     * the call context plus contact details (Cell / Office / Email)
+     * extracted from the counterparty's signature. Falls back to `why`
+     * when empty.
+     */
+    description?: string;
     task_type: 'follow_up' | 'call' | 'email' | 'review' | 'send_doc' | 'meeting' | 'general';
     /** Either an ISO date 'YYYY-MM-DD' or the literal 'next_business_day'. */
     due_date_hint: string;
