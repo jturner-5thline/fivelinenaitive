@@ -937,8 +937,8 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
             search={search}
             placeholder="recipient@example.com"
             className="flex-1 min-w-0"
-            labelClassName="w-7"
-            inputClassName="h-7 text-xs"
+            labelClassName="w-8 text-[11px] text-foreground/50"
+            inputClassName="h-8 text-[13px] bg-transparent text-foreground placeholder:text-foreground/30"
             onBlur={onFieldBlur}
           />
           {!showCcBcc && (
@@ -960,8 +960,8 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
               onChange={(cc) => onRecipientsChange({ ...recipients, cc })}
               search={search}
               placeholder="cc@example.com"
-              labelClassName="w-7"
-              inputClassName="h-7 text-xs"
+              labelClassName="w-8 text-[11px] text-foreground/50"
+              inputClassName="h-8 text-[13px] bg-transparent text-foreground placeholder:text-foreground/30"
               onBlur={onFieldBlur}
             />
             <RecipientField
@@ -970,8 +970,8 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
               onChange={(bcc) => onRecipientsChange({ ...recipients, bcc })}
               search={search}
               placeholder="bcc@example.com"
-              labelClassName="w-7"
-              inputClassName="h-7 text-xs"
+              labelClassName="w-8 text-[11px] text-foreground/50"
+              inputClassName="h-8 text-[13px] bg-transparent text-foreground placeholder:text-foreground/30"
               onBlur={onFieldBlur}
             />
           </>
@@ -986,14 +986,14 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
         <div className="flex items-center gap-2 pt-0.5">
           {subjectExpanded ? (
             <>
-              <span className="text-[10px] text-muted-foreground w-7 shrink-0">Subj</span>
+              <span className="text-[11px] text-foreground/50 w-8 shrink-0">Subj</span>
               <Input
                 ref={subjectInputRef}
                 value={subject}
                 onChange={(e) => onSubjectChange(e.target.value)}
                 onBlur={onFieldBlur}
                 placeholder="Subject"
-                className="h-7 text-xs border-0 border-b border-border/60 rounded-none focus-visible:ring-0 px-0 bg-transparent font-medium"
+                className="h-8 text-[13px] border-0 border-b border-white/10 rounded-none focus-visible:ring-0 px-0 bg-transparent font-medium text-foreground placeholder:text-foreground/30"
               />
             </>
           ) : (
@@ -1003,8 +1003,8 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
               className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors group"
               aria-label="Edit subject"
             >
-              <span className="w-7 shrink-0 text-left">Subj</span>
-              <span className="truncate text-foreground/80 max-w-[60ch]">{subject || '(no subject)'}</span>
+              <span className="w-8 shrink-0 text-left text-foreground/50">Subj</span>
+              <span className="truncate text-foreground/85 max-w-[60ch] text-[13px]">{subject || '(no subject)'}</span>
               <Edit3 className="h-2.5 w-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
             </button>
           )}
