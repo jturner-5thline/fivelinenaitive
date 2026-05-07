@@ -1,4 +1,4 @@
-import { useState, ReactNode } from 'react';
+import { useState, ReactNode, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,15 +50,26 @@ function limitBullets(text: string, max = MAX_BULLETS): string {
 }
 
 interface Props {
-  trigger: ReactNode;
+  trigger?: ReactNode;
   pipelineId: string;
   stages: DealStageOption[];
   defaultStage?: string;
   onCreated?: () => void;
+  /** When provided, the dialog operates in edit mode for this deal. */
+  deal?: any;
+  /** Controlled open state (used in edit mode). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultStage, onCreated }: Props) {
-  const [open, setOpen] = useState(false);
+export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultStage, onCreated, deal, open: openProp, onOpenChange }: Props) {
+  const [openInternal, setOpenInternal] = useState(false);
+  const open = openProp ?? openInternal;
+  const setOpen = (o: boolean) => {
+    if (onOpenChange) onOpenChange(o);
+    else setOpenInternal(o);
+  };
+  const isEdit = !!deal?.id;
   const [submitting, setSubmitting] = useState(false);
 
   // Section 1
@@ -99,6 +110,30 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
     setAdvanceCategory(''); setAdvanceNotes('');
     setPainPoints(''); setObjections(''); setCompetitors(''); setKeySignal(''); setProductGap('');
   };
+
+  // Hydrate fields from existing deal when in edit mode and dialog opens.
+  useEffect(() => {
+    if (!open || !isEdit || !deal) return;
+    setCompanyName(deal.company || '');
+    setContactName(deal.contact || '');
+    setContactTitle(deal.contactTitle || '');
+    setIcpCategory(deal.icpCategory || '');
+    setProspectType(deal.prospectType || '');
+    setOwnedBy(deal.ownedBy || deal.manager || '');
+    setSource(deal.sourcedVia || '');
+    setStage(deal.stage || defaultStage || stages[0]?.id || '');
+    setNextStep(deal.nextStep || '');
+    setNextStepDate(deal.nextStepDate ? new Date(deal.nextStepDate) : undefined);
+    setDmPresent(deal.dmPresent || '');
+    setDmName(deal.dmName || '');
+    setOutcome(deal.outcome || '');
+    setWhyNot(Array.isArray(deal.whyNotMovingForward) ? deal.whyNotMovingForward : []);
+    setPainPoints(deal.painPointsConfirmed || '');
+    setObjections(deal.objectionsRaised || '');
+    setCompetitors(deal.competitorsMentioned || '');
+    setKeySignal(deal.keySignal || '');
+    setProductGap(deal.productGapFlagged || '');
+  }, [open, isEdit, deal?.id]);
 
   const toggleWhyNot = (opt: string) => {
     setWhyNot(prev => {
@@ -157,35 +192,40 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
         status: 'on-track',
       };
 
-      const { error } = await supabase.from('deals').insert(payload);
-      if (error) throw error;
+      let dealId: string | undefined;
+      if (isEdit) {
+        // Don't overwrite immutable / pipeline routing fields on edit.
+        delete payload.pipeline_id;
+        delete payload.company_id;
+        delete payload.deal_class;
+        delete payload.user_id;
+        delete payload.value;
+        delete payload.status;
+        const { error } = await supabase.from('deals').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', deal.id);
+        if (error) throw error;
+        dealId = deal.id;
+      } else {
+        const { data: inserted, error } = await supabase.from('deals').insert(payload).select('id').single();
+        if (error) throw error;
+        dealId = inserted?.id;
+      }
       // If user logged a "Why Moving Forward" reason, persist it now that the
       // deal exists. We need the new deal id, so re-query by company + user.
-      if (ADVANCING_OUTCOMES.has(outcome) && advanceCategory) {
-        const { data: newDeal } = await supabase
-          .from('deals')
-          .select('id')
-          .eq('company', companyName.trim())
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (newDeal?.id) {
-          await supabase.from('deal_advance_reasons' as any).insert({
-            deal_id: newDeal.id,
-            reason_category: advanceCategory,
-            reason_notes: advanceNotes.trim() || null,
-            created_by: user.id,
-          });
-        }
+      if (ADVANCING_OUTCOMES.has(outcome) && advanceCategory && dealId) {
+        await supabase.from('deal_advance_reasons' as any).insert({
+          deal_id: dealId,
+          reason_category: advanceCategory,
+          reason_notes: advanceNotes.trim() || null,
+          created_by: user.id,
+        });
       }
-      toast.success('Deal created');
-      reset();
+      toast.success(isEdit ? 'Deal updated' : 'Deal created');
+      if (!isEdit) reset();
       setOpen(false);
       onCreated?.();
     } catch (e: any) {
       console.error(e);
-      toast.error(e?.message || 'Failed to create deal');
+      toast.error(e?.message || (isEdit ? 'Failed to update deal' : 'Failed to create deal'));
     } finally {
       setSubmitting(false);
     }
@@ -195,11 +235,11 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
   const showWhyForward = ADVANCING_OUTCOMES.has(outcome);
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o && !isEdit) reset(); }}>
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create New Deal</DialogTitle>
+          <DialogTitle>{isEdit ? 'Edit Deal' : 'Create New Deal'}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6 py-2">
@@ -371,7 +411,7 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
           <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={submitting}>
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create
+            {isEdit ? 'Save Changes' : 'Create'}
           </Button>
         </DialogFooter>
       </DialogContent>
