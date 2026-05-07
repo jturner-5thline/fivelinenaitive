@@ -937,16 +937,9 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             if (!showSection) return null;
             return (
               <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    Suggested Updates
-                  </span>
-                  {updateCount > 0 && (
-                    <span className="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-primary/15 px-1.5 text-[10px] font-semibold text-primary">
-                      {updateCount}
-                    </span>
-                  )}
-                </div>
+                {/* Section header removed — the count badge now lives inside
+                    the WorkflowIntelligenceCard header to avoid a duplicate
+                    "Suggested Update" label outside the card border. */}
 
                 {/* Workflow Intelligence (Claude) — primary, confirm-first
                     workflow assistant. Renders above pass detection so the
@@ -962,6 +955,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                     isLenderOnDeal={workflowLenderOnDeal}
                     threadId={thread.threadId}
                     hideSuggestedTasks
+                    headerCount={updateCount}
                     onConfirm={(o) => confirmWorkflow(o)}
                     onDismiss={dismissWorkflow}
                     onMaybeLater={dismissWorkflow}
