@@ -961,10 +961,32 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [asanaGoals, preparedByKey, activeYear]
   );
-  const visibleGoals = useMemo(
-    () => ownerGoals,
-    [ownerGoals]
-  );
+  // When the report is scoped to a specific month (e.g. "March 2026"),
+  // further narrow Asana Goals to those whose time_period mentions the
+  // month name OR whose due date falls within that calendar month.
+  // Without this, adjacent months in the same quarter (Mar / Apr) would
+  // surface the identical quarter-level set of goals and look like
+  // duplicate reports.
+  const MONTH_NAMES_FULL = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+  const visibleGoals = useMemo(() => {
+    if (s.period !== 'monthly') return ownerGoals;
+    const [monthName, monthYear] = (s.month || '').split(' ');
+    const monthIdx = MONTH_NAMES_FULL.indexOf((monthName || '').toLowerCase());
+    if (monthIdx < 0 || !monthYear) return ownerGoals;
+    const yearNum = parseInt(monthYear, 10);
+    const monthLower = (monthName || '').toLowerCase();
+    const monthShort = monthLower.slice(0, 3);
+    return ownerGoals.filter(g => {
+      const tp = (g.timePeriod || '').toLowerCase();
+      if (tp.includes(monthLower) || tp.includes(monthShort)) return true;
+      if (g.due) {
+        const d = new Date(g.due);
+        if (!isNaN(d.getTime()) && d.getFullYear() === yearNum && d.getMonth() === monthIdx) return true;
+      }
+      return false;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownerGoals, s.period, s.month]);
 
   // Sort + group controls for Goals.
   const goalStatusRank: Record<string, number> = { 'Off Track': 0, 'Behind': 0, 'At Risk': 1, 'On Track': 2, 'Achieved': 3 };
