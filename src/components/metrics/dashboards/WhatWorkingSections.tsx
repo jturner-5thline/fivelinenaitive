@@ -107,7 +107,7 @@ function CommentaryBlock({
  * section. Each consumer (tab) passes a unique `reportKey` so the two tabs
  * never share content.
  */
-export function WhatWorkingSections({ reportKey }: { reportKey: string }) {
+function WhatWorkingSections({ reportKey }: { reportKey: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28, marginTop: 24 }}>
       <section>
@@ -129,3 +129,6 @@ export function WhatWorkingSections({ reportKey }: { reportKey: string }) {
     </div>
   );
 }
+
+export { WhatWorkingSections };
+export default WhatWorkingSections;

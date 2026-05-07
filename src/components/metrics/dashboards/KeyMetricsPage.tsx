@@ -1,6 +1,6 @@
 import React from 'react';
 import { SortableWidgetGrid, SortableItem } from './SortableWidgetGrid';
-import { WhatWorkingSections } from './WhatWorkingSections';
+import WhatWorkingSections from './WhatWorkingSections';
 
 // ── Card ──
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
