@@ -133,7 +133,7 @@ export function EmailRichTextEditor({
   if (!editor) return null;
 
   return (
-    <div className={cn('border rounded-md overflow-hidden bg-background flex flex-col', className)}>
+    <div className={cn('compose-body border rounded-md overflow-hidden bg-background flex flex-col w-full min-w-0', className)}>
       <Toolbar
         editor={editor}
         dataRoomUrl={dataRoomUrl}
@@ -141,9 +141,28 @@ export function EmailRichTextEditor({
         uploadBucket={uploadBucket}
         trailing={toolbarTrailing}
       />
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
         <EditorContent editor={editor} />
       </div>
+      {/* Scoped reset for pasted/AI-injected signature HTML so heading and
+          oversized inline elements render at body-text size and stay within
+          the composer width. Targets only this composer's body. */}
+      <style>{`
+        .compose-body .ProseMirror { word-break: break-word; overflow-wrap: anywhere; max-width: 100%; }
+        .compose-body .ProseMirror * { max-width: 100%; }
+        .compose-body .ProseMirror img { height: auto; }
+        .compose-body .ProseMirror h1,
+        .compose-body .ProseMirror h2,
+        .compose-body .ProseMirror h3,
+        .compose-body .ProseMirror h4,
+        .compose-body .ProseMirror h5,
+        .compose-body .ProseMirror h6 {
+          font-size: 0.875rem !important;
+          font-weight: 600 !important;
+          line-height: 1.4 !important;
+          margin: 0 !important;
+        }
+      `}</style>
     </div>
   );
 }
