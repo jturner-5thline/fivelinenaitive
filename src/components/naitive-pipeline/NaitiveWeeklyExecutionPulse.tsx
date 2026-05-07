@@ -37,8 +37,8 @@ const TOOLTIP_STYLE = {
 
 const AXIS_TICK = { fontSize: 11, fill: 'hsl(var(--muted-foreground))' };
 
-const SEQUENCE_SOURCES = ['Sequence reply'];
-const WARM_SOURCES = ['Warm outreach', 'Referral', 'Inbound'];
+const SEQUENCE_SOURCES = ['Email Outreach', 'LinkedIn Outreach'];
+const WARM_SOURCES = ['Referral', 'Inbound'];
 const DM_TARGET_PCT = 60;
 
 /* Canonical naitive pipeline stage order. A "forward" move is any transition
@@ -163,7 +163,7 @@ function weeklyBuckets(deals: Deal[], history: NaitiveStageHistoryRow[]) {
   }));
   const sources = weeks.map((w) => ({
     week: w.label,
-    sequence: 0, warm: 0, referral: 0, inbound: 0,
+    linkedin: 0, email: 0, referral: 0, inbound: 0,
   }));
   const dm = weeks.map((w) => ({ week: w.label, rate: 0, _yes: 0, _total: 0 }));
 
@@ -185,8 +185,8 @@ function weeklyBuckets(deals: Deal[], history: NaitiveStageHistoryRow[]) {
     const wi = weeks.findIndex((w) => c >= w.weekStart && c <= w.weekEnd);
     if (wi !== -1) {
       const src = (d.sourcedVia || '').trim();
-      if (src === 'Sequence reply') sources[wi].sequence++;
-      else if (src === 'Warm outreach') sources[wi].warm++;
+      if (src === 'LinkedIn Outreach') sources[wi].linkedin++;
+      else if (src === 'Email Outreach') sources[wi].email++;
       else if (src === 'Referral') sources[wi].referral++;
       else if (src === 'Inbound') sources[wi].inbound++;
     }
@@ -438,8 +438,8 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
                 <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} />
                 <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" />
-                <Bar dataKey="sequence" name="Sequence reply" stackId="src" fill="#3b82f6" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="warm" name="Warm outreach" stackId="src" fill="#22c55e" />
+                <Bar dataKey="linkedin" name="LinkedIn Outreach" stackId="src" fill="#3b82f6" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="email" name="Email Outreach" stackId="src" fill="#22c55e" />
                 <Bar dataKey="referral" name="Referral" stackId="src" fill="#a855f7" />
                 <Bar dataKey="inbound" name="Inbound" stackId="src" fill="#f97316" radius={[4, 4, 0, 0]} />
               </BarChart>
