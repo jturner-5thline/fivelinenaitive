@@ -247,6 +247,9 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
           <span className="text-xs capitalize" style={{ color: '#8b92a5' }}>{task.task_type}</span>
         </div>
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleManualAsanaSync} disabled={asanaSyncing} title={(task as any).asana_task_gid ? 'Sync to Asana' : 'Create in Asana'}>
+            <RefreshCw className={cn('h-3.5 w-3.5', asanaSyncing && 'animate-spin')} style={{ color: '#8b92a5' }} />
+          </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/tasks/${task.id}`)} title="Open full page">
             <ExternalLink className="h-3.5 w-3.5" style={{ color: '#8b92a5' }} />
           </Button>
