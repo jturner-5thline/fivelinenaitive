@@ -1227,179 +1227,17 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             />
           )}
 
-          {/* Unified Draft reply module — single card containing the section
-              header, variant selector, one shared draft preview, and (in the
-              footer below) the action row. Replaces the legacy "Draft AI
-              Reply" pill row + "Draft Options" card duo with a single
-              drafting workspace. */}
-          {!error && !popOutOpen && (
-            // Draft Reply is opened exclusively from the Quick Actions pill
-            // above. The previous duplicate "DRAFT REPLY" collapsible header
-            // has been removed to eliminate the redundant entry point.
-            draftOpen && (
-            <div className="space-y-2">
-              {/* Attribution label — small italic muted line above the draft
-                  body. Only renders when Deal Space data was actually
-                  fetched + used by the AI; otherwise omitted. */}
-              {(result?.used_deal_context
-                || (result?.cited_context_sources || []).some((s) =>
-                  s === 'deal_state_snapshot' || s === 'deal_space_financials' || s === 'deal_metadata')
-              ) && dealContextSummary?.dealName && (
-                <p
-                  className="px-2 italic text-muted-foreground/80"
-                  style={{ fontSize: 11 }}
-                >
-                  Generated using {dealContextSummary.dealName} deal data
-                </p>
-              )}
-              <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-3 space-y-2.5 overflow-hidden max-w-full min-w-0 w-full">
-              {/* Header — title + optional helper. No counter, no chevrons:
-                  the variant pill row below is the single switching surface. */}
-
-              {/* Variant selector — compact segmented pill row. Active state
-                  is visually clear but not heavy. Only one option active at
-                  a time; switching swaps the preview content in place. */}
-              <div
-                role="tablist"
-                aria-label="Draft variants"
-                className="inline-flex items-center gap-0.5 rounded-md border border-white/[0.06] bg-card/40 p-0.5 max-w-full"
-              >
-                {TONE_ORDER.map((tone) => {
-                  const isActive = selected === tone;
-                  const isRecommended = tone === 'balanced';
-                  return (
-                    <button
-                      key={tone}
-                      role="tab"
-                      aria-selected={isActive}
-                      type="button"
-                      onClick={() => handleSelectTone(tone)}
-                      className={cn(
-                        'h-6 px-2.5 rounded text-[11px] font-medium transition-colors inline-flex items-center gap-1',
-                        isActive
-                          ? 'bg-primary/15 text-primary'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04]',
-                      )}
-                    >
-                      {TONE_LABELS[tone]}
-                      {isRecommended && (
-                        <span
-                          className={cn('text-[10px] leading-none', isActive ? 'text-primary' : 'text-muted-foreground/60')}
-                          aria-hidden
-                        >
-                          ★
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Quick-steer intent chips — one-shot refinements that
-                  regenerate the currently selected variant with an added
-                  USER INSTRUCTIONS line. Wired to the same edge function as
-                  Regenerate so behavior, model, and context handling are
-                  identical. Single horizontally scrollable row — chips never
-                  wrap or compress; the row scrolls via trackpad / shift+wheel
-                  / drag. Subtle edge fade masks hint at additional chips when
-                  the row overflows the sidebar width. Glassy translucent
-                  treatment matches the rest of the platform's chip system. */}
-              <div
-                className="flex flex-nowrap items-center gap-2 overflow-x-auto overflow-y-hidden -mx-0.5 px-0.5 py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                style={{
-                  WebkitMaskImage:
-                    'linear-gradient(to right, transparent 0, black 12px, black calc(100% - 12px), transparent 100%)',
-                  maskImage:
-                    'linear-gradient(to right, transparent 0, black 12px, black calc(100% - 12px), transparent 100%)',
-                }}
-                role="group"
-                aria-label="Refine draft"
-              >
-                {DRAFT_INTENT_OPTIONS.map((option) => {
-                  const isActive = activeIntentKey === option.key;
-                  const disabled = isSelectedLoading && !isActive;
-                  return (
-                    <button
-                      key={option.key}
-                      type="button"
-                      onClick={() => applyIntent(option)}
-                      disabled={disabled}
-                      title={option.label}
-                      className={cn(
-                        'inline-flex items-center gap-1 h-6 px-2.5 rounded-full shrink-0 whitespace-nowrap',
-                        'text-[11px] font-medium leading-none',
-                        'border border-white/10 bg-white/5 backdrop-blur-sm',
-                        'text-foreground/80 transition-colors',
-                        'shadow-[inset_0_1px_0_0_hsl(0_0%_100%/0.06)]',
-                        'hover:bg-white/[0.09] hover:text-foreground hover:border-white/15',
-                        'disabled:opacity-40 disabled:cursor-not-allowed',
-                        isActive && 'bg-primary/15 border-primary/30 text-primary',
-                      )}
-                    >
-                      {isActive && (
-                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                      )}
-                      <span>{option.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Meeting scheduler is now rendered at panel-level above
-                  (under the "Schedule Meeting" button) so it's reachable
-                  even when the Draft Reply section is collapsed. The
-                  "Request a meeting" intent chip below still toggles the
-                  same panel-level scheduler via setSchedulerOpen(true). */}
-
-              {/* Shared draft preview — dominant element. Layout never jumps;
-                  only the body text content swaps when the user switches
-                  variants. */}
-              {selectedOption ? (
-                <div className="min-w-0 max-w-full w-full">
-                  <div
-                    className="max-w-full break-words text-[12px] leading-relaxed text-foreground/85"
-                    style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'normal', minHeight: 96 }}
-                  >
-                    {selectedPreviewText}
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-1.5" style={{ minHeight: 96 }}>
-                  <Skeleton className="h-3 w-full" />
-                  <Skeleton className="h-3 w-11/12" />
-                  <Skeleton className="h-3 w-10/12" />
-                  <Skeleton className="h-3 w-9/12" />
-                  {isSelectedLoading && (
-                    <div className="flex items-center gap-1.5 pt-1">
-                      <Loader2 className="h-3 w-3 animate-spin text-primary/70" />
-                      <span className="text-[10px] text-muted-foreground/70">
-                        Drafting {TONE_LABELS[selected]}…
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-              </div>
-            </div>
-            )
-          )}
+          {/* Inline Draft Reply workspace removed — the Draft Reply pop-out
+              modal is now the single source of truth for AI draft generation,
+              variant selection, intent refinement, regenerate, and insert.
+              The sidebar keeps only context, quick actions, and suggested
+              update cards. */}
 
         </div>
       </ScrollArea>
 
       {/* Footer actions */}
       <div className="border-t border-white/[0.06] px-3 py-3 flex items-center gap-2 shrink-0 bg-card/60 min-w-0 w-full">
-        {draftOpen && selectedOption && !popOutOpen && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 text-[11px] gap-1 px-2 shrink-0"
-            onClick={regenerateSelected}
-            disabled={isSelectedLoading}
-          >
-            <RefreshCw className={cn('h-3 w-3', isSelectedLoading && 'animate-spin')} /> Regenerate
-          </Button>
-        )}
         <div className="flex-1 min-w-0" />
         {/* Save to Deal — popover wrapping the SaveToDealCard so users can
             route attachments, body, or highlighted text to Data Room or Deal
@@ -1431,16 +1269,6 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             />
           </PopoverContent>
         </Popover>
-        {draftOpen && selectedOption && !popOutOpen && (
-          <Button
-            size="sm"
-            className="h-8 text-[11px] gap-1.5 shrink-0 bg-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/90"
-            onClick={handleInsert}
-          >
-            <Check className="h-3 w-3" /> Insert into reply
-            <ArrowRight className="h-3 w-3" />
-          </Button>
-        )}
       </div>
 
       {/* Send-to-Data-Room dialog (mounted from the proactive card) */}
