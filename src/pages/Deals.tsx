@@ -319,10 +319,11 @@ export default function Dashboard() {
   }, [updateDeal, toast, allDeals]);
 
   const handleStageChange = async (dealId: string, newStage: string) => {
+    const safeStage = typeof newStage === 'string' ? newStage : '';
     // For 5th Line users, prompt deal size confirmation on specific stages
     if (is5thLine) {
       // Normalize stage ID to label-like format for matching
-      const normalizedStage = newStage.replace(/[-_]/g, ' ').toLowerCase();
+      const normalizedStage = safeStage.replace(/[-_]/g, ' ').toLowerCase();
       const matchesConfirmStage = DEAL_SIZE_CONFIRM_STAGE_LABELS.some(
         s => normalizedStage.includes(s)
       );
@@ -334,8 +335,8 @@ export default function Dashboard() {
             dealId,
             dealName: deal.company || deal.name || 'This deal',
             currentValue: deal.value || 0,
-            newStage,
-            newStageLabel: newStage.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+            newStage: safeStage,
+            newStageLabel: safeStage.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
           });
           return;
         }
