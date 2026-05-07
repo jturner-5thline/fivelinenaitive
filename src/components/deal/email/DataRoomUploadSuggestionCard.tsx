@@ -115,6 +115,8 @@ interface Props {
   ) => void;
   /** "Change section" link → opens the full picker dialog. */
   onChangeSection?: () => void;
+  /** Optional count badge rendered in the card header (right side). */
+  headerCount?: number;
 }
 
 /**
