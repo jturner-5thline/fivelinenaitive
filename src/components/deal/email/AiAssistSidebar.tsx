@@ -1332,7 +1332,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
 
       {/* Footer actions */}
       <div className="border-t border-white/[0.06] px-3 py-3 flex items-center gap-2 shrink-0 bg-card/60 min-w-0 w-full">
-        {draftOpen && selectedOption && (
+        {draftOpen && selectedOption && !popOutOpen && (
           <Button
             variant="ghost"
             size="sm"
@@ -1374,7 +1374,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             />
           </PopoverContent>
         </Popover>
-        {draftOpen && selectedOption && (
+        {draftOpen && selectedOption && !popOutOpen && (
           <Button
             size="sm"
             className="h-8 text-[11px] gap-1.5 shrink-0 bg-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/90"
