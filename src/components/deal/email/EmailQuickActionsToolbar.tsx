@@ -477,6 +477,9 @@ export function EmailQuickActionsToolbar({
           {summarizing && !summary && (
             <div className="text-[11.5px] text-foreground/60">Reading the thread…</div>
           )}
+          {summaryError && !summarizing && (
+            <div className="text-[11.5px] text-amber-300/90">{summaryError}</div>
+          )}
           {summary && (
             <ul className="space-y-1">
               {summary.map((bullet, i) => (
@@ -487,11 +490,16 @@ export function EmailQuickActionsToolbar({
               ))}
             </ul>
           )}
+          {summaryDebug && (import.meta as any).env?.DEV && (
+            <div className="mt-2 text-[10px] text-foreground/40 font-mono break-all">
+              src={summaryDebug.source} · msgs={summaryDebug.messageCount} · "{summaryDebug.subject}" · id={summaryDebug.threadId}
+            </div>
+          )}
           {summary && (
             <div className="mt-2 flex justify-end">
               <button
                 type="button"
-                onClick={() => { setSummary(null); void runSummarize(); }}
+                onClick={() => { setSummary(null); setSummaryError(null); void runSummarize(); }}
                 disabled={summarizing}
                 className="text-[10.5px] text-cyan-200/80 hover:text-cyan-100 transition-colors disabled:opacity-50"
               >
