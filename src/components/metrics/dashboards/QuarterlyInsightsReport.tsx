@@ -132,7 +132,52 @@ function Card({ children, style, className }: { children: React.ReactNode; style
   );
 }
 
-function SectionTitle({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
+function SectionTitle({ children, right, prominent }: { children: React.ReactNode; right?: React.ReactNode; prominent?: boolean }) {
+  if (prominent) {
+    // Executive report-section heading: stronger hierarchy than utility labels.
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-end',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+          marginTop: 8,
+          marginBottom: 18,
+          paddingBottom: 10,
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <span
+            aria-hidden
+            style={{
+              display: 'inline-block',
+              width: 3,
+              height: 22,
+              borderRadius: 2,
+              background: 'hsl(var(--primary))',
+              flexShrink: 0,
+            }}
+          />
+          <h2
+            style={{
+              fontSize: 22,
+              fontWeight: 700,
+              letterSpacing: '-0.01em',
+              color: TEXT_PRIMARY,
+              margin: 0,
+              lineHeight: 1.2,
+            }}
+          >
+            {children}
+          </h2>
+        </div>
+        {right}
+      </div>
+    );
+  }
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10, flexWrap: 'wrap' }}>
       <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: TEXT_LABEL, margin: 0 }}>{children}</h3>
