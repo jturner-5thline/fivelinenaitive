@@ -374,9 +374,8 @@ export function WorkflowIntelligenceCard({
     // Forward the count badge into the fallback's header by cloning the
     // element when it accepts a `headerCount` prop.
     const fallbackWithCount =
-      typeof headerCount === 'number' && headerCount > 0
-        && require('react').isValidElement(attachmentFallback)
-        ? require('react').cloneElement(attachmentFallback as any, { headerCount })
+      typeof headerCount === 'number' && headerCount > 0 && isValidElement(attachmentFallback)
+        ? cloneElement(attachmentFallback as ReactElement<{ headerCount?: number }>, { headerCount })
         : attachmentFallback;
     return <>{fallbackWithCount}</>;
   }
