@@ -1547,8 +1547,49 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       };
     }
     case "search_lenders": {
-      const { data } = await supabase.from("master_lenders").select("id, name, lender_type, geo, tier, loan_types, industries").ilike("name", `%${args.query}%`).limit(10);
-      return { lenders: data || [] };
+      const q = String(args.query || "").trim();
+      const pattern = `%${q}%`;
+      const orFilter = [
+        `name.ilike.${pattern}`,
+        `contact_name.ilike.${pattern}`,
+        `email.ilike.${pattern}`,
+        `contact_title.ilike.${pattern}`,
+        `lender_type.ilike.${pattern}`,
+        `tier.ilike.${pattern}`,
+        `geo.ilike.${pattern}`,
+        `relationship_owners.ilike.${pattern}`,
+        `deal_structure_notes.ilike.${pattern}`,
+        `company_requirements.ilike.${pattern}`,
+        `sub_debt.ilike.${pattern}`,
+        `cash_burn.ilike.${pattern}`,
+        `sponsorship.ilike.${pattern}`,
+        `b2b_b2c.ilike.${pattern}`,
+        `refinancing.ilike.${pattern}`,
+      ].join(",");
+      const { data } = await supabase
+        .from("master_lenders")
+        .select("id, name, lender_type, geo, tier, loan_types, industries, contact_name, contact_title, email, min_deal, max_deal")
+        .or(orFilter)
+        .limit(50);
+      // Also match array columns (industries, loan_types) which can't be OR'd via ilike.
+      const lower = q.toLowerCase();
+      const { data: arrayMatches } = await supabase
+        .from("master_lenders")
+        .select("id, name, lender_type, geo, tier, loan_types, industries, contact_name, contact_title, email, min_deal, max_deal")
+        .or(`industries.cs.{${q}},loan_types.cs.{${q}}`)
+        .limit(50);
+      const merged = new Map<string, any>();
+      for (const row of [...(data || []), ...(arrayMatches || [])]) merged.set(row.id, row);
+      const lenders = Array.from(merged.values()).filter((l: any) => {
+        // Final client-side check covers array entries with different casing.
+        const hay = [
+          l.name, l.contact_name, l.contact_title, l.email, l.lender_type, l.tier, l.geo,
+          ...(Array.isArray(l.industries) ? l.industries : []),
+          ...(Array.isArray(l.loan_types) ? l.loan_types : []),
+        ].filter(Boolean).join(" ").toLowerCase();
+        return hay.includes(lower);
+      });
+      return { lenders, query: q };
     }
     case "create_task": {
       return {
