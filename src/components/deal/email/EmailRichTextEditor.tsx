@@ -107,7 +107,7 @@ export function EmailRichTextEditor({
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none focus:outline-none px-3 py-2 text-sm leading-relaxed',
+        class: 'prose prose-sm prose-invert max-w-none focus:outline-none px-3 py-3 text-sm leading-relaxed text-foreground/90',
         style: `min-height: ${minHeight}px;`,
       },
       transformPastedHTML: (html) => {
@@ -133,7 +133,7 @@ export function EmailRichTextEditor({
   if (!editor) return null;
 
   return (
-    <div className={cn('compose-body border rounded-md overflow-hidden bg-background flex flex-col w-full min-w-0', className)}>
+    <div className={cn('compose-body border border-white/10 rounded-md overflow-hidden bg-card/40 flex flex-col w-full min-w-0', className)}>
       <Toolbar
         editor={editor}
         dataRoomUrl={dataRoomUrl}
@@ -148,8 +148,10 @@ export function EmailRichTextEditor({
           oversized inline elements render at body-text size and stay within
           the composer width. Targets only this composer's body. */}
       <style>{`
-        .compose-body .ProseMirror { word-break: break-word; overflow-wrap: anywhere; max-width: 100%; }
+        .compose-body .ProseMirror { word-break: break-word; overflow-wrap: anywhere; max-width: 100%; color: hsl(var(--foreground) / 0.92); font-size: 14px; line-height: 1.55; }
         .compose-body .ProseMirror * { max-width: 100%; }
+        .compose-body .ProseMirror p { font-size: 14px; }
+        .compose-body .ProseMirror p.is-editor-empty:first-child::before { color: hsl(var(--foreground) / 0.35); content: attr(data-placeholder); float: left; height: 0; pointer-events: none; }
         .compose-body .ProseMirror img { height: auto; }
         .compose-body .ProseMirror h1,
         .compose-body .ProseMirror h2,
@@ -157,10 +159,11 @@ export function EmailRichTextEditor({
         .compose-body .ProseMirror h4,
         .compose-body .ProseMirror h5,
         .compose-body .ProseMirror h6 {
-          font-size: 0.875rem !important;
+          font-size: 0.95rem !important;
           font-weight: 600 !important;
           line-height: 1.4 !important;
           margin: 0 !important;
+          color: hsl(var(--foreground)) !important;
         }
       `}</style>
     </div>
@@ -253,7 +256,7 @@ function Toolbar({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-0.5 px-1.5 py-1 border-b bg-muted/30">
+    <div className="flex flex-wrap items-center gap-0.5 px-1.5 py-1 border-b border-white/10 bg-white/[0.04]">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
