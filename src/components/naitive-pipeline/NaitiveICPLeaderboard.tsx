@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 
 const ICP_CATEGORIES = ['Debt Advisory', 'M&A', 'Equity', 'Placement Agent', 'Broker', 'Other'] as const;
-const PERSONA_TYPES = ['Prospect', 'Gatekeeper', 'Connector', 'Market Intelligence'] as const;
+const PERSONA_TYPES = ['Decision Maker', 'Gatekeeper', 'Connector', 'Market Intelligence'] as const;
 
 // Hex colors mirroring the deal-card chip palette
 const ICP_HEX: Record<string, string> = {
@@ -19,7 +19,7 @@ const ICP_HEX: Record<string, string> = {
 };
 
 const PERSONA_HEX: Record<string, string> = {
-  'Prospect': '#3b82f6',
+  'Decision Maker': '#3b82f6',
   'Gatekeeper': '#f59e0b',
   'Connector': '#22c55e',
   'Market Intelligence': '#a855f7',

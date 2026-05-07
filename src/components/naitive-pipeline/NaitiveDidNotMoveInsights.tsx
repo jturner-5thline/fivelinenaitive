@@ -11,7 +11,7 @@ import {
 import { format } from 'date-fns';
 
 const ICP_CATEGORIES = ['Debt Advisory', 'M&A', 'Equity', 'Placement Agent', 'Broker', 'Other'] as const;
-const PROSPECT_TYPES = ['Prospect', 'Gatekeeper', 'Connector', 'Market Intelligence'] as const;
+const PROSPECT_TYPES = ['Decision Maker', 'Gatekeeper', 'Connector', 'Market Intelligence'] as const;
 
 const ICP_HEX: Record<string, string> = {
   'Debt Advisory': '#3b82f6',
@@ -23,7 +23,7 @@ const ICP_HEX: Record<string, string> = {
 };
 
 const PROSPECT_HEX: Record<string, string> = {
-  'Prospect': '#3b82f6',
+  'Decision Maker': '#3b82f6',
   'Gatekeeper': '#f59e0b',
   'Connector': '#22c55e',
   'Market Intelligence': '#a855f7',
