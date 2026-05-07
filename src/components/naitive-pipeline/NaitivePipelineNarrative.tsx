@@ -24,7 +24,6 @@ import { cn } from '@/lib/utils';
 import { Deal } from '@/types/deal';
 import { NaitiveQualToDemoInsights } from './NaitiveQualToDemoInsights';
 import { NaitiveDidNotMoveInsights } from './NaitiveDidNotMoveInsights';
-import { TrendingUp, TrendingDown } from 'lucide-react';
 
 type PeriodType = 'week' | 'month' | 'quarter';
 
