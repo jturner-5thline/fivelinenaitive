@@ -212,7 +212,13 @@ serve(async (req) => {
       case "list_goals": {
         // Fetch Asana Goals (separate from tasks/projects).
         // Asana's Goals API requires either a workspace, team, or portfolio scope.
-        // We use workspace_gid as the primary scope.
+        // When querying by workspace, the API requires either `is_workspace_level=true`
+        // OR a `team` parameter — it will NOT return team-level goals when you only
+        // pass `is_workspace_level=true`. To surface every goal a user owns
+        // (including James Turner's team-level goals), we fetch BOTH:
+        //   1. Workspace-level goals
+        //   2. Team-level goals across every team in the workspace
+        // Results are deduped by gid.
         const resolvedToken = await resolveToken(token, integration_id);
         const workspace = params.workspace_gid;
         if (!workspace) {
@@ -248,11 +254,53 @@ serve(async (req) => {
         ].join(",");
 
         try {
-          const data = await asanaFetch(
-            `/goals?workspace=${workspace}&is_workspace_level=true&limit=100&opt_fields=${optFields}`,
-            resolvedToken
-          );
-          result = { success: true, goals: data.data || [] };
+          const byGid = new Map<string, any>();
+
+          // 1. Workspace-level goals
+          try {
+            const wsGoals = await asanaFetch(
+              `/goals?workspace=${workspace}&is_workspace_level=true&limit=100&opt_fields=${optFields}`,
+              resolvedToken
+            );
+            for (const g of (wsGoals.data || [])) {
+              if (g?.gid) byGid.set(g.gid, g);
+            }
+          } catch (e) {
+            console.warn("[list_goals] workspace-level fetch failed:", e);
+          }
+
+          // 2. Team-level goals — fetch teams the authenticated user belongs to,
+          //    then fetch goals per team.
+          try {
+            const teamsRes = await asanaFetch(
+              `/users/me/teams?workspace=${workspace}&opt_fields=name,gid`,
+              resolvedToken
+            );
+            const teams = teamsRes.data || [];
+            const teamGoalLists = await Promise.all(
+              teams.map(async (t: { gid: string }) => {
+                try {
+                  const tg = await asanaFetch(
+                    `/goals?team=${t.gid}&limit=100&opt_fields=${optFields}`,
+                    resolvedToken
+                  );
+                  return tg.data || [];
+                } catch (e) {
+                  console.warn(`[list_goals] team ${t.gid} fetch failed:`, e);
+                  return [];
+                }
+              })
+            );
+            for (const list of teamGoalLists) {
+              for (const g of list) {
+                if (g?.gid && !byGid.has(g.gid)) byGid.set(g.gid, g);
+              }
+            }
+          } catch (e) {
+            console.warn("[list_goals] team enumeration failed:", e);
+          }
+
+          result = { success: true, goals: Array.from(byGid.values()) };
         } catch (e) {
           // Fallback: some workspaces require team scope. Return clear error.
           const msg = e instanceof Error ? e.message : "Unknown error fetching goals";
