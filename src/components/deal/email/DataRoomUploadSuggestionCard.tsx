@@ -224,6 +224,11 @@ export function DataRoomUploadSuggestionCard({
         <span className="text-[10px] font-semibold uppercase tracking-wider text-primary/90">
           Suggested Update
         </span>
+        {typeof headerCount === 'number' && headerCount > 0 && (
+          <span className="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-primary/15 px-1.5 text-[10px] font-semibold text-primary shrink-0">
+            {headerCount}
+          </span>
+        )}
         <Paperclip className="h-2.5 w-2.5 text-primary/70 ml-auto shrink-0" />
       </div>
 
