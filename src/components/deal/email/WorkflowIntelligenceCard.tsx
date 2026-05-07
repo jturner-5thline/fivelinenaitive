@@ -366,7 +366,7 @@ export function WorkflowIntelligenceCard({
   };
 
   return (
-    <div className="space-y-2 overflow-hidden max-w-full min-w-0 w-full">
+    <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-2.5 space-y-2 overflow-hidden max-w-full min-w-0 w-full">
       {/* Single header — both sections render stacked below, no pagination. */}
       <div className="flex items-center gap-1.5 min-w-0">
         <Sparkles className="h-3 w-3 text-primary shrink-0" />
@@ -374,6 +374,11 @@ export function WorkflowIntelligenceCard({
           Suggested Update
         </span>
         {loading && <Loader2 className="h-2.5 w-2.5 animate-spin text-primary/60" />}
+        {typeof headerCount === 'number' && headerCount > 0 && (
+          <span className="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-primary/15 px-1.5 text-[10px] font-semibold text-primary shrink-0">
+            {headerCount}
+          </span>
+        )}
         <Popover>
           <PopoverTrigger asChild>
             <button
