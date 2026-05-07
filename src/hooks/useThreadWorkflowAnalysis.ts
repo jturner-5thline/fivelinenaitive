@@ -318,6 +318,42 @@ export function useThreadWorkflowAnalysis({
         console.warn('[useThreadWorkflowAnalysis] canonical-deal override failed', overrideErr);
       }
 
+      // Data-layer suppression: 5th Line is our own firm, never a lender.
+      // Strip it from `likely_lender_firm` and any recommended lender update
+      // before downstream consumers see it.
+      try {
+        const isInternal = (n?: string | null) => {
+          const s = (n || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+          return (
+            s === '5th line' ||
+            s === '5th line capital' ||
+            s === 'fifth line' ||
+            s === 'fifth line capital' ||
+            s.startsWith('5th line ') ||
+            s.startsWith('fifth line ')
+          );
+        };
+        if (isInternal(result.likely_lender_firm?.name)) {
+          result.likely_lender_firm = {
+            id: '',
+            name: '',
+            confidence: 'low',
+            reasoning: '5th Line is the internal firm and is excluded from lender tags.',
+          };
+        }
+        if (
+          result.recommended_update?.kind === 'lender_status' &&
+          isInternal(result.recommended_update.lender_name)
+        ) {
+          result.recommended_update = {
+            ...result.recommended_update,
+            kind: 'none',
+          };
+        }
+      } catch {
+        // non-fatal
+      }
+
       setAnalysis(result);
 
       // Fire prefill analytics event so we can track AI suggestion quality.
