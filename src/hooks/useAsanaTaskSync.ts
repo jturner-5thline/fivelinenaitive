@@ -202,6 +202,14 @@ export async function syncTaskToAsana(
 
     if (!data?.success || !data.task?.gid) {
       console.error('Asana task creation failed:', data);
+      await logSyncAttempt({
+        task_id: task.id,
+        action: 'create_task',
+        success: false,
+        error_message: data?.error || 'Asana proxy returned no task gid',
+        payload: taskData,
+        company_id: ctx.companyId || null,
+      });
       return null;
     }
 
@@ -213,9 +221,25 @@ export async function syncTaskToAsana(
       .update({ asana_task_gid: asanaGid } as any)
       .eq('id', task.id);
 
+    await logSyncAttempt({
+      task_id: task.id,
+      asana_task_gid: asanaGid,
+      action: 'create_task',
+      success: true,
+      payload: taskData,
+      company_id: ctx.companyId || null,
+    });
+
     return asanaGid;
   } catch (e) {
     console.error('Asana task sync failed:', e);
+    await logSyncAttempt({
+      task_id: task.id,
+      action: 'create_task',
+      success: false,
+      error_message: e instanceof Error ? e.message : String(e),
+      company_id: ctx.companyId || null,
+    });
     return null;
   }
 }
@@ -263,9 +287,25 @@ export async function updateTaskInAsana(
       body: { action: 'update_task', integration_id: ctx.integrationId, task_gid: asanaTaskGid, data: asanaUpdates }
     });
 
-    return data?.success ?? false;
+    const ok = data?.success ?? false;
+    await logSyncAttempt({
+      asana_task_gid: asanaTaskGid,
+      action: 'update_task',
+      success: ok,
+      error_message: ok ? null : (data?.error || 'Asana proxy update failed'),
+      payload: asanaUpdates,
+      company_id: ctx.companyId || null,
+    });
+    return ok;
   } catch (e) {
     console.error('Asana task update failed:', e);
+    await logSyncAttempt({
+      asana_task_gid: asanaTaskGid,
+      action: 'update_task',
+      success: false,
+      error_message: e instanceof Error ? e.message : String(e),
+      company_id: ctx.companyId || null,
+    });
     return false;
   }
 }
