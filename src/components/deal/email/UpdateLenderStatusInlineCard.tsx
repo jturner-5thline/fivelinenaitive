@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Loader2, Building2 } from 'lucide-react';
+import { Check, Loader2, Building2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -28,7 +28,7 @@ const STATUS_ORDER = ['active', 'on-deck', 'on-hold', 'passed'] as const;
  * action so the deal kanban / pipeline updates in real time.
  */
 export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onClose }: Props) {
-  const { deals, updateLender } = useDealsContext();
+  const { deals, updateLender, addLenderToDeal } = useDealsContext();
   const deal = useMemo(() => deals.find((d) => d.id === dealId), [deals, dealId]);
   const lenders: DealLender[] = deal?.lenders || [];
 
@@ -60,6 +60,18 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+  const [adding, setAdding] = useState(false);
+
+  // True when the AI identified a lender name that isn't (yet) tracked on this deal.
+  const proposedLenderName = (preselectLenderName || '').trim();
+  const proposedAlreadyTracked = useMemo(() => {
+    if (!proposedLenderName) return false;
+    const norm = proposedLenderName.toLowerCase();
+    return lenders.some((l) => {
+      const n = (l.name || '').toLowerCase();
+      return n === norm || n.includes(norm) || norm.includes(n);
+    });
+  }, [lenders, proposedLenderName]);
 
   if (!dealId || !deal) {
     return (
@@ -68,6 +80,48 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
       </div>
     );
   }
+
+  // If the AI surfaced a specific lender that isn't on the deal yet, offer to add them.
+  // (Same prompt covers the "no lenders at all" case when a name was identified.)
+  if (proposedLenderName && !proposedAlreadyTracked) {
+    const handleAdd = async () => {
+      setAdding(true);
+      try {
+        await addLenderToDeal(dealId, {
+          name: proposedLenderName,
+          trackingStatus: 'active',
+        });
+        toast.success(`${proposedLenderName} added to ${deal.company}`);
+        // Card will re-render with the lender now tracked; user can pick a status next.
+      } catch (err: any) {
+        console.error('[UpdateLenderStatus] add failed', err);
+        toast.error(err?.message || 'Failed to add lender');
+      } finally {
+        setAdding(false);
+      }
+    };
+    return (
+      <div className="rounded-md border border-white/[0.08] bg-card/60 p-3 space-y-2.5">
+        <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+          <Building2 className="h-3 w-3 text-emerald-400" /> Update Lender Status
+        </div>
+        <p className="text-[12px] text-foreground/85">
+          <span className="font-medium">{proposedLenderName}</span> is not yet tracked on{' '}
+          <span className="font-medium">{deal.company}</span>. Add them?
+        </p>
+        <div className="flex items-center justify-end gap-2">
+          <Button variant="ghost" size="sm" className="h-7 text-[11px]" onClick={onClose} disabled={adding}>
+            Cancel
+          </Button>
+          <Button size="sm" className="h-7 text-[11px] gap-1" onClick={handleAdd} disabled={adding}>
+            {adding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+            Add Lender
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (lenders.length === 0) {
     return (
       <div className="rounded-md border border-white/[0.06] bg-card/40 p-3 text-[11px] text-muted-foreground">

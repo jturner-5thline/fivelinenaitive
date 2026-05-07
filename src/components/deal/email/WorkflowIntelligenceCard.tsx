@@ -719,7 +719,7 @@ export function WorkflowIntelligenceCard({
               attachmentFallback
             ) : (
               <p className="text-[11px] text-muted-foreground italic">
-                No workflow update suggested for this thread.
+                No action items detected in this thread.
               </p>
             )}
 
