@@ -1676,6 +1676,15 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         {/* Vertical divider between unified search and right-side helpers */}
         <div className="w-px h-6 bg-white/10 mx-1 shrink-0" aria-hidden />
 
+        {/* Slot for the open-email command bar (Close/Reply/Forward/Delete/
+            Archive/Flag/AI Assist/Link Deal/Expand). EmailDetail portals its
+            toolbar into this element when a thread is open so the entire
+            mail UI shares one unified horizontal header row instead of
+            stacking a second action bar above the message body. */}
+        <div id="email-detail-toolbar-slot" className="flex items-center gap-0.5 min-w-0 overflow-hidden shrink" />
+
+        <div className="flex-1" />
+
         {/* Keyboard shortcuts help */}
         <Popover open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
           <PopoverTrigger asChild>
