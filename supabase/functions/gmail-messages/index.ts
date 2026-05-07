@@ -483,6 +483,17 @@ serve(async (req: Request): Promise<Response> => {
         );
 
         if (!threadResponse.ok) {
+          // 404 = thread no longer exists upstream (deleted, archived, or
+          // stale provider id from a cached/mock record). Return an empty
+          // thread instead of bubbling a hard error so callers (summarize,
+          // detail view) can fall back to whatever they already have.
+          if (threadResponse.status === 404) {
+            await threadResponse.text().catch(() => {});
+            return new Response(
+              JSON.stringify({ thread: { id: thread_id, messages: [] }, not_found: true }),
+              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+            );
+          }
           return forwardNylasError(threadResponse, "Failed to get thread");
         }
         const threadData = await threadResponse.json();
