@@ -118,7 +118,7 @@ export function EmailQuickActionsToolbar({
               title={a.label}
               aria-pressed={isActive}
               className={cn(
-                'inline-flex w-full items-center justify-center gap-1.5 min-h-[32px] px-2.5 py-1 rounded-lg text-center',
+                'inline-flex w-full items-center justify-start gap-1.5 min-h-[32px] px-3 py-1 rounded-lg text-left',
                 'text-[11px] font-medium leading-tight',
                 'border border-white/10 bg-white/5 backdrop-blur-sm',
                 'text-foreground/80 transition-colors',
