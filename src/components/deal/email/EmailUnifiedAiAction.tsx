@@ -607,10 +607,9 @@ export function EmailUnifiedAiAction({
         <div
           className={cn(
             'relative rounded-xl p-1',
-            'bg-gradient-to-br from-primary/[0.10] via-primary/[0.05] to-transparent',
-            'border border-primary/25 backdrop-blur-md',
-            'shadow-[0_1px_0_0_hsl(0_0%_100%/0.05)_inset,0_8px_24px_-12px_hsl(var(--primary)/0.35)]',
-            'transition-colors focus-within:border-primary/45 focus-within:shadow-[0_0_0_1px_hsl(var(--primary)/0.25),0_10px_28px_-12px_hsl(var(--primary)/0.45)]',
+            // Soft cyan/blue tinted surface — color-driven contrast, no glow.
+            'bg-[hsl(200_75%_55%/0.10)] border border-[hsl(195_85%_60%/0.40)]',
+            'transition-colors focus-within:border-[hsl(195_90%_65%/0.65)] focus-within:bg-[hsl(200_80%_55%/0.14)]',
           )}
         >
           <Input
@@ -635,7 +634,7 @@ export function EmailUnifiedAiAction({
             type="button"
             onClick={() => void route()}
             disabled={!text.trim() || routing || creating}
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 w-7 inline-flex items-center justify-center rounded-md bg-primary/20 hover:bg-primary/35 text-primary transition-colors disabled:opacity-40"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 w-7 inline-flex items-center justify-center rounded-md bg-[hsl(195_85%_55%/0.25)] hover:bg-[hsl(195_85%_55%/0.4)] text-[hsl(195_95%_75%)] transition-colors disabled:opacity-40"
             aria-label="Route request"
             title="Route request (Enter)"
           >
