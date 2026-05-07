@@ -12,6 +12,9 @@ import {
   User,
   X,
   ArrowUpRight,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -40,7 +43,50 @@ interface Props {
   className?: string;
 }
 
-type Intent = 'ask' | 'task' | 'note' | 'data_room' | 'draft';
+type Intent = 'ask' | 'task' | 'note' | 'data_room' | 'draft' | 'allocate_hours';
+
+/**
+ * Canonical deal-hours storage contract.
+ * The visible per-deal hours surfaced on Deal cards / WeeklyHoursWidget are
+ * computed from `weekly_time_entries` (deal_id, user_id, week_start_date, hours)
+ * via the `weekly-hours-api` edge function. The "Allocate hours from email"
+ * AI action MUST write to that source-of-truth child table — never to a free
+ * notes field — so all rollups and UIs stay in sync.
+ */
+export const DEAL_HOURS_CONFIG = {
+  sourceOfTruth: 'weekly_time_entries',
+  writeTarget: 'weekly_time_entries.hours',
+  writeMode: 'upsert-child-entry' as const,
+  conflictKey: 'deal_id,user_id,week_start_date',
+  attributionSource: 'naitive_email_assist' as const,
+};
+
+interface HourPlanItem {
+  rawLabel: string;
+  normalizedLabel: string;
+  hours: number;
+  sourceSnippet?: string;
+  matchedDealId?: string;
+  matchedDealName?: string;
+  confidence: number;
+  status: 'matched' | 'ambiguous' | 'unmatched';
+  writeTarget?: string;
+  writeMode?: 'increment' | 'replace' | 'upsert-child-entry';
+}
+
+interface HourPlan {
+  intent: 'allocate_deal_hours_from_email';
+  sourceThreadId?: string | null;
+  sourceEmailId?: string | null;
+  summary: {
+    totalItems: number;
+    matchedItems: number;
+    ambiguousItems: number;
+    unmatchedItems: number;
+    totalHours: number;
+  };
+  items: HourPlanItem[];
+}
 
 interface Suggestion {
   intent: Intent;
@@ -53,6 +99,8 @@ interface Suggestion {
     status?: 'in-review' | 'terms-issued' | 'in-diligence' | 'closed-funded';
     note?: string;
   };
+  /** Populated when intent === 'allocate_hours'. */
+  hour_plan?: HourPlan;
 }
 
 const INTENT_META: Record<
@@ -64,7 +112,18 @@ const INTENT_META: Record<
   note:      { label: 'Deal note',      Icon: StickyNote,    cta: 'Add note' },
   data_room: { label: 'Data room',      Icon: FolderOpen,    cta: 'Open data room' },
   draft:     { label: 'Draft reply',    Icon: Mail,          cta: 'Use as draft' },
+  allocate_hours: { label: 'Allocate hours', Icon: Clock, cta: 'Apply hours' },
 };
+
+function getCurrentWeekStart(): string {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Monday
+  const monday = new Date(now);
+  monday.setDate(diff);
+  monday.setHours(0, 0, 0, 0);
+  return monday.toISOString().split('T')[0];
+}
 
 /**
  * EmailUnifiedAiAction
