@@ -574,9 +574,32 @@ function ReportHeaderSection({ s, set, reset, save, print, canEdit, titlePrefix 
   const currentPreparedBy = s.authors[0] && PREPARED_BY_OPTIONS.includes(s.authors[0])
     ? s.authors[0]
     : 'James Turner';
-  const baseTitle = s.period === 'monthly'
-    ? `Monthly Insights Report — ${monthsForQuarter(s.quarter).includes(s.month) ? s.month : (monthsForQuarter(s.quarter)[0] || s.quarter)}`
-    : `Quarterly Insights Report — ${s.quarter}`;
+  // Derive the title's period label from the shared Reporting Period header
+  // when available, so the title always matches the dropdown and export CTA.
+  // Fall back to local report state only when no global period is selected.
+  const insightsTf = useInsightsTimeframeOptional();
+  const reportingPeriod = insightsTf?.reportingPeriod ?? null;
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  let isMonthly = s.period === 'monthly';
+  let periodLabelStr: string;
+  if (reportingPeriod) {
+    isMonthly = reportingPeriod.view === 'month';
+    if (isMonthly) {
+      const m = /^(\d{4})-(\d{2})$/.exec(reportingPeriod.period);
+      periodLabelStr = m
+        ? `${MONTH_NAMES[parseInt(m[2], 10) - 1]} ${m[1]}`
+        : reportingPeriod.label;
+    } else {
+      periodLabelStr = reportingPeriod.label;
+    }
+  } else {
+    periodLabelStr = isMonthly
+      ? (monthsForQuarter(s.quarter).includes(s.month) ? s.month : (monthsForQuarter(s.quarter)[0] || s.quarter))
+      : s.quarter;
+  }
+  const baseTitle = isMonthly
+    ? `Monthly Insights Report — ${periodLabelStr}`
+    : `Quarterly Insights Report — ${periodLabelStr}`;
   const reportTitle = titlePrefix ? `${baseTitle} (${titlePrefix})` : baseTitle;
   const fieldLabelStyle: React.CSSProperties = {
     fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
