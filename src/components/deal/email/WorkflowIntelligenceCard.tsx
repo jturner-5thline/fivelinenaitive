@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, isValidElement, cloneElement, type ReactNode, type ReactElement } from 'react';
 import { Loader2, Check, X, Quote, AlertCircle, Briefcase, User, Building2, Zap, Link2, Plus, Inbox as InboxIcon, Info } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
