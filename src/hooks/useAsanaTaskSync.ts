@@ -1,10 +1,42 @@
 import { supabase } from '@/integrations/supabase/client';
 
+/**
+ * Record an Asana sync attempt to the asana_sync_log table for the
+ * admin error/audit log. Best-effort: a logging failure must never
+ * mask the real sync result.
+ */
+async function logSyncAttempt(entry: {
+  task_id?: string | null;
+  asana_task_gid?: string | null;
+  action: string;
+  success: boolean;
+  error_message?: string | null;
+  payload?: unknown;
+  company_id?: string | null;
+}): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from('asana_sync_log' as any).insert({
+      task_id: entry.task_id || null,
+      asana_task_gid: entry.asana_task_gid || null,
+      action: entry.action,
+      success: entry.success,
+      error_message: entry.error_message || null,
+      payload: entry.payload ? (entry.payload as any) : null,
+      company_id: entry.company_id || null,
+      triggered_by: user?.id || null,
+    } as any);
+  } catch (e) {
+    console.warn('[AsanaSync] Failed to write sync log:', e);
+  }
+}
+
 interface AsanaSyncContext {
   integrationId: string;
   workspaceGid: string;
   projectGid: string | null;
   sectionGid: string | null;
+  companyId?: string | null;
 }
 
 /**
