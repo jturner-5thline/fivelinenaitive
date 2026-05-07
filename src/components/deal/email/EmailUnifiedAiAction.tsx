@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { useQueryClient } from '@tanstack/react-query';
+import { useCopilotStore } from '@/stores/copilotStore';
 import {
   useNaitiveTaskParse,
   createTaskFromDraft,
@@ -145,6 +146,7 @@ export function EmailUnifiedAiAction({
   const { user } = useAuth();
   const { company } = useCompany();
   const queryClient = useQueryClient();
+  const openPanelWithPrompt = useCopilotStore((s) => s.openPanelWithPrompt);
 
   const resolvedDealId = dealId || fallbackDealId || null;
   const resolvedDealName = dealName || fallbackDealName || null;
@@ -240,6 +242,31 @@ export function EmailUnifiedAiAction({
   const route = async () => {
     const q = text.trim();
     if (!q || routing) return;
+    // Detect specialized email-intent keywords that the email-unified-action
+    // edge function handles natively (hours allocation, lender note updates,
+    // data-room saves, draft replies, follow-up tasks). For anything else,
+    // hand the prompt off to the shared "Ask naitive AI" panel so the inline
+    // experience uses the same assistant configuration, tool registry and
+    // action router as the floating chat — with email context auto-injected.
+    const ql = q.toLowerCase();
+    const emailIntentRe = /(allocate|log)\s+hours|hours?\s+(from|to)|data ?room|save (this|to)|draft (a )?reply|follow[- ]?up task|create (a )?task|update lender|lender (status|note)/;
+    const isSpecializedEmailIntent = emailIntentRe.test(ql);
+    if (!isSpecializedEmailIntent) {
+      const ctxLines: string[] = [];
+      ctxLines.push(`Email subject: ${thread.subject}`);
+      if (resolvedDealName) ctxLines.push(`Linked deal: ${resolvedDealName}`);
+      if (contactLabel && !contactRemoved) ctxLines.push(`Contact: ${contactLabel}`);
+      const latest = thread.latestEmail;
+      if (latest?.from_name || latest?.from_email) {
+        ctxLines.push(`Latest from: ${latest?.from_name || ''} <${latest?.from_email || ''}>`);
+      }
+      const snippet = (latest?.body_preview || latest?.snippet || '').slice(0, 800);
+      if (snippet) ctxLines.push(`\n---\n${snippet}`);
+      const composed = `${q}\n\nContext (current email thread):\n${ctxLines.join('\n')}`;
+      openPanelWithPrompt(composed);
+      reset();
+      return;
+    }
     setRouting(true);
     setSuggestion(null);
     try {
@@ -744,7 +771,8 @@ export function EmailUnifiedAiAction({
               if (!text && !suggestion) setFocused(false);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Ask AI about this email..."
+            placeholder="Ask naitive ai..."
+            aria-label="Ask naitive ai"
             disabled={routing || creating}
             className={cn(
               'pr-9 h-9 text-[12.5px] rounded-lg border-0 bg-transparent',
