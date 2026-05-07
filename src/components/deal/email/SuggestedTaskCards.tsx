@@ -380,6 +380,14 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
                     {s.why}
                   </p>
                 )}
+                {s.description && s.description.trim().length > 0 && (
+                  <pre
+                    className="text-[10.5px] text-foreground/75 mt-1 leading-snug font-sans whitespace-pre-wrap"
+                    style={{ overflowWrap: 'anywhere' }}
+                  >
+                    {s.description}
+                  </pre>
+                )}
               </div>
               {created && (
                 <div className="flex flex-col items-end gap-1 shrink-0">
