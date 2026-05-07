@@ -45,12 +45,13 @@ export function useFinancialComments(dealId: string) {
   useEffect(() => {
     if (!user) return;
     db.from('profiles')
-      .select('display_name, full_name')
-      .eq('id', user.id)
-      .single()
+      .select('display_name, first_name, last_name')
+      .eq('user_id', user.id)
+      .maybeSingle()
       .then(({ data }: any) => {
         if (data) {
-          setUserName(data.display_name || data.full_name || user.email || 'Unknown');
+          const composed = [data.first_name, data.last_name].filter(Boolean).join(' ').trim();
+          setUserName(data.display_name || composed || user.email || 'Unknown');
         } else {
           setUserName(user.email || 'Unknown');
         }
