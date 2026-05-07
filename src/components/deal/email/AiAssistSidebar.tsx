@@ -991,6 +991,30 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             // count cheaply at the top.
             const showSection =
               updateCount > 0 || dealId; // section header still helps anchor outstanding-items / suggestions when present
+            // While the workflow analysis is still in-flight and we have
+            // nothing to render yet, surface a lightweight skeleton card
+            // so the sidebar feels alive instead of empty.
+            if (workflowLoading && !workflowAnalysis && updateCount === 0) {
+              return (
+                <div
+                  className="rounded-md border border-primary/20 bg-primary/[0.04] p-2.5 space-y-2"
+                  aria-hidden
+                >
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-3.5 w-3.5 rounded-sm bg-primary/20" />
+                    <Skeleton className="h-3 w-32 bg-primary/15" />
+                    <Skeleton className="ml-auto h-4 w-6 rounded-full bg-primary/15" />
+                  </div>
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-11/12" />
+                  <Skeleton className="h-3 w-9/12" />
+                  <div className="flex items-center gap-1.5 pt-1">
+                    <Skeleton className="h-6 w-20 rounded-md" />
+                    <Skeleton className="h-6 w-16 rounded-md" />
+                  </div>
+                </div>
+              );
+            }
             if (!showSection) return null;
             return (
               <div className="space-y-3">
