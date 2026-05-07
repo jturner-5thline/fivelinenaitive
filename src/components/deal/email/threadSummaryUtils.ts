@@ -23,6 +23,11 @@ interface ThreadSummaryRequestMessage {
   attachments: string[];
 }
 
+interface ThreadSummaryInput {
+  messages: ThreadSummaryRequestMessage[];
+  debug: EmailThreadSummaryDebug;
+}
+
 interface SummarizeEmailThreadArgs {
   threadId: string;
   subject: string;
@@ -160,8 +165,8 @@ export async function summarizeSelectedEmailThread({ threadId, subject, emails }
   const selectedSubject = subject.trim();
 
   const inMemoryInput = buildSummaryInput(selectedThreadId, selectedSubject, 'selected-thread-data', emails);
-  let fetchedInput = {
-    messages: [] as ThreadSummaryRequestMessage[],
+  let fetchedInput: ThreadSummaryInput = {
+    messages: [],
     debug: {
       threadId: selectedThreadId,
       subject: selectedSubject,
