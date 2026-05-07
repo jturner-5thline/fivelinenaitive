@@ -839,7 +839,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
       )}
 
       {/* Header — recipient pill + actions */}
-      <div className="flex items-center gap-2 pl-4 pr-2 py-2 border-b border-border/50">
+      <div className="flex items-center gap-2 pl-4 pr-2 py-2 border-b border-white/10 bg-white/[0.02]">
         {!hideReplyAnchor && (
           <div className="flex items-center gap-1.5 min-w-0">
             <RecipientAvatar name={replyToName} email={recipients.to[0]} />
@@ -928,7 +928,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
       )}
 
       {/* Recipient rows */}
-      <div className="px-4 py-1.5 space-y-1 border-b border-border/40">
+      <div className="px-4 py-2 space-y-1 border-b border-white/10">
         <div className="flex items-start gap-2">
           <RecipientField
             label="To"
@@ -1166,7 +1166,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
       />
 
       {/* Toolbar — Insert · AI · Send (formatting lives in the editor toolbar) */}
-      <div className="flex items-center flex-wrap gap-y-1 px-4 py-2 border-t border-border/50">
+      <div className="flex items-center flex-wrap gap-y-1 px-4 py-2 border-t border-white/10 bg-white/[0.02]">
         <ToolbarZone>
           <Tooltip>
             <TooltipTrigger asChild>
