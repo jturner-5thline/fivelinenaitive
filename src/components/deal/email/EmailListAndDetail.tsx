@@ -1912,6 +1912,16 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     setReplyTo(getReplyTarget());
   }, [getReplyTarget]);
 
+  // Notify the AI Assist sidebar so it can hide its duplicate Draft Reply
+  // workspace whenever the pop-out compose modal is open.
+  useEffect(() => {
+    try {
+      window.dispatchEvent(new CustomEvent(
+        popOutDraft ? 'naitive:ai-assist:popout-opened' : 'naitive:ai-assist:popout-closed',
+      ));
+    } catch {}
+  }, [popOutDraft]);
+
   // ── AI Assist → pop-out compose bridge ──────────────────────────────
   // The AI Assist sidebar's "Draft Reply" quick action dispatches
   // `naitive:ai-assist:open-popout-draft` with the generated body. We
