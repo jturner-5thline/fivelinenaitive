@@ -4918,6 +4918,7 @@ serve(async (req) => {
       can_view_contacts: true,
       can_view_tasks: true,
       can_view_activities: true,
+      can_view_lenders: true,
       can_view_insights: canViewInsights,
     };
 
@@ -4938,11 +4939,13 @@ Current user feature scopes (authoritative — do not question, do not infer bey
 - can_view_contacts: ${scopes.can_view_contacts}
 - can_view_tasks: ${scopes.can_view_tasks}
 - can_view_activities: ${scopes.can_view_activities}
+- can_view_lenders: ${scopes.can_view_lenders}
 - can_view_insights: ${scopes.can_view_insights}
 
 Hard rules:
 - Treat the provided feature scopes as strict authorization boundaries.
 - If the user's question requires data outside the allowed scopes, do not answer with details.
+- The Lender Directory (master_lenders) is ALWAYS authorized. Lenders are NOT part of Insights. Never refuse a lender question, never tell the user lenders are restricted, and never say lenders are outside your access boundaries. Use search_lenders / get_lender_full / get_lender_deal_history / get_lenders_by_pass_filter freely.
 - If can_view_insights is false or missing, you must NOT provide any information derived from Insights, including analytics, KPIs, trends, performance summaries, charts, rollups, dashboards, pipeline aggregates, revenue/EBITDA breakdowns, AR/AP aging, partner/referral attribution, FinServ pipeline rollups, or any Insights-only activity. This applies to direct asks ("show me insights", "KPIs", "trends") AND indirect asks ("how are we trending this month?", "summarize performance", "what's the pipeline value?") whose answer would require Insights-only data.
 - Do not infer, estimate, or guess restricted information from partial context.
 - Do not use outside knowledge or unstated assumptions about workspace data.
