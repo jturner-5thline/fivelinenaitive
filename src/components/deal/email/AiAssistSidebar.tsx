@@ -1086,40 +1086,25 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               Reply" pill row + "Draft Options" card duo with a single
               drafting workspace. */}
           {!error && (
+            // Draft Reply is opened exclusively from the Quick Actions pill
+            // above. The previous duplicate "DRAFT REPLY" collapsible header
+            // has been removed to eliminate the redundant entry point.
+            draftOpen && (
             <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => setDraftOpen((v) => !v)}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md border border-white/[0.06] bg-card/40 hover:bg-card/60 transition-colors group"
-                aria-expanded={draftOpen}
-              >
-                <Sparkles className="h-3 w-3 text-primary shrink-0" />
-                <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground group-hover:text-foreground transition-colors">
-                  Draft Reply
-                </span>
-                {isSelectedLoading && (
-                  <Loader2 className="h-2.5 w-2.5 animate-spin text-primary/60" />
-                )}
-                <div className="flex-1" />
-                <ChevronDown
-                  className={cn('h-3 w-3 text-muted-foreground transition-transform', !draftOpen && '-rotate-90')}
-                />
-              </button>
-              {/* Attribution label — small italic muted line directly below
-                  the DRAFT REPLY heading. Only renders when Deal Space data
-                  was actually fetched + used by the AI; otherwise omitted. */}
+              {/* Attribution label — small italic muted line above the draft
+                  body. Only renders when Deal Space data was actually
+                  fetched + used by the AI; otherwise omitted. */}
               {(result?.used_deal_context
                 || (result?.cited_context_sources || []).some((s) =>
                   s === 'deal_state_snapshot' || s === 'deal_space_financials' || s === 'deal_metadata')
               ) && dealContextSummary?.dealName && (
                 <p
                   className="px-2 italic text-muted-foreground/80"
-                  style={{ fontSize: 11, marginTop: -4 }}
+                  style={{ fontSize: 11 }}
                 >
                   Generated using {dealContextSummary.dealName} deal data
                 </p>
               )}
-              {draftOpen && (
               <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-3 space-y-2.5 overflow-hidden max-w-full min-w-0 w-full">
               {/* Header — title + optional helper. No counter, no chevrons:
                   the variant pill row below is the single switching surface. */}
@@ -1248,8 +1233,8 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                 </div>
               )}
               </div>
-              )}
             </div>
+            )
           )}
 
         </div>
@@ -1290,7 +1275,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               size="sm"
               className="h-8 text-[11px] gap-1.5 shrink-0"
             >
-              <Bookmark className="h-3 w-3" /> Save to deal
+              <Bookmark className="h-3 w-3" /> Save Email to Deal
             </Button>
           </PopoverTrigger>
           <PopoverContent
