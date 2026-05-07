@@ -145,13 +145,16 @@ async function dispatchNotifications(
     // makes this idempotent across tabs/users.
     const { error: claimError } = await supabase
       .from('email_priority_signal_log')
-      .insert({
-        message_id: email.id,
-        signal_type: signal.type,
-        deal_id: dealId,
-        lender_name: email.from_name,
-        detected_by: userId,
-      });
+      .upsert(
+        {
+          message_id: email.id,
+          signal_type: signal.type,
+          deal_id: dealId,
+          lender_name: email.from_name,
+          detected_by: userId,
+        },
+        { onConflict: 'message_id,signal_type', ignoreDuplicates: true }
+      );
     // 23505 = unique violation → already notified by another session.
     if (claimError && (claimError as any).code !== '23505') {
       // eslint-disable-next-line no-console
