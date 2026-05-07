@@ -123,10 +123,21 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
       }
       const existingGid = (task as any).asana_task_gid as string | undefined;
       if (existingGid) {
-        await updateTaskInAsana(existingGid, task as any, ctx);
+        await updateTaskInAsana(ctx, existingGid, {
+          title: task.title,
+          due_date: (task as any).due_date,
+          assignee_email: (task as any).assignee_email,
+          completed: task.status === 'complete',
+        });
         toast.success('Synced to Asana');
       } else {
-        const gid = await syncTaskToAsana(task as any, ctx);
+        const gid = await syncTaskToAsana(ctx, {
+          id: task.id,
+          title: task.title,
+          description: (task as any).description,
+          due_date: (task as any).due_date,
+          assignee_email: (task as any).assignee_email,
+        });
         if (gid) {
           onUpdate({ asana_task_gid: gid } as any);
           toast.success('Created task in Asana');
