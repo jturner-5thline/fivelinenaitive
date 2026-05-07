@@ -1245,17 +1245,6 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
         </div>
       </ScrollArea>
 
-      {/* Sticky AI action input — always one click away, no scrolling. */}
-      <div className="border-t border-white/[0.06] px-3 pt-3 shrink-0 bg-card/60 min-w-0 w-full">
-        <EmailUnifiedAiAction
-          thread={thread}
-          dealId={dealId}
-          dealName={dealName}
-          fallbackDealId={workflowAnalysis?.likely_deal?.id || null}
-          fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
-        />
-      </div>
-
       {/* Footer actions */}
       <div className="border-t border-white/[0.06] px-3 py-3 flex items-center gap-2 shrink-0 bg-card/60 min-w-0 w-full">
         {draftOpen && selectedOption && (
