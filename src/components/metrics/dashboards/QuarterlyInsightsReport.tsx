@@ -1906,7 +1906,7 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
                 {ownedProjects.length === 0 && !loading && (
                   <tr>
                     <td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: TEXT_LABEL, padding: 20 }}>
-                      No Asana portfolio initiatives owned by {preparedBy}.
+                      No initiatives found in the selected Asana portfolio.
                     </td>
                   </tr>
                 )}
