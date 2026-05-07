@@ -70,6 +70,7 @@ import { useResolveDealForEmail } from '@/hooks/useResolveDealForEmail';
 import { useAuth } from '@/contexts/AuthContext';
 import { isAutoDealNoteSuggestionEnabled } from '@/hooks/useAutoDealNoteSuggestionPref';
 import { usePendingDealResolutionsStore } from '@/stores/pendingDealResolutionsStore';
+import { summarizeSelectedEmailThread, type EmailThreadSummaryDebug } from './threadSummaryUtils';
 import { EmailContextMenu } from './EmailContextMenu';
 import { EmailBodyRenderer } from './EmailBodyRenderer';
 import { EmailAttachmentList } from './EmailAttachmentList';
@@ -1292,61 +1293,36 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
 }
 
 // ─── Collapsed older messages expander with thread summarize ──
-function CollapsedMessagesBar({ count, onExpand, threadEmails }: { count: number; onExpand: () => void; threadEmails?: MockEmail[] }) {
+function CollapsedMessagesBar({ count, onExpand, threadEmails, threadId, subject }: { count: number; onExpand: () => void; threadEmails?: MockEmail[]; threadId: string; subject: string }) {
   const [summary, setSummary] = useState<string[] | null>(null);
   const [summarizing, setSummarizing] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [summaryDebug, setSummaryDebug] = useState<EmailThreadSummaryDebug | null>(null);
 
   const handleSummarize = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!threadEmails || threadEmails.length === 0) return;
+    if (!threadEmails || threadEmails.length === 0) {
+      setSummary(null);
+      setSummaryError("Couldn't read the selected email thread for summary");
+      return;
+    }
     setSummarizing(true);
+    setSummaryError(null);
     try {
-      const threadText = threadEmails.map(em =>
-        `From: ${em.from_name} (${em.received_at})\nSubject: ${em.subject}\n${em.body_preview?.substring(0, 300)}`
-      ).join('\n---\n');
-
-      const prompt = `Summarize this email thread in 3-5 concise bullet points. Return ONLY a JSON array of strings, no markdown fences.\n\n${threadText}`;
-
-      const { data: session } = await supabase.auth.getSession();
-      const token = session?.session?.access_token;
-      if (!token) throw new Error('Not authenticated');
-
-      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ messages: [{ role: 'user', content: prompt }], context: { type: 'thread_summary' } }),
-      });
-
-      let fullText = '';
-      const reader = resp.body?.getReader();
-      if (reader) {
-        const decoder = new TextDecoder();
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          for (const line of chunk.split('\n')) {
-            if (line.startsWith('data: ')) {
-              const d = line.slice(6);
-              if (d === '[DONE]') continue;
-              try { const p = JSON.parse(d); const delta = p.choices?.[0]?.delta?.content; if (delta) fullText += delta; } catch {}
-            }
-          }
-        }
-      }
-
-      const arrMatch = fullText.match(/\[[\s\S]*\]/);
-      if (arrMatch) {
-        setSummary(JSON.parse(arrMatch[0]));
-      } else {
-        setSummary(fullText.split('\n').filter(l => l.trim().startsWith('-') || l.trim().startsWith('•')).map(l => l.replace(/^[-•]\s*/, '').trim()).filter(Boolean).slice(0, 5));
-      }
-    } catch {
-      setSummary([
-        'Multiple messages exchanged regarding the thread topic',
-        'Key stakeholders participated in the discussion',
-        'Action items were discussed and follow-ups requested',
-      ]);
+      const result = await summarizeSelectedEmailThread({ threadId, subject, emails: threadEmails });
+      setSummary(result.bullets);
+      setSummaryDebug(result.debug);
+    } catch (error) {
+      const debug = error instanceof Error && 'debug' in error
+        ? (error as Error & { debug?: EmailThreadSummaryDebug }).debug || null
+        : null;
+      setSummary(null);
+      setSummaryDebug(debug);
+      setSummaryError(
+        error instanceof Error && error.message
+          ? error.message
+          : "Couldn't read the selected email thread for summary",
+      );
     } finally {
       setSummarizing(false);
     }
@@ -1366,6 +1342,10 @@ function CollapsedMessagesBar({ count, onExpand, threadEmails }: { count: number
         </button>
       )}
 
+      {summaryError && !summarizing && (
+        <div className="mx-5 text-[11px] text-amber-300/90">{summaryError}</div>
+      )}
+
       {/* Summary bullets */}
       {summary && (
         <div className="mx-5 rounded border border-[hsl(var(--outlook-blue)/0.2)] bg-[hsl(var(--outlook-blue)/0.04)] p-3">
@@ -1380,6 +1360,11 @@ function CollapsedMessagesBar({ count, onExpand, threadEmails }: { count: number
               </li>
             ))}
           </ul>
+          {summaryDebug && (import.meta as any).env?.DEV && (
+            <div className="mt-2 text-[10px] text-foreground/40 font-mono break-all">
+              id={summaryDebug.threadId} · subject="{summaryDebug.subject}" · msgs={summaryDebug.messageCount} · first={summaryDebug.firstTimestamp || 'n/a'} · last={summaryDebug.lastTimestamp || 'n/a'} · src={summaryDebug.source} · chars={summaryDebug.cleanedCharCount}
+            </div>
+          )}
         </div>
       )}
 
@@ -2563,6 +2548,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                         count={hiddenCount}
                         onExpand={() => setOlderExpanded(true)}
                         threadEmails={thread.emails}
+                        threadId={thread.provider_thread_id || thread.threadId}
+                        subject={thread.subject}
                       />
                     )}
                     {visible.map((email) => (
