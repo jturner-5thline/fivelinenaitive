@@ -14,6 +14,7 @@ import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContex
 import { supabase } from '@/integrations/supabase/client';
 import naitiveLogoDark from '@/assets/naitive-logo-dark.png';
 import { QirContextualComments } from './qir/QirContextualComments';
+import { WhatWorkingSections } from './WhatWorkingSections';
 import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext } from '../insights/InsightsDrilldownDrawer';
 import { KpiDrillDownDialog, type KpiLike } from './qir/KpiDrillDownDialog';
 import {
@@ -2497,6 +2498,9 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
           </div>
           <div id="qir-section-goals" className="qir-unified-section">
             <ReportRisksSection s={s} set={set} print={print} />
+          </div>
+          <div id="qir-section-whats-working" className="qir-unified-section">
+            <WhatWorkingSections reportKey={`qir:${rk}`} />
           </div>
         </div>
       </Card>
