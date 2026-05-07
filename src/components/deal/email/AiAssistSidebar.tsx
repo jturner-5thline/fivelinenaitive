@@ -6,10 +6,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import {
   Loader2,
   X,
-  Check,
   RefreshCw,
   AlertTriangle,
-  ArrowRight,
   Bookmark,
   ChevronDown,
   Briefcase,
