@@ -2548,6 +2548,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                         count={hiddenCount}
                         onExpand={() => setOlderExpanded(true)}
                         threadEmails={thread.emails}
+                        threadId={thread.provider_thread_id || thread.threadId}
+                        subject={thread.subject}
                       />
                     )}
                     {visible.map((email) => (
