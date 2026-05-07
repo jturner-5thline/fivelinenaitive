@@ -48,15 +48,28 @@ import {
 } from '@/components/ui/dialog';
 import { DashboardPage } from '@/components/layout/DashboardPage';
 
-function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleMilestone }: {
+function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleMilestone, onOpenEdit }: {
   deal: Deal; onStatusChange: (id: string, s: DealStatus) => void; isDragging?: boolean;
   milestones: DealStageMilestone[]; onToggleMilestone: (dealId: string, stage: string, key: string) => void;
+  onOpenEdit: (deal: Deal) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: deal.id, data: { deal } });
   const style = { transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.5 : 1 };
 
   return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="touch-none w-full min-w-0">
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className="touch-none w-full min-w-0"
+      onClick={(e) => {
+        // Ignore clicks on milestone toggles or other interactive children
+        const t = e.target as HTMLElement;
+        if (t.closest('[data-milestone-toggle]')) return;
+        onOpenEdit(deal);
+      }}
+    >
       <NaitiveDealCard deal={deal} disableLink>
         {milestones.length > 0 && (
           <div className="pt-1">
@@ -74,7 +87,7 @@ function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleM
 
 function StageColumn({
   stage, deals, onStatusChange, onStageChange, activeDealId, isOver, fullscreen,
-  getMilestonesForDeal, onToggleMilestone,
+  getMilestonesForDeal, onToggleMilestone, onOpenEdit,
 }: {
   stage: DealStageOption; deals: Deal[];
   onStatusChange: (id: string, s: DealStatus) => void;
@@ -82,6 +95,7 @@ function StageColumn({
   activeDealId: string | null; isOver: boolean; fullscreen?: boolean;
   getMilestonesForDeal: (dealId: string, stage: string) => DealStageMilestone[];
   onToggleMilestone: (dealId: string, stage: string, key: string) => void;
+  onOpenEdit: (deal: Deal) => void;
 }) {
   const { setNodeRef } = useDroppable({ id: stage.id });
 
@@ -108,6 +122,7 @@ function StageColumn({
               isDragging={activeDealId === deal.id}
               milestones={getMilestonesForDeal(deal.id, deal.stage)}
               onToggleMilestone={onToggleMilestone}
+              onOpenEdit={onOpenEdit}
             />
           ))}
         </div>
