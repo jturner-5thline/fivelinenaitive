@@ -627,6 +627,67 @@ export function EmailUnifiedAiAction({
           reset();
           return;
         }
+        case 'allocate_hours': {
+          if (!user) {
+            toast.error('You must be signed in to log hours');
+            return;
+          }
+          const plan = suggestion.hour_plan;
+          const items = (plan?.items || []).filter(
+            (i) => i.status === 'matched' && i.matchedDealId && i.hours > 0,
+          );
+          if (items.length === 0) {
+            toast.error('No high-confidence deal matches to apply');
+            return;
+          }
+          const week = getCurrentWeekStart();
+          // Idempotency: existing entries for (user, week, deal) are upserted
+          // via onConflict, so re-running cannot double-log unless the user
+          // edits the value. Sum duplicate AI items pointing at the same deal.
+          const merged = new Map<string, { dealId: string; dealName: string; hours: number }>();
+          for (const it of items) {
+            const key = it.matchedDealId!;
+            const prev = merged.get(key);
+            merged.set(key, {
+              dealId: key,
+              dealName: it.matchedDealName || it.normalizedLabel,
+              hours: (prev?.hours || 0) + it.hours,
+            });
+          }
+          const rows = Array.from(merged.values()).map((m) => ({
+            deal_id: m.dealId,
+            user_id: user.id,
+            week_start_date: week,
+            hours: Math.round(m.hours * 100) / 100,
+            source: DEAL_HOURS_CONFIG.attributionSource,
+          }));
+          const { error: upErr } = await supabase
+            .from('weekly_time_entries')
+            .upsert(rows, { onConflict: DEAL_HOURS_CONFIG.conflictKey });
+          if (upErr) {
+            console.error('[allocate_hours] upsert failed', upErr);
+            toast.error('Failed to log hours', { description: upErr.message });
+            return;
+          }
+          queryClient.invalidateQueries({ queryKey: ['weekly-hours'] });
+          queryClient.invalidateQueries({ queryKey: ['deals'] });
+          merged.forEach((m) => {
+            queryClient.invalidateQueries({ queryKey: ['deal', m.dealId] });
+          });
+          const ambig = (plan?.summary.ambiguousItems || 0);
+          const unmatched = (plan?.summary.unmatchedItems || 0);
+          toast.success(
+            `Logged ${rows.length} deal${rows.length === 1 ? '' : 's'} · ${rows.reduce((s, r) => s + r.hours, 0)}h this week`,
+            {
+              description:
+                ambig + unmatched > 0
+                  ? `${ambig} ambiguous · ${unmatched} unmatched skipped`
+                  : 'All matched deals updated.',
+            },
+          );
+          reset();
+          return;
+        }
         case 'ask':
         default: {
           // Answer is already shown in the suggestion card — confirm just clears.
