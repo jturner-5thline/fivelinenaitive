@@ -57,7 +57,7 @@ function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleM
 
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="touch-none w-full min-w-0">
-      <NaitiveDealCard deal={deal}>
+      <NaitiveDealCard deal={deal} disableLink>
         {milestones.length > 0 && (
           <div className="pt-1">
             <NaitiveMilestoneDiamonds
