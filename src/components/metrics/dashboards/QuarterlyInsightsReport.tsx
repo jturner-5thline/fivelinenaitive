@@ -653,40 +653,39 @@ function ReportHeaderSection({ s, set, reset, save, print, canEdit, titlePrefix 
   };
   return (
     <Card className="glass-module">
-      <div style={{
-        padding: '20px 22px',
-        display: 'grid',
-        gap: 16,
-        gridTemplateColumns: 'minmax(280px, 2fr) minmax(140px, 1fr) minmax(160px, 1fr)',
-        alignItems: 'end',
-      }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div className="qir-report-header">
+        <div className="qir-report-header-title">
           <span style={fieldLabelStyle}>Report</span>
-          <div style={{ fontSize: 18, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: '-.2px', lineHeight: 1.25 }}>
+          <h1 style={{
+            fontSize: 22, fontWeight: 700, color: TEXT_PRIMARY,
+            letterSpacing: '-0.015em', lineHeight: 1.2, margin: 0,
+          }}>
             {reportTitle}
+          </h1>
+        </div>
+        <div className="qir-report-header-meta">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 140 }}>
+            <label style={fieldLabelStyle} htmlFor="qir-date-prepared">Date Prepared</label>
+            <input
+              id="qir-date-prepared"
+              value={s.preparedDate}
+              onChange={e => set(prev => ({ ...prev, preparedDate: e.target.value }))}
+              style={{ ...inputStyle, width: '100%' }}
+            />
           </div>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={fieldLabelStyle} htmlFor="qir-date-prepared">Date Prepared</label>
-          <input
-            id="qir-date-prepared"
-            value={s.preparedDate}
-            onChange={e => set(prev => ({ ...prev, preparedDate: e.target.value }))}
-            style={{ ...inputStyle, width: '100%' }}
-          />
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={fieldLabelStyle} htmlFor="qir-prepared-by">Prepared By</label>
-          <select
-            id="qir-prepared-by"
-            value={currentPreparedBy}
-            onChange={e => set(prev => ({ ...prev, authors: [e.target.value] }))}
-            style={{ ...selectStyle, width: '100%' }}
-          >
-            {PREPARED_BY_OPTIONS.map(opt => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 160 }}>
+            <label style={fieldLabelStyle} htmlFor="qir-prepared-by">Prepared By</label>
+            <select
+              id="qir-prepared-by"
+              value={currentPreparedBy}
+              onChange={e => set(prev => ({ ...prev, authors: [e.target.value] }))}
+              style={{ ...selectStyle, width: '100%' }}
+            >
+              {PREPARED_BY_OPTIONS.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
     </Card>
