@@ -1459,6 +1459,16 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     }
   });
   const aiAssistButtonRef = useRef<HTMLButtonElement | null>(null);
+  // The open-email command bar is portalled into the unified mail header
+  // (#email-detail-toolbar-slot) so Close/Reply/Forward/Delete/Archive/Flag/
+  // AI Assist/Link Deal/Expand share a single horizontal row with New +
+  // Search mail rather than living in a second stacked toolbar above the
+  // message body.
+  const [toolbarSlot, setToolbarSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    const el = document.getElementById('email-detail-toolbar-slot');
+    setToolbarSlot(el);
+  }, []);
   useEffect(() => {
     try {
       window.localStorage.setItem(AI_ASSIST_PREF_KEY, showAiAssist ? '1' : '0');
