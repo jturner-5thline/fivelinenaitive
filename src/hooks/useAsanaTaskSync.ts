@@ -105,6 +105,7 @@ export async function getAsanaSyncContext(companyId: string | null): Promise<Asa
     workspaceGid,
     projectGid: projectFilter?.asana_project_gid || null,
     sectionGid,
+    companyId,
   };
 }
 
