@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, isValidElement, cloneElement, type ReactNode, type ReactElement } from 'react';
 import { Loader2, Check, X, Quote, AlertCircle, Briefcase, User, Building2, Zap, Link2, Plus, Inbox as InboxIcon, Info } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
@@ -364,6 +364,21 @@ export function WorkflowIntelligenceCard({
       confirmedDetailLabels: showDetailField ? selectedReasonLabels : [],
     });
   };
+
+  // When the AI has no actionable workflow update for this thread but an
+  // attachment-fallback card was provided, render ONLY the fallback. The
+  // fallback is already a self-contained bordered "Suggested Update" card
+  // with its own header — wrapping it in our outer card here would create a
+  // duplicate header + box-in-a-box.
+  if (!hasUpdate && attachmentFallback) {
+    // Forward the count badge into the fallback's header by cloning the
+    // element when it accepts a `headerCount` prop.
+    const fallbackWithCount =
+      typeof headerCount === 'number' && headerCount > 0 && isValidElement(attachmentFallback)
+        ? cloneElement(attachmentFallback as ReactElement<{ headerCount?: number }>, { headerCount })
+        : attachmentFallback;
+    return <>{fallbackWithCount}</>;
+  }
 
   return (
     <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-2.5 space-y-2 overflow-hidden max-w-full min-w-0 w-full">
