@@ -1206,6 +1206,7 @@ Return STRICT JSON only — no markdown fences, no commentary:
     {
       "title": "string — concrete task name pre-filled from the email context, action-verb led. Include the counterparty and deal where natural. Example: 'Send due diligence list to Steven Adler @ Prospeq'.",
       "why": "string — ONE short sentence explaining which sentence in the email triggered this task suggestion. Keep under 120 chars.",
+      "description": "string — OPTIONAL richer task body. REQUIRED for task_type='call' when triggered by a call-commitment: include a short context line (e.g. 'Call Eric re: Czerlonka & 5th Line deal. He confirmed availability most of today.') followed by extracted contact details on separate lines, prefixed with 'Cell:', 'Office:', and 'Email:' as available. Empty string when none.",
       "task_type": "follow_up|call|email|review|send_doc|meeting|general",
       "due_date_hint": "string — either an ISO date 'YYYY-MM-DD' if the email explicitly states a date (e.g. 'by Friday', 'before Nov 14'), or the literal token 'next_business_day' when no date is stated.",
       "assignee_hint": "string — 'deal_manager' when the next action is on our side, or the verbatim person name from the email when the email assigns it to a specific teammate. Default to 'deal_manager'.",
@@ -1276,6 +1277,21 @@ SUGGESTED TASKS:
   • "schedule a call" / "let's set up a call" / "let's get on a call" / "set up time"
   • "confirm the wire" / "confirm the …" / "approve the …"
   Treat polite/ask variants ("please …", "can you …", "could you …", "would you …", "let's …") as equivalent to the imperative form.
+- CALL COMMITMENT DETECTION (HIGH PRIORITY — do not miss these):
+  • If our side asked a call-availability question ("good to call you this afternoon?", "can I give you a ring?", "ok if I call?", "free for a quick call?", "jump on the phone?") AND the counterparty replied affirmatively in any form ("yup", "yes", "sure", "sounds good", "works for me", "ok", "should be around", "available", "free all day", "I'm around"), that IS a confirmed call commitment — emit a suggested_task with task_type="call".
+  • Time references in either side ("today", "this afternoon", "this morning", "tonight", "tomorrow", "later today", "around X pm", "most of the day", "all day") set the timeframe. Map to:
+      - "today / this morning / this afternoon / tonight / most of the day / all day" → due_date_hint = today's ISO date
+      - "tomorrow" → tomorrow's ISO date
+      - explicit weekday or date → that ISO date
+      - otherwise → "next_business_day"
+  • Title MUST be: "Call <FirstName LastName> <timeframe>" (e.g. "Call Eric Lousararian today", "Call Steven Adler this afternoon"). Use the counterparty's full name from their signature or From header — never "the lender" or "them".
+  • Description MUST include: (a) brief call context referencing the deal, (b) any contact details extracted from the counterparty's signature on a new line each, prefixed:
+      - "Cell: <number>"
+      - "Office: <number with extension if present>"
+      - "Email: <email>"
+    Extract these verbatim from the email signature block — look for labels like "Cell", "Mobile", "M:", "Office", "O:", "Direct", "Tel", "Phone", "Email", or bare phone-number patterns ((xxx) xxx-xxxx, xxx-xxx-xxxx, xxx.xxx.xxxx, +1 xxx…). Include extensions ("x 114", "ext 114"). Skip if not present.
+  • priority = "high" when timeframe is today/this morning/this afternoon/tonight; otherwise "normal".
+  • confidence = "high" when both the ask and the affirmative reply are present in the thread.
 - Each detected next action becomes ONE entry in suggested_tasks. Up to 3 tasks max. Return [] when there is no clear next action.
 - Title MUST be a concrete, action-verb-led sentence pre-filled from the email context. Include the counterparty name and the deal name when they are known. Examples:
   • "Send due diligence list to Steven Adler @ Prospeq"
