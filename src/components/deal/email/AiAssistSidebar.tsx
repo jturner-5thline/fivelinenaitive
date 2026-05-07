@@ -58,7 +58,7 @@ import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
  *   • Generates *Concise* lazily the first time the user clicks that tab.
  *   • Caches per-thread/per-tone in sessionStorage so re-opening the same
  *     thread is instant and tone switches use the cached version.
- *   • 8s timeout with a graceful fallback message.
+ *   • 30s timeout with a graceful fallback message.
  *   • Workflow Intelligence and draft generation run in parallel.
  */
 
@@ -458,7 +458,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
 
   /**
    * Generate a single tone (Concise or Balanced). Fast model by default;
-   * heavier model when `regenerate` is true. 8s hard timeout.
+   * heavier model when `regenerate` is true. 30s hard timeout.
    */
   const generateTone = useCallback(async (
     tone: ToneKey,
@@ -473,8 +473,8 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
 
     const work = (async () => {
       try {
-        // Hard 8s timeout w/ graceful fallback message.
-        const timeoutMs = 8000;
+        // Hard 30s timeout w/ graceful fallback message.
+        const timeoutMs = 30000;
         const ac = new AbortController();
         const timer = setTimeout(() => ac.abort(), timeoutMs);
 
