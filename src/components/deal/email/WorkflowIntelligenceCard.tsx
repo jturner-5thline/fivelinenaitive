@@ -173,6 +173,7 @@ export function WorkflowIntelligenceCard({
   attachmentFallback,
   threadId = null,
   hideSuggestedTasks = false,
+  headerCount,
 }: Props) {
   // Source of truth for both Lender Stages and Pass Reasons — same lists
   // configured in Settings → Lender Stages and shown on the deal-detail
