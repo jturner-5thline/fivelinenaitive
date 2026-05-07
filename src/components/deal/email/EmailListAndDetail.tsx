@@ -2126,7 +2126,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           stacks (detail on top, assist below) so the middle column always has
           room to wrap. */}
       <div
-        className="grid h-full min-w-0 w-full overflow-hidden transition-[grid-template-columns] duration-200 ease-out"
+        className="relative grid h-full min-w-0 w-full overflow-hidden transition-[grid-template-columns] duration-200 ease-out"
         style={{
           gridTemplateColumns: showAiAssist
             ? 'minmax(0, 1fr) 360px'
@@ -2701,24 +2701,25 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             </EmailPaneErrorBoundary>
           </div>
         )}
-      </div>
 
-      {/* Pop-out composer */}
-      {popOutDraft && (
-        <PopOutComposer
-          draft={popOutDraft}
-          onSend={handleSendFromComposer}
-          onDiscard={handleDiscard}
-          onPopIn={handlePopIn}
-          onDraftChange={handleDraftChange}
-          onFieldBlur={handleFieldBlur}
-          saveStatus={saveStatus}
-          tokenContext={snippetTokenContext}
-          dealId={effectiveDealId ?? null}
-          dealName={effectiveDealName ?? null}
-          signature={composerSignature}
-        />
-      )}
+        {/* Pop-out composer — positioned absolutely inside the email modal
+            grid so it stays fully contained within the email pop-up frame. */}
+        {popOutDraft && (
+          <PopOutComposer
+            draft={popOutDraft}
+            onSend={handleSendFromComposer}
+            onDiscard={handleDiscard}
+            onPopIn={handlePopIn}
+            onDraftChange={handleDraftChange}
+            onFieldBlur={handleFieldBlur}
+            saveStatus={saveStatus}
+            tokenContext={snippetTokenContext}
+            dealId={effectiveDealId ?? null}
+            dealName={effectiveDealName ?? null}
+            signature={composerSignature}
+          />
+        )}
+      </div>
 
       {/* Send to Data Room dialog */}
       {showSendToDataRoom && (
