@@ -137,6 +137,7 @@ export function DataRoomUploadSuggestionCard({
   committing = false,
   onConfirm,
   onChangeSection,
+  headerCount,
 }: Props) {
   // Per-file classification — used to decide if the section dropdown should
   // jump off the "Interna" default (only when >0.8 confidence on majority).
