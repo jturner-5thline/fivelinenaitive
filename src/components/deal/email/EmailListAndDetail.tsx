@@ -2382,6 +2382,9 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               </>
             )}
           </div>
+            );
+            return toolbarSlot ? createPortal(commandBar, toolbarSlot) : commandBar;
+          })()}
 
           {/* Draft reply lives in the unified AI Assist sidebar — a single
               drafting workspace with one preview, variant switcher, and one
