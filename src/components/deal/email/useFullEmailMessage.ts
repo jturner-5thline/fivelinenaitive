@@ -54,7 +54,11 @@ export async function fetchFullEmailThread(threadId: string): Promise<FullThread
   });
 
   if (err) {
-    throw new Error(err.message || 'Failed to load thread');
+    // Soft-fail: upstream 404 / transient errors shouldn't crash callers
+    // (e.g. summarize, thread viewer). Return empty so callers can fall
+    // back to whatever messages they already have in memory.
+    console.warn('[fetchFullEmailThread] soft-fail', err?.message || err);
+    return [];
   }
 
   const messages = Array.isArray(resp?.thread?.messages) ? resp.thread.messages : [];
