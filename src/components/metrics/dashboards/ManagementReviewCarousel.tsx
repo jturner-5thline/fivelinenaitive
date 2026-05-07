@@ -13,6 +13,7 @@ import {
   useQuarterlyReportState,
 } from './QuarterlyInsightsReport';
 import { useCompanyDashboardConfig } from '@/hooks/useCompanyDashboardConfig';
+import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 
 type ReportSelection = {
   period: 'monthly' | 'quarterly';
@@ -31,17 +32,41 @@ function periodSlug(sel: ReportSelection): string {
   return `${sel.period}:${(label || 'unknown').replace(/\s+/g, '-').toLowerCase()}`;
 }
 
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+/** Derive the per-tab report selection from the GLOBAL Insights reporting
+ *  period header (Month / Quarter + period dropdown). This is the single
+ *  source of truth for which (tab × period_type × period_value) record we
+ *  load and save. */
+function useSelectionFromGlobalPeriod(): { selection: ReportSelection; ready: boolean } {
+  const tf = useInsightsTimeframeOptional();
+  const rp = tf?.reportingPeriod ?? null;
+  return useMemo(() => {
+    if (!rp) return { selection: DEFAULT_SELECTION, ready: true };
+    if (rp.view === 'month') {
+      const m = /^(\d{4})-(\d{2})$/.exec(rp.period);
+      if (!m) return { selection: DEFAULT_SELECTION, ready: true };
+      const year = parseInt(m[1], 10);
+      const mi = parseInt(m[2], 10);
+      const monthLabel = `${MONTH_NAMES[mi - 1]} ${year}`;
+      const q = Math.floor((mi - 1) / 3) + 1;
+      return { selection: { period: 'monthly', quarter: `Q${q} ${year}`, month: monthLabel }, ready: true };
+    }
+    const m = /^(\d{4})-Q([1-4])$/.exec(rp.period);
+    if (!m) return { selection: DEFAULT_SELECTION, ready: true };
+    const year = parseInt(m[1], 10);
+    const q = parseInt(m[2], 10);
+    return { selection: { period: 'quarterly', quarter: `Q${q} ${year}`, month: `${MONTH_NAMES[(q - 1) * 3]} ${year}` }, ready: true };
+  }, [rp?.view, rp?.period]);
+}
+
 function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady }: { reportKey: string; defaultAuthor: string; persona: string; onSaveReady?: (save: (() => Promise<boolean>) | null, canEdit: boolean, hasUnsavedChanges: boolean) => void }) {
-  // Per-tab selection (period + quarter/month) is persisted under a small
-  // dedicated key so all viewers land on the same active period. The actual
-  // report payload is keyed by `qir:<reportKey>:<period>:<label>` so each
-  // (tab × period) combination has its own independent saved blob.
-  const { config: selection, saveConfig: saveSelection, isLoaded: selectionLoaded } =
-    useCompanyDashboardConfig<ReportSelection>(
-      `qir:${reportKey}:selection`,
-      DEFAULT_SELECTION,
-      { allowAllMembers: true },
-    );
+  // The active period is derived from the GLOBAL Insights reporting period
+  // header (Month / Quarter + period dropdown). The composite key
+  // `qir:<reportKey>:<period_type>:<period_value>` uniquely identifies each
+  // (tab × period_type × period_value) record — saving one period NEVER
+  // affects another.
+  const { selection, ready: selectionLoaded } = useSelectionFromGlobalPeriod();
 
   const initial = useMemo(
     () => ({
@@ -68,11 +93,8 @@ function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady }:
   const { state, setState, reset, save, print, canEdit, isDirty, isSaving, activeCompositeKey, fetchedCompositeKey, unsavedChangesWarning } = useQuarterlyReportState(
     initial,
     dataKey,
-    {
-      onSelectionChange: (next) => {
-        saveSelection({ ...selection, ...next });
-      },
-    },
+    // No onSelectionChange: the period is owned by the global header, not
+    // mutated from inside the report editor.
   );
 
   useEffect(() => {
