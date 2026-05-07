@@ -21,6 +21,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
 import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, subWeeks, subMonths, subQuarters, getISOWeek, getISOWeekYear } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Deal } from '@/types/deal';
+import { NaitiveQualToDemoInsights } from './NaitiveQualToDemoInsights';
+import { NaitiveDidNotMoveInsights } from './NaitiveDidNotMoveInsights';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 
 type PeriodType = 'week' | 'month' | 'quarter';
 
@@ -128,9 +132,11 @@ const CHIP_LABEL: Record<string, string> = {
 interface Props {
   /** Outer dashboard reporting period — drives default selected period and prior comparison */
   reportingPeriod?: 'week' | 'month' | 'quarter';
+  /** All deals in the naitive pipeline — used by the Qual→Demo and Did-Not-Move tabs. */
+  deals?: Deal[];
 }
 
-export function NaitivePipelineNarrative({ reportingPeriod = 'week' }: Props) {
+export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] }: Props) {
   const [periodType, setPeriodType] = useState<PeriodType>(reportingPeriod);
   const today = useMemo(() => new Date(), []);
   const current = useMemo(() => periodFor(periodType, today), [periodType, today]);
