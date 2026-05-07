@@ -365,6 +365,22 @@ export function WorkflowIntelligenceCard({
     });
   };
 
+  // When the AI has no actionable workflow update for this thread but an
+  // attachment-fallback card was provided, render ONLY the fallback. The
+  // fallback is already a self-contained bordered "Suggested Update" card
+  // with its own header — wrapping it in our outer card here would create a
+  // duplicate header + box-in-a-box.
+  if (!hasUpdate && attachmentFallback) {
+    // Forward the count badge into the fallback's header by cloning the
+    // element when it accepts a `headerCount` prop.
+    const fallbackWithCount =
+      typeof headerCount === 'number' && headerCount > 0
+        && require('react').isValidElement(attachmentFallback)
+        ? require('react').cloneElement(attachmentFallback as any, { headerCount })
+        : attachmentFallback;
+    return <>{fallbackWithCount}</>;
+  }
+
   return (
     <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-2.5 space-y-2 overflow-hidden max-w-full min-w-0 w-full">
       {/* Single header — both sections render stacked below, no pagination. */}
