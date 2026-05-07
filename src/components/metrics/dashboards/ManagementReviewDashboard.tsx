@@ -13,6 +13,7 @@ import {
   subQuarters,
 } from 'date-fns';
 import { RefreshCw, Loader2, Save, RotateCcw, X } from 'lucide-react';
+import { WhatWorkingSections } from './WhatWorkingSections';
 import { useQueryClient } from '@tanstack/react-query';
 import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
 import { useMetricsData } from '@/hooks/useMetricsData';
@@ -1362,6 +1363,8 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
           </GridShell>
         </div>
       </DraggableGridLayout>
+
+      <WhatWorkingSections reportKey="insights-tab:dashboard" />
 
       <InsightsDrilldownDrawer
         open={!!drilldown}
