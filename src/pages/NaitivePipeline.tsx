@@ -148,6 +148,7 @@ export default function NaitivePipeline() {
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [editDeal, setEditDeal] = useState<Deal | null>(null);
 
   const goTo = useCallback((target: 0 | 1) => {
     if (target === activeView) return;
@@ -245,6 +246,7 @@ export default function NaitivePipeline() {
               fullscreen={fullscreen}
               getMilestonesForDeal={getMilestonesForDeal}
               onToggleMilestone={toggleMilestone}
+              onOpenEdit={setEditDeal}
             />
           ))}
         </div>
