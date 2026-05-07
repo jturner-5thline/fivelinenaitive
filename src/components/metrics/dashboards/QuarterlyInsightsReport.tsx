@@ -2498,6 +2498,9 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
           <div id="qir-section-goals" className="qir-unified-section">
             <ReportRisksSection s={s} set={set} print={print} />
           </div>
+          <div id="qir-section-whats-working" className="qir-unified-section">
+            <WhatWorkingSections reportKey={`qir:${rk}`} />
+          </div>
         </div>
       </Card>
       <div className="qir-no-print" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
