@@ -155,7 +155,7 @@ const tools = [
     type: "function",
     function: {
       name: "search_lenders",
-      description: "Search the master lender database by keyword.",
+      description: "Search the master lender database by free-text keyword. Searches across name, contact name/email/title, geography, lender type, tier, industries, loan types, deal-structure notes, company requirements, sponsorship/cash-burn/sub-debt criteria, and relationship owners. Use for ANY question about lenders ('which lenders fund SaaS', 'who do we know at Agility Capital', 'lenders that prefer warrants', 'lenders in the Southeast', 'find ABL lenders for $5M-$15M deals').",
       parameters: {
         type: "object",
         properties: { query: { type: "string" } },
@@ -1400,6 +1400,8 @@ function selectToolsWithScopes(
     "get_pipelines", "move_deal_pipeline",
     // Always-available kitchen-sink reads so the model never says "I don't have that data".
     "get_deal_full", "get_lender_full", "get_contact_full", "get_company_full",
+    // Lender directory is always authorized (not part of Insights gating).
+    "search_lenders", "get_lender_deal_history", "get_lenders_by_pass_filter",
     // Always-available CRM list/search (contacts, companies, recent activities).
     "search_contacts", "search_crm_companies", "get_recent_crm_activities",
     // Always-available link/write actions (still gated by confirmation card).
@@ -1547,8 +1549,49 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       };
     }
     case "search_lenders": {
-      const { data } = await supabase.from("master_lenders").select("id, name, lender_type, geo, tier, loan_types, industries").ilike("name", `%${args.query}%`).limit(10);
-      return { lenders: data || [] };
+      const q = String(args.query || "").trim();
+      const pattern = `%${q}%`;
+      const orFilter = [
+        `name.ilike.${pattern}`,
+        `contact_name.ilike.${pattern}`,
+        `email.ilike.${pattern}`,
+        `contact_title.ilike.${pattern}`,
+        `lender_type.ilike.${pattern}`,
+        `tier.ilike.${pattern}`,
+        `geo.ilike.${pattern}`,
+        `relationship_owners.ilike.${pattern}`,
+        `deal_structure_notes.ilike.${pattern}`,
+        `company_requirements.ilike.${pattern}`,
+        `sub_debt.ilike.${pattern}`,
+        `cash_burn.ilike.${pattern}`,
+        `sponsorship.ilike.${pattern}`,
+        `b2b_b2c.ilike.${pattern}`,
+        `refinancing.ilike.${pattern}`,
+      ].join(",");
+      const { data } = await supabase
+        .from("master_lenders")
+        .select("id, name, lender_type, geo, tier, loan_types, industries, contact_name, contact_title, email, min_deal, max_deal")
+        .or(orFilter)
+        .limit(50);
+      // Also match array columns (industries, loan_types) which can't be OR'd via ilike.
+      const lower = q.toLowerCase();
+      const { data: arrayMatches } = await supabase
+        .from("master_lenders")
+        .select("id, name, lender_type, geo, tier, loan_types, industries, contact_name, contact_title, email, min_deal, max_deal")
+        .or(`industries.cs.{${q}},loan_types.cs.{${q}}`)
+        .limit(50);
+      const merged = new Map<string, any>();
+      for (const row of [...(data || []), ...(arrayMatches || [])]) merged.set(row.id, row);
+      const lenders = Array.from(merged.values()).filter((l: any) => {
+        // Final client-side check covers array entries with different casing.
+        const hay = [
+          l.name, l.contact_name, l.contact_title, l.email, l.lender_type, l.tier, l.geo,
+          ...(Array.isArray(l.industries) ? l.industries : []),
+          ...(Array.isArray(l.loan_types) ? l.loan_types : []),
+        ].filter(Boolean).join(" ").toLowerCase();
+        return hay.includes(lower);
+      });
+      return { lenders, query: q };
     }
     case "create_task": {
       return {
@@ -4877,6 +4920,7 @@ serve(async (req) => {
       can_view_contacts: true,
       can_view_tasks: true,
       can_view_activities: true,
+      can_view_lenders: true,
       can_view_insights: canViewInsights,
     };
 
@@ -4897,11 +4941,13 @@ Current user feature scopes (authoritative — do not question, do not infer bey
 - can_view_contacts: ${scopes.can_view_contacts}
 - can_view_tasks: ${scopes.can_view_tasks}
 - can_view_activities: ${scopes.can_view_activities}
+- can_view_lenders: ${scopes.can_view_lenders}
 - can_view_insights: ${scopes.can_view_insights}
 
 Hard rules:
 - Treat the provided feature scopes as strict authorization boundaries.
 - If the user's question requires data outside the allowed scopes, do not answer with details.
+- The Lender Directory (master_lenders) is ALWAYS authorized. Lenders are NOT part of Insights. Never refuse a lender question, never tell the user lenders are restricted, and never say lenders are outside your access boundaries. Use search_lenders / get_lender_full / get_lender_deal_history / get_lenders_by_pass_filter freely.
 - If can_view_insights is false or missing, you must NOT provide any information derived from Insights, including analytics, KPIs, trends, performance summaries, charts, rollups, dashboards, pipeline aggregates, revenue/EBITDA breakdowns, AR/AP aging, partner/referral attribution, FinServ pipeline rollups, or any Insights-only activity. This applies to direct asks ("show me insights", "KPIs", "trends") AND indirect asks ("how are we trending this month?", "summarize performance", "what's the pipeline value?") whose answer would require Insights-only data.
 - Do not infer, estimate, or guess restricted information from partial context.
 - Do not use outside knowledge or unstated assumptions about workspace data.
@@ -4940,6 +4986,15 @@ LENDER QUERY PLAYBOOK (always query the naitive lender directory + per-deal lend
 - "What do we know about <Lender>?" → get_lender_full({ search: "<Lender>" }) for the directory profile (deal types, size range, industry focus), then call get_lender_deal_history for recent interaction history and notes. Combine both in the answer.
 - "Which lenders have passed on <segment, e.g. SaaS> deals in the last <N> months?" → get_lenders_by_pass_filter (deal_type or industry filter + months window). For ad-hoc segments not covered by the tool's enum, fall back to: search_deals(deal_type=...) then get_deal_lenders for each, filtering tracking_status='passed' and updated_at within the window.
 - ALWAYS cite the source deal (e.g. "On the Infillion deal, …") when answering deal-specific lender questions.
+
+LENDER DIRECTORY FILTER (when the user is on the /lenders page OR clearly asking for a list of lenders that match a criterion):
+After your normal narrative answer, if you identified a concrete set of matching lenders from the master directory, emit a single fenced JSON block on its own line with this exact shape so the directory list can update to show only those lenders:
+\`\`\`json
+{ "responseType": "lender_filter", "data": { "query": "<the user's query in plain English>", "names": ["Lender A", "Lender B", "..."] } }
+\`\`\`
+- Use the EXACT lender names returned by search_lenders / get_lender_full (case-insensitive matches are fine).
+- Only emit lender_filter when you have a concrete, finite list of matching lenders. Do NOT emit it for single-lender profile questions or for questions that don't ask "which lenders…".
+- The narrative comes first, the JSON block comes after. Keep both.
 
 CRM list/search context (use these when the user asks about MULTIPLE contacts/companies or wants a list, not a single profile):
 - "Find/list contacts at <company>", "who do we know at X", "show me leads/MQLs/customers", "contacts I own" → search_contacts

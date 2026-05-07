@@ -262,7 +262,7 @@ export default function Lenders() {
     }
     searchTimeoutRef.current = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-    }, 400); // Slightly longer debounce for server queries
+    }, 150); // Real-time client-side search
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
@@ -270,7 +270,7 @@ export default function Lenders() {
     };
   }, [searchQuery]);
 
-  // Use the hook with server-side search
+  // Load all lenders client-side; we run a rich multi-field search locally.
   const {
     lenders: masterLenders,
     loading: isLoading,
@@ -291,7 +291,7 @@ export default function Lenders() {
     eagerAll: true,
     pageSize: 1000,
     orderBy: { column: 'name', ascending: true },
-    searchQuery: debouncedSearchQuery,
+    // No server-side searchQuery — we filter on the client across many fields.
   });
 
   // Load tile display settings from localStorage
@@ -377,23 +377,111 @@ export default function Lenders() {
     return counts;
   }, [deals, masterLenders]);
 
+  // Build a per-lender deal-history index used by the search:
+  // deal names, pass reasons, and lender notes from all deals where this lender appears.
+  const lenderDealIndex = useMemo(() => {
+    const idx: Record<string, string> = {};
+    deals.forEach((deal) => {
+      deal.lenders?.forEach((dl) => {
+        const key = dl.name.toLowerCase().trim();
+        const parts = [
+          deal.company || '',
+          dl.passReason || '',
+          dl.notes || '',
+          dl.savedNotes || '',
+          dl.stage || '',
+          dl.trackingStatus || '',
+        ];
+        idx[key] = (idx[key] ? idx[key] + ' ' : '') + parts.join(' ');
+      });
+    });
+    return idx;
+  }, [deals]);
+
+  // AI-driven filter: when the Copilot answers a lender query, it can dispatch
+  // a 'naitive:lender-filter' event with a list of matching lender names.
+  const [aiFilter, setAiFilter] = useState<{ query: string; names: Set<string> } | null>(null);
+  useEffect(() => {
+    const onFilter = (e: Event) => {
+      const detail = (e as CustomEvent).detail || {};
+      const names: string[] = Array.isArray(detail.names) ? detail.names : [];
+      const query: string = typeof detail.query === 'string' ? detail.query : '';
+      if (!names.length) {
+        setAiFilter(null);
+        return;
+      }
+      setAiFilter({ query, names: new Set(names.map((n) => n.toLowerCase().trim())) });
+    };
+    const onClear = () => setAiFilter(null);
+    window.addEventListener('naitive:lender-filter', onFilter as EventListener);
+    window.addEventListener('naitive:lender-filter-clear', onClear);
+    return () => {
+      window.removeEventListener('naitive:lender-filter', onFilter as EventListener);
+      window.removeEventListener('naitive:lender-filter-clear', onClear);
+    };
+  }, []);
+
   const openLenderDetail = (lender: MasterLender, editMode = false) => {
     setSelectedLender(masterLenderToLenderInfo(lender));
     setIsDetailEditMode(editMode);
     setIsDetailOpen(true);
   };
 
-  // Filter lenders based on active deals filter and advanced filters
-  // Note: text search is now handled server-side via the hook's searchQuery option
+  // Filter lenders: advanced filters → AI filter → active-deals → text search.
+  // Text search runs client-side across many fields (real-time substring match).
   const filteredLenders = useMemo(() => {
-    // First apply advanced filters (client-side for complex logic)
-    const advancedFiltered = applyLenderFilters(masterLenders, advancedFilters);
-    
-    // Then apply active deals filter only (search is server-side now)
-    if (!showActiveDealsOnly) return advancedFiltered;
-    
-    return advancedFiltered.filter(lender => activeDealCounts[lender.name]);
-  }, [masterLenders, advancedFilters, showActiveDealsOnly, activeDealCounts]);
+    let list = applyLenderFilters(masterLenders, advancedFilters);
+
+    if (aiFilter && aiFilter.names.size) {
+      list = list.filter((l) => aiFilter.names.has(l.name.toLowerCase().trim()));
+    }
+
+    if (showActiveDealsOnly) {
+      list = list.filter((lender) => activeDealCounts[lender.name]);
+    }
+
+    const q = debouncedSearchQuery.trim().toLowerCase();
+    if (!q) return list;
+
+    const matches = (val: unknown): boolean => {
+      if (val == null) return false;
+      if (Array.isArray(val)) return val.some((v) => matches(v));
+      if (typeof val === 'number') return String(val).includes(q);
+      if (typeof val === 'string') return val.toLowerCase().includes(q);
+      return false;
+    };
+
+    return list.filter((l) => {
+      const dealHistory = lenderDealIndex[l.name.toLowerCase().trim()] || '';
+      const dealSize = `${l.min_deal ?? ''} ${l.max_deal ?? ''} ${formatCurrency(l.min_deal)} ${formatCurrency(l.max_deal)}`;
+      return (
+        matches(l.name) ||
+        matches(l.contact_name) ||
+        matches(l.email) ||
+        matches(l.contact_title) ||
+        matches(l.contact_phone) ||
+        matches(l.geo) ||
+        matches(l.lender_type) ||
+        matches(l.tier) ||
+        matches(l.industries) ||
+        matches(l.industries_to_avoid) ||
+        matches(l.loan_types) ||
+        matches(l.deal_structure_notes) ||
+        matches(l.company_requirements) ||
+        matches(l.upfront_checklist) ||
+        matches(l.post_term_sheet_checklist) ||
+        matches(l.sub_debt) ||
+        matches(l.cash_burn) ||
+        matches(l.sponsorship) ||
+        matches(l.b2b_b2c) ||
+        matches(l.refinancing) ||
+        matches(l.relationship_owners) ||
+        matches(l.referral_lender) ||
+        matches(dealSize) ||
+        matches(dealHistory)
+      );
+    });
+  }, [masterLenders, advancedFilters, showActiveDealsOnly, activeDealCounts, debouncedSearchQuery, lenderDealIndex, aiFilter]);
 
   // Sort filtered lenders - memoized to prevent re-sorting on every render
   const sortedLenders = useMemo(() => {
@@ -1195,6 +1283,24 @@ export default function Lenders() {
                     </Button>
                   </div>
                 </div>
+
+                {/* AI-driven filter banner */}
+                {aiFilter && (
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Zap className="h-4 w-4 text-primary shrink-0" />
+                      <span className="truncate">
+                        Showing AI-filtered results
+                        {aiFilter.query ? <> for: <span className="font-medium">{aiFilter.query}</span></> : null}
+                        <span className="ml-2 text-muted-foreground">({aiFilter.names.size} lender{aiFilter.names.size === 1 ? '' : 's'})</span>
+                      </span>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => setAiFilter(null)} className="gap-1">
+                      <X className="h-3.5 w-3.5" />
+                      Clear filter
+                    </Button>
+                  </div>
+                )}
 
                 {/* Bulk Selection Action Bar */}
                 {selectedLenderIds.size > 0 && (
