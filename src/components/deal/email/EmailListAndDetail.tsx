@@ -1912,6 +1912,37 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     setReplyTo(getReplyTarget());
   }, [getReplyTarget]);
 
+  // ── AI Assist → pop-out compose bridge ──────────────────────────────
+  // The AI Assist sidebar's "Draft Reply" quick action dispatches
+  // `naitive:ai-assist:open-popout-draft` with the generated body. We
+  // open the Outlook-style PopOutComposer pre-filled with that draft,
+  // resolved recipients, and the thread subject (Re: …).
+  useEffect(() => {
+    const onOpenPopOutDraft = (e: Event) => {
+      const detail = (e as CustomEvent<{ body: string; threadId?: string }>).detail;
+      if (!detail?.body) return;
+      if (detail.threadId && detail.threadId !== thread.threadId) return;
+      const target = getReplyTarget();
+      const subject = thread.subject?.startsWith('Re:')
+        ? thread.subject
+        : `Re: ${thread.subject || ''}`;
+      setReplyTo(null);
+      setInlineDraft(null);
+      setPopOutDraft({
+        to: target.to_email,
+        toName: target.to_name,
+        subject,
+        body: detail.body,
+        cc: '',
+        bcc: '',
+        attachments: [],
+        threadId: thread.threadId,
+      });
+    };
+    window.addEventListener('naitive:ai-assist:open-popout-draft', onOpenPopOutDraft as EventListener);
+    return () => window.removeEventListener('naitive:ai-assist:open-popout-draft', onOpenPopOutDraft as EventListener);
+  }, [getReplyTarget, thread.subject, thread.threadId]);
+
   // ─── Thread collapse/expand state ────────────────────────────
   const VISIBLE_RECENT = 3;
   const totalMessages = thread.emails.length;
