@@ -1,5 +1,6 @@
 import React from 'react';
 import { SortableWidgetGrid, SortableItem } from './SortableWidgetGrid';
+import { WhatWorkingSections } from './WhatWorkingSections';
 
 // ── Card ──
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
@@ -194,6 +195,7 @@ export function KeyMetricsPage() {
         items={items}
         style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 10 }}
       />
+      <WhatWorkingSections reportKey="insights-tab:key-metrics" />
     </div>
   );
 }
