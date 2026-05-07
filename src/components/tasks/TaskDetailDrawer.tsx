@@ -109,6 +109,49 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
   const [blockerNote, setBlockerNote] = useState((task as any).blocker_note || '');
   const [expandedSubtasks, setExpandedSubtasks] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [asanaSyncing, setAsanaSyncing] = useState(false);
+
+  const handleManualAsanaSync = useCallback(async () => {
+    if (asanaSyncing) return;
+    setAsanaSyncing(true);
+    try {
+      const companyId = (task as any).company_id || null;
+      const ctx = await getAsanaSyncContext(companyId);
+      if (!ctx) {
+        toast.error('Asana is not connected for this workspace, or sync is disabled.');
+        return;
+      }
+      const existingGid = (task as any).asana_task_gid as string | undefined;
+      if (existingGid) {
+        await updateTaskInAsana(ctx, existingGid, {
+          title: task.title,
+          due_date: (task as any).due_date,
+          assignee_email: (task as any).assignee_email,
+          completed: task.status === 'complete',
+        });
+        toast.success('Synced to Asana');
+      } else {
+        const gid = await syncTaskToAsana(ctx, {
+          id: task.id,
+          title: task.title,
+          description: (task as any).description,
+          due_date: (task as any).due_date,
+          assignee_email: (task as any).assignee_email,
+        });
+        if (gid) {
+          onUpdate({ asana_task_gid: gid } as any);
+          toast.success('Created task in Asana');
+        } else {
+          toast.error('Asana sync did not return a task ID. Check the admin sync log.');
+        }
+      }
+    } catch (err: any) {
+      console.error('[AsanaSync] Manual sync failed:', err);
+      toast.error(`Asana sync failed: ${err?.message || 'unknown error'}`);
+    } finally {
+      setAsanaSyncing(false);
+    }
+  }, [task, asanaSyncing, onUpdate]);
 
   const toggleSubtaskExpanded = useCallback((id: string) => {
     setExpandedSubtasks(prev => {
@@ -204,6 +247,9 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
           <span className="text-xs capitalize" style={{ color: '#8b92a5' }}>{task.task_type}</span>
         </div>
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleManualAsanaSync} disabled={asanaSyncing} title={(task as any).asana_task_gid ? 'Sync to Asana' : 'Create in Asana'}>
+            <RefreshCw className={cn('h-3.5 w-3.5', asanaSyncing && 'animate-spin')} style={{ color: '#8b92a5' }} />
+          </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/tasks/${task.id}`)} title="Open full page">
             <ExternalLink className="h-3.5 w-3.5" style={{ color: '#8b92a5' }} />
           </Button>
