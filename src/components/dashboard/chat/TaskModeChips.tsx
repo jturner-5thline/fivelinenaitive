@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { X, Calendar as CalendarIcon, Briefcase, Building2, User, AlertTriangle, Tag, Repeat, ChevronDown } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Briefcase, Building2, User, AlertTriangle, Tag, Repeat, Check } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Button } from '@/components/ui/button';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import type { TaskDraft } from '@/hooks/useNaitiveTaskParse';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Props {
   draft: TaskDraft;
@@ -68,6 +70,52 @@ function Chip({
 
 export function TaskModeChips({ draft, onChange, loading }: Props) {
   const [dateOpen, setDateOpen] = useState(false);
+  const [ownerOpen, setOwnerOpen] = useState(false);
+  const { user } = useAuth();
+  const teamMembers = useTeamMembers();
+
+  const ownerPickerContent = (
+    <PopoverContent className="w-[240px] p-0 z-[80] pointer-events-auto" align="start">
+      <Command>
+        <CommandInput placeholder="Search teammates..." className="h-8 text-[12px]" />
+        <CommandList>
+          <CommandEmpty>No teammates found.</CommandEmpty>
+          <CommandGroup>
+            {user?.id && (
+              <CommandItem
+                key="self"
+                value="you me self"
+                onSelect={() => {
+                  onChange({ ...draft, owner_id: user.id, owner_label: 'You', owner_ambiguous: null });
+                  setOwnerOpen(false);
+                }}
+              >
+                <User className="h-3 w-3 mr-2" />
+                You
+                {draft.owner_id === user.id && <Check className="h-3 w-3 ml-auto" />}
+              </CommandItem>
+            )}
+            {teamMembers
+              .filter((m) => m.id !== user?.id)
+              .map((m) => (
+                <CommandItem
+                  key={m.id}
+                  value={`${m.display_name} ${m.email || ''}`}
+                  onSelect={() => {
+                    onChange({ ...draft, owner_id: m.id, owner_label: m.display_name, owner_ambiguous: null });
+                    setOwnerOpen(false);
+                  }}
+                >
+                  <User className="h-3 w-3 mr-2" />
+                  <span className="truncate">{m.display_name}</span>
+                  {draft.owner_id === m.id && <Check className="h-3 w-3 ml-auto" />}
+                </CommandItem>
+              ))}
+          </CommandGroup>
+        </CommandList>
+      </Command>
+    </PopoverContent>
+  );
 
   const dot =
     draft.confidence >= 0.8 ? 'bg-emerald-500'
@@ -107,31 +155,26 @@ export function TaskModeChips({ draft, onChange, loading }: Props) {
           <Chip icon={User} label={`Contact: "${draft.hints.contact}" — no match`} tone="warn" />
         ) : null}
 
-        {/* Owner */}
-        {draft.owner_ambiguous && draft.owner_ambiguous.length > 0 && !draft.owner_id ? (
-          <Popover>
-            <PopoverTrigger asChild>
-              <span>
-                <Chip icon={User} label={`Owner: ambiguous — pick`} tone="warn" />
-              </span>
-            </PopoverTrigger>
-            <PopoverContent className="w-56 p-1" align="start">
-              {draft.owner_ambiguous.map((o) => (
-                <button
-                  key={o.id}
-                  className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-primary/10"
-                  onClick={() => onChange({ ...draft, owner_id: o.id, owner_label: o.label, owner_ambiguous: null })}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </PopoverContent>
-          </Popover>
-        ) : draft.owner_label ? (
-          <Chip icon={User} label={`Owner: ${draft.owner_label}`} onRemove={() => onChange({ ...draft, owner_id: null, owner_label: null })} />
-        ) : draft.hints.owner ? (
-          <Chip icon={User} label={`Owner: "${draft.hints.owner}" — no match`} tone="warn" />
-        ) : null}
+        {/* Assignee — always editable via teammate picker */}
+        <Popover open={ownerOpen} onOpenChange={setOwnerOpen}>
+          <PopoverTrigger asChild>
+            <span>
+              <Chip
+                icon={User}
+                label={
+                  draft.owner_label
+                    ? `Assignee: ${draft.owner_label}${draft.owner_ambiguous && draft.owner_ambiguous.length > 0 ? ' (suggested)' : ''}`
+                    : draft.hints.owner
+                      ? `Assignee: "${draft.hints.owner}" — pick`
+                      : 'Assignee: pick'
+                }
+                onClick={() => setOwnerOpen(true)}
+                tone={!draft.owner_id ? 'warn' : 'default'}
+              />
+            </span>
+          </PopoverTrigger>
+          {ownerPickerContent}
+        </Popover>
 
         {/* Due date */}
         <Popover open={dateOpen} onOpenChange={setDateOpen}>
