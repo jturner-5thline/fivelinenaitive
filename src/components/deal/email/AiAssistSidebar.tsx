@@ -175,6 +175,9 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   // we can show a loading indicator on the active chip without blocking the
   // rest of the panel.
   const [activeIntentKey, setActiveIntentKey] = useState<string | null>(null);
+  // When set, the next available draft body for this tone will be dispatched
+  // to open the Outlook-style pop-out composer pre-filled with the AI draft.
+  const popOutPendingTone = useRef<ToneKey | null>(null);
   // When true, the "Request a meeting" chip swaps the chip-row UI for the
   // full meeting scheduler workspace (calendar read → slot pick → invite).
   // This UPGRADES the existing chip without adding a new button anywhere.
@@ -693,6 +696,24 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
     window.addEventListener('naitive:ai-assist:request-draft', onRequest);
     return () => window.removeEventListener('naitive:ai-assist:request-draft', onRequest);
   }, [selectedOption]);
+
+  // ── Pop-out compose modal bridge ───────────────────────────────────────
+  // When the Draft Reply quick action is clicked, we generate (if needed)
+  // and then dispatch `naitive:ai-assist:open-popout-draft` so the parent
+  // EmailListAndDetail can open the Outlook-style PopOutComposer pre-filled
+  // with the AI body, recipients, and subject from the active thread.
+  useEffect(() => {
+    const pending = popOutPendingTone.current;
+    if (!pending) return;
+    const body = result?.options[pending]?.body;
+    if (!body) return;
+    popOutPendingTone.current = null;
+    try {
+      window.dispatchEvent(new CustomEvent('naitive:ai-assist:open-popout-draft', {
+        detail: { body, threadId: thread.threadId },
+      }));
+    } catch {}
+  }, [result, thread.threadId]);
 
   // Expose a tiny debug snapshot so the top-level ErrorBoundary can include
   // AiAssist state in its fallback when something downstream crashes.
