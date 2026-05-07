@@ -690,8 +690,8 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
               disabled={!canSend}
               size="sm"
               className={cn(
-                'h-8 text-xs gap-1.5 rounded-r-none px-3',
-                'bg-[hsl(var(--outlook-blue))] text-white hover:bg-[hsl(var(--outlook-blue))]/90',
+                'h-8 text-xs gap-1.5 rounded-r-none px-3.5 font-medium',
+                'bg-gradient-to-b from-[hsl(180_72%_45%)] to-[hsl(190_82%_38%)] text-white shadow-[0_1px_0_hsl(0_0%_100%/0.12)_inset,0_1px_2px_hsl(190_60%_15%/0.4)] hover:from-[hsl(180_72%_50%)] hover:to-[hsl(190_82%_42%)] disabled:opacity-50',
               )}
               aria-label={sendDisabledReason ? `Send disabled — ${sendDisabledReason}` : 'Send (⌘↵)'}
             >
@@ -712,7 +712,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
             size="sm"
             className={cn(
               'h-8 px-1.5 rounded-l-none border-l border-white/20',
-              'bg-[hsl(var(--outlook-blue))] text-white hover:bg-[hsl(var(--outlook-blue))]/90',
+              'bg-gradient-to-b from-[hsl(180_72%_45%)] to-[hsl(190_82%_38%)] text-white hover:from-[hsl(180_72%_50%)] hover:to-[hsl(190_82%_42%)]',
             )}
             aria-label="More send options"
           >
@@ -1173,7 +1173,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-1 text-muted-foreground h-7 text-xs"
+                className="gap-1 h-7 text-xs text-foreground/60 hover:text-foreground hover:bg-white/[0.06]"
                 onClick={triggerFilePicker}
                 aria-label="Attach file"
               >
@@ -1190,7 +1190,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="gap-1 text-muted-foreground h-7 text-xs"
+                  className="gap-1 h-7 text-xs text-foreground/60 hover:text-foreground hover:bg-white/[0.06]"
                   onClick={() => insertAtCursor(`<p><a href="${resolvedDataRoomUrl}" target="_blank" rel="noopener noreferrer">View Data Room</a></p>`)}
                   aria-label="Insert Data Room link"
                 >
@@ -1209,7 +1209,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="gap-1 h-7 text-xs text-muted-foreground hover:text-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/10"
+                className="gap-1 h-7 text-xs text-foreground/60 hover:text-[hsl(180_72%_55%)] hover:bg-[hsl(180_72%_45%)]/10"
                 onClick={handlePolishInPlace}
                 onMouseEnter={() => { if (polishTooltipOpen) setPolishTooltipOpen(false); }}
                 disabled={polishPending}
@@ -1240,7 +1240,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-1 h-7 text-xs text-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/10"
+                className="gap-1 h-7 text-xs text-[hsl(180_72%_60%)] hover:text-[hsl(180_72%_70%)] hover:bg-[hsl(180_72%_45%)]/10"
                 onClick={requestAiDraft}
                 aria-label="Draft with AI (⌘J)"
               >
