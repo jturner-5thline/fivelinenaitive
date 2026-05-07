@@ -80,15 +80,55 @@ export function PopOutComposer({
   const [files, setFiles] = useState<File[]>([]);
   const [minimized, setMinimized] = useState(false);
 
-  // Floating window state
-  const [position, setPosition] = useState({
-    x: typeof window !== 'undefined' ? window.innerWidth - 540 : 100,
-    y: typeof window !== 'undefined' ? window.innerHeight - 520 : 100,
-  });
-  const [size, setSize] = useState({ width: 520, height: 520 });
+  // Floating window state — positioned ABSOLUTELY within the nearest
+  // positioned ancestor (the email modal/container), so it stays fully
+  // contained inside the email pop-up rather than floating against the
+  // browser viewport.
   const dragRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ x: 16, y: 16 });
+  const [size, setSize] = useState({ width: 480, height: 460 });
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
+
+  const getParentBounds = useCallback(() => {
+    const parent = dragRef.current?.offsetParent as HTMLElement | null;
+    if (!parent) {
+      return { width: window.innerWidth, height: window.innerHeight };
+    }
+    return { width: parent.clientWidth, height: parent.clientHeight };
+  }, []);
+
+  // Anchor to bottom-right of the parent container on first mount, and clamp
+  // whenever the parent resizes so we never overflow the email modal frame.
+  useEffect(() => {
+    const place = () => {
+      const { width: pw, height: ph } = getParentBounds();
+      const w = Math.min(size.width, Math.max(320, pw - 24));
+      const h = Math.min(size.height, Math.max(280, ph - 24));
+      setSize({ width: w, height: h });
+      setPosition({
+        x: Math.max(8, pw - w - 16),
+        y: Math.max(8, ph - h - 16),
+      });
+    };
+    place();
+    const parent = dragRef.current?.offsetParent as HTMLElement | null;
+    if (!parent || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => {
+      const { width: pw, height: ph } = getParentBounds();
+      setSize((s) => ({
+        width: Math.min(s.width, Math.max(320, pw - 24)),
+        height: Math.min(s.height, Math.max(280, ph - 24)),
+      }));
+      setPosition((p) => ({
+        x: Math.max(8, Math.min(p.x, pw - 320 - 8)),
+        y: Math.max(8, Math.min(p.y, ph - 280 - 8)),
+      }));
+    });
+    ro.observe(parent);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const defaultTokenContext: TokenContext = tokenContext || {
     recipientName: initialDraft.toName,
@@ -123,9 +163,10 @@ export function PopOutComposer({
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging.current) return;
+      const { width: pw, height: ph } = getParentBounds();
       setPosition({
-        x: Math.max(0, Math.min(window.innerWidth - size.width, e.clientX - dragStart.current.x)),
-        y: Math.max(0, Math.min(window.innerHeight - 50, e.clientY - dragStart.current.y)),
+        x: Math.max(0, Math.min(pw - size.width, e.clientX - dragStart.current.x)),
+        y: Math.max(0, Math.min(ph - 40, e.clientY - dragStart.current.y)),
       });
     };
     const handleMouseUp = () => { isDragging.current = false; };
@@ -135,7 +176,7 @@ export function PopOutComposer({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [position, size.width]);
+  }, [position, size.width, getParentBounds]);
 
   const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
   const pendingSendOpts = useMemo<{ current: ComposerSendOptions }>(() => ({ current: {} }), []);
@@ -205,7 +246,7 @@ export function PopOutComposer({
   if (minimized) {
     return (
       <div
-        className="fixed z-50 bottom-0 right-4 bg-card border border-border rounded-t-lg shadow-2xl cursor-pointer"
+        className="absolute z-40 bottom-3 right-4 bg-card/95 backdrop-blur-md border border-[hsl(var(--email-border))] rounded-t-xl shadow-xl cursor-pointer"
         style={{ width: 320 }}
         onClick={() => setMinimized(false)}
       >
@@ -226,21 +267,21 @@ export function PopOutComposer({
   return (
     <div
       ref={dragRef}
-      className="fixed z-50 bg-card border border-border rounded-lg shadow-2xl flex flex-col overflow-hidden"
+      className="absolute z-40 bg-card/95 backdrop-blur-md border border-[hsl(var(--email-border))] rounded-xl shadow-2xl ring-1 ring-black/5 flex flex-col overflow-hidden"
       style={{
         left: position.x,
         top: position.y,
         width: size.width,
         height: size.height,
-        minWidth: 380,
-        minHeight: 320,
+        minWidth: 320,
+        minHeight: 280,
       }}
       role="dialog"
       aria-label="Pop-out email composer"
     >
       {/* Drag header */}
       <div
-        className="flex items-center gap-2 px-3 py-2 border-b bg-muted/40 cursor-move select-none shrink-0"
+        className="flex items-center gap-2 px-3 py-2 border-b border-[hsl(var(--email-border))] bg-card/60 cursor-move select-none shrink-0 rounded-t-xl"
         onMouseDown={handleMouseDown}
       >
         <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground/50" />
@@ -305,9 +346,10 @@ export function PopOutComposer({
           const startW = size.width;
           const startH = size.height;
           const onMove = (ev: MouseEvent) => {
+            const { width: pw, height: ph } = getParentBounds();
             setSize({
-              width: Math.max(380, startW + (ev.clientX - startX)),
-              height: Math.max(320, startH + (ev.clientY - startY)),
+              width: Math.max(320, Math.min(pw - position.x - 8, startW + (ev.clientX - startX))),
+              height: Math.max(280, Math.min(ph - position.y - 8, startH + (ev.clientY - startY))),
             });
           };
           const onUp = () => {
