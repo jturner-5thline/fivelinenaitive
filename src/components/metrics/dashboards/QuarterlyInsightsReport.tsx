@@ -2528,6 +2528,32 @@ export function QuarterlyReportPrintStyles() {
     el.id = id;
     el.innerHTML = `
       [id^="qir-section-"] { scroll-margin-top: 96px; }
+      /* Report header — clean horizontal row on desktop, stacked on mobile. */
+      .qir-report-header {
+        padding: 22px 24px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 24px;
+        flex-wrap: wrap;
+      }
+      .qir-report-header-title {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-width: 240px;
+        flex: 1 1 320px;
+      }
+      .qir-report-header-meta {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      @media (max-width: 640px) {
+        .qir-report-header { padding: 18px 18px; gap: 16px; }
+        .qir-report-header-meta { width: 100%; }
+        .qir-report-header-meta > div { flex: 1 1 140px; }
+      }
       /* Unify subsections inside the single Monthly/Quarterly report card. */
       .qir-unified-report > div > .qir-unified-section + .qir-unified-section {
         border-top: 1px solid rgba(120,170,255,0.22);
@@ -2535,7 +2561,7 @@ export function QuarterlyReportPrintStyles() {
       /* Uniform padding inside every unified section so narrative, KPIs,
          goals, initiatives, and risks share identical spacing. */
       .qir-unified-report .qir-unified-section .glass-module > div {
-        padding: 20px 22px !important;
+        padding: 24px 24px !important;
       }
       .qir-unified-report .qir-unified-section [class*="glass-module"],
       .qir-unified-report .qir-unified-section .glass-module {
