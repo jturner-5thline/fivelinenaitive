@@ -73,11 +73,12 @@ type ToneKey = 'concise' | 'balanced';
 // Variant order is intentionally Recommended → Shorter so the strongest AI
 // response is always the default landing state in the unified Draft reply
 // module. Backend tone keys (concise/balanced) are unchanged.
-const TONE_ORDER: ToneKey[] = ['balanced', 'concise'];
-const TONE_LABELS: Record<ToneKey, string> = {
+export const TONE_ORDER: ToneKey[] = ['balanced', 'concise'];
+export const TONE_LABELS: Record<ToneKey, string> = {
   balanced: 'Recommended',
   concise: 'Shorter',
 };
+export type AiAssistToneKey = ToneKey;
 
 /**
  * Quick-steer chips rendered inside the Draft reply card. Each chip applies a
@@ -85,12 +86,12 @@ const TONE_LABELS: Record<ToneKey, string> = {
  * `customInstructions` field. Order is meaning-grouped: intent (what to say)
  * first, then length, then tone.
  */
-interface DraftIntentOption {
+export interface DraftIntentOption {
   key: string;
   label: string;
   instruction: string;
 }
-const DRAFT_INTENT_OPTIONS: DraftIntentOption[] = [
+export const DRAFT_INTENT_OPTIONS: DraftIntentOption[] = [
   {
     key: 'ask_more_info',
     label: 'Ask for more information',
