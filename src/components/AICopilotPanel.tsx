@@ -267,6 +267,17 @@ function CopilotAssistantContent({ content }: { content: string }) {
       else if (parsed.responseType === 'lender_card') segments.push({ type: 'lender', value: parsed.data });
       else if (parsed.responseType === 'task_card') segments.push({ type: 'task', value: parsed.data });
       else if (parsed.responseType === 'pipeline_summary') segments.push({ type: 'pipeline', value: parsed.data });
+      else if (parsed.responseType === 'lender_filter') {
+        // Side-effect only: tell the /lenders page to filter its directory.
+        try {
+          const names: string[] = Array.isArray(parsed.data?.names) ? parsed.data.names : [];
+          const query: string = typeof parsed.data?.query === 'string' ? parsed.data.query : '';
+          if (names.length > 0) {
+            window.dispatchEvent(new CustomEvent('naitive:lender-filter', { detail: { names, query } }));
+          }
+        } catch {/* noop */}
+        // Don't render the raw JSON in chat.
+      }
       else if (parsed.action === 'confirm' && parsed.action_type) {
         const key = `confirm:${parsed.action_type}:${parsed.params?.deal_id || ''}:${parsed.params?.new_pipeline_id || parsed.params?.new_stage || ''}`;
         if (!seenActions.has(key)) {
