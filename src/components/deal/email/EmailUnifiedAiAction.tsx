@@ -849,6 +849,49 @@ export function EmailUnifiedAiAction({
                 )}
               </div>
             )}
+            {suggestion.intent === 'allocate_hours' && suggestion.hour_plan && (
+              <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-2 space-y-1.5">
+                <div className="flex items-center justify-between gap-2 text-[10.5px] text-foreground/80">
+                  <span className="font-semibold uppercase tracking-wider text-primary/80">
+                    Hours preview · week of {getCurrentWeekStart()}
+                  </span>
+                  <span className="tabular-nums">
+                    {suggestion.hour_plan.summary.totalHours}h total · {suggestion.hour_plan.summary.matchedItems}/{suggestion.hour_plan.summary.totalItems} matched
+                  </span>
+                </div>
+                <ul className="space-y-1 max-h-44 overflow-y-auto pr-1">
+                  {suggestion.hour_plan.items.map((it, idx) => {
+                    const Icon =
+                      it.status === 'matched' ? CheckCircle2
+                        : it.status === 'ambiguous' ? AlertTriangle
+                        : X;
+                    const tone =
+                      it.status === 'matched' ? 'text-emerald-500'
+                        : it.status === 'ambiguous' ? 'text-amber-500'
+                        : 'text-muted-foreground';
+                    return (
+                      <li key={idx} className="flex items-center gap-2 text-[11px] leading-tight">
+                        <Icon className={cn('h-3 w-3 shrink-0', tone)} />
+                        <span className="truncate flex-1 min-w-0">
+                          {it.matchedDealName || it.normalizedLabel || it.rawLabel}
+                        </span>
+                        <span className="tabular-nums font-medium text-foreground/90 shrink-0">
+                          +{it.hours}h
+                        </span>
+                        {it.status !== 'matched' && (
+                          <span className="text-[10px] text-muted-foreground shrink-0">
+                            {it.status}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+                <div className="text-[10px] text-muted-foreground">
+                  Writes to <code className="font-mono">{DEAL_HOURS_CONFIG.writeTarget}</code> · upsert by deal × week (idempotent).
+                </div>
+              </div>
+            )}
             <div className="flex items-center justify-between gap-2 pt-0.5">
               <span className="text-[10px] text-muted-foreground italic">
                 {suggestion.rationale}
