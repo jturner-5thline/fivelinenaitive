@@ -11,6 +11,8 @@ import {
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { fetchFullEmailThread } from './useFullEmailMessage';
+import { htmlToPlainText } from '@/lib/htmlToPlainText';
 import { CreateTaskInlineCard } from './CreateTaskInlineCard';
 import { SaveToDealCard } from './SaveToDealCard';
 import { MeetingSchedulerCard } from './MeetingSchedulerCard';
@@ -79,10 +81,19 @@ export function EmailQuickActionsToolbar({
   const [active, setActive] = useState<QuickActionKey | null>(null);
   const [summary, setSummary] = useState<string[] | null>(null);
   const [summarizing, setSummarizing] = useState(false);
+  const [summaryDebug, setSummaryDebug] = useState<{
+    threadId: string;
+    subject: string;
+    messageCount: number;
+    source: 'full-thread-fetch' | 'thread-prop';
+  } | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   // Reset summary if thread changes
   useEffect(() => {
     setSummary(null);
+    setSummaryDebug(null);
+    setSummaryError(null);
   }, [thread?.threadId]);
 
   // Only show "Save to Data Room" when the currently viewed message has at
@@ -123,24 +134,185 @@ export function EmailQuickActionsToolbar({
 
   const runSummarize = async () => {
     if (summarizing) return;
-    const emails = thread?.emails || [];
-    if (emails.length === 0) {
+    const propEmails = thread?.emails || [];
+    if (propEmails.length === 0) {
       toast.error('No messages to summarize');
       return;
     }
     setSummarizing(true);
+    setSummaryError(null);
     try {
-      const threadText = emails
-        .map((em) => {
-          const who = em.from_name || em.from_email || 'Unknown';
-          const when = em.received_at || '';
-          const body = (em.body_preview || em.snippet || '').substring(0, 600);
-          const atts = em.has_attachments ? ' [has attachments]' : '';
-          return `From: ${who} (${when})${atts}\n${body}`;
-        })
-        .join('\n---\n');
+      // ─── Step 1: gather the most authoritative body for every message in
+      // the *currently selected* thread. We never fall back to inbox-list
+      // snippets when a real provider body is fetchable. ──────────────────
+      type Msg = {
+        id?: string;
+        from_name?: string;
+        from_email?: string;
+        to_email?: string;
+        cc?: string;
+        subject?: string;
+        received_at?: string;
+        body?: string;
+        has_attachments?: boolean;
+        attachments?: { filename?: string }[];
+      };
 
-      const prompt = `You are summarizing an email thread for a deal team. Produce 3–8 short, participant-aware bullets describing what actually happened in the thread (who said what, what was shared, confirmations, scheduling, attachments, decisions, next steps). Use first names when available. Use natural timing phrases like "earlier today", "this morning", "ahead of tomorrow's call" only when supported by the timestamps. End with a final bullet for current status or next expected step when applicable. Avoid filler like "The thread discusses…". Return ONLY a JSON array of strings, no markdown fences.\n\nThread:\n${threadText}`;
+      let messages: Msg[] = [];
+      let source: 'full-thread-fetch' | 'thread-prop' = 'thread-prop';
+
+      const isMockThread =
+        !thread.threadId || thread.threadId.startsWith('mock-');
+
+      if (!isMockThread) {
+        try {
+          const full = await fetchFullEmailThread(thread.threadId);
+          if (Array.isArray(full) && full.length > 0) {
+            source = 'full-thread-fetch';
+            messages = full.map((m) => {
+              const text =
+                (m.body_text && m.body_text.trim()) ||
+                (m.body_html ? htmlToPlainText(m.body_html) : '') ||
+                '';
+              return {
+                id: m.id,
+                from_name: m.from_name,
+                from_email: m.from_email,
+                subject: m.subject,
+                received_at: m.received_at,
+                body: text,
+                has_attachments: (m.attachments?.length || 0) > 0,
+                attachments: m.attachments?.map((a) => ({ filename: a.filename })),
+              };
+            });
+          }
+        } catch (e) {
+          console.warn('[summarize] full thread fetch failed, falling back to prop emails', e);
+        }
+      }
+
+      if (messages.length === 0) {
+        // Fallback: use whatever the thread prop has, but prefer body_text /
+        // body_html over preview/snippet so we don't summarize headers only.
+        messages = propEmails.map((em) => {
+          const text =
+            (em.body_text && em.body_text.trim()) ||
+            (em.body_html ? htmlToPlainText(em.body_html) : '') ||
+            em.body_preview ||
+            em.snippet ||
+            '';
+          return {
+            id: em.id,
+            from_name: em.from_name,
+            from_email: em.from_email,
+            to_email: em.to_email,
+            subject: em.subject,
+            received_at: em.received_at,
+            body: text,
+            has_attachments: em.has_attachments,
+            attachments: em.attachments?.map((a) => ({ filename: a.filename })),
+          };
+        });
+      }
+
+      // Sort chronologically (oldest first) so the summary reads like a story.
+      messages.sort((a, b) => {
+        const ta = a.received_at ? Date.parse(a.received_at) : 0;
+        const tb = b.received_at ? Date.parse(b.received_at) : 0;
+        return ta - tb;
+      });
+
+      // ─── Step 2: clean each body — strip "On ... wrote:" quote chains,
+      // collapse signatures and disclaimers, cap length per message. We
+      // keep the *newest* version of each repeated quoted line at most
+      // once across the thread. ──────────────────────────────────────────
+      const seenLines = new Set<string>();
+      const cleanBody = (raw: string): string => {
+        if (!raw) return '';
+        let t = raw.replace(/\r\n/g, '\n');
+        // Remove "On <date>, <name> wrote:" boundary and everything after.
+        t = t.replace(/On\s+.{0,180}\s+wrote:[\s\S]*$/i, '');
+        // Strip leading "> " quoted history.
+        t = t
+          .split('\n')
+          .filter((ln) => !/^\s*>/.test(ln))
+          .join('\n');
+        // Cut common signature markers.
+        const sigIdx = t.search(/\n--\s*\n|\nSent from my (iPhone|Android)|\nGet Outlook for/i);
+        if (sigIdx > 0) t = t.slice(0, sigIdx);
+        // Dedupe lines we've already seen earlier in the thread.
+        t = t
+          .split('\n')
+          .map((ln) => ln.trimEnd())
+          .filter((ln) => {
+            const k = ln.trim();
+            if (k.length < 6) return true;
+            if (seenLines.has(k)) return false;
+            seenLines.add(k);
+            return true;
+          })
+          .join('\n');
+        return t.replace(/\n{3,}/g, '\n\n').trim().slice(0, 3500);
+      };
+
+      const structured = messages.map((m, i) => ({
+        index: i + 1,
+        messageId: m.id,
+        from: m.from_name
+          ? `${m.from_name}${m.from_email ? ` <${m.from_email}>` : ''}`
+          : m.from_email || 'Unknown',
+        date: m.received_at || '',
+        subject: m.subject || thread.subject || '',
+        attachments:
+          (m.attachments || []).map((a) => a.filename).filter(Boolean) as string[],
+        body: cleanBody(m.body || ''),
+      }));
+
+      const totalBodyChars = structured.reduce((s, m) => s + (m.body?.length || 0), 0);
+      if (totalBodyChars < 40) {
+        setSummaryError(
+          "Couldn't load thread content for summary. Open a message in this thread and try again.",
+        );
+        setSummary(null);
+        setSummaryDebug({
+          threadId: thread.threadId,
+          subject: thread.subject,
+          messageCount: structured.length,
+          source,
+        });
+        return;
+      }
+
+      const threadBlock = structured
+        .map((m) => {
+          const atts = m.attachments.length
+            ? `\nAttachments: ${m.attachments.join(', ')}`
+            : '';
+          return `[#${m.index}] From: ${m.from}\nDate: ${m.date}\nSubject: ${m.subject}${atts}\n\n${m.body}`;
+        })
+        .join('\n\n=====\n\n');
+
+      setSummaryDebug({
+        threadId: thread.threadId,
+        subject: thread.subject,
+        messageCount: structured.length,
+        source,
+      });
+
+      const prompt = [
+        'Summarize the following email thread ONLY. Do not use any outside inbox items, deal metadata, or unrelated page context unless it appears in the thread itself.',
+        '',
+        `Thread subject: ${thread.subject}`,
+        `Messages in thread: ${structured.length}`,
+        '',
+        'Write 3–8 short, participant-aware bullets in chronological order describing what actually happened: who said what, what was shared (name attachments when listed), confirmations, requests, scheduling movement, decisions, and next steps. Use first names when available (e.g. "Niki shared the lease schedule with Tom earlier today", "Ryan confirmed things are on track"). Use natural timing phrases like "earlier today", "this morning", or "ahead of tomorrow\'s call" only when supported by the message dates. End with a final bullet for the current status or next expected step when the thread suggests one. Avoid filler like "The thread discusses…".',
+        '',
+        'Return ONLY a JSON array of strings, no markdown fences.',
+        '',
+        '----- THREAD START -----',
+        threadBlock,
+        '----- THREAD END -----',
+      ].join('\n');
 
       const { data: session } = await supabase.auth.getSession();
       const token = session?.session?.access_token;
@@ -153,7 +325,14 @@ export function EmailQuickActionsToolbar({
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({
             messages: [{ role: 'user', content: prompt }],
-            context: { type: 'thread_summary', threadId: thread.threadId, dealId, dealName },
+            context: {
+              type: 'thread_summary',
+              threadId: thread.threadId,
+              threadSubject: thread.subject,
+              messageCount: structured.length,
+              dealId,
+              dealName,
+            },
           }),
         },
       );
