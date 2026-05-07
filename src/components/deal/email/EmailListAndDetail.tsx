@@ -2155,11 +2155,13 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
         }}
       >
         <div className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-[hsl(var(--email-reading-bg))]">
-          {/* Outlook-style command bar — backdrop-blur removed because the bar
-              sits directly above a tall scrolling message body and any
-              backdrop-filter on a static surface above moving content forces
-              an expensive re-rasterize per scroll frame. */}
-          <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-[hsl(var(--email-border))] bg-card/60 shrink-0">
+          {/* Outlook-style command bar — portalled into the unified mail
+              header (#email-detail-toolbar-slot) so the entire mail UI
+              shares one horizontal toolbar row. Falls back to inline
+              render if the slot is unavailable. */}
+          {(() => {
+            const commandBar = (
+          <div className="flex items-center gap-0.5 px-2 py-0 shrink-0 min-w-0 overflow-x-auto">
             <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-7 w-7">
               <ChevronLeft className="h-4 w-4" />
             </Button>
