@@ -104,13 +104,7 @@ export function EmailQuickActionsToolbar({
       {/* Pill row — single horizontally scrollable line. Pills never wrap;
           edge-fade masks hint at additional pills when overflowing. */}
       <div
-        className="flex flex-nowrap items-center gap-1.5 overflow-x-auto overflow-y-hidden -mx-0.5 px-0.5 py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        style={{
-          WebkitMaskImage:
-            'linear-gradient(to right, transparent 0, black 12px, black calc(100% - 12px), transparent 100%)',
-          maskImage:
-            'linear-gradient(to right, transparent 0, black 12px, black calc(100% - 12px), transparent 100%)',
-        }}
+        className="grid grid-cols-2 gap-1.5"
         role="toolbar"
         aria-label="Email quick actions"
       >
@@ -124,8 +118,8 @@ export function EmailQuickActionsToolbar({
               title={a.label}
               aria-pressed={isActive}
               className={cn(
-                'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full shrink-0 whitespace-nowrap',
-                'text-[11px] font-medium leading-none',
+                'inline-flex w-full items-center justify-center gap-1.5 min-h-[32px] px-2.5 py-1 rounded-lg text-center',
+                'text-[11px] font-medium leading-tight',
                 'border border-white/10 bg-white/5 backdrop-blur-sm',
                 'text-foreground/80 transition-colors',
                 'shadow-[inset_0_1px_0_0_hsl(0_0%_100%/0.06)]',
@@ -133,8 +127,8 @@ export function EmailQuickActionsToolbar({
                 isActive && 'bg-primary/15 border-primary/30 text-primary',
               )}
             >
-              <span className={cn(!isActive && a.iconClass)}>{a.icon}</span>
-              <span>{a.label}</span>
+              <span className={cn('shrink-0', !isActive && a.iconClass)}>{a.icon}</span>
+              <span className="truncate">{a.label}</span>
             </button>
           );
         })}
