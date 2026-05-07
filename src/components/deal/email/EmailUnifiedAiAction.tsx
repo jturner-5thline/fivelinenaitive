@@ -250,6 +250,7 @@ export function EmailUnifiedAiAction({
             prompt: q,
             dealId: resolvedDealId,
             dealName: resolvedDealName,
+            companyId: company?.id || null,
             threadData: {
               subject: thread.subject,
               threadId: thread.threadId,
