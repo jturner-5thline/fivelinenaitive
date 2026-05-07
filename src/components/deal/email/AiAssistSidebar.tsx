@@ -833,8 +833,22 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             fallbackDealId={workflowAnalysis?.likely_deal?.id || null}
             fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
             onOpenDraft={() => {
+              // Draft Reply now opens the Outlook-style pop-out compose
+              // modal pre-filled with the AI draft. We still keep the
+              // inline draft module open for users who want to keep
+              // iterating in the sidebar.
               setDraftOpen(true);
-              if (!result?.options[selected] && !loadingTones[selected]) {
+              const existing = result?.options[selected]?.body;
+              if (existing) {
+                try {
+                  window.dispatchEvent(new CustomEvent('naitive:ai-assist:open-popout-draft', {
+                    detail: { body: existing, threadId: thread.threadId },
+                  }));
+                } catch {}
+                return;
+              }
+              popOutPendingTone.current = selected;
+              if (!loadingTones[selected]) {
                 void generateTone(selected);
               }
             }}
