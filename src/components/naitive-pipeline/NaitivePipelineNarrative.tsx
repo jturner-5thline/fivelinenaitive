@@ -151,7 +151,7 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
   const [history, setHistory] = useState<NarrativeRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>('idle');
-  const [tab, setTab] = useState<'narrative' | 'analysis' | 'history'>('narrative');
+  const [tab, setTab] = useState<'narrative' | 'analysis' | 'qual-demo' | 'did-not-move' | 'history'>('narrative');
 
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
@@ -470,9 +470,11 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
       </CardHeader>
       <CardContent className="px-5 pb-5 pt-1 flex-1 flex flex-col min-h-0">
         <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-3 h-8">
+          <TabsList className="grid w-full grid-cols-5 h-8">
             <TabsTrigger value="narrative" className="text-xs gap-1"><Pencil className="h-3 w-3" />Narrative</TabsTrigger>
             <TabsTrigger value="analysis" className="text-xs gap-1"><Sparkles className="h-3 w-3" />AI Analysis</TabsTrigger>
+            <TabsTrigger value="qual-demo" className="text-xs gap-1"><Sparkles className="h-3 w-3" />Qual → Demo</TabsTrigger>
+            <TabsTrigger value="did-not-move" className="text-xs gap-1"><Sparkles className="h-3 w-3" />Did Not Move</TabsTrigger>
             <TabsTrigger value="history" className="text-xs gap-1"><HistoryIcon className="h-3 w-3" />History</TabsTrigger>
           </TabsList>
 
@@ -513,6 +515,22 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
               draftAware={analysisDraftAware}
               onRefresh={() => runAnalysis(content, priorContent, false)}
             />
+          </TabsContent>
+
+          <TabsContent value="qual-demo" className="mt-3 flex-1 overflow-y-auto data-[state=inactive]:hidden">
+            {deals.length > 0 ? (
+              <NaitiveQualToDemoInsights deals={deals} />
+            ) : (
+              <p className="text-sm text-muted-foreground py-8 text-center">No data yet for this view.</p>
+            )}
+          </TabsContent>
+
+          <TabsContent value="did-not-move" className="mt-3 flex-1 overflow-y-auto data-[state=inactive]:hidden">
+            {deals.length > 0 ? (
+              <NaitiveDidNotMoveInsights deals={deals} />
+            ) : (
+              <p className="text-sm text-muted-foreground py-8 text-center">No data yet for this view.</p>
+            )}
           </TabsContent>
 
           <TabsContent value="history" className="mt-3 flex-1 overflow-y-auto data-[state=inactive]:hidden">
