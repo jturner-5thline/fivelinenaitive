@@ -1377,7 +1377,7 @@ const ALL_TABS = [
   { value: 'catchup', label: 'Catch Up & News', icon: Newspaper },
   { value: 'email', label: 'Email', icon: Mail },
   { value: 'financial', label: 'Financial', icon: DollarSign },
-  { value: 'pipeline', label: 'Pipeline & Clients', icon: GitBranch },
+  { value: 'pipeline', label: 'Deals', icon: GitBranch },
   { value: 'operational', label: 'Operational', icon: ListChecks },
 ] as const;
 
