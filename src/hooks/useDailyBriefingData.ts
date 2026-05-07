@@ -5,6 +5,27 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { getDailyBriefingWindow } from '@/utils/dailyBriefingWindow';
 import { useCompany } from '@/hooks/useCompany';
+import { useProfile } from '@/hooks/useProfile';
+
+// ── Role-based default scoping ────────────────────────────────
+// Surfaces like Deal Rundown / Daily Briefing / Pipeline tabs should
+// automatically narrow to the current user's deals (Owner OR Manager) when
+// the caller is NOT an admin. Admins continue to see the entire org-scoped
+// set (status filter still applied: on-hold/archived excluded).
+function useEffectiveTargetName(explicitTargetName?: string): {
+  effectiveName: string | undefined;
+  ready: boolean;
+} {
+  const { isAdmin } = useCompany();
+  const { profile, isLoading } = useProfile();
+  if (explicitTargetName) return { effectiveName: explicitTargetName, ready: true };
+  if (isAdmin) return { effectiveName: undefined, ready: true };
+  // Non-admin: scope to their own display name. Wait for profile to load
+  // so we don't fire a query with an empty name (which would be a no-op).
+  if (isLoading) return { effectiveName: undefined, ready: false };
+  const name = profile?.display_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ').trim();
+  return { effectiveName: name || undefined, ready: true };
+}
 
 // ── Shared window (memoized) ──────────────────────────────────
 export function useBriefingWindow() {
@@ -91,20 +112,21 @@ export function useCatchUpData(enabled: boolean, targetDealOwnerName?: string) {
   const { deals: allDeals } = useDealsContext();
   const window = useBriefingWindow();
   const activePipelineId = useActivePipelineId();
+  const { effectiveName, ready: scopeReady } = useEffectiveTargetName(targetDealOwnerName);
 
   // When delegated (targetDealOwnerName set), narrow the deal set to deals
   // where that user is Owner OR Manager. This narrows every downstream
   // section: highlights, news items, risk deals, milestones, etc.
   const deals = useMemo(() => {
-    const scoped = targetDealOwnerName ? getDealsForUserName(allDeals, targetDealOwnerName) : allDeals;
+    const scoped = effectiveName ? getDealsForUserName(allDeals, effectiveName) : allDeals;
     return filterRundownEligibleDeals(scoped as any[], activePipelineId);
-  }, [allDeals, targetDealOwnerName, activePipelineId]);
+  }, [allDeals, effectiveName, activePipelineId]);
   const dealIdSet = useMemo(() => new Set(deals.map(d => d.id)), [deals]);
-  const isDelegated = !!targetDealOwnerName;
+  const isDelegated = !!effectiveName;
 
   return useQuery({
-    queryKey: ['briefing-catchup', window.startISO, user?.id, isDelegated ? `for:${targetDealOwnerName}` : 'self'],
-    enabled: enabled && !!user?.id,
+    queryKey: ['briefing-catchup', window.startISO, user?.id, isDelegated ? `for:${effectiveName}` : 'self'],
+    enabled: enabled && !!user?.id && scopeReady,
     staleTime: 60_000,
     queryFn: async () => {
       const { startISO, endISO } = window;
@@ -383,17 +405,18 @@ export function usePipelineData(enabled: boolean, targetDealOwnerName?: string) 
   const { deals: allDeals } = useDealsContext();
   const window = useBriefingWindow();
   const activePipelineId = useActivePipelineId();
+  const { effectiveName, ready: scopeReady } = useEffectiveTargetName(targetDealOwnerName);
 
   const deals = useMemo(() => {
-    const scoped = targetDealOwnerName ? getDealsForUserName(allDeals, targetDealOwnerName) : allDeals;
+    const scoped = effectiveName ? getDealsForUserName(allDeals, effectiveName) : allDeals;
     return filterRundownEligibleDeals(scoped as any[], activePipelineId);
-  }, [allDeals, targetDealOwnerName, activePipelineId]);
+  }, [allDeals, effectiveName, activePipelineId]);
   const dealIdSet = useMemo(() => new Set(deals.map(d => d.id)), [deals]);
-  const isDelegated = !!targetDealOwnerName;
+  const isDelegated = !!effectiveName;
 
   return useQuery({
-    queryKey: ['briefing-pipeline', window.startISO, user?.id, isDelegated ? `for:${targetDealOwnerName}` : 'self'],
-    enabled: enabled && !!user?.id,
+    queryKey: ['briefing-pipeline', window.startISO, user?.id, isDelegated ? `for:${effectiveName}` : 'self'],
+    enabled: enabled && !!user?.id && scopeReady,
     staleTime: 60_000,
     queryFn: async () => {
       const { startISO, endISO } = window;
@@ -445,7 +468,7 @@ export function usePipelineData(enabled: boolean, targetDealOwnerName?: string) 
         stageChanges: stageChanges.slice(0, 20),
         recentActivity: activities.slice(0, 30),
         isDelegated,
-        targetUserName: targetDealOwnerName,
+        targetUserName: effectiveName,
         // Full scoped deal list (Owner/Manager filtered when delegated, else
         // all org deals minus suppressed). Consumed by the Memo view.
         scopedDeals: activeDeals,
