@@ -41,14 +41,13 @@ function formatNextDate(d?: string | null) {
   } catch { return null; }
 }
 
-export function NaitiveDealCard({ deal, children }: { deal: Deal; children?: React.ReactNode }) {
+export function NaitiveDealCard({ deal, children, disableLink }: { deal: Deal; children?: React.ReactNode; disableLink?: boolean }) {
   const lastActivity = formatLastActivity(deal.updatedAt);
   const nextDate = formatNextDate(deal.nextStepDate);
   const owner = deal.ownedBy || deal.manager;
 
-  return (
-    <Link to={`/deal/${deal.id}`} className="block w-full min-w-0">
-      <Card className="deal-glass group cursor-pointer transition-all duration-200 hover:-translate-y-0.5 p-3 space-y-2">
+  const inner = (
+    <Card className="deal-glass group cursor-pointer transition-all duration-200 hover:-translate-y-0.5 p-3 space-y-2">
         {/* Line 1 */}
         <div className="min-w-0">
           <h3 className="text-sm font-bold leading-tight truncate" style={{ color: '#f1f6fc' }}>
@@ -92,7 +91,15 @@ export function NaitiveDealCard({ deal, children }: { deal: Deal; children?: Rea
         )}
 
         {children}
-      </Card>
+    </Card>
+  );
+
+  if (disableLink) {
+    return <div className="block w-full min-w-0">{inner}</div>;
+  }
+  return (
+    <Link to={`/deal/${deal.id}`} className="block w-full min-w-0">
+      {inner}
     </Link>
   );
 }
