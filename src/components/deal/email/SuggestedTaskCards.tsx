@@ -207,7 +207,13 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
 
       const draft: TaskDraft = {
         title: s.title,
-        description: s.why || null,
+        // Prefer the richer `description` (used by call-commitment tasks
+        // to carry call context + extracted Cell/Office/Email contact
+        // details from the counterparty's signature). Fall back to the
+        // shorter `why` trigger sentence when no description is provided.
+        description: (s.description && s.description.trim().length > 0)
+          ? s.description
+          : (s.why || null),
         due_date: dueDate,
         due_time: null,
         priority: s.priority || 'normal',
