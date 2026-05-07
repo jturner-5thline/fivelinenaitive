@@ -262,7 +262,7 @@ export default function Lenders() {
     }
     searchTimeoutRef.current = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-    }, 400); // Slightly longer debounce for server queries
+    }, 150); // Real-time client-side search
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
@@ -270,7 +270,7 @@ export default function Lenders() {
     };
   }, [searchQuery]);
 
-  // Use the hook with server-side search
+  // Load all lenders client-side; we run a rich multi-field search locally.
   const {
     lenders: masterLenders,
     loading: isLoading,
@@ -291,7 +291,7 @@ export default function Lenders() {
     eagerAll: true,
     pageSize: 1000,
     orderBy: { column: 'name', ascending: true },
-    searchQuery: debouncedSearchQuery,
+    // No server-side searchQuery — we filter on the client across many fields.
   });
 
   // Load tile display settings from localStorage
