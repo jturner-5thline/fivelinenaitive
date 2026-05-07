@@ -1173,7 +1173,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-1 text-muted-foreground h-7 text-xs"
+                className="gap-1 h-7 text-xs text-foreground/60 hover:text-foreground hover:bg-white/[0.06]"
                 onClick={triggerFilePicker}
                 aria-label="Attach file"
               >
@@ -1190,7 +1190,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="gap-1 text-muted-foreground h-7 text-xs"
+                  className="gap-1 h-7 text-xs text-foreground/60 hover:text-foreground hover:bg-white/[0.06]"
                   onClick={() => insertAtCursor(`<p><a href="${resolvedDataRoomUrl}" target="_blank" rel="noopener noreferrer">View Data Room</a></p>`)}
                   aria-label="Insert Data Room link"
                 >
@@ -1209,7 +1209,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="gap-1 h-7 text-xs text-muted-foreground hover:text-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/10"
+                className="gap-1 h-7 text-xs text-foreground/60 hover:text-[hsl(180_72%_55%)] hover:bg-[hsl(180_72%_45%)]/10"
                 onClick={handlePolishInPlace}
                 onMouseEnter={() => { if (polishTooltipOpen) setPolishTooltipOpen(false); }}
                 disabled={polishPending}
@@ -1240,7 +1240,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-1 h-7 text-xs text-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/10"
+                className="gap-1 h-7 text-xs text-[hsl(180_72%_60%)] hover:text-[hsl(180_72%_70%)] hover:bg-[hsl(180_72%_45%)]/10"
                 onClick={requestAiDraft}
                 aria-label="Draft with AI (⌘J)"
               >
