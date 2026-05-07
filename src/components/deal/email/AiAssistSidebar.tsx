@@ -746,6 +746,17 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
         style={{ overscrollBehavior: 'contain', contain: 'layout paint style' }}
       >
         <div className="min-w-0 max-w-full w-full p-4 space-y-4">
+          {/* AI Action — primary input lives at the very top of the panel
+              so it's the first thing the user sees. Context chips, quick
+              actions, and suggested updates render below. */}
+          <EmailUnifiedAiAction
+            thread={thread}
+            dealId={dealId}
+            dealName={dealName}
+            fallbackDealId={workflowAnalysis?.likely_deal?.id || null}
+            fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
+          />
+
           {/* Deal context chip row — single-line at-a-glance summary of the
               entities the AI resolved for this thread. Replaces the earlier
               multi-row paragraph layout so the eye lands on the key actors
