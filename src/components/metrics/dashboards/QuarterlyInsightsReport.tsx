@@ -1670,11 +1670,9 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
     return false;
   };
 
-  const ownedProjects = useMemo(
-    () => projects.filter(projectMatchesPreparedBy),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [projects, preparedByKey],
-  );
+  // Initiatives show ALL items in the selected Asana portfolio.
+  // Owner is displayed per-row but is NOT used as an inclusion filter.
+  const ownedProjects = projects;
 
   // Debug: surface owner mapping per project so we can audit James-Turner-owned
   // initiatives that aren't matching. View in browser console.
@@ -1783,15 +1781,15 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
         )}>Initiatives</SectionTitle>
 
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 10 }}>
-          Sourced from Asana portfolio · Owner: <span style={{ color: TEXT_PRIMARY, fontWeight: 600 }}>{preparedBy}</span>
+          Sourced from Asana portfolio · <span style={{ color: TEXT_PRIMARY, fontWeight: 600 }}>{ownedProjects.length} item{ownedProjects.length === 1 ? '' : 's'}</span>
           <span style={{ marginLeft: 8, display: 'inline-flex', gap: 6 }}>
-            <span role="button" style={{ cursor: 'pointer' }} onClick={() => setInitDrill({ sourceId: 'init:status:On Track', sourceLabel: 'Initiatives · On Track', selection: `${counts.onTrack} initiative${counts.onTrack === 1 ? '' : 's'}`, filters: [{ label: 'Owner', value: preparedBy }] })}>
+            <span role="button" style={{ cursor: 'pointer' }} onClick={() => setInitDrill({ sourceId: 'init:status:On Track', sourceLabel: 'Initiatives · On Track', selection: `${counts.onTrack} initiative${counts.onTrack === 1 ? '' : 's'}`, filters: [] })}>
               <Pill tone="pos">On Track · {counts.onTrack}</Pill>
             </span>
-            <span role="button" style={{ cursor: 'pointer' }} onClick={() => setInitDrill({ sourceId: 'init:status:At Risk', sourceLabel: 'Initiatives · At Risk', selection: `${counts.atRisk} initiative${counts.atRisk === 1 ? '' : 's'}`, filters: [{ label: 'Owner', value: preparedBy }] })}>
+            <span role="button" style={{ cursor: 'pointer' }} onClick={() => setInitDrill({ sourceId: 'init:status:At Risk', sourceLabel: 'Initiatives · At Risk', selection: `${counts.atRisk} initiative${counts.atRisk === 1 ? '' : 's'}`, filters: [] })}>
               <Pill tone="neu">At Risk · {counts.atRisk}</Pill>
             </span>
-            <span role="button" style={{ cursor: 'pointer' }} onClick={() => setInitDrill({ sourceId: 'init:status:Off Track', sourceLabel: 'Initiatives · Off Track', selection: `${counts.offTrack} initiative${counts.offTrack === 1 ? '' : 's'}`, filters: [{ label: 'Owner', value: preparedBy }] })}>
+            <span role="button" style={{ cursor: 'pointer' }} onClick={() => setInitDrill({ sourceId: 'init:status:Off Track', sourceLabel: 'Initiatives · Off Track', selection: `${counts.offTrack} initiative${counts.offTrack === 1 ? '' : 's'}`, filters: [] })}>
               <Pill tone="neg">Off Track · {counts.offTrack}</Pill>
             </span>
           </span>
@@ -1849,7 +1847,7 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
                           sourceId: initSG.groupBy === 'status' ? `init:status:${group.key}` : 'init:all',
                           sourceLabel: `Initiatives · ${group.key}`,
                           selection: `${group.rows.length} initiative${group.rows.length === 1 ? '' : 's'}`,
-                          filters: [{ label: 'Owner', value: preparedBy }],
+                          filters: [],
                         })}
                         style={{ cursor: 'pointer' }}
                       >
@@ -1908,7 +1906,7 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
                 {ownedProjects.length === 0 && !loading && (
                   <tr>
                     <td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: TEXT_LABEL, padding: 20 }}>
-                      No Asana portfolio initiatives owned by {preparedBy}.
+                      No initiatives found in the selected Asana portfolio.
                     </td>
                   </tr>
                 )}
