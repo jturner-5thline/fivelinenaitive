@@ -191,6 +191,20 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   // at-a-glance summary.
   const [draftOpen, setDraftOpen] = useState(false);
   const [dealDetailsOpen, setDealDetailsOpen] = useState(false);
+  // True while the Outlook-style PopOutComposer is mounted in the parent.
+  // We listen to popout open/close events so this sidebar can hide its
+  // duplicate Draft Reply workspace and avoid two competing draft surfaces.
+  const [popOutOpen, setPopOutOpen] = useState(false);
+  useEffect(() => {
+    const onOpen = () => setPopOutOpen(true);
+    const onClose = () => setPopOutOpen(false);
+    window.addEventListener('naitive:ai-assist:popout-opened', onOpen);
+    window.addEventListener('naitive:ai-assist:popout-closed', onClose);
+    return () => {
+      window.removeEventListener('naitive:ai-assist:popout-opened', onOpen);
+      window.removeEventListener('naitive:ai-assist:popout-closed', onClose);
+    };
+  }, []);
   // Snapshot of the slim deal-context summary surfaced in the sidebar header
   // card. Forwarded to the edge function so the draft tone reflects whether
   // the deal is At Risk, Off Track, On Hold, etc.
@@ -1161,7 +1175,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               footer below) the action row. Replaces the legacy "Draft AI
               Reply" pill row + "Draft Options" card duo with a single
               drafting workspace. */}
-          {!error && (
+          {!error && !popOutOpen && (
             // Draft Reply is opened exclusively from the Quick Actions pill
             // above. The previous duplicate "DRAFT REPLY" collapsible header
             // has been removed to eliminate the redundant entry point.
