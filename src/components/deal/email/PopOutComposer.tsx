@@ -145,6 +145,10 @@ export function PopOutComposer({
   const dragRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 16, y: 16 });
   const [size, setSize] = useState({ width: 480, height: 460 });
+  // True when the parent container is too narrow to host a floating
+  // window — in that case we fill the parent edge-to-edge so the
+  // composer never clips horizontally inside the AI Assist sidebar.
+  const [fullWidth, setFullWidth] = useState(false);
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
 
@@ -161,19 +165,38 @@ export function PopOutComposer({
   useEffect(() => {
     const place = () => {
       const { width: pw, height: ph } = getParentBounds();
-      const w = Math.min(size.width, Math.max(320, pw - 24));
-      const h = Math.min(size.height, Math.max(280, ph - 24));
-      setSize({ width: w, height: h });
-      setPosition({
-        x: Math.max(8, pw - w - 16),
-        y: Math.max(8, ph - h - 16),
-      });
+      const narrow = pw < 768;
+      setFullWidth(narrow);
+      if (narrow) {
+        const w = Math.max(240, pw - 16);
+        const h = Math.max(320, Math.min(Math.round(ph * 0.85), ph - 16));
+        setSize({ width: w, height: h });
+        setPosition({ x: 8, y: Math.max(8, ph - h - 8) });
+      } else {
+        const w = Math.min(size.width, Math.max(320, pw - 24));
+        const h = Math.min(size.height, Math.max(280, ph - 24));
+        setSize({ width: w, height: h });
+        setPosition({
+          x: Math.max(8, pw - w - 16),
+          y: Math.max(8, ph - h - 16),
+        });
+      }
     };
     place();
     const parent = dragRef.current?.offsetParent as HTMLElement | null;
     if (!parent || typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(() => {
       const { width: pw, height: ph } = getParentBounds();
+      const narrow = pw < 768;
+      setFullWidth(narrow);
+      if (narrow) {
+        setSize({
+          width: Math.max(240, pw - 16),
+          height: Math.max(320, Math.min(Math.round(ph * 0.85), ph - 16)),
+        });
+        setPosition((p) => ({ x: 8, y: Math.max(8, ph - (Math.max(320, Math.min(Math.round(ph * 0.85), ph - 16))) - 8) }));
+        return;
+      }
       setSize((s) => ({
         width: Math.min(s.width, Math.max(320, pw - 24)),
         height: Math.min(s.height, Math.max(280, ph - 24)),
