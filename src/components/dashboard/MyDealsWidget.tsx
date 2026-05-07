@@ -41,16 +41,19 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
   const [filter, setFilter] = useState<StageFilter>('all');
   const [isOpen, setIsOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [scope, setScope] = useState<DealScope>('my');
+  const [scope, setScope] = useState<DealScope>(isAdmin ? 'all' : 'my');
+  // Non-admins are locked to 'my' scope — they can never view org-wide deals.
+  const effectiveScope: DealScope = isAdmin ? scope : 'my';
 
   const myDeals = useMemo(() => {
     const displayName = profile?.display_name || profile?.first_name || '';
     let filtered = deals.filter(d => {
-      if (d.status === 'archived') return false;
-      if (scope === 'my') {
+      const status = (d.status || '').toLowerCase();
+      if (status === 'archived' || status === 'on-hold' || status === 'on_hold') return false;
+      if (effectiveScope === 'my') {
         return d.manager?.toLowerCase() === displayName?.toLowerCase();
       }
-      return true; // 'all' scope — company RLS already scopes data
+      return true; // 'all' scope (admins only) — company RLS already scopes data
     });
 
     // Apply search
@@ -81,7 +84,7 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
     // 'all' — no additional filtering, includes on-track, at-risk, off-track, on-hold, etc.
 
     return filtered.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-  }, [deals, profile, filter, preferences, searchQuery, scope]);
+  }, [deals, profile, filter, preferences, searchQuery, effectiveScope]);
 
   // Demo account: cap the "stale" filter to exactly DEMO_STALE_LIMIT deals.
   const cappedDeals = (isDemoAccount && filter === 'stale')
@@ -93,8 +96,9 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
   const statusCounts = useMemo(() => {
     const displayName = profile?.display_name || profile?.first_name || '';
     const mine = deals.filter(d => {
-      if (d.status === 'archived') return false;
-      if (scope === 'my') return d.manager?.toLowerCase() === displayName?.toLowerCase();
+      const status = (d.status || '').toLowerCase();
+      if (status === 'archived' || status === 'on-hold' || status === 'on_hold') return false;
+      if (effectiveScope === 'my') return d.manager?.toLowerCase() === displayName?.toLowerCase();
       return true;
     });
     return {
@@ -102,7 +106,7 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
       active: mine.filter(d => d.status === 'on-track').length,
       atRisk: mine.filter(d => d.status === 'at-risk' || d.status === 'off-track').length,
     };
-  }, [deals, profile, scope]);
+  }, [deals, profile, effectiveScope]);
 
   const getStatusDot = (status: string) => {
     const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG];
@@ -137,14 +141,14 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
             <CardTitle className="text-base font-medium flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Briefcase className="h-4 w-4 text-primary" />
-                {scope === 'all' ? 'All Deals' : 'My Deals'}
+                {effectiveScope === 'all' ? 'All Deals' : 'My Deals'}
                 <Badge variant="secondary" className="text-xs">{statusCounts.all}</Badge>
               </div>
               <div className="flex items-center gap-1">
                 {isAdmin && (
                   <ToggleGroup
                     type="single"
-                    value={scope}
+                    value={effectiveScope}
                     onValueChange={(v) => { if (v) setScope(v as DealScope); }}
                     className="mr-1"
                     onClick={(e) => e.stopPropagation()}
