@@ -34,12 +34,13 @@ import {
   X, Calendar, Flag, User, MessageSquare, Activity, Plus,
   CheckSquare, Trash2, Clock, Sun, Sunrise, ArrowRight,
   Link2, Paperclip, Download, FileText, Users,
-  Repeat, ExternalLink, AlertTriangle, Pause, Play, Square,
+  Repeat, ExternalLink, AlertTriangle, Pause, Play, Square, RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow, format, addDays, nextMonday } from 'date-fns';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
+import { getAsanaSyncContext, syncTaskToAsana, updateTaskInAsana } from '@/hooks/useAsanaTaskSync';
 
 interface TaskDetailDrawerProps {
   task: Task;
