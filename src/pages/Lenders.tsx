@@ -1284,6 +1284,24 @@ export default function Lenders() {
                   </div>
                 </div>
 
+                {/* AI-driven filter banner */}
+                {aiFilter && (
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Zap className="h-4 w-4 text-primary shrink-0" />
+                      <span className="truncate">
+                        Showing AI-filtered results
+                        {aiFilter.query ? <> for: <span className="font-medium">{aiFilter.query}</span></> : null}
+                        <span className="ml-2 text-muted-foreground">({aiFilter.names.size} lender{aiFilter.names.size === 1 ? '' : 's'})</span>
+                      </span>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => setAiFilter(null)} className="gap-1">
+                      <X className="h-3.5 w-3.5" />
+                      Clear filter
+                    </Button>
+                  </div>
+                )}
+
                 {/* Bulk Selection Action Bar */}
                 {selectedLenderIds.size > 0 && (
                   <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20">
