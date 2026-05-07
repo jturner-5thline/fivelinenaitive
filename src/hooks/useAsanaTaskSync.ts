@@ -1,10 +1,42 @@
 import { supabase } from '@/integrations/supabase/client';
 
+/**
+ * Record an Asana sync attempt to the asana_sync_log table for the
+ * admin error/audit log. Best-effort: a logging failure must never
+ * mask the real sync result.
+ */
+async function logSyncAttempt(entry: {
+  task_id?: string | null;
+  asana_task_gid?: string | null;
+  action: string;
+  success: boolean;
+  error_message?: string | null;
+  payload?: unknown;
+  company_id?: string | null;
+}): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from('asana_sync_log' as any).insert({
+      task_id: entry.task_id || null,
+      asana_task_gid: entry.asana_task_gid || null,
+      action: entry.action,
+      success: entry.success,
+      error_message: entry.error_message || null,
+      payload: entry.payload ? (entry.payload as any) : null,
+      company_id: entry.company_id || null,
+      triggered_by: user?.id || null,
+    } as any);
+  } catch (e) {
+    console.warn('[AsanaSync] Failed to write sync log:', e);
+  }
+}
+
 interface AsanaSyncContext {
   integrationId: string;
   workspaceGid: string;
   projectGid: string | null;
   sectionGid: string | null;
+  companyId?: string | null;
 }
 
 /**
@@ -73,6 +105,7 @@ export async function getAsanaSyncContext(companyId: string | null): Promise<Asa
     workspaceGid,
     projectGid: projectFilter?.asana_project_gid || null,
     sectionGid,
+    companyId,
   };
 }
 
@@ -169,6 +202,14 @@ export async function syncTaskToAsana(
 
     if (!data?.success || !data.task?.gid) {
       console.error('Asana task creation failed:', data);
+      await logSyncAttempt({
+        task_id: task.id,
+        action: 'create_task',
+        success: false,
+        error_message: data?.error || 'Asana proxy returned no task gid',
+        payload: taskData,
+        company_id: ctx.companyId || null,
+      });
       return null;
     }
 
@@ -180,9 +221,25 @@ export async function syncTaskToAsana(
       .update({ asana_task_gid: asanaGid } as any)
       .eq('id', task.id);
 
+    await logSyncAttempt({
+      task_id: task.id,
+      asana_task_gid: asanaGid,
+      action: 'create_task',
+      success: true,
+      payload: taskData,
+      company_id: ctx.companyId || null,
+    });
+
     return asanaGid;
   } catch (e) {
     console.error('Asana task sync failed:', e);
+    await logSyncAttempt({
+      task_id: task.id,
+      action: 'create_task',
+      success: false,
+      error_message: e instanceof Error ? e.message : String(e),
+      company_id: ctx.companyId || null,
+    });
     return null;
   }
 }
@@ -230,9 +287,25 @@ export async function updateTaskInAsana(
       body: { action: 'update_task', integration_id: ctx.integrationId, task_gid: asanaTaskGid, data: asanaUpdates }
     });
 
-    return data?.success ?? false;
+    const ok = data?.success ?? false;
+    await logSyncAttempt({
+      asana_task_gid: asanaTaskGid,
+      action: 'update_task',
+      success: ok,
+      error_message: ok ? null : (data?.error || 'Asana proxy update failed'),
+      payload: asanaUpdates,
+      company_id: ctx.companyId || null,
+    });
+    return ok;
   } catch (e) {
     console.error('Asana task update failed:', e);
+    await logSyncAttempt({
+      asana_task_gid: asanaTaskGid,
+      action: 'update_task',
+      success: false,
+      error_message: e instanceof Error ? e.message : String(e),
+      company_id: ctx.companyId || null,
+    });
     return false;
   }
 }

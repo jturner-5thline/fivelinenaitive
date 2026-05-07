@@ -1350,6 +1350,45 @@ export type Database = {
           },
         ]
       }
+      asana_sync_log: {
+        Row: {
+          action: string
+          asana_task_gid: string | null
+          company_id: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          payload: Json | null
+          success: boolean
+          task_id: string | null
+          triggered_by: string | null
+        }
+        Insert: {
+          action: string
+          asana_task_gid?: string | null
+          company_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          payload?: Json | null
+          success: boolean
+          task_id?: string | null
+          triggered_by?: string | null
+        }
+        Update: {
+          action?: string
+          asana_task_gid?: string | null
+          company_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          payload?: Json | null
+          success?: boolean
+          task_id?: string | null
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
       asana_webhooks: {
         Row: {
           asana_project_gid: string
