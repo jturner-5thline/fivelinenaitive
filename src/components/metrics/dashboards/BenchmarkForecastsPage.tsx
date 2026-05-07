@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import ChartJS from 'chart.js/auto';
 import { SortableWidgetGrid, SortableItem } from './SortableWidgetGrid';
+import { WhatWorkingSections } from './WhatWorkingSections';
 
 // ── Chart defaults ──
 const setDefaults = () => {
@@ -366,6 +367,7 @@ export function BenchmarkForecastsPage() {
           ] as SortableItem[]}
         />
       </div>
+      <WhatWorkingSections reportKey="insights-tab:forecasts" />
     </div>
   );
 }
