@@ -73,11 +73,12 @@ type ToneKey = 'concise' | 'balanced';
 // Variant order is intentionally Recommended → Shorter so the strongest AI
 // response is always the default landing state in the unified Draft reply
 // module. Backend tone keys (concise/balanced) are unchanged.
-const TONE_ORDER: ToneKey[] = ['balanced', 'concise'];
-const TONE_LABELS: Record<ToneKey, string> = {
+export const TONE_ORDER: ToneKey[] = ['balanced', 'concise'];
+export const TONE_LABELS: Record<ToneKey, string> = {
   balanced: 'Recommended',
   concise: 'Shorter',
 };
+export type AiAssistToneKey = ToneKey;
 
 /**
  * Quick-steer chips rendered inside the Draft reply card. Each chip applies a
@@ -85,12 +86,12 @@ const TONE_LABELS: Record<ToneKey, string> = {
  * `customInstructions` field. Order is meaning-grouped: intent (what to say)
  * first, then length, then tone.
  */
-interface DraftIntentOption {
+export interface DraftIntentOption {
   key: string;
   label: string;
   instruction: string;
 }
-const DRAFT_INTENT_OPTIONS: DraftIntentOption[] = [
+export const DRAFT_INTENT_OPTIONS: DraftIntentOption[] = [
   {
     key: 'ask_more_info',
     label: 'Ask for more information',
@@ -190,6 +191,20 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   // at-a-glance summary.
   const [draftOpen, setDraftOpen] = useState(false);
   const [dealDetailsOpen, setDealDetailsOpen] = useState(false);
+  // True while the Outlook-style PopOutComposer is mounted in the parent.
+  // We listen to popout open/close events so this sidebar can hide its
+  // duplicate Draft Reply workspace and avoid two competing draft surfaces.
+  const [popOutOpen, setPopOutOpen] = useState(false);
+  useEffect(() => {
+    const onOpen = () => setPopOutOpen(true);
+    const onClose = () => setPopOutOpen(false);
+    window.addEventListener('naitive:ai-assist:popout-opened', onOpen);
+    window.addEventListener('naitive:ai-assist:popout-closed', onClose);
+    return () => {
+      window.removeEventListener('naitive:ai-assist:popout-opened', onOpen);
+      window.removeEventListener('naitive:ai-assist:popout-closed', onClose);
+    };
+  }, []);
   // Snapshot of the slim deal-context summary surfaced in the sidebar header
   // card. Forwarded to the edge function so the draft tone reflects whether
   // the deal is At Risk, Off Track, On Hold, etc.
@@ -697,6 +712,48 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
     return () => window.removeEventListener('naitive:ai-assist:request-draft', onRequest);
   }, [selectedOption]);
 
+  // ── Pop-out composer remote control ───────────────────────────────────
+  // The PopOutComposer mirrors the same AI controls (tone tabs + intent
+  // chips + regenerate). We let it remote-drive this sidebar's state so all
+  // generation logic, caching, and edge-function plumbing stays in ONE
+  // place. The popout sends events; we apply them and stream the resulting
+  // body back via `naitive:ai-assist:popout-draft-update`.
+  useEffect(() => {
+    const onSelectTone = (e: Event) => {
+      const detail = (e as CustomEvent<{ tone: ToneKey }>).detail;
+      if (!detail?.tone) return;
+      handleSelectTone(detail.tone);
+    };
+    const onRegenerate = () => regenerateSelected();
+    const onApplyIntent = (e: Event) => {
+      const detail = (e as CustomEvent<{ key: string }>).detail;
+      const opt = DRAFT_INTENT_OPTIONS.find((o) => o.key === detail?.key);
+      if (opt) void applyIntent(opt);
+    };
+    window.addEventListener('naitive:ai-assist:popout-select-tone', onSelectTone as EventListener);
+    window.addEventListener('naitive:ai-assist:popout-regenerate', onRegenerate);
+    window.addEventListener('naitive:ai-assist:popout-apply-intent', onApplyIntent as EventListener);
+    return () => {
+      window.removeEventListener('naitive:ai-assist:popout-select-tone', onSelectTone as EventListener);
+      window.removeEventListener('naitive:ai-assist:popout-regenerate', onRegenerate);
+      window.removeEventListener('naitive:ai-assist:popout-apply-intent', onApplyIntent as EventListener);
+    };
+  }, [handleSelectTone, regenerateSelected, applyIntent]);
+
+  // Stream draft body + loading state to the popout whenever they change.
+  useEffect(() => {
+    try {
+      window.dispatchEvent(new CustomEvent('naitive:ai-assist:popout-draft-update', {
+        detail: {
+          body: selectedOption?.body ?? '',
+          tone: selected,
+          loading: isSelectedLoading,
+          activeIntentKey,
+        },
+      }));
+    } catch {}
+  }, [selectedOption, selected, isSelectedLoading, activeIntentKey]);
+
   // ── Pop-out compose modal bridge ───────────────────────────────────────
   // When the Draft Reply quick action is clicked, we generate (if needed)
   // and then dispatch `naitive:ai-assist:open-popout-draft` so the parent
@@ -1160,7 +1217,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               footer below) the action row. Replaces the legacy "Draft AI
               Reply" pill row + "Draft Options" card duo with a single
               drafting workspace. */}
-          {!error && (
+          {!error && !popOutOpen && (
             // Draft Reply is opened exclusively from the Quick Actions pill
             // above. The previous duplicate "DRAFT REPLY" collapsible header
             // has been removed to eliminate the redundant entry point.
@@ -1317,7 +1374,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
 
       {/* Footer actions */}
       <div className="border-t border-white/[0.06] px-3 py-3 flex items-center gap-2 shrink-0 bg-card/60 min-w-0 w-full">
-        {draftOpen && selectedOption && (
+        {draftOpen && selectedOption && !popOutOpen && (
           <Button
             variant="ghost"
             size="sm"
@@ -1359,7 +1416,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             />
           </PopoverContent>
         </Popover>
-        {draftOpen && selectedOption && (
+        {draftOpen && selectedOption && !popOutOpen && (
           <Button
             size="sm"
             className="h-8 text-[11px] gap-1.5 shrink-0 bg-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/90"

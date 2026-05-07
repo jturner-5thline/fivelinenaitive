@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   X, Trash2, Minimize2, Maximize2, GripHorizontal, Minus, Check, AlertCircle, Cloud,
+  RefreshCw, Loader2, Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -25,6 +26,12 @@ import type { DraftSaveStatus } from '@/hooks/useEmailDraft';
 import type { TokenContext } from '@/hooks/useEmailSnippets';
 import { emailStringToArray, emailArrayToString } from './RecipientField';
 import { EmailComposerCard, type ComposerRecipients, type ComposerSendOptions } from './EmailComposerCard';
+import {
+  TONE_ORDER,
+  TONE_LABELS,
+  DRAFT_INTENT_OPTIONS,
+  type AiAssistToneKey,
+} from './AiAssistSidebar';
 
 function DraftStatusIndicator({ status }: { status: DraftSaveStatus }) {
   if (status === 'idle') return null;
@@ -79,6 +86,57 @@ export function PopOutComposer({
   const [attachments, setAttachments] = useState<string[]>(initialDraft.attachments);
   const [files, setFiles] = useState<File[]>([]);
   const [minimized, setMinimized] = useState(false);
+
+  // ── AI drafting controls (mirrors the AI Assist sidebar) ──────────────
+  // The sidebar owns all generation logic, caching, and edge-function
+  // plumbing. The popout remote-drives it via window events and receives
+  // streamed draft updates back. This keeps a single source of truth for
+  // AI state regardless of which surface is visible.
+  const [aiTone, setAiTone] = useState<AiAssistToneKey>('balanced');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiActiveIntent, setAiActiveIntent] = useState<string | null>(null);
+  useEffect(() => {
+    const onUpdate = (e: Event) => {
+      const detail = (e as CustomEvent<{
+        body: string;
+        tone: AiAssistToneKey;
+        loading: boolean;
+        activeIntentKey: string | null;
+      }>).detail;
+      if (!detail) return;
+      setAiTone(detail.tone);
+      setAiLoading(detail.loading);
+      setAiActiveIntent(detail.activeIntentKey);
+      if (detail.body && detail.body !== body) {
+        setBody(detail.body);
+      }
+    };
+    window.addEventListener('naitive:ai-assist:popout-draft-update', onUpdate as EventListener);
+    return () => window.removeEventListener('naitive:ai-assist:popout-draft-update', onUpdate as EventListener);
+    // body intentionally excluded — we only swap on AI-driven updates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSelectTone = useCallback((tone: AiAssistToneKey) => {
+    setAiTone(tone);
+    try {
+      window.dispatchEvent(new CustomEvent('naitive:ai-assist:popout-select-tone', {
+        detail: { tone },
+      }));
+    } catch {}
+  }, []);
+  const handleRegenerate = useCallback(() => {
+    try {
+      window.dispatchEvent(new CustomEvent('naitive:ai-assist:popout-regenerate'));
+    } catch {}
+  }, []);
+  const handleApplyIntent = useCallback((key: string) => {
+    try {
+      window.dispatchEvent(new CustomEvent('naitive:ai-assist:popout-apply-intent', {
+        detail: { key },
+      }));
+    } catch {}
+  }, []);
 
   // Floating window state — positioned ABSOLUTELY within the nearest
   // positioned ancestor (the email modal/container), so it stays fully
@@ -310,6 +368,97 @@ export function PopOutComposer({
 
       {/* Unified composer card fills the floating window */}
       <div className="flex-1 min-h-0 overflow-y-auto">
+        {/* AI drafting controls — mirrors the AI Assist sidebar so the user
+            can refine the draft directly inside the compose modal. */}
+        <div className="px-3 pt-2.5 pb-2 space-y-2 border-b border-[hsl(var(--email-border))] bg-card/40">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-3 w-3 text-primary" />
+            <span className="text-[10.5px] font-medium uppercase tracking-wide text-muted-foreground">
+              AI draft
+            </span>
+            <div className="flex-1" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-[10.5px] gap-1 px-2"
+              onClick={handleRegenerate}
+              disabled={aiLoading}
+            >
+              <RefreshCw className={cn('h-3 w-3', aiLoading && 'animate-spin')} />
+              Regenerate
+            </Button>
+          </div>
+          <div
+            role="tablist"
+            aria-label="Draft variants"
+            className="inline-flex items-center gap-0.5 rounded-md border border-white/[0.06] bg-card/40 p-0.5"
+          >
+            {TONE_ORDER.map((tone) => {
+              const isActive = aiTone === tone;
+              const isRecommended = tone === 'balanced';
+              return (
+                <button
+                  key={tone}
+                  role="tab"
+                  aria-selected={isActive}
+                  type="button"
+                  onClick={() => handleSelectTone(tone)}
+                  className={cn(
+                    'h-6 px-2.5 rounded text-[11px] font-medium transition-colors inline-flex items-center gap-1',
+                    isActive
+                      ? 'bg-primary/15 text-primary'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04]',
+                  )}
+                >
+                  {TONE_LABELS[tone]}
+                  {isRecommended && (
+                    <span
+                      className={cn('text-[10px] leading-none', isActive ? 'text-primary' : 'text-muted-foreground/60')}
+                      aria-hidden
+                    >★</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div
+            className="flex flex-nowrap items-center gap-2 overflow-x-auto overflow-y-hidden -mx-0.5 px-0.5 py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            style={{
+              WebkitMaskImage: 'linear-gradient(to right, transparent 0, black 12px, black calc(100% - 12px), transparent 100%)',
+              maskImage: 'linear-gradient(to right, transparent 0, black 12px, black calc(100% - 12px), transparent 100%)',
+            }}
+            role="group"
+            aria-label="Refine draft"
+          >
+            {DRAFT_INTENT_OPTIONS.map((option) => {
+              const isActive = aiActiveIntent === option.key;
+              const disabled = aiLoading && !isActive;
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => handleApplyIntent(option.key)}
+                  disabled={disabled}
+                  title={option.label}
+                  className={cn(
+                    'inline-flex items-center gap-1 h-6 px-2.5 rounded-full shrink-0 whitespace-nowrap',
+                    'text-[11px] font-medium leading-none',
+                    'border border-white/10 bg-white/5 backdrop-blur-sm',
+                    'text-foreground/80 transition-colors',
+                    'shadow-[inset_0_1px_0_0_hsl(0_0%_100%/0.06)]',
+                    'hover:bg-white/[0.09] hover:text-foreground hover:border-white/15',
+                    'disabled:opacity-40 disabled:cursor-not-allowed',
+                    isActive && 'bg-primary/15 border-primary/30 text-primary',
+                  )}
+                >
+                  {isActive && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
+                  <span>{option.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <EmailComposerCard
           replyToName={initialDraft.toName}
           recipients={recipients}
