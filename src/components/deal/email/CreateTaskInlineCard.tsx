@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Loader2, Plus, Calendar as CalendarIcon, User as UserIcon, Briefcase, Building2 } from 'lucide-react';
+import { Check, Loader2, Plus, Calendar as CalendarIcon, User as UserIcon, Briefcase, Building2, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -16,6 +17,7 @@ import { createTaskFromDraft, type TaskDraft } from '@/hooks/useNaitiveTaskParse
 import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
 import { useUiPreference } from '@/hooks/useUiPreference';
 import { useContactBySenderEmail } from '@/hooks/useContactBySenderEmail';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 
 interface Props {
   dealId?: string | null;
@@ -91,6 +93,7 @@ export function CreateTaskInlineCard({
   const [defaultAsanaSync] = useUiPreference<boolean>('default_asana_sync', true);
 
   const { data: senderContact } = useContactBySenderEmail(senderEmail);
+  const teamMembers = useTeamMembers();
 
   const senderFirstName = useMemo(() => {
     const raw = (senderName || senderContact?.fullName || senderEmail || '').trim();
@@ -112,7 +115,10 @@ export function CreateTaskInlineCard({
   const [asanaSync, setAsanaSync] = useState<boolean>(defaultAsanaSync);
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<{ taskId: string; dealName: string | null } | null>(null);
+  const [assigneeId, setAssigneeId] = useState<string | null>(null);
   const [assigneeLabel, setAssigneeLabel] = useState<string>('You');
+  const [assigneePickerOpen, setAssigneePickerOpen] = useState(false);
+  const [assigneeUserTouched, setAssigneeUserTouched] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Re-sync default title if the email/deal context shifts before opening.
@@ -123,7 +129,10 @@ export function CreateTaskInlineCard({
   // Resolve the deal manager once when opening, to display in the
   // assignee chip. Falls back to "You" (logged-in user) if unresolved.
   useEffect(() => {
-    if (!open || !dealId) {
+    if (assigneeUserTouched) return;
+    if (!open) return;
+    if (!dealId) {
+      setAssigneeId(user?.id || null);
       setAssigneeLabel('You');
       return;
     }
@@ -131,10 +140,11 @@ export function CreateTaskInlineCard({
     (async () => {
       const r = await resolveDealManagerUserId(dealId);
       if (cancelled) return;
+      setAssigneeId(r.userId || user?.id || null);
       setAssigneeLabel(r.label || 'You');
     })();
     return () => { cancelled = true; };
-  }, [open, dealId]);
+  }, [open, dealId, user?.id, assigneeUserTouched]);
 
   const contactLabel = useMemo(() => {
     const name = senderContact?.fullName || senderName || senderEmail;
@@ -155,9 +165,9 @@ export function CreateTaskInlineCard({
     setErrorMsg(null);
     setBusy(true);
     try {
-      let ownerId: string | null = user.id;
-      let ownerLabel: string | null = 'You';
-      if (dealId) {
+      let ownerId: string | null = assigneeId || user.id;
+      let ownerLabel: string | null = assigneeLabel || 'You';
+      if (!assigneeUserTouched && dealId && !assigneeId) {
         const r = await resolveDealManagerUserId(dealId);
         if (r.userId) {
           ownerId = r.userId;
@@ -332,10 +342,64 @@ export function CreateTaskInlineCard({
             />
           </PopoverContent>
         </Popover>
-        <span className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.03] px-2 h-7 text-[11px] text-muted-foreground">
-          <UserIcon className="h-3 w-3" />
-          <span className="truncate max-w-[120px]">{assigneeLabel}</span>
-        </span>
+        <Popover open={assigneePickerOpen} onOpenChange={setAssigneePickerOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 gap-1.5 text-[11px] font-normal"
+            >
+              <UserIcon className="h-3 w-3" />
+              <span className="truncate max-w-[120px]">{assigneeLabel}</span>
+              <ChevronDown className="h-3 w-3 opacity-60" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[240px] p-0 z-[80] pointer-events-auto" align="start">
+            <Command>
+              <CommandInput placeholder="Search teammates..." className="h-8 text-[12px]" />
+              <CommandList>
+                <CommandEmpty>No teammates found.</CommandEmpty>
+                <CommandGroup>
+                  {user?.id && (
+                    <CommandItem
+                      key="self"
+                      value="you me self"
+                      onSelect={() => {
+                        setAssigneeId(user.id);
+                        setAssigneeLabel('You');
+                        setAssigneeUserTouched(true);
+                        setAssigneePickerOpen(false);
+                      }}
+                    >
+                      <UserIcon className="h-3 w-3 mr-2" />
+                      You
+                      {assigneeId === user.id && <Check className="h-3 w-3 ml-auto" />}
+                    </CommandItem>
+                  )}
+                  {teamMembers
+                    .filter((m) => m.id !== user?.id)
+                    .map((m) => (
+                      <CommandItem
+                        key={m.id}
+                        value={`${m.display_name} ${m.email || ''}`}
+                        onSelect={() => {
+                          setAssigneeId(m.id);
+                          setAssigneeLabel(m.display_name);
+                          setAssigneeUserTouched(true);
+                          setAssigneePickerOpen(false);
+                        }}
+                      >
+                        <UserIcon className="h-3 w-3 mr-2" />
+                        <span className="truncate">{m.display_name}</span>
+                        {assigneeId === m.id && <Check className="h-3 w-3 ml-auto" />}
+                      </CommandItem>
+                    ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
       </div>
 
       <div className="flex items-center justify-between gap-2 pt-1">
