@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode, useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
+import { createPortal } from 'react-dom';
 import { Virtuoso } from 'react-virtuoso';
 import { Badge } from '@/components/ui/badge';
 import { SmartEmailPanel } from './SmartEmailPanel';
