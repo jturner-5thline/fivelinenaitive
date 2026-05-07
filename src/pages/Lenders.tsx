@@ -377,6 +377,50 @@ export default function Lenders() {
     return counts;
   }, [deals, masterLenders]);
 
+  // Build a per-lender deal-history index used by the search:
+  // deal names, pass reasons, and lender notes from all deals where this lender appears.
+  const lenderDealIndex = useMemo(() => {
+    const idx: Record<string, string> = {};
+    deals.forEach((deal) => {
+      deal.lenders?.forEach((dl) => {
+        const key = dl.name.toLowerCase().trim();
+        const parts = [
+          deal.company || '',
+          dl.passReason || '',
+          dl.notes || '',
+          dl.savedNotes || '',
+          dl.stage || '',
+          dl.trackingStatus || '',
+        ];
+        idx[key] = (idx[key] ? idx[key] + ' ' : '') + parts.join(' ');
+      });
+    });
+    return idx;
+  }, [deals]);
+
+  // AI-driven filter: when the Copilot answers a lender query, it can dispatch
+  // a 'naitive:lender-filter' event with a list of matching lender names.
+  const [aiFilter, setAiFilter] = useState<{ query: string; names: Set<string> } | null>(null);
+  useEffect(() => {
+    const onFilter = (e: Event) => {
+      const detail = (e as CustomEvent).detail || {};
+      const names: string[] = Array.isArray(detail.names) ? detail.names : [];
+      const query: string = typeof detail.query === 'string' ? detail.query : '';
+      if (!names.length) {
+        setAiFilter(null);
+        return;
+      }
+      setAiFilter({ query, names: new Set(names.map((n) => n.toLowerCase().trim())) });
+    };
+    const onClear = () => setAiFilter(null);
+    window.addEventListener('naitive:lender-filter', onFilter as EventListener);
+    window.addEventListener('naitive:lender-filter-clear', onClear);
+    return () => {
+      window.removeEventListener('naitive:lender-filter', onFilter as EventListener);
+      window.removeEventListener('naitive:lender-filter-clear', onClear);
+    };
+  }, []);
+
   const openLenderDetail = (lender: MasterLender, editMode = false) => {
     setSelectedLender(masterLenderToLenderInfo(lender));
     setIsDetailEditMode(editMode);
