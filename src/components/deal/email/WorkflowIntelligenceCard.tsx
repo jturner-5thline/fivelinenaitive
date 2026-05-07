@@ -56,6 +56,12 @@ interface Props {
    * focused on the lender/deal status update.
    */
   hideSuggestedTasks?: boolean;
+  /**
+   * Optional count badge rendered in the card header (right side).
+   * Used by AI Assist to surface the total number of suggested updates
+   * inside this single card header instead of an outer section label.
+   */
+  headerCount?: number;
 }
 
 const CONFIDENCE_TONE: Record<WorkflowConfidence, string> = {
