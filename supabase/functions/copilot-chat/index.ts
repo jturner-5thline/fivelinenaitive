@@ -155,7 +155,7 @@ const tools = [
     type: "function",
     function: {
       name: "search_lenders",
-      description: "Search the master lender database by keyword.",
+      description: "Search the master lender database by free-text keyword. Searches across name, contact name/email/title, geography, lender type, tier, industries, loan types, deal-structure notes, company requirements, sponsorship/cash-burn/sub-debt criteria, and relationship owners. Use for ANY question about lenders ('which lenders fund SaaS', 'who do we know at Agility Capital', 'lenders that prefer warrants', 'lenders in the Southeast', 'find ABL lenders for $5M-$15M deals').",
       parameters: {
         type: "object",
         properties: { query: { type: "string" } },
