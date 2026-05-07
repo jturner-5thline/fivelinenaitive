@@ -653,40 +653,39 @@ function ReportHeaderSection({ s, set, reset, save, print, canEdit, titlePrefix 
   };
   return (
     <Card className="glass-module">
-      <div style={{
-        padding: '20px 22px',
-        display: 'grid',
-        gap: 16,
-        gridTemplateColumns: 'minmax(280px, 2fr) minmax(140px, 1fr) minmax(160px, 1fr)',
-        alignItems: 'end',
-      }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div className="qir-report-header">
+        <div className="qir-report-header-title">
           <span style={fieldLabelStyle}>Report</span>
-          <div style={{ fontSize: 18, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: '-.2px', lineHeight: 1.25 }}>
+          <h1 style={{
+            fontSize: 22, fontWeight: 700, color: TEXT_PRIMARY,
+            letterSpacing: '-0.015em', lineHeight: 1.2, margin: 0,
+          }}>
             {reportTitle}
+          </h1>
+        </div>
+        <div className="qir-report-header-meta">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 140 }}>
+            <label style={fieldLabelStyle} htmlFor="qir-date-prepared">Date Prepared</label>
+            <input
+              id="qir-date-prepared"
+              value={s.preparedDate}
+              onChange={e => set(prev => ({ ...prev, preparedDate: e.target.value }))}
+              style={{ ...inputStyle, width: '100%' }}
+            />
           </div>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={fieldLabelStyle} htmlFor="qir-date-prepared">Date Prepared</label>
-          <input
-            id="qir-date-prepared"
-            value={s.preparedDate}
-            onChange={e => set(prev => ({ ...prev, preparedDate: e.target.value }))}
-            style={{ ...inputStyle, width: '100%' }}
-          />
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={fieldLabelStyle} htmlFor="qir-prepared-by">Prepared By</label>
-          <select
-            id="qir-prepared-by"
-            value={currentPreparedBy}
-            onChange={e => set(prev => ({ ...prev, authors: [e.target.value] }))}
-            style={{ ...selectStyle, width: '100%' }}
-          >
-            {PREPARED_BY_OPTIONS.map(opt => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 160 }}>
+            <label style={fieldLabelStyle} htmlFor="qir-prepared-by">Prepared By</label>
+            <select
+              id="qir-prepared-by"
+              value={currentPreparedBy}
+              onChange={e => set(prev => ({ ...prev, authors: [e.target.value] }))}
+              style={{ ...selectStyle, width: '100%' }}
+            >
+              {PREPARED_BY_OPTIONS.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
     </Card>
@@ -2452,7 +2451,7 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
     ? `Monthly Insights Report — ${s.month}`
     : `Quarterly Insights Report — ${s.quarter}`;
   return (
-    <div ref={rootRef} style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, color: TEXT_PRIMARY }}>
+    <div ref={rootRef} className="qir-report-canvas" style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24, color: TEXT_PRIMARY }}>
       {unsavedChangesWarning && (
         <div style={{
           marginBottom: -4,
@@ -2529,6 +2528,32 @@ export function QuarterlyReportPrintStyles() {
     el.id = id;
     el.innerHTML = `
       [id^="qir-section-"] { scroll-margin-top: 96px; }
+      /* Report header — clean horizontal row on desktop, stacked on mobile. */
+      .qir-report-header {
+        padding: 22px 24px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 24px;
+        flex-wrap: wrap;
+      }
+      .qir-report-header-title {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-width: 240px;
+        flex: 1 1 320px;
+      }
+      .qir-report-header-meta {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      @media (max-width: 640px) {
+        .qir-report-header { padding: 18px 18px; gap: 16px; }
+        .qir-report-header-meta { width: 100%; }
+        .qir-report-header-meta > div { flex: 1 1 140px; }
+      }
       /* Unify subsections inside the single Monthly/Quarterly report card. */
       .qir-unified-report > div > .qir-unified-section + .qir-unified-section {
         border-top: 1px solid rgba(120,170,255,0.22);
@@ -2536,7 +2561,7 @@ export function QuarterlyReportPrintStyles() {
       /* Uniform padding inside every unified section so narrative, KPIs,
          goals, initiatives, and risks share identical spacing. */
       .qir-unified-report .qir-unified-section .glass-module > div {
-        padding: 20px 22px !important;
+        padding: 24px 24px !important;
       }
       .qir-unified-report .qir-unified-section [class*="glass-module"],
       .qir-unified-report .qir-unified-section .glass-module {

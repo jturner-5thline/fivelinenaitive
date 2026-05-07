@@ -2,6 +2,7 @@ import React from 'react';
 import { useQirSectionNote } from '@/hooks/useQirComments';
 
 const TEXT_PRIMARY = '#dde8f8';
+const TEXT_MUTED = 'rgba(200,225,255,0.55)';
 
 function ProminentSectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -12,8 +13,8 @@ function ProminentSectionTitle({ children }: { children: React.ReactNode }) {
         justifyContent: 'space-between',
         gap: 12,
         flexWrap: 'wrap',
-        marginTop: 8,
-        marginBottom: 18,
+        marginTop: 0,
+        marginBottom: 14,
         paddingBottom: 10,
         borderBottom: '1px solid rgba(255,255,255,0.08)',
       }}
@@ -51,14 +52,17 @@ function CommentaryBlock({
   reportKey,
   sectionKey,
   placeholder,
+  helper,
 }: {
   reportKey: string;
   sectionKey: string;
   placeholder: string;
+  helper?: string;
 }) {
   const { body, save, loaded } = useQirSectionNote(reportKey, sectionKey);
   const [local, setLocal] = React.useState('');
   const dirtyRef = React.useRef(false);
+  const [savedFlash, setSavedFlash] = React.useState(false);
   React.useEffect(() => {
     if (!loaded) return;
     if (!dirtyRef.current) setLocal(body);
@@ -72,58 +76,86 @@ function CommentaryBlock({
     tRef.current = setTimeout(() => {
       void save(v);
       dirtyRef.current = false;
+      setSavedFlash(true);
+      window.setTimeout(() => setSavedFlash(false), 1200);
     }, 500);
   };
 
   return (
-    <textarea
-      value={local}
-      onChange={(e) => onChange(e.target.value)}
-      rows={5}
-      maxLength={8000}
-      placeholder={placeholder}
-      style={{
-        width: '100%',
-        resize: 'vertical',
-        minHeight: 110,
-        background: 'rgba(10,18,36,0.45)',
-        color: TEXT_PRIMARY,
-        border: '1px solid rgba(120,170,255,0.18)',
-        borderRadius: 8,
-        padding: '12px 14px',
-        outline: 'none',
-        fontSize: 13,
-        lineHeight: 1.55,
-        fontFamily: 'inherit',
-      }}
-    />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <textarea
+        value={local}
+        onChange={(e) => onChange(e.target.value)}
+        rows={6}
+        maxLength={8000}
+        placeholder={placeholder}
+        style={{
+          width: '100%',
+          resize: 'vertical',
+          minHeight: 160,
+          background: 'rgba(10,18,36,0.45)',
+          color: TEXT_PRIMARY,
+          border: '1px solid rgba(120,170,255,0.18)',
+          borderRadius: 10,
+          padding: '14px 16px',
+          outline: 'none',
+          fontSize: 13,
+          lineHeight: 1.6,
+          fontFamily: 'inherit',
+        }}
+      />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <span style={{ fontSize: 11, color: TEXT_MUTED, lineHeight: 1.4 }}>
+          {helper || 'Auto-saves as you type. Visible to everyone with access to this report.'}
+        </span>
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            color: savedFlash ? 'hsl(var(--success, 142 70% 45%))' : 'transparent',
+            transition: 'color .25s',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Saved
+        </span>
+      </div>
+    </div>
   );
 }
 
 /**
  * "What's Working..." and "What's not Working..." report sections.
- * Renders the same prominent section heading used for Narrative / Goals /
- * Initiatives / Open Risks, with a persistent multiline commentary box per
- * section. Each consumer (tab) passes a unique `reportKey` so the two tabs
- * never share content.
+ * Each section is rendered as a first-class report card matching the
+ * surrounding sections (Narrative, Goals, Initiatives, Open Risks).
  */
 function WhatWorkingSections({ reportKey }: { reportKey: string }) {
+  const cardStyle: React.CSSProperties = {
+    background: 'rgba(16,28,52,0.35)',
+    border: '1px solid rgba(120,170,255,0.14)',
+    borderRadius: 14,
+    padding: '20px 22px',
+  };
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 28, marginTop: 24 }}>
-      <section>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginTop: 8 }}>
+      <section style={cardStyle}>
         <ProminentSectionTitle>What's Working...</ProminentSectionTitle>
         <CommentaryBlock
           reportKey={reportKey}
           sectionKey="whats-working"
-          placeholder="What's driving results this period?"
+          placeholder="What's driving results this period? Wins, momentum, levers worth doubling down on…"
+          helper="Capture the wins, tailwinds, and bright spots for this period."
         />
       </section>
-      <section>
+      <section style={cardStyle}>
         <ProminentSectionTitle>What's not Working...</ProminentSectionTitle>
         <CommentaryBlock
           reportKey={reportKey}
           sectionKey="whats-not-working"
-          placeholder="Where are we falling short or hitting friction?"
+          placeholder="Where are we falling short, hitting friction, or losing time?"
+          helper="Be candid — surface the blockers, misses, and risks worth raising."
         />
       </section>
     </div>
