@@ -1491,20 +1491,190 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
   return (
     <Card className="overflow-hidden w-full max-w-full h-full flex flex-col border-0 rounded-none bg-transparent">
-      {/* Outlook-style top toolbar */}
-      <div className="flex items-center gap-1.5 px-3 py-1.5 pr-12 glass-divider-b">
-        {/* New mail — outlined, Outlook style */}
+      {/* Outlook-style top toolbar — unified header: New + inline search +
+          right-aligned helpers. The standalone search row below the inbox
+          column has been removed; the inbox list now starts directly under
+          this row. */}
+      <div className="flex items-center gap-1.5 px-3 py-1.5 pr-12 glass-divider-b h-12">
+        {/* New — outlined, Outlook style */}
         <Button
           variant="outline"
           size="sm"
-          className="gap-1.5 text-xs h-8 px-4 border-[hsl(var(--outlook-blue)/0.3)] text-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue)/0.08)] bg-transparent"
+          className="gap-1.5 text-xs h-8 px-4 border-[hsl(var(--outlook-blue)/0.3)] text-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue)/0.08)] bg-transparent shrink-0"
           onClick={() => { setComposeOpen(true); setComposeReplyTo(null); }}
         >
           <PenSquare className="h-3.5 w-3.5" />
-          New mail
+          New
         </Button>
 
-        <div className="flex-1" />
+        {/* Inline search + filter — fills the remaining space */}
+        <div className="relative flex-1 min-w-0 flex items-center gap-1">
+          <div className="relative flex-1 min-w-0">
+            {aiSearch.isSearching ? (
+              <Loader2 className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary animate-spin" />
+            ) : aiSearchActive ? (
+              <Sparkles className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary" />
+            ) : (
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            )}
+            <Input
+              placeholder='Search mail with AI…'
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  runAISearch();
+                } else if (e.key === 'Escape' && aiSearchActive) {
+                  e.preventDefault();
+                  clearAISearch();
+                  setSearchQuery('');
+                }
+              }}
+              className={cn(
+                'pl-8 pr-7 h-8 text-xs bg-white/[0.03] border-white/[0.08] rounded focus:border-white/[0.15]',
+                aiSearchActive && 'border-primary/40 focus:border-primary/60'
+              )}
+            />
+            {(aiSearchActive || searchQuery) && (
+              <button
+                type="button"
+                onClick={() => { clearAISearch(); setSearchQuery(''); }}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors px-1"
+                aria-label="Clear search"
+                title="Clear search (Esc)"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+          <Popover open={searchFiltersOpen} onOpenChange={setSearchFiltersOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant={activeFilterChips.length > 0 ? 'secondary' : 'ghost'}
+                size="icon"
+                className={cn('h-8 w-8 shrink-0', activeFilterChips.length > 0 && 'text-[hsl(var(--outlook-blue))]')}
+                aria-label="Search filters"
+              >
+                <Filter className="h-3.5 w-3.5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="bottom"
+              align="start"
+              className="w-64 p-3 space-y-3 z-[80] pointer-events-auto"
+              onOpenAutoFocus={(e) => e.preventDefault()}
+            >
+              <p className="text-xs font-semibold">Filters</p>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Sender</label>
+                <Input
+                  placeholder="Filter by sender..."
+                  value={searchFilters.sender}
+                  onChange={(e) => setSearchFilters(prev => ({ ...prev, sender: e.target.value }))}
+                  className="h-7 text-xs mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Date Range</label>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {(['all', 'today', 'this_week', 'this_month'] as const).map(dr => (
+                    <button
+                      key={dr}
+                      onClick={() => setSearchFilters(prev => ({ ...prev, dateRange: dr }))}
+                      className={cn(
+                        'px-2 py-0.5 rounded text-[10px] font-medium border transition-colors',
+                        searchFilters.dateRange === dr
+                          ? 'bg-[hsl(var(--outlook-blue))] text-white border-[hsl(var(--outlook-blue))]'
+                          : 'bg-white/[0.03] border-white/[0.08] text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      {dr === 'all' ? 'All' : dr === 'today' ? 'Today' : dr === 'this_week' ? 'This Week' : 'This Month'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Has Attachments</label>
+                <button
+                  onClick={() => setSearchFilters(prev => ({ ...prev, hasAttachments: !prev.hasAttachments }))}
+                  className={cn(
+                    'px-2 py-0.5 rounded text-[10px] font-medium border transition-colors',
+                    searchFilters.hasAttachments
+                      ? 'bg-[hsl(var(--outlook-blue))] text-white border-[hsl(var(--outlook-blue))]'
+                      : 'bg-white/[0.03] border-white/[0.08] text-muted-foreground'
+                  )}
+                >
+                  {searchFilters.hasAttachments ? 'Yes' : 'Any'}
+                </button>
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Response Status</label>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {(['all', 'needs_response', 'responded'] as const).map(rs => (
+                    <button
+                      key={rs}
+                      onClick={() => setSearchFilters(prev => ({ ...prev, responseStatus: rs }))}
+                      className={cn(
+                        'px-2 py-0.5 rounded text-[10px] font-medium border transition-colors',
+                        searchFilters.responseStatus === rs
+                          ? 'bg-[hsl(var(--outlook-blue))] text-white border-[hsl(var(--outlook-blue))]'
+                          : 'bg-white/[0.03] border-white/[0.08] text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      {rs === 'all' ? 'All' : rs === 'needs_response' ? 'Needs Response' : 'Responded'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {activeDealNames.length > 0 && (
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Deal</label>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    <button
+                      onClick={() => setSearchFilters(prev => ({ ...prev, dealAssociation: 'all' }))}
+                      className={cn(
+                        'px-2 py-0.5 rounded text-[10px] font-medium border transition-colors',
+                        searchFilters.dealAssociation === 'all'
+                          ? 'bg-[hsl(var(--outlook-blue))] text-white border-[hsl(var(--outlook-blue))]'
+                          : 'bg-muted/30 border-border/50 text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      All
+                    </button>
+                    {activeDealNames.map(name => (
+                      <button
+                        key={name}
+                        onClick={() => setSearchFilters(prev => ({ ...prev, dealAssociation: name }))}
+                        className={cn(
+                          'px-2 py-0.5 rounded text-[10px] font-medium border transition-colors',
+                          searchFilters.dealAssociation === name
+                            ? 'bg-[hsl(var(--outlook-blue))] text-white border-[hsl(var(--outlook-blue))]'
+                            : 'bg-muted/30 border-border/50 text-muted-foreground hover:text-foreground'
+                        )}
+                      >
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {activeFilterChips.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full h-7 text-xs text-muted-foreground"
+                  onClick={() => setSearchFilters({ sender: '', dateRange: 'all', hasAttachments: false, responseStatus: 'all', dealAssociation: 'all' })}
+                >
+                  Clear all filters
+                </Button>
+              )}
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* Vertical divider between unified search and right-side helpers */}
+        <div className="w-px h-6 bg-white/10 mx-1 shrink-0" aria-hidden />
 
         {/* Keyboard shortcuts help */}
         <Popover open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
@@ -1676,175 +1846,6 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 </div>
               </div>
             )}
-            {/* Search bar — full-width, flat, Outlook style */}
-            <div className="px-2 py-1.5 border-b border-white/[0.06]">
-              <div className="relative flex gap-1">
-                <div className="relative flex-1">
-                  {aiSearch.isSearching ? (
-                    <Loader2 className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary animate-spin" />
-                  ) : aiSearchActive ? (
-                    <Sparkles className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary" />
-                  ) : (
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  )}
-                  <Input
-                    placeholder='Search mail with AI… e.g. "calendar invites I declined"'
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        runAISearch();
-                      } else if (e.key === 'Escape' && aiSearchActive) {
-                        e.preventDefault();
-                        clearAISearch();
-                        setSearchQuery('');
-                      }
-                    }}
-                    className={cn(
-                      'pl-8 pr-8 h-8 text-xs bg-white/[0.03] border-white/[0.08] rounded focus:border-white/[0.15]',
-                      aiSearchActive && 'border-primary/40 focus:border-primary/60'
-                    )}
-                  />
-                  {/* Inline AI / clear controls */}
-                  <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                    {(aiSearchActive || searchQuery) && (
-                      <button
-                        type="button"
-                        onClick={() => { clearAISearch(); setSearchQuery(''); }}
-                        className="text-[10px] text-muted-foreground hover:text-foreground transition-colors px-1"
-                        aria-label="Clear search"
-                        title="Clear search (Esc)"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <Popover open={searchFiltersOpen} onOpenChange={setSearchFiltersOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={activeFilterChips.length > 0 ? 'secondary' : 'ghost'}
-                      size="icon"
-                      className={cn('h-8 w-8 shrink-0', activeFilterChips.length > 0 && 'text-[hsl(var(--outlook-blue))]')}
-                    >
-                      <Filter className="h-3.5 w-3.5" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    side="bottom"
-                    align="start"
-                    className="w-64 p-3 space-y-3 z-[80] pointer-events-auto"
-                    onOpenAutoFocus={(e) => e.preventDefault()}
-                  >
-                    <p className="text-xs font-semibold">Filters</p>
-                    <div>
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Sender</label>
-                      <Input
-                        placeholder="Filter by sender..."
-                        value={searchFilters.sender}
-                        onChange={(e) => setSearchFilters(prev => ({ ...prev, sender: e.target.value }))}
-                        className="h-7 text-xs mt-1"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Date Range</label>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {(['all', 'today', 'this_week', 'this_month'] as const).map(dr => (
-                          <button
-                            key={dr}
-                            onClick={() => setSearchFilters(prev => ({ ...prev, dateRange: dr }))}
-                            className={cn(
-                              'px-2 py-0.5 rounded text-[10px] font-medium border transition-colors',
-                              searchFilters.dateRange === dr
-                                ? 'bg-[hsl(var(--outlook-blue))] text-white border-[hsl(var(--outlook-blue))]'
-                                : 'bg-white/[0.03] border-white/[0.08] text-muted-foreground hover:text-foreground'
-                            )}
-                          >
-                            {dr === 'all' ? 'All' : dr === 'today' ? 'Today' : dr === 'this_week' ? 'This Week' : 'This Month'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Has Attachments</label>
-                      <button
-                        onClick={() => setSearchFilters(prev => ({ ...prev, hasAttachments: !prev.hasAttachments }))}
-                        className={cn(
-                          'px-2 py-0.5 rounded text-[10px] font-medium border transition-colors',
-                          searchFilters.hasAttachments
-                            ? 'bg-[hsl(var(--outlook-blue))] text-white border-[hsl(var(--outlook-blue))]'
-                            : 'bg-white/[0.03] border-white/[0.08] text-muted-foreground'
-                        )}
-                      >
-                        {searchFilters.hasAttachments ? 'Yes' : 'Any'}
-                      </button>
-                    </div>
-                    <div>
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Response Status</label>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {(['all', 'needs_response', 'responded'] as const).map(rs => (
-                          <button
-                            key={rs}
-                            onClick={() => setSearchFilters(prev => ({ ...prev, responseStatus: rs }))}
-                            className={cn(
-                              'px-2 py-0.5 rounded text-[10px] font-medium border transition-colors',
-                              searchFilters.responseStatus === rs
-                                ? 'bg-[hsl(var(--outlook-blue))] text-white border-[hsl(var(--outlook-blue))]'
-                                : 'bg-white/[0.03] border-white/[0.08] text-muted-foreground hover:text-foreground'
-                            )}
-                          >
-                            {rs === 'all' ? 'All' : rs === 'needs_response' ? 'Needs Response' : 'Responded'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {activeDealNames.length > 0 && (
-                      <div>
-                        <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Deal</label>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          <button
-                            onClick={() => setSearchFilters(prev => ({ ...prev, dealAssociation: 'all' }))}
-                            className={cn(
-                              'px-2 py-0.5 rounded text-[10px] font-medium border transition-colors',
-                              searchFilters.dealAssociation === 'all'
-                                ? 'bg-[hsl(var(--outlook-blue))] text-white border-[hsl(var(--outlook-blue))]'
-                                : 'bg-muted/30 border-border/50 text-muted-foreground hover:text-foreground'
-                            )}
-                          >
-                            All
-                          </button>
-                          {activeDealNames.map(name => (
-                            <button
-                              key={name}
-                              onClick={() => setSearchFilters(prev => ({ ...prev, dealAssociation: name }))}
-                              className={cn(
-                                'px-2 py-0.5 rounded text-[10px] font-medium border transition-colors',
-                                searchFilters.dealAssociation === name
-                                  ? 'bg-[hsl(var(--outlook-blue))] text-white border-[hsl(var(--outlook-blue))]'
-                                  : 'bg-muted/30 border-border/50 text-muted-foreground hover:text-foreground'
-                              )}
-                            >
-                              {name}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {activeFilterChips.length > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full h-7 text-xs text-muted-foreground"
-                        onClick={() => setSearchFilters({ sender: '', dateRange: 'all', hasAttachments: false, responseStatus: 'all', dealAssociation: 'all' })}
-                      >
-                        Clear all filters
-                      </Button>
-                    )}
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
 
             {/* AI search status / interpretation banner */}
             {(aiSearch.isSearching || aiSearchActive || aiSearch.error) && (
