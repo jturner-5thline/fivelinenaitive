@@ -14,6 +14,7 @@ import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContex
 import { supabase } from '@/integrations/supabase/client';
 import naitiveLogoDark from '@/assets/naitive-logo-dark.png';
 import { QirContextualComments } from './qir/QirContextualComments';
+import { WhatWorkingSections } from './WhatWorkingSections';
 import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext } from '../insights/InsightsDrilldownDrawer';
 import { KpiDrillDownDialog, type KpiLike } from './qir/KpiDrillDownDialog';
 import {
