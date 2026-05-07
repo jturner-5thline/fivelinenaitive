@@ -132,7 +132,52 @@ function Card({ children, style, className }: { children: React.ReactNode; style
   );
 }
 
-function SectionTitle({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
+function SectionTitle({ children, right, prominent }: { children: React.ReactNode; right?: React.ReactNode; prominent?: boolean }) {
+  if (prominent) {
+    // Executive report-section heading: stronger hierarchy than utility labels.
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-end',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+          marginTop: 8,
+          marginBottom: 18,
+          paddingBottom: 10,
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <span
+            aria-hidden
+            style={{
+              display: 'inline-block',
+              width: 3,
+              height: 22,
+              borderRadius: 2,
+              background: 'hsl(var(--primary))',
+              flexShrink: 0,
+            }}
+          />
+          <h2
+            style={{
+              fontSize: 22,
+              fontWeight: 700,
+              letterSpacing: '-0.01em',
+              color: TEXT_PRIMARY,
+              margin: 0,
+              lineHeight: 1.2,
+            }}
+          >
+            {children}
+          </h2>
+        </div>
+        {right}
+      </div>
+    );
+  }
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10, flexWrap: 'wrap' }}>
       <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: TEXT_LABEL, margin: 0 }}>{children}</h3>
@@ -837,7 +882,7 @@ function ReportNarrativeSection({ s, set }: { s: ReportState; set: ReportSetStat
   return (
     <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
-        <SectionTitle>Narrative / Executive Summary</SectionTitle>
+        <SectionTitle prominent>Narrative / Executive Summary</SectionTitle>
         <textarea
           value={s.narrative}
           onChange={e => set(prev => ({ ...prev, narrative: e.target.value }))}
@@ -1501,7 +1546,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
   return (
     <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
-        <SectionTitle right={headerRight}>Goals</SectionTitle>
+        <SectionTitle prominent right={headerRight}>Goals</SectionTitle>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 10 }}>
           Filtered by: <span style={{ color: TEXT_PRIMARY, fontWeight: 600 }}>{preparedBy}</span>
           {' · '}
@@ -1801,7 +1846,7 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
               {loading ? 'Syncing…' : 'Sync'}
             </Btn>
           </div>
-        )}>Initiatives</SectionTitle>
+        )} prominent>Initiatives</SectionTitle>
 
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 10 }}>
           Sourced from Asana portfolio · <span style={{ color: TEXT_PRIMARY, fontWeight: 600 }}>{ownedProjects.length} item{ownedProjects.length === 1 ? '' : 's'}</span>
@@ -1977,7 +2022,7 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
   return (
     <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
-        <SectionTitle right={(
+        <SectionTitle prominent right={(
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn icon={ExternalLink} variant="ghost" onClick={() => setRiskDrill({ sourceId: 'risks:all', sourceLabel: 'Open Risks · All', selection: `${s.risks.length} risk${s.risks.length === 1 ? '' : 's'}` })}>View All</Btn>
             <Btn icon={Plus} variant="ghost" onClick={addRisk}>Add Risk</Btn>
