@@ -882,7 +882,7 @@ function ReportNarrativeSection({ s, set }: { s: ReportState; set: ReportSetStat
   return (
     <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
-        <SectionTitle>Narrative / Executive Summary</SectionTitle>
+        <SectionTitle prominent>Narrative / Executive Summary</SectionTitle>
         <textarea
           value={s.narrative}
           onChange={e => set(prev => ({ ...prev, narrative: e.target.value }))}
@@ -1546,7 +1546,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
   return (
     <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
-        <SectionTitle right={headerRight}>Goals</SectionTitle>
+        <SectionTitle prominent right={headerRight}>Goals</SectionTitle>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 10 }}>
           Filtered by: <span style={{ color: TEXT_PRIMARY, fontWeight: 600 }}>{preparedBy}</span>
           {' · '}
@@ -1846,7 +1846,7 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
               {loading ? 'Syncing…' : 'Sync'}
             </Btn>
           </div>
-        )}>Initiatives</SectionTitle>
+        )} prominent>Initiatives</SectionTitle>
 
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 10 }}>
           Sourced from Asana portfolio · <span style={{ color: TEXT_PRIMARY, fontWeight: 600 }}>{ownedProjects.length} item{ownedProjects.length === 1 ? '' : 's'}</span>
@@ -2022,7 +2022,7 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
   return (
     <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
-        <SectionTitle right={(
+        <SectionTitle prominent right={(
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn icon={ExternalLink} variant="ghost" onClick={() => setRiskDrill({ sourceId: 'risks:all', sourceLabel: 'Open Risks · All', selection: `${s.risks.length} risk${s.risks.length === 1 ? '' : 's'}` })}>View All</Btn>
             <Btn icon={Plus} variant="ghost" onClick={addRisk}>Add Risk</Btn>
