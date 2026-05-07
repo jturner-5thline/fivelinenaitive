@@ -1206,6 +1206,7 @@ Return STRICT JSON only — no markdown fences, no commentary:
     {
       "title": "string — concrete task name pre-filled from the email context, action-verb led. Include the counterparty and deal where natural. Example: 'Send due diligence list to Steven Adler @ Prospeq'.",
       "why": "string — ONE short sentence explaining which sentence in the email triggered this task suggestion. Keep under 120 chars.",
+      "description": "string — OPTIONAL richer task body. REQUIRED for task_type='call' when triggered by a call-commitment: include a short context line (e.g. 'Call Eric re: Czerlonka & 5th Line deal. He confirmed availability most of today.') followed by extracted contact details on separate lines, prefixed with 'Cell:', 'Office:', and 'Email:' as available. Empty string when none.",
       "task_type": "follow_up|call|email|review|send_doc|meeting|general",
       "due_date_hint": "string — either an ISO date 'YYYY-MM-DD' if the email explicitly states a date (e.g. 'by Friday', 'before Nov 14'), or the literal token 'next_business_day' when no date is stated.",
       "assignee_hint": "string — 'deal_manager' when the next action is on our side, or the verbatim person name from the email when the email assigns it to a specific teammate. Default to 'deal_manager'.",
