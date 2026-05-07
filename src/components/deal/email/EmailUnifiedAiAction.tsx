@@ -911,7 +911,12 @@ export function EmailUnifiedAiAction({
                     size="sm"
                     className="h-7 text-[11px] gap-1"
                     onClick={confirm}
-                    disabled={creating || (suggestion.intent === 'task' && !taskDraft)}
+                    disabled={
+                      creating ||
+                      (suggestion.intent === 'task' && !taskDraft) ||
+                      (suggestion.intent === 'allocate_hours' &&
+                        !(suggestion.hour_plan?.items || []).some((i) => i.status === 'matched'))
+                    }
                   >
                     {creating ? (
                       <Loader2 className="h-3 w-3 animate-spin" />
