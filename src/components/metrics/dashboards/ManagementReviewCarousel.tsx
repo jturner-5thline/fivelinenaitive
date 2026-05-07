@@ -179,7 +179,11 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
   const touchStartX = useRef<number | null>(null);
   const [reportSave, setReportSave] = useState<{ fn: (() => Promise<boolean>) | null; canEdit: boolean; hasUnsavedChanges: boolean }>({ fn: null, canEdit: false, hasUnsavedChanges: false });
   const [justSaved, setJustSaved] = useState(false);
+  // Always-current save fn lives in a ref so updates don't re-render
+  // (the child's `save` callback gets a new identity every render).
+  const saveFnRef = useRef<(() => Promise<boolean>) | null>(null);
   const handleSaveReady = useCallback((fn: (() => Promise<boolean>) | null, canEdit: boolean, hasUnsavedChanges: boolean) => {
+    saveFnRef.current = fn;
     // Dedupe to prevent an infinite render loop: the child's `save`
     // callback gets a new identity on each render, so blindly calling
     // setReportSave({...}) re-renders the parent, re-renders the child,
@@ -199,8 +203,9 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
     });
   }, []);
   const handleSaveClick = async () => {
-    if (!reportSave.fn) return;
-    const saved = await reportSave.fn();
+    const fn = saveFnRef.current;
+    if (!fn) return;
+    const saved = await fn();
     if (!saved) return;
     setJustSaved(true);
     window.setTimeout(() => setJustSaved(false), 1800);
