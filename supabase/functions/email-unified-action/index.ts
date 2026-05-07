@@ -46,7 +46,7 @@ serve(async (req) => {
       });
     }
 
-    const { prompt, threadData, dealId, dealName } = await req.json();
+     const { prompt, threadData, dealId, dealName, companyId } = await req.json();
     const cleanPrompt = (prompt || "").toString().trim().slice(0, 2000);
     if (!cleanPrompt) {
       return new Response(JSON.stringify({ error: "prompt required" }), {
@@ -66,9 +66,37 @@ their intent into ONE of:
   - "note"       : user wants to log a note/update on the deal
   - "data_room"  : user wants to save info/files to the deal's data room
   - "draft"      : user wants to draft a reply or follow-up email
+  - "allocate_hours" : user wants to allocate / log / update / apply / attribute
+                  hours from the email body onto one or more deals. Trigger on
+                  phrases like "allocate the hours", "log these hours",
+                  "update each deal with the hours", "apply weekly hours",
+                  "log time against deals", or any explicit mention of
+                  attributing numeric hours to deals named in the email.
 
 Then produce a short title (max ~80 chars), a body (1-4 sentences for ask/note/draft,
 or the suggested task title for task), and a 1-sentence rationale.
+
+When intent is "allocate_hours", populate the optional "hour_items" array.
+Extract every (deal/company name → hours) pair you can find in the email body.
+
+Rules for extraction:
+  - Inspect ONLY the most recent / non-quoted portion of the thread when
+    possible. Do NOT double-count lines that appear in quoted history.
+  - Accept formats like:
+        "Acme - 1.5"
+        "Acme: 1.5 hours"
+        "Acme   2"
+        "Acme — 45 min"   (convert minutes to decimal hours)
+        "Acme 0.25"
+        ".25" attached to a label
+  - Convert minutes to decimal hours (e.g. 45 min → 0.75).
+  - Strip currency, bullets, parentheticals.
+  - Each item must include the raw label exactly as it appeared, a normalized
+    label (trimmed, single-spaced), the numeric hours (decimal), and a short
+    sourceSnippet showing the line it came from.
+  - Skip lines that are clearly totals, headers, or summary rows.
+  - If hours are missing or non-numeric, skip the line silently.
+If intent is not "allocate_hours", omit "hour_items" entirely.
 
 When intent is "note", you MUST also inspect the thread + prompt for any
 specific lender/firm being discussed. If you can identify one, populate the
@@ -121,11 +149,26 @@ ${threadStr}`;
                 properties: {
                   intent: {
                     type: "string",
-                    enum: ["ask", "task", "note", "data_room", "draft"],
+                    enum: ["ask", "task", "note", "data_room", "draft", "allocate_hours"],
                   },
                   title: { type: "string" },
                   body: { type: "string" },
                   rationale: { type: "string" },
+                  hour_items: {
+                    type: "array",
+                    description: "Only set when intent='allocate_hours'. One entry per (deal, hours) pair extracted from the email.",
+                    items: {
+                      type: "object",
+                      properties: {
+                        rawLabel: { type: "string" },
+                        normalizedLabel: { type: "string" },
+                        hours: { type: "number" },
+                        sourceSnippet: { type: "string" },
+                      },
+                      required: ["rawLabel", "normalizedLabel", "hours"],
+                      additionalProperties: false,
+                    },
+                  },
                   lender: {
                     type: "object",
                     description: "Optional. Only set when intent='note' and a specific lender is being discussed.",
@@ -188,6 +231,112 @@ ${threadStr}`;
         title: cleanPrompt.slice(0, 80),
         body: aiJson?.choices?.[0]?.message?.content || "Couldn't classify request.",
         rationale: "Defaulted to Ask AI.",
+      };
+    }
+
+    // ── allocate_hours: server-side deal resolution ─────────────────────
+    if (parsed.intent === "allocate_hours") {
+      const items: Array<any> = Array.isArray(parsed.hour_items) ? parsed.hour_items : [];
+      const normalize = (s: unknown) =>
+        (typeof s === "string" ? s : s == null ? "" : String(s))
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+
+      // Pull the user's accessible deals (RLS-scoped via user-bound client).
+      let dealsQuery = supabase
+        .from("deals")
+        .select("id, company, name, status, company_id")
+        .neq("status", "archived");
+      if (companyId) dealsQuery = dealsQuery.eq("company_id", companyId);
+      const { data: dealRows, error: dealsErr } = await dealsQuery.limit(2000);
+      if (dealsErr) console.warn("[allocate_hours] deal fetch failed", dealsErr.message);
+
+      const deals = (dealRows || []).map((d: any) => ({
+        id: d.id as string,
+        label: (d.company || d.name || "") as string,
+        norm: normalize(d.company || d.name || ""),
+      })).filter((d: any) => d.norm);
+
+      const tokenScore = (a: string, b: string): number => {
+        if (!a || !b) return 0;
+        if (a === b) return 1;
+        const at = new Set(a.split(" "));
+        const bt = new Set(b.split(" "));
+        let inter = 0;
+        at.forEach((t) => { if (bt.has(t)) inter += 1; });
+        const union = new Set([...at, ...bt]).size;
+        return union ? inter / union : 0;
+      };
+
+      const resolved = items.map((it: any) => {
+        const rawLabel = String(it?.rawLabel ?? "").slice(0, 200);
+        const normalizedLabel = String(it?.normalizedLabel ?? rawLabel).slice(0, 200);
+        const hours = Number(it?.hours);
+        const sourceSnippet = String(it?.sourceSnippet ?? "").slice(0, 240);
+        const valid = isFinite(hours) && hours > 0 && hours <= 168;
+        const target = normalize(normalizedLabel || rawLabel);
+
+        let bestId: string | null = null;
+        let bestName: string | null = null;
+        let bestScore = 0;
+
+        if (target && deals.length) {
+          // exact normalized
+          const exact = deals.find((d) => d.norm === target);
+          if (exact) {
+            bestId = exact.id; bestName = exact.label; bestScore = 1;
+          } else {
+            // prefix / contains, then jaccard tokens
+            for (const d of deals) {
+              let s = 0;
+              if (d.norm.startsWith(target) || target.startsWith(d.norm)) s = 0.9;
+              else if (d.norm.includes(target) || target.includes(d.norm)) s = 0.8;
+              const tok = tokenScore(target, d.norm);
+              s = Math.max(s, tok);
+              if (s > bestScore) { bestScore = s; bestId = d.id; bestName = d.label; }
+            }
+          }
+        }
+
+        const status: "matched" | "ambiguous" | "unmatched" =
+          !valid || !bestId ? "unmatched"
+            : bestScore >= 0.85 ? "matched"
+            : bestScore >= 0.5 ? "ambiguous"
+            : "unmatched";
+
+        return {
+          rawLabel,
+          normalizedLabel,
+          hours: valid ? hours : 0,
+          sourceSnippet,
+          matchedDealId: status === "unmatched" ? undefined : bestId || undefined,
+          matchedDealName: status === "unmatched" ? undefined : bestName || undefined,
+          confidence: Math.round(bestScore * 100) / 100,
+          status,
+          writeTarget: "weekly_time_entries.hours",
+          writeMode: "upsert-child-entry" as const,
+        };
+      });
+
+      const totalHours = resolved.reduce((s, r) => s + (r.hours || 0), 0);
+      const matchedCount = resolved.filter((r) => r.status === "matched").length;
+      const ambiguousCount = resolved.filter((r) => r.status === "ambiguous").length;
+      const unmatchedCount = resolved.filter((r) => r.status === "unmatched").length;
+
+      parsed.hour_plan = {
+        intent: "allocate_deal_hours_from_email",
+        sourceThreadId: threadData?.threadId || null,
+        sourceEmailId: threadData?.latestEmail?.id || null,
+        summary: {
+          totalItems: resolved.length,
+          matchedItems: matchedCount,
+          ambiguousItems: ambiguousCount,
+          unmatchedItems: unmatchedCount,
+          totalHours: Math.round(totalHours * 100) / 100,
+        },
+        items: resolved,
       };
     }
 

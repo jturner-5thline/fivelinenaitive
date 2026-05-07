@@ -12,6 +12,9 @@ import {
   User,
   X,
   ArrowUpRight,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -40,7 +43,50 @@ interface Props {
   className?: string;
 }
 
-type Intent = 'ask' | 'task' | 'note' | 'data_room' | 'draft';
+type Intent = 'ask' | 'task' | 'note' | 'data_room' | 'draft' | 'allocate_hours';
+
+/**
+ * Canonical deal-hours storage contract.
+ * The visible per-deal hours surfaced on Deal cards / WeeklyHoursWidget are
+ * computed from `weekly_time_entries` (deal_id, user_id, week_start_date, hours)
+ * via the `weekly-hours-api` edge function. The "Allocate hours from email"
+ * AI action MUST write to that source-of-truth child table — never to a free
+ * notes field — so all rollups and UIs stay in sync.
+ */
+export const DEAL_HOURS_CONFIG = {
+  sourceOfTruth: 'weekly_time_entries',
+  writeTarget: 'weekly_time_entries.hours',
+  writeMode: 'upsert-child-entry' as const,
+  conflictKey: 'deal_id,user_id,week_start_date',
+  attributionSource: 'naitive_email_assist' as const,
+};
+
+interface HourPlanItem {
+  rawLabel: string;
+  normalizedLabel: string;
+  hours: number;
+  sourceSnippet?: string;
+  matchedDealId?: string;
+  matchedDealName?: string;
+  confidence: number;
+  status: 'matched' | 'ambiguous' | 'unmatched';
+  writeTarget?: string;
+  writeMode?: 'increment' | 'replace' | 'upsert-child-entry';
+}
+
+interface HourPlan {
+  intent: 'allocate_deal_hours_from_email';
+  sourceThreadId?: string | null;
+  sourceEmailId?: string | null;
+  summary: {
+    totalItems: number;
+    matchedItems: number;
+    ambiguousItems: number;
+    unmatchedItems: number;
+    totalHours: number;
+  };
+  items: HourPlanItem[];
+}
 
 interface Suggestion {
   intent: Intent;
@@ -53,6 +99,8 @@ interface Suggestion {
     status?: 'in-review' | 'terms-issued' | 'in-diligence' | 'closed-funded';
     note?: string;
   };
+  /** Populated when intent === 'allocate_hours'. */
+  hour_plan?: HourPlan;
 }
 
 const INTENT_META: Record<
@@ -64,7 +112,18 @@ const INTENT_META: Record<
   note:      { label: 'Deal note',      Icon: StickyNote,    cta: 'Add note' },
   data_room: { label: 'Data room',      Icon: FolderOpen,    cta: 'Open data room' },
   draft:     { label: 'Draft reply',    Icon: Mail,          cta: 'Use as draft' },
+  allocate_hours: { label: 'Allocate hours', Icon: Clock, cta: 'Apply hours' },
 };
+
+function getCurrentWeekStart(): string {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Monday
+  const monday = new Date(now);
+  monday.setDate(diff);
+  monday.setHours(0, 0, 0, 0);
+  return monday.toISOString().split('T')[0];
+}
 
 /**
  * EmailUnifiedAiAction
@@ -191,6 +250,7 @@ export function EmailUnifiedAiAction({
             prompt: q,
             dealId: resolvedDealId,
             dealName: resolvedDealName,
+            companyId: company?.id || null,
             threadData: {
               subject: thread.subject,
               threadId: thread.threadId,
@@ -567,6 +627,67 @@ export function EmailUnifiedAiAction({
           reset();
           return;
         }
+        case 'allocate_hours': {
+          if (!user) {
+            toast.error('You must be signed in to log hours');
+            return;
+          }
+          const plan = suggestion.hour_plan;
+          const items = (plan?.items || []).filter(
+            (i) => i.status === 'matched' && i.matchedDealId && i.hours > 0,
+          );
+          if (items.length === 0) {
+            toast.error('No high-confidence deal matches to apply');
+            return;
+          }
+          const week = getCurrentWeekStart();
+          // Idempotency: existing entries for (user, week, deal) are upserted
+          // via onConflict, so re-running cannot double-log unless the user
+          // edits the value. Sum duplicate AI items pointing at the same deal.
+          const merged = new Map<string, { dealId: string; dealName: string; hours: number }>();
+          for (const it of items) {
+            const key = it.matchedDealId!;
+            const prev = merged.get(key);
+            merged.set(key, {
+              dealId: key,
+              dealName: it.matchedDealName || it.normalizedLabel,
+              hours: (prev?.hours || 0) + it.hours,
+            });
+          }
+          const rows = Array.from(merged.values()).map((m) => ({
+            deal_id: m.dealId,
+            user_id: user.id,
+            week_start_date: week,
+            hours: Math.round(m.hours * 100) / 100,
+            source: DEAL_HOURS_CONFIG.attributionSource,
+          }));
+          const { error: upErr } = await supabase
+            .from('weekly_time_entries')
+            .upsert(rows, { onConflict: DEAL_HOURS_CONFIG.conflictKey });
+          if (upErr) {
+            console.error('[allocate_hours] upsert failed', upErr);
+            toast.error('Failed to log hours', { description: upErr.message });
+            return;
+          }
+          queryClient.invalidateQueries({ queryKey: ['weekly-hours'] });
+          queryClient.invalidateQueries({ queryKey: ['deals'] });
+          merged.forEach((m) => {
+            queryClient.invalidateQueries({ queryKey: ['deal', m.dealId] });
+          });
+          const ambig = (plan?.summary.ambiguousItems || 0);
+          const unmatched = (plan?.summary.unmatchedItems || 0);
+          toast.success(
+            `Logged ${rows.length} deal${rows.length === 1 ? '' : 's'} · ${rows.reduce((s, r) => s + r.hours, 0)}h this week`,
+            {
+              description:
+                ambig + unmatched > 0
+                  ? `${ambig} ambiguous · ${unmatched} unmatched skipped`
+                  : 'All matched deals updated.',
+            },
+          );
+          reset();
+          return;
+        }
         case 'ask':
         default: {
           // Answer is already shown in the suggestion card — confirm just clears.
@@ -728,6 +849,49 @@ export function EmailUnifiedAiAction({
                 )}
               </div>
             )}
+            {suggestion.intent === 'allocate_hours' && suggestion.hour_plan && (
+              <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-2 space-y-1.5">
+                <div className="flex items-center justify-between gap-2 text-[10.5px] text-foreground/80">
+                  <span className="font-semibold uppercase tracking-wider text-primary/80">
+                    Hours preview · week of {getCurrentWeekStart()}
+                  </span>
+                  <span className="tabular-nums">
+                    {suggestion.hour_plan.summary.totalHours}h total · {suggestion.hour_plan.summary.matchedItems}/{suggestion.hour_plan.summary.totalItems} matched
+                  </span>
+                </div>
+                <ul className="space-y-1 max-h-44 overflow-y-auto pr-1">
+                  {suggestion.hour_plan.items.map((it, idx) => {
+                    const Icon =
+                      it.status === 'matched' ? CheckCircle2
+                        : it.status === 'ambiguous' ? AlertTriangle
+                        : X;
+                    const tone =
+                      it.status === 'matched' ? 'text-emerald-500'
+                        : it.status === 'ambiguous' ? 'text-amber-500'
+                        : 'text-muted-foreground';
+                    return (
+                      <li key={idx} className="flex items-center gap-2 text-[11px] leading-tight">
+                        <Icon className={cn('h-3 w-3 shrink-0', tone)} />
+                        <span className="truncate flex-1 min-w-0">
+                          {it.matchedDealName || it.normalizedLabel || it.rawLabel}
+                        </span>
+                        <span className="tabular-nums font-medium text-foreground/90 shrink-0">
+                          +{it.hours}h
+                        </span>
+                        {it.status !== 'matched' && (
+                          <span className="text-[10px] text-muted-foreground shrink-0">
+                            {it.status}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+                <div className="text-[10px] text-muted-foreground">
+                  Writes to <code className="font-mono">{DEAL_HOURS_CONFIG.writeTarget}</code> · upsert by deal × week (idempotent).
+                </div>
+              </div>
+            )}
             <div className="flex items-center justify-between gap-2 pt-0.5">
               <span className="text-[10px] text-muted-foreground italic">
                 {suggestion.rationale}
@@ -747,7 +911,12 @@ export function EmailUnifiedAiAction({
                     size="sm"
                     className="h-7 text-[11px] gap-1"
                     onClick={confirm}
-                    disabled={creating || (suggestion.intent === 'task' && !taskDraft)}
+                    disabled={
+                      creating ||
+                      (suggestion.intent === 'task' && !taskDraft) ||
+                      (suggestion.intent === 'allocate_hours' &&
+                        !(suggestion.hour_plan?.items || []).some((i) => i.status === 'matched'))
+                    }
                   >
                     {creating ? (
                       <Loader2 className="h-3 w-3 animate-spin" />
