@@ -863,7 +863,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
           {/* Unmatched-email context: contact card / body-mention deal
               suggestion / Link Deal fallback. Only renders when no deal is
               linked to the thread. */}
-          {!dealId && (
+          {!dealId && !workflowAnalysis?.likely_deal?.id && (
             <UnmatchedEmailContextCard
               email={{
                 from_email: thread.latestEmail.from_email,
