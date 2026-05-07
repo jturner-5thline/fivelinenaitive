@@ -712,6 +712,48 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
     return () => window.removeEventListener('naitive:ai-assist:request-draft', onRequest);
   }, [selectedOption]);
 
+  // ── Pop-out composer remote control ───────────────────────────────────
+  // The PopOutComposer mirrors the same AI controls (tone tabs + intent
+  // chips + regenerate). We let it remote-drive this sidebar's state so all
+  // generation logic, caching, and edge-function plumbing stays in ONE
+  // place. The popout sends events; we apply them and stream the resulting
+  // body back via `naitive:ai-assist:popout-draft-update`.
+  useEffect(() => {
+    const onSelectTone = (e: Event) => {
+      const detail = (e as CustomEvent<{ tone: ToneKey }>).detail;
+      if (!detail?.tone) return;
+      handleSelectTone(detail.tone);
+    };
+    const onRegenerate = () => regenerateSelected();
+    const onApplyIntent = (e: Event) => {
+      const detail = (e as CustomEvent<{ key: string }>).detail;
+      const opt = DRAFT_INTENT_OPTIONS.find((o) => o.key === detail?.key);
+      if (opt) void applyIntent(opt);
+    };
+    window.addEventListener('naitive:ai-assist:popout-select-tone', onSelectTone as EventListener);
+    window.addEventListener('naitive:ai-assist:popout-regenerate', onRegenerate);
+    window.addEventListener('naitive:ai-assist:popout-apply-intent', onApplyIntent as EventListener);
+    return () => {
+      window.removeEventListener('naitive:ai-assist:popout-select-tone', onSelectTone as EventListener);
+      window.removeEventListener('naitive:ai-assist:popout-regenerate', onRegenerate);
+      window.removeEventListener('naitive:ai-assist:popout-apply-intent', onApplyIntent as EventListener);
+    };
+  }, [handleSelectTone, regenerateSelected, applyIntent]);
+
+  // Stream draft body + loading state to the popout whenever they change.
+  useEffect(() => {
+    try {
+      window.dispatchEvent(new CustomEvent('naitive:ai-assist:popout-draft-update', {
+        detail: {
+          body: selectedOption?.body ?? '',
+          tone: selected,
+          loading: isSelectedLoading,
+          activeIntentKey,
+        },
+      }));
+    } catch {}
+  }, [selectedOption, selected, isSelectedLoading, activeIntentKey]);
+
   // ── Pop-out compose modal bridge ───────────────────────────────────────
   // When the Draft Reply quick action is clicked, we generate (if needed)
   // and then dispatch `naitive:ai-assist:open-popout-draft` so the parent
