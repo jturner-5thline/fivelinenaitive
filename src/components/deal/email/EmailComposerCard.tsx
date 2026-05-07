@@ -795,8 +795,8 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
   return (
     <div
       className={cn(
-        'relative flex flex-col bg-card border border-border rounded-md shadow-sm overflow-hidden',
-        isInline && 'mx-2 my-2',
+        'relative flex flex-col bg-[hsl(var(--card))] border border-white/10 rounded-lg shadow-lg overflow-hidden',
+        isInline && 'mx-3 my-3 animate-in fade-in-0 slide-in-from-bottom-2 duration-200',
         isDragOver && 'ring-2 ring-[hsl(var(--outlook-blue))] ring-offset-0',
         className,
       )}
