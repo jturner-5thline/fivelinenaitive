@@ -634,7 +634,7 @@ export function EmailUnifiedAiAction({
             type="button"
             onClick={() => void route()}
             disabled={!text.trim() || routing || creating}
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 w-7 inline-flex items-center justify-center rounded-md bg-[hsl(195_85%_55%/0.25)] hover:bg-[hsl(195_85%_55%/0.4)] text-[hsl(195_95%_75%)] transition-colors disabled:opacity-40"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 w-7 inline-flex items-center justify-center rounded-md bg-[hsl(195_85%_55%/0.35)] hover:bg-[hsl(195_90%_60%/0.55)] border border-[hsl(195_90%_65%/0.55)] hover:border-[hsl(195_95%_70%/0.8)] text-[hsl(190_100%_92%)] transition-colors disabled:opacity-40 disabled:hover:bg-[hsl(195_85%_55%/0.35)] disabled:hover:border-[hsl(195_90%_65%/0.55)]"
             aria-label="Route request"
             title="Route request (Enter)"
           >
