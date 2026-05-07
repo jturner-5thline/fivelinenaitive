@@ -439,6 +439,18 @@ export default function NaitivePipeline() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Deal Dialog */}
+      {editDeal && pipelineId && (
+        <CreateNaitiveDealDialog
+          deal={editDeal}
+          open={!!editDeal}
+          onOpenChange={(o) => { if (!o) setEditDeal(null); }}
+          pipelineId={pipelineId}
+          stages={stages}
+          onCreated={() => { setEditDeal(null); refetch(); }}
+        />
+      )}
     </>
   );
 }
