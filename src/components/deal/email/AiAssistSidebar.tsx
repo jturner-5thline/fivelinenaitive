@@ -777,6 +777,17 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             fallbackDealId={workflowAnalysis?.likely_deal?.id || null}
             fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
           />
+          {/* Skeleton hint shown while the initial workflow analysis is
+              still resolving deal / contact / lender context for the AI
+              action surface. Suppressed once analysis lands or the user
+              has typed. */}
+          {workflowLoading && !workflowAnalysis && (
+            <div className="flex items-center gap-1.5 -mt-1" aria-hidden>
+              <Skeleton className="h-4 w-24 rounded-full bg-primary/10" />
+              <Skeleton className="h-4 w-28 rounded-full bg-sky-500/10" />
+              <Skeleton className="h-4 w-20 rounded-full bg-emerald-500/10" />
+            </div>
+          )}
 
           {/* Deal context chip row — single-line at-a-glance summary of the
               entities the AI resolved for this thread. Replaces the earlier
