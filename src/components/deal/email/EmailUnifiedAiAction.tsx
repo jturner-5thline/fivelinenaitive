@@ -602,15 +602,17 @@ export function EmailUnifiedAiAction({
   const Icon = meta?.Icon;
 
   return (
-    <div className={cn('min-w-0 max-w-full w-full space-y-2', className)}>
-      <div className="rounded-md border border-white/[0.06] bg-card/40 p-3 space-y-2">
-        <div className="flex items-center gap-1.5">
-          <Sparkles className="h-3 w-3 text-primary" />
-          <span className="text-[11px] font-semibold tracking-wide text-foreground">
-            AI action
-          </span>
-        </div>
-        <div className="relative">
+    <div className={cn('min-w-0 max-w-full w-full space-y-2 -mt-1', className)}>
+      <div className="space-y-2">
+        <div
+          className={cn(
+            'relative rounded-xl p-1',
+            'bg-gradient-to-br from-primary/[0.10] via-primary/[0.05] to-transparent',
+            'border border-primary/25 backdrop-blur-md',
+            'shadow-[0_1px_0_0_hsl(0_0%_100%/0.05)_inset,0_8px_24px_-12px_hsl(var(--primary)/0.35)]',
+            'transition-colors focus-within:border-primary/45 focus-within:shadow-[0_0_0_1px_hsl(var(--primary)/0.25),0_10px_28px_-12px_hsl(var(--primary)/0.45)]',
+          )}
+        >
           <Input
             ref={inputRef}
             type="text"
@@ -624,16 +626,16 @@ export function EmailUnifiedAiAction({
             placeholder="Ask AI about this email..."
             disabled={routing || creating}
             className={cn(
-              'pr-9 h-8 text-[12px] rounded-md',
-              'bg-background/40 border-white/[0.06] placeholder:text-muted-foreground/70',
-              'focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/30',
+              'pr-9 h-9 text-[12.5px] rounded-lg border-0 bg-transparent',
+              'placeholder:text-foreground/45',
+              'focus-visible:ring-0 focus-visible:ring-offset-0',
             )}
           />
           <button
             type="button"
             onClick={() => void route()}
             disabled={!text.trim() || routing || creating}
-            className="absolute right-1 top-1 h-6 w-6 inline-flex items-center justify-center rounded-md bg-primary/15 hover:bg-primary/25 text-primary transition-colors disabled:opacity-40"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 w-7 inline-flex items-center justify-center rounded-md bg-primary/20 hover:bg-primary/35 text-primary transition-colors disabled:opacity-40"
             aria-label="Route request"
             title="Route request (Enter)"
           >
