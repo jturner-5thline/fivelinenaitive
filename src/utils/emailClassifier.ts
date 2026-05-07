@@ -13,8 +13,8 @@ export type EmailCategory = 'clients_deals' | 'asana_projects' | 'calendar';
 
 export const EMAIL_CATEGORY_TABS = [
   { key: 'all' as const, label: 'All' },
-  { key: 'clients_deals' as const, label: 'Clients & Deals' },
-  { key: 'asana_projects' as const, label: 'Asana & Projects' },
+  { key: 'clients_deals' as const, label: 'Deals' },
+  { key: 'asana_projects' as const, label: 'Asana' },
   { key: 'calendar' as const, label: 'Calendar' },
 ] as const;
 
