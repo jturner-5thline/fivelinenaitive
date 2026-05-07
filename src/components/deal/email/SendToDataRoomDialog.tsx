@@ -13,7 +13,8 @@ import {
   Database,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -322,6 +323,9 @@ export function SendToDataRoomDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[88vh] flex flex-col p-0 gap-0 overflow-hidden">
+        <VisuallyHidden>
+          <DialogTitle>Add attachments to Data Room</DialogTitle>
+        </VisuallyHidden>
         {/* ===== Banner header — primary action surface ===== */}
         <div className="px-6 pt-5 pb-4 border-b border-border/40 shrink-0 bg-gradient-to-b from-primary/5 to-transparent">
           <div className="flex items-start gap-3">

@@ -130,12 +130,12 @@ async function dispatchNotifications(
     try {
       const { data: link } = await supabase
         .from('deal_emails')
-        .select('deal_id, deals(id, name)')
+        .select('deal_id, deals(id, company)')
         .eq('gmail_message_id', email.id)
         .maybeSingle();
       if (link?.deal_id) {
         dealId = link.deal_id as string;
-        dealName = (link as any).deals?.name || dealName;
+        dealName = (link as any).deals?.company || dealName;
       }
     } catch {
       /* ignore — notification can still fire without a deal link */
@@ -145,13 +145,16 @@ async function dispatchNotifications(
     // makes this idempotent across tabs/users.
     const { error: claimError } = await supabase
       .from('email_priority_signal_log')
-      .insert({
-        message_id: email.id,
-        signal_type: signal.type,
-        deal_id: dealId,
-        lender_name: email.from_name,
-        detected_by: userId,
-      });
+      .upsert(
+        {
+          message_id: email.id,
+          signal_type: signal.type,
+          deal_id: dealId,
+          lender_name: email.from_name,
+          detected_by: userId,
+        },
+        { onConflict: 'message_id,signal_type', ignoreDuplicates: true }
+      );
     // 23505 = unique violation → already notified by another session.
     if (claimError && (claimError as any).code !== '23505') {
       // eslint-disable-next-line no-console

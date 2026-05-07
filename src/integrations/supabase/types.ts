@@ -10425,6 +10425,71 @@ export type Database = {
           },
         ]
       }
+      financial_comments: {
+        Row: {
+          anchor_key: string
+          anchor_type: string
+          comment_text: string
+          company_id: string | null
+          created_at: string
+          created_by_name: string | null
+          created_by_user_id: string | null
+          deal_id: string
+          id: string
+          line_item_key: string | null
+          line_item_label: string | null
+          period_key: string | null
+          period_label: string | null
+          statement_type: string
+          target_label: string | null
+          updated_at: string
+        }
+        Insert: {
+          anchor_key: string
+          anchor_type: string
+          comment_text: string
+          company_id?: string | null
+          created_at?: string
+          created_by_name?: string | null
+          created_by_user_id?: string | null
+          deal_id: string
+          id?: string
+          line_item_key?: string | null
+          line_item_label?: string | null
+          period_key?: string | null
+          period_label?: string | null
+          statement_type: string
+          target_label?: string | null
+          updated_at?: string
+        }
+        Update: {
+          anchor_key?: string
+          anchor_type?: string
+          comment_text?: string
+          company_id?: string | null
+          created_at?: string
+          created_by_name?: string | null
+          created_by_user_id?: string | null
+          deal_id?: string
+          id?: string
+          line_item_key?: string | null
+          line_item_label?: string | null
+          period_key?: string | null
+          period_label?: string | null
+          statement_type?: string
+          target_label?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_comments_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_data: {
         Row: {
           amount: number
