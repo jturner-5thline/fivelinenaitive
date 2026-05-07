@@ -205,7 +205,7 @@ const App = () => (
                             <ProtectedRoute><AppLayout><SuggestedTaskPreview /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/deals" element={
-                            <ProtectedRoute><AppLayout><Deals /></AppLayout></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><ErrorBoundary><Deals /></ErrorBoundary></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/analytics" element={
                             <ProtectedRoute><AppLayout><ErrorBoundary><Analytics /></ErrorBoundary></AppLayout></ProtectedRoute>

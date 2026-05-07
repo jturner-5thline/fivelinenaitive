@@ -379,7 +379,7 @@ export function FloatingDealAssistant({
                                     }
                                   }}
                                 >
-                                  {message.content.replace(/([^\n])\n(#{1,3}\s)/g, '$1\n\n$2')}
+                                  {(typeof message.content === 'string' ? message.content : '').replace(/([^\n])\n(#{1,3}\s)/g, '$1\n\n$2')}
                                 </ReactMarkdown>
                                 {/* Action Confirmation Cards */}
                                 {message.actions && message.actions.map((action) => (
