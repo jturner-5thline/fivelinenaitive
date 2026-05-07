@@ -1507,8 +1507,20 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
           New
         </Button>
 
-        {/* Inline search + filter — fills the remaining space */}
-        <div className="relative flex-1 min-w-0 flex items-center gap-1">
+        {/* Inline search + filter — width constrained so it aligns with the
+            inbox/list column below. When a thread or composer is open we cap
+            the search zone to the inbox column width (minus the New button +
+            divider) so the message-action toolbar that follows lines up
+            visually with the open-message pane. */}
+        <div
+          className="relative min-w-0 flex items-center gap-1 shrink-0"
+          style={{
+            width: (currentThread || composeOpen)
+              ? `max(180px, ${Math.max(0, Math.round(inboxWidth) - (railExpanded ? 168 : 52) - 24)}px)`
+              : undefined,
+            flex: (currentThread || composeOpen) ? '0 0 auto' : '1 1 0%',
+          }}
+        >
           <div className="relative flex-1 min-w-0">
             {aiSearch.isSearching ? (
               <Loader2 className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary animate-spin" />
@@ -1680,8 +1692,10 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             Archive/Flag/AI Assist/Link Deal/Expand). EmailDetail portals its
             toolbar into this element when a thread is open so the entire
             mail UI shares one unified horizontal header row instead of
-            stacking a second action bar above the message body. */}
-        <div id="email-detail-toolbar-slot" className="flex items-center gap-0.5 min-w-0 shrink overflow-hidden" />
+            stacking a second action bar above the message body. The slot
+            takes flex-1 so it spans the same horizontal range as the
+            open-message column underneath. */}
+        <div id="email-detail-toolbar-slot" className="flex items-center gap-0.5 min-w-0 flex-1 overflow-hidden" />
         {/* Keyboard shortcuts help */}
         <Popover open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
           <PopoverTrigger asChild>
