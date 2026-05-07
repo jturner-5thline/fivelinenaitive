@@ -474,7 +474,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
     const work = (async () => {
       try {
         // Hard 8s timeout w/ graceful fallback message.
-        const timeoutMs = 8000;
+        const timeoutMs = 30000;
         const ac = new AbortController();
         const timer = setTimeout(() => ac.abort(), timeoutMs);
 
