@@ -123,13 +123,31 @@ serve(async (req) => {
         : '';
 
     let parsedContent: { bullets?: unknown } | null = null;
-    try {
-      parsedContent = JSON.parse(rawText);
-    } catch {
-      const match = rawText.match(/\{[\s\S]*\}/);
-      if (match) {
-        parsedContent = JSON.parse(match[0]);
+    const cleaned = rawText
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/```\s*$/i, '')
+      .trim();
+    const tryParse = (s: string) => {
+      try { return JSON.parse(s); } catch { return null; }
+    };
+    parsedContent = tryParse(cleaned);
+    if (!parsedContent) {
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      if (match) parsedContent = tryParse(match[0]);
+    }
+    if (!parsedContent) {
+      // Last resort: extract bullets via regex on quoted strings inside a "bullets" array
+      const arrMatch = cleaned.match(/"bullets"\s*:\s*\[([\s\S]*?)\]/);
+      if (arrMatch) {
+        const items = Array.from(arrMatch[1].matchAll(/"((?:[^"\\]|\\.)*)"/g)).map((m) => {
+          try { return JSON.parse(`"${m[1]}"`); } catch { return m[1]; }
+        });
+        if (items.length > 0) parsedContent = { bullets: items };
       }
+    }
+    if (!parsedContent) {
+      console.error('[email-thread-summarizer] could not parse AI output', rawText.slice(0, 500));
     }
 
     const bullets = Array.isArray(parsedContent?.bullets)
