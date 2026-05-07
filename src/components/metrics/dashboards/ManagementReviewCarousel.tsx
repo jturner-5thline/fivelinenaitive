@@ -180,7 +180,23 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
   const [reportSave, setReportSave] = useState<{ fn: (() => Promise<boolean>) | null; canEdit: boolean; hasUnsavedChanges: boolean }>({ fn: null, canEdit: false, hasUnsavedChanges: false });
   const [justSaved, setJustSaved] = useState(false);
   const handleSaveReady = useCallback((fn: (() => Promise<boolean>) | null, canEdit: boolean, hasUnsavedChanges: boolean) => {
-    setReportSave({ fn, canEdit, hasUnsavedChanges });
+    // Dedupe to prevent an infinite render loop: the child's `save`
+    // callback gets a new identity on each render, so blindly calling
+    // setReportSave({...}) re-renders the parent, re-renders the child,
+    // which produces another new `save` ref, ad infinitum. Only update
+    // when meaningful values actually change.
+    setReportSave(prev => {
+      if (
+        prev.canEdit === canEdit &&
+        prev.hasUnsavedChanges === hasUnsavedChanges &&
+        // Treat presence of a save fn as the only meaningful change for fn,
+        // not its referential identity.
+        !!prev.fn === !!fn
+      ) {
+        return prev;
+      }
+      return { fn, canEdit, hasUnsavedChanges };
+    });
   }, []);
   const handleSaveClick = async () => {
     if (!reportSave.fn) return;
