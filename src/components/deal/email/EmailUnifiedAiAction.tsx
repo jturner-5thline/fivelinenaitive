@@ -609,7 +609,8 @@ export function EmailUnifiedAiAction({
             'relative rounded-xl p-1',
             // Soft cyan/blue tinted surface — color-driven contrast, no glow.
             'bg-[hsl(200_75%_55%/0.10)] border border-[hsl(195_85%_60%/0.40)]',
-            'transition-colors focus-within:border-[hsl(195_90%_65%/0.65)] focus-within:bg-[hsl(200_80%_55%/0.14)]',
+            'transition-colors hover:bg-[hsl(200_80%_55%/0.13)] hover:border-[hsl(195_88%_62%/0.5)]',
+            'focus-within:border-[hsl(195_90%_65%/0.65)] focus-within:bg-[hsl(200_80%_55%/0.14)]',
           )}
         >
           <Input
