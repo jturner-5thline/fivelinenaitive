@@ -19,7 +19,7 @@ import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
 const ICP_OPTIONS = ['Debt Advisory', 'M&A', 'Equity', 'Placement Agent', 'Broker', 'Other'];
 const PROSPECT_TYPE_OPTIONS = ['Prospect', 'Gatekeeper', 'Connector', 'Market Intelligence'];
 const OWNED_BY_OPTIONS = ['Paz', 'Flor', 'James'];
-const SOURCE_OPTIONS = ['Sequence reply', 'Warm outreach', 'Referral', 'Inbound'];
+const SOURCE_OPTIONS = ['Inbound', 'Referral', 'LinkedIn Outreach', 'Email Outreach'];
 const DM_PRESENT_OPTIONS = ['Yes', 'Gatekeeper', 'Unknown'];
 const OUTCOME_OPTIONS = ['Moved forward', 'Not a fit', 'Tabled', 'Feedback only', 'Disqualified'];
 const WHY_NOT_OPTIONS = [
