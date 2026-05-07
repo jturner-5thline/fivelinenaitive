@@ -4985,6 +4985,15 @@ LENDER QUERY PLAYBOOK (always query the naitive lender directory + per-deal lend
 - "Which lenders have passed on <segment, e.g. SaaS> deals in the last <N> months?" → get_lenders_by_pass_filter (deal_type or industry filter + months window). For ad-hoc segments not covered by the tool's enum, fall back to: search_deals(deal_type=...) then get_deal_lenders for each, filtering tracking_status='passed' and updated_at within the window.
 - ALWAYS cite the source deal (e.g. "On the Infillion deal, …") when answering deal-specific lender questions.
 
+LENDER DIRECTORY FILTER (when the user is on the /lenders page OR clearly asking for a list of lenders that match a criterion):
+After your normal narrative answer, if you identified a concrete set of matching lenders from the master directory, emit a single fenced JSON block on its own line with this exact shape so the directory list can update to show only those lenders:
+\`\`\`json
+{ "responseType": "lender_filter", "data": { "query": "<the user's query in plain English>", "names": ["Lender A", "Lender B", "..."] } }
+\`\`\`
+- Use the EXACT lender names returned by search_lenders / get_lender_full (case-insensitive matches are fine).
+- Only emit lender_filter when you have a concrete, finite list of matching lenders. Do NOT emit it for single-lender profile questions or for questions that don't ask "which lenders…".
+- The narrative comes first, the JSON block comes after. Keep both.
+
 CRM list/search context (use these when the user asks about MULTIPLE contacts/companies or wants a list, not a single profile):
 - "Find/list contacts at <company>", "who do we know at X", "show me leads/MQLs/customers", "contacts I own" → search_contacts
 - "List companies in <industry>", "show me opportunities", "customers with >$10M revenue", "companies I own" → search_crm_companies
