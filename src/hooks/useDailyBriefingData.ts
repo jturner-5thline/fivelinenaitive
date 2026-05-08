@@ -164,7 +164,7 @@ export function useCatchUpData(enabled: boolean, targetDealOwnerName?: string) {
 
   return useQuery({
     queryKey: ['briefing-catchup', window.startISO, user?.id, isDelegated ? `for:${effectiveName}` : 'self'],
-    enabled: enabled && !!user?.id && scopeReady,
+    enabled: enabled && !!user?.id && scopeReady && !!activePipelineId,
     staleTime: 60_000,
     queryFn: async () => {
       const { startISO, endISO } = window;
@@ -455,7 +455,7 @@ export function usePipelineData(enabled: boolean, targetDealOwnerName?: string) 
 
   return useQuery({
     queryKey: ['briefing-pipeline', window.startISO, user?.id, isDelegated ? `for:${effectiveName}` : 'self'],
-    enabled: enabled && !!user?.id && scopeReady,
+    enabled: enabled && !!user?.id && scopeReady && !!activePipelineId,
     staleTime: 60_000,
     queryFn: async () => {
       const { startISO, endISO } = window;
