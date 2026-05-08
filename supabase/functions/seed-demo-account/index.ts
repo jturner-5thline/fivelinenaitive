@@ -5,9 +5,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const DEMO_EMAIL = "demo@5thline.co";
-const DEMO_PASSWORD = "Demo2024!";
-const DEMO_COMPANY_NAME = "5th Line Demo";
+const DEFAULT_DEMO_EMAIL = "demo@5thline.co";
+const DEFAULT_DEMO_PASSWORD = "Demo2024!";
+const DEFAULT_DEMO_COMPANY_NAME = "5th Line Demo";
+const DEMO_TAG = "demo";
 
 // 5th Line company settings (cloned from real company)
 const COMPANY_SETTINGS = {
