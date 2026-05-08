@@ -24,7 +24,8 @@ export function MemoHeader({ deal, showLiveDot = true }: MemoHeaderProps) {
   const structureLabel = deal.engagementType
     ? deal.engagementType.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
     : null;
-  const assetClass = (deal.dealTypes && deal.dealTypes[0]) || null;
+  const assetClassRaw = (deal.dealTypes && deal.dealTypes[0]) || null;
+  const assetClass = assetClassRaw ? formatDealType(assetClassRaw) : null;
 
   return (
     <div className="px-5 pt-4 pb-3 border-b border-border">
