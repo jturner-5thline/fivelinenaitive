@@ -345,7 +345,6 @@ export function PlatformTour() {
   const [userId, setUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const openCopilot = useCopilotStore((s) => s.openPanel);
   const allSteps = useMemo(() => buildSteps(), []);
 
   // Filter to only available steps for this user (permission-aware re-evaluation each render)
