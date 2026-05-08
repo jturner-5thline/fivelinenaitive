@@ -1,5 +1,6 @@
 import type { Deal } from '@/types/deal';
 import type { PipelineDigestRaw } from '@/hooks/usePipelineDigests';
+import { formatSlug } from '@/utils/dealTypeLabels';
 
 interface ActivityPanelProps {
   deal: Deal;
@@ -53,7 +54,7 @@ export function ActivityPanel({ deal, rawDigest, isLoading }: ActivityPanelProps
 
       {stageEvents.length === 0 ? (
         <p className="text-xs text-muted-foreground">
-          No activity. Deal at <span className="font-semibold text-foreground">{deal.stage || '—'}</span>.
+          No activity. Deal at <span className="font-semibold text-foreground">{formatSlug(deal.stage) || '—'}</span>.
         </p>
       ) : (
         <div className="space-y-2">
@@ -69,9 +70,9 @@ export function ActivityPanel({ deal, rawDigest, isLoading }: ActivityPanelProps
                 <div className="text-xs leading-snug text-foreground">
                   {lender && <span className="font-semibold">{lender} </span>}
                   <span className="text-muted-foreground">→ </span>
-                  <span>{to || 'updated'}</span>
+                  <span>{formatSlug(to) || 'updated'}</span>
                   {from && (
-                    <span className="text-muted-foreground"> (from {from})</span>
+                    <span className="text-muted-foreground"> (from {formatSlug(from)})</span>
                   )}
                 </div>
               </div>

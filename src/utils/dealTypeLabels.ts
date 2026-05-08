@@ -25,10 +25,17 @@ export function dealTypeIdsToLabels(ids: string[], dealTypes?: { id: string; lab
  * Title-case a deal type/category slug for display
  * (e.g., "growth-capital" → "Growth Capital", "abl" → "Abl").
  */
-export function formatDealType(type?: string | null): string {
-  if (!type) return '';
-  return type
+/**
+ * Title-case a kebab/dash-separated slug for display.
+ * (e.g., "proposal-issued" → "Proposal Issued").
+ */
+export function formatSlug(slug?: string | null): string {
+  if (!slug) return '';
+  return slug
     .split('-')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }
+
+/** Backwards-compatible alias for deal type/category slugs. */
+export const formatDealType = formatSlug;

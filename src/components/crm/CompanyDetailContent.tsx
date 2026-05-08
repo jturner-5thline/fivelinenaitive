@@ -13,6 +13,7 @@ import { useCrmCompany, useUpdateCrmCompany, useCrmCompanyActivities, useCreateC
 import { useCrmCompanyDeals, useLinkContactToCompany, useUnlinkContactFromCompany, useLinkDealToCompany, useUnlinkDealFromCompany, useAllDeals } from '@/hooks/useCrmLinks';
 import { useContacts } from '@/hooks/useContacts';
 import { EntitySearchModal, EntityOption } from '@/components/crm/EntitySearchModal';
+import { formatSlug } from '@/utils/dealTypeLabels';
 import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
 import { CreateContactModal } from '@/components/contacts/CreateContactModal';
 import { CrmCompanyTasksCard } from '@/components/crm/CrmCompanyTasksCard';
@@ -294,7 +295,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                           <div className="cursor-pointer flex-1" onClick={() => navigate(`/deal/${deal.id}`)}>
                             <p className="font-medium text-primary hover:underline">{deal.company}</p>
                             <div className="flex items-center justify-between mt-1 text-muted-foreground">
-                              <span>{deal.stage}</span>
+                              <span>{formatSlug(deal.stage)}</span>
                               <span>${Number(deal.value || 0).toLocaleString()}</span>
                             </div>
                           </div>

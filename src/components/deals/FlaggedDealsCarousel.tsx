@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { dealTypeIdsToLabels } from '@/utils/dealTypeLabels';
+import { dealTypeIdsToLabels, formatSlug } from '@/utils/dealTypeLabels';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { Flag, ChevronLeft, ChevronRight, MessageSquare, X, DollarSign, Building2 } from 'lucide-react';
@@ -235,7 +235,7 @@ function CarouselInner({ deals, onClose, initialIndex = 0 }: {
                       <Flag className={`text-destructive fill-current ${isActive ? 'h-6 w-6' : 'h-5 w-5'}`} />
                     </div>
                     <Badge variant="outline" className="text-xs">
-                      {deal.status}
+                      {formatSlug(deal.status)}
                     </Badge>
                   </div>
 
@@ -278,7 +278,7 @@ function CarouselInner({ deals, onClose, initialIndex = 0 }: {
                   <div className="mt-auto pt-4 border-t border-border">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-primary font-medium">
-                        {deal.stage}
+                        {formatSlug(deal.stage)}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         Updated {formatDistanceToNow(new Date(deal.updatedAt), { addSuffix: true })}
