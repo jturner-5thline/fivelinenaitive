@@ -34,6 +34,18 @@ async function asanaFetch(path: string, token: string, options: RequestInit = {}
   return res.json();
 }
 
+function normalizeInitiativeStatus(raw: unknown): { key: string | null; label: string | null } {
+  const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  if (!value) return { key: null, label: null };
+  if (["on_track", "on track", "green"].includes(value)) return { key: "on_track", label: "On Track" };
+  if (["at_risk", "at risk", "yellow", "warning"].includes(value)) return { key: "at_risk", label: "At Risk" };
+  if (["off_track", "off track", "behind", "red"].includes(value)) return { key: "off_track", label: "Off Track" };
+  if (["on_hold", "on hold", "hold", "paused", "blue"].includes(value)) return { key: "on_hold", label: "On Hold" };
+  if (["complete", "completed", "done", "achieved"].includes(value)) return { key: "complete", label: "Complete" };
+  if (["dropped", "cancelled", "canceled"].includes(value)) return { key: "dropped", label: "Dropped" };
+  return { key: null, label: null };
+}
+
 // Resolve token: from request body (test/connect flow) or from DB (stored integration)
 async function resolveToken(
   bodyToken: string | undefined,
@@ -593,8 +605,35 @@ serve(async (req) => {
             "permalink_url",
             "owner.name",
             "owner.email",
+            "current_status_update.gid",
+            "current_status_update.resource_type",
             "current_status_update.status_type",
             "current_status_update.title",
+            "current_status_update.text",
+            "current_status_update.created_at",
+            "current_status",
+            "current_status.color",
+            "current_status.title",
+            "current_status.text",
+            "status",
+            "status_color",
+            "color",
+            "custom_fields.name",
+            "custom_fields.display_value",
+            "custom_fields.text_value",
+            "custom_fields.number_value",
+            "custom_fields.enum_value.name",
+            "custom_fields.enum_value.color",
+            "custom_fields.multi_enum_values.name",
+            "custom_fields.multi_enum_values.color",
+            "custom_field_settings.custom_field.name",
+            "custom_field_settings.custom_field.display_value",
+            "custom_field_settings.custom_field.text_value",
+            "custom_field_settings.custom_field.number_value",
+            "custom_field_settings.custom_field.enum_value.name",
+            "custom_field_settings.custom_field.enum_value.color",
+            "custom_field_settings.custom_field.multi_enum_values.name",
+            "custom_field_settings.custom_field.multi_enum_values.color",
             "due_date",
             "due_on",
             "start_on",
@@ -704,14 +743,32 @@ serve(async (req) => {
             "permalink_url",
             "owner.name",
             "owner.email",
+            "current_status_update.gid",
+            "current_status_update.resource_type",
             "current_status_update.status_type",
             "current_status_update.title",
             "current_status_update.text",
+            "current_status_update.html_text",
             "current_status_update.created_at",
+            "current_status_update.resource_subtype",
+            "current_status",
             "current_status.color",
             "current_status.title",
             "current_status.text",
+            "status",
+            "status_color",
             "color",
+            "custom_fields.name",
+            "custom_fields.display_value",
+            "custom_fields.text_value",
+            "custom_fields.number_value",
+            "custom_fields.enum_value.name",
+            "custom_fields.enum_value.color",
+            "custom_fields.multi_enum_values.name",
+            "custom_fields.multi_enum_values.color",
+            "custom_fields.people_value.name",
+            "custom_fields.people_value.email",
+            "custom_fields.resource_subtype",
             "due_on",
             "start_on",
           ].join(",");
@@ -727,51 +784,198 @@ serve(async (req) => {
               } catch (_e) {
                 detail = {};
               }
-              // Fallback: fetch latest status update from dedicated endpoint
-              // (Asana portfolios sometimes don't return current_status_update inline)
-              let latestStatusType: string | null =
-                detail?.current_status_update?.status_type ||
-                p.current_status_update?.status_type ||
-                null;
-              let latestStatusTitle: string | null =
-                detail?.current_status_update?.title ||
-                p.current_status_update?.title ||
-                null;
-              let statusSource = latestStatusType ? "current_status_update" : null;
-              // Legacy current_status.color mapping
-              if (!latestStatusType && (detail?.current_status?.color || detail?.color)) {
-                const colorRaw = (detail?.current_status?.color || detail?.color || "").toLowerCase();
-                const colorMap: Record<string, string> = {
-                  green: "on_track",
-                  yellow: "at_risk",
-                  red: "off_track",
-                  blue: "on_hold",
-                  complete: "complete",
-                };
-                if (colorMap[colorRaw]) {
-                  latestStatusType = colorMap[colorRaw];
-                  latestStatusTitle = detail?.current_status?.title || latestStatusTitle;
-                  statusSource = "current_status.color";
+              const requestedFields = [...new Set([...itemFields.split(","), ...portfolioDetailFields.split(",")])];
+              const diagnostics: Record<string, unknown> = {
+                base_current_status_update: p.current_status_update ?? null,
+                base_current_status: p.current_status ?? null,
+                base_status: p.status ?? null,
+                base_status_color: p.status_color ?? null,
+                base_custom_field_settings: Array.isArray(p?.custom_field_settings)
+                  ? p.custom_field_settings.map((setting: any) => ({
+                      custom_field: {
+                        name: setting?.custom_field?.name ?? null,
+                        display_value: setting?.custom_field?.display_value ?? null,
+                        text_value: setting?.custom_field?.text_value ?? null,
+                        number_value: setting?.custom_field?.number_value ?? null,
+                        enum_value: setting?.custom_field?.enum_value
+                          ? {
+                              name: setting.custom_field.enum_value?.name ?? null,
+                              color: setting.custom_field.enum_value?.color ?? null,
+                            }
+                          : null,
+                        multi_enum_values: Array.isArray(setting?.custom_field?.multi_enum_values)
+                          ? setting.custom_field.multi_enum_values.map((value: any) => ({
+                              name: value?.name ?? null,
+                              color: value?.color ?? null,
+                            }))
+                          : [],
+                      },
+                    }))
+                  : [],
+                current_status_update: detail?.current_status_update ?? p.current_status_update ?? null,
+                current_status: detail?.current_status ?? p.current_status ?? null,
+                status: detail?.status ?? p.status ?? null,
+                status_color: detail?.status_color ?? p.status_color ?? null,
+                color: detail?.color ?? p.color ?? null,
+                custom_fields: Array.isArray(detail?.custom_fields?.length ? detail.custom_fields : p?.custom_fields)
+                  ? (detail?.custom_fields?.length ? detail.custom_fields : p.custom_fields).map((cf: any) => ({
+                      name: cf?.name ?? null,
+                      display_value: cf?.display_value ?? null,
+                      text_value: cf?.text_value ?? null,
+                      number_value: cf?.number_value ?? null,
+                      enum_value: cf?.enum_value
+                        ? {
+                            name: cf.enum_value?.name ?? null,
+                            color: cf.enum_value?.color ?? null,
+                          }
+                        : null,
+                      multi_enum_values: Array.isArray(cf?.multi_enum_values)
+                        ? cf.multi_enum_values.map((value: any) => ({
+                            name: value?.name ?? null,
+                            color: value?.color ?? null,
+                          }))
+                        : [],
+                    }))
+                  : [],
+              };
+
+              let expandedStatusUpdate: any = null;
+              const stubGid = detail?.current_status_update?.gid || p.current_status_update?.gid || null;
+              if (stubGid) {
+                try {
+                  const statusUpdateDetail = await asanaFetch(
+                    `/status_updates/${stubGid}?opt_fields=gid,status_type,title,text,html_text,created_at,resource_subtype,parent.name,parent.gid,created_by.name,created_by.email`,
+                    resolvedToken,
+                  );
+                  expandedStatusUpdate = statusUpdateDetail.data || null;
+                } catch (e) {
+                  console.warn(`[portfolio_projects] current_status_update expand failed for ${p.gid} via ${stubGid}: ${e}`);
                 }
               }
+
+              let latestStatusType: string | null = null;
+              let latestStatusTitle: string | null = null;
+              let rawStatusValue: string | null = null;
+              let normalizedStatus: string | null = null;
+              let statusSource: string | null = null;
+
+              const applyStatus = (candidate: unknown, source: string, title?: unknown) => {
+                if (latestStatusType) return;
+                const normalized = normalizeInitiativeStatus(candidate);
+                if (!normalized.key) return;
+                latestStatusType = normalized.key;
+                latestStatusTitle = typeof title === "string" && title.trim() ? title : latestStatusTitle;
+                rawStatusValue = typeof candidate === "string" ? candidate : JSON.stringify(candidate);
+                normalizedStatus = normalized.label;
+                statusSource = source;
+              };
+
+              applyStatus(p?.current_status_update?.status_type, "item.current_status_update.status_type", p?.current_status_update?.title);
+              applyStatus(detail?.current_status_update?.status_type, "current_status_update.status_type", detail?.current_status_update?.title);
+              applyStatus(expandedStatusUpdate?.status_type, "current_status_update.expand.status_type", expandedStatusUpdate?.title);
+              applyStatus(p?.current_status?.status_type, "item.current_status.status_type", p?.current_status?.title);
+              applyStatus(p?.status, "item.status", p?.current_status?.title);
+              applyStatus(p?.status_color, "item.status_color", p?.current_status?.title);
+              applyStatus(p?.current_status?.color, "item.current_status.color", p?.current_status?.title);
+              applyStatus(detail?.current_status?.status_type, "current_status.status_type", detail?.current_status?.title);
+              applyStatus(detail?.status, "status", detail?.current_status?.title);
+              applyStatus(detail?.status_color, "status_color", detail?.current_status?.title);
+              applyStatus(detail?.current_status?.color, "current_status.color", detail?.current_status?.title);
+              applyStatus(detail?.color, "portfolio.color", detail?.current_status?.title);
+
+              const customFields: any[] = Array.isArray(detail?.custom_fields) && detail.custom_fields.length
+                ? detail.custom_fields
+                : Array.isArray(p?.custom_fields)
+                  ? p.custom_fields
+                  : [];
+              for (const cf of customFields) {
+                const fieldName = String(cf?.name || "");
+                const fieldKey = fieldName.trim().toLowerCase();
+                const isLikelyStatusField = /status|health|rag|state|condition/.test(fieldKey);
+                const candidates = [
+                  { value: cf?.enum_value?.name, source: `custom_field.enum_value:${fieldName}` },
+                  { value: cf?.display_value, source: `custom_field.display_value:${fieldName}` },
+                  { value: cf?.text_value, source: `custom_field.text_value:${fieldName}` },
+                ];
+                if (Array.isArray(cf?.multi_enum_values) && cf.multi_enum_values.length) {
+                  for (const option of cf.multi_enum_values) {
+                    candidates.push({ value: option?.name, source: `custom_field.multi_enum:${fieldName}` });
+                    candidates.push({ value: option?.color, source: `custom_field.multi_enum_color:${fieldName}` });
+                  }
+                }
+                if (cf?.enum_value?.color) {
+                  candidates.push({ value: cf.enum_value.color, source: `custom_field.enum_color:${fieldName}` });
+                }
+                for (const candidate of candidates) {
+                  if (!candidate.value) continue;
+                  if (!isLikelyStatusField) {
+                    const normalized = normalizeInitiativeStatus(candidate.value);
+                    if (!normalized.key) continue;
+                  }
+                  applyStatus(candidate.value, candidate.source, fieldName);
+                }
+              }
+
+              const baseCustomFieldSettings: any[] = Array.isArray(p?.custom_field_settings) ? p.custom_field_settings : [];
+              for (const setting of baseCustomFieldSettings) {
+                const fieldName = String(setting?.custom_field?.name || "");
+                const fieldKey = fieldName.trim().toLowerCase();
+                const isLikelyStatusField = /status|health|rag|state|condition/.test(fieldKey);
+                const values = [
+                  { value: setting?.custom_field?.enum_value?.name, source: `item.custom_field_settings.enum_value:${fieldName}` },
+                  { value: setting?.custom_field?.enum_value?.color, source: `item.custom_field_settings.enum_color:${fieldName}` },
+                  { value: setting?.custom_field?.display_value, source: `item.custom_field_settings.display_value:${fieldName}` },
+                  { value: setting?.custom_field?.text_value, source: `item.custom_field_settings.text_value:${fieldName}` },
+                ];
+                if (Array.isArray(setting?.custom_field?.multi_enum_values)) {
+                  for (const option of setting.custom_field.multi_enum_values) {
+                    values.push({ value: option?.name, source: `item.custom_field_settings.multi_enum:${fieldName}` });
+                    values.push({ value: option?.color, source: `item.custom_field_settings.multi_enum_color:${fieldName}` });
+                  }
+                }
+                for (const candidate of values) {
+                  if (!candidate.value) continue;
+                  if (!isLikelyStatusField) {
+                    const normalized = normalizeInitiativeStatus(candidate.value);
+                    if (!normalized.key) continue;
+                  }
+                  applyStatus(candidate.value, candidate.source, fieldName);
+                }
+              }
+
               if (!latestStatusType) {
                 try {
                   const stUp = await asanaFetch(
-                    `/status_updates?parent=${p.gid}&limit=1&opt_fields=status_type,title,text,created_at`,
+                    `/status_updates?parent=${p.gid}&limit=10&opt_fields=gid,status_type,title,text,html_text,created_at,resource_subtype,created_by.name,created_by.email`,
                     resolvedToken,
                   );
+                  diagnostics.status_updates_list = stUp.data || [];
                   const latest = (stUp.data || [])[0];
                   if (latest?.status_type) {
-                    latestStatusType = latest.status_type;
+                    const normalized = normalizeInitiativeStatus(latest.status_type);
+                    latestStatusType = normalized.key || latest.status_type;
                     latestStatusTitle = latest.title || latestStatusTitle;
+                    rawStatusValue = latest.status_type;
+                    normalizedStatus = normalized.label;
                     statusSource = "status_updates_endpoint";
                   }
                 } catch (e) {
                   console.warn(`[portfolio_projects] status_updates fallback failed for ${p.gid}: ${e}`);
                 }
               }
+
+              diagnostics.expanded_status_update = expandedStatusUpdate;
               console.log(
-                `[portfolio_projects][portfolio] gid=${p.gid} name=${detail?.name || p.name} status_type=${latestStatusType} source=${statusSource || "none"}`,
+                `[portfolio_projects][portfolio][diag] ${JSON.stringify({
+                  gid: p.gid,
+                  name: detail?.name || p.name,
+                  item_type: "portfolio",
+                  requested_fields: requestedFields,
+                  status_source_used: statusSource || "none",
+                  raw_status_value: rawStatusValue,
+                  normalized_status: normalizedStatus,
+                  available_status_fields: diagnostics,
+                })}`,
               );
               const candidates: Array<{ name: string | null; email: string | null; source: string }> = [];
               if (detail?.owner?.name || detail?.owner?.email) {
@@ -795,6 +999,9 @@ serve(async (req) => {
                 status_title: latestStatusTitle,
                 due_on: detail?.due_on || p.due_on || p.due_date || null,
                 start_on: detail?.start_on || p.start_on || null,
+                status_source_used: statusSource,
+                raw_status_value: rawStatusValue,
+                normalized_status: normalizedStatus,
               };
             }),
           );
