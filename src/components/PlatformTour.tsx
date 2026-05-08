@@ -129,15 +129,15 @@ const DEMO_USER_PROMPT =
   'Show me the deals that need follow-up this week, summarize the latest status, and create action items for anything at risk.';
 
 const DEMO_DEALS = [
-  { name: 'Athyna', status: 'Waiting on March financials. Lender feedback is active — next response timing matters.', risk: false },
-  { name: 'Xnergy United Network', status: 'Five Crowns expected to send a term sheet early this week — follow-up recommended.', risk: true },
-  { name: 'Czerlonka', status: 'Founders First still in review. Deal may need to pause if no movement this week.', risk: true },
+  { name: 'Northstar HVAC', status: 'Waiting on updated trailing twelve-month financials — lender follow-up recommended.', risk: false },
+  { name: 'BluePeak Logistics', status: 'Term sheet expected early next week — confirm timeline with capital partner.', risk: true },
+  { name: 'Harbor Ridge Dental', status: 'Underwriting paused pending owner clarification on add-backs.', risk: true },
 ];
 
 const DEMO_ACTIONS = [
-  'Follow up with Five Crowns on Xnergy United Network',
-  'Check lender status on Czerlonka by tomorrow',
-  'Request updated materials and timing confirmation for Athyna',
+  'Follow up with Meridian Capital on BluePeak Logistics',
+  'Request updated financial package for Northstar HVAC',
+  'Confirm underwriting status and owner responses for Harbor Ridge Dental',
 ];
 
 function AiDemoSimulation() {
@@ -251,7 +251,7 @@ function AiDemoSimulation() {
 
 const EXAMPLE_PROMPTS = [
   'What deals need my attention today?',
-  'Draft a lender follow-up for Athyna.',
+  'Draft a lender follow-up for an active deal.',
   'Summarize the latest updates across active deals.',
   'Create tasks for overdue follow-ups.',
 ];
