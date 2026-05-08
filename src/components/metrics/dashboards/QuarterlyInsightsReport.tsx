@@ -1570,6 +1570,10 @@ function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: Report
             </span>
             <span style={{ color: TEXT_MUTED, fontSize: 10 }}>for {preparedBy}</span>
             <span style={{ marginLeft: 'auto', fontSize: 10, color: TEXT_MUTED }}>
+              <span style={{ color: visibleGoals.length > 0 ? '#7cc8f0' : TEXT_MUTED, fontWeight: visibleGoals.length > 0 ? 700 : 400 }}>
+                Token: {matchPreview.token.length}
+              </span>
+              {' · '}
               <span style={{ color: activeExactMatch ? '#7cc8f0' : TEXT_MUTED, fontWeight: activeExactMatch ? 700 : 400 }}>
                 Exact: {matchPreview.exact.length}
               </span>
@@ -1583,6 +1587,9 @@ function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: Report
           {visibleGoals.length === 0 ? (
             <div style={{ color: '#ff9b9b', fontSize: 11 }}>
               No goals match in <strong>{activeExactMatch ? 'exact' : 'substring'}</strong> mode.
+              {matchPreview.token.length > 0 && (
+                <> Token matching found {matchPreview.token.length} likely Asana period match{matchPreview.token.length === 1 ? '' : 'es'}.</>
+              )}
               {!activeExactMatch && matchPreview.exact.length > 0 && (
                 <> Try enabling exact match — {matchPreview.exact.length} would match.</>
               )}
@@ -1607,6 +1614,46 @@ function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: Report
               )}
             </ul>
           )}
+          <div style={{ marginTop: 10, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 10 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: TEXT_LABEL, marginBottom: 6 }}>
+              Goal filter debug sample
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>Goal</th>
+                    <th style={thStyle}>Owner</th>
+                    <th style={thStyle}>Raw period</th>
+                    <th style={thStyle}>Normalized</th>
+                    <th style={thStyle}>Result</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {debugSamples.map(({ goal, evaluation }) => (
+                    <tr key={`goal-debug-${goal.id}`}>
+                      <td style={tdStyle}>{goal.title}</td>
+                      <td style={tdStyle}>{goal.owner || '—'}</td>
+                      <td style={tdStyle}>
+                        <div style={{ color: TEXT_PRIMARY }}>{evaluation.parsed.raw || '—'}</div>
+                        {goal.due && <div style={{ fontSize: 10, color: TEXT_MUTED }}>Due: {goal.due}</div>}
+                      </td>
+                      <td style={tdStyle}>
+                        <div style={{ color: '#7cc8f0', fontFamily: 'monospace', fontSize: 11 }}>{evaluation.parsed.normalized || '—'}</div>
+                        <div style={{ fontSize: 10, color: TEXT_MUTED }}>
+                          {evaluation.parsed.quarter || '—'} · {evaluation.parsed.half || '—'} · {evaluation.parsed.year || '—'}
+                        </div>
+                      </td>
+                      <td style={tdStyle}>
+                        <div style={{ color: evaluation.matches ? '#7ed8a5' : '#ff9b9b', fontWeight: 600 }}>{evaluation.matches ? 'Included' : 'Excluded'}</div>
+                        <div style={{ fontSize: 10, color: TEXT_MUTED }}>{evaluation.reason}</div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     );
