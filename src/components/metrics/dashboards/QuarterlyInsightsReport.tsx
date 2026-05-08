@@ -2378,7 +2378,7 @@ function ReportAgendaSection({ embedded = false }: { embedded?: boolean } = {}) 
   return <Card className="glass-module qir-page-break">{inner}</Card>;
 }
 
-export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdit, reportKey, titlePrefix, activeCompositeKey, fetchedCompositeKey, isDirty = false, isSaving = false, unsavedChangesWarning }: {
+export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdit, reportKey, titlePrefix, ownerName, activeCompositeKey, fetchedCompositeKey, isDirty = false, isSaving = false, unsavedChangesWarning }: {
   s: ReportState;
   set: ReportSetState;
   reset: () => void;
@@ -2387,6 +2387,7 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
   canEdit?: boolean;
   reportKey?: string;
   titlePrefix?: string;
+  ownerName?: string;
   activeCompositeKey?: string;
   fetchedCompositeKey?: string | null;
   isDirty?: boolean;
@@ -2487,7 +2488,7 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
             <ReportKpisSection s={s} set={set} reportLabel={reportLabel} />
           </div>
           <div id="qir-section-pipeline" className="qir-unified-section">
-            <ReportGoalsSection s={s} set={set} />
+            <ReportGoalsSection s={s} set={set} ownerName={ownerName} />
           </div>
           <div id="qir-section-metrics" className="qir-unified-section">
             <ReportInitiativesSection s={s} set={set} />
