@@ -358,7 +358,7 @@ export function DebtProfitWidget({ selectedQuarter }: { selectedQuarter: import(
   );
 }
 
-export function FinServProfitWidget({ selectedQuarter }: { selectedQuarter: import('@/hooks/useQBQuarterlyRevenue').QuarterOption }) {
+function FinServProfitWidgetInner({ selectedQuarter }: { selectedQuarter: import('@/hooks/useQBQuarterlyRevenue').QuarterOption }) {
   const finserv = useMonthlyEntityProfit('5th Line Financial Services, LLC', selectedQuarter.months);
   const [open, setOpen] = useState(false);
   return (
@@ -382,6 +382,14 @@ export function FinServProfitWidget({ selectedQuarter }: { selectedQuarter: impo
         quarterLabel={selectedQuarter.label}
       />
     </div>
+  );
+}
+
+export function FinServProfitWidget(props: { selectedQuarter: import('@/hooks/useQBQuarterlyRevenue').QuarterOption }) {
+  return (
+    <ProfitWidgetErrorBoundary title="FinServ Profit">
+      <FinServProfitWidgetInner {...props} />
+    </ProfitWidgetErrorBoundary>
   );
 }
 
