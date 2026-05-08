@@ -21,6 +21,7 @@ import { useCompanyMembers, useCompanyStats, useCompanyActivity, useToggleCompan
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { CompanyConfigOverview } from "./CompanyConfigOverview";
+import { CompanyUserActivityTab } from "./CompanyUserActivityTab";
 
 interface Company {
   id: string;
@@ -224,7 +225,7 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
         )}
 
         <Tabs defaultValue="stats" className="flex-1 overflow-hidden flex flex-col">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="stats" className="gap-2">
               <TrendingUp className="h-4 w-4" />
               Stats
@@ -239,7 +240,11 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
             </TabsTrigger>
             <TabsTrigger value="activity" className="gap-2">
               <Activity className="h-4 w-4" />
-              Activity
+              Deal Activity
+            </TabsTrigger>
+            <TabsTrigger value="users-activity" className="gap-2">
+              <Activity className="h-4 w-4" />
+              User Activity
             </TabsTrigger>
           </TabsList>
 
@@ -418,6 +423,10 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
                   ))}
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="users-activity" className="m-0">
+              <CompanyUserActivityTab companyId={company.id} />
             </TabsContent>
           </ScrollArea>
         </Tabs>
