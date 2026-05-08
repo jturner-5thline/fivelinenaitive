@@ -266,8 +266,24 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    // 5. Create a Sales BD lead in the 5th Line internal workspace so demos
+    //    flow through the existing pipeline. Best-effort.
+    let crmLead: { dealId?: string; contactId?: string } | null = null;
+    try {
+      crmLead = await createCrmLead(admin, {
+        companyName: company.name,
+        accountType,
+        trialEndsAt: trialEnds,
+        notes: body.notes ?? null,
+        users: body.users,
+        attributingUserId: caller.id,
+      });
+    } catch (crmErr) {
+      console.warn("[create-demo-access] CRM lead creation failed", crmErr);
+    }
+
     return new Response(
-      JSON.stringify({ success: true, company, results, seeded }),
+      JSON.stringify({ success: true, company, results, seeded, crmLead }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } },
     );
   } catch (err) {
@@ -349,6 +365,78 @@ async function seedDemoCompanyData(
     deals: insertedDeals?.length ?? 0,
     contacts: contactsInserted,
   };
+}
+
+const FIFTH_LINE_COMPANY_ID = "44556c46-9127-4b12-b14e-d6fee784afcf";
+
+async function createCrmLead(
+  admin: ReturnType<typeof createClient>,
+  args: {
+    companyName: string;
+    accountType: string;
+    trialEndsAt: string;
+    notes: string | null;
+    users: DemoUserInput[];
+    attributingUserId: string;
+  },
+): Promise<{ dealId?: string; contactId?: string }> {
+  const out: { dealId?: string; contactId?: string } = {};
+  const primary = args.users[0];
+
+  // Insert deal in 5th Line workspace
+  try {
+    const { data: deal } = await admin
+      .from("deals")
+      .insert({
+        company: args.companyName,
+        value: 0,
+        status: "active",
+        stage: "Initial Review",
+        deal_class: "standard",
+        deal_type: `${args.accountType} Lead`,
+        manager: "James Turner",
+        referred_by: "Demo Access",
+        company_id: FIFTH_LINE_COMPANY_ID,
+        user_id: args.attributingUserId,
+        tags: ["demo-lead", args.accountType.toLowerCase()],
+        notes: [
+          `${args.accountType} workspace provisioned for ${args.companyName}.`,
+          `Trial ends: ${new Date(args.trialEndsAt).toISOString().slice(0, 10)}`,
+          args.notes ? `Notes: ${args.notes}` : null,
+          primary ? `Primary contact: ${primary.name} <${primary.email}>` : null,
+        ].filter(Boolean).join("\n"),
+      })
+      .select("id")
+      .single();
+    if (deal) out.dealId = deal.id as string;
+  } catch (e) {
+    console.warn("[create-demo-access] CRM deal insert failed", e);
+  }
+
+  // Insert primary contact
+  if (primary) {
+    try {
+      const [first, ...rest] = primary.name.split(" ");
+      const { data: contact } = await admin
+        .from("contacts")
+        .insert({
+          first_name: first || primary.name,
+          last_name: rest.join(" ") || null,
+          email: primary.email.toLowerCase(),
+          title: primary.role,
+          company_id: FIFTH_LINE_COMPANY_ID,
+          org_company_id: FIFTH_LINE_COMPANY_ID,
+          created_by: args.attributingUserId,
+        })
+        .select("id")
+        .single();
+      if (contact) out.contactId = contact.id as string;
+    } catch (e) {
+      console.warn("[create-demo-access] CRM contact insert failed", e);
+    }
+  }
+
+  return out;
 }
 
 serve(handler);

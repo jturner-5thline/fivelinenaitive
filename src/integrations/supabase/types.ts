@@ -2730,9 +2730,12 @@ export type Database = {
           archived_at: string | null
           archived_reason: string | null
           city: string | null
+          converted_at: string | null
+          converted_by: string | null
           country: string | null
           created_at: string
           created_by: string | null
+          demo_warning_sent_at: string | null
           description: string | null
           domains: string[] | null
           employee_size: string | null
@@ -2757,9 +2760,12 @@ export type Database = {
           archived_at?: string | null
           archived_reason?: string | null
           city?: string | null
+          converted_at?: string | null
+          converted_by?: string | null
           country?: string | null
           created_at?: string
           created_by?: string | null
+          demo_warning_sent_at?: string | null
           description?: string | null
           domains?: string[] | null
           employee_size?: string | null
@@ -2784,9 +2790,12 @@ export type Database = {
           archived_at?: string | null
           archived_reason?: string | null
           city?: string | null
+          converted_at?: string | null
+          converted_by?: string | null
           country?: string | null
           created_at?: string
           created_by?: string | null
+          demo_warning_sent_at?: string | null
           description?: string | null
           domains?: string[] | null
           employee_size?: string | null

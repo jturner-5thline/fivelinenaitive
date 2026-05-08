@@ -45,6 +45,29 @@ export const CompanyUserActivityTab = ({ companyId }: Props) => {
     enabled: !!companyId,
   });
 
+  // Aggregate per-page dwell time from feature_used events with feature='page_dwell'.
+  const heatmap = (() => {
+    if (!data) return [] as Array<{ path: string; seconds: number; views: number }>;
+    const acc = new Map<string, { seconds: number; views: number }>();
+    for (const e of data) {
+      const ed = (e.event_data ?? {}) as Record<string, unknown>;
+      if (e.event_type === "feature_used" && ed.feature === "page_dwell") {
+        const path = typeof ed.path === "string" ? ed.path : "(unknown)";
+        const seconds = typeof ed.seconds === "number" ? ed.seconds : 0;
+        const cur = acc.get(path) ?? { seconds: 0, views: 0 };
+        acc.set(path, { seconds: cur.seconds + seconds, views: cur.views + 1 });
+      } else if (e.event_type === "page_view") {
+        const path = typeof ed.path === "string" ? ed.path : "(unknown)";
+        const cur = acc.get(path) ?? { seconds: 0, views: 0 };
+        acc.set(path, { seconds: cur.seconds, views: cur.views + 1 });
+      }
+    }
+    return Array.from(acc.entries())
+      .map(([path, v]) => ({ path, ...v }))
+      .sort((a, b) => b.seconds - a.seconds || b.views - a.views)
+      .slice(0, 12);
+  })();
+
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -65,8 +88,40 @@ export const CompanyUserActivityTab = ({ companyId }: Props) => {
     );
   }
 
+  const maxSeconds = heatmap[0]?.seconds || 1;
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-6">
+      {heatmap.length > 0 && (
+        <div className="rounded-lg border bg-card p-4">
+          <p className="text-sm font-medium mb-3">Top pages by time spent</p>
+          <div className="space-y-2">
+            {heatmap.map((row) => {
+              const pct = Math.max(4, Math.round((row.seconds / maxSeconds) * 100));
+              const mins = Math.floor(row.seconds / 60);
+              const secs = row.seconds % 60;
+              return (
+                <div key={row.path} className="text-xs">
+                  <div className="flex justify-between gap-4">
+                    <span className="font-mono truncate text-muted-foreground">{row.path}</span>
+                    <span className="whitespace-nowrap text-muted-foreground">
+                      {mins > 0 ? `${mins}m ${secs}s` : `${secs}s`} · {row.views} view{row.views === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  <div className="h-1.5 mt-1 rounded-full bg-white/5 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-blue-500/60 to-purple-500/60"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2">
       {data.map((e) => {
         const meta = eventMeta[e.event_type] ?? {
           label: e.event_type,
@@ -103,6 +158,7 @@ export const CompanyUserActivityTab = ({ companyId }: Props) => {
           </div>
         );
       })}
+      </div>
     </div>
   );
 };

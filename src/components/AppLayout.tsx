@@ -112,6 +112,28 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
     });
   }, [location.pathname, location.search]);
 
+  // Track per-page dwell time. On route change (or unmount) emit a
+  // `page_dwell` event with the seconds spent on the previous path. This
+  // powers the admin "session heatmap" view for demo accounts.
+  const dwellStartRef = React.useRef<number>(Date.now());
+  const dwellPathRef = React.useRef<string>(location.pathname);
+  React.useEffect(() => {
+    const previousPath = dwellPathRef.current;
+    const previousStart = dwellStartRef.current;
+    return () => {
+      const seconds = Math.round((Date.now() - previousStart) / 1000);
+      // Ignore <2s flash navigations to keep noise low.
+      if (seconds >= 2 && seconds < 60 * 60) {
+        logActivity({
+          event_type: "feature_used",
+          event_data: { feature: "page_dwell", path: previousPath, seconds },
+        });
+      }
+      dwellPathRef.current = location.pathname;
+      dwellStartRef.current = Date.now();
+    };
+  }, [location.pathname]);
+
   return (
     <SidebarProvider defaultOpen={true} className="h-svh" style={{ isolation: 'auto' } as React.CSSProperties}>
       <BodyScrollLock />

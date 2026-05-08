@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Users, ExternalLink, Ban, Eye, Archive, Trash2, Loader2, MoreHorizontal, Mail, CalendarPlus, ShieldOff } from "lucide-react";
+import { Search, Users, ExternalLink, Ban, Eye, Archive, Trash2, Loader2, MoreHorizontal, Mail, CalendarPlus, ShieldOff, BadgeCheck } from "lucide-react";
 import { useAllCompanies } from "@/hooks/useAdminData";
 import { CompanyDetailDialog } from "./CompanyDetailDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -46,6 +46,7 @@ export const CompaniesTable = () => {
   const [extendTarget, setExtendTarget] = useState<Company | null>(null);
   const [extendDate, setExtendDate] = useState<string>("");
   const [revokeTarget, setRevokeTarget] = useState<Company | null>(null);
+  const [convertTarget, setConvertTarget] = useState<Company | null>(null);
   const [isActioning, setIsActioning] = useState(false);
   const { data: companies, isLoading } = useAllCompanies();
   const queryClient = useQueryClient();
@@ -127,6 +128,24 @@ export const CompaniesTable = () => {
       queryClient.invalidateQueries({ queryKey: ["admin-all-companies"] });
     } catch (err: any) {
       toast.error(err.message || "Failed to revoke access");
+    } finally {
+      setIsActioning(false);
+    }
+  };
+
+  const handleConvert = async () => {
+    if (!convertTarget) return;
+    setIsActioning(true);
+    try {
+      const { error } = await supabase.functions.invoke("convert-demo-to-client", {
+        body: { companyId: convertTarget.id, accountType: "Client" },
+      });
+      if (error) throw error;
+      toast.success(`"${convertTarget.name}" converted to a paid client`);
+      setConvertTarget(null);
+      queryClient.invalidateQueries({ queryKey: ["admin-all-companies"] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to convert company");
     } finally {
       setIsActioning(false);
     }
@@ -334,6 +353,11 @@ export const CompaniesTable = () => {
                             >
                               <CalendarPlus className="h-4 w-4 mr-2" /> Extend trial
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => setConvertTarget(company)}
+                            >
+                              <BadgeCheck className="h-4 w-4 mr-2" /> Convert to client
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive"
@@ -440,6 +464,27 @@ export const CompaniesTable = () => {
             >
               {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Delete Company
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Convert to client confirm */}
+      <AlertDialog open={!!convertTarget} onOpenChange={(open) => !open && setConvertTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Convert "{convertTarget?.name}" to a paid client?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This switches the account type to <strong>Client</strong>, clears the trial end date,
+              and sets subscription status to <strong>active</strong>. Any deactivated members will
+              be re-enabled.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isActioning}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConvert} disabled={isActioning}>
+              {isActioning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Convert to client
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
