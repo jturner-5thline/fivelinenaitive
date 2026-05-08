@@ -53,7 +53,14 @@ function PipelineMemoCardImpl({
       role="button"
       aria-label={`Open deal memo for ${deal.company || deal.name}`}
       className="overflow-hidden cursor-pointer transition-colors duration-150 hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
-      style={{ contain: 'layout paint', contentVisibility: 'auto', containIntrinsicSize: '320px' } as React.CSSProperties}
+      // NOTE: do NOT set `content-visibility: auto` here. The card sits inside
+      // a @tanstack/react-virtual absolute-positioned row whose offsets come
+      // from each card's measured height. `content-visibility: auto` makes
+      // off-screen cards report their `contain-intrinsic-size` (~320px) to
+      // layout, so taller cards (long task lists, lender groups, expanded
+      // follow-up form) end up overlapping their neighbours when they scroll
+      // into view. `contain: layout paint` is safe and keeps repaints scoped.
+      style={{ contain: 'layout paint' } as React.CSSProperties}
     >
       <MemoHeader deal={deal} showLiveDot={showLiveDot} />
 
