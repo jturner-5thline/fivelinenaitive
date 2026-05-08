@@ -170,7 +170,6 @@ export async function seedSampleDeal(userId: string, companyId?: string | null):
         notes: '**This is an example deal** to help you explore the platform.\n\nDeal Overview:\n- $10MM debt financing for growth capital\n- Strong recurring revenue base ($6.5MM ARR)\n- Multiple lenders engaged at various stages\n- Target close in 60 days\n\nNext Steps:\n1. Complete management presentations with shortlisted lenders\n2. Compare incoming term sheets\n3. Negotiate final terms with selected lender\n\nFeel free to edit or delete this deal at any time.',
         closing_date: format(addDays(now, 60), 'yyyy-MM-dd'),
         sourced_via: 'Referral',
-        total_fee: 200000,
         retainer_fee: 25000,
         success_fee_percent: 1.75,
         pre_signing_hours: 45,

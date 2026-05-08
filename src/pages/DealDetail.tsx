@@ -2325,19 +2325,17 @@ export default function DealDetail() {
       if (!prev) return prev;
       // Save current state to history before updating
       setEditHistory(history => [...history, { deal: prev, field, timestamp: new Date() }]);
-      let updated = { ...prev, [field]: value, updatedAt: new Date().toISOString() };
+      const updated = { ...prev, [field]: value, updatedAt: new Date().toISOString() };
 
-      // Auto-calculate Total Fee = Deal Size × (Success Fee % / 100).
-      // Recompute reactively whenever either input changes, and persist the
-      // derived totalFee to the DB so it isn't left stale from a prior manual entry.
-      let derivedTotalFee: number | undefined;
-      if (field === 'successFeePercent' || field === 'value') {
+      // Total Fee is a Postgres generated column:
+      //   total_fee = retainer_fee + milestone_fee + value * success_fee_percent / 100
+      // Recompute locally so the UI stays in sync until the next refetch.
+      if (field === 'successFeePercent' || field === 'value' || field === 'retainerFee' || field === 'milestoneFee') {
         const dealValue = Number(field === 'value' ? (value as number) : prev.value) || 0;
         const successPercent = Number(field === 'successFeePercent' ? (value as number | undefined) : prev.successFeePercent) || 0;
-        if (dealValue > 0 && successPercent > 0) {
-          derivedTotalFee = (successPercent / 100) * dealValue;
-          updated.totalFee = derivedTotalFee;
-        }
+        const retainer = Number(field === 'retainerFee' ? (value as number | undefined) : prev.retainerFee) || 0;
+        const milestone = Number(field === 'milestoneFee' ? (value as number | undefined) : prev.milestoneFee) || 0;
+        updated.totalFee = retainer + milestone + (dealValue * successPercent) / 100;
       }
       
       // Log activity only for significant changes (not every keystroke for text fields)
@@ -2409,9 +2407,6 @@ export default function DealDetail() {
       // Persist to database with loading indicator
       withSavingAsync(`deal-${field}`, async () => {
         const patch: Partial<Deal> = { [field]: value } as Partial<Deal>;
-        if (derivedTotalFee !== undefined) {
-          (patch as Partial<Deal>).totalFee = derivedTotalFee;
-        }
         await updateDealInDb(prev.id, patch);
       });
       
@@ -3535,12 +3530,10 @@ export default function DealDetail() {
                                               <Input
                                                 type="text"
                                                 value={deal.totalFee ? Math.round(deal.totalFee).toLocaleString() : ''}
-                                                onChange={(e) => {
-                                                  const raw = e.target.value.replace(/,/g, '');
-                                                  if (raw === '' || /^\d+$/.test(raw)) updateDeal('totalFee', raw ? Number(raw) : 0);
-                                                }}
+                                                readOnly
+                                                title="Auto-calculated: Retainer + Milestone + Deal Size × Success Fee %"
                                                 placeholder="0"
-                                                className="pl-5 h-8 text-sm w-full"
+                                                className="pl-5 h-8 text-sm w-full bg-muted/40 cursor-not-allowed"
                                               />
                                             </div>
                                           </div>
