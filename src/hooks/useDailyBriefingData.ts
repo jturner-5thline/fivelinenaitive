@@ -417,11 +417,12 @@ export function usePipelineData(enabled: boolean, targetDealOwnerName?: string) 
   const window = useBriefingWindow();
   const activePipelineId = useActivePipelineId();
   const { effectiveName, ready: scopeReady } = useEffectiveTargetName(targetDealOwnerName);
+  const { isAdmin } = useCompany();
 
   const deals = useMemo(() => {
     const scoped = effectiveName ? getDealsForUserName(allDeals, effectiveName) : allDeals;
-    return filterRundownEligibleDeals(scoped as any[], activePipelineId);
-  }, [allDeals, effectiveName, activePipelineId]);
+    return filterRundownEligibleDeals(scoped as any[], activePipelineId, isAdmin);
+  }, [allDeals, effectiveName, activePipelineId, isAdmin]);
   const dealIdSet = useMemo(() => new Set(deals.map(d => d.id)), [deals]);
   const isDelegated = !!effectiveName;
 
@@ -461,8 +462,11 @@ export function usePipelineData(enabled: boolean, targetDealOwnerName?: string) 
       const dealCreatedIds = new Set(stageChanges.filter(sc => sc.activity_type === 'deal_created').map(sc => sc.deal_id));
       const newDeals = deals.filter(d => dealCreatedIds.has(d.id));
 
-      const suppressedStatuses = ['archived', 'on-hold', 'on_hold'];
-      const activeDeals = deals.filter(d => !suppressedStatuses.includes((d.status || '').toLowerCase()));
+      // Admins: keep ALL deals. Non-admins: hide only Archived / Closed-Lost.
+      const nonAdminSuppressed = ['archived', 'closed-lost', 'closed_lost', 'closedlost'];
+      const activeDeals = isAdmin
+        ? deals
+        : deals.filter(d => !nonAdminSuppressed.includes((d.status || '').toLowerCase()));
       const riskDeals = activeDeals.filter(d => {
         if (d.isFlagged) return true;
         const lastActivity = activities.find(a => a.deal_id === d.id);
