@@ -804,14 +804,14 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
               />
             </div>
             
-            {/* Filter by requester */}
-            <Popover>{/* "All" filter — order 2 */}
+            {/* Filter by requester — wraps to next line first at narrow widths */}
+            <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
                   className={cn(
-                    'gap-1.5 text-xs h-8 order-2',
+                    'gap-1.5 text-xs h-8 order-6',
                     filterByLender.length > 0 && 'border-primary bg-primary/5'
                   )}
                 >
