@@ -29,6 +29,7 @@ import { useFullEmailMessage } from './useFullEmailMessage';
 import { useEmailToDataRoom, type DataRoomDestinationSuggestion } from '@/hooks/useEmailToDataRoom';
 import { SuggestedDealUpdatesSection } from './SuggestedDealUpdatesSection';
 import { SuggestedFollowupsCard } from './SuggestedFollowupsCard';
+import { useEmailFollowupSuggestions } from '@/hooks/useEmailFollowupSuggestions';
 import { DataRoomUploadSuggestionCard } from './DataRoomUploadSuggestionCard';
 import { DealContextCard } from './DealContextCard';
 import { UnmatchedEmailContextCard } from './UnmatchedEmailContextCard';
