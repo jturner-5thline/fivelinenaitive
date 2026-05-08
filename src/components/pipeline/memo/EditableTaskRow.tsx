@@ -99,7 +99,12 @@ export function EditableTaskRow({ task }: Props) {
   });
 
   return (
-    <div className="group flex items-center gap-2.5 rounded-md bg-background/70 border border-border/60 px-2.5 py-1.5">
+    <div
+      className="group flex items-center gap-2.5 rounded-md bg-background/70 border border-border/60 px-2.5 py-1.5"
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
       <Square className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
 
       {titleEditing && isTask ? (
@@ -108,7 +113,9 @@ export function EditableTaskRow({ task }: Props) {
           value={titleDraft}
           onChange={(e) => setTitleDraft(e.target.value)}
           onBlur={saveTitle}
+          onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => {
+            e.stopPropagation();
             if (e.key === 'Enter') { e.preventDefault(); saveTitle(); }
             if (e.key === 'Escape') { setTitleDraft(task.title); setTitleEditing(false); }
           }}
@@ -117,7 +124,7 @@ export function EditableTaskRow({ task }: Props) {
       ) : (
         <button
           type="button"
-          onClick={() => isTask && setTitleEditing(true)}
+          onClick={(e) => { e.stopPropagation(); if (isTask) setTitleEditing(true); }}
           className={cn(
             'flex-1 min-w-0 text-left text-xs text-foreground font-medium truncate',
             isTask && 'cursor-text hover:text-primary',
@@ -138,6 +145,7 @@ export function EditableTaskRow({ task }: Props) {
           <PopoverTrigger asChild>
             <button
               type="button"
+              onClick={(e) => e.stopPropagation()}
               className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground whitespace-nowrap shrink-0"
               title={assignee || 'Assign'}
             >
@@ -147,10 +155,15 @@ export function EditableTaskRow({ task }: Props) {
               <span className="truncate max-w-[80px]">{assignee || 'Unassigned'}</span>
             </button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-56 p-1 max-h-72 overflow-y-auto pointer-events-auto">
+          <PopoverContent
+            align="end"
+            className="w-56 p-1 max-h-72 overflow-y-auto pointer-events-auto"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
             <button
               type="button"
-              onClick={() => saveAssignee(null)}
+              onClick={(e) => { e.stopPropagation(); saveAssignee(null); }}
               className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted text-muted-foreground"
             >
               Unassigned
@@ -159,7 +172,7 @@ export function EditableTaskRow({ task }: Props) {
               <button
                 key={m.id}
                 type="button"
-                onClick={() => saveAssignee(m.id)}
+                onClick={(e) => { e.stopPropagation(); saveAssignee(m.id); }}
                 className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted flex items-center gap-2"
               >
                 <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-muted text-[9px] font-semibold">
@@ -185,6 +198,7 @@ export function EditableTaskRow({ task }: Props) {
           <PopoverTrigger asChild>
             <button
               type="button"
+              onClick={(e) => e.stopPropagation()}
               className={cn(
                 'text-[10px] whitespace-nowrap shrink-0 hover:text-foreground transition-colors',
                 isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground',
@@ -194,7 +208,12 @@ export function EditableTaskRow({ task }: Props) {
               {due ? format(due, 'MMM d') : '+ date'}
             </button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-auto p-0 pointer-events-auto">
+          <PopoverContent
+            align="end"
+            className="w-auto p-0 pointer-events-auto"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
             <Calendar
               mode="single"
               selected={due || undefined}
@@ -205,7 +224,7 @@ export function EditableTaskRow({ task }: Props) {
             {due && (
               <button
                 type="button"
-                onClick={() => saveDate(undefined)}
+                onClick={(e) => { e.stopPropagation(); saveDate(undefined); }}
                 className="w-full text-xs text-muted-foreground hover:text-destructive py-2 border-t border-border"
               >
                 Clear date
