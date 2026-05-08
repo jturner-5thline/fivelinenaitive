@@ -605,8 +605,27 @@ serve(async (req) => {
             "permalink_url",
             "owner.name",
             "owner.email",
+            "current_status_update.gid",
+            "current_status_update.resource_type",
             "current_status_update.status_type",
             "current_status_update.title",
+            "current_status_update.text",
+            "current_status_update.created_at",
+            "current_status",
+            "current_status.color",
+            "current_status.title",
+            "current_status.text",
+            "status",
+            "status_color",
+            "color",
+            "custom_fields.name",
+            "custom_fields.display_value",
+            "custom_fields.text_value",
+            "custom_fields.number_value",
+            "custom_fields.enum_value.name",
+            "custom_fields.enum_value.color",
+            "custom_fields.multi_enum_values.name",
+            "custom_fields.multi_enum_values.color",
             "due_date",
             "due_on",
             "start_on",
@@ -757,15 +776,19 @@ serve(async (req) => {
               } catch (_e) {
                 detail = {};
               }
-              const requestedFields = portfolioDetailFields.split(",");
+              const requestedFields = [...new Set([...itemFields.split(","), ...portfolioDetailFields.split(",")])];
               const diagnostics: Record<string, unknown> = {
+                base_current_status_update: p.current_status_update ?? null,
+                base_current_status: p.current_status ?? null,
+                base_status: p.status ?? null,
+                base_status_color: p.status_color ?? null,
                 current_status_update: detail?.current_status_update ?? p.current_status_update ?? null,
-                current_status: detail?.current_status ?? null,
-                status: detail?.status ?? null,
-                status_color: detail?.status_color ?? null,
+                current_status: detail?.current_status ?? p.current_status ?? null,
+                status: detail?.status ?? p.status ?? null,
+                status_color: detail?.status_color ?? p.status_color ?? null,
                 color: detail?.color ?? p.color ?? null,
-                custom_fields: Array.isArray(detail?.custom_fields)
-                  ? detail.custom_fields.map((cf: any) => ({
+                custom_fields: Array.isArray(detail?.custom_fields?.length ? detail.custom_fields : p?.custom_fields)
+                  ? (detail?.custom_fields?.length ? detail.custom_fields : p.custom_fields).map((cf: any) => ({
                       name: cf?.name ?? null,
                       display_value: cf?.display_value ?? null,
                       text_value: cf?.text_value ?? null,
@@ -817,15 +840,24 @@ serve(async (req) => {
                 statusSource = source;
               };
 
+              applyStatus(p?.current_status_update?.status_type, "item.current_status_update.status_type", p?.current_status_update?.title);
               applyStatus(detail?.current_status_update?.status_type, "current_status_update.status_type", detail?.current_status_update?.title);
               applyStatus(expandedStatusUpdate?.status_type, "current_status_update.expand.status_type", expandedStatusUpdate?.title);
+              applyStatus(p?.current_status?.status_type, "item.current_status.status_type", p?.current_status?.title);
+              applyStatus(p?.status, "item.status", p?.current_status?.title);
+              applyStatus(p?.status_color, "item.status_color", p?.current_status?.title);
+              applyStatus(p?.current_status?.color, "item.current_status.color", p?.current_status?.title);
               applyStatus(detail?.current_status?.status_type, "current_status.status_type", detail?.current_status?.title);
               applyStatus(detail?.status, "status", detail?.current_status?.title);
               applyStatus(detail?.status_color, "status_color", detail?.current_status?.title);
               applyStatus(detail?.current_status?.color, "current_status.color", detail?.current_status?.title);
               applyStatus(detail?.color, "portfolio.color", detail?.current_status?.title);
 
-              const customFields: any[] = Array.isArray(detail?.custom_fields) ? detail.custom_fields : [];
+              const customFields: any[] = Array.isArray(detail?.custom_fields) && detail.custom_fields.length
+                ? detail.custom_fields
+                : Array.isArray(p?.custom_fields)
+                  ? p.custom_fields
+                  : [];
               for (const cf of customFields) {
                 const fieldName = String(cf?.name || "");
                 const fieldKey = fieldName.trim().toLowerCase();
