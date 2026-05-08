@@ -164,6 +164,7 @@ function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady }:
         canEdit={canEdit}
         reportKey={reportKey}
         titlePrefix={persona}
+        ownerName={defaultAuthor}
         activeCompositeKey={activeCompositeKey}
         fetchedCompositeKey={fetchedCompositeKey}
         isDirty={isDirty}
