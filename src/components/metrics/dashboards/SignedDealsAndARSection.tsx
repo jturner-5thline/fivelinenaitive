@@ -70,9 +70,9 @@ export function SignedBarChart({
 
   if (isLoading) {
     return (
-      <Card className="glass-module">
+      <Card className="glass-module h-full flex flex-col">
         <CardHeader className="pb-2"><Skeleton className="h-5 w-32" /><Skeleton className="h-3 w-48 mt-1" /></CardHeader>
-        <CardContent><Skeleton className="h-[220px] w-full" /></CardContent>
+        <CardContent className="flex-1 min-h-0"><Skeleton className="h-full min-h-[220px] w-full" /></CardContent>
       </Card>
     );
   }
@@ -184,8 +184,8 @@ export function OutstandingARPieChart() {
   }));
 
   return (
-    <Card className="glass-module glass-module-interactive">
-      <CardHeader className="pb-2 flex flex-row items-start justify-between">
+    <Card className="glass-module glass-module-interactive h-full flex flex-col">
+      <CardHeader className="pb-2 flex flex-row items-start justify-between flex-shrink-0">
         <div>
           <CardTitle className="text-sm font-medium text-foreground">Outstanding A/R</CardTitle>
           <p className="text-xs text-muted-foreground mt-0.5">By entity · QuickBooks balance</p>
@@ -195,8 +195,8 @@ export function OutstandingARPieChart() {
           <p className="text-[10px] text-muted-foreground">Total Outstanding</p>
         </div>
       </CardHeader>
-      <CardContent>
-        <div style={{ height: 170 }}>
+      <CardContent className="flex-1 min-h-0 flex flex-col">
+        <div className="flex-1 min-h-[170px]">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <PieGlassDefs colors={PIE_COLORS} />
@@ -491,7 +491,7 @@ export function FinServClientsSignedWidget({ selectedQuarter }: { selectedQuarte
 export function OutstandingARWidget() {
   const [open, setOpen] = useState(false);
   return (
-    <div className="h-full cursor-pointer" onClick={() => setOpen(true)}>
+    <div className="h-full min-h-0 cursor-pointer" onClick={() => setOpen(true)}>
       <OutstandingARPieChart />
       <OutstandingARDrilldownModal open={open} onClose={() => setOpen(false)} />
     </div>
