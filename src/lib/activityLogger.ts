@@ -34,12 +34,14 @@ export function logActivity(input: LogActivityInput): void {
         companyId = member?.company_id ?? null;
       }
 
-      await supabase.from("user_activity_log").insert({
-        user_id: userId,
-        company_id: companyId,
-        event_type: input.event_type,
-        event_data: input.event_data ?? {},
-      });
+      await supabase.from("user_activity_log").insert([
+        {
+          user_id: userId,
+          company_id: companyId ?? undefined,
+          event_type: input.event_type,
+          event_data: (input.event_data ?? {}) as never,
+        },
+      ]);
     } catch {
       // best-effort
     }
