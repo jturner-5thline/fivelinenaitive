@@ -132,6 +132,11 @@ export function useAsanaGoals(): UseAsanaGoalsResult {
       }
 
       const now = new Date().toISOString();
+      if (Array.isArray(data.goals) && data.goals.length > 0) {
+        // Diagnostic: verify owner shape coming back from Asana proxy.
+        // eslint-disable-next-line no-console
+        console.log('[AsanaGoals] first raw goal:', data.goals[0]);
+      }
       const normalized: AsanaGoalRow[] = (data.goals as AsanaGoalApi[]).map((g) => {
         const rawStatus =
           g.current_status_update?.status_type ||
