@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { Deal, DealMilestone } from '@/types/deal';
 import type { DealTaskItem } from '@/hooks/usePipelineDealTasks';
-import { Diamond, Pencil, Square, Check } from 'lucide-react';
+import type { PipelineDigestRaw } from '@/hooks/usePipelineDigests';
+import { Diamond, Pencil, Square, Check, Plus } from 'lucide-react';
 import { format, differenceInCalendarDays } from 'date-fns';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,10 +12,14 @@ import { Calendar } from '@/components/ui/calendar';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { AddFollowupInlineForm } from './AddFollowupInlineForm';
+import { prefillFollowupTitle } from '@/lib/dealNextBestAction';
 
 interface TasksMilestonesBandProps {
   deal: Deal;
   tasks: DealTaskItem[];
+  /** Used to compute a smarter "+ Add Follow-up" pre-fill title. */
+  rawDigest?: PipelineDigestRaw;
 }
 
 interface CompanyMemberOption {
@@ -58,7 +63,7 @@ function relativeDays(dueDate: string): string {
  * 3-column insights row. Lists open tasks/outstanding items (capped) and
  * highlights the next upcoming milestone, if any.
  */
-export function TasksMilestonesBand({ deal, tasks }: TasksMilestonesBandProps) {
+export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesBandProps) {
   const queryClient = useQueryClient();
   const { company } = useCompany();
   const milestone = nextUpcomingMilestone(deal.milestones);
@@ -68,6 +73,8 @@ export function TasksMilestonesBand({ deal, tasks }: TasksMilestonesBandProps) {
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
   const [editingAssigneeId, setEditingAssigneeId] = useState<string | null>(null);
   const [titleDraft, setTitleDraft] = useState('');
+  const [addFormOpen, setAddFormOpen] = useState(false);
+  const prefillTitle = prefillFollowupTitle(deal, tasks, rawDigest);
 
   const { data: members = [] } = useQuery({
     queryKey: ['deal-rundown-task-members', company?.id],
@@ -391,6 +398,31 @@ export function TasksMilestonesBand({ deal, tasks }: TasksMilestonesBandProps) {
             </div>
           )}
         </div>
+      )}
+
+      {/* + Add Follow-up — opens an inline form that creates a task linked
+          to this deal (and optionally syncs to Asana). Strictly additive:
+          existing task list above is unchanged. */}
+      {addFormOpen ? (
+        <AddFollowupInlineForm
+          deal={deal}
+          defaultTitle={prefillTitle}
+          onClose={() => setAddFormOpen(false)}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setAddFormOpen(true);
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-dashed border-border/70 bg-background/40 px-2 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
+        >
+          <Plus className="h-3 w-3" />
+          Add Follow-up
+        </button>
       )}
     </div>
   );
