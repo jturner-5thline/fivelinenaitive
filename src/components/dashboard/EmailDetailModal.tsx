@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -380,6 +380,7 @@ export function EmailDetailModal({ email, open, onOpenChange }: EmailDetailModal
       <DialogContent
         className="w-[94vw] h-[92vh] max-w-none sm:max-w-none max-h-none p-0 flex flex-col overflow-hidden gap-0 glass-border-soft bg-background/95 backdrop-blur-xl shadow-2xl shadow-black/40"
       >
+        <DialogTitle className="sr-only">Email</DialogTitle>
         <EmailDetailHeader email={email} onClose={() => onOpenChange(false)} />
 
         <ScrollArea className="flex-1 min-h-0">
