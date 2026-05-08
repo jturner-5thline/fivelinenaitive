@@ -26,6 +26,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { formatDistanceToNow, format } from 'date-fns';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Star,
   Paperclip,
   Link2,
