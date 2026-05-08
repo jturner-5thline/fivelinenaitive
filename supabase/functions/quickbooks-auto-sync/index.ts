@@ -88,6 +88,7 @@ serve(async (req) => {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            apikey: SUPABASE_SERVICE_ROLE_KEY,
             "x-sync-user-id": c.user_id,
           },
           body: JSON.stringify({ realmId: c.realm_id }),
