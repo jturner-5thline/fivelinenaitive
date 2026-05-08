@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
+import { useCopilotStore } from '@/stores/copilotStore';
 import { cn } from '@/lib/utils';
 
 // ---------- Step definitions ----------
@@ -345,6 +346,8 @@ export function PlatformTour() {
   const [userId, setUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const startDemo = useCopilotStore((s) => s.startDemo);
+  const stopDemo = useCopilotStore((s) => s.stopDemo);
   const allSteps = useMemo(() => buildSteps(), []);
 
   // Filter to only available steps for this user (permission-aware re-evaluation each render)
@@ -428,9 +431,14 @@ export function PlatformTour() {
     if (step.route && location.pathname !== step.route) {
       navigate(step.route);
     }
-    // Note: we intentionally do NOT open the live Ask Naitive AI panel during
-    // the tour. The onboarding AI step is fully sandboxed and uses static
-    // demo data only — no real workspace queries, retrievals, or mutations.
+    // The AI demo step opens the real Ask Naitive AI panel in a sandboxed
+    // demo mode — it shows a fully fake conversation and disables the live
+    // input. No real workspace data is queried, displayed, or written.
+    if (step.kind === 'ai-demo') {
+      startDemo();
+    } else {
+      stopDemo();
+    }
     step.onEnter?.();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showTour, currentStep, step?.id]);
@@ -439,13 +447,14 @@ export function PlatformTour() {
     localStorage.setItem('tour-completed', 'true');
     localStorage.removeItem(STEP_INDEX_KEY);
     setShowTour(false);
+    stopDemo();
     if (userId && !isDemoUser) {
       void supabase
         .from('profiles')
         .update({ tour_completed_at: new Date().toISOString() })
         .eq('user_id', userId);
     }
-  }, [userId, isDemoUser]);
+  }, [userId, isDemoUser, stopDemo]);
 
   const advance = useCallback(() => {
     setCurrentStep((s) => Math.min(s + 1, steps.length - 1));
@@ -497,9 +506,11 @@ export function PlatformTour() {
   const progress = ((currentStep + 1) / steps.length) * 100;
   const isCentered = step.kind !== 'spotlight' || !targetRect;
 
-  // Popover dimensions (responsive)
+  // Popover dimensions (responsive). The AI demo step is now a slim coach
+  // mark — the real demo conversation plays inside the live Ask Naitive AI
+  // panel rather than inside the popover.
   const popW = Math.min(380, window.innerWidth - 32);
-  const popH = step.kind === 'ai-demo' ? Math.min(560, window.innerHeight - 64) : 280;
+  const popH = 280;
 
   let popStyle: React.CSSProperties;
   if (isCentered) {
@@ -614,7 +625,12 @@ export function PlatformTour() {
             </div>
           )}
 
-          {step.kind === 'ai-demo' && <AiDemoSimulation key={`demo-${currentStep}`} />}
+          {step.kind === 'ai-demo' && (
+            <div className="flex items-center gap-2 text-xs text-primary/90 bg-primary/10 border border-primary/20 rounded-md px-2 py-1.5 mt-2">
+              <SparklesLucide className="h-3.5 w-3.5 shrink-0" />
+              <span>Watch the panel above — try clicking an action item. It's all sample data.</span>
+            </div>
+          )}
           {step.kind === 'finish' && <div className="pt-1"><ExamplePrompts /></div>}
         </div>
 

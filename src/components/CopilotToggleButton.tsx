@@ -67,6 +67,8 @@ export function CopilotToggleButton() {
   const expandPanel = useCopilotStore((s) => s.expandPanel);
   const isProcessing = useCopilotStore((s) => s.isProcessing);
   const unreadCount = useCopilotStore((s) => s.unreadCount);
+  const demoMode = useCopilotStore((s) => s.demoMode);
+  const demoTypedPrompt = useCopilotStore((s) => s.demoTypedPrompt);
   const hasOpenModal = useAnyDialogOpen();
   const [value, setValue] = useState('');
   const [focused, setFocused] = useState(false);
@@ -522,14 +524,17 @@ export function CopilotToggleButton() {
           <input
             ref={inputRef}
             type="text"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
+            value={demoMode ? demoTypedPrompt : value}
+            onChange={(e) => { if (!demoMode) setValue(e.target.value); }}
+            readOnly={demoMode}
+            disabled={demoMode}
             onFocus={() => setFocused(true)}
             onBlur={() => {
               // Delay to allow mousedown handlers on suggestions to fire first.
               setTimeout(() => setFocused(false), 120);
             }}
             onKeyDown={(e) => {
+              if (demoMode) { e.preventDefault(); return; }
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 submit();
@@ -548,7 +553,7 @@ export function CopilotToggleButton() {
                 setActiveIndex((i) => (i - 1 + dropdownItemCount) % dropdownItemCount);
               }
             }}
-            placeholder="Search or ask naitive AI…"
+            placeholder={demoMode ? 'Demo running — sample prompt' : 'Search or ask naitive AI…'}
             aria-label="Search or ask naitive AI"
             aria-autocomplete="list"
             aria-expanded={showDropdown}

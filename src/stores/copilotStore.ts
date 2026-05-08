@@ -19,6 +19,14 @@ interface CopilotStore {
   conversationId: string | null;
   conversationMutations: ConversationMutation[];
   pendingPrompt: string | null;
+  /**
+   * Onboarding-only sandboxed demo. When true, the copilot panel renders a
+   * static, fully fake conversation and disables the live input. NO real
+   * workspace data is queried, displayed, or written while this is true.
+   */
+  demoMode: boolean;
+  /** The text shown (animated) inside the live Ask bar during the demo. */
+  demoTypedPrompt: string;
   togglePanel: () => void;
   openPanel: () => void;
   closePanel: () => void;
@@ -32,6 +40,9 @@ interface CopilotStore {
   addMutation: (mutation: ConversationMutation) => void;
   setPendingPrompt: (prompt: string | null) => void;
   openPanelWithPrompt: (prompt: string) => void;
+  startDemo: () => void;
+  stopDemo: () => void;
+  setDemoTypedPrompt: (text: string) => void;
 }
 
 export const useCopilotStore = create<CopilotStore>((set) => ({
@@ -43,6 +54,8 @@ export const useCopilotStore = create<CopilotStore>((set) => ({
   conversationId: null,
   conversationMutations: [],
   pendingPrompt: null,
+  demoMode: false,
+  demoTypedPrompt: '',
   // togglePanel cycles: closed → open, open → minimized, minimized → open.
   togglePanel: () => set((s) => {
     if (!s.isOpen) return { isOpen: true, isMinimized: false, unreadCount: 0 };
@@ -72,4 +85,15 @@ export const useCopilotStore = create<CopilotStore>((set) => ({
     isMinimized: s.isOpen ? s.isMinimized : false,
     pendingPrompt: prompt,
   })),
+  startDemo: () => set({
+    demoMode: true,
+    isOpen: true,
+    isMinimized: false,
+    messages: [],
+    isProcessing: false,
+    demoTypedPrompt: '',
+    unreadCount: 0,
+  }),
+  stopDemo: () => set({ demoMode: false, demoTypedPrompt: '' }),
+  setDemoTypedPrompt: (text) => set({ demoTypedPrompt: text }),
 }));

@@ -21,6 +21,7 @@ import { CopilotTaskCard } from '@/components/copilot/CopilotTaskCard';
 import { CopilotPipelineSummary } from '@/components/copilot/CopilotPipelineSummary';
 import { CopilotProactiveNudge } from '@/components/copilot/CopilotProactiveNudge';
 import { CopilotCorrectionPopover } from '@/components/copilot/CopilotCorrectionPopover';
+import { CopilotDemoConversation } from '@/components/copilot/CopilotDemoConversation';
 import { useProactiveNudges } from '@/hooks/useProactiveNudges';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { formatAIResponse, getStageDisplayName } from '@/lib/copilot-utils';
@@ -455,6 +456,7 @@ function MessageActions({ msg, conversationId }: { msg: { id: string; content: s
 
 export function AICopilotPanel() {
   const { isOpen, isMinimized, minimizePanel, closePanel, messages, addMessage, setMessages, isProcessing, setProcessing, conversationId, setConversationId, conversationMutations, pendingPrompt, setPendingPrompt } = useCopilotStore();
+  const demoMode = useCopilotStore((s) => s.demoMode);
   const [agentMode, setAgentMode] = useState(false);
   const { user } = useAuth();
   const [input, setInput] = useState('');
@@ -1202,6 +1204,11 @@ export function AICopilotPanel() {
       )}
 
       {/* Messages */}
+      {demoMode ? (
+        <div role="log" aria-label="Onboarding demo conversation" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <CopilotDemoConversation />
+        </div>
+      ) : (
       <div role="log" aria-label="Chat messages" style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         {/* Deal recap banner — surfaces prior persisted per-deal memory when reopening the AI on a deal */}
         {isDealDetail && dealIdFromPath && messages.length === 0 && dealMemory.recent.length > 0 && (() => {
@@ -1329,6 +1336,7 @@ export function AICopilotPanel() {
         )}
         <div ref={messagesEndRef} />
       </div>
+      )}
 
       {/* Input intentionally omitted — typing happens in the floating Ask
           bar (CopilotToggleButton) which sits directly below this panel.
