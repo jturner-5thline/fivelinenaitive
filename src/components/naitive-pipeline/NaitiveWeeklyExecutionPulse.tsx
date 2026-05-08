@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { ArrowDown, ArrowUp, Minus, CalendarIcon, ChevronRight } from 'lucide-react';
+import { formatSlug } from '@/utils/dealTypeLabels';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
@@ -599,7 +600,7 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
                         </Link>
                         {deal.stage && (
                           <p className="text-[11px] text-muted-foreground mt-0.5">
-                            Stage: {deal.stage}
+                            Stage: {formatSlug(deal.stage)}
                           </p>
                         )}
                         <ul className="mt-2 space-y-1">
