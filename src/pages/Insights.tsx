@@ -1674,7 +1674,7 @@ function MetricsInner() {
       { i: 'clients-signed-finserv', x: 3, y: 9, w: 3, h: 3, minW: 3, minH: 2 },
 
       // Bottom-right: wide chart spanning the right section
-      { i: 'sd-outstanding-ar', x: 6, y: 6, w: 6, h: 6, minW: 5, minH: 4 },
+      { i: 'sd-outstanding-ar', x: 6, y: 6, w: 6, h: 6, minW: 3, minH: 3 },
 
       // === PRESERVED SUPPLEMENTARY WIDGETS (kept below primary band) ===
       { i: 'debt-profit',    x: 0, y: 12, w: 6, h: 3, minW: 3, minH: 3 },
