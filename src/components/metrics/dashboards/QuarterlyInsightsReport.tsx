@@ -903,7 +903,24 @@ function ReportNarrativeSection({ s, set }: { s: ReportState; set: ReportSetStat
 }
 
 function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: ReportSetState; ownerName?: string }) {
-  const { goals: asanaGoals, loading, error, lastSyncedAt, configured, refresh } = useAsanaGoals();
+  const { goals: asanaGoals, loading, error, lastSyncedAt, configured, refresh, fetchSubgoals } = useAsanaGoals();
+  // Per-parent-goal subgoal cache + expand state.
+  const [expandedGoals, setExpandedGoals] = useState<Record<string, boolean>>({});
+  const [subgoalsByParent, setSubgoalsByParent] = useState<Record<string, AsanaGoalRow[]>>({});
+  const [subgoalsLoading, setSubgoalsLoading] = useState<Record<string, boolean>>({});
+  const toggleGoalExpand = async (goalId: string) => {
+    const next = !expandedGoals[goalId];
+    setExpandedGoals(prev => ({ ...prev, [goalId]: next }));
+    if (next && subgoalsByParent[goalId] === undefined && !subgoalsLoading[goalId]) {
+      setSubgoalsLoading(prev => ({ ...prev, [goalId]: true }));
+      try {
+        const rows = await fetchSubgoals(goalId);
+        setSubgoalsByParent(prev => ({ ...prev, [goalId]: rows }));
+      } finally {
+        setSubgoalsLoading(prev => ({ ...prev, [goalId]: false }));
+      }
+    }
+  };
   const prefs = useAsanaGoalFilterPrefs();
   const insightsTf = useInsightsTimeframeOptional();
   const reportingPeriod = insightsTf?.reportingPeriod ?? null;
