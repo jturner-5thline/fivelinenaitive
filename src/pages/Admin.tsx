@@ -545,6 +545,17 @@ const Admin = () => {
       ? persistedSubPageId
       : activeSection.subPages[0]?.id;
 
+  // Sections that intentionally render a "Coming soon" placeholder
+  // instead of their sub-page content. Kept in the top-level tab bar so
+  // navigation stays consistent.
+  const COMING_SOON_SECTIONS: TabCategory[] = [
+    "data-security",
+    "settings",
+    "product-enhancement",
+    "support",
+  ];
+  const isComingSoon = COMING_SOON_SECTIONS.includes(activeCategory);
+
   return (
     <div className="bg-background">
       <DealsHeader />
@@ -666,7 +677,21 @@ const Admin = () => {
               key={`${activeCategory}:${currentSubPageId}`}
               className="h-full overflow-y-auto px-5 py-5 animate-in fade-in slide-in-from-right-2 duration-200"
             >
-              {renderSubPageContent(currentSubPageId)}
+              {isComingSoon ? (
+                <div className="flex items-center justify-center min-h-[400px]">
+                  <Card className="max-w-md w-full">
+                    <CardHeader className="text-center">
+                      <div className="mx-auto h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-3">
+                        <ActiveIcon className="h-5 w-5" />
+                      </div>
+                      <CardTitle>{activeSection.label}</CardTitle>
+                      <CardDescription>This section is coming soon.</CardDescription>
+                    </CardHeader>
+                  </Card>
+                </div>
+              ) : (
+                renderSubPageContent(currentSubPageId)
+              )}
             </div>
           </div>
         </div>
