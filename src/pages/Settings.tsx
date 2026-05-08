@@ -119,11 +119,22 @@ export default function Settings() {
   const initialTab = searchParams.get('tab') || 'general';
   const [activeTab, setActiveTab] = useState(initialTab);
   // Keep activeTab in sync with URL changes (e.g. CTA links from other pages).
+  // Only re-syncs when the URL itself changes — never when user clicks a tab —
+  // so the in-page click handler stays the source of truth for tab switches.
   useEffect(() => {
     const t = searchParams.get('tab');
     if (t && t !== activeTab) setActiveTab(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
+
+  // Click handler: update local state AND URL so the active panel always
+  // matches the highlighted tab, even if a downstream effect re-reads the URL.
+  const handleTabChange = (next: string) => {
+    setActiveTab(next);
+    const params = new URLSearchParams(searchParams);
+    params.set('tab', next);
+    setSearchParams(params, { replace: true });
+  };
   const { isAdmin } = useCompany();
   const { features: companyFeatures } = useCompanyFeatures();
   const { hasPageAccess } = usePageAccessFlags();
@@ -223,7 +234,7 @@ export default function Settings() {
             )}
 
             {filteredTabs.length > 0 && (
-              <Tabs value={effectiveTab} onValueChange={setActiveTab}>
+              <Tabs value={effectiveTab} onValueChange={handleTabChange}>
                 <TabsList className="w-full justify-start overflow-x-auto">
                   {filteredTabs.map(tab => (
                     <TabsTrigger key={tab.id} value={tab.id}>
