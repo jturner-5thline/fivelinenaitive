@@ -705,7 +705,7 @@ export function useDealsDatabase() {
       }
       if (updates.preSigningHours !== undefined) dbUpdates.pre_signing_hours = updates.preSigningHours;
       if (updates.postSigningHours !== undefined) dbUpdates.post_signing_hours = updates.postSigningHours;
-      if (updates.totalFee !== undefined) dbUpdates.total_fee = updates.totalFee;
+      // total_fee is a generated column in Postgres — never write to it.
       if (updates.retainerFee !== undefined) dbUpdates.retainer_fee = updates.retainerFee;
       if (updates.milestoneFee !== undefined) dbUpdates.milestone_fee = updates.milestoneFee;
       if (updates.successFeePercent !== undefined) dbUpdates.success_fee_percent = updates.successFeePercent;
