@@ -2821,6 +2821,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                   setShowResumeBanner(false);
                 }}
               />
+              )}
             </EmailPaneErrorBoundary>
           </div>
         )}
