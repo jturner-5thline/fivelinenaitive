@@ -16,6 +16,8 @@ interface LinkToDealPopoverProps {
   /** Returning a Promise lets the caller await persistence before the popover closes. */
   onLinkDeal: (dealId: string, dealName: string) => void | Promise<void>;
   onUnlink: () => void | Promise<void>;
+  /** Optional: deal id the AI sidebar already inferred — surfaced at the top with an "AI Suggested" badge. */
+  aiSuggestedDealId?: string;
 }
 
 interface Deal {
@@ -25,7 +27,7 @@ interface Deal {
   status: string;
 }
 
-export function LinkToDealPopover({ trigger, currentDealName, isLinked, onLinkDeal, onUnlink }: LinkToDealPopoverProps) {
+export function LinkToDealPopover({ trigger, currentDealName, isLinked, onLinkDeal, onUnlink, aiSuggestedDealId }: LinkToDealPopoverProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [deals, setDeals] = useState<Deal[]>([]);
@@ -57,17 +59,28 @@ export function LinkToDealPopover({ trigger, currentDealName, isLinked, onLinkDe
   const loadDeals = async (query: string = '') => {
     const seq = ++searchSeq.current;
     setLoading(true);
+    // Active = anything not archived / closed-won / closed-lost. We sort by
+    // most-recently-updated so the user sees deals they're working on first.
     let req = supabase
       .from('deals')
-      .select('id, company, stage, status')
-      .eq('status', 'active');
+      .select('id, company, stage, status, updated_at')
+      .not('status', 'in', '(archived,closed,closed-won,closed-lost)');
     if (query) {
       req = req.ilike('company', `%${query}%`);
     }
-    const { data } = await req.order('company').limit(50);
+    const { data } = await req.order('updated_at', { ascending: false }).limit(50);
     // Drop stale responses if a newer search has been issued.
     if (seq !== searchSeq.current) return;
-    setDeals((data || []).map(d => ({ ...d, company: d.company || 'Unnamed Deal' })));
+    const mapped = (data || []).map(d => ({ ...d, company: d.company || 'Unnamed Deal' })) as Deal[];
+    // Float the AI-suggested deal to the top so the user can confirm with one click.
+    if (aiSuggestedDealId) {
+      const idx = mapped.findIndex(d => d.id === aiSuggestedDealId);
+      if (idx > 0) {
+        const [hit] = mapped.splice(idx, 1);
+        mapped.unshift(hit);
+      }
+    }
+    setDeals(mapped);
     setActiveIndex(0);
     setLoading(false);
   };
@@ -161,6 +174,7 @@ export function LinkToDealPopover({ trigger, currentDealName, isLinked, onLinkDe
               {filteredDeals.map((deal, idx) => {
                 const isCurrentlyLinked = isLinked && currentDealName === deal.company;
                 const isActive = idx === activeIndex;
+                const isAiSuggested = aiSuggestedDealId === deal.id;
                 return (
                   <button
                     key={deal.id}
@@ -177,10 +191,28 @@ export function LinkToDealPopover({ trigger, currentDealName, isLinked, onLinkDe
                   >
                     <Briefcase className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <span className="text-xs font-medium truncate block">{deal.company}</span>
-                      {deal.stage && (
-                        <span className="text-[10px] text-muted-foreground">{deal.stage}</span>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium truncate">{deal.company}</span>
+                        {isAiSuggested && (
+                          <Badge variant="secondary" className="h-3.5 px-1 text-[8px] uppercase tracking-wide">AI Suggested</Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {deal.status && (
+                          <span className={cn(
+                            'text-[9px] px-1 rounded',
+                            deal.status === 'on-track' && 'bg-emerald-500/15 text-emerald-500',
+                            deal.status === 'at-risk' && 'bg-amber-500/15 text-amber-500',
+                            deal.status === 'on-hold' && 'bg-slate-500/15 text-slate-400',
+                            deal.status === 'off-track' && 'bg-red-500/15 text-red-500',
+                          )}>
+                            {deal.status.replace('-', ' ')}
+                          </span>
+                        )}
+                        {deal.stage && (
+                          <span className="text-[10px] text-muted-foreground">{deal.stage}</span>
+                        )}
+                      </div>
                     </div>
                     {isCurrentlyLinked && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
                   </button>
