@@ -1745,7 +1745,6 @@ function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: Report
                         </td>
                       </tr>
                     )}
-                    {group.rows.map((goal: AsanaGoalRow, index: number) => {
                     {group.rows.map((goal: AsanaGoalRow, index: number) =>
                       renderGoalRow(goal, 0, String(index + 1)),
                     )}
