@@ -506,9 +506,11 @@ export function PlatformTour() {
   const progress = ((currentStep + 1) / steps.length) * 100;
   const isCentered = step.kind !== 'spotlight' || !targetRect;
 
-  // Popover dimensions (responsive)
+  // Popover dimensions (responsive). The AI demo step is now a slim coach
+  // mark — the real demo conversation plays inside the live Ask Naitive AI
+  // panel rather than inside the popover.
   const popW = Math.min(380, window.innerWidth - 32);
-  const popH = step.kind === 'ai-demo' ? Math.min(560, window.innerHeight - 64) : 280;
+  const popH = 280;
 
   let popStyle: React.CSSProperties;
   if (isCentered) {
