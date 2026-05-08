@@ -716,14 +716,32 @@ serve(async (req) => {
             "permalink_url",
             "owner.name",
             "owner.email",
+            "current_status_update.gid",
+            "current_status_update.resource_type",
             "current_status_update.status_type",
             "current_status_update.title",
             "current_status_update.text",
+            "current_status_update.html_text",
             "current_status_update.created_at",
+            "current_status_update.resource_subtype",
+            "current_status",
             "current_status.color",
             "current_status.title",
             "current_status.text",
+            "status",
+            "status_color",
             "color",
+            "custom_fields.name",
+            "custom_fields.display_value",
+            "custom_fields.text_value",
+            "custom_fields.number_value",
+            "custom_fields.enum_value.name",
+            "custom_fields.enum_value.color",
+            "custom_fields.multi_enum_values.name",
+            "custom_fields.multi_enum_values.color",
+            "custom_fields.people_value.name",
+            "custom_fields.people_value.email",
+            "custom_fields.resource_subtype",
             "due_on",
             "start_on",
           ].join(",");
@@ -739,51 +757,136 @@ serve(async (req) => {
               } catch (_e) {
                 detail = {};
               }
-              // Fallback: fetch latest status update from dedicated endpoint
-              // (Asana portfolios sometimes don't return current_status_update inline)
-              let latestStatusType: string | null =
-                detail?.current_status_update?.status_type ||
-                p.current_status_update?.status_type ||
-                null;
-              let latestStatusTitle: string | null =
-                detail?.current_status_update?.title ||
-                p.current_status_update?.title ||
-                null;
-              let statusSource = latestStatusType ? "current_status_update" : null;
-              // Legacy current_status.color mapping
-              if (!latestStatusType && (detail?.current_status?.color || detail?.color)) {
-                const colorRaw = (detail?.current_status?.color || detail?.color || "").toLowerCase();
-                const colorMap: Record<string, string> = {
-                  green: "on_track",
-                  yellow: "at_risk",
-                  red: "off_track",
-                  blue: "on_hold",
-                  complete: "complete",
-                };
-                if (colorMap[colorRaw]) {
-                  latestStatusType = colorMap[colorRaw];
-                  latestStatusTitle = detail?.current_status?.title || latestStatusTitle;
-                  statusSource = "current_status.color";
+              const requestedFields = portfolioDetailFields.split(",");
+              const diagnostics: Record<string, unknown> = {
+                current_status_update: detail?.current_status_update ?? p.current_status_update ?? null,
+                current_status: detail?.current_status ?? null,
+                status: detail?.status ?? null,
+                status_color: detail?.status_color ?? null,
+                color: detail?.color ?? p.color ?? null,
+                custom_fields: Array.isArray(detail?.custom_fields)
+                  ? detail.custom_fields.map((cf: any) => ({
+                      name: cf?.name ?? null,
+                      display_value: cf?.display_value ?? null,
+                      text_value: cf?.text_value ?? null,
+                      number_value: cf?.number_value ?? null,
+                      enum_value: cf?.enum_value
+                        ? {
+                            name: cf.enum_value?.name ?? null,
+                            color: cf.enum_value?.color ?? null,
+                          }
+                        : null,
+                      multi_enum_values: Array.isArray(cf?.multi_enum_values)
+                        ? cf.multi_enum_values.map((value: any) => ({
+                            name: value?.name ?? null,
+                            color: value?.color ?? null,
+                          }))
+                        : [],
+                    }))
+                  : [],
+              };
+
+              let expandedStatusUpdate: any = null;
+              const stubGid = detail?.current_status_update?.gid || p.current_status_update?.gid || null;
+              if (stubGid) {
+                try {
+                  const statusUpdateDetail = await asanaFetch(
+                    `/status_updates/${stubGid}?opt_fields=gid,status_type,title,text,html_text,created_at,resource_subtype,parent.name,parent.gid,created_by.name,created_by.email`,
+                    resolvedToken,
+                  );
+                  expandedStatusUpdate = statusUpdateDetail.data || null;
+                } catch (e) {
+                  console.warn(`[portfolio_projects] current_status_update expand failed for ${p.gid} via ${stubGid}: ${e}`);
                 }
               }
+
+              let latestStatusType: string | null = null;
+              let latestStatusTitle: string | null = null;
+              let rawStatusValue: string | null = null;
+              let normalizedStatus: string | null = null;
+              let statusSource: string | null = null;
+
+              const applyStatus = (candidate: unknown, source: string, title?: unknown) => {
+                if (latestStatusType) return;
+                const normalized = normalizeInitiativeStatus(candidate);
+                if (!normalized.key) return;
+                latestStatusType = normalized.key;
+                latestStatusTitle = typeof title === "string" && title.trim() ? title : latestStatusTitle;
+                rawStatusValue = typeof candidate === "string" ? candidate : JSON.stringify(candidate);
+                normalizedStatus = normalized.label;
+                statusSource = source;
+              };
+
+              applyStatus(detail?.current_status_update?.status_type, "current_status_update.status_type", detail?.current_status_update?.title);
+              applyStatus(expandedStatusUpdate?.status_type, "current_status_update.expand.status_type", expandedStatusUpdate?.title);
+              applyStatus(detail?.current_status?.status_type, "current_status.status_type", detail?.current_status?.title);
+              applyStatus(detail?.status, "status", detail?.current_status?.title);
+              applyStatus(detail?.status_color, "status_color", detail?.current_status?.title);
+              applyStatus(detail?.current_status?.color, "current_status.color", detail?.current_status?.title);
+              applyStatus(detail?.color, "portfolio.color", detail?.current_status?.title);
+
+              const customFields: any[] = Array.isArray(detail?.custom_fields) ? detail.custom_fields : [];
+              for (const cf of customFields) {
+                const fieldName = String(cf?.name || "");
+                const fieldKey = fieldName.trim().toLowerCase();
+                const isLikelyStatusField = /status|health|rag|state|condition/.test(fieldKey);
+                const candidates = [
+                  { value: cf?.enum_value?.name, source: `custom_field.enum_value:${fieldName}` },
+                  { value: cf?.display_value, source: `custom_field.display_value:${fieldName}` },
+                  { value: cf?.text_value, source: `custom_field.text_value:${fieldName}` },
+                ];
+                if (Array.isArray(cf?.multi_enum_values) && cf.multi_enum_values.length) {
+                  for (const option of cf.multi_enum_values) {
+                    candidates.push({ value: option?.name, source: `custom_field.multi_enum:${fieldName}` });
+                    candidates.push({ value: option?.color, source: `custom_field.multi_enum_color:${fieldName}` });
+                  }
+                }
+                if (cf?.enum_value?.color) {
+                  candidates.push({ value: cf.enum_value.color, source: `custom_field.enum_color:${fieldName}` });
+                }
+                for (const candidate of candidates) {
+                  if (!candidate.value) continue;
+                  if (!isLikelyStatusField) {
+                    const normalized = normalizeInitiativeStatus(candidate.value);
+                    if (!normalized.key) continue;
+                  }
+                  applyStatus(candidate.value, candidate.source, fieldName);
+                }
+              }
+
               if (!latestStatusType) {
                 try {
                   const stUp = await asanaFetch(
-                    `/status_updates?parent=${p.gid}&limit=1&opt_fields=status_type,title,text,created_at`,
+                    `/status_updates?parent=${p.gid}&limit=10&opt_fields=gid,status_type,title,text,html_text,created_at,resource_subtype,created_by.name,created_by.email`,
                     resolvedToken,
                   );
+                  diagnostics.status_updates_list = stUp.data || [];
                   const latest = (stUp.data || [])[0];
                   if (latest?.status_type) {
-                    latestStatusType = latest.status_type;
+                    const normalized = normalizeInitiativeStatus(latest.status_type);
+                    latestStatusType = normalized.key || latest.status_type;
                     latestStatusTitle = latest.title || latestStatusTitle;
+                    rawStatusValue = latest.status_type;
+                    normalizedStatus = normalized.label;
                     statusSource = "status_updates_endpoint";
                   }
                 } catch (e) {
                   console.warn(`[portfolio_projects] status_updates fallback failed for ${p.gid}: ${e}`);
                 }
               }
+
+              diagnostics.expanded_status_update = expandedStatusUpdate;
               console.log(
-                `[portfolio_projects][portfolio] gid=${p.gid} name=${detail?.name || p.name} status_type=${latestStatusType} source=${statusSource || "none"}`,
+                `[portfolio_projects][portfolio][diag] ${JSON.stringify({
+                  gid: p.gid,
+                  name: detail?.name || p.name,
+                  item_type: "portfolio",
+                  requested_fields: requestedFields,
+                  status_source_used: statusSource || "none",
+                  raw_status_value: rawStatusValue,
+                  normalized_status: normalizedStatus,
+                  available_status_fields: diagnostics,
+                })}`,
               );
               const candidates: Array<{ name: string | null; email: string | null; source: string }> = [];
               if (detail?.owner?.name || detail?.owner?.email) {
@@ -807,6 +910,9 @@ serve(async (req) => {
                 status_title: latestStatusTitle,
                 due_on: detail?.due_on || p.due_on || p.due_date || null,
                 start_on: detail?.start_on || p.start_on || null,
+                status_source_used: statusSource,
+                raw_status_value: rawStatusValue,
+                normalized_status: normalizedStatus,
               };
             }),
           );
