@@ -601,18 +601,35 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
         </div>
       </div>
 
-      {/* Hover actions: flag, delete, pin */}
-      {hovered && (
-        <div className="absolute right-2 top-1.5 flex items-center gap-0">
-          <button onClick={(e) => { e.stopPropagation(); onToggleStar(latest); }} className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted/60 transition-colors">
-            <Flag className={cn('h-3 w-3', thread.isStarred ? 'fill-[hsl(var(--outlook-blue))] text-[hsl(var(--outlook-blue))]' : 'text-muted-foreground')} />
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); onDelete?.(latest); }} className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted/60 transition-colors">
-            <Trash2 className="h-3 w-3 text-muted-foreground" />
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); onArchive?.(latest); }} className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted/60 transition-colors">
-            <Pin className="h-3 w-3 text-muted-foreground" />
-          </button>
+      {/* Hover actions: consolidated into a single ⋮ menu. Hidden for
+          notification-type emails where these actions aren't useful. */}
+      {hovered && !isNotificationEmail && (
+        <div className="absolute right-2 top-1.5 flex items-center">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                onClick={(e) => e.stopPropagation()}
+                className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted/60 transition-colors"
+                aria-label="More actions"
+              >
+                <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onToggleStar(latest); }}>
+                <Flag className={cn('h-3.5 w-3.5 mr-2', thread.isStarred ? 'fill-[hsl(var(--outlook-blue))] text-[hsl(var(--outlook-blue))]' : '')} />
+                {thread.isStarred ? 'Unflag' : 'Flag'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onDelete?.(latest); }}>
+                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                Move to Trash
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onArchive?.(latest); }}>
+                <Pin className="h-3.5 w-3.5 mr-2" />
+                Snooze / Pin
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )}
     </div>
