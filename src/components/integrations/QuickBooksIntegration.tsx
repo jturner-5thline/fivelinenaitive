@@ -44,6 +44,7 @@ import {
   useQuickBooksInvoices,
   useQuickBooksPayments,
   useQuickBooksSyncHistory,
+  useQuickBooksAutoSync,
   QuickBooksConnection,
 } from "@/hooks/useQuickBooks";
 
@@ -53,6 +54,8 @@ export function QuickBooksIntegration() {
   const connect = useQuickBooksConnect();
   const disconnect = useQuickBooksDisconnect();
   const sync = useQuickBooksSync();
+  // Client-side safety net: auto-sync once per session if last sync > 48h.
+  useQuickBooksAutoSync();
 
   const connections: QuickBooksConnection[] = status?.connections || [];
   const [selectedRealmId, setSelectedRealmId] = useState<string | undefined>(undefined);
