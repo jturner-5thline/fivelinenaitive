@@ -175,6 +175,13 @@ function AiDemoSimulation() {
 
   return (
     <div className="rounded-xl border border-border/60 bg-muted/30 p-3 space-y-3 max-h-[50vh] overflow-y-auto">
+      {/* Sandboxed demo notice — no real workspace data is queried, displayed, or written. */}
+      <div className="flex items-center justify-between gap-2 -mt-1 -mx-1">
+        <Badge variant="outline" className="h-5 px-2 text-[10px] gap-1 border-primary/40 text-primary bg-primary/10">
+          <SparklesLucide className="h-2.5 w-2.5" /> Demo example
+        </Badge>
+        <span className="text-[10px] text-muted-foreground italic">Sample data · nothing saved</span>
+      </div>
       <div className="flex justify-end">
         <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-primary/15 text-foreground px-3 py-2 text-sm">
           {userText}
