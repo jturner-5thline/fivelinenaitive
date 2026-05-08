@@ -1176,7 +1176,7 @@ function PipelineTab({
   }
 
   return (
-    <div className="relative h-full grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 min-h-0">
+    <div className="relative h-full grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-4 min-h-0">
       {/* LEFT: Deals (primary focus) */}
       <div className="min-h-0 overflow-y-auto pr-1">
         <Suspense
