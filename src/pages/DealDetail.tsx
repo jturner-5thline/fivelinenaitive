@@ -3530,12 +3530,10 @@ export default function DealDetail() {
                                               <Input
                                                 type="text"
                                                 value={deal.totalFee ? Math.round(deal.totalFee).toLocaleString() : ''}
-                                                onChange={(e) => {
-                                                  const raw = e.target.value.replace(/,/g, '');
-                                                  if (raw === '' || /^\d+$/.test(raw)) updateDeal('totalFee', raw ? Number(raw) : 0);
-                                                }}
+                                                readOnly
+                                                title="Auto-calculated: Retainer + Milestone + Deal Size × Success Fee %"
                                                 placeholder="0"
-                                                className="pl-5 h-8 text-sm w-full"
+                                                className="pl-5 h-8 text-sm w-full bg-muted/40 cursor-not-allowed"
                                               />
                                             </div>
                                           </div>
