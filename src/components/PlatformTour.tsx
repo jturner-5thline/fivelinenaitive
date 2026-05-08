@@ -32,7 +32,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { cn } from '@/lib/utils';
 
 type StepKind = 'intro' | 'module' | 'ai-demo' | 'finish';
 
