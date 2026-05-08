@@ -1204,6 +1204,11 @@ export function AICopilotPanel() {
       )}
 
       {/* Messages */}
+      {demoMode ? (
+        <div role="log" aria-label="Onboarding demo conversation" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <CopilotDemoConversation />
+        </div>
+      ) : (
       <div role="log" aria-label="Chat messages" style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         {/* Deal recap banner — surfaces prior persisted per-deal memory when reopening the AI on a deal */}
         {isDealDetail && dealIdFromPath && messages.length === 0 && dealMemory.recent.length > 0 && (() => {
