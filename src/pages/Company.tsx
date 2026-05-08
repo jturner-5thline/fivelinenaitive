@@ -10,11 +10,22 @@ import { CompanyJoinRequestsPanel } from '@/components/admin/CompanyJoinRequests
 import { CreateCompanyDialog } from '@/components/company/CreateCompanyDialog';
 import { useCompany } from '@/hooks/useCompany';
 import { usePendingJoinRequestCount } from '@/hooks/usePendingJoinRequestCount';
-import { Loader2, Building2 } from 'lucide-react';
+import { Loader2, Building2, UserPlus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function Company() {
   const { company, isLoading, isAdmin } = useCompany();
   const { data: pendingJoinCount = 0 } = usePendingJoinRequestCount();
+  const [activeTab, setActiveTab] = useState<string>('profile');
+
+  // Auto-switch to Join Requests tab when admin lands here with pending items,
+  // so the red "1" badge from /settings has an obvious resolution path.
+  useEffect(() => {
+    if (isAdmin && pendingJoinCount > 0) {
+      setActiveTab('join-requests');
+    }
+  }, [isAdmin, pendingJoinCount]);
 
   if (isLoading) {
     return (
@@ -93,7 +104,25 @@ export default function Company() {
               </p>
             </div>
 
-            <Tabs defaultValue="profile" className="space-y-6">
+            {isAdmin && pendingJoinCount > 0 && (
+              <Alert className="border-destructive/40 bg-destructive/5">
+                <UserPlus className="h-4 w-4 text-destructive" />
+                <AlertTitle className="text-destructive">
+                  {pendingJoinCount} pending join {pendingJoinCount === 1 ? 'request' : 'requests'}
+                </AlertTitle>
+                <AlertDescription>
+                  Someone is asking to join your company. Review and approve or
+                  decline them in the <button
+                    type="button"
+                    onClick={() => setActiveTab('join-requests')}
+                    className="font-medium underline underline-offset-2 hover:text-foreground"
+                  >Join Requests</button> tab below. The badge in Settings will
+                  clear automatically once all requests are resolved.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
               <TabsList>
                 <TabsTrigger value="profile">Company Profile</TabsTrigger>
                 <TabsTrigger value="members">Team Members</TabsTrigger>
