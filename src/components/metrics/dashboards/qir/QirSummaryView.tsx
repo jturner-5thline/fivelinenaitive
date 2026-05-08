@@ -138,7 +138,13 @@ export function QirSummaryView({ s, reportLabel }: { s: ReportState; reportLabel
   };
   const ownerGoals = useMemo(
     () => asanaGoals.filter(g => {
-      if (!g.owner || normalize(g.owner) !== preparedByKey) return false;
+      if (!g.owner || g.owner === '—') return false;
+      const ownerKey = normalize(g.owner);
+      const ownerMatches =
+        ownerKey === preparedByKey ||
+        ownerKey.includes(preparedByKey) ||
+        preparedByKey.includes(ownerKey);
+      if (!ownerMatches) return false;
       if (activeYear == null) return true;
       const y = goalYear(g);
       return y === activeYear;
