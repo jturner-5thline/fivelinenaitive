@@ -230,27 +230,42 @@ export function AppSidebar() {
         <SidebarMenu>
           {visibleFooterItems.map((item) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton 
-                asChild 
-                isActive={isActive(item.url)}
-                tooltip={item.title}
-              >
-                <NavLink 
-                  to={item.url} 
-                  className="hover:bg-sidebar-accent/50"
-                  activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+              {item.title === "Help" ? (
+                <SidebarMenuButton
+                  asChild
+                  tooltip={item.title}
                 >
-                  <div className="relative">
-                    <item.icon className={'iconClassName' in item ? (item as any).iconClassName : "h-4 w-4"} />
-                    {item.url === "/settings" && pendingJoinCount > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 h-3.5 min-w-3.5 px-0.5 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
-                        {pendingJoinCount}
-                      </span>
-                    )}
-                  </div>
-                  {showExpanded && <span>{item.title}</span>}
-                </NavLink>
-              </SidebarMenuButton>
+                  <a
+                    href="mailto:support@naitive.co?subject=naitive%20support%20request"
+                    className="hover:bg-sidebar-accent/50"
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {showExpanded && <span>{item.title}</span>}
+                  </a>
+                </SidebarMenuButton>
+              ) : (
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive(item.url)}
+                  tooltip={item.title}
+                >
+                  <NavLink
+                    to={item.url}
+                    className="hover:bg-sidebar-accent/50"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  >
+                    <div className="relative">
+                      <item.icon className={'iconClassName' in item ? (item as any).iconClassName : "h-4 w-4"} />
+                      {item.url === "/settings" && pendingJoinCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 h-3.5 min-w-3.5 px-0.5 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
+                          {pendingJoinCount}
+                        </span>
+                      )}
+                    </div>
+                    {showExpanded && <span>{item.title}</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              )}
             </SidebarMenuItem>
           ))}
 
