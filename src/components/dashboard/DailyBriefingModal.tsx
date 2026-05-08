@@ -49,6 +49,7 @@ import { useMorningFollowups, useFollowupActions, type FollowupDealGroup, type F
 import { useDealsContext } from '@/contexts/DealsContext';
 import type { Deal } from '@/types/deal';
 import { RecentPipelineActivitySection } from './briefingPrimitives';
+import { formatSlug } from '@/utils/dealTypeLabels';
 
 interface DailyBriefingModalProps {
   open: boolean;
@@ -1241,7 +1242,10 @@ function followupStatusBadgeClass(raw: string): string {
   if (s === 'live-deal' || s === 'active' || s === 'on-track' || s === 'live') {
     return 'bg-green-500/20 text-green-400 border-green-500/30';
   }
-  if (s === 'on-hold' || s === 'hold' || s === 'at-risk' || s === 'paused') {
+  if (s === 'on-hold' || s === 'hold' || s === 'paused') {
+    return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+  }
+  if (s === 'at-risk') {
     return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
   }
   if (s === 'in-review' || s === 'reviewing' || s === 'review' || s.includes('review')) {
@@ -1288,7 +1292,7 @@ function FollowupTiles({
                     followupStatusBadgeClass(t.stage),
                   )}
                 >
-                  {t.stage}
+                  {formatSlug(t.stage)}
                 </span>
               )}
             </div>
