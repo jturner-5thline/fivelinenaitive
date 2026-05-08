@@ -1235,6 +1235,24 @@ function PipelineTab({
   );
 }
 
+// ── Status badge color mapping (matches deals pipeline color system) ──
+function followupStatusBadgeClass(raw: string): string {
+  const s = raw.toLowerCase().replace(/_/g, '-').trim();
+  if (s === 'live-deal' || s === 'active' || s === 'on-track' || s === 'live') {
+    return 'bg-green-500/20 text-green-400 border-green-500/30';
+  }
+  if (s === 'on-hold' || s === 'hold' || s === 'at-risk' || s === 'paused') {
+    return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+  }
+  if (s === 'in-review' || s === 'reviewing' || s === 'review' || s.includes('review')) {
+    return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+  }
+  if (s === 'closed-lost' || s === 'archived' || s === 'off-track' || s === 'lost') {
+    return 'bg-red-500/20 text-red-400 border-red-500/30';
+  }
+  return 'bg-white/10 text-white/60 border-white/10';
+}
+
 // ── Today's Follow-Ups — one tile per task ─────────────────────
 function FollowupTiles({
   groups,
@@ -1262,9 +1280,14 @@ function FollowupTiles({
           >
             {/* Top: company + stage badge */}
             <div className="flex items-center justify-between gap-2 mb-1">
-              <span className="text-xs text-muted-foreground truncate">{t.company}</span>
+              <span className="text-sm font-semibold text-white truncate">{t.company}</span>
               {t.stage && (
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-medium border border-white/10 bg-white/[0.05] text-muted-foreground whitespace-nowrap">
+                <span
+                  className={cn(
+                    'px-1.5 py-0.5 rounded text-[10px] font-medium border whitespace-nowrap',
+                    followupStatusBadgeClass(t.stage),
+                  )}
+                >
                   {t.stage}
                 </span>
               )}
