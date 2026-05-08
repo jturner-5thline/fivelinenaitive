@@ -1176,9 +1176,9 @@ function PipelineTab({
   }
 
   return (
-    <div className="relative h-full grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-4 min-h-0">
-      {/* LEFT: Deals (primary focus) */}
-      <div className="min-h-0 overflow-y-auto pr-1">
+    <div className="relative h-full flex flex-row min-h-0">
+      {/* LEFT: Deals (primary focus) — 75% */}
+      <div className="w-3/4 min-h-0 overflow-y-auto pr-3">
         <Suspense
           fallback={
             <div className="pipeline-memo-page rounded-xl py-12 px-4 text-center">
@@ -1198,44 +1198,30 @@ function PipelineTab({
         </Suspense>
       </div>
 
-      {/* RIGHT: Follow-Ups (top) + Recent Pipeline Activity (bottom) */}
-      <div className="min-h-0 grid grid-rows-2 gap-3">
-        {showFollowups ? (
-          <div className="min-h-0 flex flex-col rounded-lg border border-white/10 border-l-2 border-l-purple-500 bg-white/[0.03] overflow-hidden">
-            <div className="min-h-0 overflow-y-auto p-3">
-              <Section title="Today's Follow-Ups">
-                <FollowupsByDeal groups={followupGroups} onNavigate={onNavigate} />
-              </Section>
-            </div>
-          </div>
-        ) : (
-          <div className="min-h-0 flex flex-col rounded-lg border border-white/10 border-l-2 border-l-purple-500 bg-white/[0.03] overflow-hidden">
-            <div className="p-3">
-              <Section title="Today's Follow-Ups">
-                <EmptySection message="No follow-ups for today" />
-              </Section>
-            </div>
-          </div>
-        )}
-        {recentActivity.length > 0 ? (
-          <div className="min-h-0 flex flex-col rounded-lg border border-white/10 bg-white/[0.03] overflow-hidden">
-            <div className="min-h-0 overflow-y-auto p-3">
-              <RecentPipelineActivitySection
-                recentActivity={recentActivity}
-                onRowClick={(a) => a?.deal_id && onNavigate(`/deal/${a.deal_id}`)}
-                onNavigate={onNavigate}
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="min-h-0 flex flex-col rounded-lg border border-white/10 bg-white/[0.03] overflow-hidden">
-            <div className="p-3">
-              <Section title="Recent Pipeline Activity">
-                <EmptySection message="No pipeline activity since 5 PM ET yesterday" />
-              </Section>
-            </div>
-          </div>
-        )}
+      {/* RIGHT: 25% sidebar — Follow-Ups (top half) + Recent Pipeline Activity (bottom half) */}
+      <div className="w-1/4 min-h-0 flex flex-col border-l border-white/10 pl-3">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1 border-l-2 border-l-purple-500 pl-2">
+          <Section title="Today's Follow-Ups">
+            {showFollowups ? (
+              <FollowupsByDeal groups={followupGroups} onNavigate={onNavigate} />
+            ) : (
+              <EmptySection message="No follow-ups for today" />
+            )}
+          </Section>
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1 border-t border-white/10 pt-3 mt-3">
+          {recentActivity.length > 0 ? (
+            <RecentPipelineActivitySection
+              recentActivity={recentActivity}
+              onRowClick={(a) => a?.deal_id && onNavigate(`/deal/${a.deal_id}`)}
+              onNavigate={onNavigate}
+            />
+          ) : (
+            <Section title="Recent Pipeline Activity">
+              <EmptySection message="No pipeline activity since 5 PM ET yesterday" />
+            </Section>
+          )}
+        </div>
       </div>
     </div>
   );
