@@ -1218,8 +1218,12 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                     enabled); Edit expands the standard inline form;
                     Dismiss is per-thread + per-suggestion (sessionStorage). */}
                 <SuggestedFollowupsCard
-                  suggestions={workflowAnalysis?.suggested_tasks || []}
-                  loading={workflowLoading}
+                  suggestions={
+                    followupSuggestions.length > 0
+                      ? followupSuggestions
+                      : (workflowAnalysis?.suggested_tasks || [])
+                  }
+                  loading={workflowLoading || followupLoading}
                   hasAnalyzed={!!workflowAnalysis}
                   dealId={dealId || workflowAnalysis?.likely_deal?.id || null}
                   dealName={dealName || workflowAnalysis?.likely_deal?.name || null}
