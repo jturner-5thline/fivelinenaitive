@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Building2, DollarSign, Users, Target, FileText } from 'lucide-react';
+import { formatDealType } from '@/utils/dealTypeLabels';
 
 interface DealData {
   company: string;
@@ -63,7 +64,7 @@ export function GammaDealPreview({ dealData }: GammaDealPreviewProps) {
       <div className="flex flex-wrap gap-1.5 pt-1">
         {dealData.stage && <Badge variant="secondary" className="text-[10px]">{dealData.stage}</Badge>}
         {dealData.status && <Badge variant="outline" className="text-[10px]">{dealData.status}</Badge>}
-        {dealData.deal_type && <Badge variant="outline" className="text-[10px]">{dealData.deal_type}</Badge>}
+        {dealData.deal_type && <Badge variant="outline" className="text-[10px]">{formatDealType(dealData.deal_type)}</Badge>}
       </div>
     </div>
   );
