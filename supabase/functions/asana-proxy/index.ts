@@ -706,6 +706,12 @@ serve(async (req) => {
             "owner.email",
             "current_status_update.status_type",
             "current_status_update.title",
+            "current_status_update.text",
+            "current_status_update.created_at",
+            "current_status.color",
+            "current_status.title",
+            "current_status.text",
+            "color",
             "due_on",
             "start_on",
           ].join(",");
@@ -721,6 +727,52 @@ serve(async (req) => {
               } catch (_e) {
                 detail = {};
               }
+              // Fallback: fetch latest status update from dedicated endpoint
+              // (Asana portfolios sometimes don't return current_status_update inline)
+              let latestStatusType: string | null =
+                detail?.current_status_update?.status_type ||
+                p.current_status_update?.status_type ||
+                null;
+              let latestStatusTitle: string | null =
+                detail?.current_status_update?.title ||
+                p.current_status_update?.title ||
+                null;
+              let statusSource = latestStatusType ? "current_status_update" : null;
+              // Legacy current_status.color mapping
+              if (!latestStatusType && (detail?.current_status?.color || detail?.color)) {
+                const colorRaw = (detail?.current_status?.color || detail?.color || "").toLowerCase();
+                const colorMap: Record<string, string> = {
+                  green: "on_track",
+                  yellow: "at_risk",
+                  red: "off_track",
+                  blue: "on_hold",
+                  complete: "complete",
+                };
+                if (colorMap[colorRaw]) {
+                  latestStatusType = colorMap[colorRaw];
+                  latestStatusTitle = detail?.current_status?.title || latestStatusTitle;
+                  statusSource = "current_status.color";
+                }
+              }
+              if (!latestStatusType) {
+                try {
+                  const stUp = await asanaFetch(
+                    `/status_updates?parent=${p.gid}&limit=1&opt_fields=status_type,title,text,created_at`,
+                    resolvedToken,
+                  );
+                  const latest = (stUp.data || [])[0];
+                  if (latest?.status_type) {
+                    latestStatusType = latest.status_type;
+                    latestStatusTitle = latest.title || latestStatusTitle;
+                    statusSource = "status_updates_endpoint";
+                  }
+                } catch (e) {
+                  console.warn(`[portfolio_projects] status_updates fallback failed for ${p.gid}: ${e}`);
+                }
+              }
+              console.log(
+                `[portfolio_projects][portfolio] gid=${p.gid} name=${detail?.name || p.name} status_type=${latestStatusType} source=${statusSource || "none"}`,
+              );
               const candidates: Array<{ name: string | null; email: string | null; source: string }> = [];
               if (detail?.owner?.name || detail?.owner?.email) {
                 candidates.push({
@@ -739,8 +791,8 @@ serve(async (req) => {
                 owner_email: primary.email,
                 owner_source: primary.source,
                 owner_candidates: candidates,
-                status_type: detail?.current_status_update?.status_type || p.current_status_update?.status_type || null,
-                status_title: detail?.current_status_update?.title || p.current_status_update?.title || null,
+                status_type: latestStatusType,
+                status_title: latestStatusTitle,
                 due_on: detail?.due_on || p.due_on || p.due_date || null,
                 start_on: detail?.start_on || p.start_on || null,
               };
