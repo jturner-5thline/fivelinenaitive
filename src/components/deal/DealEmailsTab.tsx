@@ -1522,7 +1522,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
           }}
         >
           <div className="relative flex-1 min-w-0">
-            {aiSearch.isSearching ? (
+            {(aiSearch.isSearching || allMailSearch.isSearching) ? (
               <Loader2 className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary animate-spin" />
             ) : aiSearchActive ? (
               <Sparkles className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary" />
