@@ -1,7 +1,8 @@
 import type { Deal, DealMilestone } from '@/types/deal';
 import type { DealTaskItem } from '@/hooks/usePipelineDealTasks';
-import { Square, Diamond } from 'lucide-react';
+import { Diamond } from 'lucide-react';
 import { format, differenceInCalendarDays } from 'date-fns';
+import { EditableTaskRow } from './EditableTaskRow';
 
 interface TasksMilestonesBandProps {
   deal: Deal;
@@ -49,46 +50,9 @@ export function TasksMilestonesBand({ deal, tasks }: TasksMilestonesBandProps) {
         </p>
       ) : (
         <div className="space-y-1.5">
-          {visibleTasks.map((t) => {
-            const assignee = t.kind === 'outstanding' ? t.requestedByName : t.assignedToName;
-            const initials = assignee
-              ? assignee.split(/\s+/).map((p) => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
-              : null;
-            const due = t.dueDate ? new Date(t.dueDate) : null;
-            const isOverdue = !!due && differenceInCalendarDays(due, new Date()) < 0;
-            return (
-              <div
-                key={t.id}
-                className="flex items-center gap-2.5 rounded-md bg-background/70 border border-border/60 px-2.5 py-1.5"
-              >
-                <Square className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <span className="flex-1 text-xs text-foreground font-medium truncate" title={t.title}>
-                  {t.title}
-                </span>
-                {assignee && (
-                  <span
-                    className="flex items-center gap-1 text-[10px] text-muted-foreground whitespace-nowrap shrink-0"
-                    title={assignee}
-                  >
-                    <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-muted text-[8px] font-semibold text-muted-foreground/90">
-                      {initials}
-                    </span>
-                    <span className="truncate max-w-[80px]">{assignee}</span>
-                  </span>
-                )}
-                {due && (
-                  <span
-                    className={`text-[10px] whitespace-nowrap shrink-0 ${
-                      isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'
-                    }`}
-                    title={isOverdue ? `Overdue · ${format(due, 'MMM d, yyyy')}` : format(due, 'MMM d, yyyy')}
-                  >
-                    {format(due, 'MMM d')}
-                  </span>
-                )}
-              </div>
-            );
-          })}
+          {visibleTasks.map((t) => (
+            <EditableTaskRow key={t.id} task={t} />
+          ))}
           {tasks.length > visibleTasks.length && (
             <div className="text-[10px] text-muted-foreground pl-1">
               +{tasks.length - visibleTasks.length} more
