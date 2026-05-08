@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { formatSlug } from '@/utils/dealTypeLabels';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -117,11 +118,11 @@ function ExpandedDeals({ entry }: { entry: DealReferralSourceEntry }) {
         >
           <div className="min-w-0 flex-1">
             <p className="font-medium text-foreground truncate">{deal.company}</p>
-            <p className="text-muted-foreground text-[10px]">{deal.pipelineName} · {deal.stage}</p>
+            <p className="text-muted-foreground text-[10px]">{deal.pipelineName} · {formatSlug(deal.stage)}</p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <span className={`text-[10px] px-1.5 py-0.5 rounded ${deal.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : deal.status === 'archived' ? 'bg-muted text-muted-foreground' : 'bg-amber-500/10 text-amber-400'}`}>
-              {deal.status}
+              {formatSlug(deal.status)}
             </span>
             <span className="font-mono tabular-nums text-foreground">{formatCurrency(deal.value)}</span>
             <ExternalLink className="h-3 w-3 text-muted-foreground" />
