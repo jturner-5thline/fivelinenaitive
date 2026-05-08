@@ -14830,6 +14830,7 @@ export type Database = {
           email_signature: string | null
           email_task_assigned: boolean | null
           first_name: string | null
+          full_name: string | null
           id: string
           in_app_notifications: boolean
           last_name: string | null
@@ -14878,6 +14879,7 @@ export type Database = {
           email_signature?: string | null
           email_task_assigned?: boolean | null
           first_name?: string | null
+          full_name?: string | null
           id?: string
           in_app_notifications?: boolean
           last_name?: string | null
@@ -14926,6 +14928,7 @@ export type Database = {
           email_signature?: string | null
           email_task_assigned?: boolean | null
           first_name?: string | null
+          full_name?: string | null
           id?: string
           in_app_notifications?: boolean
           last_name?: string | null
