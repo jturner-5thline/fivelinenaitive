@@ -127,7 +127,7 @@ export function ProfitBarChart({
   return (
     <Card
       style={GLASS_CARD_STYLE}
-      className="glass-module glass-module-interactive"
+      className="glass-module glass-module-interactive h-full flex flex-col"
     >
       <div style={GLASS_SHEEN_STYLE} />
       <CardHeader className="pb-3 pt-5 relative">
@@ -182,8 +182,8 @@ export function ProfitBarChart({
           </p>
         </div>
       </CardHeader>
-      <CardContent className="relative pt-1">
-        <div style={{ height: 236 }}>
+      <CardContent className="relative pt-1 flex-1 min-h-0 flex flex-col">
+        <div className="flex-1 min-h-[236px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={months} margin={{ top: 12, right: 8, left: -10, bottom: 28 }} barCategoryGap="28%">
               <CartesianGrid
