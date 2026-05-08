@@ -21,6 +21,7 @@ interface CreateDemoBody {
   trialEndsAt?: string | null;     // ISO date or null
   trialPlan?: string;              // free text bucket
   sendWelcomeEmail?: boolean;
+  seedSampleData?: boolean;        // default true for demo/pilot
   users: DemoUserInput[];
 }
 
@@ -115,6 +116,10 @@ const handler = async (req: Request): Promise<Response> => {
       (caller.user_metadata as Record<string, unknown> | null)?.full_name as string | undefined ||
       (caller.email?.split("@")[0] ?? "An admin");
 
+    const PLATFORM_URL = Deno.env.get("APP_URL") ?? "https://fivelinenaitive.lovable.app";
+    const isDemoLike = ["demo", "pilot", "trial", "partner"].includes(accountType.toLowerCase());
+    const shouldSeed = body.seedSampleData !== false && isDemoLike;
+
     const results: Array<Record<string, unknown>> = [];
 
     for (const u of body.users) {
@@ -199,21 +204,45 @@ const handler = async (req: Request): Promise<Response> => {
           // Could be a unique constraint hit — surface but continue
           results.push({ email, ok: true, userId, invited: false, warn: inviteErr.message });
         } else if (body.sendWelcomeEmail !== false) {
-          // 3. Send invite email via existing send-invite function
+          // 3. Send branded demo-invite email via the shared transactional sender.
+          //    Falls back to legacy send-invite if the transactional path errors.
+          const acceptUrl = `${PLATFORM_URL}/accept-invite?token=${invitation.token}`;
+          let sentBranded = false;
           try {
-            await admin.functions.invoke("send-invite", {
+            const { error: txErr } = await admin.functions.invoke("send-transactional-email", {
               body: {
-                invitationId: invitation.id,
-                email,
-                companyName: company.name,
-                inviterName,
-                role: platformRole,
-                token: invitation.token,
+                templateName: "demo-invite",
+                recipientEmail: email,
+                idempotencyKey: `demo-invite-${invitation.id}`,
+                templateData: {
+                  name,
+                  companyName: company.name,
+                  inviterName,
+                  acceptUrl,
+                  trialEndsAt: trialEnds,
+                  role: platformRole,
+                },
               },
-              headers: { Authorization: authHeader },
             });
-          } catch (sendErr) {
-            console.warn("[create-demo-access] send-invite failed", sendErr);
+            if (txErr) throw txErr;
+            sentBranded = true;
+          } catch (txErr) {
+            console.warn("[create-demo-access] branded invite failed, falling back", txErr);
+            try {
+              await admin.functions.invoke("send-invite", {
+                body: {
+                  invitationId: invitation.id,
+                  email,
+                  companyName: company.name,
+                  inviterName,
+                  role: platformRole,
+                  token: invitation.token,
+                },
+                headers: { Authorization: authHeader },
+              });
+            } catch (sendErr) {
+              console.warn("[create-demo-access] send-invite fallback failed", sendErr);
+            }
           }
           results.push({ email, ok: true, userId, invited: true });
         } else {
@@ -226,8 +255,19 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    // 4. Seed lightweight sample data for demo / pilot accounts so the workspace
+    //    feels alive on first login. Best-effort — never block the response.
+    let seeded: { deals: number; contacts: number } | null = null;
+    if (shouldSeed) {
+      try {
+        seeded = await seedDemoCompanyData(admin, company.id, caller.id);
+      } catch (seedErr) {
+        console.warn("[create-demo-access] sample seeding failed", seedErr);
+      }
+    }
+
     return new Response(
-      JSON.stringify({ success: true, company, results }),
+      JSON.stringify({ success: true, company, results, seeded }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } },
     );
   } catch (err) {
@@ -239,5 +279,76 @@ const handler = async (req: Request): Promise<Response> => {
     });
   }
 };
+
+async function seedDemoCompanyData(
+  admin: ReturnType<typeof createClient>,
+  companyId: string,
+  attributingUserId: string,
+): Promise<{ deals: number; contacts: number }> {
+  // Resolve the default pipeline for the freshly-created company (created by
+  // the seed-new-company trigger). If it isn't there yet, skip silently.
+  const { data: pipeline } = await admin
+    .from("deal_pipelines")
+    .select("id, stages")
+    .eq("company_id", companyId)
+    .eq("is_default", true)
+    .maybeSingle();
+
+  const stages = Array.isArray(pipeline?.stages)
+    ? (pipeline!.stages as Array<{ id?: string; label?: string }>)
+    : [];
+  const stageId = (idx: number) => stages[idx]?.id || stages[0]?.id || "qualification";
+
+  const SAMPLE_DEALS = [
+    { company: "Acme Capital", value: 18_500_000, stage: stageId(1), status: "active", deal_type: "Refinancing",       manager: "James Turner", referred_by: "Direct" },
+    { company: "Northwind Logistics", value: 9_250_000, stage: stageId(2), status: "active", deal_type: "Growth Capital", manager: "James Turner", referred_by: "Goldman Sachs" },
+    { company: "Stellar Health", value: 32_000_000, stage: stageId(0), status: "active", deal_type: "Acquisition",     manager: "James Turner", referred_by: "JP Morgan" },
+    { company: "Apex Manufacturing", value: 12_400_000, stage: stageId(3), status: "active", deal_type: "Working Capital", manager: "James Turner", referred_by: "Direct" },
+    { company: "Harbor Foods", value: 6_800_000, stage: stageId(1), status: "active", deal_type: "Recapitalization", manager: "James Turner", referred_by: "Referral Partner" },
+  ];
+
+  const dealRows = SAMPLE_DEALS.map((d) => ({
+    ...d,
+    company_id: companyId,
+    user_id: attributingUserId,
+    pipeline_id: pipeline?.id ?? null,
+    is_sample: true,
+  }));
+
+  const { data: insertedDeals, error: dealsErr } = await admin
+    .from("deals")
+    .insert(dealRows)
+    .select("id");
+  if (dealsErr) {
+    console.warn("[create-demo-access] seed deals error", dealsErr);
+  }
+
+  const SAMPLE_CONTACTS = [
+    { first_name: "Sarah",   last_name: "Chen",     email: "sarah.chen@acmecap.example",      title: "CFO" },
+    { first_name: "Michael", last_name: "Roberts",  email: "m.roberts@northwind.example",     title: "VP Finance" },
+    { first_name: "Priya",   last_name: "Patel",    email: "priya@stellarhealth.example",     title: "Head of Strategy" },
+    { first_name: "David",   last_name: "Nguyen",   email: "d.nguyen@apexmfg.example",        title: "Treasurer" },
+  ].map((c) => ({
+    ...c,
+    company_id: companyId,
+    org_company_id: companyId,
+    created_by: attributingUserId,
+  }));
+
+  let contactsInserted = 0;
+  try {
+    const { count } = await admin
+      .from("contacts")
+      .insert(SAMPLE_CONTACTS, { count: "exact" });
+    contactsInserted = count ?? SAMPLE_CONTACTS.length;
+  } catch (e) {
+    console.warn("[create-demo-access] seed contacts skipped", e);
+  }
+
+  return {
+    deals: insertedDeals?.length ?? 0,
+    contacts: contactsInserted,
+  };
+}
 
 serve(handler);

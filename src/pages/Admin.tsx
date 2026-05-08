@@ -45,6 +45,7 @@ import { RecurringReportsPanel } from "@/components/admin/RecurringReportsPanel"
 import { UsageAnalyticsPanel } from "@/components/admin/usage-analytics/UsageAnalyticsPanel";
 import { CreateDemoAccessModal } from "@/components/admin/CreateDemoAccessModal";
 import { UserActivityPanel } from "@/components/admin/UserActivityPanel";
+import { DemoMetricsPanel } from "@/components/admin/DemoMetricsPanel";
 
 // Sub-page configurations
 const usersSubPages = [
@@ -52,6 +53,7 @@ const usersSubPages = [
   { id: "join-requests", label: "Join Requests", icon: Building2 },
   { id: "users", label: "Users", icon: Users },
   { id: "companies", label: "Companies", icon: Building2 },
+  { id: "demo-metrics", label: "Demo Metrics", icon: BarChart3 },
   { id: "activity", label: "Activity", icon: Activity },
   { id: "external", label: "External", icon: Cloud },
   { id: "invitations", label: "Invites", icon: Mail },
@@ -263,6 +265,22 @@ const Admin = () => {
         return <ExternalDataTab />;
       case "activity":
         return <UserActivityPanel />;
+      case "demo-metrics":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Demo & Pilot Metrics
+              </CardTitle>
+              <CardDescription>
+                Engagement snapshot for every demo / pilot workspace — sign-ins, AI usage,
+                deals created, and trial countdown.
+              </CardDescription>
+            </CardHeader>
+            <CardContent><DemoMetricsPanel /></CardContent>
+          </Card>
+        );
       case "invitations":
         return (
           <Card>
