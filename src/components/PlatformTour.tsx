@@ -392,18 +392,13 @@ export function PlatformTour() {
 
       setShouldShowTour(true);
 
-      const tourAlreadyCompleted = !!(profile as { tour_completed_at?: string | null } | null)?.tour_completed_at
-        || localStorage.getItem('tour-completed') === 'true';
+      const tourAlreadyCompleted = !!(profile as { tour_completed_at?: string | null } | null)?.tour_completed_at;
       if (tourAlreadyCompleted) return;
 
-      const justCompletedOnboarding = sessionStorage.getItem('just-completed-onboarding');
-      const isNewUser = profile && !profile.onboarding_completed;
-
-      if (justCompletedOnboarding || isNewUser) {
-        setCurrentStep(savedStep);
-        setTimeout(() => setShowTour(true), 500);
-        sessionStorage.removeItem('just-completed-onboarding');
-      }
+      // Auto-show for any signed-in user whose profile hasn't recorded tour_completed_at.
+      setCurrentStep(savedStep);
+      setTimeout(() => setShowTour(true), 500);
+      sessionStorage.removeItem('just-completed-onboarding');
     };
     checkTourEligibility();
 
