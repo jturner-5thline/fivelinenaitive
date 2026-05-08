@@ -31,7 +31,7 @@ export function EmptySection({ message }: { message: string }) {
 export function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-5">
-      <h4 className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-2 px-0.5">{title}</h4>
+      <h4 className="text-base font-bold uppercase tracking-widest text-foreground mb-2 px-0.5">{title}</h4>
       <div className="space-y-1.5">{children}</div>
     </div>
   );
