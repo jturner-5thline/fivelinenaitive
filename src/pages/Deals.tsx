@@ -244,6 +244,15 @@ export default function Dashboard() {
   const allDealIds = useMemo(() => pipelineFilteredDeals.map(d => d.id), [pipelineFilteredDeals]);
   const notificationCounts = useDealNotificationCounts(allDealIds);
 
+  // Open tasks per deal — drives the 3-state Tasks filter (All / Has / None).
+  // Reuses the batched hook already used by the Pipeline & Clients memo
+  // cards so we never issue per-deal queries from this page.
+  const { data: dealTasksMap } = usePipelineDealTasks(allDealIds, allDealIds.length > 0);
+  const dealHasTasks = useCallback((dealId: string) => {
+    const arr = dealTasksMap?.get(dealId);
+    return !!(arr && arr.length > 0);
+  }, [dealTasksMap]);
+
   // Count stale deals
   const staleDealCount = useMemo(() => {
     return pipelineFilteredDeals.filter(deal => {
@@ -253,25 +262,53 @@ export default function Dashboard() {
     }).length;
   }, [pipelineFilteredDeals, preferences.staleDealsDays]);
 
-  // Apply hasNotificationsOnly filter - must match DealCard notification logic
-  const deals = useMemo(() => {
-    if (!filters.hasNotificationsOnly) return pipelineFilteredDeals;
-    return pipelineFilteredDeals.filter(deal => {
-      let count = notificationCounts[deal.id] || 0;
-      // Count stale lenders (same logic as DealCard)
-      deal.lenders?.forEach(lender => {
-        if (lender.trackingStatus === 'active' && lender.updatedAt) {
-          const days = Math.floor((Date.now() - new Date(lender.updatedAt).getTime()) / (1000 * 60 * 60 * 24));
-          if (days >= preferences.staleDealsDays) count++;
-        }
-      });
-      // Count overdue milestones (same logic as DealCard)
-      deal.milestones?.forEach(m => {
-        if (!m.completed && m.dueDate && new Date(m.dueDate) < new Date()) count++;
-      });
-      return count > 0;
+  // Per-deal notification count — must match DealCard notification logic so
+  // the 3-state Notifications filter (All / Has / None) lines up with the
+  // red dot/pill rendered on each tile.
+  const dealNotificationCount = useCallback((deal: typeof pipelineFilteredDeals[number]) => {
+    let count = notificationCounts[deal.id] || 0;
+    deal.lenders?.forEach(lender => {
+      if (lender.trackingStatus === 'active' && lender.updatedAt) {
+        const days = Math.floor((Date.now() - new Date(lender.updatedAt).getTime()) / (1000 * 60 * 60 * 24));
+        if (days >= preferences.staleDealsDays) count++;
+      }
     });
-  }, [pipelineFilteredDeals, filters.hasNotificationsOnly, notificationCounts, preferences.staleDealsDays]);
+    deal.milestones?.forEach(m => {
+      if (!m.completed && m.dueDate && new Date(m.dueDate) < new Date()) count++;
+    });
+    return count;
+  }, [notificationCounts, preferences.staleDealsDays]);
+
+  // Apply Notifications + Tasks filters on top of the base filtered set.
+  // Existing role-based / pipeline / archived rules already ran upstream;
+  // we only layer the new 3-state filters here so we can never reintroduce
+  // excluded deals.
+  const deals = useMemo(() => {
+    let result = pipelineFilteredDeals;
+
+    // Notifications: legacy `hasNotificationsOnly` toggle still wins when set
+    // (kept for back-compat with saved views), otherwise use the new
+    // tri-state `notificationsFilter`.
+    const notifMode: 'all' | 'has' | 'none' =
+      filters.hasNotificationsOnly ? 'has' : (filters.notificationsFilter ?? 'all');
+    if (notifMode !== 'all') {
+      result = result.filter(deal => {
+        const count = dealNotificationCount(deal);
+        return notifMode === 'has' ? count > 0 : count === 0;
+      });
+    }
+
+    // Tasks tri-state filter.
+    const taskMode = filters.tasksFilter ?? 'all';
+    if (taskMode !== 'all') {
+      result = result.filter(deal => {
+        const has = dealHasTasks(deal.id);
+        return taskMode === 'has' ? has : !has;
+      });
+    }
+
+    return result;
+  }, [pipelineFilteredDeals, filters.hasNotificationsOnly, filters.notificationsFilter, filters.tasksFilter, dealNotificationCount, dealHasTasks]);
 
   // Duplicate detection
   const { clusters: duplicateClusters, suppressCluster } = useDealDuplicates(deals, showDuplicates);
