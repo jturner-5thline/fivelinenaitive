@@ -59,10 +59,9 @@ export default function Help() {
   const [selectedArticle, setSelectedArticle] = useState<HelpArticle | null>(null);
 
   const handleRestartTour = () => {
-    localStorage.removeItem('tour-completed');
-    localStorage.removeItem('dismissed-hints');
-    localStorage.removeItem('hints-fully-dismissed');
-    sessionStorage.removeItem('demo-tour-shown-this-session');
+    // Manual replay only — do NOT clear the persistent `tour_completed_at`
+    // flag on the profile. This fires the tour for the current session
+    // without re-arming auto-run on future logins.
     window.dispatchEvent(new Event('restart-platform-tour'));
   };
 
@@ -99,7 +98,7 @@ export default function Help() {
               </div>
               <Button variant="outline" size="sm" onClick={handleRestartTour} className="gap-2">
                 <RotateCcw className="h-4 w-4" />
-                Restart Tour
+                Replay Naitive guide
               </Button>
             </div>
 

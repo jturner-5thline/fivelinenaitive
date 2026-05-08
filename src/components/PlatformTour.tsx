@@ -398,18 +398,19 @@ export function PlatformTour() {
       const tourAlreadyCompleted = !!(profile as { tour_completed_at?: string | null } | null)?.tour_completed_at;
       if (tourAlreadyCompleted) return;
 
-      // ONLY auto-show for NEW users on their first login. Existing users
-      // who never completed the tour will NOT be auto-prompted — they can
-      // still launch it manually via Help → Restart Tour. "New" = account
-      // created within the last 24 hours.
-      const accountCreatedAt = user.created_at ? new Date(user.created_at).getTime() : 0;
-      const isNewAccount = accountCreatedAt > 0
-        && (Date.now() - accountCreatedAt) < 24 * 60 * 60 * 1000;
-      if (!isNewAccount) return;
-
+      // Auto-run ONCE per user. The persistent flag is `tour_completed_at`
+      // on the profile. We set it the moment we auto-show the tour so that
+      // refreshing, navigating, or logging back in never re-triggers it —
+      // even if the user dismisses mid-tour. The "Replay Naitive guide"
+      // action in Help fires a `restart-platform-tour` event and never
+      // clears this flag, so manual replays do not re-arm auto-run.
       setCurrentStep(savedStep);
       setTimeout(() => setShowTour(true), 500);
       sessionStorage.removeItem('just-completed-onboarding');
+      void supabase
+        .from('profiles')
+        .update({ tour_completed_at: new Date().toISOString() })
+        .eq('user_id', user.id);
     };
     checkTourEligibility();
 
