@@ -1553,9 +1553,6 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
           <span style={{ color: TEXT_PRIMARY }}>{activeQuarterLabel || '—'}</span>
           {' · '}
           <span style={{ color: TEXT_PRIMARY }}>{activeHalfLabel || '—'}</span>
-          <span style={{ marginLeft: 8, fontSize: 9, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: TEXT_LABEL }}>
-            · {activeExactMatch ? 'exact' : 'substring'}
-          </span>
           {activeOverride && (activeOverride.quarterLabel || activeOverride.halfLabel) && (
             <span style={{ marginLeft: 8, fontSize: 9, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#f0a45a' }}>
               · manual override
