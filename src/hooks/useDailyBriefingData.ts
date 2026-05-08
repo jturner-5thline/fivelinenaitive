@@ -123,14 +123,15 @@ export function useCatchUpData(enabled: boolean, targetDealOwnerName?: string) {
   const window = useBriefingWindow();
   const activePipelineId = useActivePipelineId();
   const { effectiveName, ready: scopeReady } = useEffectiveTargetName(targetDealOwnerName);
+  const { isAdmin } = useAdminRole();
 
   // When delegated (targetDealOwnerName set), narrow the deal set to deals
   // where that user is Owner OR Manager. This narrows every downstream
   // section: highlights, news items, risk deals, milestones, etc.
   const deals = useMemo(() => {
     const scoped = effectiveName ? getDealsForUserName(allDeals, effectiveName) : allDeals;
-    return filterRundownEligibleDeals(scoped as any[], activePipelineId);
-  }, [allDeals, effectiveName, activePipelineId]);
+    return filterRundownEligibleDeals(scoped as any[], activePipelineId, isAdmin);
+  }, [allDeals, effectiveName, activePipelineId, isAdmin]);
   const dealIdSet = useMemo(() => new Set(deals.map(d => d.id)), [deals]);
   const isDelegated = !!effectiveName;
 
