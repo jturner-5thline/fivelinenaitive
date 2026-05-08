@@ -44,15 +44,28 @@ export function useActivePipelineId(): string | null {
     enabled: !!companyId,
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Prefer the explicitly-marked default pipeline. If the company has
+      // never set one, fall back to the oldest pipeline so the Deal Rundown
+      // still resolves an Active Pipeline instead of returning [].
+      const { data: defaultRow, error: defaultErr } = await supabase
         .from('deal_pipelines')
         .select('id')
         .eq('company_id', companyId)
         .eq('is_default', true)
         .limit(1)
         .maybeSingle();
-      if (error) throw error;
-      return (data?.id as string | undefined) ?? null;
+      if (defaultErr) throw defaultErr;
+      if (defaultRow?.id) return defaultRow.id as string;
+
+      const { data: fallbackRow, error: fallbackErr } = await supabase
+        .from('deal_pipelines')
+        .select('id')
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (fallbackErr) throw fallbackErr;
+      return (fallbackRow?.id as string | undefined) ?? null;
     },
   });
   return data ?? null;
@@ -72,20 +85,29 @@ const UNIVERSAL_SUPPRESSED_STATUSES = new Set([
   'closedlost',
   'lost',
   'rejected',
+  'dead',
+  'dead-deal',
+  'dead_deal',
+  'deaddeal',
+  'do-not-contact',
+  'do_not_contact',
+  'donotcontact',
+  'do not contact',
 ]);
 export function filterRundownEligibleDeals<T extends { status?: string | null; pipelineId?: string | null }>(
   deals: T[],
   activePipelineId: string | null,
   isAdmin: boolean = false,
 ): T[] {
-  // Admin bypass applies ONLY to the pipeline gate — terminal statuses
-  // (archived / closed-lost / lost / rejected) are excluded for everyone.
+  // Pipeline gate applies to ALL users (admins included). Terminal statuses
+  // are excluded for ALL users. Callers must wait for activePipelineId to be
+  // resolved (via the `enabled` flag on the parent query) before relying on
+  // the result — otherwise we'd return [] during the brief loading window.
+  if (!activePipelineId) return [];
   return deals.filter(d => {
-    const status = (d.status || '').toString().toLowerCase();
-    if (UNIVERSAL_SUPPRESSED_STATUSES.has(status)) return false;
-    if (isAdmin) return true;
-    if (!activePipelineId) return false;
     if ((d as any).pipelineId !== activePipelineId) return false;
+    const status = (d.status || '').toString().toLowerCase().trim();
+    if (UNIVERSAL_SUPPRESSED_STATUSES.has(status)) return false;
     return true;
   });
 }
@@ -142,7 +164,7 @@ export function useCatchUpData(enabled: boolean, targetDealOwnerName?: string) {
 
   return useQuery({
     queryKey: ['briefing-catchup', window.startISO, user?.id, isDelegated ? `for:${effectiveName}` : 'self'],
-    enabled: enabled && !!user?.id && scopeReady,
+    enabled: enabled && !!user?.id && scopeReady && !!activePipelineId,
     staleTime: 60_000,
     queryFn: async () => {
       const { startISO, endISO } = window;
@@ -433,7 +455,7 @@ export function usePipelineData(enabled: boolean, targetDealOwnerName?: string) 
 
   return useQuery({
     queryKey: ['briefing-pipeline', window.startISO, user?.id, isDelegated ? `for:${effectiveName}` : 'self'],
-    enabled: enabled && !!user?.id && scopeReady,
+    enabled: enabled && !!user?.id && scopeReady && !!activePipelineId,
     staleTime: 60_000,
     queryFn: async () => {
       const { startISO, endISO } = window;
