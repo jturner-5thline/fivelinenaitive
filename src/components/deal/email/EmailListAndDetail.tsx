@@ -1495,6 +1495,46 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const effectiveDealName =
     linkedDealName || thread.dealName || detailWorkflowAnalysis?.likely_deal?.name;
 
+  // Hydrate per-thread deal link from the deal_emails table. Looks up any of
+  // the thread's real Gmail message IDs; if a row exists, we adopt its
+  // deal_id (+ resolve the deal name) so AI Assist downstream cards
+  // (Update Lender Status, Suggested Updates, Outstanding Items, Lender
+  // Q&A, Deal Context) all see the same resolved deal — eliminating the
+  // contradictory "no deal linked" state when the chip row already shows
+  // a deal.
+  useEffect(() => {
+    // Skip when the parent already provides an explicit dealId (deal page
+    // context) or we've already hydrated from a click in this session.
+    if (dealId || linkedDealId) return;
+    const messageIds = thread.emails
+      .map((e) => e.id)
+      .filter((mid): mid is string => !!mid && !mid.startsWith('mock-'));
+    if (messageIds.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const { data: linkRow } = await supabase
+        .from('deal_emails')
+        .select('deal_id')
+        .in('gmail_message_id', messageIds)
+        .order('linked_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cancelled || !linkRow?.deal_id) return;
+      const { data: dealRow } = await supabase
+        .from('deals')
+        .select('id, company')
+        .eq('id', linkRow.deal_id)
+        .maybeSingle();
+      if (cancelled) return;
+      setLinkedDealId(linkRow.deal_id);
+      if (dealRow?.company) setLinkedDealName(dealRow.company);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thread.threadId, dealId]);
+
   // Prefer the user's saved email signature (Settings → Email → Signature). Fall
   // back to a derived "Best,\n<name>" so the composer ghost-text always renders.
   const { user } = useAuth();
@@ -2653,8 +2693,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             >
               <AiAssistSidebar
                 thread={thread}
-                dealId={dealId}
-                dealName={linkedDealName || thread.dealName}
+                dealId={effectiveDealId}
+                dealName={effectiveDealName}
                 onClose={() => {
                   setShowAiAssist(false);
                   // Return focus to the toolbar toggle for keyboard users.
