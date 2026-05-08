@@ -29,6 +29,7 @@ import { useFullEmailMessage } from './useFullEmailMessage';
 import { useEmailToDataRoom, type DataRoomDestinationSuggestion } from '@/hooks/useEmailToDataRoom';
 import { SuggestedDealUpdatesSection } from './SuggestedDealUpdatesSection';
 import { SuggestedFollowupsCard } from './SuggestedFollowupsCard';
+import { useEmailFollowupSuggestions } from '@/hooks/useEmailFollowupSuggestions';
 import { DataRoomUploadSuggestionCard } from './DataRoomUploadSuggestionCard';
 import { DealContextCard } from './DealContextCard';
 import { UnmatchedEmailContextCard } from './UnmatchedEmailContextCard';
@@ -240,6 +241,18 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   // Hide the workflow card when the more specialized lender-pass card is already
   // surfacing the same recommendation, to avoid duplicate prompts.
   const showWorkflowCard = !!workflowAnalysis && !workflowDismissed && !showPassCard;
+
+  // Dedicated proactive follow-up extractor. Gated on workflow analysis
+  // completion so the cards only render after "Analyzing thread…" finishes.
+  const {
+    suggestions: followupSuggestions,
+    loading: followupLoading,
+  } = useEmailFollowupSuggestions({
+    threadData: passThreadData,
+    dealId: dealId || workflowAnalysis?.likely_deal?.id || null,
+    dealName: dealName || workflowAnalysis?.likely_deal?.name || null,
+    enabled: !!workflowAnalysis && !workflowLoading,
+  });
 
   // Data Room suggestion — load latest message attachments + auto-suggest destination
   const latestId = thread.latestEmail.id;
@@ -1205,8 +1218,12 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                     enabled); Edit expands the standard inline form;
                     Dismiss is per-thread + per-suggestion (sessionStorage). */}
                 <SuggestedFollowupsCard
-                  suggestions={workflowAnalysis?.suggested_tasks || []}
-                  loading={workflowLoading}
+                  suggestions={
+                    followupSuggestions.length > 0
+                      ? followupSuggestions
+                      : (workflowAnalysis?.suggested_tasks || [])
+                  }
+                  loading={workflowLoading || followupLoading}
                   hasAnalyzed={!!workflowAnalysis}
                   dealId={dealId || workflowAnalysis?.likely_deal?.id || null}
                   dealName={dealName || workflowAnalysis?.likely_deal?.name || null}
