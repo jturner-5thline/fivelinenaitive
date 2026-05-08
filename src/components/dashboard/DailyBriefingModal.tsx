@@ -49,6 +49,7 @@ import { useMorningFollowups, useFollowupActions, type FollowupDealGroup, type F
 import { useDealsContext } from '@/contexts/DealsContext';
 import type { Deal } from '@/types/deal';
 import { RecentPipelineActivitySection } from './briefingPrimitives';
+import { formatSlug } from '@/utils/dealTypeLabels';
 
 interface DailyBriefingModalProps {
   open: boolean;
