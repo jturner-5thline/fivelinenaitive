@@ -1336,6 +1336,7 @@ export function AICopilotPanel() {
         )}
         <div ref={messagesEndRef} />
       </div>
+      )}
 
       {/* Input intentionally omitted — typing happens in the floating Ask
           bar (CopilotToggleButton) which sits directly below this panel.
