@@ -134,11 +134,17 @@ export function NotificationsDropdown() {
     [(notifPrefs as any).notify_flex_alerts, flexNotifications]
   );
   
-  // Count unread notifications
+  // Count unread notifications.
+  // `clearableUnreadCount` covers everything the "Mark all read" action can
+  // actually clear (stale alerts, activity log, FLEx). Pending info requests
+  // are action items — they only disappear when the action is taken — so we
+  // surface them in the bell badge but exclude them from the button state,
+  // otherwise clicking "Mark all read" appears to do nothing.
   const unreadAlerts = staleAlerts.filter(a => !isRead('stale_alert', a.dealId));
   const unreadActivities = filteredActivities.filter(a => !isRead('activity', a.id));
   const unreadFlexCount = filteredFlexNotifications.filter(n => !n.read_at).length;
-  const unreadCount = unreadAlerts.length + unreadActivities.length + unreadFlexCount + infoRequestPendingCount;
+  const clearableUnreadCount = unreadAlerts.length + unreadActivities.length + unreadFlexCount;
+  const unreadCount = clearableUnreadCount + infoRequestPendingCount;
   const totalNotifications = staleAlerts.length + filteredActivities.length + filteredFlexNotifications.length + infoRequestNotifications.length;
   const hasAlerts = unreadAlerts.length > 0 || unreadFlexCount > 0 || infoRequestPendingCount > 0;
   
@@ -180,7 +186,7 @@ export function NotificationsDropdown() {
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <h3 className="font-semibold">Notifications</h3>
           <div className="flex items-center gap-1">
-            {unreadCount > 0 && (
+            {clearableUnreadCount > 0 && (
               <Button 
                 variant="ghost" 
                 size="sm" 
