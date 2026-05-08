@@ -233,6 +233,7 @@ export function DealsFlyoutMenu() {
         to="/deals"
         onKeyDown={handleParentKeyDown}
         aria-current={isDealsRoute ? 'page' : undefined}
+        data-tour="nav-deals"
       >
         <Briefcase className="h-4 w-4" />
         {showExpanded && <span>Deals</span>}

@@ -106,7 +106,7 @@ export function AppSidebar() {
 
 
   return (
-    <Sidebar side="left" collapsible="icon" className="h-[calc(100vh-1rem)]">
+    <Sidebar side="left" collapsible="icon" className="h-[calc(100vh-1rem)]" data-tour="sidebar">
       <SidebarHeader className="border-b border-sidebar-border px-2 py-3 rounded-b-xl bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center gap-2">
           <button 
@@ -130,6 +130,7 @@ export function AppSidebar() {
                 if (item.url === "/deals") {
                   return <DealsFlyoutMenu key={item.title} />;
                 }
+                const slug = item.url.replace(/^\//, '').split('?')[0] || 'home';
                 return (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
@@ -142,6 +143,7 @@ export function AppSidebar() {
                       end={item.url === "/deals"} 
                       className="hover:bg-sidebar-accent/50"
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      data-tour={`nav-${slug}`}
                     >
                       <div className="relative">
                         <item.icon className="h-4 w-4" />

@@ -209,6 +209,7 @@ export function DashboardFlyoutMenu() {
         to="/dashboard"
         onKeyDown={handleParentKeyDown}
         aria-current={isDashboardRoute ? 'page' : undefined}
+        data-tour="nav-dashboard"
       >
         <LayoutDashboard className="h-4 w-4" />
         {showExpanded && <span>Dashboard</span>}
