@@ -468,6 +468,27 @@ export const CompaniesTable = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Convert to client confirm */}
+      <AlertDialog open={!!convertTarget} onOpenChange={(open) => !open && setConvertTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Convert "{convertTarget?.name}" to a paid client?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This switches the account type to <strong>Client</strong>, clears the trial end date,
+              and sets subscription status to <strong>active</strong>. Any deactivated members will
+              be re-enabled.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isActioning}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConvert} disabled={isActioning}>
+              {isActioning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Convert to client
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
