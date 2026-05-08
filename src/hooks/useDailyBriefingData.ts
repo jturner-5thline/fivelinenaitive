@@ -61,16 +61,26 @@ export function useActivePipelineId(): string | null {
 // Shared rundown eligibility: deal must be in the Active Pipeline AND not
 // Archived AND not On Hold. Used by Deal Rundown, Daily Briefing, and
 // Niki's Daily Briefing so all three surfaces stay in sync.
-const RUNDOWN_SUPPRESSED_STATUSES = new Set(['archived', 'on-hold', 'on_hold']);
+// Status suppression for the Deal Rundown.
+//   • Admins: see ALL deals regardless of status (no suppression).
+//   • Non-admins: hide only Archived and Closed-Lost. On-Hold remains visible.
+const NON_ADMIN_SUPPRESSED_STATUSES = new Set([
+  'archived',
+  'closed-lost',
+  'closed_lost',
+  'closedlost',
+]);
 export function filterRundownEligibleDeals<T extends { status?: string | null; pipelineId?: string | null }>(
   deals: T[],
   activePipelineId: string | null,
+  isAdmin: boolean = false,
 ): T[] {
   if (!activePipelineId) return [];
   return deals.filter(d => {
     if ((d as any).pipelineId !== activePipelineId) return false;
+    if (isAdmin) return true;
     const status = (d.status || '').toString().toLowerCase();
-    if (RUNDOWN_SUPPRESSED_STATUSES.has(status)) return false;
+    if (NON_ADMIN_SUPPRESSED_STATUSES.has(status)) return false;
     return true;
   });
 }
