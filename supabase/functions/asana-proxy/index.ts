@@ -34,6 +34,18 @@ async function asanaFetch(path: string, token: string, options: RequestInit = {}
   return res.json();
 }
 
+function normalizeInitiativeStatus(raw: unknown): { key: string | null; label: string | null } {
+  const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  if (!value) return { key: null, label: null };
+  if (["on_track", "on track", "green"].includes(value)) return { key: "on_track", label: "On Track" };
+  if (["at_risk", "at risk", "yellow", "warning"].includes(value)) return { key: "at_risk", label: "At Risk" };
+  if (["off_track", "off track", "behind", "red"].includes(value)) return { key: "off_track", label: "Off Track" };
+  if (["on_hold", "on hold", "hold", "paused", "blue"].includes(value)) return { key: "on_hold", label: "On Hold" };
+  if (["complete", "completed", "done", "achieved"].includes(value)) return { key: "complete", label: "Complete" };
+  if (["dropped", "cancelled", "canceled"].includes(value)) return { key: "dropped", label: "Dropped" };
+  return { key: null, label: null };
+}
+
 // Resolve token: from request body (test/connect flow) or from DB (stored integration)
 async function resolveToken(
   bodyToken: string | undefined,
