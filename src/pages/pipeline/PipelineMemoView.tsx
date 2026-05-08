@@ -140,9 +140,11 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
     getScrollElement: () => scrollRef.current,
     estimateSize: useCallback(() => ESTIMATED_CARD_HEIGHT, []),
     overscan: VIRTUAL_OVERSCAN,
-    measureElement: typeof ResizeObserver !== 'undefined'
-      ? (el) => el.getBoundingClientRect().height
-      : undefined,
+    // Let @tanstack/react-virtual use its built-in ResizeObserver-backed
+    // measurement. Supplying a custom `measureElement` disables the
+    // observer and the row offsets stop updating when card content grows
+    // after mount (lazy digests, expanded follow-up form, lender groups),
+    // which manifests as cards overlapping their neighbours.
   });
 
   if (sorted.length === 0) {
