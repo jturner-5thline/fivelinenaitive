@@ -52,6 +52,7 @@ import {
   FileText,
   ChevronsUpDown,
   MoreHorizontal,
+  MoreVertical,
   Bold,
   Italic,
   Link as LinkIcon,
