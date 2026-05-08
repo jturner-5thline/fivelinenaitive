@@ -20,8 +20,56 @@ import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { MockEmail } from '@/components/deal/email/mockEmailData';
 
-const DEBOUNCE_MS = 300;
+const DEBOUNCE_MS = 400;
 const MAX_RESULTS = 50;
+const SEARCH_WINDOW_DAYS = 90;
+const CACHE_SIZE = 5;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 min in-memory only
+
+// Module-level LRU cache (session-only, never persisted).
+type CacheEntry = { results: MockEmail[]; ts: number };
+const searchCache = new Map<string, CacheEntry>();
+
+function getCached(key: string): MockEmail[] | null {
+  const hit = searchCache.get(key);
+  if (!hit) return null;
+  if (Date.now() - hit.ts > CACHE_TTL_MS) {
+    searchCache.delete(key);
+    return null;
+  }
+  // refresh LRU position
+  searchCache.delete(key);
+  searchCache.set(key, hit);
+  return hit.results;
+}
+
+function setCached(key: string, results: MockEmail[]) {
+  if (searchCache.has(key)) searchCache.delete(key);
+  searchCache.set(key, { results, ts: Date.now() });
+  while (searchCache.size > CACHE_SIZE) {
+    const oldestKey = searchCache.keys().next().value;
+    if (oldestKey === undefined) break;
+    searchCache.delete(oldestKey);
+  }
+}
+
+// Gmail search operators that signal the user already scoped by date —
+// in those cases we must NOT inject our default 90-day window.
+const DATE_OPERATOR_RE = /\b(?:after|before|older|newer|older_than|newer_than|on)\s*[:=]/i;
+
+function formatGmailDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}/${m}/${day}`;
+}
+
+function scopeQuery(raw: string): string {
+  if (DATE_OPERATOR_RE.test(raw)) return raw;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - SEARCH_WINDOW_DAYS);
+  return `${raw} after:${formatGmailDate(cutoff)}`;
+}
 
 function mapToMockEmail(msg: any): MockEmail | null {
   if (!msg || !msg.id) return null;
@@ -84,14 +132,22 @@ export function useGmailAllMailSearch(query: string, enabled: boolean) {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
 
+    // Instant cache hit: render immediately, then refresh in background.
+    const cached = getCached(trimmed);
+    if (cached) {
+      lastQueryRef.current = trimmed;
+      setResults(cached);
+    }
+
     const handle = window.setTimeout(async () => {
       setIsSearching(true);
       try {
+        const scopedQuery = scopeQuery(trimmed);
         const { data, error } = await supabase.functions.invoke('gmail-messages', {
           body: {
             action: 'list',
             max_results: MAX_RESULTS,
-            query: trimmed,
+            query: scopedQuery,
             search_all_mail: true,
           },
         });
@@ -104,6 +160,7 @@ export function useGmailAllMailSearch(query: string, enabled: boolean) {
           .map(mapToMockEmail)
           .filter((e: MockEmail | null): e is MockEmail => !!e);
         lastQueryRef.current = trimmed;
+        setCached(trimmed, mapped);
         setResults(mapped);
       } catch {
         /* network blip — keep prior results */
