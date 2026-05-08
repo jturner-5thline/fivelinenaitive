@@ -10,7 +10,7 @@ import {
   Settings, Megaphone, Lock, Webhook, AlertCircle, Database, Layout,
   ChevronLeft, ChevronRight,
   ShieldCheck, Cog, Lightbulb, UserCheck, Bell, MonitorPlay, ToggleRight, Brain, Wallet, FileText,
-  BarChart3, Plus
+  BarChart3, Plus, Activity
 } from "lucide-react";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useSystemStats } from "@/hooks/useAdminData";
@@ -44,6 +44,7 @@ import { QbCashflowMappingPanel } from "@/components/admin/QbCashflowMappingPane
 import { RecurringReportsPanel } from "@/components/admin/RecurringReportsPanel";
 import { UsageAnalyticsPanel } from "@/components/admin/usage-analytics/UsageAnalyticsPanel";
 import { CreateDemoAccessModal } from "@/components/admin/CreateDemoAccessModal";
+import { UserActivityPanel } from "@/components/admin/UserActivityPanel";
 
 // Sub-page configurations
 const usersSubPages = [
@@ -51,6 +52,7 @@ const usersSubPages = [
   { id: "join-requests", label: "Join Requests", icon: Building2 },
   { id: "users", label: "Users", icon: Users },
   { id: "companies", label: "Companies", icon: Building2 },
+  { id: "activity", label: "Activity", icon: Activity },
   { id: "external", label: "External", icon: Cloud },
   { id: "invitations", label: "Invites", icon: Mail },
 ];
