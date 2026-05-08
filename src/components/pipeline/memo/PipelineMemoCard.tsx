@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { MemoHeader } from './MemoHeader';
 import { ActivityPanel } from './ActivityPanel';
 import { TasksMilestonesBand } from './TasksMilestonesBand';
+import { NextBestActionRow } from './NextBestActionRow';
 import { EmailsPanel } from './EmailsPanel';
 import { LendersPanel } from './LendersPanel';
 
@@ -56,7 +57,9 @@ function PipelineMemoCardImpl({
     >
       <MemoHeader deal={deal} showLiveDot={showLiveDot} />
 
-      <TasksMilestonesBand deal={deal} tasks={tasks || []} />
+      <TasksMilestonesBand deal={deal} tasks={tasks || []} rawDigest={rawDigest} />
+
+      <NextBestActionRow deal={deal} tasks={tasks} rawDigest={rawDigest} />
 
       <div
         className="

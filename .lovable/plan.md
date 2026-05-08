@@ -1,69 +1,107 @@
+## Goal
 
-# Create Demo Access Flow — Implementation Plan
+Reduce manual clicks for task creation in two places:
 
-This is a large, multi-part feature spanning UI, database schema, edge functions, email infrastructure, and activity tracking. Before I start building, I want to confirm scope and surface a few important constraints I'd hit immediately.
+1. **Email AI sidebar** — auto-detect follow-up actions in the analyzed thread and surface them as one-click "Approve / Edit / Dismiss" cards in Suggested Updates.
+2. **Deal Rundown card** — add an inline "+ Add Follow-up" form per deal plus an AI-driven "Next best action" row, both creating tasks linked to the deal and synced to Asana.
 
-## Scope summary
+Strictly additive — no existing toolbars, layouts, or working flows are removed.
 
-1. New "+ Create Demo Access" button + modal in Admin → Users (admin-only).
-2. Backend creation of a company + user accounts + invite flow.
-3. Branded HTML invite emails with signed tokens (7-day expiry, resendable).
-4. Per-company "Activity" tab tracking sign-ins, page views, and feature usage.
-5. New `user_activity_log` table with RLS.
-6. Companies tab filter (All / Demo·Pilot / Client) and demo-company quick actions (View Activity, Extend Trial, Revoke Access).
+## Part 1 — Proactive follow-up detection (Email AI sidebar)
 
-## Important things to flag before building
-
-These will materially shape implementation — I'd like your call on each:
-
-**A. Existing schema reuse vs. new fields.** Your spec assumes columns that don't exist yet on `companies` (`type`, `notes`, `subscription_status`, `trial_ends_at`, `created_by`) and on `profiles` (`is_active`). I'll add them as nullable/with-defaults via idempotent migrations so nothing existing breaks. Confirm OK.
-
-**B. Roles model.** This project already uses a separate `user_roles` table (per project memory). The form's "Admin / Member / Read Only" will write to `user_roles` (not to `profiles.role`), to stay consistent with the security model. The "Read Only" role is new — I'll add it to the `app_role` enum.
-
-**C. Auth user creation.** `supabase.auth.admin.createUser` requires the service role key and must run inside an edge function (`create-demo-access`). The function will verify the caller is an admin via `has_role`.
-
-**D. Invite email.** I'll use the existing Lovable Emails infrastructure (the project already has a transactional email setup). The invite goes through `send-transactional-email` with a new `demo-invite` template. The signed token is stored in a new `demo_invitations` table (token, user_id, company_id, expires_at, accepted_at). The `/accept-invite` route will validate the token, mark it accepted, and route the user to login/SSO.
-
-**E. Activity tracking scope.** Logging "every page navigation, every AI query, every deal created, etc." across the entire app is a large cross-cutting change. I propose:
-- Phase 1 (this build): create `user_activity_log` + RLS, add a small `logActivity()` helper, instrument `sign_in` (on auth state change) + `page_view` (one global hook in `AppLayout`). Surface in the Activity tab.
-- Phase 2 (follow-up): instrument feature events (deal created, email drafted, lender searched, AI queried). I'll list the call sites and we tackle them in a focused follow-up so this PR doesn't sprawl across 30+ files.
-
-**F. Admin gating.** Only users with `admin` role (via `useAdminRole`) see the button and the Activity tab. The edge function double-checks server-side.
-
-## File-level plan
-
-### Migrations (single migration, idempotent)
-- `companies`: add `type text`, `notes text`, `subscription_status text default 'active'`, `trial_ends_at timestamptz`, `created_by uuid`.
-- `profiles`: add `is_active boolean default true`.
-- `app_role` enum: add `'read_only'` if missing.
-- New table `demo_invitations` (id, user_id, company_id, email, token, role, expires_at, accepted_at, sent_at, created_by) + RLS (admin read/write all; recipient can read own by token via edge function).
-- New table `user_activity_log` (id, user_id, company_id, event_type, event_data jsonb, created_at) + indexes on (company_id, created_at desc) and (user_id, created_at desc) + RLS (admin reads all; user reads own; insert via service role from edge function or authenticated user inserting their own row).
-
-### Edge functions
-- `create-demo-access` — verifies admin, creates company, loops users (creates auth user if new, upserts profile, assigns role, creates invite token, calls `send-transactional-email`).
-- `accept-demo-invite` — validates token, marks accepted, returns email to pre-fill.
-- `resend-demo-invite` — admin-only, regenerates token, resends email.
-- `revoke-demo-access` — admin-only, sets `profiles.is_active = false` for all users in the company.
-- `extend-demo-trial` — admin-only, updates `companies.trial_ends_at`.
-- `log-user-activity` — thin authenticated insert wrapper (or do it via direct supabase insert with RLS — leaning direct insert).
-
-### Email template
-- New `_shared/transactional-email-templates/demo-invite.tsx` with naitive branding (dark background, logo, CTA), registered in `registry.ts`.
+### New backend
+- **Edge function `detect-email-followups`** (verifies `supabase.auth.getUser()`, returns 401 if missing).
+- Input: `threadId`, normalized thread messages (subject, from, to, bodies, dates), `deal` context summary (id, name, stage, lenders/recipients, last activity).
+- Calls Lovable AI (`google/gemini-3-flash-preview`) via tool-calling for structured output. Schema returns up to 5 items:
+  ```
+  { suggestions: [{
+      id: string,                  // stable hash of trigger + title
+      title: string,               // "Follow up with Trevor re: Censys intro call"
+      reason: 'meeting' | 'awaiting_item' | 'deadline' | 'unanswered_question' | 'silent_lender' | 'other',
+      contact?: string,
+      dueDate?: string,            // ISO; required when reason='deadline'
+      defaultAssigneeIsCurrentUser: true,
+      asanaSync: true
+  }] }
+  ```
+- Returns `{ suggestions: [] }` cleanly when no actionable items are found.
+- Handles 429/402 gracefully and surfaces them via toast on the client.
 
 ### Frontend
-- `src/components/admin/CreateDemoAccessModal.tsx` — the form.
-- `src/components/admin/DemoCompaniesTab.tsx` (or extend existing Companies tab) — filter toggle + quick actions.
-- `src/components/admin/CompanyActivityView.tsx` — Activity tab content.
-- `src/pages/AcceptInvite.tsx` + route.
-- `src/hooks/useActivityLogger.ts` — `logActivity(event_type, event_data)`.
-- Wire `page_view` logging in `AppLayout` and `sign_in` logging in `AuthContext`.
-- Add the `+ Create Demo Access` button to the existing admin Users section header (admin-only).
+- **New component `SuggestedFollowupsCard.tsx`** rendered inside `SuggestedDealUpdatesSection`:
+  - Renders only after thread analysis is complete (gated on the existing `isAnalyzing` flag), never during "Analyzing thread…".
+  - For each suggestion, a card with: checkbox (visual only), title, secondary line `Due · Assign · Sync to Asana toggle`, and `Approve / Edit / Dismiss` buttons.
+  - **Approve** → calls the same task-creation path the existing `Create Task` quick action uses (`useCreateTaskFromEmail` or equivalent), so Asana sync, deal linking, and toast all stay identical.
+  - **Edit** → expands the row into the existing `CreateTaskInlineCard` pre-filled with the suggestion.
+  - **Dismiss** → removes locally and persists dismissal in `sessionStorage` keyed by `threadId + suggestion.id` so a re-open of the same thread does not resurface dismissed items in the same session.
+- **Empty state**: `No action items detected in this thread.` (matches the planned bug-fix copy).
+- **No changes** to the Quick Actions toolbar or the existing "Create Task" button.
 
-### Out of scope for this PR (proposed Phase 2)
-- Instrumenting individual feature events (deal created, email drafted, lender searched, AI queried) at every call site.
+### Caching
+- Detection result cached in `sessionStorage` per `threadId` (mirrors the existing draft cache strategy) so re-opening the popup is instant.
 
-## Question for you before I start
+## Part 2 — Deal Rundown card
 
-The single biggest scope decision: **are you OK with Phase 1 activity tracking (sign-ins + page views only) shipping now, with feature-event instrumentation as a focused follow-up?** Otherwise this PR will touch 30+ files across deals/email/lenders/AI surfaces and become very hard to review safely.
+Lives in `src/components/pipeline/memo/PipelineMemoCard.tsx` / `TasksMilestonesBand.tsx`.
 
-If you say "yes, Phase 1 now," I'll proceed end-to-end. If you say "do it all," I'll proceed but expect a much larger diff.
+### Fix 1 — `+ Add Follow-up` per card
+
+- New button below the existing task list inside `TasksMilestonesBand`.
+- Click reveals an inline form (reuses the email `CreateTaskInlineCard` styling — extracted into a shared `InlineTaskForm` if needed):
+  - Title (pre-filled by the AI rule below)
+  - Due date (default = next business day; weekend rolls to Monday)
+  - Assignee (default = current user)
+  - Sync to Asana toggle (ON by default)
+  - Create / Cancel
+- Pre-fill rule (computed locally, no AI call needed):
+  - No lender responses → `Follow up with lenders on [Deal Name]`
+  - Stale (>7 days no activity) → `Check in on status of [Deal Name]`
+  - Has overdue tasks → `Review overdue items on [Deal Name]`
+  - Else → `Follow up on [Deal Name]`
+- On Create:
+  - Insert into `tasks` with `deal_id` set, `assigned_to = currentUser`.
+  - If toggle on, fire the existing Asana sync path used by email task creation (no new Asana code).
+  - Optimistic UI: prepend the new task to the in-card list immediately, then reconcile with refetched data; toast `Task created`.
+
+### Fix 2 — AI "Next best action" row
+
+- Below the Tasks & Milestones section, render `⚡ Next best action: <copy> — [Create Task]` only when a clear action exists.
+- Source of the one-liner:
+  - Computed locally from the existing batched data already on the page (lender activity timestamps, deal stage transitions, open task overdue counts) — no extra fetch, no AI call required for the v1.
+  - Heuristics map to the user's examples (`No lender activity in 14 days…`, `Terms issued 3 days ago…`, `2 overdue tasks…`).
+- Click `Create Task` opens the same inline form pre-filled with the suggested action title; submit path is identical to Fix 1.
+- Hide the row entirely when no rule fires (no empty state).
+
+## Files
+
+### New
+- `supabase/functions/detect-email-followups/index.ts`
+- `src/components/deal/email/SuggestedFollowupsCard.tsx`
+- `src/hooks/useEmailFollowupSuggestions.ts` (calls the edge function, handles cache + dismissals)
+- `src/components/pipeline/memo/AddFollowupInlineForm.tsx`
+- `src/components/pipeline/memo/NextBestActionRow.tsx`
+- `src/lib/dealNextBestAction.ts` (pure heuristics, unit-testable)
+
+### Edited
+- `src/components/deal/email/AiAssistSidebar.tsx` (mount the new card after analysis completes)
+- `src/components/deal/email/SuggestedDealUpdatesSection.tsx` (slot in the new card; preserve existing children)
+- `src/components/pipeline/memo/TasksMilestonesBand.tsx` (Add Follow-up button + form mount, NBA row)
+- `src/components/pipeline/memo/PipelineMemoCard.tsx` (only if mount points need wiring)
+
+### Read-only / unchanged
+- `EmailQuickActionsToolbar.tsx`, `CreateTaskInlineCard.tsx` (reused via composition)
+- Existing Asana sync path (reused; no schema or integration changes)
+
+## Constraints respected
+
+- Strictly additive; existing layouts, Quick Actions toolbar, and Create Task button untouched.
+- Suggestions render only after analysis completes — never during "Analyzing thread…".
+- All task creation flows go through the existing `tasks` insert + Asana sync path with `deal_id` link.
+- Edge function verifies auth and surfaces 429/402 to the client per Lovable AI guidelines.
+- No new data layer changes; reuses `usePipelineDealTasks` and existing notification/lender data already loaded on the page.
+
+## Out of scope (will not be done in this pass)
+
+- Changing the email Quick Actions toolbar.
+- Persisting per-user dismissals across sessions (sessionStorage only for v1).
+- LLM-driven Next Best Action copy (heuristics for v1; can be upgraded to AI later without UI changes).
