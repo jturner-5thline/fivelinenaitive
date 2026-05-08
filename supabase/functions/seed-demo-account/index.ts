@@ -153,6 +153,29 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(supabaseUrl, serviceKey);
 
+    // Parse optional overrides from body so this works for ANY new demo user.
+    let DEMO_EMAIL = DEFAULT_DEMO_EMAIL;
+    let DEMO_PASSWORD = DEFAULT_DEMO_PASSWORD;
+    let DEMO_COMPANY_NAME = DEFAULT_DEMO_COMPANY_NAME;
+    let firstName = "Demo";
+    let lastName = "User";
+    try {
+      const body = await req.json().catch(() => ({} as any));
+      if (body && typeof body === "object") {
+        if (typeof body.email === "string" && body.email.includes("@")) {
+          DEMO_EMAIL = body.email.trim().toLowerCase();
+          DEMO_COMPANY_NAME = `${DEMO_EMAIL.split("@")[0]} Demo`;
+        }
+        if (typeof body.password === "string" && body.password.length >= 8) DEMO_PASSWORD = body.password;
+        if (typeof body.companyName === "string" && body.companyName.trim()) DEMO_COMPANY_NAME = body.companyName.trim();
+        if (typeof body.firstName === "string" && body.firstName.trim()) firstName = body.firstName.trim();
+        if (typeof body.lastName === "string" && body.lastName.trim()) lastName = body.lastName.trim();
+      }
+    } catch {
+      // ignore — defaults used
+    }
+    const fullName = `${firstName} ${lastName}`.trim();
+
     // 1. Create or get the demo user
     let userId: string;
     const { data: existingUsers } = await admin.auth.admin.listUsers();
@@ -168,7 +191,7 @@ Deno.serve(async (req) => {
         email: DEMO_EMAIL,
         password: DEMO_PASSWORD,
         email_confirm: true,
-        user_metadata: { full_name: "Demo User", first_name: "Demo", last_name: "User" },
+        user_metadata: { full_name: fullName, first_name: firstName, last_name: lastName },
       });
       if (createErr) throw createErr;
       userId = newUser.user.id;
@@ -179,11 +202,14 @@ Deno.serve(async (req) => {
     await admin.from("profiles").upsert({
       user_id: userId,
       email: DEMO_EMAIL,
-      display_name: "Demo User",
-      first_name: "Demo",
-      last_name: "User",
+      display_name: fullName,
+      first_name: firstName,
+      last_name: lastName,
       onboarding_completed: true,
       approved_at: new Date().toISOString(),
+      // Notification consent — opt-out until first-login modal accept
+      notifications_opted_in: false,
+      notifications_consent_shown: false,
       // Disable all notification preferences
       email_notifications: false,
       in_app_notifications: false,
