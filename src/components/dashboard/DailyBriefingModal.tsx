@@ -1210,17 +1210,17 @@ function PipelineTab({
           </Section>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto pr-1 border-t border-white/10 pt-3 mt-3">
-          <Section title="Recent Pipeline Activity">
-            {recentActivity.length > 0 ? (
-              <RecentPipelineActivitySection
-                recentActivity={recentActivity}
-                onRowClick={(a) => a?.deal_id && onNavigate(`/deal/${a.deal_id}`)}
-                onNavigate={onNavigate}
-              />
-            ) : (
+          {recentActivity.length > 0 ? (
+            <RecentPipelineActivitySection
+              recentActivity={recentActivity}
+              onRowClick={(a) => a?.deal_id && onNavigate(`/deal/${a.deal_id}`)}
+              onNavigate={onNavigate}
+            />
+          ) : (
+            <Section title="Recent Pipeline Activity">
               <EmptySection message="No pipeline activity since 5 PM ET yesterday" />
-            )}
-          </Section>
+            </Section>
+          )}
         </div>
       </div>
     </div>
