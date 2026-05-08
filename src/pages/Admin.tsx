@@ -1,17 +1,14 @@
-import { useState } from "react";
-import { Navigate } from "react-router-dom";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 import { 
   Shield, Users, Building2, ListTodo, Mail, ClipboardList, Cloud, MessageSquare, 
-  Settings, Megaphone, Lock, Webhook, AlertCircle, Database, Layout, ChevronDown,
+  Settings, Megaphone, Lock, Webhook, AlertCircle, Database, Layout,
+  ChevronLeft, ChevronRight,
   ShieldCheck, Cog, Lightbulb, UserCheck, Bell, MonitorPlay, ToggleRight, Brain, Wallet, FileText,
   BarChart3
 } from "lucide-react";
@@ -98,13 +95,36 @@ const usageAnalyticsSubPages = [
 
 type TabCategory = "users" | "access" | "data-security" | "settings" | "product-enhancement" | "support" | "usage-analytics";
 
+type SectionDef = {
+  id: TabCategory;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  subPages: { id: string; label: string; icon: React.ComponentType<{ className?: string }> }[];
+};
+
+const SECTIONS: SectionDef[] = [
+  { id: "users",               label: "Users",               icon: Users,       subPages: usersSubPages },
+  { id: "access",              label: "Access",              icon: Layout,      subPages: accessSubPages },
+  { id: "data-security",       label: "Data & Security",     icon: ShieldCheck, subPages: dataSecuritySubPages },
+  { id: "settings",            label: "Settings",            icon: Cog,         subPages: settingsSubPages },
+  { id: "product-enhancement", label: "Product Enhancement", icon: Lightbulb,   subPages: productEnhancementSubPages },
+  { id: "support",             label: "Support",             icon: MonitorPlay, subPages: supportSubPages },
+  { id: "usage-analytics",     label: "Usage Analytics",     icon: BarChart3,   subPages: usageAnalyticsSubPages },
+];
+
 const Admin = () => {
   const { isAdmin, isLoading: roleLoading } = useAdminRole();
   const { data: stats, isLoading: statsLoading } = useSystemStats();
-  
-  const [activeCategory, setActiveCategory] = useState<TabCategory>("users");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const initialSection = (searchParams.get("section") as TabCategory) || "users";
+  const initialTab = searchParams.get("tab") || undefined;
+
+  const [activeCategory, setActiveCategory] = useState<TabCategory>(
+    SECTIONS.some(s => s.id === initialSection) ? initialSection : "users"
+  );
   const [activeSubPage, setActiveSubPage] = useState<Record<TabCategory, string>>({
-    users: "pending-approvals",
+    users: initialSection === "users" && initialTab ? initialTab : "pending-approvals",
     access: "pages",
     "data-security": "data",
     settings: "settings",
@@ -113,32 +133,64 @@ const Admin = () => {
     "usage-analytics": "usage-overview",
   });
 
+  // Apply ?tab= deep-link for the initial section
+  useEffect(() => {
+    if (initialTab) {
+      const sec = SECTIONS.find(s => s.id === initialSection);
+      if (sec && sec.subPages.some(sp => sp.id === initialTab)) {
+        setActiveSubPage(prev => ({ ...prev, [initialSection]: initialTab }));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sync URL params on changes
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    params.set("section", activeCategory);
+    params.set("tab", activeSubPage[activeCategory]);
+    setSearchParams(params, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCategory, activeSubPage]);
+
   const handleSubPageChange = (category: TabCategory, subPageId: string) => {
     setActiveSubPage((prev) => ({ ...prev, [category]: subPageId }));
   };
 
-  const getSubPages = (category: TabCategory) => {
-    switch (category) {
-      case "users":
-        return usersSubPages;
-      case "access":
-        return accessSubPages;
-      case "data-security":
-        return dataSecuritySubPages;
-      case "settings":
-        return settingsSubPages;
-      case "product-enhancement":
-        return productEnhancementSubPages;
-      case "support":
-        return supportSubPages;
-      case "usage-analytics":
-        return usageAnalyticsSubPages;
-    }
+  const activeIndex = SECTIONS.findIndex(s => s.id === activeCategory);
+  const activeSection = SECTIONS[activeIndex];
+
+  const goPrev = () => {
+    const next = (activeIndex - 1 + SECTIONS.length) % SECTIONS.length;
+    setActiveCategory(SECTIONS[next].id);
+  };
+  const goNext = () => {
+    const next = (activeIndex + 1) % SECTIONS.length;
+    setActiveCategory(SECTIONS[next].id);
   };
 
-  const getCurrentSubPage = (category: TabCategory) => {
-    const subPages = getSubPages(category);
-    return subPages.find((sp) => sp.id === activeSubPage[category]) || subPages[0];
+  // Keyboard arrow navigation between top-level sections
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
+      else if (e.key === "ArrowRight") { e.preventDefault(); goNext(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIndex]);
+
+  // Touch swipe support for the panel body
+  const touchStart = useRef<number | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => { touchStart.current = e.touches[0].clientX; };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStart.current == null) return;
+    const dx = e.changedTouches[0].clientX - touchStart.current;
+    if (Math.abs(dx) > 60) (dx < 0 ? goNext : goPrev)();
+    touchStart.current = null;
   };
 
   if (roleLoading) {
@@ -457,57 +509,13 @@ const Admin = () => {
     }
   };
 
-  const TabWithDropdown = ({ 
-    category, 
-    label, 
-    icon: Icon 
-  }: { 
-    category: TabCategory; 
-    label: string; 
-    icon: React.ComponentType<{ className?: string }>;
-  }) => {
-    const subPages = getSubPages(category);
-    const currentSubPage = getCurrentSubPage(category);
-    const isActive = activeCategory === category;
-
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button 
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              isActive 
-                ? "bg-background text-foreground shadow-sm" 
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-            }`}
-          >
-            <Icon className="h-4 w-4" />
-            {label}
-            <ChevronDown className="h-3 w-3 ml-1" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          {subPages.map((subPage) => (
-            <DropdownMenuItem
-              key={subPage.id}
-              onClick={() => {
-                setActiveCategory(category);
-                handleSubPageChange(category, subPage.id);
-              }}
-              className={activeSubPage[category] === subPage.id ? "bg-accent" : ""}
-            >
-              <subPage.icon className="h-4 w-4 mr-2" />
-              {subPage.label}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  };
+  const ActiveIcon = activeSection.icon;
+  const currentSubPageId = activeSubPage[activeCategory];
 
   return (
     <div className="bg-background">
       <DealsHeader />
-      <div className="container mx-auto py-8 px-4 space-y-8">
+      <div className="container mx-auto py-6 px-4 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-primary/10">
@@ -524,46 +532,101 @@ const Admin = () => {
         {/* Stats Cards */}
         <AdminStatsCards stats={stats ?? null} isLoading={statsLoading} />
 
-        {/* Main Content Tabs */}
-        <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as TabCategory)} className="space-y-6">
-          <div className="flex gap-2 p-1 bg-muted/50 rounded-lg w-fit">
-            <TabWithDropdown category="users" label="Users" icon={Users} />
-            <TabWithDropdown category="access" label="Access" icon={Layout} />
-            <TabWithDropdown category="data-security" label="Data & Security" icon={ShieldCheck} />
-            <TabWithDropdown category="settings" label="Settings" icon={Cog} />
-            <TabWithDropdown category="product-enhancement" label="Product Enhancement" icon={Lightbulb} />
-            <TabWithDropdown category="support" label="Support" icon={MonitorPlay} />
-            <TabWithDropdown category="usage-analytics" label="Usage Analytics" icon={BarChart3} />
+        {/* Section picker rail */}
+        <ScrollArea className="w-full">
+          <div className="flex items-center gap-1.5 p-1 bg-muted/40 rounded-lg w-max">
+            {SECTIONS.map((s, i) => {
+              const Icon = s.icon;
+              const isActive = s.id === activeCategory;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => setActiveCategory(s.id)}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap",
+                    isActive
+                      ? "bg-background text-foreground shadow-sm ring-1 ring-border"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {s.label}
+                  <span className="text-[10px] text-muted-foreground/70 font-normal">{i + 1}</span>
+                </button>
+              );
+            })}
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+
+        {/* Carousel panel */}
+        <div
+          className="relative rounded-2xl border border-border bg-card shadow-lg overflow-hidden"
+          style={{ height: "min(88vh, 1100px)" }}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+        >
+          {/* Sticky panel header */}
+          <div className="sticky top-0 z-20 flex items-center justify-between gap-3 px-5 py-3 border-b border-border bg-card/95 backdrop-blur">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <ActiveIcon className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-base font-semibold leading-tight truncate">{activeSection.label}</div>
+                <div className="text-[11px] text-muted-foreground">
+                  {activeSection.label} · {activeIndex + 1} of {SECTIONS.length}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goPrev} aria-label="Previous section">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goNext} aria-label="Next section">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
-          <TabsContent value="users">
-            {renderSubPageContent(activeSubPage.users)}
-          </TabsContent>
+          {/* Sticky sub-tabs */}
+          <div className="sticky top-[57px] z-10 border-b border-border bg-card/95 backdrop-blur">
+            <ScrollArea className="w-full">
+              <div className="flex items-center gap-1 px-3 py-2 w-max">
+                {activeSection.subPages.map((sp) => {
+                  const Icon = sp.icon;
+                  const isActive = currentSubPageId === sp.id;
+                  return (
+                    <button
+                      key={sp.id}
+                      onClick={() => handleSubPageChange(activeCategory, sp.id)}
+                      className={cn(
+                        "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap",
+                        isActive
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                      )}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {sp.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </div>
 
-          <TabsContent value="access">
-            {renderSubPageContent(activeSubPage.access)}
-          </TabsContent>
-
-          <TabsContent value="data-security">
-            {renderSubPageContent(activeSubPage["data-security"])}
-          </TabsContent>
-
-          <TabsContent value="settings">
-            {renderSubPageContent(activeSubPage.settings)}
-          </TabsContent>
-
-          <TabsContent value="product-enhancement">
-            {renderSubPageContent(activeSubPage["product-enhancement"])}
-          </TabsContent>
-
-          <TabsContent value="support">
-            {renderSubPageContent(activeSubPage.support)}
-          </TabsContent>
-
-          <TabsContent value="usage-analytics">
-            {renderSubPageContent(activeSubPage["usage-analytics"])}
-          </TabsContent>
-        </Tabs>
+          {/* Scrollable panel body with slide transition */}
+          <div className="absolute inset-0 top-[105px] overflow-hidden">
+            <div
+              key={activeCategory}
+              className="h-full overflow-y-auto px-5 py-5 animate-in fade-in slide-in-from-right-2 duration-200"
+            >
+              {renderSubPageContent(currentSubPageId)}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
