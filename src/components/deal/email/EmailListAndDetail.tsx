@@ -2756,6 +2756,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               fallbackTitle="AI Assist is temporarily unavailable"
               fallbackMessage="The email is still available to read — close and reopen AI Assist to retry."
             >
+              {!thread || !Array.isArray(thread.emails) || !thread.latestEmail ? (
+                <div className="flex h-full min-h-0 w-full min-w-0 items-center justify-center p-6">
+                  <p className="text-xs text-[hsl(var(--email-text-secondary))]">Loading email context…</p>
+                </div>
+              ) : (
               <AiAssistSidebar
                 thread={thread}
                 dealId={effectiveDealId}
