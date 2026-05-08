@@ -18,7 +18,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
-import { useCopilotStore } from '@/stores/copilotStore';
 import { cn } from '@/lib/utils';
 
 // ---------- Step definitions ----------
@@ -129,15 +128,15 @@ const DEMO_USER_PROMPT =
   'Show me the deals that need follow-up this week, summarize the latest status, and create action items for anything at risk.';
 
 const DEMO_DEALS = [
-  { name: 'Athyna', status: 'Waiting on March financials. Lender feedback is active — next response timing matters.', risk: false },
-  { name: 'Xnergy United Network', status: 'Five Crowns expected to send a term sheet early this week — follow-up recommended.', risk: true },
-  { name: 'Czerlonka', status: 'Founders First still in review. Deal may need to pause if no movement this week.', risk: true },
+  { name: 'Northstar HVAC', status: 'Waiting on updated trailing twelve-month financials — lender follow-up recommended.', risk: false },
+  { name: 'BluePeak Logistics', status: 'Term sheet expected early next week — confirm timeline with capital partner.', risk: true },
+  { name: 'Harbor Ridge Dental', status: 'Underwriting paused pending owner clarification on add-backs.', risk: true },
 ];
 
 const DEMO_ACTIONS = [
-  'Follow up with Five Crowns on Xnergy United Network',
-  'Check lender status on Czerlonka by tomorrow',
-  'Request updated materials and timing confirmation for Athyna',
+  'Follow up with Meridian Capital on BluePeak Logistics',
+  'Request updated financial package for Northstar HVAC',
+  'Confirm underwriting status and owner responses for Harbor Ridge Dental',
 ];
 
 function AiDemoSimulation() {
@@ -175,6 +174,13 @@ function AiDemoSimulation() {
 
   return (
     <div className="rounded-xl border border-border/60 bg-muted/30 p-3 space-y-3 max-h-[50vh] overflow-y-auto">
+      {/* Sandboxed demo notice — no real workspace data is queried, displayed, or written. */}
+      <div className="flex items-center justify-between gap-2 -mt-1 -mx-1">
+        <Badge variant="outline" className="h-5 px-2 text-[10px] gap-1 border-primary/40 text-primary bg-primary/10">
+          <SparklesLucide className="h-2.5 w-2.5" /> Demo example
+        </Badge>
+        <span className="text-[10px] text-muted-foreground italic">Sample data · nothing saved</span>
+      </div>
       <div className="flex justify-end">
         <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-primary/15 text-foreground px-3 py-2 text-sm">
           {userText}
@@ -251,7 +257,7 @@ function AiDemoSimulation() {
 
 const EXAMPLE_PROMPTS = [
   'What deals need my attention today?',
-  'Draft a lender follow-up for Athyna.',
+  'Draft a lender follow-up for an active deal.',
   'Summarize the latest updates across active deals.',
   'Create tasks for overdue follow-ups.',
 ];
@@ -339,7 +345,6 @@ export function PlatformTour() {
   const [userId, setUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const openCopilot = useCopilotStore((s) => s.openPanel);
   const allSteps = useMemo(() => buildSteps(), []);
 
   // Filter to only available steps for this user (permission-aware re-evaluation each render)
@@ -423,10 +428,9 @@ export function PlatformTour() {
     if (step.route && location.pathname !== step.route) {
       navigate(step.route);
     }
-    if (step.id === 'ask-ai') {
-      // Make sure the bar/panel is at least visible — open the panel briefly.
-      try { openCopilot(); } catch { /* noop */ }
-    }
+    // Note: we intentionally do NOT open the live Ask Naitive AI panel during
+    // the tour. The onboarding AI step is fully sandboxed and uses static
+    // demo data only — no real workspace queries, retrievals, or mutations.
     step.onEnter?.();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showTour, currentStep, step?.id]);
