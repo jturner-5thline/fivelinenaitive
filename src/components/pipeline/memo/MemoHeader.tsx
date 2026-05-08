@@ -38,7 +38,6 @@ export function MemoHeader({ deal, showLiveDot = true }: MemoHeaderProps) {
           >
             {deal.company || deal.name}
           </h2>
-          <Badge variant="green" className="rounded-full">{amountLabel}</Badge>
           {structureLabel && (
             <Badge variant="gray" className="rounded-full">{structureLabel}</Badge>
           )}
@@ -46,16 +45,7 @@ export function MemoHeader({ deal, showLiveDot = true }: MemoHeaderProps) {
             <Badge variant="gray" className="rounded-full">{assetClass}</Badge>
           )}
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span
-            className={`h-1.5 w-1.5 rounded-full bg-emerald-500 ${
-              showLiveDot ? 'animate-pulse' : ''
-            }`}
-          />
-          <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-            Live deal
-          </span>
-        </div>
+        <Badge variant="green" className="rounded-full shrink-0">{amountLabel}</Badge>
       </div>
     </div>
   );
