@@ -12,6 +12,7 @@ export interface DealTaskItem {
   kind: 'task' | 'outstanding';
   title: string;
   dueDate?: string | null;
+  assignedToId?: string | null;
   assignedToName?: string | null;
   assignedByName?: string | null;
   requestedByName?: string | null;
@@ -125,10 +126,11 @@ export function usePipelineDealTasks(dealIds: string[], enabled: boolean = true)
         if (!t.deal_id) continue;
         const arr = byDeal.get(t.deal_id) || [];
         arr.push({
-          id: `t-${t.id}`,
+          id: t.id,
           kind: 'task',
           title: t.title,
           dueDate: t.due_date,
+          assignedToId: t.assigned_to,
           assignedToName: shortName(t.assigned_to ? profileMap.get(t.assigned_to) : null),
           assignedByName: shortName(t.assigned_by ? profileMap.get(t.assigned_by) : null),
         });
