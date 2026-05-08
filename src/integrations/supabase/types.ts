@@ -14870,6 +14870,7 @@ export type Database = {
           suspended_at: string | null
           suspended_reason: string | null
           timezone: string
+          tour_completed_at: string | null
           updated_at: string
           user_id: string
           weekly_summary_email: boolean
@@ -14921,6 +14922,7 @@ export type Database = {
           suspended_at?: string | null
           suspended_reason?: string | null
           timezone?: string
+          tour_completed_at?: string | null
           updated_at?: string
           user_id: string
           weekly_summary_email?: boolean
@@ -14972,6 +14974,7 @@ export type Database = {
           suspended_at?: string | null
           suspended_reason?: string | null
           timezone?: string
+          tour_completed_at?: string | null
           updated_at?: string
           user_id?: string
           weekly_summary_email?: boolean
