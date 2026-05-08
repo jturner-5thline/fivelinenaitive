@@ -2693,8 +2693,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             >
               <AiAssistSidebar
                 thread={thread}
-                dealId={dealId}
-                dealName={linkedDealName || thread.dealName}
+                dealId={effectiveDealId}
+                dealName={effectiveDealName}
                 onClose={() => {
                   setShowAiAssist(false);
                   // Return focus to the toolbar toggle for keyboard users.
