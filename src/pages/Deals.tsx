@@ -410,6 +410,7 @@ export default function Dashboard() {
             <EmailVerificationBanner />
             <DemoBanner onDataCleared={refreshDeals} />
             <CreateCompanyBanner />
+            <NotificationConsentModal />
           </>
         }
         afterMain={
