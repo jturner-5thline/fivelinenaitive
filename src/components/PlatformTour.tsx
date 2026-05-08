@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { useCopilotStore } from '@/stores/copilotStore';
+import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 
 // ---------- Step definitions ----------
@@ -348,6 +349,8 @@ export function PlatformTour() {
   const location = useLocation();
   const startDemo = useCopilotStore((s) => s.startDemo);
   const stopDemo = useCopilotStore((s) => s.stopDemo);
+  const { state: sidebarState, setOpen: setSidebarOpen, isMobile: isSidebarMobile } = useSidebar();
+  const prevStepKindRef = useRef<StepKind | null>(null);
   const allSteps = useMemo(() => buildSteps(), []);
 
   // Filter to only available steps for this user (permission-aware re-evaluation each render)
@@ -429,10 +432,26 @@ export function PlatformTour() {
     // The AI demo step opens the real Ask Naitive AI panel in a sandboxed
     // demo mode — it shows a fully fake conversation and disables the live
     // input. No real workspace data is queried, displayed, or written.
-    if (step.kind === 'ai-demo') {
+    // Only toggle when transitioning into/out of the ai-demo step so we
+    // don't clobber unrelated copilot state on every step change.
+    const prev = prevStepKindRef.current;
+    if (step.kind === 'ai-demo' && prev !== 'ai-demo') {
       startDemo();
-    } else {
+    } else if (prev === 'ai-demo' && step.kind !== 'ai-demo') {
       stopDemo();
+    }
+    prevStepKindRef.current = step.kind;
+
+    // If the step is anchored to a sidebar nav item, make sure the sidebar
+    // is expanded so the user has a real-sized click target instead of a
+    // collapsed icon.
+    if (
+      !isSidebarMobile &&
+      sidebarState === 'collapsed' &&
+      step.target &&
+      (step.target.includes('nav-') || step.target.includes('sidebar'))
+    ) {
+      setSidebarOpen(true);
     }
     step.onEnter?.();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -472,12 +491,20 @@ export function PlatformTour() {
       if (target.closest(step.target!)) {
         // Let the click happen naturally (NavLink will navigate),
         // then advance after a small delay so the next step's DOM is ready.
-        window.setTimeout(advance, 350);
+        // Fallback: if the target is a flyout trigger that didn't navigate,
+        // force-route to step.route so the tour never gets stranded.
+        const targetRoute = step.route;
+        window.setTimeout(() => {
+          if (targetRoute && location.pathname !== targetRoute) {
+            navigate(targetRoute);
+          }
+          advance();
+        }, 350);
       }
     };
     document.addEventListener('click', handler, true);
     return () => document.removeEventListener('click', handler, true);
-  }, [showTour, step, advance]);
+  }, [showTour, step, advance, navigate, location.pathname]);
 
   // Keyboard
   useEffect(() => {
@@ -534,8 +561,11 @@ export function PlatformTour() {
     <div className="fixed inset-0 z-[100] pointer-events-none" aria-live="polite">
       {/* Backdrop with cutout (SVG mask) */}
       <svg
-        className="absolute inset-0 w-full h-full pointer-events-auto"
-        style={{ pointerEvents: cutout ? 'none' : 'auto' }}
+        className="absolute inset-0 w-full h-full"
+        // Always pass-through pointer events so the spotlit element beneath
+        // the dim overlay remains clickable. The popover handles its own
+        // interactions; users dismiss via the Skip button, not the backdrop.
+        style={{ pointerEvents: 'none' }}
         onClick={() => { /* clicking blank backdrop does nothing — use Skip */ }}
       >
         <defs>
@@ -550,7 +580,7 @@ export function PlatformTour() {
           width="100%" height="100%"
           fill="rgba(2, 6, 18, 0.72)"
           mask="url(#tour-mask)"
-          style={{ transition: 'opacity 200ms', pointerEvents: 'auto' }}
+          style={{ transition: 'opacity 200ms', pointerEvents: 'none' }}
         />
       </svg>
 

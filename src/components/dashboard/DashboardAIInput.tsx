@@ -568,7 +568,7 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
   }, [requestError, isLoading, handleSend]);
 
   return (
-    <div className="relative" ref={chatSectionRef}>
+    <div className="relative" ref={chatSectionRef} data-tour="ask-ai">
       <Card className={cn(
         'overflow-hidden transition-all duration-300',
         isDrawerMode ? 'border-0 shadow-none h-full flex flex-col' : '',
