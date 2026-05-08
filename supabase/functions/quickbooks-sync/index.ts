@@ -41,13 +41,28 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    let userId: string | null = null;
+    // Allow service-role calls (e.g. cron / quickbooks-auto-sync) to act on behalf
+    // of a specific user via the x-sync-user-id header.
+    if (token === SUPABASE_SERVICE_ROLE_KEY) {
+      userId = req.headers.get("x-sync-user-id");
+      if (!userId) {
+        return new Response(JSON.stringify({ error: "x-sync-user-id required for service-role calls" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+      if (authError || !user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      userId = user.id;
     }
+    const user = { id: userId } as { id: string };
 
     const { syncType, realmId: targetRealmId, scopes, start_date, end_date } = await req.json();
     const activeScopes: SyncScope[] = scopes && Array.isArray(scopes) ? scopes : [...ALL_SCOPES];
