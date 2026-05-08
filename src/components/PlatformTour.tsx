@@ -396,7 +396,14 @@ export function PlatformTour() {
       setShouldShowTour(true);
 
       const tourAlreadyCompleted = !!(profile as { tour_completed_at?: string | null } | null)?.tour_completed_at;
-      if (tourAlreadyCompleted) return;
+      // Belt-and-suspenders session guard: even if the profile read race-loses
+      // (network blip, slow query), a session-level localStorage flag prevents
+      // the welcome modal from re-firing on every email-widget open within the
+      // same tab. Manual replays go through the `restart-platform-tour` event
+      // handler below and ignore this flag.
+      const sessionGuard = localStorage.getItem('naitive_guide_shown') === 'true';
+      if (tourAlreadyCompleted || sessionGuard) return;
+      localStorage.setItem('naitive_guide_shown', 'true');
 
       // Auto-run ONCE per user. The persistent flag is `tour_completed_at`
       // on the profile. We set it the moment we auto-show the tour so that

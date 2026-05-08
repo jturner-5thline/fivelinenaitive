@@ -766,6 +766,13 @@ export class EmailPaneErrorBoundary extends Component<{
           <div className="max-w-md rounded-lg border border-[hsl(var(--email-border))] bg-card/40 px-5 py-4 text-center">
             <p className="text-sm font-semibold text-[hsl(var(--email-text-primary))]">{this.props.fallbackTitle}</p>
             <p className="mt-1 text-xs leading-relaxed text-[hsl(var(--email-text-secondary))]">{this.props.fallbackMessage}</p>
+            <button
+              type="button"
+              onClick={() => this.setState({ hasError: false })}
+              className="mt-3 inline-flex items-center justify-center rounded-md border border-[hsl(var(--email-border))] bg-card/60 px-3 py-1.5 text-xs font-medium text-[hsl(var(--email-text-primary))] hover:bg-card/80 transition-colors"
+            >
+              Retry
+            </button>
           </div>
         </div>
       );
@@ -2749,6 +2756,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               fallbackTitle="AI Assist is temporarily unavailable"
               fallbackMessage="The email is still available to read — close and reopen AI Assist to retry."
             >
+              {!thread || !Array.isArray(thread.emails) || !thread.latestEmail ? (
+                <div className="flex h-full min-h-0 w-full min-w-0 items-center justify-center p-6">
+                  <p className="text-xs text-[hsl(var(--email-text-secondary))]">Loading email context…</p>
+                </div>
+              ) : (
               <AiAssistSidebar
                 thread={thread}
                 dealId={effectiveDealId}
@@ -2809,6 +2821,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                   setShowResumeBanner(false);
                 }}
               />
+              )}
             </EmailPaneErrorBoundary>
           </div>
         )}

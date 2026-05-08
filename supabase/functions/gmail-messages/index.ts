@@ -343,10 +343,33 @@ serve(async (req: Request): Promise<Response> => {
           params.set("in", "INBOX");
         }
 
-        const listResponse = await fetch(
-          `${baseUrl}/messages?${params}`,
-          { headers }
-        );
+        // Hard 25s timeout: Nylas occasionally hangs for very large mailboxes
+        // and the function would otherwise hit the platform 60s limit and
+        // surface as an HTTP 504 in the email AI sidebar. Returning a 200
+        // with `partial: true` lets the client render its in-memory cache
+        // and show a "Loading more emails…" hint instead of crashing.
+        let listResponse: Response;
+        try {
+          listResponse = await Promise.race([
+            fetch(`${baseUrl}/messages?${params}`, { headers }),
+            new Promise<Response>((_, reject) =>
+              setTimeout(() => reject(new Error("timeout")), 25_000)
+            ),
+          ]);
+        } catch (err) {
+          const isTimeout = (err as Error)?.message === "timeout";
+          console.warn(`[gmail-messages] list ${isTimeout ? "timeout" : "error"}: ${(err as Error)?.message}`);
+          return new Response(JSON.stringify({
+            messages: [],
+            next_page_token: null,
+            error: isTimeout ? "timeout" : "fetch_failed",
+            partial: true,
+            fallback: true,
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
 
         if (!listResponse.ok) {
           const isRateLimit = listResponse.status === 429;
