@@ -75,10 +75,11 @@ export function filterRundownEligibleDeals<T extends { status?: string | null; p
   activePipelineId: string | null,
   isAdmin: boolean = false,
 ): T[] {
+  // Admins see ALL deals — no pipeline gate, no status suppression.
+  if (isAdmin) return deals;
   if (!activePipelineId) return [];
   return deals.filter(d => {
     if ((d as any).pipelineId !== activePipelineId) return false;
-    if (isAdmin) return true;
     const status = (d.status || '').toString().toLowerCase();
     if (NON_ADMIN_SUPPRESSED_STATUSES.has(status)) return false;
     return true;
