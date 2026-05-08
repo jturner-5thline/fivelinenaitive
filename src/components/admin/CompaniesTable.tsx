@@ -6,10 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Users, ExternalLink, Ban, Eye, Archive, Trash2, Loader2 } from "lucide-react";
+import { Search, Users, ExternalLink, Ban, Eye, Archive, Trash2, Loader2, MoreHorizontal, Mail, CalendarPlus, ShieldOff } from "lucide-react";
 import { useAllCompanies } from "@/hooks/useAdminData";
 import { CompanyDetailDialog } from "./CompanyDetailDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -27,14 +30,23 @@ interface Company {
   suspended_reason: string | null;
   archived_at: string | null;
   archived_reason: string | null;
+  account_type: string | null;
+  trial_ends_at: string | null;
+  subscription_status: string | null;
+  notes: string | null;
 }
 
 export const CompaniesTable = () => {
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"all" | "demo" | "client">("all");
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Company | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [extendTarget, setExtendTarget] = useState<Company | null>(null);
+  const [extendDate, setExtendDate] = useState<string>("");
+  const [revokeTarget, setRevokeTarget] = useState<Company | null>(null);
+  const [isActioning, setIsActioning] = useState(false);
   const { data: companies, isLoading } = useAllCompanies();
   const queryClient = useQueryClient();
 
@@ -54,11 +66,71 @@ export const CompaniesTable = () => {
     }
   };
 
-  const filteredCompanies = companies?.filter(
-    (c) =>
+  const isDemoLike = (t?: string | null) =>
+    !!t && ["demo", "pilot", "trial", "partner"].includes(t.toLowerCase());
+
+  const filteredCompanies = companies?.filter((c) => {
+    const matchesText =
       c.name?.toLowerCase().includes(search.toLowerCase()) ||
-      c.industry?.toLowerCase().includes(search.toLowerCase())
-  );
+      c.industry?.toLowerCase().includes(search.toLowerCase());
+    if (!matchesText) return false;
+    if (typeFilter === "demo") return isDemoLike(c.account_type);
+    if (typeFilter === "client") return !isDemoLike(c.account_type);
+    return true;
+  });
+
+  const handleResendInvites = async (c: Company) => {
+    setIsActioning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("resend-demo-invite", {
+        body: { companyId: c.id },
+      });
+      if (error) throw error;
+      const sent = (data as { sent?: number; total?: number } | null)?.sent ?? 0;
+      toast.success(`Sent ${sent} invitation${sent === 1 ? "" : "s"}`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to resend invitations");
+    } finally {
+      setIsActioning(false);
+    }
+  };
+
+  const handleExtendTrial = async () => {
+    if (!extendTarget || !extendDate) return;
+    setIsActioning(true);
+    try {
+      const { error } = await supabase.functions.invoke("extend-demo-trial", {
+        body: { companyId: extendTarget.id, trialEndsAt: new Date(extendDate).toISOString() },
+      });
+      if (error) throw error;
+      toast.success(`Trial extended to ${format(new Date(extendDate), "MMM d, yyyy")}`);
+      setExtendTarget(null);
+      setExtendDate("");
+      queryClient.invalidateQueries({ queryKey: ["admin-all-companies"] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to extend trial");
+    } finally {
+      setIsActioning(false);
+    }
+  };
+
+  const handleRevoke = async () => {
+    if (!revokeTarget) return;
+    setIsActioning(true);
+    try {
+      const { error } = await supabase.functions.invoke("revoke-demo-access", {
+        body: { companyId: revokeTarget.id },
+      });
+      if (error) throw error;
+      toast.success(`Access revoked for "${revokeTarget.name}"`);
+      setRevokeTarget(null);
+      queryClient.invalidateQueries({ queryKey: ["admin-all-companies"] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to revoke access");
+    } finally {
+      setIsActioning(false);
+    }
+  };
 
   const handleViewCompany = (company: Company) => {
     setSelectedCompany(company);
@@ -103,7 +175,7 @@ export const CompaniesTable = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-wrap">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -113,6 +185,13 @@ export const CompaniesTable = () => {
             className="pl-9"
           />
         </div>
+        <Tabs value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
+          <TabsList>
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="demo">Demo · Pilot</TabsTrigger>
+            <TabsTrigger value="client">Client</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       <div className="rounded-md border">
@@ -120,6 +199,7 @@ export const CompaniesTable = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Company</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>Industry</TableHead>
               <TableHead>Size</TableHead>
               <TableHead>Members</TableHead>
@@ -131,7 +211,7 @@ export const CompaniesTable = () => {
           <TableBody>
             {filteredCompanies?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                   No companies found
                 </TableCell>
               </TableRow>
@@ -162,6 +242,27 @@ export const CompaniesTable = () => {
                       </div>
                     </div>
                   </TableCell>
+                  <TableCell>
+                    {company.account_type ? (
+                      <Badge
+                        variant="outline"
+                        className={
+                          isDemoLike(company.account_type)
+                            ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                            : "bg-white/10 text-white/70 border-white/20"
+                        }
+                      >
+                        {company.account_type}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    )}
+                    {company.trial_ends_at && isDemoLike(company.account_type) && (
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Trial ends {format(new Date(company.trial_ends_at), "MMM d")}
+                      </p>
+                    )}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {company.industry || "-"}
                   </TableCell>
@@ -185,6 +286,10 @@ export const CompaniesTable = () => {
                         <Ban className="h-3 w-3" />
                         Suspended
                       </Badge>
+                    ) : company.subscription_status === "revoked" ? (
+                      <Badge variant="outline" className="bg-red-500/20 text-red-400 border-red-500/30 w-fit">
+                        Revoked
+                      </Badge>
                     ) : (
                       <Badge variant="outline" className="text-green-600 border-green-600/30 w-fit">
                         Active
@@ -195,21 +300,59 @@ export const CompaniesTable = () => {
                     {format(new Date(company.created_at), "MMM d, yyyy")}
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleViewCompany(company)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => setDeleteTarget(company)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewCompany(company)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      {isDemoLike(company.account_type) && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              disabled={isActioning}
+                              onClick={() => handleResendInvites(company)}
+                            >
+                              <Mail className="h-4 w-4 mr-2" /> Resend invites
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setExtendTarget(company);
+                                setExtendDate(
+                                  new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+                                    .toISOString()
+                                    .slice(0, 10),
+                                );
+                              }}
+                            >
+                              <CalendarPlus className="h-4 w-4 mr-2" /> Extend trial
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => setRevokeTarget(company)}
+                            >
+                              <ShieldOff className="h-4 w-4 mr-2" /> Revoke access
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setDeleteTarget(company)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -230,6 +373,56 @@ export const CompaniesTable = () => {
           }
         }}
       />
+
+      {/* Extend trial dialog */}
+      <Dialog open={!!extendTarget} onOpenChange={(open) => !open && setExtendTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Extend trial — {extendTarget?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label className="text-xs text-muted-foreground">New trial end date</label>
+            <Input
+              type="date"
+              value={extendDate}
+              onChange={(e) => setExtendDate(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExtendTarget(null)} disabled={isActioning}>
+              Cancel
+            </Button>
+            <Button onClick={handleExtendTrial} disabled={isActioning || !extendDate}>
+              {isActioning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Extend trial
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Revoke confirm */}
+      <AlertDialog open={!!revokeTarget} onOpenChange={(open) => !open && setRevokeTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revoke access for "{revokeTarget?.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This deactivates every user account on this workspace. Their data is preserved and access can be restored later by an admin.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isActioning}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRevoke}
+              disabled={isActioning}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isActioning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Revoke access
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

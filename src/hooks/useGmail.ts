@@ -461,6 +461,15 @@ export function useGmail() {
             is_reply: !!options.replyToMessageId,
           },
         });
+        const { logActivity } = await import('@/lib/activityLogger');
+        logActivity({
+          event_type: 'feature_used',
+          event_data: {
+            feature: 'email_sent',
+            recipient_count: options.to?.length ?? 0,
+            is_reply: !!options.replyToMessageId,
+          },
+        });
       } catch { /* ignore */ }
       return data;
     } catch (err: any) {

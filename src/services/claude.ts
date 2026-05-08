@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { logUsage } from "@/lib/usageLogger";
+import { logActivity } from "@/lib/activityLogger";
 
 export interface ClaudeMessage {
   role: "user" | "assistant";
@@ -116,6 +117,15 @@ export async function sendClaudeMessage(
           token_count: tokens || null,
           duration_ms: Date.now() - startedAt,
           metadata: { model: result.model, context: options.context ?? null },
+        });
+        logActivity({
+          event_type: "feature_used",
+          event_data: {
+            feature: "ai_query",
+            context: options.context ?? null,
+            subtype,
+            deal_id: usageHint?.deal_id ?? null,
+          },
         });
       }
 

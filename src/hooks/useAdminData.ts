@@ -38,6 +38,10 @@ interface AdminCompany {
   suspended_reason: string | null;
   archived_at: string | null;
   archived_reason: string | null;
+  account_type: string | null;
+  trial_ends_at: string | null;
+  subscription_status: string | null;
+  notes: string | null;
 }
 
 interface CompanyMember {
@@ -149,7 +153,7 @@ export const useAllCompanies = () => {
       // Get suspension and archive info directly from companies table
       const { data: statusData, error: statusError } = await supabase
         .from("companies")
-        .select("id, suspended_at, suspended_reason, archived_at, archived_reason");
+        .select("id, suspended_at, suspended_reason, archived_at, archived_reason, account_type, trial_ends_at, subscription_status, notes");
       if (statusError) throw statusError;
       
       const statusMap = new Map(statusData?.map(c => [c.id, c]) || []);
@@ -160,6 +164,10 @@ export const useAllCompanies = () => {
         suspended_reason: statusMap.get(company.id)?.suspended_reason || null,
         archived_at: statusMap.get(company.id)?.archived_at || null,
         archived_reason: statusMap.get(company.id)?.archived_reason || null,
+        account_type: statusMap.get(company.id)?.account_type || null,
+        trial_ends_at: statusMap.get(company.id)?.trial_ends_at || null,
+        subscription_status: statusMap.get(company.id)?.subscription_status || null,
+        notes: statusMap.get(company.id)?.notes || null,
       }));
     },
   });

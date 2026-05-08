@@ -540,6 +540,15 @@ export function useDealsDatabase() {
 
       if (error) throw error;
 
+      try {
+        const { logActivity } = await import("@/lib/activityLogger");
+        logActivity({
+          event_type: "feature_used",
+          event_data: { feature: "deal_created", deal_id: data.id, company: data.company },
+          company_id: memberData?.company_id ?? null,
+        });
+      } catch { /* best-effort */ }
+
       const toReferrer = (name: string | null): Referrer | undefined => {
         if (!name) return undefined;
         return {
