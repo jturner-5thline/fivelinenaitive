@@ -8,6 +8,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { formatSlug } from '@/utils/dealTypeLabels';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Search, Download, ArrowUpDown, ArrowUpRight, AlertCircle } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -133,7 +134,7 @@ function DrilldownTable({ deals }: { deals: AttributedDeal[] }) {
                 </td>
                 <td className="px-2 py-1.5">
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground whitespace-nowrap">
-                    {deal.stage}
+                    {formatSlug(deal.stage)}
                   </span>
                 </td>
                 <td className="px-2 py-1.5 text-muted-foreground truncate max-w-[120px]">{deal.channelName}</td>
