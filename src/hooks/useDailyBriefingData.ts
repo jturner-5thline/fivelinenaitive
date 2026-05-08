@@ -94,7 +94,7 @@ const UNIVERSAL_SUPPRESSED_STATUSES = new Set([
   'donotcontact',
   'do not contact',
 ]);
-export function filterRundownEligibleDeals<T extends { status?: string | null; pipelineId?: string | null }>(
+export function filterRundownEligibleDeals<T extends { status?: string | null; pipelineId?: string | null; name?: string | null; title?: string | null }>(
   deals: T[],
   activePipelineId: string | null,
   isAdmin: boolean = false,
@@ -108,6 +108,8 @@ export function filterRundownEligibleDeals<T extends { status?: string | null; p
     if ((d as any).pipelineId !== activePipelineId) return false;
     const status = (d.status || '').toString().toLowerCase().trim();
     if (UNIVERSAL_SUPPRESSED_STATUSES.has(status)) return false;
+    const nameStr = ((d as any).name || (d as any).title || '').toString();
+    if (/^test/i.test(nameStr.trim())) return false;
     return true;
   });
 }
