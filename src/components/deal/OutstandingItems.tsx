@@ -1046,10 +1046,17 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
             <Textarea
               value={bulkImportText}
               onChange={(e) => setBulkImportText(e.target.value)}
-              placeholder={"e.g. Financial Statements\nTax Returns\nBank Statements\nCorporate Documents"}
-              className="min-h-[200px] font-mono text-sm"
+              placeholder={"Paste items here, one per line…\n\ne.g.\nFinancial Statements\nTax Returns\nBank Statements"}
+              className="min-h-[200px] font-mono text-sm placeholder:text-muted-foreground/60 placeholder:italic"
               autoFocus
             />
+            <button
+              type="button"
+              className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+              onClick={() => setIndividualRows(prev => [...prev, { id: `${Date.now()}-${prev.length}`, text: '', requestedBy: [] }])}
+            >
+              + Add individual item
+            </button>
             {/* Individual add mode — alternative to pasting. Each row can
                 optionally override the dialog-level requester. */}
             {individualRows.length > 0 && (
@@ -1098,13 +1105,6 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                 ))}
               </div>
             )}
-            <button
-              type="button"
-              className="text-xs text-primary hover:underline inline-flex items-center gap-1"
-              onClick={() => setIndividualRows(prev => [...prev, { id: `${Date.now()}-${prev.length}`, text: '', requestedBy: [] }])}
-            >
-              + Add individual item
-            </button>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Assign requester to all items</label>
               <Popover>
