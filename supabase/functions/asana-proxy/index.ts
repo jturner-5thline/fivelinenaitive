@@ -371,8 +371,6 @@ serve(async (req) => {
       }
 
       case "portfolio_milestones": {
-      // intentional fall-through marker — see new case above
-        // (no-op)
         // Fetch milestone-type tasks across all projects in a portfolio.
         const resolvedToken = await resolveToken(token, integration_id);
         const portfolioGid = params.portfolio_gid;
