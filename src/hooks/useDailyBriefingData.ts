@@ -64,24 +64,28 @@ export function useActivePipelineId(): string | null {
 // Status suppression for the Deal Rundown.
 //   • Admins: see ALL deals regardless of status (no suppression).
 //   • Non-admins: hide only Archived and Closed-Lost. On-Hold remains visible.
-const NON_ADMIN_SUPPRESSED_STATUSES = new Set([
+// Terminal/dead statuses excluded for EVERYONE (admins included).
+const UNIVERSAL_SUPPRESSED_STATUSES = new Set([
   'archived',
   'closed-lost',
   'closed_lost',
   'closedlost',
+  'lost',
+  'rejected',
 ]);
 export function filterRundownEligibleDeals<T extends { status?: string | null; pipelineId?: string | null }>(
   deals: T[],
   activePipelineId: string | null,
   isAdmin: boolean = false,
 ): T[] {
-  // Admins see ALL deals — no pipeline gate, no status suppression.
-  if (isAdmin) return deals;
-  if (!activePipelineId) return [];
+  // Admin bypass applies ONLY to the pipeline gate — terminal statuses
+  // (archived / closed-lost / lost / rejected) are excluded for everyone.
   return deals.filter(d => {
-    if ((d as any).pipelineId !== activePipelineId) return false;
     const status = (d.status || '').toString().toLowerCase();
-    if (NON_ADMIN_SUPPRESSED_STATUSES.has(status)) return false;
+    if (UNIVERSAL_SUPPRESSED_STATUSES.has(status)) return false;
+    if (isAdmin) return true;
+    if (!activePipelineId) return false;
+    if ((d as any).pipelineId !== activePipelineId) return false;
     return true;
   });
 }
