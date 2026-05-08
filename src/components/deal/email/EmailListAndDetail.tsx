@@ -613,7 +613,7 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
               </div>
             )}
             <p className="text-[11px] text-[hsl(var(--email-text-muted))] truncate flex-1 min-w-0">
-              {latest.snippet}
+              {previewSnippet}
             </p>
           </div>
         </div>
