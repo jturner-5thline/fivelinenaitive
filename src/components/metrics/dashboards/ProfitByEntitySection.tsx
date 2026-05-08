@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Component, ReactNode, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +39,39 @@ const ZERO_LINE_COLOR = 'rgba(220, 232, 255, 0.85)';
 // remain harmless (the unified surface already paints its own sheen).
 const GLASS_CARD_STYLE: React.CSSProperties = {};
 const GLASS_SHEEN_STYLE: React.CSSProperties = { display: 'none' };
+
+// Local boundary so a transient query/parse error in the FinServ profit
+// widget renders a small fallback card instead of tripping the global
+// crash overlay.
+class ProfitWidgetErrorBoundary extends Component<
+  { title: string; children: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: unknown) {
+    console.error('[ProfitWidgetErrorBoundary]', error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Card className="h-full glass-module">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-muted-foreground">
+              {this.props.title}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-xs text-muted-foreground">
+            Unable to load profit data right now. Try refreshing in a moment.
+          </CardContent>
+        </Card>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export function ProfitBarChart({
   title,
