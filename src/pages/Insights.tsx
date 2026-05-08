@@ -2583,7 +2583,16 @@ function MetricsInner() {
                         });
                       }}
                       cardConfigs={managementSnapshotCardConfigs}
-                      gridLayout={snapshotGridLayout}
+                      gridLayout={snapshotGridLayout.map(item => (
+                        // Strip any legacy oversized minW/minH so widgets that
+                        // used to be locked (e.g. Outstanding A/R) inherit the
+                        // same flexible resize range as other Weekly Rundown
+                        // cards. New min sizes come from the layout defaults
+                        // (small) and constraints map (empty).
+                        item.i === 'sd-outstanding-ar' || item.i === 'outstanding-ar'
+                          ? { ...item, minW: 2, minH: 2 }
+                          : item
+                      ))}
                       onGridLayoutChange={saveSnapshotGridLayout}
                       selectedQuarter={dashboardSelectedQuarter}
                       onQuarterChange={() => { /* selector lives in page header */ }}
