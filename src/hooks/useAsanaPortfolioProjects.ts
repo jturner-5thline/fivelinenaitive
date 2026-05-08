@@ -5,6 +5,7 @@ import { useCompany } from '@/hooks/useCompany';
 export interface AsanaPortfolioProjectRow {
   gid: string;
   name: string;
+  itemType: 'project' | 'portfolio';
   permalink_url: string | null;
   owner: string | null;
   ownerEmail: string | null;
@@ -80,6 +81,7 @@ export function useAsanaPortfolioProjects(portfolioGid: string | null): UseAsana
       const normalized: AsanaPortfolioProjectRow[] = (data.projects || []).map((p: any) => ({
         gid: p.gid,
         name: p.name || '(Untitled project)',
+        itemType: p.item_type === 'portfolio' ? 'portfolio' : 'project',
         permalink_url: p.permalink_url || null,
         owner: p.owner || null,
         ownerEmail: p.owner_email || null,
