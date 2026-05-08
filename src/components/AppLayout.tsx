@@ -8,6 +8,7 @@ import { ClaapRoutingTasksBadge } from "@/components/integrations/claap/ClaapRou
 import { CopilotToggleButton } from "@/components/CopilotToggleButton";
 import { CommandBar } from "@/components/CommandBar";
 import { cn } from "@/lib/utils";
+import { logActivity } from "@/lib/activityLogger";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -102,6 +103,15 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
   // The dashboard already exposes the primary assistant composer inline,
   // so suppress the floating AI Copilot panel + toggle on that route only.
   const isDashboardPage = location.pathname === '/dashboard';
+
+  // Log a page_view activity event whenever the route changes.
+  React.useEffect(() => {
+    logActivity({
+      event_type: "page_view",
+      event_data: { path: location.pathname, search: location.search || undefined },
+    });
+  }, [location.pathname, location.search]);
+
   return (
     <SidebarProvider defaultOpen={true} className="h-svh" style={{ isolation: 'auto' } as React.CSSProperties}>
       <BodyScrollLock />
