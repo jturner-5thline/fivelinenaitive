@@ -534,7 +534,16 @@ const Admin = () => {
   };
 
   const ActiveIcon = activeSection.icon;
-  const currentSubPageId = activeSubPage[activeCategory];
+  // Guard: make sure the persisted subpage id actually belongs to the
+  // currently-active section. Without this, a stale id from a previous
+  // session/URL could fall through to `default: null` (or worse, collide
+  // with another section's case — e.g. Access carrying the Users
+  // section's "users" id, which would render the Users table).
+  const persistedSubPageId = activeSubPage[activeCategory];
+  const currentSubPageId =
+    activeSection.subPages.some((sp) => sp.id === persistedSubPageId)
+      ? persistedSubPageId
+      : activeSection.subPages[0]?.id;
 
   return (
     <div className="bg-background">
@@ -654,7 +663,7 @@ const Admin = () => {
           {/* Scrollable panel body with slide transition */}
           <div className="absolute inset-0 top-[105px] overflow-hidden">
             <div
-              key={activeCategory}
+              key={`${activeCategory}:${currentSubPageId}`}
               className="h-full overflow-y-auto px-5 py-5 animate-in fade-in slide-in-from-right-2 duration-200"
             >
               {renderSubPageContent(currentSubPageId)}
