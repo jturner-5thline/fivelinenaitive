@@ -545,6 +545,17 @@ const Admin = () => {
       ? persistedSubPageId
       : activeSection.subPages[0]?.id;
 
+  // Sections that intentionally render a "Coming soon" placeholder
+  // instead of their sub-page content. Kept in the top-level tab bar so
+  // navigation stays consistent.
+  const COMING_SOON_SECTIONS: TabCategory[] = [
+    "data-security",
+    "settings",
+    "product-enhancement",
+    "support",
+  ];
+  const isComingSoon = COMING_SOON_SECTIONS.includes(activeCategory);
+
   return (
     <div className="bg-background">
       <DealsHeader />
