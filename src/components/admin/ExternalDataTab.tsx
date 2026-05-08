@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Cloud, Users, Building2, Briefcase, Activity, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format, formatDistanceToNow } from "date-fns";
+import { formatSlug } from "@/utils/dealTypeLabels";
 import { 
   useExternalProfiles, 
   useExternalDeals, 
@@ -224,13 +225,13 @@ export const ExternalDataTab = () => {
                           <TableCell className="font-medium">{deal.company || "Unknown"}</TableCell>
                           <TableCell>${deal.value ? formatCurrencyInputValue(deal.value) : "-"}</TableCell>
                           <TableCell>
-                            <Badge variant="secondary">{deal.stage || "Unknown"}</Badge>
+                            <Badge variant="secondary">{formatSlug(deal.stage) || "Unknown"}</Badge>
                           </TableCell>
                           <TableCell>
                             <Badge 
                               variant={deal.status === "active" ? "default" : "outline"}
                             >
-                              {deal.status || "Unknown"}
+                              {formatSlug(deal.status) || "Unknown"}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-muted-foreground text-sm">
