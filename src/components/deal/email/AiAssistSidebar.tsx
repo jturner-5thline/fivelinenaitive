@@ -242,6 +242,18 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   // surfacing the same recommendation, to avoid duplicate prompts.
   const showWorkflowCard = !!workflowAnalysis && !workflowDismissed && !showPassCard;
 
+  // Dedicated proactive follow-up extractor. Gated on workflow analysis
+  // completion so the cards only render after "Analyzing thread…" finishes.
+  const {
+    suggestions: followupSuggestions,
+    loading: followupLoading,
+  } = useEmailFollowupSuggestions({
+    threadData: passThreadData,
+    dealId: dealId || workflowAnalysis?.likely_deal?.id || null,
+    dealName: dealName || workflowAnalysis?.likely_deal?.name || null,
+    enabled: !!workflowAnalysis && !workflowLoading,
+  });
+
   // Data Room suggestion — load latest message attachments + auto-suggest destination
   const latestId = thread.latestEmail.id;
   const isMock = !latestId || latestId.startsWith('mock-');
