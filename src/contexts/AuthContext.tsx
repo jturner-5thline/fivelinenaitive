@@ -112,6 +112,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           import("@/lib/usageLogger").then((m) => m.markSessionStart()).catch(() => {});
         }
 
+        // Log explicit sign-in events to user_activity_log
+        if (event === 'SIGNED_IN' && session?.user) {
+          import("@/lib/activityLogger").then((m) =>
+            m.logActivity({
+              event_type: "sign_in",
+              event_data: {
+                provider: session.user.app_metadata?.provider ?? "email",
+              },
+            }),
+          ).catch(() => {});
+        }
+        if (event === 'SIGNED_OUT') {
+          import("@/lib/activityLogger").then((m) =>
+            m.logActivity({ event_type: "sign_out" }),
+          ).catch(() => {});
+        }
+
         // For OAuth logins (Google, etc.), always treat as "remember me"
         // since there's no checkbox shown during OAuth flow
         if (event === 'SIGNED_IN' && session?.user) {

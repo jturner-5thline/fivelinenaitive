@@ -10,7 +10,7 @@ import {
   Settings, Megaphone, Lock, Webhook, AlertCircle, Database, Layout,
   ChevronLeft, ChevronRight,
   ShieldCheck, Cog, Lightbulb, UserCheck, Bell, MonitorPlay, ToggleRight, Brain, Wallet, FileText,
-  BarChart3
+  BarChart3, Plus
 } from "lucide-react";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useSystemStats } from "@/hooks/useAdminData";
@@ -43,6 +43,7 @@ import { AIRulesPanel } from "@/components/admin/AIRulesPanel";
 import { QbCashflowMappingPanel } from "@/components/admin/QbCashflowMappingPanel";
 import { RecurringReportsPanel } from "@/components/admin/RecurringReportsPanel";
 import { UsageAnalyticsPanel } from "@/components/admin/usage-analytics/UsageAnalyticsPanel";
+import { CreateDemoAccessModal } from "@/components/admin/CreateDemoAccessModal";
 
 // Sub-page configurations
 const usersSubPages = [
@@ -116,6 +117,7 @@ const Admin = () => {
   const { isAdmin, isLoading: roleLoading } = useAdminRole();
   const { data: stats, isLoading: statsLoading } = useSystemStats();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [demoModalOpen, setDemoModalOpen] = useState(false);
 
   const initialSection = (searchParams.get("section") as TabCategory) || "users";
   const initialTab = searchParams.get("tab") || undefined;
@@ -580,6 +582,16 @@ const Admin = () => {
               </div>
             </div>
             <div className="flex items-center gap-1">
+              {activeCategory === "users" && (
+                <Button
+                  size="sm"
+                  className="h-8 mr-1"
+                  onClick={() => setDemoModalOpen(true)}
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  Create Demo Access
+                </Button>
+              )}
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goPrev} aria-label="Previous section">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -628,6 +640,7 @@ const Admin = () => {
           </div>
         </div>
       </div>
+      <CreateDemoAccessModal open={demoModalOpen} onOpenChange={setDemoModalOpen} />
     </div>
   );
 };

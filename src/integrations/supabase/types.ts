@@ -2725,12 +2725,14 @@ export type Database = {
       }
       companies: {
         Row: {
+          account_type: string | null
           address: string | null
           archived_at: string | null
           archived_reason: string | null
           city: string | null
           country: string | null
           created_at: string
+          created_by: string | null
           description: string | null
           domains: string[] | null
           employee_size: string | null
@@ -2739,20 +2741,25 @@ export type Database = {
           is_seeding: boolean
           logo_url: string | null
           name: string
+          notes: string | null
           primary_domain: string | null
           state: string | null
+          subscription_status: string | null
           suspended_at: string | null
           suspended_reason: string | null
+          trial_ends_at: string | null
           updated_at: string
           website_url: string | null
         }
         Insert: {
+          account_type?: string | null
           address?: string | null
           archived_at?: string | null
           archived_reason?: string | null
           city?: string | null
           country?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           domains?: string[] | null
           employee_size?: string | null
@@ -2761,20 +2768,25 @@ export type Database = {
           is_seeding?: boolean
           logo_url?: string | null
           name: string
+          notes?: string | null
           primary_domain?: string | null
           state?: string | null
+          subscription_status?: string | null
           suspended_at?: string | null
           suspended_reason?: string | null
+          trial_ends_at?: string | null
           updated_at?: string
           website_url?: string | null
         }
         Update: {
+          account_type?: string | null
           address?: string | null
           archived_at?: string | null
           archived_reason?: string | null
           city?: string | null
           country?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           domains?: string[] | null
           employee_size?: string | null
@@ -2783,10 +2795,13 @@ export type Database = {
           is_seeding?: boolean
           logo_url?: string | null
           name?: string
+          notes?: string | null
           primary_domain?: string | null
           state?: string | null
+          subscription_status?: string | null
           suspended_at?: string | null
           suspended_reason?: string | null
+          trial_ends_at?: string | null
           updated_at?: string
           website_url?: string | null
         }
@@ -14845,6 +14860,7 @@ export type Database = {
           full_name: string | null
           id: string
           in_app_notifications: boolean
+          is_active: boolean
           last_name: string | null
           lender_updates_app: boolean
           lender_updates_email: boolean
@@ -14897,6 +14913,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           in_app_notifications?: boolean
+          is_active?: boolean
           last_name?: string | null
           lender_updates_app?: boolean
           lender_updates_email?: boolean
@@ -14949,6 +14966,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           in_app_notifications?: boolean
+          is_active?: boolean
           last_name?: string | null
           lender_updates_app?: boolean
           lender_updates_email?: boolean
@@ -18584,6 +18602,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_activity_log: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          event_data: Json
+          event_type: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          event_data?: Json
+          event_type: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          event_data?: Json
+          event_type?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_activity_log_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_behavior_insights: {
         Row: {
