@@ -4,6 +4,8 @@ import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/contexts/AuthContext';
 import type { VdrDocument } from '@/components/vdr/types';
 import { toast } from 'sonner';
+import { logActivity } from '@/lib/activityLogger';
+import { logUsage } from '@/lib/usageLogger';
 
 export function useVdrDocuments(dealId: string) {
   const { user } = useAuth();
@@ -210,6 +212,21 @@ export function useVdrDocuments(dealId: string) {
 
     logAudit('file_uploaded', 'file', inserted?.id, file.name, {
       folder: folderPath, file_size: file.size, file_type: file.type,
+    });
+    logActivity({
+      event_type: 'feature_used',
+      event_data: {
+        feature: 'vdr_upload',
+        deal_id: dealId,
+        filename: file.name,
+        file_size: file.size,
+      },
+      company_id: company.id,
+    });
+    logUsage({
+      feature_type: 'DATA_ROOM_UPLOAD',
+      deal_id: dealId,
+      metadata: { filename: file.name, file_size: file.size, source },
     });
 
     if (inserted?.id) {
