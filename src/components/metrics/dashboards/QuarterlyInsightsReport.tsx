@@ -976,23 +976,69 @@ function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: Report
     return s.trim();
   };
 
-  const matchesPeriod = (tp: string | null): boolean => {
-    if (!tp) return false;
-    const exact = activeExactMatch;
-    if (exact) {
-      const norm = normalizePeriodLabel(tp);
-      const q = normalizePeriodLabel(activeQuarterLabel);
-      const h = normalizePeriodLabel(activeHalfLabel);
-      if (q && norm === q) return true;
-      if (h && norm === h) return true;
-      return false;
+  type ParsedPeriodInfo = {
+    raw: string | null;
+    normalized: string;
+    quarter: QKey | null;
+    half: HKey | null;
+    year: number | null;
+    month: number | null;
+    source: 'time_period' | 'due' | 'none';
+  };
+
+  const quarterToHalf = (quarter: QKey | null): HKey | null => {
+    if (quarter === 'Q1' || quarter === 'Q2') return 'H1';
+    if (quarter === 'Q3' || quarter === 'Q4') return 'H2';
+    return null;
+  };
+
+  const parsePeriodInfo = (raw: string | null, due?: string | null): ParsedPeriodInfo => {
+    const safeRaw = (raw || '').trim();
+    const rawLower = safeRaw.toLowerCase();
+    const normalized = normalizePeriodLabel(safeRaw);
+
+    let quarter = ((/\b(q[1-4])\b/i.exec(rawLower)?.[1] || null)?.toUpperCase() as QKey | null);
+    let half = ((/\b(h[12])\b/i.exec(rawLower)?.[1] || null)?.toUpperCase() as HKey | null);
+    const monthMatch = MONTH_NAMES_FULL.findIndex((name) => rawLower.includes(name));
+    let month = monthMatch >= 0 ? monthMatch : null;
+
+    let year: number | null = null;
+    const fy = /fy\s*'?\s*(\d{2,4})/i.exec(safeRaw);
+    if (fy) {
+      year = fy[1].length === 2 ? 2000 + parseInt(fy[1], 10) : parseInt(fy[1], 10);
     }
-    const norm = tp.trim().toLowerCase();
-    const q = activeQuarterLabel.trim().toLowerCase();
-    const h = activeHalfLabel.trim().toLowerCase();
-    if (q && norm.includes(q)) return true;
-    if (h && norm.includes(h)) return true;
-    return false;
+    if (year == null) {
+      const fullYear = /\b(20\d{2})\b/.exec(safeRaw);
+      if (fullYear) year = parseInt(fullYear[1], 10);
+    }
+    if (year == null) {
+      const shortYear = /\b(?:q[1-4]|h[12])\s+'?(\d{2})\b/i.exec(safeRaw);
+      if (shortYear) year = 2000 + parseInt(shortYear[1], 10);
+    }
+
+    if (!half && quarter) half = quarterToHalf(quarter);
+    if (!quarter && month != null) quarter = (`Q${Math.floor(month / 3) + 1}` as QKey);
+    if (!half && month != null) half = month < 6 ? 'H1' : 'H2';
+
+    if (due) {
+      const dueDate = new Date(due);
+      if (!Number.isNaN(dueDate.getTime())) {
+        if (year == null) year = dueDate.getFullYear();
+        if (month == null) month = dueDate.getMonth();
+        if (!quarter) quarter = (`Q${Math.floor(dueDate.getMonth() / 3) + 1}` as QKey);
+        if (!half) half = dueDate.getMonth() < 6 ? 'H1' : 'H2';
+      }
+    }
+
+    return {
+      raw: safeRaw || null,
+      normalized,
+      quarter,
+      half,
+      year,
+      month,
+      source: safeRaw ? 'time_period' : (due ? 'due' : 'none'),
+    };
   };
 
   // Extract a year from a goal's time period (e.g. "Q2 FY26", "Q2 2026",
@@ -1029,32 +1075,60 @@ function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: Report
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [asanaGoals, preparedByKey, activeYear]
   );
-  // When the report is scoped to a specific month (e.g. "March 2026"),
-  // further narrow Asana Goals to those whose time_period mentions the
-  // month name OR whose due date falls within that calendar month.
-  // Without this, adjacent months in the same quarter (Mar / Apr) would
-  // surface the identical quarter-level set of goals and look like
-  // duplicate reports.
   const MONTH_NAMES_FULL = ['january','february','march','april','may','june','july','august','september','october','november','december'];
-  const visibleGoals = useMemo(() => {
-    if (s.period !== 'monthly') return ownerGoals;
-    const [monthName, monthYear] = (s.month || '').split(' ');
-    const monthIdx = MONTH_NAMES_FULL.indexOf((monthName || '').toLowerCase());
-    if (monthIdx < 0 || !monthYear) return ownerGoals;
-    const yearNum = parseInt(monthYear, 10);
-    const monthLower = (monthName || '').toLowerCase();
-    const monthShort = monthLower.slice(0, 3);
-    return ownerGoals.filter(g => {
-      const tp = (g.timePeriod || '').toLowerCase();
-      if (tp.includes(monthLower) || tp.includes(monthShort)) return true;
-      if (g.due) {
-        const d = new Date(g.due);
-        if (!isNaN(d.getTime()) && d.getFullYear() === yearNum && d.getMonth() === monthIdx) return true;
-      }
-      return false;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerGoals, s.period, s.month]);
+  const targetQuarterPeriod = useMemo(() => parsePeriodInfo(activeQuarterLabel), [activeQuarterLabel]);
+  const targetHalfPeriod = useMemo(() => parsePeriodInfo(activeHalfLabel), [activeHalfLabel]);
+  const exactQuarter = normalizePeriodLabel(activeQuarterLabel);
+  const exactHalf = normalizePeriodLabel(activeHalfLabel);
+  const substringQuarter = activeQuarterLabel.trim().toLowerCase();
+  const substringHalf = activeHalfLabel.trim().toLowerCase();
+
+  const evaluateGoalPeriod = (g: AsanaGoalRow) => {
+    const parsed = parsePeriodInfo(g.timePeriod, g.due || null);
+    const exact = !!parsed.normalized && ((!!exactQuarter && parsed.normalized === exactQuarter) || (!!exactHalf && parsed.normalized === exactHalf));
+    const substring = !!parsed.normalized && ((!!substringQuarter && parsed.normalized.includes(substringQuarter)) || (!!substringHalf && parsed.normalized.includes(substringHalf)));
+    const quarterTokenMatch = !!parsed.quarter && !!targetQuarterPeriod.quarter && parsed.quarter === targetQuarterPeriod.quarter && (parsed.year == null || targetQuarterPeriod.year == null || parsed.year === targetQuarterPeriod.year);
+    const halfTokenMatch = !!parsed.half && !!targetHalfPeriod.half && parsed.half === targetHalfPeriod.half && (parsed.year == null || targetHalfPeriod.year == null || parsed.year === targetHalfPeriod.year);
+    const modeMatch = activeExactMatch ? exact : substring;
+    const matches = quarterTokenMatch || halfTokenMatch || modeMatch;
+
+    let reason = 'Excluded: no matching Asana period found';
+    if (quarterTokenMatch) {
+      reason = `Included: matched quarter ${parsed.quarter}${parsed.year ? ` ${parsed.year}` : ''}`;
+    } else if (halfTokenMatch) {
+      reason = `Included: matched half ${parsed.half}${parsed.year ? ` ${parsed.year}` : ''}`;
+    } else if (modeMatch) {
+      reason = `Included: ${activeExactMatch ? 'exact' : 'substring'} label match`;
+    } else if (!parsed.raw && !g.due) {
+      reason = 'Excluded: missing Asana time period and due date';
+    } else if (parsed.year != null && activeYear != null && parsed.year !== activeYear) {
+      reason = `Excluded: year ${parsed.year} does not match ${activeYear}`;
+    } else if (parsed.quarter && targetQuarterPeriod.quarter && parsed.quarter !== targetQuarterPeriod.quarter && parsed.half && targetHalfPeriod.half && parsed.half !== targetHalfPeriod.half) {
+      reason = `Excluded: period ${parsed.quarter}/${parsed.half} does not match ${targetQuarterPeriod.quarter}/${targetHalfPeriod.half}`;
+    } else if (parsed.raw) {
+      reason = `Excluded: raw period \"${parsed.raw}\" did not match ${activeQuarterLabel} or ${activeHalfLabel}`;
+    }
+
+    return {
+      parsed,
+      matches,
+      exact,
+      substring,
+      quarterTokenMatch,
+      halfTokenMatch,
+      reason,
+    };
+  };
+
+  const goalEvaluations = useMemo(
+    () => ownerGoals.map((goal) => ({ goal, evaluation: evaluateGoalPeriod(goal) })),
+    [ownerGoals, activeExactMatch, exactQuarter, exactHalf, substringQuarter, substringHalf, targetQuarterPeriod, targetHalfPeriod]
+  );
+
+  const visibleGoals = useMemo(
+    () => goalEvaluations.filter(({ evaluation }) => evaluation.matches).map(({ goal }) => goal),
+    [goalEvaluations]
+  );
 
   // Sort + group controls for Goals.
   const goalStatusRank: Record<string, number> = { 'Off Track': 0, 'Behind': 0, 'At Risk': 1, 'On Track': 2, 'Achieved': 3 };
@@ -1099,22 +1173,17 @@ function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: Report
 
   // Preview counts for both modes — used in the filter editor next to the toggle.
   const matchPreview = useMemo(() => {
-    const qSub = activeQuarterLabel.trim().toLowerCase();
-    const hSub = activeHalfLabel.trim().toLowerCase();
-    const qEx = normalizePeriodLabel(activeQuarterLabel);
-    const hEx = normalizePeriodLabel(activeHalfLabel);
-    const exactMatches: typeof ownerGoals = [];
-    const substringMatches: typeof ownerGoals = [];
-    for (const g of ownerGoals) {
-      const raw = g.timePeriod || '';
-      if (!raw.trim()) continue;
-      const tpSub = raw.trim().toLowerCase();
-      const tpEx = normalizePeriodLabel(raw);
-      if ((qEx && tpEx === qEx) || (hEx && tpEx === hEx)) exactMatches.push(g);
-      if ((qSub && tpSub.includes(qSub)) || (hSub && tpSub.includes(hSub))) substringMatches.push(g);
-    }
-    return { exact: exactMatches, substring: substringMatches };
-  }, [ownerGoals, activeQuarterLabel, activeHalfLabel]);
+    const tokenMatches = goalEvaluations.filter(({ evaluation }) => evaluation.quarterTokenMatch || evaluation.halfTokenMatch).map(({ goal }) => goal);
+    const exactMatches = goalEvaluations.filter(({ evaluation }) => evaluation.exact).map(({ goal }) => goal);
+    const substringMatches = goalEvaluations.filter(({ evaluation }) => evaluation.substring).map(({ goal }) => goal);
+    return { token: tokenMatches, exact: exactMatches, substring: substringMatches };
+  }, [goalEvaluations]);
+
+  const debugSamples = useMemo(() => {
+    const excluded = goalEvaluations.filter(({ evaluation }) => !evaluation.matches);
+    const included = goalEvaluations.filter(({ evaluation }) => evaluation.matches);
+    return [...excluded.slice(0, 6), ...included.slice(0, 2)].slice(0, 8);
+  }, [goalEvaluations]);
 
   // Persist editor open/closed state in localStorage so it survives reloads.
   const editorOpenStorageKey = 'asanaGoalFilterEditorOpen:v1';
@@ -1501,6 +1570,10 @@ function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: Report
             </span>
             <span style={{ color: TEXT_MUTED, fontSize: 10 }}>for {preparedBy}</span>
             <span style={{ marginLeft: 'auto', fontSize: 10, color: TEXT_MUTED }}>
+              <span style={{ color: visibleGoals.length > 0 ? '#7cc8f0' : TEXT_MUTED, fontWeight: visibleGoals.length > 0 ? 700 : 400 }}>
+                Token: {matchPreview.token.length}
+              </span>
+              {' · '}
               <span style={{ color: activeExactMatch ? '#7cc8f0' : TEXT_MUTED, fontWeight: activeExactMatch ? 700 : 400 }}>
                 Exact: {matchPreview.exact.length}
               </span>
@@ -1514,6 +1587,9 @@ function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: Report
           {visibleGoals.length === 0 ? (
             <div style={{ color: '#ff9b9b', fontSize: 11 }}>
               No goals match in <strong>{activeExactMatch ? 'exact' : 'substring'}</strong> mode.
+              {matchPreview.token.length > 0 && (
+                <> Token matching found {matchPreview.token.length} likely Asana period match{matchPreview.token.length === 1 ? '' : 'es'}.</>
+              )}
               {!activeExactMatch && matchPreview.exact.length > 0 && (
                 <> Try enabling exact match — {matchPreview.exact.length} would match.</>
               )}
@@ -1538,6 +1614,46 @@ function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: Report
               )}
             </ul>
           )}
+          <div style={{ marginTop: 10, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 10 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: TEXT_LABEL, marginBottom: 6 }}>
+              Goal filter debug sample
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>Goal</th>
+                    <th style={thStyle}>Owner</th>
+                    <th style={thStyle}>Raw period</th>
+                    <th style={thStyle}>Normalized</th>
+                    <th style={thStyle}>Result</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {debugSamples.map(({ goal, evaluation }) => (
+                    <tr key={`goal-debug-${goal.id}`}>
+                      <td style={tdStyle}>{goal.title}</td>
+                      <td style={tdStyle}>{goal.owner || '—'}</td>
+                      <td style={tdStyle}>
+                        <div style={{ color: TEXT_PRIMARY }}>{evaluation.parsed.raw || '—'}</div>
+                        {goal.due && <div style={{ fontSize: 10, color: TEXT_MUTED }}>Due: {goal.due}</div>}
+                      </td>
+                      <td style={tdStyle}>
+                        <div style={{ color: '#7cc8f0', fontFamily: 'monospace', fontSize: 11 }}>{evaluation.parsed.normalized || '—'}</div>
+                        <div style={{ fontSize: 10, color: TEXT_MUTED }}>
+                          {evaluation.parsed.quarter || '—'} · {evaluation.parsed.half || '—'} · {evaluation.parsed.year || '—'}
+                        </div>
+                      </td>
+                      <td style={tdStyle}>
+                        <div style={{ color: evaluation.matches ? '#7ed8a5' : '#ff9b9b', fontWeight: 600 }}>{evaluation.matches ? 'Included' : 'Excluded'}</div>
+                        <div style={{ fontSize: 10, color: TEXT_MUTED }}>{evaluation.reason}</div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     );
