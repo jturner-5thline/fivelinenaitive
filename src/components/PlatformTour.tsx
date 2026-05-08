@@ -625,7 +625,12 @@ export function PlatformTour() {
             </div>
           )}
 
-          {step.kind === 'ai-demo' && <AiDemoSimulation key={`demo-${currentStep}`} />}
+          {step.kind === 'ai-demo' && (
+            <div className="flex items-center gap-2 text-xs text-primary/90 bg-primary/10 border border-primary/20 rounded-md px-2 py-1.5 mt-2">
+              <SparklesLucide className="h-3.5 w-3.5 shrink-0" />
+              <span>Watch the panel above — try clicking an action item. It's all sample data.</span>
+            </div>
+          )}
           {step.kind === 'finish' && <div className="pt-1"><ExamplePrompts /></div>}
         </div>
 
