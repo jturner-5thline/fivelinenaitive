@@ -46,6 +46,26 @@ function extractGroupValue(reportData: any, group: string): number | null {
   return null;
 }
 
+// Pull all AccountRef ids referenced by an expense/bill row, falling back to
+// the row-level account_ref_id when no line-level detail is present.
+function lineAccountRefs(row: any): { accountId: string; amount: number }[] {
+  const out: { accountId: string; amount: number }[] = [];
+  const lines: any[] = Array.isArray(row?.line_items) ? row.line_items : [];
+  for (const l of lines) {
+    const det = l?.AccountBasedExpenseLineDetail;
+    const accountId = det?.AccountRef?.value;
+    const amount = Number(l?.Amount ?? 0);
+    if (accountId && Number.isFinite(amount)) {
+      out.push({ accountId: String(accountId), amount });
+    }
+  }
+  if (out.length === 0 && row?.account_ref_id) {
+    const amount = Number(row?.total_amt ?? 0);
+    out.push({ accountId: String(row.account_ref_id), amount: Number.isFinite(amount) ? amount : 0 });
+  }
+  return out;
+}
+
 export function useMonthlyEntityProfit(entityName: string, quarterMonths: MonthDef[]) {
   const { user } = useAuth();
   const realmId = ENTITY_REALM_MAP[entityName];
@@ -61,11 +81,8 @@ export function useMonthlyEntityProfit(entityName: string, quarterMonths: MonthD
   const startDate = buckets[0]?.start ?? '';
   const endDate = buckets[buckets.length - 1]?.end ?? '';
 
-  // Single query per entity — fetch any cached monthly P&L reports overlapping
-  // the requested quarter. Each report row already carries the parsed
-  // accrual-basis P&L tree in `report_data`, so we don't need to sum raw
-  // transactions.
-  const { data: reports, isLoading, isFetching, error } = useQuery({
+  // Primary source: cached monthly P&L reports.
+  const { data: reports, isLoading: lR, isFetching: fR } = useQuery({
     queryKey: ['entity-profit-pnl-reports', realmId, startDate, endDate],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -81,12 +98,71 @@ export function useMonthlyEntityProfit(entityName: string, quarterMonths: MonthD
     enabled: !!user && !!realmId && !!startDate && !!endDate,
   });
 
-  const loading = isLoading || isFetching;
+  // Fallback ingredients (only used for buckets without a P&L report).
+  const { data: invoices, isLoading: lI, isFetching: fI } = useQuery({
+    queryKey: ['entity-profit-invoices', realmId, startDate, endDate],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('quickbooks_invoices')
+        .select('txn_date, total_amt')
+        .eq('realm_id', realmId)
+        .gte('txn_date', startDate)
+        .lte('txn_date', endDate);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!user && !!realmId && !!startDate && !!endDate,
+  });
+
+  const { data: expenses, isLoading: lE, isFetching: fE } = useQuery({
+    queryKey: ['entity-profit-expenses', realmId, startDate, endDate],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('quickbooks_expenses')
+        .select('txn_date, total_amt, account_ref_id, line_items')
+        .eq('realm_id', realmId)
+        .gte('txn_date', startDate)
+        .lte('txn_date', endDate);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!user && !!realmId && !!startDate && !!endDate,
+  });
+
+  const { data: bills, isLoading: lB, isFetching: fB } = useQuery({
+    queryKey: ['entity-profit-bills', realmId, startDate, endDate],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('quickbooks_bills')
+        .select('txn_date, total_amt, line_items')
+        .eq('realm_id', realmId)
+        .gte('txn_date', startDate)
+        .lte('txn_date', endDate);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!user && !!realmId && !!startDate && !!endDate,
+  });
+
+  // All accounts for this realm so we can filter expense lines to
+  // classification='Expense' (exclude intercompany "Due to ..." liability postings, etc.).
+  const { data: accounts, isLoading: lA, isFetching: fA } = useQuery({
+    queryKey: ['entity-profit-accounts', realmId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('quickbooks_accounts')
+        .select('qb_id, classification')
+        .eq('realm_id', realmId);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!user && !!realmId,
+  });
+
+  const isLoading = lR || fR || lI || fI || lE || fE || lB || fB || lA || fA;
 
   return useMemo(() => {
-    // Map each bucket to a matching monthly P&L report (exact period match
-    // + accrual basis). If none exists, leave the bucket at 0 and let the
-    // skeleton state communicate "no data yet" upstream.
+    // Index P&L reports by exact bucket boundary (accrual basis only).
     const reportByKey = new Map<string, any>();
     for (const r of reports ?? []) {
       const data: any = r.report_data;
@@ -98,25 +174,53 @@ export function useMonthlyEntityProfit(entityName: string, quarterMonths: MonthD
       if (bucket) reportByKey.set(bucket.key, data);
     }
 
+    // Build classification map: accountId -> classification.
+    const classificationById = new Map<string, string>();
+    for (const a of accounts ?? []) {
+      if (a.qb_id) classificationById.set(String(a.qb_id), String(a.classification ?? ''));
+    }
+
+    // Per-month transaction sums (only consumed when no P&L report exists).
+    const txnRevenue = new Map<string, number>();
+    const txnExpenses = new Map<string, number>();
+    for (const row of invoices ?? []) {
+      if (!row.txn_date) continue;
+      const k = String(row.txn_date).slice(0, 7);
+      txnRevenue.set(k, (txnRevenue.get(k) ?? 0) + (Number(row.total_amt) || 0));
+    }
+    for (const row of [...(expenses ?? []), ...(bills ?? [])]) {
+      if (!row.txn_date) continue;
+      const k = String(row.txn_date).slice(0, 7);
+      const refs = lineAccountRefs(row);
+      let bucketTotal = 0;
+      for (const { accountId, amount } of refs) {
+        if (classificationById.get(accountId) === 'Expense') bucketTotal += amount;
+      }
+      if (bucketTotal !== 0) {
+        txnExpenses.set(k, (txnExpenses.get(k) ?? 0) + bucketTotal);
+      }
+    }
+
     const months: ProfitMonthBucket[] = buckets.map((b) => {
       const report = reportByKey.get(b.key);
-      if (!report) {
-        return { label: b.label, key: b.key, revenue: 0, expenses: 0, profit: 0 };
+      if (report) {
+        const income = extractGroupValue(report, 'Income') ?? 0;
+        const expensesTotal = extractGroupValue(report, 'Expenses') ?? 0;
+        const netIncome = extractGroupValue(report, 'NetIncome');
+        return {
+          label: b.label,
+          key: b.key,
+          revenue: income,
+          expenses: expensesTotal,
+          profit: netIncome ?? income - expensesTotal,
+        };
       }
-      const income = extractGroupValue(report, 'Income') ?? 0;
-      const expenses = extractGroupValue(report, 'Expenses') ?? 0;
-      const netIncome = extractGroupValue(report, 'NetIncome');
-      return {
-        label: b.label,
-        key: b.key,
-        revenue: income,
-        expenses,
-        profit: netIncome ?? income - expenses,
-      };
+      const revenue = txnRevenue.get(b.key) ?? 0;
+      const exp = txnExpenses.get(b.key) ?? 0;
+      return { label: b.label, key: b.key, revenue, expenses: exp, profit: revenue - exp };
     });
 
     const total = months.reduce((s, m) => s + m.profit, 0);
-
-    return { months, total, isLoading: loading, error: error as Error | null };
-  }, [reports, buckets, loading, error]);
+    return { months, total, isLoading };
+  }, [reports, invoices, expenses, bills, accounts, buckets, isLoading]);
 }
