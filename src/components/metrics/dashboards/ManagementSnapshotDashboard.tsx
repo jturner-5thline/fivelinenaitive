@@ -664,12 +664,12 @@ export function ManagementSnapshotDashboard({
   const TOP_GRID_CONSTRAINTS: Record<string, WidgetConstraint> = {
     // KPI tiles: small/medium, draggable + resizable within sane bounds
     'total-revenue-detail':  { minW: 4, minH: 3, maxH: 8 },
-    'debt-revenue':          { minW: 3, minH: 3, maxH: 8 },
+    // 'debt-revenue', 'total-revenue', and 'outstanding-ar' intentionally
+    // omitted so they inherit the same default resizable behavior as the
+    // rest of the editable widgets (no hardcoded max span).
     'finserv-revenue':       { minW: 3, minH: 3, maxH: 8 },
-    'total-revenue':         { minW: 3, minH: 3, maxH: 8 },
     'clients-signed-debt':   { minW: 3, minH: 2, maxH: 6 },
     'clients-signed-finserv':{ minW: 3, minH: 2, maxH: 6 },
-    'outstanding-ar':        { minW: 3, minH: 2, maxH: 6 },
     'debt-profit':           { minW: 3, minH: 3, maxH: 8 },
     'finserv-profit':        { minW: 3, minH: 3, maxH: 8 },
     'avg-rev-per-client':    { minW: 3, minH: 2, maxH: 5 },
@@ -701,8 +701,9 @@ export function ManagementSnapshotDashboard({
   };
 
   const SUB_WIDGET_CONSTRAINTS: Record<string, WidgetConstraint> = {
-    'rev-debt':    { minW: 4, minH: 4, maxH: 12 },
-    'rev-finserv': { minW: 4, minH: 4, maxH: 12 },
+    // 'rev-debt', 'rev-finserv', and 'sd-outstanding-ar' intentionally
+    // omitted so they inherit the default resizable behavior (matching the
+    // rest of the editable Weekly Rundown widgets).
     'pm-debt-on-board-combined': { minW: 3, minH: 2, maxH: 5 },
     'pm-debt-signed-combined':   { minW: 3, minH: 2, maxH: 5 },
     'pm-debt-closed-combined':   { minW: 3, minH: 2, maxH: 5 },
@@ -711,7 +712,6 @@ export function ManagementSnapshotDashboard({
     'pm-finserv-active-clients': { minW: 3, minH: 2, maxH: 5 },
     'sd-deals-signed':           { minW: 3, minH: 3, maxH: 16 },
     'sd-finserv-clients-signed': { minW: 3, minH: 3, maxH: 16 },
-    'sd-outstanding-ar':         { minW: 3, minH: 4, maxH: 12 },
     'pe-debt-profit':            { minW: 4, minH: 4, maxH: 12 },
     'pe-finserv-profit':         { minW: 4, minH: 4, maxH: 12 },
     'executive-dashboard':       { minW: 8, minH: 8, maxH: 20 },
