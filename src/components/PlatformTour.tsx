@@ -430,10 +430,9 @@ export function PlatformTour() {
     if (step.route && location.pathname !== step.route) {
       navigate(step.route);
     }
-    if (step.id === 'ask-ai') {
-      // Make sure the bar/panel is at least visible — open the panel briefly.
-      try { openCopilot(); } catch { /* noop */ }
-    }
+    // Note: we intentionally do NOT open the live Ask Naitive AI panel during
+    // the tour. The onboarding AI step is fully sandboxed and uses static
+    // demo data only — no real workspace queries, retrievals, or mutations.
     step.onEnter?.();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showTour, currentStep, step?.id]);
