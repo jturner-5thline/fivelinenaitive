@@ -65,6 +65,9 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { exportPipelineToCSV, exportPipelineToPDF, exportPipelineToWord } from '@/utils/dealExport';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
+import { usePipelineDealTasks } from '@/hooks/usePipelineDealTasks';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { CheckSquare } from 'lucide-react';
 import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/contexts/AuthContext';
 
