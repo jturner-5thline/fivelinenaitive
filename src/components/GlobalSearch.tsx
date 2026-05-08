@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Briefcase, Users, Settings, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatSlug } from "@/utils/dealTypeLabels";
 import {
   CommandDialog,
   CommandEmpty,
@@ -103,7 +104,7 @@ export function GlobalSearch() {
                   <div className="flex flex-1 items-center justify-between">
                     <span>{deal.company}</span>
                     <span className="text-xs text-muted-foreground">
-                      {formatCurrency(deal.value)} • {deal.stage}
+                      {formatCurrency(deal.value)} • {formatSlug(deal.stage)}
                     </span>
                   </div>
                 </CommandItem>
