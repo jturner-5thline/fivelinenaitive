@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Mail } from 'lucide-react';
 import { useGmail } from '@/hooks/useGmail';
@@ -504,6 +504,7 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-md">
+          <DialogTitle className="sr-only">Email</DialogTitle>
           <div className="flex flex-col items-center justify-center gap-4 py-8 text-center">
             <div className="p-4 rounded-full bg-primary/10">
               <Mail className="h-8 w-8 text-primary" />
@@ -538,6 +539,7 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
         )}
         style={{ width: '94vw' }}
       >
+        <DialogTitle className="sr-only">Email</DialogTitle>
         <div className="flex-1 min-h-0 overflow-hidden">
           {/* Error boundary so a single bad message / thread / attachment
               cannot crash the entire inbox popup. Reset key tied to
