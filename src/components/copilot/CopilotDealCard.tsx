@@ -3,6 +3,7 @@ import { Calendar, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
+import { formatDealType } from '@/utils/dealTypeLabels';
 
 interface Deal {
   id: string;
@@ -95,7 +96,7 @@ export function CopilotDealCard({ deal, milestones = [], onNavigate }: Props) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
         {deal.deal_type && (
           <span style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))' }}>
-            {deal.deal_type}
+            {formatDealType(deal.deal_type)}
           </span>
         )}
         {deal.value && (
