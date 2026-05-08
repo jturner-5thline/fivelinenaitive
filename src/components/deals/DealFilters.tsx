@@ -20,7 +20,7 @@ import { CollapsibleSearch } from './CollapsibleSearch';
 
 
 const PINNED_FILTERS_KEY = 'deals-pinned-filters';
-const DEFAULT_PINNED: FilterKey[] = ['stage', 'status'];
+const DEFAULT_PINNED: FilterKey[] = ['stage', 'status', 'manager'];
 
 interface DealFiltersProps {
   filters: FilterType;

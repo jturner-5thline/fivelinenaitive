@@ -65,6 +65,9 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { exportPipelineToCSV, exportPipelineToPDF, exportPipelineToWord } from '@/utils/dealExport';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
+import { usePipelineDealTasks } from '@/hooks/usePipelineDealTasks';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { CheckSquare } from 'lucide-react';
 import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -241,6 +244,15 @@ export default function Dashboard() {
   const allDealIds = useMemo(() => pipelineFilteredDeals.map(d => d.id), [pipelineFilteredDeals]);
   const notificationCounts = useDealNotificationCounts(allDealIds);
 
+  // Open tasks per deal — drives the 3-state Tasks filter (All / Has / None).
+  // Reuses the batched hook already used by the Pipeline & Clients memo
+  // cards so we never issue per-deal queries from this page.
+  const { data: dealTasksMap } = usePipelineDealTasks(allDealIds, allDealIds.length > 0);
+  const dealHasTasks = useCallback((dealId: string) => {
+    const arr = dealTasksMap?.get(dealId);
+    return !!(arr && arr.length > 0);
+  }, [dealTasksMap]);
+
   // Count stale deals
   const staleDealCount = useMemo(() => {
     return pipelineFilteredDeals.filter(deal => {
@@ -250,25 +262,53 @@ export default function Dashboard() {
     }).length;
   }, [pipelineFilteredDeals, preferences.staleDealsDays]);
 
-  // Apply hasNotificationsOnly filter - must match DealCard notification logic
-  const deals = useMemo(() => {
-    if (!filters.hasNotificationsOnly) return pipelineFilteredDeals;
-    return pipelineFilteredDeals.filter(deal => {
-      let count = notificationCounts[deal.id] || 0;
-      // Count stale lenders (same logic as DealCard)
-      deal.lenders?.forEach(lender => {
-        if (lender.trackingStatus === 'active' && lender.updatedAt) {
-          const days = Math.floor((Date.now() - new Date(lender.updatedAt).getTime()) / (1000 * 60 * 60 * 24));
-          if (days >= preferences.staleDealsDays) count++;
-        }
-      });
-      // Count overdue milestones (same logic as DealCard)
-      deal.milestones?.forEach(m => {
-        if (!m.completed && m.dueDate && new Date(m.dueDate) < new Date()) count++;
-      });
-      return count > 0;
+  // Per-deal notification count — must match DealCard notification logic so
+  // the 3-state Notifications filter (All / Has / None) lines up with the
+  // red dot/pill rendered on each tile.
+  const dealNotificationCount = useCallback((deal: typeof pipelineFilteredDeals[number]) => {
+    let count = notificationCounts[deal.id] || 0;
+    deal.lenders?.forEach(lender => {
+      if (lender.trackingStatus === 'active' && lender.updatedAt) {
+        const days = Math.floor((Date.now() - new Date(lender.updatedAt).getTime()) / (1000 * 60 * 60 * 24));
+        if (days >= preferences.staleDealsDays) count++;
+      }
     });
-  }, [pipelineFilteredDeals, filters.hasNotificationsOnly, notificationCounts, preferences.staleDealsDays]);
+    deal.milestones?.forEach(m => {
+      if (!m.completed && m.dueDate && new Date(m.dueDate) < new Date()) count++;
+    });
+    return count;
+  }, [notificationCounts, preferences.staleDealsDays]);
+
+  // Apply Notifications + Tasks filters on top of the base filtered set.
+  // Existing role-based / pipeline / archived rules already ran upstream;
+  // we only layer the new 3-state filters here so we can never reintroduce
+  // excluded deals.
+  const deals = useMemo(() => {
+    let result = pipelineFilteredDeals;
+
+    // Notifications: legacy `hasNotificationsOnly` toggle still wins when set
+    // (kept for back-compat with saved views), otherwise use the new
+    // tri-state `notificationsFilter`.
+    const notifMode: 'all' | 'has' | 'none' =
+      filters.hasNotificationsOnly ? 'has' : (filters.notificationsFilter ?? 'all');
+    if (notifMode !== 'all') {
+      result = result.filter(deal => {
+        const count = dealNotificationCount(deal);
+        return notifMode === 'has' ? count > 0 : count === 0;
+      });
+    }
+
+    // Tasks tri-state filter.
+    const taskMode = filters.tasksFilter ?? 'all';
+    if (taskMode !== 'all') {
+      result = result.filter(deal => {
+        const has = dealHasTasks(deal.id);
+        return taskMode === 'has' ? has : !has;
+      });
+    }
+
+    return result;
+  }, [pipelineFilteredDeals, filters.hasNotificationsOnly, filters.notificationsFilter, filters.tasksFilter, dealNotificationCount, dealHasTasks]);
 
   // Duplicate detection
   const { clusters: duplicateClusters, suppressCluster } = useDealDuplicates(deals, showDuplicates);
@@ -610,28 +650,65 @@ export default function Dashboard() {
                   </Tooltip>
                 </TooltipProvider>
 
+                {/*
+                  Notifications & Tasks tri-state segmented controls.
+                  Each pill group is All / Has / No, styled to match the
+                  existing glassy cyan toolbar buttons (see Bell toggle
+                  history). Combines with all other filters via AND logic
+                  in the `deals` memo above.
+                */}
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Toggle
-                        pressed={filters.hasNotificationsOnly}
-                        onPressedChange={(pressed) => {
-                          if (pressed) {
-                            updateFilters({ hasNotificationsOnly: true, staleOnly: false, flaggedOnly: false });
-                          } else {
-                            updateFilters({ hasNotificationsOnly: false });
-                          }
+                      <ToggleGroup
+                        type="single"
+                        value={filters.hasNotificationsOnly ? 'has' : (filters.notificationsFilter ?? 'all')}
+                        onValueChange={(v) => {
+                          const next = (v || 'all') as 'all' | 'has' | 'none';
+                          updateFilters({
+                            notificationsFilter: next,
+                            // Clear legacy flag — the tri-state owns this now.
+                            hasNotificationsOnly: false,
+                            ...(next !== 'all' ? { staleOnly: false, flaggedOnly: false } : {}),
+                          });
                           setSavedViewWarningDismissed(false);
                         }}
-                        variant="outline"
-                        size="sm"
-                        className={`h-8 w-8 p-0 backdrop-blur-md border transition-all duration-200 ${filters.hasNotificationsOnly ? 'bg-gradient-to-br from-cyan-500/25 to-teal-600/20 border-cyan-500/50 text-cyan-400 shadow-[0_0_12px_hsl(185,70%,50%,0.2)] hover:from-cyan-500/30 hover:to-teal-600/25' : 'bg-gradient-to-br from-cyan-500/10 to-teal-600/5 border-cyan-500/20 text-cyan-400/60 hover:from-cyan-500/15 hover:to-teal-600/10 hover:border-cyan-500/35 hover:text-cyan-400'}`}
+                        className="h-8 gap-0 rounded-md border border-cyan-500/20 bg-gradient-to-br from-cyan-500/10 to-teal-600/5 backdrop-blur-md p-0.5"
                       >
-                        <Bell className="h-4 w-4" />
-                      </Toggle>
+                        <ToggleGroupItem value="all" className="h-7 px-2 text-[11px] data-[state=on]:bg-cyan-500/25 data-[state=on]:text-cyan-300 text-cyan-400/70">
+                          <Bell className="h-3.5 w-3.5" />
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="has" className="h-7 px-2 text-[11px] data-[state=on]:bg-cyan-500/25 data-[state=on]:text-cyan-300 text-cyan-400/70">Has</ToggleGroupItem>
+                        <ToggleGroupItem value="none" className="h-7 px-2 text-[11px] data-[state=on]:bg-cyan-500/25 data-[state=on]:text-cyan-300 text-cyan-400/70">None</ToggleGroupItem>
+                      </ToggleGroup>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Show only deals with notifications</p>
+                      <p>Filter by notifications: All / Has / None</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <ToggleGroup
+                        type="single"
+                        value={filters.tasksFilter ?? 'all'}
+                        onValueChange={(v) => {
+                          updateFilters({ tasksFilter: ((v || 'all') as 'all' | 'has' | 'none') });
+                          setSavedViewWarningDismissed(false);
+                        }}
+                        className="h-8 gap-0 rounded-md border border-sky-500/20 bg-gradient-to-br from-sky-500/10 to-blue-600/5 backdrop-blur-md p-0.5"
+                      >
+                        <ToggleGroupItem value="all" className="h-7 px-2 text-[11px] data-[state=on]:bg-sky-500/25 data-[state=on]:text-sky-300 text-sky-400/70">
+                          <CheckSquare className="h-3.5 w-3.5" />
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="has" className="h-7 px-2 text-[11px] data-[state=on]:bg-sky-500/25 data-[state=on]:text-sky-300 text-sky-400/70">Has</ToggleGroupItem>
+                        <ToggleGroupItem value="none" className="h-7 px-2 text-[11px] data-[state=on]:bg-sky-500/25 data-[state=on]:text-sky-300 text-sky-400/70">None</ToggleGroupItem>
+                      </ToggleGroup>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Filter by tasks: All / Has / None</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>

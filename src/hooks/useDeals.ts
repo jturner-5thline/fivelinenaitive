@@ -20,6 +20,10 @@ export interface DealFilters {
   staleOnly: boolean;
   flaggedOnly: boolean;
   hasNotificationsOnly: boolean;
+  /** 3-state segmented control: 'all' (no filter), 'has' (only deals with open tasks), 'none' (only deals with zero open tasks). */
+  tasksFilter: 'all' | 'has' | 'none';
+  /** 3-state segmented control: 'all' (no filter), 'has' (only deals with active notifications), 'none' (only deals with no notifications). */
+  notificationsFilter: 'all' | 'has' | 'none';
 }
 
 export const DEFAULT_DEAL_FILTERS: DealFilters = {
@@ -34,6 +38,8 @@ export const DEFAULT_DEAL_FILTERS: DealFilters = {
   staleOnly: false,
   flaggedOnly: false,
   hasNotificationsOnly: false,
+  tasksFilter: 'all',
+  notificationsFilter: 'all',
 };
 
 export interface UseDealsOptions {
