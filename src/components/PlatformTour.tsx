@@ -398,7 +398,15 @@ export function PlatformTour() {
       const tourAlreadyCompleted = !!(profile as { tour_completed_at?: string | null } | null)?.tour_completed_at;
       if (tourAlreadyCompleted) return;
 
-      // Auto-show for any signed-in user whose profile hasn't recorded tour_completed_at.
+      // ONLY auto-show for NEW users on their first login. Existing users
+      // who never completed the tour will NOT be auto-prompted — they can
+      // still launch it manually via Help → Restart Tour. "New" = account
+      // created within the last 24 hours.
+      const accountCreatedAt = user.created_at ? new Date(user.created_at).getTime() : 0;
+      const isNewAccount = accountCreatedAt > 0
+        && (Date.now() - accountCreatedAt) < 24 * 60 * 60 * 1000;
+      if (!isNewAccount) return;
+
       setCurrentStep(savedStep);
       setTimeout(() => setShowTour(true), 500);
       sessionStorage.removeItem('just-completed-onboarding');
