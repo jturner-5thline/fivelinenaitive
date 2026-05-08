@@ -626,6 +626,14 @@ serve(async (req) => {
             "custom_fields.enum_value.color",
             "custom_fields.multi_enum_values.name",
             "custom_fields.multi_enum_values.color",
+            "custom_field_settings.custom_field.name",
+            "custom_field_settings.custom_field.display_value",
+            "custom_field_settings.custom_field.text_value",
+            "custom_field_settings.custom_field.number_value",
+            "custom_field_settings.custom_field.enum_value.name",
+            "custom_field_settings.custom_field.enum_value.color",
+            "custom_field_settings.custom_field.multi_enum_values.name",
+            "custom_field_settings.custom_field.multi_enum_values.color",
             "due_date",
             "due_on",
             "start_on",
@@ -782,6 +790,28 @@ serve(async (req) => {
                 base_current_status: p.current_status ?? null,
                 base_status: p.status ?? null,
                 base_status_color: p.status_color ?? null,
+                base_custom_field_settings: Array.isArray(p?.custom_field_settings)
+                  ? p.custom_field_settings.map((setting: any) => ({
+                      custom_field: {
+                        name: setting?.custom_field?.name ?? null,
+                        display_value: setting?.custom_field?.display_value ?? null,
+                        text_value: setting?.custom_field?.text_value ?? null,
+                        number_value: setting?.custom_field?.number_value ?? null,
+                        enum_value: setting?.custom_field?.enum_value
+                          ? {
+                              name: setting.custom_field.enum_value?.name ?? null,
+                              color: setting.custom_field.enum_value?.color ?? null,
+                            }
+                          : null,
+                        multi_enum_values: Array.isArray(setting?.custom_field?.multi_enum_values)
+                          ? setting.custom_field.multi_enum_values.map((value: any) => ({
+                              name: value?.name ?? null,
+                              color: value?.color ?? null,
+                            }))
+                          : [],
+                      },
+                    }))
+                  : [],
                 current_status_update: detail?.current_status_update ?? p.current_status_update ?? null,
                 current_status: detail?.current_status ?? p.current_status ?? null,
                 status: detail?.status ?? p.status ?? null,
@@ -877,6 +907,33 @@ serve(async (req) => {
                   candidates.push({ value: cf.enum_value.color, source: `custom_field.enum_color:${fieldName}` });
                 }
                 for (const candidate of candidates) {
+                  if (!candidate.value) continue;
+                  if (!isLikelyStatusField) {
+                    const normalized = normalizeInitiativeStatus(candidate.value);
+                    if (!normalized.key) continue;
+                  }
+                  applyStatus(candidate.value, candidate.source, fieldName);
+                }
+              }
+
+              const baseCustomFieldSettings: any[] = Array.isArray(p?.custom_field_settings) ? p.custom_field_settings : [];
+              for (const setting of baseCustomFieldSettings) {
+                const fieldName = String(setting?.custom_field?.name || "");
+                const fieldKey = fieldName.trim().toLowerCase();
+                const isLikelyStatusField = /status|health|rag|state|condition/.test(fieldKey);
+                const values = [
+                  { value: setting?.custom_field?.enum_value?.name, source: `item.custom_field_settings.enum_value:${fieldName}` },
+                  { value: setting?.custom_field?.enum_value?.color, source: `item.custom_field_settings.enum_color:${fieldName}` },
+                  { value: setting?.custom_field?.display_value, source: `item.custom_field_settings.display_value:${fieldName}` },
+                  { value: setting?.custom_field?.text_value, source: `item.custom_field_settings.text_value:${fieldName}` },
+                ];
+                if (Array.isArray(setting?.custom_field?.multi_enum_values)) {
+                  for (const option of setting.custom_field.multi_enum_values) {
+                    values.push({ value: option?.name, source: `item.custom_field_settings.multi_enum:${fieldName}` });
+                    values.push({ value: option?.color, source: `item.custom_field_settings.multi_enum_color:${fieldName}` });
+                  }
+                }
+                for (const candidate of values) {
                   if (!candidate.value) continue;
                   if (!isLikelyStatusField) {
                     const normalized = normalizeInitiativeStatus(candidate.value);
