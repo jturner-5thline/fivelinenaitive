@@ -160,6 +160,17 @@ interface Props {
 }
 
 export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDraft, onLinkDeal }: Props) {
+  // Defensive guard: if the thread or its messages haven't arrived yet
+  // (e.g. a slow gmail-messages fetch returned a partial fallback), render
+  // a quiet placeholder instead of crashing downstream hooks/cards that
+  // assume `thread.emails` / `thread.latestEmail` exist.
+  if (!thread || !Array.isArray((thread as any).emails) || !(thread as any).latestEmail) {
+    return (
+      <div className="flex h-full min-h-0 w-full min-w-0 items-center justify-center p-6">
+        <p className="text-xs text-[hsl(var(--email-text-secondary))]">Loading email context…</p>
+      </div>
+    );
+  }
   const enqueueAiAction = useEnqueueAiAction();
   // `loadingTones` tracks per-tone in-flight requests (so the panel can render
   // skeletons selectively). The shell never blocks on either.
