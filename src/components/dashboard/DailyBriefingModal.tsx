@@ -1203,7 +1203,15 @@ function PipelineTab({
         <div className="flex-1 min-h-0 overflow-y-auto pr-1 border-l-2 border-l-purple-500 pl-2">
           <Section title="Today's Follow-Ups">
             {showFollowups ? (
-              <FollowupsByDeal groups={followupGroups} onNavigate={onNavigate} />
+              <FollowupTiles
+                groups={followupGroups}
+                onNavigate={onNavigate}
+                assigneeName={
+                  (user?.user_metadata as any)?.full_name ||
+                  user?.email?.split('@')[0] ||
+                  'You'
+                }
+              />
             ) : (
               <EmptySection message="No follow-ups for today" />
             )}
