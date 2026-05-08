@@ -902,7 +902,7 @@ function ReportNarrativeSection({ s, set }: { s: ReportState; set: ReportSetStat
   );
 }
 
-function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState }) {
+function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: ReportSetState; ownerName?: string }) {
   const { goals: asanaGoals, loading, error, lastSyncedAt, configured, refresh } = useAsanaGoals();
   const prefs = useAsanaGoalFilterPrefs();
   const insightsTf = useInsightsTimeframeOptional();
@@ -938,7 +938,7 @@ function ReportGoalsSection({ s, set }: { s: ReportState; set: ReportSetState })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefs.isLoaded]);
 
-  const preparedBy = s.authors[0] || 'James Turner';
+  const preparedBy = ownerName || s.authors[0] || 'James Turner';
   const normalize = (v: string) => v.trim().toLowerCase().replace(/\s+/g, ' ');
   const preparedByKey = normalize(preparedBy);
 
