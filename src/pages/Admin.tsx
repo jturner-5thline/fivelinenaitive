@@ -663,7 +663,7 @@ const Admin = () => {
           {/* Scrollable panel body with slide transition */}
           <div className="absolute inset-0 top-[105px] overflow-hidden">
             <div
-              key={activeCategory}
+              key={`${activeCategory}:${currentSubPageId}`}
               className="h-full overflow-y-auto px-5 py-5 animate-in fade-in slide-in-from-right-2 duration-200"
             >
               {renderSubPageContent(currentSubPageId)}
