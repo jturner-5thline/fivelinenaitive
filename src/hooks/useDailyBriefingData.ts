@@ -123,7 +123,7 @@ export function useCatchUpData(enabled: boolean, targetDealOwnerName?: string) {
   const window = useBriefingWindow();
   const activePipelineId = useActivePipelineId();
   const { effectiveName, ready: scopeReady } = useEffectiveTargetName(targetDealOwnerName);
-  const { isAdmin } = useAdminRole();
+  const { isAdmin } = useCompany();
 
   // When delegated (targetDealOwnerName set), narrow the deal set to deals
   // where that user is Owner OR Manager. This narrows every downstream
