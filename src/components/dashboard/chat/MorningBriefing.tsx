@@ -10,6 +10,7 @@ import { useMyTasks, type Task } from '@/hooks/useTasks';
 import { useGoogleCalendar, type CalendarEvent } from '@/hooks/useGoogleCalendar';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { formatSlug } from '@/utils/dealTypeLabels';
 import { isToday, parseISO, isPast, format, differenceInDays } from 'date-fns';
 
 /** Marker prefix used to identify briefing messages in the chat */
@@ -198,7 +199,7 @@ function DealsAttentionSection({ deals }: { deals: { id: string; company: string
                         deal.status === 'off-track' && 'border-amber-500/40 text-amber-500'
                       )}
                     >
-                      {deal.stage}
+                      {formatSlug(deal.stage)}
                     </Badge>
                   </div>
                   <p className="text-[10px] text-muted-foreground truncate">{deal.reason}</p>
