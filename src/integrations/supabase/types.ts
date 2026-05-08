@@ -2736,6 +2736,7 @@ export type Database = {
           employee_size: string | null
           id: string
           industry: string | null
+          is_seeding: boolean
           logo_url: string | null
           name: string
           primary_domain: string | null
@@ -2757,6 +2758,7 @@ export type Database = {
           employee_size?: string | null
           id?: string
           industry?: string | null
+          is_seeding?: boolean
           logo_url?: string | null
           name: string
           primary_domain?: string | null
@@ -2778,6 +2780,7 @@ export type Database = {
           employee_size?: string | null
           id?: string
           industry?: string | null
+          is_seeding?: boolean
           logo_url?: string | null
           name?: string
           primary_domain?: string | null
@@ -6868,6 +6871,7 @@ export type Database = {
           score: number | null
           stage: string
           substage: string | null
+          tags: string[]
           tracking_status: string | null
           updated_at: string
         }
@@ -6885,6 +6889,7 @@ export type Database = {
           score?: number | null
           stage?: string
           substage?: string | null
+          tags?: string[]
           tracking_status?: string | null
           updated_at?: string
         }
@@ -6902,6 +6907,7 @@ export type Database = {
           score?: number | null
           stage?: string
           substage?: string | null
+          tags?: string[]
           tracking_status?: string | null
           updated_at?: string
         }
@@ -8329,6 +8335,7 @@ export type Database = {
           stage: string
           status: string
           success_fee_percent: number | null
+          tags: string[]
           total_fee: number | null
           updated_at: string
           user_id: string
@@ -8407,6 +8414,7 @@ export type Database = {
           stage?: string
           status?: string
           success_fee_percent?: number | null
+          tags?: string[]
           total_fee?: number | null
           updated_at?: string
           user_id: string
@@ -8485,6 +8493,7 @@ export type Database = {
           stage?: string
           status?: string
           success_fee_percent?: number | null
+          tags?: string[]
           total_fee?: number | null
           updated_at?: string
           user_id?: string
@@ -13128,6 +13137,7 @@ export type Database = {
           sponsorship: string | null
           sub_debt: string | null
           sync_source: string | null
+          tags: string[]
           tier: string | null
           updated_at: string
           upfront_checklist: string | null
@@ -13173,6 +13183,7 @@ export type Database = {
           sponsorship?: string | null
           sub_debt?: string | null
           sync_source?: string | null
+          tags?: string[]
           tier?: string | null
           updated_at?: string
           upfront_checklist?: string | null
@@ -13218,6 +13229,7 @@ export type Database = {
           sponsorship?: string | null
           sub_debt?: string | null
           sync_source?: string | null
+          tags?: string[]
           tier?: string | null
           updated_at?: string
           upfront_checklist?: string | null
@@ -14838,6 +14850,8 @@ export type Database = {
           lender_updates_email: boolean
           morning_digest_enabled: boolean
           morning_digest_time: string
+          notifications_consent_shown: boolean
+          notifications_opted_in: boolean
           notify_activity_deal_created: boolean
           notify_activity_lender_added: boolean
           notify_activity_lender_updated: boolean
@@ -14887,6 +14901,8 @@ export type Database = {
           lender_updates_email?: boolean
           morning_digest_enabled?: boolean
           morning_digest_time?: string
+          notifications_consent_shown?: boolean
+          notifications_opted_in?: boolean
           notify_activity_deal_created?: boolean
           notify_activity_lender_added?: boolean
           notify_activity_lender_updated?: boolean
@@ -14936,6 +14952,8 @@ export type Database = {
           lender_updates_email?: boolean
           morning_digest_enabled?: boolean
           morning_digest_time?: string
+          notifications_consent_shown?: boolean
+          notifications_opted_in?: boolean
           notify_activity_deal_created?: boolean
           notify_activity_lender_added?: boolean
           notify_activity_lender_updated?: boolean
@@ -18121,6 +18139,7 @@ export type Database = {
           start_date: string | null
           status: string
           sync_source: string | null
+          tags: string[]
           task_type: string
           title: string
           updated_at: string
@@ -18157,6 +18176,7 @@ export type Database = {
           start_date?: string | null
           status?: string
           sync_source?: string | null
+          tags?: string[]
           task_type?: string
           title: string
           updated_at?: string
@@ -18193,6 +18213,7 @@ export type Database = {
           start_date?: string | null
           status?: string
           sync_source?: string | null
+          tags?: string[]
           task_type?: string
           title?: string
           updated_at?: string
@@ -21543,6 +21564,7 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      is_company_seeding: { Args: { _company_id: string }; Returns: boolean }
       is_deal_notification_suppressed: {
         Args: { _deal_id: string }
         Returns: boolean
