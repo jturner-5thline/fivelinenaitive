@@ -281,7 +281,25 @@ interface ThreadListItemProps {
 function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels, priorityFlag, userLabels }: ThreadListItemProps) {
   const [hovered, setHovered] = useState(false);
   const latest = thread.latestEmail;
-  const displayName = latest.folder === 'sent' ? `To: ${latest.to_name || latest.to_email}` : latest.from_name;
+  // Preview/sender should always reflect the most-recent message in the
+  // entire conversation (inbox + sent), regardless of who sent it. The row
+  // identity (`latest`) still drives selection / unread state, but the
+  // visible snippet + sender name follow the newest reply so the user sees
+  // their own reply when they replied last.
+  const newestInThread = (thread.emails && thread.emails.length > 0)
+    ? [...thread.emails].sort(
+        (a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime(),
+      )[0]
+    : latest;
+  const newestIsOutbound = newestInThread.folder === 'sent' || newestInThread.from_name === 'You';
+  const displayName = newestIsOutbound
+    ? 'Me'
+    : newestInThread.from_name;
+  const previewSnippet =
+    newestInThread.snippet ||
+    newestInThread.body_preview ||
+    newestInThread.body_text ||
+    '';
   const threadCount = thread.emails.length;
   const isUnread = thread.hasUnread;
   const showCheckbox = hovered || isChecked;
