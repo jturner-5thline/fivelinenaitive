@@ -179,6 +179,7 @@ Deno.serve(async (req) => {
       ...deal,
       user_id: user.id,
       company_id: companyId,
+      tags: ['demo'],
     }));
 
     const { data: insertedDeals, error: insertError } = await supabaseAdmin
@@ -200,6 +201,7 @@ Deno.serve(async (req) => {
           name: lender.name,
           stage: lender.stage,
           notes: `Initial outreach completed for ${insertedDeals[i].company}`,
+          tags: ['demo'],
         });
       }
     }

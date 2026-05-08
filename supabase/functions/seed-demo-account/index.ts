@@ -5,9 +5,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const DEMO_EMAIL = "demo@5thline.co";
-const DEMO_PASSWORD = "Demo2024!";
-const DEMO_COMPANY_NAME = "5th Line Demo";
+const DEFAULT_DEMO_EMAIL = "demo@5thline.co";
+const DEFAULT_DEMO_PASSWORD = "Demo2024!";
+const DEFAULT_DEMO_COMPANY_NAME = "5th Line Demo";
+const DEMO_TAG = "demo";
 
 // 5th Line company settings (cloned from real company)
 const COMPANY_SETTINGS = {
@@ -152,6 +153,29 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(supabaseUrl, serviceKey);
 
+    // Parse optional overrides from body so this works for ANY new demo user.
+    let DEMO_EMAIL = DEFAULT_DEMO_EMAIL;
+    let DEMO_PASSWORD = DEFAULT_DEMO_PASSWORD;
+    let DEMO_COMPANY_NAME = DEFAULT_DEMO_COMPANY_NAME;
+    let firstName = "Demo";
+    let lastName = "User";
+    try {
+      const body = await req.json().catch(() => ({} as any));
+      if (body && typeof body === "object") {
+        if (typeof body.email === "string" && body.email.includes("@")) {
+          DEMO_EMAIL = body.email.trim().toLowerCase();
+          DEMO_COMPANY_NAME = `${DEMO_EMAIL.split("@")[0]} Demo`;
+        }
+        if (typeof body.password === "string" && body.password.length >= 8) DEMO_PASSWORD = body.password;
+        if (typeof body.companyName === "string" && body.companyName.trim()) DEMO_COMPANY_NAME = body.companyName.trim();
+        if (typeof body.firstName === "string" && body.firstName.trim()) firstName = body.firstName.trim();
+        if (typeof body.lastName === "string" && body.lastName.trim()) lastName = body.lastName.trim();
+      }
+    } catch {
+      // ignore — defaults used
+    }
+    const fullName = `${firstName} ${lastName}`.trim();
+
     // 1. Create or get the demo user
     let userId: string;
     const { data: existingUsers } = await admin.auth.admin.listUsers();
@@ -167,7 +191,7 @@ Deno.serve(async (req) => {
         email: DEMO_EMAIL,
         password: DEMO_PASSWORD,
         email_confirm: true,
-        user_metadata: { full_name: "Demo User", first_name: "Demo", last_name: "User" },
+        user_metadata: { full_name: fullName, first_name: firstName, last_name: lastName },
       });
       if (createErr) throw createErr;
       userId = newUser.user.id;
@@ -178,11 +202,14 @@ Deno.serve(async (req) => {
     await admin.from("profiles").upsert({
       user_id: userId,
       email: DEMO_EMAIL,
-      display_name: "Demo User",
-      first_name: "Demo",
-      last_name: "User",
+      display_name: fullName,
+      first_name: firstName,
+      last_name: lastName,
       onboarding_completed: true,
       approved_at: new Date().toISOString(),
+      // Notification consent — opt-out until first-login modal accept
+      notifications_opted_in: false,
+      notifications_consent_shown: false,
       // Disable all notification preferences
       email_notifications: false,
       in_app_notifications: false,
@@ -213,6 +240,8 @@ Deno.serve(async (req) => {
       await admin.from("deals").delete().eq("company_id", companyId);
       await admin.from("master_lenders").delete().eq("company_id", companyId);
       await admin.from("lender_notes").delete().eq("company_id", companyId);
+      await admin.from("contacts").delete().eq("org_company_id", companyId);
+      await admin.from("tasks").delete().eq("company_id", companyId);
     } else {
       const { data: newCompany, error: compErr } = await admin.from("companies").insert({
         name: DEMO_COMPANY_NAME,
@@ -223,6 +252,11 @@ Deno.serve(async (req) => {
       if (compErr) throw compErr;
       companyId = newCompany.id;
     }
+
+    // Flip the company into "seeding" mode so notification triggers no-op
+    // for every insert that follows. We unset this in a finally-style block
+    // at the end of the handler so a partial failure can't strand it on.
+    await admin.from("companies").update({ is_seeding: true }).eq("id", companyId);
 
     // Add user to company
     await admin.from("company_members").upsert({
@@ -269,44 +303,66 @@ Deno.serve(async (req) => {
       weekly_deal_summary_enabled: false,
     }, { onConflict: "user_id" });
 
-    const lendersToInsert = DEMO_LENDERS.map(l => ({
+    // Wrap remaining seeding so we ALWAYS clear companies.is_seeding,
+    // even on partial failure.
+    let insertedLenders: { id: string; name: string }[] = [];
+    let insertedDeals: { id: string; company: string; stage: string }[] = [];
+    let insertedCrmCompanies: { id: string; name: string }[] = [];
+    let insertedContacts: { id: string }[] = [];
+    let dealLendersInsertedCount = 0;
+    let tasksInsertedCount = 0;
+    let milestonesToInsert: any[] = [];
+    let activitiesToInsert: any[] = [];
+
+    try {
+
+    // ---- 5. Lenders: pick 10 most varied from the 20-strong catalog ----
+    // Indexes chosen to span lender_type / tier / geo:
+    // 0 Apex(VD,T1), 1 Ironclad(ABL,T1), 2 Bridgeport(GC,T1), 3 Stride(RBF,T2),
+    // 4 Forge(TL,T2), 6 Keystone(ABL,T2), 8 Ridgeline(Mezz,T2),
+    // 10 Summit(Senior,T1), 13 Nimble(RBF,T3), 19 Citadel(Senior/Unitranche,T1)
+    const LENDER_PICK_IDXS = [0, 1, 2, 3, 4, 6, 8, 10, 13, 19];
+    const pickedLenders = LENDER_PICK_IDXS.map((i) => DEMO_LENDERS[i]);
+
+    const lendersToInsert = pickedLenders.map((l) => ({
       ...l,
       user_id: userId,
       company_id: companyId,
       active: true,
+      tags: [DEMO_TAG],
     }));
 
-    const { data: insertedLenders, error: lenderErr } = await admin.from("master_lenders").insert(lendersToInsert).select("id, name");
-    if (lenderErr) throw lenderErr;
-    console.log(`Inserted ${insertedLenders.length} master lenders`);
+    {
+      const { data, error: lenderErr } = await admin.from("master_lenders").insert(lendersToInsert).select("id, name");
+      if (lenderErr) throw lenderErr;
+      insertedLenders = data || [];
+      console.log(`Inserted ${insertedLenders.length} master lenders`);
+    }
 
     // Create lender contacts for each
     const lenderContacts = insertedLenders.map((l, i) => ({
       lender_id: l.id,
-      name: DEMO_LENDERS[i].contact_name,
-      title: DEMO_LENDERS[i].contact_title,
-      email: DEMO_LENDERS[i].email,
-      phone: DEMO_LENDERS[i].contact_phone,
+      name: pickedLenders[i].contact_name,
+      title: pickedLenders[i].contact_title,
+      email: pickedLenders[i].email,
+      phone: pickedLenders[i].contact_phone,
       is_primary: true,
-      geography: DEMO_LENDERS[i].geo,
+      geography: pickedLenders[i].geo,
     }));
     await admin.from("lender_contacts").insert(lenderContacts);
 
-    // Add some lender notes
+    // Add some lender notes (indexes refer to the picked-10 array)
     const lenderNotesSample = [
-      { idx: 0, note: "Strong relationship. They've been very responsive on recent deals. Prefer deals with >$10M ARR.", is_flag: false },
-      { idx: 1, note: "Competitive on ABL facilities. Can move quickly. Jennifer is our go-to contact.", is_flag: false },
-      { idx: 2, note: "Great for tech companies in the $3-15M range. Very founder-friendly terms.", is_flag: false },
-      { idx: 5, note: "Best option for SaaS-only deals. No equity component is a huge differentiator.", is_flag: false },
-      { idx: 7, note: "High bar for entry but excellent terms once approved. Board seat ask can be a deal-breaker for some clients.", is_flag: true },
-      { idx: 10, note: "Requires PE sponsor. Not suitable for founder-owned businesses.", is_flag: true },
-      { idx: 12, note: "Large hold capacity. Good for bigger deals but slow process. Plan for 60+ day close.", is_flag: false },
-      { idx: 14, note: "Full banking relationship required. Good rates but heavy covenant package.", is_flag: false },
-      { idx: 19, note: "Institutional quality lender. Very competitive on unitranche for PE-backed deals.", is_flag: false },
+      { idx: 0, note: "Strong relationship. They've been very responsive on recent deals.", is_flag: false },
+      { idx: 1, note: "Competitive on ABL facilities. Can move quickly.", is_flag: false },
+      { idx: 2, note: "Great for tech companies in the $3-15M range.", is_flag: false },
+      { idx: 3, note: "Best option for SaaS-only deals. No equity component.", is_flag: false },
+      { idx: 7, note: "Senior secured, large hold capacity. Plan for 60+ day close.", is_flag: false },
+      { idx: 9, note: "Institutional quality. Very competitive on unitranche for PE-backed deals.", is_flag: false },
     ];
 
-    const notesToInsert = lenderNotesSample.map(n => ({
-      lender_name: DEMO_LENDERS[n.idx].name,
+    const notesToInsert = lenderNotesSample.map((n) => ({
+      lender_name: pickedLenders[n.idx].name,
       master_lender_id: insertedLenders[n.idx].id,
       author_user_id: userId,
       body: n.note,
@@ -315,8 +371,18 @@ Deno.serve(async (req) => {
     }));
     await admin.from("lender_notes").insert(notesToInsert);
 
-    // 6. Insert 15 deals
-    const dealsToInsert = DEMO_DEALS.map(d => ({
+    // ---- 6. Deals: pick 4, one per requested stage ----
+    const REQUIRED_STAGES = [
+      "initial-lender-review",
+      "terms-issued",
+      "in-due-diligence",
+      "proposal-issued",
+    ];
+    const pickedDeals = REQUIRED_STAGES
+      .map((s) => DEMO_DEALS.find((d) => d.stage === s))
+      .filter(Boolean) as typeof DEMO_DEALS;
+
+    const dealsToInsert = pickedDeals.map((d) => ({
       company: d.company,
       value: d.value,
       status: d.status,
@@ -332,42 +398,244 @@ Deno.serve(async (req) => {
       narrative: d.narrative,
       exclusivity: d.exclusivity || null,
       referred_by: d.referred_by || null,
-      
       success_fee_percent: d.success_fee_percent || null,
       pre_signing_hours: d.pre_signing_hours || null,
       post_signing_hours: d.post_signing_hours || null,
       user_id: userId,
       company_id: companyId,
+      tags: [DEMO_TAG],
     }));
 
-    const { data: insertedDeals, error: dealErr } = await admin.from("deals").insert(dealsToInsert).select("id, company, stage");
-    if (dealErr) throw dealErr;
-    console.log(`Inserted ${insertedDeals.length} deals`);
+    {
+      const { data, error: dealErr } = await admin.from("deals").insert(dealsToInsert).select("id, company, stage");
+      if (dealErr) throw dealErr;
+      insertedDeals = data || [];
+      console.log(`Inserted ${insertedDeals.length} deals`);
+    }
 
-    // 7. Insert deal lenders
+    // ---- 7. Deal-lender relationships: 2-4 per deal, varied stages ----
+    // Stages reference picked-10 lender indexes
+    const DEMO_DL_PLAN: { lenderIdxs: number[]; stages: string[]; trackingStatuses: string[] }[] = [
+      // Deal 0 (initial-lender-review): 4 lenders
+      { lenderIdxs: [0, 2, 3, 7], stages: ["reviewing-drl", "inquiry-sent", "introduced", "introduced"], trackingStatuses: ["active", "on-deck", "on-deck", "on-deck"] },
+      // Deal 1 (terms-issued): 3 lenders
+      { lenderIdxs: [1, 5, 9], stages: ["term-sheets", "draft-terms", "passed"], trackingStatuses: ["active", "active", "passed"] },
+      // Deal 2 (in-due-diligence): 3 lenders
+      { lenderIdxs: [2, 4, 8], stages: ["management-call-completed", "reviewing-drl", "passed"], trackingStatuses: ["active", "active", "passed"] },
+      // Deal 3 (proposal-issued): 2 lenders
+      { lenderIdxs: [6, 9], stages: ["reviewing-drl", "introduced"], trackingStatuses: ["active", "on-deck"] },
+    ];
     const dealLendersToInsert: any[] = [];
-    for (const assignment of DEAL_LENDER_ASSIGNMENTS) {
-      const deal = insertedDeals[assignment.dealIdx];
-      if (!deal) continue;
-      for (let j = 0; j < assignment.lenderIdxs.length; j++) {
-        const lenderIdx = assignment.lenderIdxs[j];
+    for (let i = 0; i < insertedDeals.length; i++) {
+      const deal = insertedDeals[i];
+      const plan = DEMO_DL_PLAN[i];
+      if (!plan) continue;
+      for (let j = 0; j < plan.lenderIdxs.length; j++) {
+        const li = plan.lenderIdxs[j];
         dealLendersToInsert.push({
           deal_id: deal.id,
-          name: DEMO_LENDERS[lenderIdx].name,
-          stage: assignment.stages[j],
-          tracking_status: assignment.trackingStatuses[j],
+          name: pickedLenders[li].name,
+          stage: plan.stages[j],
+          tracking_status: plan.trackingStatuses[j],
           notes: `Outreach initiated for ${deal.company}`,
+          tags: [DEMO_TAG],
         });
       }
     }
+    let insertedDealLenders: { id: string; deal_id: string; name: string }[] = [];
     if (dealLendersToInsert.length > 0) {
-      const { error: dlErr } = await admin.from("deal_lenders").insert(dealLendersToInsert);
+      const { data: dlData, error: dlErr } = await admin.from("deal_lenders").insert(dealLendersToInsert).select("id, deal_id, name");
       if (dlErr) console.error("Error inserting deal lenders:", dlErr);
-      else console.log(`Inserted ${dealLendersToInsert.length} deal lenders`);
+      else {
+        insertedDealLenders = dlData || [];
+        dealLendersInsertedCount = insertedDealLenders.length;
+        console.log(`Inserted ${dealLendersInsertedCount} deal lenders`);
+      }
     }
 
-    // 8. Insert milestones for active deals
-    const milestonesToInsert: any[] = [];
+    // ---- 7b. CRM companies (25) — first 4 match seeded deal companies ----
+    const dealCompanyNames = insertedDeals.map((d) => d.company);
+    const EXTRA_COMPANY_NAMES: { name: string; industry: string; employee_count: number; hq_state: string; domain: string }[] = [
+      { name: "Northwind Robotics", industry: "Manufacturing", employee_count: 220, hq_state: "MI", domain: "northwindrobotics.com" },
+      { name: "Lumen Health Group", industry: "Healthcare", employee_count: 410, hq_state: "MA", domain: "lumenhealth.io" },
+      { name: "Brightline Logistics", industry: "Logistics", employee_count: 180, hq_state: "TX", domain: "brightlinelog.com" },
+      { name: "Coral Apparel Co", industry: "Consumer", employee_count: 95, hq_state: "CA", domain: "coralapparel.com" },
+      { name: "Crestwave Foods", industry: "Consumer", employee_count: 320, hq_state: "IL", domain: "crestwavefoods.com" },
+      { name: "Helio Cloud", industry: "Technology", employee_count: 140, hq_state: "WA", domain: "heliocloud.io" },
+      { name: "Quanta Diagnostics", industry: "Healthcare", employee_count: 76, hq_state: "PA", domain: "quantadx.com" },
+      { name: "Forge & Bolt Industries", industry: "Manufacturing", employee_count: 260, hq_state: "OH", domain: "forgebolt.com" },
+      { name: "Riverstone Distribution", industry: "Logistics", employee_count: 145, hq_state: "GA", domain: "riverstonedist.com" },
+      { name: "Petal & Stem", industry: "Consumer", employee_count: 60, hq_state: "OR", domain: "petalandstem.com" },
+      { name: "Sequoia Biotech", industry: "Healthcare", employee_count: 88, hq_state: "CA", domain: "sequoiabio.com" },
+      { name: "Vantage Retail Co", industry: "Consumer", employee_count: 510, hq_state: "FL", domain: "vantageretail.com" },
+      { name: "Pixel Forge Studios", industry: "Technology", employee_count: 55, hq_state: "NY", domain: "pixelforge.io" },
+      { name: "Anvil Industrial Supply", industry: "Manufacturing", employee_count: 230, hq_state: "IN", domain: "anvilsupply.com" },
+      { name: "Skyline Freight", industry: "Logistics", employee_count: 310, hq_state: "AZ", domain: "skylinefreight.com" },
+      { name: "Verdant Wellness", industry: "Healthcare", employee_count: 110, hq_state: "CO", domain: "verdantwellness.com" },
+      { name: "Atlas Snack Co", industry: "Consumer", employee_count: 175, hq_state: "NJ", domain: "atlassnack.com" },
+      { name: "Granite Cloud Systems", industry: "Technology", employee_count: 95, hq_state: "VA", domain: "granitecloud.io" },
+      { name: "Harbor Manufacturing Co", industry: "Manufacturing", employee_count: 280, hq_state: "WI", domain: "harbormfg.com" },
+      { name: "Trailhead Outdoor Goods", industry: "Consumer", employee_count: 120, hq_state: "UT", domain: "trailheadoutdoor.com" },
+      { name: "Northern Health Partners", industry: "Healthcare", employee_count: 220, hq_state: "MN", domain: "nhealthpartners.com" },
+    ];
+    const crmCompaniesToInsert: any[] = [];
+    // 1) First 4 — match deal companies
+    dealCompanyNames.forEach((name, i) => {
+      const seedDeal = pickedDeals[i];
+      crmCompaniesToInsert.push({
+        name,
+        domain: seedDeal?.company_url || `${name.toLowerCase().replace(/[^a-z0-9]+/g, "")}.com`,
+        industry: "Technology",
+        employee_count: 150 + i * 25,
+        hq_state: "CA",
+        org_company_id: companyId,
+        owner_user_id: userId,
+        created_by: userId,
+        company_type: "prospect",
+        lifecycle_stage: "opportunity",
+        tags: [DEMO_TAG],
+      });
+    });
+    // 2) 21 additional varied companies → total 25
+    EXTRA_COMPANY_NAMES.forEach((c) => {
+      crmCompaniesToInsert.push({
+        name: c.name,
+        domain: c.domain,
+        industry: c.industry,
+        employee_count: c.employee_count,
+        hq_state: c.hq_state,
+        org_company_id: companyId,
+        owner_user_id: userId,
+        created_by: userId,
+        company_type: "prospect",
+        lifecycle_stage: "target",
+        tags: [DEMO_TAG],
+      });
+    });
+    {
+      const { data: crmData, error: crmErr } = await admin.from("crm_companies").insert(crmCompaniesToInsert).select("id, name");
+      if (crmErr) console.error("Error inserting crm_companies:", crmErr);
+      else {
+        insertedCrmCompanies = crmData || [];
+        console.log(`Inserted ${insertedCrmCompanies.length} crm_companies`);
+      }
+    }
+
+    // Back-fill deal.crm_company_id for the 4 deals that have a matching company
+    if (insertedCrmCompanies.length > 0 && insertedDeals.length > 0) {
+      const byName = new Map(insertedCrmCompanies.map((c) => [c.name, c.id]));
+      for (const d of insertedDeals) {
+        const cid = byName.get(d.company);
+        if (cid) {
+          await admin.from("deals").update({ crm_company_id: cid }).eq("id", d.id);
+        }
+      }
+    }
+
+    // ---- 7c. Contacts (25) — at least 4 linked to seeded deals via crm_company_id ----
+    const TITLES = ["CFO", "CEO", "Managing Director", "VP Finance", "Controller", "Head of FP&A", "COO", "Treasurer", "Director of Finance", "VP Operations"];
+    const FIRSTS = ["Avery", "Jordan", "Riley", "Morgan", "Casey", "Taylor", "Quinn", "Rowan", "Blake", "Reese", "Hayden", "Cameron", "Drew", "Emerson", "Sage", "Logan", "Parker", "Skylar", "Devon", "Jamie", "Kennedy", "Marlowe", "Sloane", "Tatum", "Wren"];
+    const LASTS = ["Walker", "Bennett", "Carter", "Diaz", "Ellis", "Foster", "Garcia", "Hale", "Ito", "Joffe", "Khan", "Lopez", "Mendez", "Nair", "Oduya", "Park", "Quigley", "Reed", "Suarez", "Tran", "Underwood", "Vega", "Whitman", "Xu", "Yates"];
+    const contactsToInsert: any[] = [];
+    // First 4 contacts → linked to the 4 seeded deals (via matching crm_company_id)
+    for (let i = 0; i < 25; i++) {
+      const first = FIRSTS[i % FIRSTS.length];
+      const last = LASTS[i % LASTS.length];
+      const title = TITLES[i % TITLES.length];
+      // Spread across the 25 crm_companies; first 4 take the first 4 (deal-linked)
+      const company = insertedCrmCompanies[i % Math.max(1, insertedCrmCompanies.length)];
+      const emailDomain = `demo${String(i + 1).padStart(2, "0")}.com`;
+      contactsToInsert.push({
+        first_name: first,
+        last_name: last,
+        email: `${first.toLowerCase()}.${last.toLowerCase()}@${emailDomain}`,
+        phone_work: `(555) 010-${String(1000 + i).slice(-4)}`,
+        job_title: title,
+        crm_company_id: company?.id || null,
+        owner_user_id: userId,
+        created_by: userId,
+        org_company_id: companyId,
+        lifecycle_stage: i < 4 ? "opportunity" : "lead",
+        tags: [DEMO_TAG],
+      });
+    }
+    {
+      const { data: contactsData, error: contactsErr } = await admin.from("contacts").insert(contactsToInsert).select("id");
+      if (contactsErr) console.error("Error inserting contacts:", contactsErr);
+      else {
+        insertedContacts = contactsData || [];
+        console.log(`Inserted ${insertedContacts.length} contacts`);
+      }
+    }
+
+    // ---- 7d. Tasks (10) across the 4 deals ----
+    const dayOffset = (d: number) => {
+      const dt = new Date();
+      dt.setDate(dt.getDate() + d);
+      return dt.toISOString().slice(0, 10);
+    };
+    const tasksToInsert: any[] = [];
+    for (let i = 0; i < insertedDeals.length; i++) {
+      const deal = insertedDeals[i];
+      // Two deal-level tasks per deal
+      tasksToInsert.push({
+        deal_id: deal.id,
+        company_id: companyId,
+        assigned_to: userId,
+        assigned_by: userId,
+        created_by: userId,
+        title: `Send NDA package — ${deal.company}`,
+        description: "Send NDA + needs list to qualified lenders.",
+        due_date: dayOffset(-5 + i),
+        status: "in_progress",
+        priority: "high",
+        task_type: "task",
+        tags: [DEMO_TAG],
+      });
+      tasksToInsert.push({
+        deal_id: deal.id,
+        company_id: companyId,
+        assigned_to: userId,
+        assigned_by: userId,
+        created_by: userId,
+        title: `Prepare financial summary — ${deal.company}`,
+        description: "Refresh trailing 12-month financial summary.",
+        due_date: dayOffset(7 + i),
+        status: "not_started",
+        priority: "medium",
+        task_type: "task",
+        tags: [DEMO_TAG],
+      });
+      // One lender-level task referencing the first attached lender for this deal
+      const firstLender = insertedDealLenders.find((l) => l.deal_id === deal.id);
+      if (firstLender) {
+        tasksToInsert.push({
+          deal_id: deal.id,
+          lender_id: firstLender.id,
+          company_id: companyId,
+          assigned_to: userId,
+          assigned_by: userId,
+          created_by: userId,
+          title: `Follow up with ${firstLender.name}`,
+          description: "Check on term sheet status and next steps.",
+          due_date: dayOffset(i % 2 === 0 ? -3 : 10),
+          status: "not_started",
+          priority: i % 2 === 0 ? "high" : "medium",
+          task_type: "task",
+          tags: [DEMO_TAG],
+        });
+      }
+    }
+    if (tasksToInsert.length > 0) {
+      const { error: tErr } = await admin.from("tasks").insert(tasksToInsert);
+      if (tErr) console.error("Error inserting tasks:", tErr);
+      else {
+        tasksInsertedCount = tasksToInsert.length;
+        console.log(`Inserted ${tasksInsertedCount} tasks`);
+      }
+    }
+
+    // ---- 8. Milestones for active deals ----
     for (let i = 0; i < insertedDeals.length; i++) {
       const deal = insertedDeals[i];
       const stageIndex = COMPANY_SETTINGS.deal_stages.findIndex(s => s.id === deal.stage);
@@ -404,7 +672,6 @@ Deno.serve(async (req) => {
       "Updated deal information",
       "Uploaded financial model",
     ];
-    const activitiesToInsert: any[] = [];
     for (let i = 0; i < insertedDeals.length; i++) {
       const deal = insertedDeals[i];
       const numActivities = 3 + Math.floor(Math.random() * 5);
@@ -414,7 +681,7 @@ Deno.serve(async (req) => {
         const createdAt = new Date(Date.now() - hoursAgo * 3600000);
         let desc = activityDescriptions[typeIdx]
           .replace("{stage}", deal.stage)
-          .replace("{lender}", DEMO_LENDERS[Math.floor(Math.random() * DEMO_LENDERS.length)].name)
+          .replace("{lender}", pickedLenders[Math.floor(Math.random() * pickedLenders.length)].name)
           .replace("{milestone}", MILESTONE_TEMPLATES[Math.floor(Math.random() * MILESTONE_TEMPLATES.length)]);
         activitiesToInsert.push({
           deal_id: deal.id,
@@ -432,6 +699,11 @@ Deno.serve(async (req) => {
       else console.log(`Inserted ${activitiesToInsert.length} activity logs`);
     }
 
+    } finally {
+      // Always clear is_seeding so notification triggers resume.
+      await admin.from("companies").update({ is_seeding: false }).eq("id", companyId);
+    }
+
     return new Response(JSON.stringify({
       success: true,
       message: "Demo account created successfully",
@@ -439,7 +711,10 @@ Deno.serve(async (req) => {
       stats: {
         lenders: insertedLenders.length,
         deals: insertedDeals.length,
-        dealLenders: dealLendersToInsert.length,
+        dealLenders: dealLendersInsertedCount,
+        crmCompanies: insertedCrmCompanies.length,
+        contacts: insertedContacts.length,
+        tasks: tasksInsertedCount,
         milestones: milestonesToInsert.length,
         activities: activitiesToInsert.length,
       },

@@ -25,6 +25,7 @@ import { PipelineSelector } from '@/components/deals/PipelineSelector';
 
 import { EmailVerificationBanner } from '@/components/deals/EmailVerificationBanner';
 import { DemoBanner } from '@/components/deals/DemoBanner';
+import { NotificationConsentModal } from '@/components/notifications/NotificationConsentModal';
 
 import { FlaggedDealsPanel } from '@/components/deals/FlaggedDealsPanel';
 
