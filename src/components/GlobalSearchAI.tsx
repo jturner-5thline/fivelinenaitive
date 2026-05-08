@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from "@/components/ui/button";
+import { formatSlug } from "@/utils/dealTypeLabels";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -385,7 +386,7 @@ export function GlobalSearchAI() {
                     <div className="flex flex-1 items-center justify-between">
                       <span>{deal.company}</span>
                       <span className="text-xs text-muted-foreground">
-                        {formatCurrency(deal.value)} • {deal.stage}
+                        {formatCurrency(deal.value)} • {formatSlug(deal.stage)}
                       </span>
                     </div>
                   </CommandItem>
