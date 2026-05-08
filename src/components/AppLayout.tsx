@@ -39,6 +39,7 @@ function MainContent({
         "relative min-h-0 min-w-0 flex-1 flex flex-col rounded-xl main-scrollable",
         className,
       )}
+      data-tour="workspace"
       style={{
         overflowY: 'auto',
         overflowX: 'hidden',

@@ -411,6 +411,7 @@ export function CopilotToggleButton() {
           ref={barRef}
           role="search"
           aria-label="Search or ask naitive AI"
+          data-tour="ask-ai"
           className={cn(
             'group relative overflow-hidden',
             'h-11 rounded-full',
