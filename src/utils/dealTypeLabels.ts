@@ -20,3 +20,15 @@ export function dealTypeIdToLabel(id: string, dealTypes?: { id: string; label: s
 export function dealTypeIdsToLabels(ids: string[], dealTypes?: { id: string; label: string }[]): string[] {
   return ids.map(id => dealTypeIdToLabel(id, dealTypes));
 }
+
+/**
+ * Title-case a deal type/category slug for display
+ * (e.g., "growth-capital" → "Growth Capital", "abl" → "Abl").
+ */
+export function formatDealType(type?: string | null): string {
+  if (!type) return '';
+  return type
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
