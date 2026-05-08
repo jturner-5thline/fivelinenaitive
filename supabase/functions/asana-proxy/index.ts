@@ -603,8 +603,20 @@ serve(async (req) => {
             `/portfolios/${portfolioGid}/items?opt_fields=${itemFields}`,
             resolvedToken,
           );
-          const baseProjects = (items.data || []).filter(
+          const allItems = (items.data || []) as any[];
+          const typeCounts: Record<string, number> = {};
+          for (const it of allItems) {
+            const t = it.resource_type || "unknown";
+            typeCounts[t] = (typeCounts[t] || 0) + 1;
+          }
+          console.log(
+            `[portfolio_projects] portfolio=${portfolioGid} total=${allItems.length} types=${JSON.stringify(typeCounts)}`,
+          );
+          const baseProjects = allItems.filter(
             (it: any) => it.resource_type === "project" && !it.archived,
+          );
+          const basePortfolios = allItems.filter(
+            (it: any) => it.resource_type === "portfolio",
           );
 
           // Enrich each project with detailed ownership fields (owner, creator,
@@ -673,6 +685,7 @@ serve(async (req) => {
             return {
               gid: base.gid,
               name: detail?.name || base.name,
+              item_type: "project",
               permalink_url: detail?.permalink_url || base.permalink_url || null,
               owner: primary.name,
               owner_email: primary.email,
@@ -684,7 +697,61 @@ serve(async (req) => {
               start_on: detail?.start_on || base.start_on || null,
             };
           });
-          result = { success: true, projects };
+
+          // Also enrich nested portfolios so they appear as initiative rows.
+          const portfolioDetailFields = [
+            "name",
+            "permalink_url",
+            "owner.name",
+            "owner.email",
+            "current_status_update.status_type",
+            "current_status_update.title",
+            "due_on",
+            "start_on",
+          ].join(",");
+          const portfolioRows = await Promise.all(
+            basePortfolios.map(async (p: any) => {
+              let detail: any = {};
+              try {
+                const det = await asanaFetch(
+                  `/portfolios/${p.gid}?opt_fields=${portfolioDetailFields}`,
+                  resolvedToken,
+                );
+                detail = det.data || {};
+              } catch (_e) {
+                detail = {};
+              }
+              const candidates: Array<{ name: string | null; email: string | null; source: string }> = [];
+              if (detail?.owner?.name || detail?.owner?.email) {
+                candidates.push({
+                  name: detail.owner.name || null,
+                  email: detail.owner.email || null,
+                  source: "owner",
+                });
+              }
+              const primary = candidates[0] || { name: null, email: null, source: null };
+              return {
+                gid: p.gid,
+                name: detail?.name || p.name,
+                item_type: "portfolio",
+                permalink_url: detail?.permalink_url || p.permalink_url || null,
+                owner: primary.name,
+                owner_email: primary.email,
+                owner_source: primary.source,
+                owner_candidates: candidates,
+                status_type: detail?.current_status_update?.status_type || p.current_status_update?.status_type || null,
+                status_title: detail?.current_status_update?.title || p.current_status_update?.title || null,
+                due_on: detail?.due_on || p.due_on || p.due_date || null,
+                start_on: detail?.start_on || p.start_on || null,
+              };
+            }),
+          );
+
+          const combined = [...portfolioRows, ...projects];
+          console.log(
+            `[portfolio_projects] returning ${combined.length} rows (projects=${projects.length}, portfolios=${portfolioRows.length})`,
+          );
+          result = { success: true, projects: combined, item_counts: typeCounts };
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Unknown error fetching portfolio projects";
           result = { success: false, error: msg, projects: [] };
