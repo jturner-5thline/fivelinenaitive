@@ -12,6 +12,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { usePipelineContext } from '@/contexts/PipelineContext';
 import { useProfile } from '@/hooks/useProfile';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useDashboardLayout } from '@/contexts/DashboardLayoutContext';
@@ -33,6 +34,7 @@ interface MyDealsWidgetProps {
 export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetProps) {
   const navigate = useNavigate();
   const { deals, isLoading } = useDealsContext();
+  const { activePipelineId } = usePipelineContext();
   const { profile } = useProfile();
   const { preferences } = usePreferences();
   const { toggles } = useDashboardLayout();
@@ -47,9 +49,13 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
 
   const myDeals = useMemo(() => {
     const displayName = profile?.display_name || profile?.first_name || '';
+    const ACTIVE_STATUSES = new Set(['on-track', 'off-track', 'at-risk']);
     let filtered = deals.filter(d => {
       const status = (d.status || '').toLowerCase();
-      if (status === 'archived' || status === 'on-hold' || status === 'on_hold') return false;
+      // Restrict to active pipeline only
+      if (activePipelineId && d.pipelineId && d.pipelineId !== activePipelineId) return false;
+      // Restrict to active health statuses only (On Track, Off Track, At Risk)
+      if (!ACTIVE_STATUSES.has(status)) return false;
       if (effectiveScope === 'my') {
         return d.manager?.toLowerCase() === displayName?.toLowerCase();
       }
@@ -84,7 +90,7 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
     // 'all' — no additional filtering, includes on-track, at-risk, off-track, on-hold, etc.
 
     return filtered.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-  }, [deals, profile, filter, preferences, searchQuery, effectiveScope]);
+  }, [deals, profile, filter, preferences, searchQuery, effectiveScope, activePipelineId]);
 
   // Demo account: cap the "stale" filter to exactly DEMO_STALE_LIMIT deals.
   const cappedDeals = (isDemoAccount && filter === 'stale')
@@ -95,9 +101,11 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
   // Count deals by status for filter badges
   const statusCounts = useMemo(() => {
     const displayName = profile?.display_name || profile?.first_name || '';
+    const ACTIVE_STATUSES = new Set(['on-track', 'off-track', 'at-risk']);
     const mine = deals.filter(d => {
       const status = (d.status || '').toLowerCase();
-      if (status === 'archived' || status === 'on-hold' || status === 'on_hold') return false;
+      if (activePipelineId && d.pipelineId && d.pipelineId !== activePipelineId) return false;
+      if (!ACTIVE_STATUSES.has(status)) return false;
       if (effectiveScope === 'my') return d.manager?.toLowerCase() === displayName?.toLowerCase();
       return true;
     });
@@ -106,7 +114,7 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
       active: mine.filter(d => d.status === 'on-track').length,
       atRisk: mine.filter(d => d.status === 'at-risk' || d.status === 'off-track').length,
     };
-  }, [deals, profile, effectiveScope]);
+  }, [deals, profile, effectiveScope, activePipelineId]);
 
   const getStatusDot = (status: string) => {
     const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG];
