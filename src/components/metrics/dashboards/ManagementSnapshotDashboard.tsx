@@ -659,23 +659,10 @@ export function ManagementSnapshotDashboard({
 
   const visibleCards = allCards.filter(c => !isHidden(c.cardId));
 
-  // Per-widget resize/drag rules for the top KPI grid. Keys = card id.
-  // Charts get larger minimums than stat tiles so axes/legends stay legible.
-  const TOP_GRID_CONSTRAINTS: Record<string, WidgetConstraint> = {
-    // KPI tiles: small/medium, draggable + resizable within sane bounds
-    'total-revenue-detail':  { minW: 4, minH: 3, maxH: 8 },
-    // 'debt-revenue', 'total-revenue', and 'outstanding-ar' intentionally
-    // omitted so they inherit the same default resizable behavior as the
-    // rest of the editable widgets (no hardcoded max span).
-    'finserv-revenue':       { minW: 3, minH: 3, maxH: 8 },
-    'clients-signed-debt':   { minW: 3, minH: 2, maxH: 6 },
-    'clients-signed-finserv':{ minW: 3, minH: 2, maxH: 6 },
-    'debt-profit':           { minW: 3, minH: 3, maxH: 8 },
-    'finserv-profit':        { minW: 3, minH: 3, maxH: 8 },
-    'avg-rev-per-client':    { minW: 3, minH: 2, maxH: 5 },
-    // Chart widget: needs more room
-    'revenue-by-month':      { minW: 5, minH: 4, maxH: 10 },
-  };
+  // All Weekly Rundown widgets share the default resizable behavior — no
+  // per-widget min/max overrides so resize handles appear consistently and
+  // width/height changes persist after saving the layout.
+  const TOP_GRID_CONSTRAINTS: Record<string, WidgetConstraint> = {};
 
   // Per-sub-widget renderers — each becomes an independently
   // draggable/resizable tile in the unified Weekly Rundown grid.
@@ -700,24 +687,9 @@ export function ManagementSnapshotDashboard({
     'exec-deals-by-status': <ExecDealsByStatusWidget />,
   };
 
-  const SUB_WIDGET_CONSTRAINTS: Record<string, WidgetConstraint> = {
-    // 'rev-debt', 'rev-finserv', and 'sd-outstanding-ar' intentionally
-    // omitted so they inherit the default resizable behavior (matching the
-    // rest of the editable Weekly Rundown widgets).
-    'pm-debt-on-board-combined': { minW: 3, minH: 2, maxH: 5 },
-    'pm-debt-signed-combined':   { minW: 3, minH: 2, maxH: 5 },
-    'pm-debt-closed-combined':   { minW: 3, minH: 2, maxH: 5 },
-    'pm-finserv-deals-on-board': { minW: 3, minH: 2, maxH: 5 },
-    'pm-finserv-clients-signed': { minW: 3, minH: 2, maxH: 5 },
-    'pm-finserv-active-clients': { minW: 3, minH: 2, maxH: 5 },
-    'sd-deals-signed':           { minW: 3, minH: 3, maxH: 16 },
-    'sd-finserv-clients-signed': { minW: 3, minH: 3, maxH: 16 },
-    'pe-debt-profit':            { minW: 4, minH: 4, maxH: 12 },
-    'pe-finserv-profit':         { minW: 4, minH: 4, maxH: 12 },
-    'executive-dashboard':       { minW: 8, minH: 8, maxH: 20 },
-    'exec-week-selector':           { minW: 3, minH: 2, maxH: 5 },
-    'exec-deals-by-status':         { minW: 3, minH: 3, maxH: 16 },
-  };
+  // Sub-widgets also inherit default resizable behavior — no per-widget
+  // min/max caps so every tile can be freely resized in Edit Layout mode.
+  const SUB_WIDGET_CONSTRAINTS: Record<string, WidgetConstraint> = {};
 
   // The legacy monolithic Executive Dashboard section is removed, as is
   // the Mon→Sun "Executive Week Selector" tile (replaced by the unified
