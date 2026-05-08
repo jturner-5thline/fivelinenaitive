@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { useEffect, useRef } from "react";
 
 export interface QuickBooksConnection {
   realmId: string;
@@ -272,4 +273,41 @@ export function useQuickBooksSyncHistory(realmId?: string) {
     },
     enabled: !!user,
   });
+}
+
+/**
+ * Fires a one-time auto-sync per browser session if the QuickBooks integration
+ * is connected and its last sync is older than 48 hours (or has never run).
+ * Acts as a client-side safety net on top of the server-side pg_cron job.
+ */
+const AUTO_SYNC_THRESHOLD_MS = 48 * 60 * 60 * 1000;
+
+export function useQuickBooksAutoSync() {
+  const { data: status } = useQuickBooksStatus();
+  const sync = useQuickBooksSync();
+  const hasFiredAutoSync = useRef(false);
+
+  useEffect(() => {
+    if (hasFiredAutoSync.current) return;
+    if (!status?.connected) return;
+    if (sync.isPending) return;
+
+    const connections = status.connections ?? [];
+    const stale = connections.filter((c) => {
+      if (c.isExpired) return false;
+      if (!c.lastSync) return true;
+      return Date.now() - new Date(c.lastSync).getTime() > AUTO_SYNC_THRESHOLD_MS;
+    });
+
+    if (stale.length === 0) return;
+
+    hasFiredAutoSync.current = true;
+    console.log(
+      `[QuickBooks AutoSync] Triggering background sync for ${stale.length} stale realm(s)`,
+      stale.map((c) => c.realmId),
+    );
+    for (const c of stale) {
+      sync.mutate({ realmId: c.realmId });
+    }
+  }, [status, sync]);
 }

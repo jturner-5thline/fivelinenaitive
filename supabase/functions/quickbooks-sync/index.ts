@@ -33,21 +33,41 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    const internalSecret = req.headers.get("x-internal-secret");
+    const xSyncUserId = req.headers.get("x-sync-user-id");
+    const token = authHeader ? authHeader.replace("Bearer ", "") : "";
+    let userId: string | null = null;
+    // Allow internal service-role calls (cron / quickbooks-auto-sync) to act on behalf
+    // of a specific user via x-internal-secret + x-sync-user-id. The Lovable Cloud
+    // gateway rejects service-role JWTs in the Authorization header, so we use a
+    // custom header that carries the same secret.
+    if (
+      (internalSecret && internalSecret === SUPABASE_SERVICE_ROLE_KEY) ||
+      (token && token === SUPABASE_SERVICE_ROLE_KEY)
+    ) {
+      userId = xSyncUserId;
+      if (!userId) {
+        return new Response(JSON.stringify({ error: "x-sync-user-id required for internal calls" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else if (authHeader) {
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+      if (authError || !user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      userId = user.id;
+    } else {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const user = { id: userId } as { id: string };
 
     const { syncType, realmId: targetRealmId, scopes, start_date, end_date } = await req.json();
     const activeScopes: SyncScope[] = scopes && Array.isArray(scopes) ? scopes : [...ALL_SCOPES];
