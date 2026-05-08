@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2, SlidersHorizontal, Save as SaveIcon, Loader2, Pencil, X as XIcon, Check } from 'lucide-react';
+import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2, SlidersHorizontal, Save as SaveIcon, Loader2, Pencil, X as XIcon, Check, ChevronRight, ChevronDown } from 'lucide-react';
 import { useCompany } from '@/hooks/useCompany';
 import { toast as sonnerToast } from 'sonner';
 import { useAsanaGoals, type AsanaGoalRow } from '@/hooks/useAsanaGoals';
@@ -903,7 +903,24 @@ function ReportNarrativeSection({ s, set }: { s: ReportState; set: ReportSetStat
 }
 
 function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: ReportSetState; ownerName?: string }) {
-  const { goals: asanaGoals, loading, error, lastSyncedAt, configured, refresh } = useAsanaGoals();
+  const { goals: asanaGoals, loading, error, lastSyncedAt, configured, refresh, fetchSubgoals } = useAsanaGoals();
+  // Per-parent-goal subgoal cache + expand state.
+  const [expandedGoals, setExpandedGoals] = useState<Record<string, boolean>>({});
+  const [subgoalsByParent, setSubgoalsByParent] = useState<Record<string, AsanaGoalRow[]>>({});
+  const [subgoalsLoading, setSubgoalsLoading] = useState<Record<string, boolean>>({});
+  const toggleGoalExpand = async (goalId: string) => {
+    const next = !expandedGoals[goalId];
+    setExpandedGoals(prev => ({ ...prev, [goalId]: next }));
+    if (next && subgoalsByParent[goalId] === undefined && !subgoalsLoading[goalId]) {
+      setSubgoalsLoading(prev => ({ ...prev, [goalId]: true }));
+      try {
+        const rows = await fetchSubgoals(goalId);
+        setSubgoalsByParent(prev => ({ ...prev, [goalId]: rows }));
+      } finally {
+        setSubgoalsLoading(prev => ({ ...prev, [goalId]: false }));
+      }
+    }
+  };
   const prefs = useAsanaGoalFilterPrefs();
   const insightsTf = useInsightsTimeframeOptional();
   const reportingPeriod = insightsTf?.reportingPeriod ?? null;
@@ -1701,6 +1718,7 @@ function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: Report
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
               <thead>
                 <tr>
+                  <th style={{ ...thStyle, width: 28 }}></th>
                   <th style={{ ...thStyle, width: 36 }}>#</th>
                   <th style={{ ...thStyle, cursor: 'pointer' }} onClick={() => goalsSG.toggleSort('title')}>Title{goalsSG.indicator('title')}</th>
                   <th style={{ ...thStyle, width: 170, cursor: 'pointer' }} onClick={() => goalsSG.toggleSort('owner')}>Owner{goalsSG.indicator('owner')}</th>
@@ -1722,12 +1740,18 @@ function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: Report
                         })}
                         style={{ cursor: 'pointer' }}
                       >
-                        <td colSpan={5} style={{ padding: '10px 10px 4px', fontSize: 9, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: TEXT_LABEL, background: 'rgba(255,255,255,0.02)' }}>
+                        <td colSpan={6} style={{ padding: '10px 10px 4px', fontSize: 9, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: TEXT_LABEL, background: 'rgba(255,255,255,0.02)' }}>
                           {group.key} <span style={{ color: TEXT_MUTED, fontWeight: 500 }}>· {group.rows.length}</span>
                         </td>
                       </tr>
                     )}
-                    {group.rows.map((goal: AsanaGoalRow, index: number) => (
+                    {group.rows.map((goal: AsanaGoalRow, index: number) => {
+                      const isExpanded = !!expandedGoals[goal.id];
+                      const subRows = subgoalsByParent[goal.id];
+                      const subLoading = !!subgoalsLoading[goal.id];
+                      const knownCount = subRows?.length;
+                      return (
+                      <React.Fragment key={goal.id}>
                       <tr
                         key={goal.id}
                         data-comment-source="goal"
@@ -1748,6 +1772,24 @@ function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: Report
                         }}
                         style={{ cursor: 'pointer' }}
                       >
+                    <td style={{ ...tdStyle, paddingRight: 0 }}>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); void toggleGoalExpand(goal.id); }}
+                        title={isExpanded ? 'Hide subgoals' : 'Show subgoals'}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: 2,
+                          color: TEXT_LABEL,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                        }}
+                      >
+                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                      </button>
+                    </td>
                     <td style={{ ...tdStyle, color: TEXT_LABEL, fontVariantNumeric: 'tabular-nums' }}>{index + 1}</td>
                     <td style={tdStyle}>
                       {goal.url ? (
@@ -1772,6 +1814,20 @@ function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: Report
                       ) : (
                         <span>{goal.title}</span>
                       )}
+                      {typeof knownCount === 'number' && knownCount > 0 && (
+                        <span style={{
+                          marginLeft: 8,
+                          fontSize: 10,
+                          padding: '1px 7px',
+                          borderRadius: 999,
+                          background: 'rgba(124,200,240,0.12)',
+                          color: '#7cc8f0',
+                          fontWeight: 600,
+                          verticalAlign: 'middle',
+                        }}>
+                          {knownCount} subgoal{knownCount === 1 ? '' : 's'}
+                        </span>
+                      )}
                     </td>
                     <td style={{ ...tdStyle, color: TEXT_PRIMARY }}>{goal.owner}</td>
                     <td style={tdStyle}>
@@ -1781,7 +1837,56 @@ function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: Report
                       {goal.timePeriod || <span style={{ color: TEXT_LABEL }}>—</span>}
                     </td>
                   </tr>
-                    ))}
+                  {isExpanded && (
+                    subLoading ? (
+                      <tr>
+                        <td colSpan={6} style={{ ...tdStyle, paddingLeft: 48, color: TEXT_MUTED, fontSize: 11 }}>
+                          <Loader2 size={12} className="inline-block animate-spin" style={{ marginRight: 6 }} />
+                          Loading subgoals…
+                        </td>
+                      </tr>
+                    ) : (subRows && subRows.length > 0 ? (
+                      subRows.map((sub) => (
+                        <tr key={`${goal.id}-sub-${sub.id}`} style={{ background: 'rgba(255,255,255,0.015)' }}>
+                          <td style={tdStyle}></td>
+                          <td style={{ ...tdStyle, color: TEXT_LABEL, fontSize: 10 }}>↳</td>
+                          <td style={{ ...tdStyle, paddingLeft: 8 }}>
+                            {sub.url ? (
+                              <a
+                                href={sub.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: TEXT_PRIMARY, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 400 }}
+                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#7cc8f0'; }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = TEXT_PRIMARY; }}
+                              >
+                                {sub.title}
+                                <ExternalLink size={10} style={{ opacity: 0.55 }} />
+                              </a>
+                            ) : (
+                              <span style={{ color: TEXT_PRIMARY }}>{sub.title}</span>
+                            )}
+                          </td>
+                          <td style={{ ...tdStyle, color: TEXT_PRIMARY }}>{sub.owner}</td>
+                          <td style={tdStyle}>
+                            <Pill tone={statusTone(sub.status)}>{sub.status}</Pill>
+                          </td>
+                          <td style={{ ...tdStyle, color: TEXT_PRIMARY }}>
+                            {sub.timePeriod || <span style={{ color: TEXT_LABEL }}>—</span>}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} style={{ ...tdStyle, paddingLeft: 48, color: TEXT_MUTED, fontSize: 11, fontStyle: 'italic' }}>
+                          No subgoals
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                  </React.Fragment>
+                  );
+                  })}
                   </React.Fragment>
                 ))}
               </tbody>

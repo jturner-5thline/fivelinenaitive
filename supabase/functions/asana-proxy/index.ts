@@ -321,6 +321,55 @@ serve(async (req) => {
         break;
       }
 
+      case "list_supporting_goals": {
+        // Fetch supporting (sub) goals for a given parent goal.
+        // Asana exposes /goals/{goal_gid}/supportingWork which returns supporting
+        // tasks/projects/portfolios/goals. We filter to goals only.
+        const resolvedToken = await resolveToken(token, integration_id);
+        const parentGid = params.parent_gid;
+        if (!parentGid) {
+          result = { success: false, error: "parent_gid is required", goals: [] };
+          break;
+        }
+        const optFields = [
+          "name",
+          "due_on",
+          "start_on",
+          "status",
+          "progress_status",
+          "current_status_update.status_type",
+          "current_status_update.title",
+          "owner.name",
+          "owner.email",
+          "owner.gid",
+          "team.name",
+          "team.gid",
+          "permalink_url",
+          "metric.current_display_value",
+          "metric.current_number_value",
+          "metric.target_number_value",
+          "metric.initial_number_value",
+          "metric.unit",
+          "metric.progress_source",
+          "time_period.display_name",
+          "resource_type",
+        ].join(",");
+        try {
+          const data = await asanaFetch(
+            `/goals/${parentGid}/supportingWork?opt_fields=${optFields}&limit=100`,
+            resolvedToken
+          );
+          const goals = (data.data || []).filter(
+            (it: any) => it?.resource_type === "goal"
+          );
+          result = { success: true, goals };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "Unknown error fetching supporting goals";
+          result = { success: false, error: msg, goals: [] };
+        }
+        break;
+      }
+
       case "portfolio_milestones": {
         // Fetch milestone-type tasks across all projects in a portfolio.
         const resolvedToken = await resolveToken(token, integration_id);

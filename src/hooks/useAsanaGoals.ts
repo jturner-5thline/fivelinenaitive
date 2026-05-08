@@ -75,6 +75,8 @@ export interface UseAsanaGoalsResult {
   lastSyncedAt: string | null;
   configured: boolean;          // Asana is connected
   refresh: () => Promise<void>;
+  /** Lazily fetch Asana supporting (child) goals for a given parent goal gid. */
+  fetchSubgoals: (parentGid: string) => Promise<AsanaGoalRow[]>;
 }
 
 /** Fetch & normalize Asana Goals for the current company. */
@@ -87,6 +89,8 @@ export function useAsanaGoals(): UseAsanaGoalsResult {
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [configured, setConfigured] = useState(false);
   const inFlight = useRef(false);
+  const integrationIdRef = useRef<string | null>(null);
+  const workspaceGidRef = useRef<string | null>(null);
 
   const fetchGoals = useCallback(async () => {
     if (!companyId || inFlight.current) return;
@@ -117,6 +121,8 @@ export function useAsanaGoals(): UseAsanaGoalsResult {
         setError('Asana workspace not configured');
         return;
       }
+      integrationIdRef.current = integration.id;
+      workspaceGidRef.current = workspaceGid;
 
       const { data, error: fnErr } = await supabase.functions.invoke('asana-proxy', {
         body: {
@@ -208,5 +214,75 @@ export function useAsanaGoals(): UseAsanaGoalsResult {
     return () => clearInterval(id);
   }, [companyId, fetchGoals]);
 
-  return { goals, loading, error, lastSyncedAt, configured, refresh: fetchGoals };
+  const fetchSubgoals = useCallback(async (parentGid: string): Promise<AsanaGoalRow[]> => {
+    const integrationId = integrationIdRef.current;
+    const workspaceGid = workspaceGidRef.current;
+    if (!integrationId || !parentGid) return [];
+    try {
+      const { data, error: fnErr } = await supabase.functions.invoke('asana-proxy', {
+        body: {
+          action: 'list_supporting_goals',
+          integration_id: integrationId,
+          parent_gid: parentGid,
+        },
+      });
+      if (fnErr) throw fnErr;
+      if (!data?.success) throw new Error(data?.error || 'Failed to fetch subgoals');
+      const now = new Date().toISOString();
+      const list = (data.goals as AsanaGoalApi[]) || [];
+      return list.map((g) => {
+        const rawStatus =
+          g.current_status_update?.status_type ||
+          g.progress_status ||
+          g.status ||
+          null;
+        const status = mapStatus(rawStatus);
+        const m = g.metric || null;
+        let progressPercent: number | null = null;
+        if (m && typeof m.current_number_value === 'number' && typeof m.target_number_value === 'number') {
+          const start = typeof m.initial_number_value === 'number' ? m.initial_number_value : 0;
+          const span = m.target_number_value - start;
+          if (span !== 0) {
+            const raw = ((m.current_number_value - start) / span) * 100;
+            progressPercent = Math.max(0, Math.min(100, Math.round(raw)));
+          } else if (m.current_number_value >= m.target_number_value) {
+            progressPercent = 100;
+          }
+        }
+        if (progressPercent === null && status === 'Achieved') progressPercent = 100;
+        const progressDisplay = m?.current_display_value || null;
+        return {
+          id: g.gid,
+          asanaGid: g.gid,
+          workspaceGid,
+          teamGid: g.team?.gid || null,
+          title: g.name || '(Untitled subgoal)',
+          owner: g.owner?.name || '—',
+          ownerEmail: g.owner?.email || null,
+          status,
+          rawStatus,
+          due: g.due_on || '',
+          url: g.permalink_url || null,
+          syncedAt: now,
+          source: 'asana',
+          timePeriod: g.time_period?.display_name || null,
+          progressPercent,
+          progressDisplay,
+          metric: m ? {
+            currentValue: typeof m.current_number_value === 'number' ? m.current_number_value : null,
+            targetValue: typeof m.target_number_value === 'number' ? m.target_number_value : null,
+            initialValue: typeof m.initial_number_value === 'number' ? m.initial_number_value : null,
+            unit: m.unit || null,
+            progressSource: m.progress_source || null,
+            currentDisplay: m.current_display_value || null,
+          } : null,
+        };
+      });
+    } catch (e) {
+      console.error('[AsanaGoals] subgoal fetch failed:', e);
+      return [];
+    }
+  }, []);
+
+  return { goals, loading, error, lastSyncedAt, configured, refresh: fetchGoals, fetchSubgoals };
 }
