@@ -286,6 +286,22 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
   const isUnread = thread.hasUnread;
   const showCheckbox = hovered || isChecked;
 
+  // Notification-type emails (Asana, Google Calendar invites, naitive system,
+  // generic noreply/no-reply senders) are read-only — hide hover actions on
+  // them since flag/trash/snooze aren't useful.
+  const isNotificationEmail = (() => {
+    const from = String(latest.from_email || '').toLowerCase();
+    if (!from) return false;
+    const local = from.split('@')[0] || '';
+    const domain = from.split('@')[1] || '';
+    if (/^(no[-._]?reply|notifications?|do[-._]?not[-._]?reply|automated|mailer[-._]?daemon|bounce)/.test(local)) return true;
+    if (/notifications?@/.test(from)) return true;
+    if (/(^|\.)asana\.com$/.test(domain)) return true;
+    if (/calendar-notification@google\.com$/.test(from)) return true;
+    if (/(^|\.)naitive\.co$/.test(domain) && /^(noreply|no-reply|notifications?|system|alerts?)/.test(local)) return true;
+    return false;
+  })();
+
   // Location chip — surfaces where the email actually lives in Gmail when
   // it's NOT in the user's inbox. The all-mail search can return archived
   // mail and emails moved to user labels (Censys, Lenders, …); without this
