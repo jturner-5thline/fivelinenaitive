@@ -261,6 +261,8 @@ const Admin = () => {
         );
       case "external":
         return <ExternalDataTab />;
+      case "activity":
+        return <UserActivityPanel />;
       case "invitations":
         return (
           <Card>
