@@ -28,6 +28,7 @@ import { SendToDataRoomDialog } from './SendToDataRoomDialog';
 import { useFullEmailMessage } from './useFullEmailMessage';
 import { useEmailToDataRoom, type DataRoomDestinationSuggestion } from '@/hooks/useEmailToDataRoom';
 import { SuggestedDealUpdatesSection } from './SuggestedDealUpdatesSection';
+import { SuggestedFollowupsCard } from './SuggestedFollowupsCard';
 import { DataRoomUploadSuggestionCard } from './DataRoomUploadSuggestionCard';
 import { DealContextCard } from './DealContextCard';
 import { UnmatchedEmailContextCard } from './UnmatchedEmailContextCard';
@@ -1196,6 +1197,23 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                   dealName={dealName}
                   thread={thread}
                   attachments={drAttachments}
+                />
+
+                {/* Proactive AI follow-up suggestions extracted from the
+                    thread. Renders only after analysis completes. Approve
+                    creates a task linked to the deal (and Asana when
+                    enabled); Edit expands the standard inline form;
+                    Dismiss is per-thread + per-suggestion (sessionStorage). */}
+                <SuggestedFollowupsCard
+                  suggestions={workflowAnalysis?.suggested_tasks || []}
+                  loading={workflowLoading}
+                  hasAnalyzed={!!workflowAnalysis}
+                  dealId={dealId || workflowAnalysis?.likely_deal?.id || null}
+                  dealName={dealName || workflowAnalysis?.likely_deal?.name || null}
+                  threadId={thread.threadId}
+                  subject={thread.subject || null}
+                  senderEmail={thread.latestEmail?.from_email || null}
+                  senderName={thread.latestEmail?.from_name || null}
                 />
 
                 {/* Pending suggested deal updates (contact emails, deal-picker
