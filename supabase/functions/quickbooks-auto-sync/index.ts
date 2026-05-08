@@ -87,8 +87,9 @@ serve(async (req) => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-            apikey: SUPABASE_SERVICE_ROLE_KEY,
+            // Don't send Authorization (Lovable Cloud gateway rejects service-role
+            // JWTs in the auth header); use a custom internal secret header instead.
+            "x-internal-secret": SUPABASE_SERVICE_ROLE_KEY,
             "x-sync-user-id": c.user_id,
           },
           body: JSON.stringify({ realmId: c.realm_id }),
