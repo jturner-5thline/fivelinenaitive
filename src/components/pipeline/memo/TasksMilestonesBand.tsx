@@ -86,15 +86,20 @@ export function TasksMilestonesBand({ deal, tasks }: TasksMilestonesBandProps) {
 
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, display_name, first_name, last_name')
-        .in('id', userIds);
+        .select('user_id, display_name, first_name, last_name, email')
+        .in('user_id', userIds);
 
       if (profilesError) throw profilesError;
 
       return (profiles || [])
         .map((profile) => ({
-          id: profile.id,
-          name: (profile.display_name || [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Unknown').trim(),
+          id: profile.user_id,
+          name: (
+            [profile.first_name, profile.last_name].filter(Boolean).join(' ') ||
+            profile.display_name ||
+            profile.email ||
+            'Unknown'
+          ).trim(),
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
     },
