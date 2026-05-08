@@ -77,20 +77,20 @@ function RevenueBarChart({
 }) {
   if (isLoading) {
     return (
-      <Card className="glass-module">
+      <Card className="glass-module h-full flex flex-col">
         <CardHeader className="pb-2">
           <Skeleton className="h-5 w-32" />
           <Skeleton className="h-3 w-48 mt-1" />
         </CardHeader>
-        <CardContent>
-          <Skeleton className="h-[220px] w-full" />
+        <CardContent className="flex-1 min-h-0">
+          <Skeleton className="h-full min-h-[220px] w-full" />
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="glass-module glass-module-interactive">
+    <Card className="glass-module glass-module-interactive h-full flex flex-col">
       <CardHeader className="pb-2 flex flex-row items-start justify-between">
         <div>
           <CardTitle className="text-sm font-medium text-foreground">{title}</CardTitle>
@@ -101,8 +101,8 @@ function RevenueBarChart({
           <p className="text-[10px] text-muted-foreground">Quarter Total</p>
         </div>
       </CardHeader>
-      <CardContent>
-        <div style={{ height: 220 }}>
+      <CardContent className="flex-1 min-h-0">
+        <div className="h-full min-h-[220px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={data}
