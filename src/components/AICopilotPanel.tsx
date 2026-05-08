@@ -21,6 +21,7 @@ import { CopilotTaskCard } from '@/components/copilot/CopilotTaskCard';
 import { CopilotPipelineSummary } from '@/components/copilot/CopilotPipelineSummary';
 import { CopilotProactiveNudge } from '@/components/copilot/CopilotProactiveNudge';
 import { CopilotCorrectionPopover } from '@/components/copilot/CopilotCorrectionPopover';
+import { CopilotDemoConversation } from '@/components/copilot/CopilotDemoConversation';
 import { useProactiveNudges } from '@/hooks/useProactiveNudges';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { formatAIResponse, getStageDisplayName } from '@/lib/copilot-utils';
@@ -455,6 +456,7 @@ function MessageActions({ msg, conversationId }: { msg: { id: string; content: s
 
 export function AICopilotPanel() {
   const { isOpen, isMinimized, minimizePanel, closePanel, messages, addMessage, setMessages, isProcessing, setProcessing, conversationId, setConversationId, conversationMutations, pendingPrompt, setPendingPrompt } = useCopilotStore();
+  const demoMode = useCopilotStore((s) => s.demoMode);
   const [agentMode, setAgentMode] = useState(false);
   const { user } = useAuth();
   const [input, setInput] = useState('');
