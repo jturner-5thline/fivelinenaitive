@@ -240,6 +240,8 @@ Deno.serve(async (req) => {
       await admin.from("deals").delete().eq("company_id", companyId);
       await admin.from("master_lenders").delete().eq("company_id", companyId);
       await admin.from("lender_notes").delete().eq("company_id", companyId);
+      await admin.from("contacts").delete().eq("org_company_id", companyId);
+      await admin.from("tasks").delete().eq("company_id", companyId);
     } else {
       const { data: newCompany, error: compErr } = await admin.from("companies").insert({
         name: DEMO_COMPANY_NAME,
@@ -250,6 +252,11 @@ Deno.serve(async (req) => {
       if (compErr) throw compErr;
       companyId = newCompany.id;
     }
+
+    // Flip the company into "seeding" mode so notification triggers no-op
+    // for every insert that follows. We unset this in a finally-style block
+    // at the end of the handler so a partial failure can't strand it on.
+    await admin.from("companies").update({ is_seeding: true }).eq("id", companyId);
 
     // Add user to company
     await admin.from("company_members").upsert({
