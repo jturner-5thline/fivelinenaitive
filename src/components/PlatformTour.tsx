@@ -292,12 +292,14 @@ export function PlatformTour() {
   const [isDemoUser, setIsDemoUser] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [userId, setUserId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     const checkTourEligibility = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      setUserId(user.id);
 
       const isDemo = user.email === 'demo@example.com';
       setIsDemoUser(isDemo);
@@ -316,26 +318,27 @@ export function PlatformTour() {
         return;
       }
 
-      const justCompletedOnboarding = sessionStorage.getItem('just-completed-onboarding');
-
-      const tourCompleted = localStorage.getItem('tour-completed');
-
+      // Persistent per-user completion lives on profiles.tour_completed_at.
+      // Once set, the tour will NEVER auto-play again — only manual replay via the event.
       const { data: profile } = await supabase
         .from('profiles')
-        .select('onboarding_completed')
+        .select('onboarding_completed, tour_completed_at')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
+      // Always allow manual restart via the event listener
+      setShouldShowTour(true);
+
+      const tourAlreadyCompleted = !!(profile as { tour_completed_at?: string | null } | null)?.tour_completed_at
+        || localStorage.getItem('tour-completed') === 'true';
+      if (tourAlreadyCompleted) return;
+
+      const justCompletedOnboarding = sessionStorage.getItem('just-completed-onboarding');
       const isNewUser = profile && !profile.onboarding_completed;
 
-      if (justCompletedOnboarding || (isNewUser && !tourCompleted)) {
-        setShouldShowTour(true);
-        if (!tourCompleted) {
-          setTimeout(() => setShowTour(true), 500);
-        }
+      if (justCompletedOnboarding || isNewUser) {
+        setTimeout(() => setShowTour(true), 500);
         sessionStorage.removeItem('just-completed-onboarding');
-      } else {
-        setShouldShowTour(true);
       }
     };
     checkTourEligibility();
@@ -377,6 +380,13 @@ export function PlatformTour() {
   const completeTour = () => {
     localStorage.setItem('tour-completed', 'true');
     setShowTour(false);
+    // Persist completion to the profile so it never auto-plays again, on any device.
+    if (userId && !isDemoUser) {
+      void supabase
+        .from('profiles')
+        .update({ tour_completed_at: new Date().toISOString() })
+        .eq('user_id', userId);
+    }
   };
 
   const handleSkip = () => {
