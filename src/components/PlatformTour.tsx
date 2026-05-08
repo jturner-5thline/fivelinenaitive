@@ -387,37 +387,49 @@ export function PlatformTour() {
         return;
       }
 
-      const { data: profile } = await supabase
+      // userId-scoped local flag — instant suppression, no cross-account bleed.
+      const localKey = `naitive_tour_done_${user.id}`;
+      setShouldShowTour(true);
+
+      // 1) localStorage first: if already seen on this device, never show again.
+      if (localStorage.getItem(localKey) || localStorage.getItem('naitive_guide_shown') === 'true') {
+        return;
+      }
+
+      // 2) DB check: if the query fails, assume returning user and DO NOT show.
+      const { data: profile, error: profileErr } = await supabase
         .from('profiles')
         .select('onboarding_completed, tour_completed_at')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      setShouldShowTour(true);
+      if (profileErr) {
+        console.warn('[PlatformTour] profile lookup failed; suppressing tour:', profileErr.message);
+        localStorage.setItem(localKey, 'true');
+        return;
+      }
 
       const tourAlreadyCompleted = !!(profile as { tour_completed_at?: string | null } | null)?.tour_completed_at;
-      // Belt-and-suspenders session guard: even if the profile read race-loses
-      // (network blip, slow query), a session-level localStorage flag prevents
-      // the welcome modal from re-firing on every email-widget open within the
-      // same tab. Manual replays go through the `restart-platform-tour` event
-      // handler below and ignore this flag.
-      const sessionGuard = localStorage.getItem('naitive_guide_shown') === 'true';
-      if (tourAlreadyCompleted || sessionGuard) return;
-      localStorage.setItem('naitive_guide_shown', 'true');
+      if (tourAlreadyCompleted) {
+        localStorage.setItem(localKey, 'true');
+        return;
+      }
 
-      // Auto-run ONCE per user. The persistent flag is `tour_completed_at`
-      // on the profile. We set it the moment we auto-show the tour so that
-      // refreshing, navigating, or logging back in never re-triggers it —
-      // even if the user dismisses mid-tour. The "Replay Naitive guide"
-      // action in Help fires a `restart-platform-tour` event and never
-      // clears this flag, so manual replays do not re-arm auto-run.
+      // First-time user — show the tour, but mark the local flag BEFORE showing
+      // so a re-mount, a failed DB write, or any race cannot re-fire the modal.
+      localStorage.setItem(localKey, 'true');
+      localStorage.setItem('naitive_guide_shown', 'true');
       setCurrentStep(savedStep);
       setTimeout(() => setShowTour(true), 500);
       sessionStorage.removeItem('just-completed-onboarding');
-      void supabase
+
+      const { error: updateErr } = await supabase
         .from('profiles')
         .update({ tour_completed_at: new Date().toISOString() })
         .eq('user_id', user.id);
+      if (updateErr) {
+        console.warn('[PlatformTour] failed to persist tour_completed_at; localStorage flag will prevent re-fire:', updateErr.message);
+      }
     };
     checkTourEligibility();
 
