@@ -1,5 +1,6 @@
 import type { Deal } from '@/types/deal';
 import { Badge } from '@/components/ui/badge';
+import { formatDealType } from '@/utils/dealTypeLabels';
 
 interface MemoHeaderProps {
   deal: Deal;
