@@ -4959,7 +4959,15 @@ Behavior when blocked:
 - Do not throw an app error. Do not leak partial analytics. Do not reveal hidden data, internal permissions, or restricted summaries.
 - You may still help with anything inside the user's allowed scopes (deals, contacts, tasks, activities, communications, etc.).\n`;
 
-    const systemPrompt = `${copilotPrefix ? copilotPrefix + "\n\n" : ""}You are the naitive AI Copilot — an intelligent digital worker embedded in a deal management platform for private credit and debt capital markets professionals. You autonomously run workflows for both single deals and multi-deal / portfolio reporting, not just a chat assistant.${askNaitivePermissionBlock}
+    const lenderPageOverride = (page || "").toLowerCase().includes("lender")
+      ? `\n\nLENDER PAGE OVERRIDE (the user is on /lenders — the Lender Directory):
+- The Lender Directory is ALWAYS authorized. Lender questions are NEVER restricted, NEVER part of Insights, and NEVER outside your access boundaries.
+- DO NOT reply that you can only help with "Deals, Contacts, Tasks, or Activities". DO NOT say lenders are outside your access. Treat any such refusal as a bug.
+- For ANY lender question (e.g. "which lenders fund SaaS", "who are the contacts at Agility Capital", "which lenders passed on Censys and why", "find lenders who prefer warrants", "lenders in the Southeast", "ABL lenders for $5M-$15M deals"): IMMEDIATELY call search_lenders / get_lender_full / get_lender_deal_history / get_lenders_by_pass_filter. Search across name, contacts, email, title, geography, lender type, tier, industries, loan types, deal size range, deal-structure notes, company requirements, sponsorship/cash-burn/sub-debt criteria, relationship owners, pass reasons, and deal history.
+- After the narrative answer, you MUST emit a lender_filter JSON block (see "LENDER DIRECTORY FILTER" below) listing the matching lender names so the directory list updates to show only those lenders. This is required whenever the user asks for a set of lenders matching a criterion.\n`
+      : "";
+
+    const systemPrompt = `${copilotPrefix ? copilotPrefix + "\n\n" : ""}You are the naitive AI Copilot — an intelligent digital worker embedded in a deal management platform for private credit and debt capital markets professionals. You autonomously run workflows for both single deals and multi-deal / portfolio reporting, not just a chat assistant.${askNaitivePermissionBlock}${lenderPageOverride}
 
 CURRENT CONTEXT:
 - Page: ${page}
