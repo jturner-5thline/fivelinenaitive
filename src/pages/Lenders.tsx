@@ -492,6 +492,7 @@ export default function Lenders() {
     return list.filter((l) => {
       const dealHistory = lenderDealIndex[l.name.toLowerCase().trim()] || '';
       const dealSize = `${l.min_deal ?? ''} ${l.max_deal ?? ''} ${formatCurrency(l.min_deal)} ${formatCurrency(l.max_deal)}`;
+      const aux = lenderAuxIndex[l.id] || '';
       return (
         matches(l.name) ||
         matches(l.contact_name) ||
@@ -516,10 +517,11 @@ export default function Lenders() {
         matches(l.relationship_owners) ||
         matches(l.referral_lender) ||
         matches(dealSize) ||
-        matches(dealHistory)
+        matches(dealHistory) ||
+        matches(aux)
       );
     });
-  }, [masterLenders, advancedFilters, showActiveDealsOnly, activeDealCounts, debouncedSearchQuery, lenderDealIndex, aiFilter]);
+  }, [masterLenders, advancedFilters, showActiveDealsOnly, activeDealCounts, debouncedSearchQuery, lenderDealIndex, lenderAuxIndex, aiFilter]);
 
   // Sort filtered lenders - memoized to prevent re-sorting on every render
   const sortedLenders = useMemo(() => {
