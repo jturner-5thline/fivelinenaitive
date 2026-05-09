@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import {
   ArrowDown, ArrowUp, ArrowUpDown, BarChart3, Download, DollarSign,
   Search, TrendingUp, Users, ChevronRight,
@@ -68,6 +68,13 @@ export function UsageAnalyticsPanel() {
   const [aiRate, setAiRate] = useState<number>(DEFAULT_AI_RATE_PER_1K_TOKENS);
   type EnrichedRow = CompanyUsageRow & { est_cost: number; tier: UsageTier };
   const [drilldown, setDrilldown] = useState<EnrichedRow | null>(null);
+  const deepDiveRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (drilldown && deepDiveRef.current) {
+      deepDiveRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [drilldown]);
 
   const range = useMemo(
     () => buildDateRange(
@@ -161,12 +168,14 @@ export function UsageAnalyticsPanel() {
   return (
     <div className="space-y-6">
       {drilldown ? (
-        <CompanyDeepDive
-          companyId={drilldown.company_id}
-          companyName={drilldown.company_name}
-          range={range}
-          onBack={() => setDrilldown(null)}
-        />
+        <div ref={deepDiveRef}>
+          <CompanyDeepDive
+            companyId={drilldown.company_id}
+            companyName={drilldown.company_name}
+            range={range}
+            onBack={() => setDrilldown(null)}
+          />
+        </div>
       ) : (
       <>
       {/* Controls */}
@@ -279,22 +288,30 @@ export function UsageAnalyticsPanel() {
                   </TableCell>
                 </TableRow>
               ) : (
-                 sortedRows.map((r) => (
+                 sortedRows.map((r) => {
+                   const openDeepDive = () => {
+                     if (!r.company_id || r.company_id === "__no_company__") return;
+                     setDrilldown(r);
+                   };
+                   const isClickable = r.company_id && r.company_id !== "__no_company__";
+                   return (
                    <TableRow key={r.company_id}
-                     onClick={() => {
-                       setDrilldown(r);
-                       window.scrollTo({ top: 0, behavior: "smooth" });
-                     }}
-                     role="button"
-                     tabIndex={0}
+                     onClick={openDeepDive}
+                     role={isClickable ? "button" : undefined}
+                     tabIndex={isClickable ? 0 : undefined}
+                     aria-label={isClickable ? `View deep dive for ${r.company_name}` : undefined}
                      onKeyDown={(e) => {
+                       if (!isClickable) return;
                        if (e.key === "Enter" || e.key === " ") {
                          e.preventDefault();
-                         setDrilldown(r);
-                         window.scrollTo({ top: 0, behavior: "smooth" });
+                         openDeepDive();
                        }
                      }}
-                     className="cursor-pointer hover:bg-primary/5 transition-colors">
+                     className={
+                       isClickable
+                         ? "cursor-pointer hover:bg-primary/10 transition-colors group"
+                         : "opacity-80"
+                     }>
                     <TableCell className="font-medium">
                       <span className="inline-flex items-center gap-1 text-primary group-hover:underline">
                         {r.company_name}
@@ -316,7 +333,8 @@ export function UsageAnalyticsPanel() {
                       <Badge variant="outline" className={tierBadgeClass(r.tier)}>{r.tier}</Badge>
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>
