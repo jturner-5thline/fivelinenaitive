@@ -1,4 +1,5 @@
 import { KeyboardEvent, RefObject, useState, useCallback, useMemo } from 'react';
+import { TaskAssociationChips } from '@/components/tasks/TaskAssociationChips';
 import { Link } from 'react-router-dom';
 import { type Task } from '@/hooks/useTasks';
 import { useTaskCollaboratorsBatch } from '@/hooks/useTaskCollaborators';
