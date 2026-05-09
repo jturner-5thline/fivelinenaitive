@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { TaskAssociationChips } from '@/components/tasks/TaskAssociationChips';
+import { TaskFilterSortBar, applyTaskFilters, DEFAULT_TASK_FILTERS, type TaskFilters } from '@/components/tasks/TaskFilterSortBar';
 
 interface ContactTasksCardProps {
   contactId: string;
@@ -62,6 +63,7 @@ export function ContactTasksCard({ contactId, contactName, crmCompanyId, externa
   const [priority, setPriority] = useState('medium');
   const [status, setStatus] = useState('not_started');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [filters, setFilters] = useState<TaskFilters>(DEFAULT_TASK_FILTERS);
 
   useEffect(() => {
     if (externalShowCreate) {
@@ -130,8 +132,10 @@ export function ContactTasksCard({ contactId, contactName, crmCompanyId, externa
     return (member.display_name || '').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || '?';
   };
 
-  const activeTasks = tasks.filter(t => t.status !== 'complete');
-  const completedTasks = tasks.filter(t => t.status === 'complete');
+  const filteredTasks = useMemo(() => applyTaskFilters(tasks, filters), [tasks, filters]);
+  const showCompletedSection = filters.status === 'all';
+  const activeTasks = showCompletedSection ? filteredTasks.filter(t => t.status !== 'complete') : filteredTasks;
+  const completedTasks = showCompletedSection ? filteredTasks.filter(t => t.status === 'complete') : [];
 
   return (
     <>
@@ -147,6 +151,9 @@ export function ContactTasksCard({ contactId, contactName, crmCompanyId, externa
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {tasks.length > 0 && (
+            <TaskFilterSortBar tasks={tasks} filters={filters} onChange={setFilters} />
+          )}
           {activeTasks.length === 0 && completedTasks.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-4">No tasks yet</p>
           )}
