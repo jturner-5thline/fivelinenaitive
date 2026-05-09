@@ -398,6 +398,44 @@ export default function Lenders() {
     return idx;
   }, [deals]);
 
+  // Auxiliary search index: every contact and free-text note for each master lender,
+  // keyed by master_lender id. Loaded once so the search bar can match across
+  // contact name/email/title/phone/geography/notes and lender notes/tags.
+  const [lenderAuxIndex, setLenderAuxIndex] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [contactsRes, notesRes] = await Promise.all([
+          supabase
+            .from('lender_contacts')
+            .select('lender_id, name, email, title, phone, geography, notes'),
+          supabase
+            .from('lender_notes')
+            .select('master_lender_id, body, tags'),
+        ]);
+        if (cancelled) return;
+        const idx: Record<string, string> = {};
+        for (const c of (contactsRes.data || []) as any[]) {
+          if (!c?.lender_id) continue;
+          const parts = [c.name, c.email, c.title, c.phone, c.geography, c.notes]
+            .filter(Boolean).join(' ');
+          idx[c.lender_id] = (idx[c.lender_id] ? idx[c.lender_id] + ' ' : '') + parts;
+        }
+        for (const n of (notesRes.data || []) as any[]) {
+          if (!n?.master_lender_id) continue;
+          const parts = [n.body, ...(Array.isArray(n.tags) ? n.tags : [])]
+            .filter(Boolean).join(' ');
+          idx[n.master_lender_id] = (idx[n.master_lender_id] ? idx[n.master_lender_id] + ' ' : '') + parts;
+        }
+        setLenderAuxIndex(idx);
+      } catch (e) {
+        console.warn('[Lenders] failed to build aux search index', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   // AI-driven filter: when the Copilot answers a lender query, it can dispatch
   // a 'naitive:lender-filter' event with a list of matching lender names.
   const [aiFilter, setAiFilter] = useState<{ query: string; names: Set<string> } | null>(null);
