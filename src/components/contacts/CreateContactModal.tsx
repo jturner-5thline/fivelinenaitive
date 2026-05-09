@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateContact, LIFECYCLE_STAGES, CONTACT_STATUSES } from '@/hooks/useContacts';
 import { CompanyComboBox } from '@/components/contacts/CompanyComboBox';
+import { extractEmailDomain } from '@/lib/extractEmailDomain';
 import { cn } from '@/lib/utils';
 
 interface CreateContactModalProps {
@@ -29,9 +30,21 @@ export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateCo
     status: 'new' as string,
     lead_source: '',
     linkedin_url: '',
+    website_url: '',
     description: '',
     crm_company_id: defaultCompanyId || '' as string,
   });
+
+  const handleEmailChange = (email: string) => {
+    setForm(p => {
+      const next = { ...p, email };
+      if (!p.website_url) {
+        const domain = extractEmailDomain(email);
+        if (domain) next.website_url = `https://${domain}`;
+      }
+      return next;
+    });
+  };
 
   const handleSubmit = () => {
     if (!form.first_name && !form.last_name && !form.email) return;
@@ -42,7 +55,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateCo
         setForm({
           first_name: '', last_name: '', email: '', phone_work: '', phone_mobile: '',
           job_title: '', department: '', lifecycle_stage: 'lead', status: 'new',
-          lead_source: '', linkedin_url: '', description: '', crm_company_id: '',
+          lead_source: '', linkedin_url: '', website_url: '', description: '', crm_company_id: '',
         });
       },
     });
@@ -66,7 +79,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateCo
           </div>
           <div className="space-y-1.5 col-span-2">
             <Label htmlFor="email" className="text-xs">Email</Label>
-            <Input id="email" type="email" value={form.email} onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))} />
+            <Input id="email" type="email" value={form.email} onChange={(e) => handleEmailChange(e.target.value)} />
           </div>
 
           {/* Company selector */}
@@ -124,6 +137,10 @@ export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateCo
           <div className="space-y-1.5">
             <Label htmlFor="linkedin_url" className="text-xs">LinkedIn URL</Label>
             <Input id="linkedin_url" value={form.linkedin_url} onChange={(e) => setForm(p => ({ ...p, linkedin_url: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="website_url" className="text-xs">Website / Domain</Label>
+            <Input id="website_url" placeholder="auto from email" value={form.website_url} onChange={(e) => setForm(p => ({ ...p, website_url: e.target.value }))} />
           </div>
           <div className="space-y-1.5 col-span-2">
             <Label htmlFor="description" className="text-xs">Notes</Label>
