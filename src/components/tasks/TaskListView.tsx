@@ -1,4 +1,5 @@
 import { KeyboardEvent, RefObject, useState, useCallback, useMemo } from 'react';
+import { TaskAssociationChips } from '@/components/tasks/TaskAssociationChips';
 import { Link } from 'react-router-dom';
 import { type Task } from '@/hooks/useTasks';
 import { useTaskCollaboratorsBatch } from '@/hooks/useTaskCollaborators';
@@ -903,18 +904,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       {/* Deal cell — single-line ellipsis with hover tooltip. */}
       {visibleSet.has('deal') && (
       <div className="min-w-0 overflow-hidden flex items-center" onClick={e => e.stopPropagation()}>
-        {task.deal_id && task.deal ? (
-          <Link
-            to={`/deal/${task.deal_id}`}
-            title={task.deal.company}
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium hover:text-[#cfe3ff] transition-colors min-w-0 max-w-full"
-            style={{ color: '#9aa3b6' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <Building2 className="h-2.5 w-2.5 shrink-0" />
-            <span className="truncate">{task.deal.company}</span>
-          </Link>
-        ) : null}
+        <TaskAssociationChips task={task} />
       </div>
       )}
 

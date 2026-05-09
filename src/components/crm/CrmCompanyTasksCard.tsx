@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { TaskAssociationChips } from '@/components/tasks/TaskAssociationChips';
 import { CheckSquare, Plus, Circle, CheckCircle2, User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -174,15 +175,16 @@ export function CrmCompanyTasksCard({ companyId, companyName, externalShowCreate
                         <Badge variant="outline" className={cn('text-[9px] px-1 py-0 h-4', priorityColor[task.priority])}>
                           {task.priority}
                         </Badge>
-                        {task.status !== 'not_started' && (
-                          <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">
-                            {STATUS_OPTIONS.find(s => s.value === task.status)?.label || task.status}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
+                         {task.status !== 'not_started' && (
+                           <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">
+                             {STATUS_OPTIONS.find(s => s.value === task.status)?.label || task.status}
+                           </Badge>
+                         )}
+                       </div>
+                       <TaskAssociationChips task={task} className="mt-1" />
+                     </div>
+                   </div>
+                 );
               })}
             </div>
           )}
