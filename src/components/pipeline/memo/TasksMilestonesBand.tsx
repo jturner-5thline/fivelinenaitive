@@ -404,15 +404,17 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
               </div>
             );
 
-            if (showPlusHere) {
-              return (
-                <div key={task.id} className="flex items-center gap-2">
-                  {rowEl}
-                  {StandalonePlusButton}
+            return (
+              <div
+                key={task.id}
+                className="grid items-center gap-2 grid-cols-[1fr_28px]"
+              >
+                {rowEl}
+                <div className="w-7 flex items-center justify-center">
+                  {showPlusHere ? StandalonePlusButton : null}
                 </div>
-              );
-            }
-            return <div key={task.id}>{rowEl}</div>;
+              </div>
+            );
           })}
           {tasks.length > visibleTasks.length && (
             <div className="text-[10px] text-muted-foreground pl-1">
@@ -420,8 +422,8 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
             </div>
           )}
           {milestone && (
-            <div className="flex items-center gap-2">
-              <div className="flex-1 min-w-0 flex items-center gap-2.5 rounded-md bg-primary/10 border border-primary/20 px-2.5 py-1.5">
+            <div className="grid items-center gap-2 grid-cols-[1fr_28px]">
+              <div className="min-w-0 flex items-center gap-2.5 rounded-md bg-primary/10 border border-primary/20 px-2.5 py-1.5">
                 <Diamond className="h-3.5 w-3.5 text-primary shrink-0 fill-primary" />
                 <span className="flex-1 text-xs text-foreground font-medium truncate" title={milestone.title}>
                   {milestone.title}
@@ -433,7 +435,9 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
                   </span>
                 )}
               </div>
-              {!addFormOpen && plusOnMilestone && StandalonePlusButton}
+              <div className="w-7 flex items-center justify-center">
+                {!addFormOpen && plusOnMilestone ? StandalonePlusButton : null}
+              </div>
             </div>
           )}
         </div>
