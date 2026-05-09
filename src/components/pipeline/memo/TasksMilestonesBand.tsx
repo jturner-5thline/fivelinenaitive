@@ -184,6 +184,7 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
 
   return (
     <div className="px-5 py-3 bg-muted/40 border-b border-border">
+      <div className="md:max-w-[88%] lg:max-w-[85%]">
       <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-2">
         Tasks & milestones
       </div>
@@ -400,30 +401,38 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
         </div>
       )}
 
-      {/* + Add Follow-up — opens an inline form that creates a task linked
-          to this deal (and optionally syncs to Asana). Strictly additive:
-          existing task list above is unchanged. */}
+      {/* Inline footer action — compact "+" embedded in the module.
+          Reuses the existing AddFollowupInlineForm handler. */}
       {addFormOpen ? (
-        <AddFollowupInlineForm
-          deal={deal}
-          defaultTitle={prefillTitle}
-          onClose={() => setAddFormOpen(false)}
-        />
+        <div className="mt-2">
+          <AddFollowupInlineForm
+            deal={deal}
+            defaultTitle={prefillTitle}
+            onClose={() => setAddFormOpen(false)}
+          />
+        </div>
       ) : (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setAddFormOpen(true);
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-dashed border-border/70 bg-background/40 px-2 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
-        >
-          <Plus className="h-3 w-3" />
-          Add Follow-up
-        </button>
+        <div className="mt-2 pt-1.5 border-t border-border/50 flex items-center justify-between gap-2">
+          <span className="text-[10px] text-muted-foreground/70 italic">
+            Add task or follow-up
+          </span>
+          <button
+            type="button"
+            aria-label="Add follow-up task"
+            title="Add follow-up"
+            onClick={(e) => {
+              e.stopPropagation();
+              setAddFormOpen(true);
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="inline-flex items-center justify-center h-6 w-6 rounded-full border border-border/60 bg-background/60 text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        </div>
       )}
+      </div>
     </div>
   );
 }
