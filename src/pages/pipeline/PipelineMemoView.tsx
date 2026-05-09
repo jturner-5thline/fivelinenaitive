@@ -1,4 +1,4 @@
-import { useMemo, useRef, useCallback } from 'react';
+import { useMemo, useRef, useCallback, useLayoutEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -146,6 +146,15 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
     // after mount (lazy digests, expanded follow-up form, lender groups),
     // which manifests as cards overlapping their neighbours.
   });
+
+  // Force re-measure when async content (digests, tasks) lands. The
+  // ResizeObserver normally catches this, but cards whose final height
+  // changes only after several batched re-renders can briefly overlap
+  // their neighbours before RO fires. An explicit measure() call after
+  // tasks/digests arrive eliminates the visible collision.
+  useLayoutEffect(() => {
+    virtualizer.measure();
+  }, [virtualizer, digestMap, tasksByDeal, digestsLoading]);
 
   if (sorted.length === 0) {
     return (
