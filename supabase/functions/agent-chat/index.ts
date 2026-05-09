@@ -31,6 +31,13 @@ interface DealContext {
   value?: number;
   stage?: string;
   status?: string;
+  successFeePercent?: number;
+  retainerFee?: number;
+  milestoneFee?: number;
+  totalFee?: number;
+  engagementType?: string;
+  closingFeeAmount?: number;
+  closingFeePercent?: number;
 }
 
 function buildSystemPrompt(agentConfig: AgentConfig, dealContext?: DealContext): string {
@@ -46,6 +53,13 @@ function buildSystemPrompt(agentConfig: AgentConfig, dealContext?: DealContext):
     if (dealContext.value) prompt += `\n- Value: $${dealContext.value.toLocaleString()}`;
     if (dealContext.stage) prompt += `\n- Stage: ${dealContext.stage}`;
     if (dealContext.status) prompt += `\n- Status: ${dealContext.status}`;
+    if (dealContext.engagementType) prompt += `\n- Engagement Type: ${dealContext.engagementType}`;
+    if (dealContext.successFeePercent != null) prompt += `\n- Success Fee: ${dealContext.successFeePercent}%`;
+    if (dealContext.retainerFee != null) prompt += `\n- Retainer Fee: $${dealContext.retainerFee.toLocaleString()}`;
+    if (dealContext.milestoneFee != null) prompt += `\n- Milestone Fee: $${dealContext.milestoneFee.toLocaleString()}`;
+    if (dealContext.totalFee != null) prompt += `\n- Total Fee: $${dealContext.totalFee.toLocaleString()}`;
+    if (dealContext.closingFeeAmount != null) prompt += `\n- Closing Fee Amount: $${dealContext.closingFeeAmount.toLocaleString()}`;
+    if (dealContext.closingFeePercent != null) prompt += `\n- Closing Fee %: ${dealContext.closingFeePercent}%`;
   }
 
   const capabilities: string[] = [];

@@ -81,6 +81,11 @@ export function AgentTestChat({ agent, onClose }: AgentTestChatProps) {
       value: selectedDeal.value,
       stage: selectedDeal.stage,
       status: selectedDeal.status,
+      engagementType: selectedDeal.engagementType,
+      successFeePercent: selectedDeal.successFeePercent,
+      retainerFee: selectedDeal.retainerFee,
+      milestoneFee: selectedDeal.milestoneFee,
+      totalFee: selectedDeal.totalFee,
     } : undefined;
 
     sendMessage(content, dealContext);

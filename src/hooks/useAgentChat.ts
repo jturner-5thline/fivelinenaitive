@@ -16,6 +16,13 @@ interface DealContext {
   value?: number;
   stage?: string;
   status?: string;
+  successFeePercent?: number;
+  retainerFee?: number;
+  milestoneFee?: number;
+  totalFee?: number;
+  engagementType?: string;
+  closingFeeAmount?: number;
+  closingFeePercent?: number;
 }
 
 export function useAgentChat(agent: Agent | null) {
