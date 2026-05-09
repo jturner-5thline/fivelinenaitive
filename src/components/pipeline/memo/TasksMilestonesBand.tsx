@@ -82,7 +82,9 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
   const [addFormOpen, setAddFormOpen] = useState(false);
   const prefillTitle = prefillFollowupTitle(deal, tasks, rawDigest);
 
-  const InlinePlusButton = (
+  // Standalone "+" button rendered as a sibling to the bottom-most
+  // task/milestone row — never embedded inside the row's bordered container.
+  const StandalonePlusButton = (
     <button
       type="button"
       aria-label="Add follow-up task"
@@ -93,9 +95,9 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
       }}
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
-      className="ml-auto inline-flex items-center justify-center h-5 w-5 rounded-full border border-border/60 bg-background/60 text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
+      className="shrink-0 inline-flex items-center justify-center h-7 w-7 rounded-full border border-border/60 bg-background/40 text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <Plus className="h-3 w-3" />
+      <Plus className="h-3.5 w-3.5" />
     </button>
   );
 
@@ -224,10 +226,9 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
             const assigneeLabel = task.kind === 'task' ? task.assignedToName : task.requestedByName;
             const showPlusHere = !addFormOpen && idx === plusOnTaskIndex;
 
-            return (
+            const rowEl = (
               <div
-                key={task.id}
-                className="group flex items-center gap-2.5 rounded-md bg-background/70 border border-border/60 px-2.5 py-1.5"
+                className="group flex-1 min-w-0 flex items-center gap-2.5 rounded-md bg-background/70 border border-border/60 px-2.5 py-1.5"
                 onClick={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
                 onMouseDown={(e) => e.stopPropagation()}
@@ -400,9 +401,18 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
                     {format(dueDate, 'MMM d')}
                   </span>
                 ) : null}
-                {showPlusHere && InlinePlusButton}
               </div>
             );
+
+            if (showPlusHere) {
+              return (
+                <div key={task.id} className="flex items-center gap-2">
+                  {rowEl}
+                  {StandalonePlusButton}
+                </div>
+              );
+            }
+            return <div key={task.id}>{rowEl}</div>;
           })}
           {tasks.length > visibleTasks.length && (
             <div className="text-[10px] text-muted-foreground pl-1">
@@ -410,18 +420,20 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
             </div>
           )}
           {milestone && (
-            <div className="flex items-center gap-2.5 rounded-md bg-primary/10 border border-primary/20 px-2.5 py-1.5">
-              <Diamond className="h-3.5 w-3.5 text-primary shrink-0 fill-primary" />
-              <span className="flex-1 text-xs text-foreground font-medium truncate" title={milestone.title}>
-                {milestone.title}
-                {milestone.dueDate && ` · ${format(new Date(milestone.dueDate), 'MMM d')}`}
-              </span>
-              {milestone.dueDate && (
-                <span className="text-[10px] text-primary whitespace-nowrap">
-                  {relativeDays(milestone.dueDate)}
+            <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0 flex items-center gap-2.5 rounded-md bg-primary/10 border border-primary/20 px-2.5 py-1.5">
+                <Diamond className="h-3.5 w-3.5 text-primary shrink-0 fill-primary" />
+                <span className="flex-1 text-xs text-foreground font-medium truncate" title={milestone.title}>
+                  {milestone.title}
+                  {milestone.dueDate && ` · ${format(new Date(milestone.dueDate), 'MMM d')}`}
                 </span>
-              )}
-              {!addFormOpen && plusOnMilestone && InlinePlusButton}
+                {milestone.dueDate && (
+                  <span className="text-[10px] text-primary whitespace-nowrap">
+                    {relativeDays(milestone.dueDate)}
+                  </span>
+                )}
+              </div>
+              {!addFormOpen && plusOnMilestone && StandalonePlusButton}
             </div>
           )}
         </div>
@@ -439,7 +451,7 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
           />
         </div>
       ) : !hasContent ? (
-        <div className="mt-2 flex justify-end">{InlinePlusButton}</div>
+        <div className="mt-2 flex justify-end">{StandalonePlusButton}</div>
       ) : null}
       </div>
     </div>
