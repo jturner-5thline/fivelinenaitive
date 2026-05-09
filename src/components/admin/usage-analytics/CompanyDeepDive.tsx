@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft, BarChart3, Download, ExternalLink, Search, Sparkles, TrendingUp, DollarSign,
+  Users, Star,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
@@ -223,6 +224,18 @@ export function CompanyDeepDive({ companyId, companyName, range: initialRange, o
   const estCost = (totalTokens / 1000) * aiRate;
   const tier = classifyUsageTier(totalAi);
 
+  const activeUserCount = useMemo(
+    () => new Set(events.map((e) => e.user_id).filter((v): v is string => !!v)).size,
+    [events],
+  );
+  const mostUsedFeature = useMemo(() => {
+    const counts = new Map<string, number>();
+    events.forEach((e) => counts.set(e.feature_type, (counts.get(e.feature_type) || 0) + 1));
+    let best: { key: string; v: number } | null = null;
+    counts.forEach((v, key) => { if (!best || v > best.v) best = { key, v }; });
+    return best ? (FEATURE_LABELS[best.key] || best.key) : "—";
+  }, [events]);
+
   // Section 1 — daily trend
   const trendData = useMemo(() => {
     const days = buildDayBuckets(range.start, range.end);
@@ -403,6 +416,8 @@ Pick a Suggested pricing that yields a healthy 60-75% gross margin over the cost
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <Kpi label="Total AI Calls" value={numberFmt.format(totalAi)} icon={TrendingUp} />
+              <Kpi label="Active Users" value={numberFmt.format(activeUserCount)} icon={Users} />
+              <Kpi label="Most Used Feature" value={mostUsedFeature} icon={Star} />
               <Kpi label="Est. Cost" value={currencyFmt.format(estCost)} icon={DollarSign} />
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Date range</label>
