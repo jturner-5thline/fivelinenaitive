@@ -5,6 +5,11 @@ import { toast as sonnerToast } from 'sonner';
 import { useAsanaGoals, type AsanaGoalRow } from '@/hooks/useAsanaGoals';
 import { useAsanaPortfolioProjects, type AsanaPortfolioProjectRow } from '@/hooks/useAsanaPortfolioProjects';
 import { useAsanaPortfolios } from '@/hooks/useAsanaPortfolios';
+import {
+  INITIATIVES_DEFAULT_PORTFOLIO_GID,
+  INITIATIVES_LEGACY_PORTFOLIO_GIDS,
+  INITIATIVES_PORTFOLIO_PREF_KEY,
+} from '@/config/insightsInitiatives';
 import { useAsanaGoalFilterPrefs } from '@/hooks/useAsanaGoalFilterPrefs';
 import { useSortGroup, type SortGroupColumn } from './qir/useSortGroup';
 import { SortGroupToolbar } from './qir/SortGroupToolbar';
@@ -1888,9 +1893,11 @@ function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: Report
 function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetState }) {
   const preparedBy = s.authors[0] || 'James Turner';
   // Initiatives sourced live from a user-selectable Asana Portfolio.
-  const DEFAULT_PORTFOLIO_GID = '1212153276296114';
-  const LEGACY_PORTFOLIO_GIDS = ['1212153276296112'];
-  const PORTFOLIO_PREF_KEY = 'qir.initiatives.portfolioGid';
+  // Portfolio GID is configured in src/config/insightsInitiatives.ts so it
+  // can be updated without a code change to this component.
+  const DEFAULT_PORTFOLIO_GID = INITIATIVES_DEFAULT_PORTFOLIO_GID;
+  const LEGACY_PORTFOLIO_GIDS = INITIATIVES_LEGACY_PORTFOLIO_GIDS;
+  const PORTFOLIO_PREF_KEY = INITIATIVES_PORTFOLIO_PREF_KEY;
   const [portfolioGid, setPortfolioGid] = useState<string>(() => {
     try {
       const stored = localStorage.getItem(PORTFOLIO_PREF_KEY);
@@ -2061,7 +2068,8 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
 
         {error && (
           <div style={{ padding: '10px 12px', fontSize: 11, color: '#f08585', background: 'rgba(220,80,80,0.08)', border: '1px solid rgba(220,80,80,0.2)', borderRadius: 8, marginBottom: 10 }}>
-            Asana sync error: {error}
+            Unable to load initiatives. The Asana portfolio may have been renamed or deleted. Contact your admin to update the portfolio ID.
+            <div style={{ marginTop: 4, fontSize: 10, color: 'rgba(240,133,133,0.7)' }}>Details: {error}</div>
           </div>
         )}
 
