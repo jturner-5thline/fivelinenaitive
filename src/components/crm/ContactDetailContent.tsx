@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Phone, Calendar, MessageSquare, Plus, ExternalLink, Pencil, Sparkles, User, Building2, Briefcase, Trash2, X, Link, CheckSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,8 @@ import { ContactFieldSuggestions } from '@/components/contacts/ContactFieldSugge
 import { DynamicFieldRenderer } from '@/components/crm/DynamicFieldRenderer';
 import { ContactTasksCard } from '@/components/contacts/ContactTasksCard';
 import { ClaapCallsSection } from '@/components/claap/ClaapCallsSection';
+import { CompanyDomainMatchPrompt } from '@/components/contacts/CompanyDomainMatchPrompt';
+import { extractEmailDomain } from '@/lib/extractEmailDomain';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
@@ -57,6 +59,16 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
   const unlinkFromCompany = useUnlinkContactFromCompany();
   const linkToDeal = useLinkContactToDeal();
   const unlinkFromDeal = useUnlinkContactFromDeal();
+
+  // Auto-fill website_url from email domain when missing
+  useEffect(() => {
+    if (!contact) return;
+    if (contact.website_url) return;
+    const domain = extractEmailDomain(contact.email);
+    if (!domain) return;
+    updateContact.mutate({ id: contact.id, website_url: `https://${domain}` } as any);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contact?.id, contact?.email, contact?.website_url]);
 
   if (isLoading) {
     return (
@@ -173,6 +185,16 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                 <InfoRow label="Email" value={contact.email} />
                 <InfoRow label="Work Phone" value={contact.phone_work} />
                 <InfoRow label="Mobile" value={contact.phone_mobile} />
+                {contact.website_url ? (
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase">Website / Domain</p>
+                    <a href={contact.website_url} target="_blank" rel="noopener noreferrer" className="text-primary text-xs flex items-center gap-1 hover:underline">
+                      {contact.website_url.replace(/^https?:\/\//, '').replace(/\/$/, '')} <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                ) : (
+                  <InfoRow label="Website / Domain" value={null} />
+                )}
                 {contact.linkedin_url && (
                   <div>
                     <p className="text-[10px] text-muted-foreground uppercase">LinkedIn</p>
@@ -416,6 +438,14 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
             },
           });
         }}
+      />
+
+      <CompanyDomainMatchPrompt
+        contactId={contact.id}
+        contactName={contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'this contact'}
+        email={contact.email}
+        currentCrmCompanyId={crmCompanyId}
+        onLinkRequested={() => setShowLinkCompany(true)}
       />
     </>
   );
