@@ -42,7 +42,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateCo
         setForm({
           first_name: '', last_name: '', email: '', phone_work: '', phone_mobile: '',
           job_title: '', department: '', lifecycle_stage: 'lead', status: 'new',
-          lead_source: '', linkedin_url: '', description: '', crm_company_id: '',
+          lead_source: '', linkedin_url: '', website_url: '', description: '', crm_company_id: '',
         });
       },
     });
