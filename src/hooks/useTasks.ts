@@ -828,7 +828,7 @@ export function useContactTasks(contactId: string | undefined) {
       if (!contactId) return [];
       const { data, error } = await supabase
         .from('tasks')
-        .select('*')
+        .select('*, deal:deals(id, company), contact:contacts(id, full_name), crm_company:crm_companies(id, name)')
         .eq('contact_id', contactId)
         .is('archived_at', null)
         .order('created_at', { ascending: false });
@@ -848,7 +848,7 @@ export function useCrmCompanyTasks(companyId: string | undefined) {
       // Get tasks directly on this company
       const { data: directTasks, error: directError } = await (supabase
         .from('tasks')
-        .select('*')
+        .select('*, deal:deals(id, company), contact:contacts(id, full_name), crm_company:crm_companies(id, name)')
         .eq('crm_company_id', companyId) as any)
         .is('archived_at', null)
         .order('created_at', { ascending: false });
@@ -865,7 +865,7 @@ export function useCrmCompanyTasks(companyId: string | undefined) {
         const ids = contactIds.map(c => c.id);
         const { data, error } = await supabase
           .from('tasks')
-          .select('*')
+          .select('*, deal:deals(id, company), contact:contacts(id, full_name), crm_company:crm_companies(id, name)')
           .in('contact_id', ids)
           .is('archived_at', null)
           .order('created_at', { ascending: false });
