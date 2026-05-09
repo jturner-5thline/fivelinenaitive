@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { TaskAssociationChips } from '@/components/tasks/TaskAssociationChips';
 import { CheckSquare, Plus, Circle, CheckCircle2, User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
