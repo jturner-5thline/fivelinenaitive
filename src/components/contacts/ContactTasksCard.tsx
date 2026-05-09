@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { TaskAssociationChips } from '@/components/tasks/TaskAssociationChips';
 
 interface ContactTasksCardProps {
   contactId: string;
@@ -193,6 +194,7 @@ export function ContactTasksCard({ contactId, contactName, crmCompanyId, externa
                           </Badge>
                         )}
                       </div>
+                      <TaskAssociationChips task={task} className="mt-1" />
                     </div>
                   </div>
                 );
