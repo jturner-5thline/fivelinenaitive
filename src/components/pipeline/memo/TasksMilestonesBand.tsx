@@ -82,7 +82,9 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
   const [addFormOpen, setAddFormOpen] = useState(false);
   const prefillTitle = prefillFollowupTitle(deal, tasks, rawDigest);
 
-  const InlinePlusButton = (
+  // Standalone "+" button rendered as a sibling to the bottom-most
+  // task/milestone row — never embedded inside the row's bordered container.
+  const StandalonePlusButton = (
     <button
       type="button"
       aria-label="Add follow-up task"
@@ -93,9 +95,9 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
       }}
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
-      className="ml-auto inline-flex items-center justify-center h-5 w-5 rounded-full border border-border/60 bg-background/60 text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
+      className="shrink-0 inline-flex items-center justify-center h-7 w-7 rounded-full border border-border/60 bg-background/40 text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <Plus className="h-3 w-3" />
+      <Plus className="h-3.5 w-3.5" />
     </button>
   );
 
