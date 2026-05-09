@@ -69,12 +69,35 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
   const milestone = nextUpcomingMilestone(deal.milestones);
   const visibleTasks = tasks.slice(0, 4);
   const hasContent = visibleTasks.length > 0 || !!milestone;
+  // The "+" add control is anchored to the bottom-most actionable row in
+  // the rendered list. Milestone is rendered after tasks, so if present it
+  // owns the inline plus; otherwise the final visible task row does.
+  const lastTaskIndex = visibleTasks.length - 1;
+  const plusOnMilestone = !!milestone;
+  const plusOnTaskIndex = !milestone ? lastTaskIndex : -1;
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
   const [editingAssigneeId, setEditingAssigneeId] = useState<string | null>(null);
   const [titleDraft, setTitleDraft] = useState('');
   const [addFormOpen, setAddFormOpen] = useState(false);
   const prefillTitle = prefillFollowupTitle(deal, tasks, rawDigest);
+
+  const InlinePlusButton = (
+    <button
+      type="button"
+      aria-label="Add follow-up task"
+      title="Add follow-up"
+      onClick={(e) => {
+        e.stopPropagation();
+        setAddFormOpen(true);
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      className="ml-auto inline-flex items-center justify-center h-5 w-5 rounded-full border border-border/60 bg-background/60 text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
+    >
+      <Plus className="h-3 w-3" />
+    </button>
+  );
 
   const { data: members = [] } = useQuery({
     queryKey: ['deal-rundown-task-members', company?.id],
@@ -195,10 +218,11 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
         </p>
       ) : (
         <div className="space-y-1.5">
-          {visibleTasks.map((task) => {
+          {visibleTasks.map((task, idx) => {
             const dueDate = task.dueDate ? new Date(task.dueDate) : null;
             const isOverdue = !!dueDate && differenceInCalendarDays(dueDate, new Date()) < 0;
             const assigneeLabel = task.kind === 'task' ? task.assignedToName : task.requestedByName;
+            const showPlusHere = !addFormOpen && idx === plusOnTaskIndex;
 
             return (
               <div
@@ -376,6 +400,7 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
                     {format(dueDate, 'MMM d')}
                   </span>
                 ) : null}
+                {showPlusHere && InlinePlusButton}
               </div>
             );
           })}
@@ -396,13 +421,15 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
                   {relativeDays(milestone.dueDate)}
                 </span>
               )}
+              {!addFormOpen && plusOnMilestone && InlinePlusButton}
             </div>
           )}
         </div>
       )}
 
-      {/* Inline footer action — compact "+" embedded in the module.
-          Reuses the existing AddFollowupInlineForm handler. */}
+      {/* Inline add — the "+" button lives on the bottom-most row above.
+          When opened, the create form is rendered below; the empty state
+          shows a single "+" button as the only entry point. */}
       {addFormOpen ? (
         <div className="mt-2">
           <AddFollowupInlineForm
@@ -411,27 +438,9 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
             onClose={() => setAddFormOpen(false)}
           />
         </div>
-      ) : (
-        <div className="mt-2 pt-1.5 border-t border-border/50 flex items-center justify-between gap-2">
-          <span className="text-[10px] text-muted-foreground/70 italic">
-            Add task or follow-up
-          </span>
-          <button
-            type="button"
-            aria-label="Add follow-up task"
-            title="Add follow-up"
-            onClick={(e) => {
-              e.stopPropagation();
-              setAddFormOpen(true);
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            className="inline-flex items-center justify-center h-6 w-6 rounded-full border border-border/60 bg-background/60 text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
+      ) : !hasContent ? (
+        <div className="mt-2 flex justify-end">{InlinePlusButton}</div>
+      ) : null}
       </div>
     </div>
   );
