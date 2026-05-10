@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
+import { deriveTaskAssociations, logTaskCompletionAcrossTimelines } from '@/lib/taskAssociations';
 
 async function fireZapierWebhook(eventType: string, payload: Record<string, any>) {
   try {
@@ -58,10 +59,15 @@ export function useDealTasks(dealId: string | undefined) {
   }) => {
     if (!dealId || !user) return null;
     try {
+      // Derive contact + crm_company from the deal so this task is fully associated.
+      const derived = await deriveTaskAssociations({ deal_id: dealId });
+
       const { data, error } = await supabase
         .from('tasks')
         .insert({
           deal_id: dealId,
+          contact_id: derived.contact_id || null,
+          crm_company_id: derived.crm_company_id || null,
           assigned_to: task.assigned_to,
           assigned_by: user.id,
           title: task.title,
@@ -227,12 +233,46 @@ export function useDealTasks(dealId: string | undefined) {
         .eq('id', taskId);
       if (error) throw error;
       setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t));
+
+      // Cross-log completion to all linked timelines.
+      if (status === 'complete' || status === 'completed') {
+        try {
+          const { data: full } = await supabase
+            .from('tasks')
+            .select('id, title, deal_id, contact_id, crm_company_id')
+            .eq('id', taskId)
+            .maybeSingle();
+          if (full && (full.deal_id || full.contact_id || full.crm_company_id)) {
+            let actorName: string | null = null;
+            if (user) {
+              const { data: prof } = await supabase
+                .from('profiles')
+                .select('display_name')
+                .eq('user_id', user.id)
+                .maybeSingle();
+              actorName = prof?.display_name || null;
+            }
+            void logTaskCompletionAcrossTimelines({
+              taskId: full.id,
+              taskTitle: full.title,
+              deal_id: full.deal_id,
+              contact_id: full.contact_id,
+              crm_company_id: full.crm_company_id,
+              actorUserId: user?.id ?? null,
+              actorDisplayName: actorName,
+            });
+          }
+        } catch (e) {
+          console.warn('[useDealTasks] cross-log failed', e);
+        }
+      }
+
       return true;
     } catch (error) {
       console.error('Error updating task:', error);
       return false;
     }
-  }, []);
+  }, [user]);
 
   const deleteTask = useCallback(async (taskId: string) => {
     try {
