@@ -507,7 +507,7 @@ const Admin = () => {
             <CardContent><AuditLogTable /></CardContent>
           </Card>
         );
-      case "enhancement":
+      case "ux-analytics":
         return <UXAnalyticsPanel />;
       case "ai-training":
         return (
