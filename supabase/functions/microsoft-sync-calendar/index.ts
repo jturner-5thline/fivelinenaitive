@@ -67,7 +67,7 @@ async function syncForUser(
   const end = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
   const url =
     `https://graph.microsoft.com/v1.0/me/calendarview?startDateTime=${encodeURIComponent(start)}&endDateTime=${encodeURIComponent(end)}` +
-    `&$select=id,subject,start,end,location,organizer,attendees,bodyPreview,isAllDay,isCancelled&$top=100&$orderby=start/dateTime`;
+    `&$select=id,subject,start,end,location,organizer,attendees,isAllDay,isCancelled,isOnlineMeeting,onlineMeeting,webLink&$top=100&$orderby=start/dateTime`;
 
   let resp = await fetch(url, {
     headers: { Authorization: `Bearer ${token}`, Prefer: 'outlook.timezone="UTC"' },
