@@ -413,6 +413,7 @@ export default function Integrations() {
                 />
               </div>
             </div>
+            <MicrosoftUpcomingEvents />
           </div>
         </IntegrationCard>
       ),
