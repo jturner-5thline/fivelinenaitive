@@ -225,6 +225,205 @@ serve(async (req) => {
       });
     }
 
+    if (action === "sync_emails" || action === "sync_calendar") {
+      const { user_id } = body as { user_id?: string };
+      if (!user_id) {
+        return new Response(JSON.stringify({ error: "user_id required" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: tokenRow, error: tokenErr } = await supabase
+        .from("microsoft_tokens")
+        .select("access_token, refresh_token, expires_at")
+        .eq("user_id", user_id)
+        .maybeSingle();
+
+      if (tokenErr || !tokenRow) {
+        return new Response(JSON.stringify({ error: "Microsoft not connected" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      let accessToken = tokenRow.access_token as string;
+      const expiresAt = tokenRow.expires_at ? new Date(tokenRow.expires_at).getTime() : 0;
+
+      if (expiresAt - Date.now() < 60_000) {
+        if (!tokenRow.refresh_token) {
+          await supabase
+            .from("microsoft_tokens")
+            .update({ status: "disconnected" })
+            .eq("user_id", user_id);
+          return new Response(JSON.stringify({ error: "Token expired, reconnect required" }), {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const refreshResp = await fetch(
+          "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              client_id: MICROSOFT_CLIENT_ID,
+              client_secret: MICROSOFT_CLIENT_SECRET,
+              refresh_token: tokenRow.refresh_token as string,
+              grant_type: "refresh_token",
+              scope: MICROSOFT_SCOPES,
+            }),
+          },
+        );
+        const refreshed = await refreshResp.json();
+        if (!refreshResp.ok) {
+          console.error("MS token refresh failed:", refreshed);
+          await supabase
+            .from("microsoft_tokens")
+            .update({ status: "disconnected" })
+            .eq("user_id", user_id);
+          return new Response(JSON.stringify({ error: "Token refresh failed" }), {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        accessToken = refreshed.access_token;
+        await supabase
+          .from("microsoft_tokens")
+          .update({
+            access_token: refreshed.access_token,
+            refresh_token: refreshed.refresh_token ?? tokenRow.refresh_token,
+            expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
+            status: "connected",
+          })
+          .eq("user_id", user_id);
+      }
+
+      async function graphFetch(url: string): Promise<Response> {
+        let resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+        if (resp.status === 429) {
+          const retryAfter = Number(resp.headers.get("Retry-After") ?? "2");
+          await new Promise((r) => setTimeout(r, Math.min(retryAfter, 10) * 1000));
+          resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+        }
+        return resp;
+      }
+
+      if (action === "sync_emails") {
+        const url =
+          "https://graph.microsoft.com/v1.0/me/messages?$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,conversationId&$orderby=receivedDateTime%20desc&$top=50";
+        const resp = await graphFetch(url);
+        if (!resp.ok) {
+          const text = await resp.text();
+          console.error("Graph messages fetch failed", resp.status, text);
+          return new Response(JSON.stringify({ error: `graph_${resp.status}` }), {
+            status: 502,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const data = await resp.json();
+        const messages: any[] = data.value ?? [];
+        const rows = messages.map((m) => ({
+          user_id,
+          provider: "microsoft",
+          message_id: m.id,
+          thread_id: m.conversationId ?? null,
+          subject: m.subject ?? null,
+          from_email: m.from?.emailAddress?.address ?? null,
+          from_name: m.from?.emailAddress?.name ?? null,
+          to_emails: (m.toRecipients ?? [])
+            .map((r: any) => r?.emailAddress?.address)
+            .filter(Boolean),
+          preview: m.bodyPreview ?? null,
+          received_at: m.receivedDateTime ?? null,
+          is_read: !!m.isRead,
+          has_attachments: !!m.hasAttachments,
+        }));
+        if (rows.length > 0) {
+          const { error } = await supabase
+            .from("emails")
+            .upsert(rows, { onConflict: "user_id,provider,message_id" });
+          if (error) {
+            console.error("Email upsert failed", error);
+            return new Response(JSON.stringify({ error: error.message }), {
+              status: 500,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        }
+        await supabase
+          .from("microsoft_tokens")
+          .update({ last_email_sync_at: new Date().toISOString() })
+          .eq("user_id", user_id);
+        return new Response(JSON.stringify({ synced: rows.length }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // sync_calendar
+      const startISO = new Date().toISOString();
+      const endISO = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      const url =
+        `https://graph.microsoft.com/v1.0/me/calendarview?startDateTime=${encodeURIComponent(startISO)}&endDateTime=${encodeURIComponent(endISO)}` +
+        `&$select=id,subject,start,end,organizer,attendees,location,webLink,isOnlineMeeting,onlineMeeting,isAllDay,isCancelled&$top=100&$orderby=start/dateTime`;
+      const resp = await fetch(url, {
+        headers: { Authorization: `Bearer ${accessToken}`, Prefer: 'outlook.timezone="UTC"' },
+      });
+      let calResp = resp;
+      if (calResp.status === 429) {
+        const retryAfter = Number(calResp.headers.get("Retry-After") ?? "2");
+        await new Promise((r) => setTimeout(r, Math.min(retryAfter, 10) * 1000));
+        calResp = await fetch(url, {
+          headers: { Authorization: `Bearer ${accessToken}`, Prefer: 'outlook.timezone="UTC"' },
+        });
+      }
+      if (!calResp.ok) {
+        const text = await calResp.text();
+        console.error("Graph calendar fetch failed", calResp.status, text);
+        return new Response(JSON.stringify({ error: `graph_${calResp.status}` }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const calData = await calResp.json();
+      const events: any[] = calData.value ?? [];
+      const eventRows = events.map((e) => ({
+        user_id,
+        provider: "microsoft",
+        event_id: e.id,
+        title: e.subject ?? null,
+        start_time: e.start?.dateTime ? new Date(e.start.dateTime + "Z").toISOString() : null,
+        end_time: e.end?.dateTime ? new Date(e.end.dateTime + "Z").toISOString() : null,
+        organizer_email: e.organizer?.emailAddress?.address ?? null,
+        attendees: (e.attendees ?? [])
+          .map((a: any) => a?.emailAddress?.address)
+          .filter(Boolean),
+        location: e.location?.displayName ?? null,
+        meeting_url: e.isOnlineMeeting ? (e.onlineMeeting?.joinUrl ?? null) : null,
+        is_all_day: !!e.isAllDay,
+        is_cancelled: !!e.isCancelled,
+      }));
+      if (eventRows.length > 0) {
+        const { error } = await supabase
+          .from("calendar_events")
+          .upsert(eventRows, { onConflict: "user_id,provider,event_id" });
+        if (error) {
+          console.error("Calendar upsert failed", error);
+          return new Response(JSON.stringify({ error: error.message }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+      await supabase
+        .from("microsoft_tokens")
+        .update({ last_calendar_sync_at: new Date().toISOString() })
+        .eq("user_id", user_id);
+      return new Response(JSON.stringify({ synced: eventRows.length }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Unknown action" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
