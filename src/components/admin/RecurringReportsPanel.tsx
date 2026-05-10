@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Loader2, Send, Eye, RefreshCw, FileText } from "lucide-react";
+import { Loader2, Send, Eye, RefreshCw, FileText, Plus, Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 
 interface RecurringReport {
@@ -43,6 +43,49 @@ interface ReportRun {
   created_at: string;
 }
 
+const REPORT_TYPES = [
+  { value: "deal-activity", label: "Deal Activity" },
+  { value: "lender-summary", label: "Lender Summary" },
+  { value: "usage", label: "Usage" },
+  { value: "finance", label: "Finance" },
+];
+
+const FREQUENCY_PRESETS = [
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+];
+
+const DAY_OPTIONS = [
+  { value: "monday", label: "Monday" },
+  { value: "tuesday", label: "Tuesday" },
+  { value: "wednesday", label: "Wednesday" },
+  { value: "thursday", label: "Thursday" },
+  { value: "friday", label: "Friday" },
+  { value: "saturday", label: "Saturday" },
+  { value: "sunday", label: "Sunday" },
+];
+
+interface ReportFormState {
+  id: string | null;
+  name: string;
+  reportType: string;
+  recipients: string;
+  frequency: string;
+  day: string;
+  time: string;
+}
+
+const blankForm: ReportFormState = {
+  id: null,
+  name: "",
+  reportType: "deal-activity",
+  recipients: "",
+  frequency: "weekly",
+  day: "monday",
+  time: "08:00",
+};
+
 const FREQUENCIES: Record<string, { label: string; options: { value: string; label: string }[] }> = {
   "weekly-insights": {
     label: "Weekly Insights",
@@ -69,6 +112,9 @@ export const RecurringReportsPanel = () => {
   const [runningKey, setRunningKey] = useState<string | null>(null);
   const [previewReport, setPreviewReport] = useState<RecurringReport | null>(null);
   const [runs, setRuns] = useState<Record<string, ReportRun[]>>({});
+  const [formOpen, setFormOpen] = useState(false);
+  const [form, setForm] = useState<ReportFormState>(blankForm);
+  const [submitting, setSubmitting] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -98,6 +144,69 @@ export const RecurringReportsPanel = () => {
   useEffect(() => {
     load();
   }, []);
+
+  const openCreate = () => {
+    setForm(blankForm);
+    setFormOpen(true);
+  };
+
+  const openEdit = (r: RecurringReport) => {
+    const overrides = (r as any).schedule_overrides ?? {};
+    setForm({
+      id: r.id,
+      name: r.name,
+      reportType: overrides.report_type ?? "deal-activity",
+      recipients: r.recipient,
+      frequency: overrides.frequency_preset ?? "weekly",
+      day: overrides.day ?? "monday",
+      time: overrides.time ?? "08:00",
+    });
+    setFormOpen(true);
+  };
+
+  const submitForm = async () => {
+    if (!form.name.trim() || !form.recipients.trim()) {
+      toast.error("Name and recipients are required");
+      return;
+    }
+    setSubmitting(true);
+    const overrides = {
+      report_type: form.reportType,
+      frequency_preset: form.frequency,
+      day: form.day,
+      time: form.time,
+    };
+    const payload: any = {
+      name: form.name.trim(),
+      recipient: form.recipients.trim(),
+      frequency: `${form.frequency}-${form.day}-${form.time}`,
+      schedule_overrides: overrides,
+      enabled: true,
+    };
+    if (form.id) {
+      const { error } = await supabase.from("recurring_reports").update(payload).eq("id", form.id);
+      setSubmitting(false);
+      if (error) return toast.error("Save failed: " + error.message);
+      toast.success("Report updated");
+    } else {
+      payload.report_key = `${form.reportType}-${Date.now()}`;
+      const { error } = await supabase.from("recurring_reports").insert(payload);
+      setSubmitting(false);
+      if (error) return toast.error("Create failed: " + error.message);
+      toast.success("Report created");
+    }
+    setFormOpen(false);
+    setForm(blankForm);
+    await load();
+  };
+
+  const deleteReport = async (id: string) => {
+    if (!confirm("Delete this scheduled report?")) return;
+    const { error } = await supabase.from("recurring_reports").delete().eq("id", id);
+    if (error) return toast.error("Delete failed: " + error.message);
+    toast.success("Report deleted");
+    await load();
+  };
 
   const updateReport = async (id: string, patch: Partial<RecurringReport>) => {
     setSavingId(id);
@@ -141,15 +250,27 @@ export const RecurringReportsPanel = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold">Recurring Reports</h3>
+          <h3 className="text-base font-semibold">Scheduled Reports</h3>
           <p className="text-sm text-muted-foreground">
             Automated UX & engagement insights delivered on a schedule.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={load}>
-          <RefreshCw className="h-4 w-4 mr-2" /> Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={load}>
+            <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+          </Button>
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-2" /> Create Report
+          </Button>
+        </div>
       </div>
+
+      {reports.length === 0 && (
+        <div className="text-center py-12 text-muted-foreground border rounded-md">
+          <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
+          <p>No scheduled reports. Create one to automate reporting.</p>
+        </div>
+      )}
 
       {reports.map((r) => {
         const freqCfg = FREQUENCIES[r.report_key] ?? { label: r.name, options: [{ value: r.frequency, label: r.frequency }] };
@@ -170,11 +291,19 @@ export const RecurringReportsPanel = () => {
                   </CardTitle>
                   {r.description && <CardDescription>{r.description}</CardDescription>}
                 </div>
-                <Switch
-                  checked={r.enabled}
-                  disabled={savingId === r.id}
-                  onCheckedChange={(v) => updateReport(r.id, { enabled: v })}
-                />
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={r.enabled}
+                    disabled={savingId === r.id}
+                    onCheckedChange={(v) => updateReport(r.id, { enabled: v })}
+                  />
+                  <Button variant="ghost" size="icon" onClick={() => openEdit(r)} title="Edit">
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => deleteReport(r.id)} title="Delete">
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -266,6 +395,74 @@ export const RecurringReportsPanel = () => {
           </Card>
         );
       })}
+
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{form.id ? "Edit Report" : "Create Report"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Report Name</Label>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Weekly Deal Activity" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Report Type</Label>
+              <Select value={form.reportType} onValueChange={(v) => setForm({ ...form, reportType: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {REPORT_TYPES.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Recipients (comma-separated emails)</Label>
+              <Input
+                value={form.recipients}
+                onChange={(e) => setForm({ ...form, recipients: e.target.value })}
+                placeholder="alice@example.com, bob@example.com"
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Frequency</Label>
+                <Select value={form.frequency} onValueChange={(v) => setForm({ ...form, frequency: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {FREQUENCY_PRESETS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Day</Label>
+                <Select value={form.day} onValueChange={(v) => setForm({ ...form, day: v })} disabled={form.frequency === "daily"}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {DAY_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Time (ET)</Label>
+                <Input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setFormOpen(false)}>Cancel</Button>
+              <Button onClick={submitForm} disabled={submitting}>
+                {submitting && <Loader2 className="h-3 w-3 mr-2 animate-spin" />}
+                {form.id ? "Save" : "Create"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!previewReport} onOpenChange={(o) => !o && setPreviewReport(null)}>
         <DialogContent className="max-w-4xl max-h-[85vh]">
