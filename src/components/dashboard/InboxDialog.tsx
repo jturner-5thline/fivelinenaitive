@@ -70,6 +70,7 @@ function mapGmailToMockEmails(
         is_follow_up: false,
         needs_response: folderOverride === 'inbox' ? !msg.is_read : false,
         category: 'deal' as const,
+        provider: msg.provider || 'gmail',
       });
     } catch (err) {
       console.error('[InboxDialog] failed to map gmail message', {
