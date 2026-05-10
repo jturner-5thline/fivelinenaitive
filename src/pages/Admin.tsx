@@ -553,7 +553,6 @@ const Admin = () => {
   const COMING_SOON_SECTIONS: TabCategory[] = [
     "data-security",
     "settings",
-    "product-enhancement",
     "support",
   ];
   const isComingSoon = COMING_SOON_SECTIONS.includes(activeCategory);
