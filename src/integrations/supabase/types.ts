@@ -13338,7 +13338,13 @@ export type Database = {
           email: string | null
           expires_at: string
           id: string
+          last_calendar_sync_at: string | null
+          last_email_sync_at: string | null
           refresh_token: string | null
+          scopes: string | null
+          status: string
+          sync_calendar_enabled: boolean
+          sync_email_enabled: boolean
           updated_at: string | null
           user_id: string
         }
@@ -13350,7 +13356,13 @@ export type Database = {
           email?: string | null
           expires_at: string
           id?: string
+          last_calendar_sync_at?: string | null
+          last_email_sync_at?: string | null
           refresh_token?: string | null
+          scopes?: string | null
+          status?: string
+          sync_calendar_enabled?: boolean
+          sync_email_enabled?: boolean
           updated_at?: string | null
           user_id: string
         }
@@ -13362,7 +13374,13 @@ export type Database = {
           email?: string | null
           expires_at?: string
           id?: string
+          last_calendar_sync_at?: string | null
+          last_email_sync_at?: string | null
           refresh_token?: string | null
+          scopes?: string | null
+          status?: string
+          sync_calendar_enabled?: boolean
+          sync_email_enabled?: boolean
           updated_at?: string | null
           user_id?: string
         }
@@ -13453,6 +13471,120 @@ export type Database = {
           lender_data?: Json | null
           model_data?: Json
           sensitivity_data?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ms_synced_calendar_events: {
+        Row: {
+          attendees: Json
+          body_preview: string | null
+          created_at: string
+          end_time: string | null
+          event_id: string
+          id: string
+          is_all_day: boolean
+          is_cancelled: boolean
+          location: string | null
+          organizer: Json | null
+          provider: string
+          raw: Json | null
+          start_time: string | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attendees?: Json
+          body_preview?: string | null
+          created_at?: string
+          end_time?: string | null
+          event_id: string
+          id?: string
+          is_all_day?: boolean
+          is_cancelled?: boolean
+          location?: string | null
+          organizer?: Json | null
+          provider?: string
+          raw?: Json | null
+          start_time?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attendees?: Json
+          body_preview?: string | null
+          created_at?: string
+          end_time?: string | null
+          event_id?: string
+          id?: string
+          is_all_day?: boolean
+          is_cancelled?: boolean
+          location?: string | null
+          organizer?: Json | null
+          provider?: string
+          raw?: Json | null
+          start_time?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ms_synced_emails: {
+        Row: {
+          body_preview: string | null
+          created_at: string
+          from_email: string | null
+          from_name: string | null
+          has_attachments: boolean
+          id: string
+          is_read: boolean
+          message_id: string
+          provider: string
+          raw: Json | null
+          received_at: string | null
+          subject: string | null
+          thread_id: string | null
+          to_recipients: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body_preview?: string | null
+          created_at?: string
+          from_email?: string | null
+          from_name?: string | null
+          has_attachments?: boolean
+          id?: string
+          is_read?: boolean
+          message_id: string
+          provider?: string
+          raw?: Json | null
+          received_at?: string | null
+          subject?: string | null
+          thread_id?: string | null
+          to_recipients?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body_preview?: string | null
+          created_at?: string
+          from_email?: string | null
+          from_name?: string | null
+          has_attachments?: boolean
+          id?: string
+          is_read?: boolean
+          message_id?: string
+          provider?: string
+          raw?: Json | null
+          received_at?: string | null
+          subject?: string | null
+          thread_id?: string | null
+          to_recipients?: Json
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

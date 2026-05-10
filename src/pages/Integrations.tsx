@@ -18,6 +18,8 @@ import {
   ListChecks,
   PenTool,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 
 // Hooks
 import { useHubSpot, useHubSpotContacts, useHubSpotDeals, useHubSpotCompanies } from "@/hooks/useHubSpot";
@@ -155,17 +157,24 @@ export default function Integrations() {
       });
     }
 
-    // Microsoft callback
+    // Microsoft callback — Azure redirect URI is bare (https://naitive.co/integrations),
+    // so we identify Microsoft callbacks via the `state` parameter (prefix "ms_").
     const msCode = searchParams.get("code");
-    const isMicrosoftCallback = searchParams.get("microsoft_callback");
-    if (msCode && isMicrosoftCallback && user) {
+    const msState = searchParams.get("state");
+    const isMicrosoftCallback = msState?.startsWith("ms_") || sessionStorage.getItem("ms_oauth_state");
+    const notGmail = !searchParams.get("gmail_callback");
+    const notCal = !searchParams.get("calendar_callback");
+    if (msCode && isMicrosoftCallback && notGmail && notCal && user) {
       microsoft.exchangeCode(msCode).then((success) => {
         searchParams.delete("code");
-        searchParams.delete("microsoft_callback");
+        searchParams.delete("state");
+        searchParams.delete("session_state");
         setSearchParams(searchParams, { replace: true });
         if (success) {
           toast.success("Microsoft connected!");
           microsoft.checkStatus();
+        } else {
+          toast.error("Failed to connect Microsoft");
         }
       });
     }
@@ -364,7 +373,48 @@ export default function Integrations() {
           onDisconnect={async () => {
             await microsoft.disconnect();
           }}
-        />
+        >
+          <div className="space-y-3 mt-2">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>Sync Email</span>
+                {microsoft.status?.last_email_sync_at && (
+                  <span className="text-muted-foreground">
+                    · last {new Date(microsoft.status.last_email_sync_at).toLocaleTimeString()}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs"
+                  onClick={() => microsoft.syncNow("emails")}>Sync now</Button>
+                <Switch
+                  checked={microsoft.status?.sync_email_enabled ?? true}
+                  onCheckedChange={(v) => microsoft.setSyncToggle({ sync_email_enabled: v })}
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>Sync Calendar</span>
+                {microsoft.status?.last_calendar_sync_at && (
+                  <span className="text-muted-foreground">
+                    · last {new Date(microsoft.status.last_calendar_sync_at).toLocaleTimeString()}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs"
+                  onClick={() => microsoft.syncNow("calendar")}>Sync now</Button>
+                <Switch
+                  checked={microsoft.status?.sync_calendar_enabled ?? true}
+                  onCheckedChange={(v) => microsoft.setSyncToggle({ sync_calendar_enabled: v })}
+                />
+              </div>
+            </div>
+          </div>
+        </IntegrationCard>
       ),
     });
   }
