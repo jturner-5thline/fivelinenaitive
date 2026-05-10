@@ -1,18 +1,27 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Search, User, Building2, Briefcase, Clock, Mail, Shield,
-  ChevronRight, ArrowLeft, MonitorPlay, Activity,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
+  Search, User, Building2, Briefcase, Clock, Shield,
+  ChevronRight, ArrowLeft, MonitorPlay, Activity, KeyRound, Ban, ListTodo,
+  Plug, CheckCircle2, XCircle, Flag,
 } from 'lucide-react';
+import { useToggleUserSuspension } from '@/hooks/useAdminData';
+import { toast } from 'sonner';
+import { useAdminRole } from '@/hooks/useAdminRole';
 
 interface UserResult {
   user_id: string;
@@ -29,8 +38,10 @@ interface UserResult {
 }
 
 export function ClientAccountViewer() {
+  const { isAdmin, isLoading: roleLoading } = useAdminRole();
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [companyFilter, setCompanyFilter] = useState<string>('all');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [searchTimeout, setSearchTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
 
@@ -41,23 +52,75 @@ export function ClientAccountViewer() {
     setSearchTimeout(timeout);
   };
 
-  // Search users
-  const { data: searchResults, isLoading: searchLoading } = useQuery({
-    queryKey: ['admin-user-search', debouncedQuery],
+  // Companies list for filter
+  const { data: companies } = useQuery({
+    queryKey: ['admin-companies-filter'],
     queryFn: async () => {
-      if (!debouncedQuery || debouncedQuery.length < 2) return [];
-      const pattern = `%${debouncedQuery}%`;
       const { data, error } = await supabase
+        .from('companies')
+        .select('id, name')
+        .order('name');
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: isAdmin,
+  });
+
+  // User IDs in selected company
+  const { data: companyUserIds } = useQuery({
+    queryKey: ['admin-company-user-ids', companyFilter],
+    queryFn: async () => {
+      if (companyFilter === 'all') return null;
+      const { data, error } = await supabase
+        .from('company_members')
+        .select('user_id')
+        .eq('company_id', companyFilter);
+      if (error) throw error;
+      return (data ?? []).map((r: any) => r.user_id);
+    },
+    enabled: isAdmin && companyFilter !== 'all',
+  });
+
+  // Search users (optionally scoped to company)
+  const { data: searchResults, isLoading: searchLoading } = useQuery({
+    queryKey: ['admin-user-search', debouncedQuery, companyFilter, companyUserIds],
+    queryFn: async () => {
+      const hasQuery = debouncedQuery.length >= 2;
+      const hasCompany = companyFilter !== 'all';
+      if (!hasQuery && !hasCompany) return [];
+      let q = supabase
         .from('profiles')
         .select('user_id, email, display_name, first_name, last_name, avatar_url, created_at, onboarding_completed, approved_at, suspended_at, suspended_reason')
-        .or(`display_name.ilike.${pattern},email.ilike.${pattern},first_name.ilike.${pattern},last_name.ilike.${pattern}`)
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(50);
+      if (hasQuery) {
+        const pattern = `%${debouncedQuery}%`;
+        q = q.or(`display_name.ilike.${pattern},email.ilike.${pattern},first_name.ilike.${pattern},last_name.ilike.${pattern}`);
+      }
+      if (hasCompany) {
+        if (!companyUserIds || companyUserIds.length === 0) return [];
+        q = q.in('user_id', companyUserIds);
+      }
+      const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as UserResult[];
     },
-    enabled: debouncedQuery.length >= 2,
+    enabled: isAdmin && (debouncedQuery.length >= 2 || (companyFilter !== 'all' && !!companyUserIds)),
   });
+
+  if (roleLoading) {
+    return <Skeleton className="h-64 w-full" />;
+  }
+  if (!isAdmin) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <Shield className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">Admin access required.</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (selectedUserId) {
     return (
@@ -84,14 +147,27 @@ export function ClientAccountViewer() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name or email..."
-              value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Select user (search by name or email)..."
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={companyFilter} onValueChange={setCompanyFilter}>
+              <SelectTrigger className="sm:w-64">
+                <SelectValue placeholder="Filter by company" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All companies</SelectItem>
+                {(companies ?? []).map((c: any) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
