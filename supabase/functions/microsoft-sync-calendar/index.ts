@@ -69,9 +69,16 @@ async function syncForUser(
     `https://graph.microsoft.com/v1.0/me/calendarview?startDateTime=${encodeURIComponent(start)}&endDateTime=${encodeURIComponent(end)}` +
     `&$select=id,subject,start,end,location,organizer,attendees,bodyPreview,isAllDay,isCancelled&$top=100&$orderby=start/dateTime`;
 
-  const resp = await fetch(url, {
+  let resp = await fetch(url, {
     headers: { Authorization: `Bearer ${token}`, Prefer: 'outlook.timezone="UTC"' },
   });
+  if (resp.status === 429) {
+    const retryAfter = Number(resp.headers.get("Retry-After") ?? "2");
+    await new Promise((r) => setTimeout(r, Math.min(retryAfter, 10) * 1000));
+    resp = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}`, Prefer: 'outlook.timezone="UTC"' },
+    });
+  }
   if (!resp.ok) {
     const text = await resp.text();
     console.error("Graph calendar fetch failed", row.user_id, resp.status, text);
@@ -82,23 +89,25 @@ async function syncForUser(
 
   const rows = events.map((e) => ({
     user_id: row.user_id,
-    event_id: e.id,
     provider: "microsoft",
+    event_id: e.id,
     title: e.subject ?? null,
     start_time: e.start?.dateTime ? new Date(e.start.dateTime + "Z").toISOString() : null,
     end_time: e.end?.dateTime ? new Date(e.end.dateTime + "Z").toISOString() : null,
+    organizer_email: e.organizer?.emailAddress?.address ?? null,
+    attendees: (e.attendees ?? [])
+      .map((a: any) => a?.emailAddress?.address)
+      .filter(Boolean),
     location: e.location?.displayName ?? null,
-    organizer: e.organizer ?? null,
-    attendees: e.attendees ?? [],
-    body_preview: e.bodyPreview ?? null,
+    meeting_url: e.isOnlineMeeting ? (e.onlineMeeting?.joinUrl ?? null) : null,
     is_all_day: !!e.isAllDay,
     is_cancelled: !!e.isCancelled,
   }));
 
   if (rows.length > 0) {
     const { error } = await supabase
-      .from("ms_synced_calendar_events")
-      .upsert(rows, { onConflict: "user_id,event_id" });
+      .from("calendar_events")
+      .upsert(rows, { onConflict: "user_id,provider,event_id" });
     if (error) {
       console.error("Calendar upsert failed", row.user_id, error);
       return { user_id: row.user_id, synced: 0, error: error.message };
