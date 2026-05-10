@@ -155,17 +155,24 @@ export default function Integrations() {
       });
     }
 
-    // Microsoft callback
+    // Microsoft callback — Azure redirect URI is bare (https://naitive.co/integrations),
+    // so we identify Microsoft callbacks via the `state` parameter (prefix "ms_").
     const msCode = searchParams.get("code");
-    const isMicrosoftCallback = searchParams.get("microsoft_callback");
-    if (msCode && isMicrosoftCallback && user) {
+    const msState = searchParams.get("state");
+    const isMicrosoftCallback = msState?.startsWith("ms_") || sessionStorage.getItem("ms_oauth_state");
+    const notGmail = !searchParams.get("gmail_callback");
+    const notCal = !searchParams.get("calendar_callback");
+    if (msCode && isMicrosoftCallback && notGmail && notCal && user) {
       microsoft.exchangeCode(msCode).then((success) => {
         searchParams.delete("code");
-        searchParams.delete("microsoft_callback");
+        searchParams.delete("state");
+        searchParams.delete("session_state");
         setSearchParams(searchParams, { replace: true });
         if (success) {
           toast.success("Microsoft connected!");
           microsoft.checkStatus();
+        } else {
+          toast.error("Failed to connect Microsoft");
         }
       });
     }
