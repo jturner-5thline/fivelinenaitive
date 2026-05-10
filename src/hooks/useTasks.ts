@@ -487,6 +487,32 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
       const { error } = await supabase.from('tasks').update(updateData).eq('id', id);
       if (error) throw error;
 
+      // Cross-log task completion to Deal / Contact / Company timelines (best-effort)
+      if (updates.status === 'complete' || updates.status === 'completed') {
+        const t = tasks.find(x => x.id === id);
+        if (t && (t.deal_id || t.contact_id || t.crm_company_id)) {
+          const { data: { user: au } } = await supabase.auth.getUser();
+          let actorName: string | null = null;
+          if (au) {
+            const { data: prof } = await supabase
+              .from('profiles')
+              .select('display_name')
+              .eq('user_id', au.id)
+              .maybeSingle();
+            actorName = prof?.display_name || null;
+          }
+          void logTaskCompletionAcrossTimelines({
+            taskId: id,
+            taskTitle: t.title,
+            deal_id: t.deal_id,
+            contact_id: t.contact_id,
+            crm_company_id: t.crm_company_id,
+            actorUserId: au?.id ?? null,
+            actorDisplayName: actorName,
+          });
+        }
+      }
+
       // Audit: log recurrence pause/resume/stop changes
       try {
         const recurrenceTouched =
