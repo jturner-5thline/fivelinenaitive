@@ -101,7 +101,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
             {company.logo_url ? (
               <img src={company.logo_url} alt="" className="h-14 w-14 rounded-lg object-contain border" />
             ) : (
-              <div className="h-14 w-14 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-xl font-bold">{company.name[0]}</div>
+              <div className="h-14 w-14 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-xl font-bold">{company.name?.[0] ?? '?'}</div>
             )}
             <div>
               <div className="flex items-center gap-2">
