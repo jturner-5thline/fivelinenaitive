@@ -30,6 +30,7 @@ import { useIntegrations } from "@/hooks/useIntegrations";
 import { useCompany } from "@/hooks/useCompany";
 import { useIntegrationInterest } from "@/hooks/useIntegrationInterest";
 import { useMicrosoft } from "@/hooks/useMicrosoft";
+import { MicrosoftUpcomingEvents } from "@/components/integrations/MicrosoftUpcomingEvents";
 
 
 // Components
@@ -413,6 +414,7 @@ export default function Integrations() {
                 />
               </div>
             </div>
+            <MicrosoftUpcomingEvents />
           </div>
         </IntegrationCard>
       ),

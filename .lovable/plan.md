@@ -1,107 +1,53 @@
 ## Goal
+Surface Microsoft emails + calendar in the same UI as Gmail/Google Calendar via unified tables, without modifying Gmail code.
 
-Reduce manual clicks for task creation in two places:
+## 1. Unified DB schema (new migration)
+Create two new tables (Gmail keeps writing to `gmail_messages` — we will NOT touch it):
 
-1. **Email AI sidebar** — auto-detect follow-up actions in the analyzed thread and surface them as one-click "Approve / Edit / Dismiss" cards in Suggested Updates.
-2. **Deal Rundown card** — add an inline "+ Add Follow-up" form per deal plus an AI-driven "Next best action" row, both creating tasks linked to the deal and synced to Asana.
+- `public.emails` — provider-agnostic message store
+  - `id`, `user_id`, `provider` (gmail|microsoft), `message_id`, `thread_id`,
+    `subject`, `from_email`, `from_name`, `to_emails text[]`,
+    `preview text`, `received_at`, `is_read bool`, `has_attachments bool`,
+    `created_at`, `updated_at`
+  - Unique `(user_id, provider, message_id)`
+  - RLS: users select own; service role full
 
-Strictly additive — no existing toolbars, layouts, or working flows are removed.
+- `public.calendar_events` — provider-agnostic event store
+  - `id`, `user_id`, `provider`, `event_id`, `title`,
+    `start_time`, `end_time`, `organizer_email`, `attendees text[]`,
+    `location`, `meeting_url`, `is_all_day`, `is_cancelled`,
+    `created_at`, `updated_at`
+  - Unique `(user_id, provider, event_id)`
+  - RLS: users select own; service role full
 
-## Part 1 — Proactive follow-up detection (Email AI sidebar)
+- Keep `ms_synced_emails` / `ms_synced_calendar_events` for now (no breakage); remove later.
 
-### New backend
-- **Edge function `detect-email-followups`** (verifies `supabase.auth.getUser()`, returns 401 if missing).
-- Input: `threadId`, normalized thread messages (subject, from, to, bodies, dates), `deal` context summary (id, name, stage, lenders/recipients, last activity).
-- Calls Lovable AI (`google/gemini-3-flash-preview`) via tool-calling for structured output. Schema returns up to 5 items:
-  ```
-  { suggestions: [{
-      id: string,                  // stable hash of trigger + title
-      title: string,               // "Follow up with Trevor re: Censys intro call"
-      reason: 'meeting' | 'awaiting_item' | 'deadline' | 'unanswered_question' | 'silent_lender' | 'other',
-      contact?: string,
-      dueDate?: string,            // ISO; required when reason='deadline'
-      defaultAssigneeIsCurrentUser: true,
-      asanaSync: true
-  }] }
-  ```
-- Returns `{ suggestions: [] }` cleanly when no actionable items are found.
-- Handles 429/402 gracefully and surfaces them via toast on the client.
+## 2. Repoint Microsoft sync edge functions
+- `microsoft-sync-emails`: upsert into `public.emails` with `provider='microsoft'` (instead of `ms_synced_emails`).
+- `microsoft-sync-calendar`: upsert into `public.calendar_events` (instead of `ms_synced_calendar_events`), mapping `organizer.emailAddress.address` → `organizer_email`, attendee addresses → `attendees text[]`, `onlineMeeting.joinUrl` when `isOnlineMeeting` → `meeting_url`.
+- Add 429 backoff: respect `Retry-After`, retry once, then defer to next cron.
 
-### Frontend
-- **New component `SuggestedFollowupsCard.tsx`** rendered inside `SuggestedDealUpdatesSection`:
-  - Renders only after thread analysis is complete (gated on the existing `isAnalyzing` flag), never during "Analyzing thread…".
-  - For each suggestion, a card with: checkbox (visual only), title, secondary line `Due · Assign · Sync to Asana toggle`, and `Approve / Edit / Dismiss` buttons.
-  - **Approve** → calls the same task-creation path the existing `Create Task` quick action uses (`useCreateTaskFromEmail` or equivalent), so Asana sync, deal linking, and toast all stay identical.
-  - **Edit** → expands the row into the existing `CreateTaskInlineCard` pre-filled with the suggestion.
-  - **Dismiss** → removes locally and persists dismissal in `sessionStorage` keyed by `threadId + suggestion.id` so a re-open of the same thread does not resurface dismissed items in the same session.
-- **Empty state**: `No action items detected in this thread.` (matches the planned bug-fix copy).
-- **No changes** to the Quick Actions toolbar or the existing "Create Task" button.
+## 3. InboxDialog: show Microsoft alongside Gmail
+The existing inbox uses the `gmail-messages` edge function (live Gmail API), not a DB table. To respect "do NOT change Gmail":
+- Extend `inboxCacheStore` with a parallel fetch from `public.emails WHERE provider='microsoft'` (via supabase-js, RLS-scoped).
+- Merge Microsoft rows into the same in-memory inbox/sent lists, sorted by `received_at desc`.
+- Add a `provider` field to the cached message shape; render an Outlook icon badge in `InboxDialog` rows when `provider==='microsoft'`.
 
-### Caching
-- Detection result cached in `sessionStorage` per `threadId` (mirrors the existing draft cache strategy) so re-opening the popup is instant.
+## 4. Calendar surface
+- The project has no Google calendar events table; calendar UIs read live. To deliver visible value now, render upcoming Microsoft events inside the Microsoft card on `/integrations` (small list with provider icon, time, title). A full unified calendar view in the AI Calendar surface can come in a follow-up — flag this so the user can confirm.
 
-## Part 2 — Deal Rundown card
+## 5. Cron
+Already scheduled (5min email / 15min calendar) in the previous pass. No changes.
 
-Lives in `src/components/pipeline/memo/PipelineMemoCard.tsx` / `TasksMilestonesBand.tsx`.
+## Out of scope / explicit non-goals
+- Migrating Gmail to write into `public.emails` (would violate "do NOT change Gmail").
+- Full body fetch / search action additions on `microsoft-auth` — not required for the inbox merge; can add if requested.
+- Vault encryption of access tokens (current schema stores plaintext like Gmail; tracked as a separate hardening task).
 
-### Fix 1 — `+ Add Follow-up` per card
-
-- New button below the existing task list inside `TasksMilestonesBand`.
-- Click reveals an inline form (reuses the email `CreateTaskInlineCard` styling — extracted into a shared `InlineTaskForm` if needed):
-  - Title (pre-filled by the AI rule below)
-  - Due date (default = next business day; weekend rolls to Monday)
-  - Assignee (default = current user)
-  - Sync to Asana toggle (ON by default)
-  - Create / Cancel
-- Pre-fill rule (computed locally, no AI call needed):
-  - No lender responses → `Follow up with lenders on [Deal Name]`
-  - Stale (>7 days no activity) → `Check in on status of [Deal Name]`
-  - Has overdue tasks → `Review overdue items on [Deal Name]`
-  - Else → `Follow up on [Deal Name]`
-- On Create:
-  - Insert into `tasks` with `deal_id` set, `assigned_to = currentUser`.
-  - If toggle on, fire the existing Asana sync path used by email task creation (no new Asana code).
-  - Optimistic UI: prepend the new task to the in-card list immediately, then reconcile with refetched data; toast `Task created`.
-
-### Fix 2 — AI "Next best action" row
-
-- Below the Tasks & Milestones section, render `⚡ Next best action: <copy> — [Create Task]` only when a clear action exists.
-- Source of the one-liner:
-  - Computed locally from the existing batched data already on the page (lender activity timestamps, deal stage transitions, open task overdue counts) — no extra fetch, no AI call required for the v1.
-  - Heuristics map to the user's examples (`No lender activity in 14 days…`, `Terms issued 3 days ago…`, `2 overdue tasks…`).
-- Click `Create Task` opens the same inline form pre-filled with the suggested action title; submit path is identical to Fix 1.
-- Hide the row entirely when no rule fires (no empty state).
-
-## Files
-
-### New
-- `supabase/functions/detect-email-followups/index.ts`
-- `src/components/deal/email/SuggestedFollowupsCard.tsx`
-- `src/hooks/useEmailFollowupSuggestions.ts` (calls the edge function, handles cache + dismissals)
-- `src/components/pipeline/memo/AddFollowupInlineForm.tsx`
-- `src/components/pipeline/memo/NextBestActionRow.tsx`
-- `src/lib/dealNextBestAction.ts` (pure heuristics, unit-testable)
-
-### Edited
-- `src/components/deal/email/AiAssistSidebar.tsx` (mount the new card after analysis completes)
-- `src/components/deal/email/SuggestedDealUpdatesSection.tsx` (slot in the new card; preserve existing children)
-- `src/components/pipeline/memo/TasksMilestonesBand.tsx` (Add Follow-up button + form mount, NBA row)
-- `src/components/pipeline/memo/PipelineMemoCard.tsx` (only if mount points need wiring)
-
-### Read-only / unchanged
-- `EmailQuickActionsToolbar.tsx`, `CreateTaskInlineCard.tsx` (reused via composition)
-- Existing Asana sync path (reused; no schema or integration changes)
-
-## Constraints respected
-
-- Strictly additive; existing layouts, Quick Actions toolbar, and Create Task button untouched.
-- Suggestions render only after analysis completes — never during "Analyzing thread…".
-- All task creation flows go through the existing `tasks` insert + Asana sync path with `deal_id` link.
-- Edge function verifies auth and surfaces 429/402 to the client per Lovable AI guidelines.
-- No new data layer changes; reuses `usePipelineDealTasks` and existing notification/lender data already loaded on the page.
-
-## Out of scope (will not be done in this pass)
-
-- Changing the email Quick Actions toolbar.
-- Persisting per-user dismissals across sessions (sessionStorage only for v1).
-- LLM-driven Next Best Action copy (heuristics for v1; can be upgraded to AI later without UI changes).
+## Files touched
+- new migration: create `emails`, `calendar_events` + RLS
+- `supabase/functions/microsoft-sync-emails/index.ts`
+- `supabase/functions/microsoft-sync-calendar/index.ts`
+- `src/stores/inboxCacheStore.ts`
+- `src/components/dashboard/InboxDialog.tsx` (provider icon badge)
+- `src/pages/Integrations.tsx` (Microsoft card upcoming-events preview)

@@ -57,6 +57,8 @@ export interface MockEmail {
   deal_name?: string;
   ai_summary?: string;
   ai_sentiment?: 'positive' | 'neutral' | 'needs_attention';
+  /** Mail provider this row originated from (used to badge Outlook vs Gmail in the inbox). */
+  provider?: 'gmail' | 'microsoft' | string;
   /**
    * Transient: real File objects attached by the composer for an outbound
    * send. Not persisted to mock data — used only for the Nylas hand-off.

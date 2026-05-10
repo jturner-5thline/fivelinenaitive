@@ -1469,6 +1469,63 @@ export type Database = {
           },
         ]
       }
+      calendar_events: {
+        Row: {
+          attendees: string[]
+          created_at: string
+          end_time: string | null
+          event_id: string
+          id: string
+          is_all_day: boolean
+          is_cancelled: boolean
+          location: string | null
+          meeting_url: string | null
+          organizer_email: string | null
+          provider: string
+          raw: Json | null
+          start_time: string | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attendees?: string[]
+          created_at?: string
+          end_time?: string | null
+          event_id: string
+          id?: string
+          is_all_day?: boolean
+          is_cancelled?: boolean
+          location?: string | null
+          meeting_url?: string | null
+          organizer_email?: string | null
+          provider: string
+          raw?: Json | null
+          start_time?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attendees?: string[]
+          created_at?: string
+          end_time?: string | null
+          event_id?: string
+          id?: string
+          is_all_day?: boolean
+          is_cancelled?: boolean
+          location?: string | null
+          meeting_url?: string | null
+          organizer_email?: string | null
+          provider?: string
+          raw?: Json | null
+          start_time?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       calendar_tokens: {
         Row: {
           access_token: string
@@ -9943,6 +10000,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      emails: {
+        Row: {
+          created_at: string
+          from_email: string | null
+          from_name: string | null
+          has_attachments: boolean
+          id: string
+          is_read: boolean
+          message_id: string
+          preview: string | null
+          provider: string
+          raw: Json | null
+          received_at: string | null
+          subject: string | null
+          thread_id: string | null
+          to_emails: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_email?: string | null
+          from_name?: string | null
+          has_attachments?: boolean
+          id?: string
+          is_read?: boolean
+          message_id: string
+          preview?: string | null
+          provider: string
+          raw?: Json | null
+          received_at?: string | null
+          subject?: string | null
+          thread_id?: string | null
+          to_emails?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          from_email?: string | null
+          from_name?: string | null
+          has_attachments?: boolean
+          id?: string
+          is_read?: boolean
+          message_id?: string
+          preview?: string | null
+          provider?: string
+          raw?: Json | null
+          received_at?: string | null
+          subject?: string | null
+          thread_id?: string | null
+          to_emails?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       error_logs: {
         Row: {
