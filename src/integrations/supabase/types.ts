@@ -977,6 +977,42 @@ export type Database = {
           },
         ]
       }
+      ai_prompts: {
+        Row: {
+          created_at: string
+          description: string | null
+          feature_area: string
+          id: string
+          name: string
+          prompt_text: string
+          success_rate: number
+          token_avg: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          feature_area: string
+          id?: string
+          name: string
+          prompt_text: string
+          success_rate?: number
+          token_avg?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          feature_area?: string
+          id?: string
+          name?: string
+          prompt_text?: string
+          success_rate?: number
+          token_avg?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_style_templates: {
         Row: {
           created_at: string
@@ -10177,31 +10213,43 @@ export type Database = {
       }
       feedback: {
         Row: {
+          category: string | null
+          company_id: string | null
           created_at: string
           id: string
           message: string
           page_url: string | null
+          rating: number | null
           screenshot_url: string | null
+          status: string
           title: string | null
           type: string | null
           user_id: string
         }
         Insert: {
+          category?: string | null
+          company_id?: string | null
           created_at?: string
           id?: string
           message: string
           page_url?: string | null
+          rating?: number | null
           screenshot_url?: string | null
+          status?: string
           title?: string | null
           type?: string | null
           user_id: string
         }
         Update: {
+          category?: string | null
+          company_id?: string | null
           created_at?: string
           id?: string
           message?: string
           page_url?: string | null
+          rating?: number | null
           screenshot_url?: string | null
+          status?: string
           title?: string | null
           type?: string | null
           user_id?: string
