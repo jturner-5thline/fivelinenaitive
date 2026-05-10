@@ -194,9 +194,22 @@ export function useCreateContact() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       toast.success('Contact created');
+      // Fire-and-forget: kick off AI enrichment scan against recent activity.
+      if (data?.id) {
+        supabase.functions
+          .invoke('field-suggestion-engine', {
+            body: {
+              contact_id: data.id,
+              source_type: 'new_contact_enrichment',
+              company_id: data.org_company_id,
+            },
+          })
+          .then(() => queryClient.invalidateQueries({ queryKey: ['field-suggestions'] }))
+          .catch((e) => console.warn('[contact enrichment] failed', e));
+      }
     },
     onError: (err: any) => {
       toast.error(err.message || 'Failed to create contact');
