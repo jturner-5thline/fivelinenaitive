@@ -183,10 +183,10 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
               </CardContent>
             </Card>
 
-            {company.tags.length > 0 && (
+            {(company.tags ?? []).length > 0 && (
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-sm">Tags</CardTitle></CardHeader>
-                <CardContent className="flex flex-wrap gap-1">{company.tags.map(t => <Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>)}</CardContent>
+                <CardContent className="flex flex-wrap gap-1">{(company.tags ?? []).map(t => <Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>)}</CardContent>
               </Card>
             )}
 
