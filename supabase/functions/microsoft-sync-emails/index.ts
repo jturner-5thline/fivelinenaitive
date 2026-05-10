@@ -68,7 +68,12 @@ async function syncForUser(
 
   const url =
     "https://graph.microsoft.com/v1.0/me/messages?$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,conversationId&$orderby=receivedDateTime desc&$top=50";
-  const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  let resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (resp.status === 429) {
+    const retryAfter = Number(resp.headers.get("Retry-After") ?? "2");
+    await new Promise((r) => setTimeout(r, Math.min(retryAfter, 10) * 1000));
+    resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  }
   if (!resp.ok) {
     const text = await resp.text();
     console.error("Graph messages fetch failed", row.user_id, resp.status, text);
@@ -80,13 +85,15 @@ async function syncForUser(
   const rows = messages.map((m) => ({
     user_id: row.user_id,
     message_id: m.id,
-    thread_id: m.conversationId ?? null,
     provider: "microsoft",
+    thread_id: m.conversationId ?? null,
     subject: m.subject ?? null,
     from_email: m.from?.emailAddress?.address ?? null,
     from_name: m.from?.emailAddress?.name ?? null,
-    to_recipients: m.toRecipients ?? [],
-    body_preview: m.bodyPreview ?? null,
+    to_emails: (m.toRecipients ?? [])
+      .map((r: any) => r?.emailAddress?.address)
+      .filter(Boolean),
+    preview: m.bodyPreview ?? null,
     received_at: m.receivedDateTime ?? null,
     is_read: !!m.isRead,
     has_attachments: !!m.hasAttachments,
@@ -94,8 +101,8 @@ async function syncForUser(
 
   if (rows.length > 0) {
     const { error } = await supabase
-      .from("ms_synced_emails")
-      .upsert(rows, { onConflict: "user_id,message_id" });
+      .from("emails")
+      .upsert(rows, { onConflict: "user_id,provider,message_id" });
     if (error) {
       console.error("Upsert failed", row.user_id, error);
       return { user_id: row.user_id, synced: 0, error: error.message };
