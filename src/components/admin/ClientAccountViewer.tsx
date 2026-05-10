@@ -227,6 +227,11 @@ export function ClientAccountViewer() {
 
 // ─── User Detail View ───────────────────────────────────────────────
 function UserDetailView({ userId }: { userId: string }) {
+  const toggleSuspension = useToggleUserSuspension();
+  const [resetting, setResetting] = useState(false);
+  const [deactivateOpen, setDeactivateOpen] = useState(false);
+  const [suspendReason, setSuspendReason] = useState('');
+
   // Profile
   const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ['admin-user-detail', userId],
@@ -259,6 +264,10 @@ function UserDetailView({ userId }: { userId: string }) {
     },
   });
 
+  const primaryCompanyId = membership?.[0]?.company_id ?? null;
+  const primaryCompanyName = membership?.[0]?.companies?.name ?? null;
+  const primaryRole = membership?.[0]?.role ?? null;
+
   // Deals summary
   const { data: deals } = useQuery({
     queryKey: ['admin-user-deals', userId],
@@ -274,20 +283,108 @@ function UserDetailView({ userId }: { userId: string }) {
     },
   });
 
-  // Recent activity
-  const { data: activity } = useQuery({
-    queryKey: ['admin-user-activity', userId],
+  // Recent usage events
+  const { data: usageEvents } = useQuery({
+    queryKey: ['admin-user-usage', userId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('activity_logs')
-        .select('id, activity_type, description, created_at, deal_id')
+        .from('usage_events')
+        .select('id, feature_type, feature_subtype, timestamp, deal_id')
         .eq('user_id', userId)
-        .order('created_at', { ascending: false })
+        .order('timestamp', { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const lastActivity = usageEvents?.[0]?.timestamp ?? null;
+
+  // Integrations
+  const { data: integrations } = useQuery({
+    queryKey: ['admin-user-integrations', userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('integrations')
+        .select('name, type, status, last_sync_at')
+        .eq('user_id', userId);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: gmailToken } = useQuery({
+    queryKey: ['admin-user-gmail', userId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('gmail_tokens')
+        .select('user_id, updated_at')
+        .eq('user_id', userId)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  // Open tasks assigned to user
+  const { data: openTasks } = useQuery({
+    queryKey: ['admin-user-tasks', userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('id, title, status, priority, due_date, deal_id')
+        .eq('assigned_to', userId)
+        .neq('status', 'completed')
+        .is('archived_at', null)
+        .order('due_date', { ascending: true, nullsFirst: false })
         .limit(15);
       if (error) throw error;
       return data ?? [];
     },
   });
+
+  // Feature flags active for the user's company
+  const { data: featureFlags } = useQuery({
+    queryKey: ['admin-user-flags', userId, primaryCompanyId],
+    queryFn: async () => {
+      const { data: flags, error } = await supabase
+        .from('feature_flags')
+        .select('id, name, description, status, is_beta')
+        .neq('status', 'disabled');
+      if (error) throw error;
+      return flags ?? [];
+    },
+    enabled: !!profile,
+  });
+
+  const handleResetPassword = async () => {
+    if (!profile?.email) return;
+    setResetting(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
+        redirectTo: `${window.location.origin}/auth?mode=reset`,
+      });
+      if (error) throw error;
+      toast.success(`Password reset email sent to ${profile.email}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to send reset email');
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  const handleDeactivate = () => {
+    if (!profile) return;
+    const isSuspended = !!profile.suspended_at;
+    toggleSuspension.mutate(
+      { userId: profile.user_id, suspend: !isSuspended, reason: suspendReason || undefined },
+      {
+        onSuccess: () => {
+          setDeactivateOpen(false);
+          setSuspendReason('');
+        },
+      },
+    );
+  };
 
   if (profileLoading) {
     return (
@@ -312,37 +409,137 @@ function UserDetailView({ userId }: { userId: string }) {
     ? <Badge variant="destructive">Suspended</Badge>
     : profile.approved_at
       ? <Badge className="bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/10">Active</Badge>
-      : <Badge variant="secondary">Pending Approval</Badge>;
+      : <Badge variant="secondary">Invited</Badge>;
+
+  const integrationStatus = (type: string) => {
+    const found = (integrations ?? []).find(
+      (i: any) => (i.type || '').toLowerCase().includes(type) || (i.name || '').toLowerCase().includes(type),
+    );
+    if (type === 'gmail' && gmailToken) return { connected: true, last: gmailToken.updated_at };
+    if (found) return { connected: (found as any).status === 'connected', last: (found as any).last_sync_at };
+    return { connected: false, last: null };
+  };
+
+  const gmail = integrationStatus('gmail');
+  const asana = integrationStatus('asana');
+  const hubspot = integrationStatus('hubspot');
 
   return (
     <div className="space-y-6">
       {/* Profile Card */}
       <Card>
         <CardHeader>
-          <div className="flex items-start gap-4">
-            <Avatar className="h-14 w-14">
-              <AvatarImage src={profile.avatar_url ?? undefined} />
-              <AvatarFallback className="text-lg">{(profile.display_name ?? '?')[0].toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <div className="flex items-center gap-3">
-                <CardTitle>{profile.display_name ?? 'Unnamed User'}</CardTitle>
-                {statusBadge}
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="flex items-start gap-4">
+              <Avatar className="h-14 w-14">
+                <AvatarImage src={profile.avatar_url ?? undefined} />
+                <AvatarFallback className="text-lg">{(profile.display_name ?? '?')[0].toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <CardTitle>{profile.display_name ?? 'Unnamed User'}</CardTitle>
+                  {statusBadge}
+                  {primaryRole && (
+                    <Badge variant="outline" className="capitalize">{primaryRole}</Badge>
+                  )}
+                </div>
+                <CardDescription className="mt-1">{profile.email}</CardDescription>
               </div>
-              <CardDescription className="mt-1">{profile.email}</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleResetPassword} disabled={resetting || !profile.email}>
+                <KeyRound className="h-4 w-4 mr-1.5" />
+                {resetting ? 'Sending…' : 'Reset Password'}
+              </Button>
+              <AlertDialog open={deactivateOpen} onOpenChange={setDeactivateOpen}>
+                <AlertDialogTrigger asChild>
+                  <Button variant={profile.suspended_at ? 'outline' : 'destructive'} size="sm">
+                    <Ban className="h-4 w-4 mr-1.5" />
+                    {profile.suspended_at ? 'Reactivate' : 'Deactivate'}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      {profile.suspended_at ? 'Reactivate this user?' : 'Deactivate this user?'}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {profile.suspended_at
+                        ? `${profile.display_name ?? profile.email} will regain access to the platform.`
+                        : `${profile.display_name ?? profile.email} will no longer be able to sign in to naitive.`}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  {!profile.suspended_at && (
+                    <Input
+                      placeholder="Reason (optional)"
+                      value={suspendReason}
+                      onChange={(e) => setSuspendReason(e.target.value)}
+                    />
+                  )}
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={(e) => { e.preventDefault(); handleDeactivate(); }}
+                      disabled={toggleSuspension.isPending}
+                    >
+                      {profile.suspended_at ? 'Reactivate' : 'Deactivate'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <InfoItem icon={User} label="First Name" value={profile.first_name} />
-            <InfoItem icon={User} label="Last Name" value={profile.last_name} />
+            <InfoItem icon={Building2} label="Company" value={primaryCompanyName} />
+            <InfoItem icon={Shield} label="Role" value={primaryRole} />
+            <InfoItem icon={Clock} label="Last Activity" value={lastActivity ? `${formatDistanceToNow(new Date(lastActivity))} ago` : 'Never'} />
             <InfoItem icon={Clock} label="Joined" value={profile.created_at ? format(new Date(profile.created_at), 'MMM d, yyyy') : null} />
-            <InfoItem icon={Shield} label="Onboarded" value={profile.onboarding_completed ? 'Yes' : 'No'} />
           </div>
           {profile.suspended_at && profile.suspended_reason && (
             <div className="mt-4 p-3 rounded-lg bg-destructive/5 border border-destructive/20 text-sm">
               <strong>Suspension reason:</strong> {profile.suspended_reason}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Active Integrations */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Plug className="h-4 w-4" />
+            Active Integrations
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <IntegrationRow name="Gmail" connected={gmail.connected} last={gmail.last} />
+            <IntegrationRow name="Asana" connected={asana.connected} last={asana.last} />
+            <IntegrationRow name="HubSpot" connected={hubspot.connected} last={hubspot.last} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Feature Flags */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Flag className="h-4 w-4" />
+            Active Feature Flags ({featureFlags?.length ?? 0})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!featureFlags || featureFlags.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-2 text-center">No feature flags enabled.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {featureFlags.map((f: any) => (
+                <Badge key={f.id} variant={f.is_beta ? 'secondary' : 'outline'} className="text-xs">
+                  {f.name}{f.is_beta ? ' · beta' : ''}
+                </Badge>
+              ))}
             </div>
           )}
         </CardContent>
@@ -380,12 +577,42 @@ function UserDetailView({ userId }: { userId: string }) {
         </Card>
       )}
 
+      {/* Open Tasks */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <ListTodo className="h-4 w-4" />
+            Open Tasks ({openTasks?.length ?? 0})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!openTasks || openTasks.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">No open tasks assigned.</p>
+          ) : (
+            <div className="space-y-2">
+              {openTasks.map((t: any) => (
+                <div key={t.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 text-sm">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium truncate">{t.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t.due_date ? `Due ${format(new Date(t.due_date), 'MMM d, yyyy')}` : 'No due date'}
+                      {' · '}<span className="capitalize">{t.priority}</span>
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-xs capitalize">{(t.status ?? '').replace(/_/g, ' ')}</Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Deals Summary */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Briefcase className="h-4 w-4" />
-            Deals ({deals?.length ?? 0})
+            Deals Managed ({deals?.length ?? 0})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -416,30 +643,31 @@ function UserDetailView({ userId }: { userId: string }) {
         </CardContent>
       </Card>
 
-      {/* Recent Activity */}
+      {/* Recent Activity (last 10 usage events) */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Activity className="h-4 w-4" />
-            Recent Activity
+            Recent Actions (last 10)
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {!activity || activity.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">No recent activity.</p>
+          {!usageEvents || usageEvents.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">No recent activity recorded.</p>
           ) : (
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {activity.map((log) => (
-                <div key={log.id} className="flex items-start gap-3 p-2 text-sm">
+            <div className="space-y-2">
+              {usageEvents.map((ev: any) => (
+                <div key={ev.id} className="flex items-start gap-3 p-2 text-sm">
                   <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
                     <Activity className="h-3 w-3 text-muted-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm">{log.description}</p>
+                    <p className="text-sm capitalize">
+                      {ev.feature_type.replace(/_/g, ' ')}
+                      {ev.feature_subtype && <span className="text-muted-foreground"> · {ev.feature_subtype}</span>}
+                    </p>
                     <p className="text-xs text-muted-foreground">
-                      {format(new Date(log.created_at), 'MMM d, yyyy · HH:mm')}
-                      {' · '}
-                      <span className="capitalize">{log.activity_type.replace(/_/g, ' ')}</span>
+                      {format(new Date(ev.timestamp), 'MMM d, yyyy · HH:mm')}
                     </p>
                   </div>
                 </div>
@@ -448,6 +676,26 @@ function UserDetailView({ userId }: { userId: string }) {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function IntegrationRow({ name, connected, last }: { name: string; connected: boolean; last: string | null }) {
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+      {connected ? (
+        <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+      ) : (
+        <XCircle className="h-5 w-5 text-muted-foreground shrink-0" />
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium">{name}</p>
+        <p className="text-xs text-muted-foreground">
+          {connected
+            ? last ? `Synced ${formatDistanceToNow(new Date(last))} ago` : 'Connected'
+            : 'Not connected'}
+        </p>
+      </div>
     </div>
   );
 }
