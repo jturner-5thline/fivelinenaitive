@@ -16,6 +16,7 @@ import { AdvancedFilterBuilder } from '@/components/filters/AdvancedFilterBuilde
 import { CONTACT_CORE_FIELDS } from '@/lib/filterFieldDefinitions';
 import type { FilterRule, MatchMode } from '@/lib/filterTypes';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { CrmUpdateQueueButton } from '@/components/crm/CrmUpdateQueueButton';
 
 export default function Contacts() {
   const [showCreate, setShowCreate] = useState(false);
@@ -121,6 +122,7 @@ export default function Contacts() {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-foreground">Contacts</h1>
             <div className="flex items-center gap-2">
+              <CrmUpdateQueueButton />
               <Button variant="outline" size="sm" onClick={handleSyncContacts} disabled={isSyncingContacts}>
                 {isSyncingContacts ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
                 Sync HubSpot
