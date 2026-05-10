@@ -18,6 +18,7 @@ import { useNaitivePipelineAccess } from "@/hooks/useNaitivePipelineAccess";
 import { useCanAccessInsights } from "@/hooks/useCanAccessInsights";
 import { DashboardFlyoutMenu } from "@/components/sidebar/DashboardFlyoutMenu";
 import { DealsFlyoutMenu } from "@/components/sidebar/DealsFlyoutMenu";
+import { FeedbackButton } from "@/components/FeedbackButton";
 
 
 import {
@@ -268,6 +269,10 @@ export function AppSidebar() {
               )}
             </SidebarMenuItem>
           ))}
+
+          <SidebarMenuItem>
+            <FeedbackButton showLabel={showExpanded} />
+          </SidebarMenuItem>
 
           <SidebarMenuItem>
             <Popover>

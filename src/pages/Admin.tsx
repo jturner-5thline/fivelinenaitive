@@ -87,7 +87,7 @@ const settingsSubPages = [
 ];
 
 const productEnhancementSubPages = [
-  { id: "enhancement", label: "UX Analytics", icon: Lightbulb },
+  { id: "ux-analytics", label: "UX Analytics", icon: Lightbulb },
   { id: "feedback", label: "Feedback", icon: MessageSquare },
   { id: "ai-training", label: "AI Training", icon: Brain },
 ];
@@ -136,7 +136,7 @@ const Admin = () => {
     access: "pages",
     "data-security": "data",
     settings: "settings",
-    "product-enhancement": "enhancement",
+    "product-enhancement": "ux-analytics",
     support: "client-viewer",
     "usage-analytics": "usage-overview",
   });
@@ -507,7 +507,7 @@ const Admin = () => {
             <CardContent><AuditLogTable /></CardContent>
           </Card>
         );
-      case "enhancement":
+      case "ux-analytics":
         return <UXAnalyticsPanel />;
       case "ai-training":
         return (
@@ -553,7 +553,6 @@ const Admin = () => {
   const COMING_SOON_SECTIONS: TabCategory[] = [
     "data-security",
     "settings",
-    "product-enhancement",
     "support",
   ];
   const isComingSoon = COMING_SOON_SECTIONS.includes(activeCategory);
