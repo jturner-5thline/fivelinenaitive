@@ -19,9 +19,11 @@ const MICROSOFT_SCOPES = [
   "Contacts.Read",
 ].join(" ");
 
-// Production redirect URI registered in Azure (no query string).
+// Default production redirect URI registered in Azure (no query string).
 // The callback page distinguishes Microsoft via the `state` parameter (prefix `ms_`).
-const REDIRECT_URI = "https://naitive.co/integrations";
+// The frontend may pass a different `redirect_uri` (e.g. preview/custom domains) that
+// must also be registered in the Azure app for OAuth to succeed.
+const DEFAULT_REDIRECT_URI = "https://naitive.co/integrations";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -62,10 +64,11 @@ serve(async (req) => {
   try {
     if (action === "get_auth_url") {
       const state = "ms_" + crypto.randomUUID();
+      const redirectUri = (body.redirect_uri as string | undefined) || DEFAULT_REDIRECT_URI;
       const authUrl = new URL("https://login.microsoftonline.com/common/oauth2/v2.0/authorize");
       authUrl.searchParams.set("client_id", MICROSOFT_CLIENT_ID);
       authUrl.searchParams.set("response_type", "code");
-      authUrl.searchParams.set("redirect_uri", REDIRECT_URI);
+      authUrl.searchParams.set("redirect_uri", redirectUri);
       authUrl.searchParams.set("scope", MICROSOFT_SCOPES);
       authUrl.searchParams.set("response_mode", "query");
       authUrl.searchParams.set("state", state);
@@ -76,13 +79,18 @@ serve(async (req) => {
     }
 
     if (action === "exchange_code") {
-      const { code, user_id } = body as { code?: string; user_id?: string };
+      const { code, user_id, redirect_uri } = body as {
+        code?: string;
+        user_id?: string;
+        redirect_uri?: string;
+      };
       if (!code || !user_id) {
         return new Response(JSON.stringify({ error: "code and user_id required" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      const redirectUri = redirect_uri || DEFAULT_REDIRECT_URI;
 
       const tokenResp = await fetch(
         "https://login.microsoftonline.com/common/oauth2/v2.0/token",
@@ -93,7 +101,7 @@ serve(async (req) => {
             client_id: MICROSOFT_CLIENT_ID,
             client_secret: MICROSOFT_CLIENT_SECRET,
             code,
-            redirect_uri: REDIRECT_URI,
+            redirect_uri: redirectUri,
             grant_type: "authorization_code",
             scope: MICROSOFT_SCOPES,
           }),
