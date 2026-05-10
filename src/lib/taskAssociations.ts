@@ -84,7 +84,7 @@ export async function logTaskCompletionAcrossTimelines(params: {
   }
 
   const baseMetadata = { task_id: taskId, source: 'task_completion' };
-  const writes: Promise<unknown>[] = [];
+  const writes: PromiseLike<unknown>[] = [];
 
   if (deal_id) {
     writes.push(
