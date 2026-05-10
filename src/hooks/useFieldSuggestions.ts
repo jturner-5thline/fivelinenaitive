@@ -125,11 +125,63 @@ export function useScanContactForSuggestions() {
       if (data.suggestions_created > 0) {
         toast.success(`${data.suggestions_created} suggestion(s) found`);
       } else {
-        toast.info('No new suggestions found');
+        const ctx = data.scan_context;
+        const evidence = ctx ? `${ctx.emailCount} email(s), ${ctx.eventCount} meeting(s) in last ${ctx.lookbackDays}d` : '';
+        toast.info(
+          data.no_activity
+            ? `No recent activity found for this contact${evidence ? ` (${evidence})` : ''}`
+            : `No changes detected${evidence ? ` — scanned ${evidence}` : ''}`
+        );
       }
     },
     onError: (err: Error) => {
       toast.error(err.message || 'Scan failed');
+    },
+  });
+}
+
+// ---- CRM Update Queue ----
+export interface QueueSuggestion extends FieldSuggestion {
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_company: string | null;
+}
+
+export function usePendingSuggestionsCount() {
+  return useQuery({
+    queryKey: ['field-suggestions', 'pending-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('contact_field_suggestions')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+      if (error) throw error;
+      return count ?? 0;
+    },
+    refetchInterval: 60_000,
+  });
+}
+
+export function useCrmUpdateQueue() {
+  return useQuery({
+    queryKey: ['field-suggestions', 'queue'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('contact_field_suggestions')
+        .select('*, contacts:contact_id(full_name, first_name, last_name, email, org_company_id), companies:company_id(name)')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return (data || []).map((row: any) => ({
+        ...row,
+        contact_name:
+          row.contacts?.full_name ||
+          [row.contacts?.first_name, row.contacts?.last_name].filter(Boolean).join(' ') ||
+          null,
+        contact_email: row.contacts?.email ?? null,
+        contact_company: row.companies?.name ?? null,
+      })) as QueueSuggestion[];
     },
   });
 }

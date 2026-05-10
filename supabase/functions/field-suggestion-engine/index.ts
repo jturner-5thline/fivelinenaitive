@@ -25,7 +25,8 @@ serve(async (req) => {
   }
 
   try {
-    const { contact_id, source_type, source_id, email_data, company_id } = await req.json();
+    const { contact_id, source_type, source_id, email_data: incomingEmailData, company_id } = await req.json();
+    let email_data = incomingEmailData;
 
     if (!contact_id || !source_type) {
       return new Response(
@@ -59,6 +60,83 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "Could not determine company_id for contact" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // For manual scans (or when no email payload was supplied), assemble recent
+    // email + calendar activity for this contact's email so the AI has real
+    // evidence to work with.
+    let scanContext: { emailCount: number; eventCount: number; lookbackDays: number } | null = null;
+    if (!email_data && contact.email) {
+      const lookbackDays = 30;
+      const since = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000).toISOString();
+      const contactEmail = String(contact.email).toLowerCase();
+
+      const { data: recentEmails } = await supabase
+        .from("emails")
+        .select("subject, from_email, received_at, message_id")
+        .ilike("from_email", contactEmail)
+        .gte("received_at", since)
+        .order("received_at", { ascending: false })
+        .limit(15);
+
+      const { data: recentEvents } = await supabase
+        .from("calendar_events")
+        .select("title, start_time, organizer_email, attendees")
+        .gte("start_time", since)
+        .order("start_time", { ascending: false })
+        .limit(50);
+
+      const eventsWithContact = (recentEvents || []).filter((ev: any) => {
+        const arr: string[] = Array.isArray(ev.attendees) ? ev.attendees : [];
+        return (
+          arr.some((a) => typeof a === "string" && a.toLowerCase().includes(contactEmail)) ||
+          (ev.organizer_email && String(ev.organizer_email).toLowerCase() === contactEmail)
+        );
+      });
+
+      const emailLines = (recentEmails || []).map(
+        (e: any) => `- [${e.received_at?.slice(0, 10)}] from ${e.from_email}: ${e.subject || "(no subject)"}`
+      );
+      const eventLines = eventsWithContact.map(
+        (ev: any) => `- [${ev.start_time?.slice(0, 10)}] meeting "${ev.title || "(untitled)"}" organizer ${ev.organizer_email || "?"}`
+      );
+
+      scanContext = {
+        emailCount: emailLines.length,
+        eventCount: eventLines.length,
+        lookbackDays,
+      };
+
+      if (emailLines.length || eventLines.length) {
+        email_data = {
+          from: contact.email,
+          subject: `Activity scan (last ${lookbackDays} days)`,
+          body_text: [
+            "RECENT EMAILS:",
+            emailLines.join("\n") || "(none)",
+            "",
+            "RECENT MEETINGS:",
+            eventLines.join("\n") || "(none)",
+          ].join("\n"),
+          signature_block: "",
+        };
+      }
+    }
+
+    // If this is a manual scan and there is genuinely no activity to look at,
+    // skip the AI call and report cleanly so the UI can show "No changes".
+    if (!email_data && source_type === "manual_scan") {
+      return new Response(
+        JSON.stringify({
+          suggestions_created: 0,
+          suggestions_superseded: 0,
+          suggestions: [],
+          scanned_at: new Date().toISOString(),
+          scan_context: scanContext,
+          no_activity: true,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -275,6 +353,8 @@ Extract any field change suggestions.`;
         suggestions_created: created.length,
         suggestions_superseded: supersededCount,
         suggestions: created,
+        scanned_at: new Date().toISOString(),
+        scan_context: scanContext,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

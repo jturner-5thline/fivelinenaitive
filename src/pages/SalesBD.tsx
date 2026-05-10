@@ -15,6 +15,7 @@ import { ChannelsBoard } from "@/components/channels/ChannelsBoard";
 import { ChannelsDashboard } from "@/components/channels/ChannelsDashboard";
 import { ReferralSourcesView } from "@/components/channels/ReferralSourcesView";
 import { DashboardPage } from "@/components/layout/DashboardPage";
+import { CrmUpdateQueueButton } from "@/components/crm/CrmUpdateQueueButton";
 
 const PartnersPipeline = lazy(() => import("./PartnersPipeline"));
 
@@ -39,11 +40,14 @@ export default function SalesBD() {
           )}
           header={
             <>
-              <div className="mb-3">
-                <h1 className="text-3xl font-bold tracking-tight">Sales & BD</h1>
-                <p className="text-muted-foreground mt-1">
-                  Manage your sales pipeline and business development activities
-                </p>
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <h1 className="text-3xl font-bold tracking-tight">Sales & BD</h1>
+                  <p className="text-muted-foreground mt-1">
+                    Manage your sales pipeline and business development activities
+                  </p>
+                </div>
+                <CrmUpdateQueueButton />
               </div>
               <TabsList>
                 <TabsTrigger value="overview" className="gap-1.5">
