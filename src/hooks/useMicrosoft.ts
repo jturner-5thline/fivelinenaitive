@@ -16,6 +16,11 @@ interface MicrosoftStatus {
 
 const MS_STATE_KEY = "ms_oauth_state";
 
+function getRedirectUri(): string {
+  if (typeof window === "undefined") return "https://naitive.co/integrations";
+  return `${window.location.origin}/integrations`;
+}
+
 export function useMicrosoft() {
   const { user } = useAuth();
   const [status, setStatus] = useState<MicrosoftStatus | null>(null);
@@ -46,7 +51,7 @@ export function useMicrosoft() {
     if (!user) return;
     try {
       const { data, error } = await supabase.functions.invoke("microsoft-auth", {
-        body: { action: "get_auth_url" },
+        body: { action: "get_auth_url", redirect_uri: getRedirectUri() },
       });
       if (error) throw error;
       if (data?.state) sessionStorage.setItem(MS_STATE_KEY, data.state);
@@ -60,7 +65,7 @@ export function useMicrosoft() {
     if (!user) return false;
     try {
       const { data, error } = await supabase.functions.invoke("microsoft-auth", {
-        body: { action: "exchange_code", code, user_id: user.id },
+        body: { action: "exchange_code", code, user_id: user.id, redirect_uri: getRedirectUri() },
       });
       if (error) throw error;
       sessionStorage.removeItem(MS_STATE_KEY);
