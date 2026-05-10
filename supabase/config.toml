@@ -227,3 +227,6 @@ verify_jwt = false
 
 [functions.quickbooks-auto-sync]
 verify_jwt = false
+
+[functions.daily-crm-update-scan]
+verify_jwt = false
