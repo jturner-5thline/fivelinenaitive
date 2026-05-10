@@ -35,6 +35,8 @@ import { NotificationRulesPanel } from "@/components/admin/NotificationRulesPane
 import { NotificationAuditPanel } from "@/components/admin/NotificationAuditPanel";
 import { DealsHeader } from "@/components/deals/DealsHeader";
 import { UXRecommendationsPanel } from "@/components/admin/ux-analytics/UXRecommendationsPanel";
+import { UXAnalyticsPanel } from "@/components/admin/UXAnalyticsPanel";
+import { AITrainingPanel } from "@/components/admin/AITrainingPanel";
 import { PendingApprovalsPanel } from "@/components/admin/PendingApprovalsPanel";
 import { CompanyJoinRequestsPanel } from "@/components/admin/CompanyJoinRequestsPanel";
 import { ClientAccountViewer } from "@/components/admin/ClientAccountViewer";
@@ -506,20 +508,20 @@ const Admin = () => {
           </Card>
         );
       case "enhancement":
-        return <UXRecommendationsPanel />;
+        return <UXAnalyticsPanel />;
       case "ai-training":
         return (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Brain className="h-5 w-5" />
-                AI Training & Rules
+                AI Training
               </CardTitle>
               <CardDescription>
-                Manage organization-wide rules that customize how naitive AI responds. Rules can be added manually, from thumbs-down corrections, or via /teach commands in the chat.
+                Manage AI prompts, monitor AI performance, and tune model configuration.
               </CardDescription>
             </CardHeader>
-            <CardContent><AIRulesPanel /></CardContent>
+            <CardContent><AITrainingPanel /></CardContent>
           </Card>
         );
       case "qb-mapping":
