@@ -497,6 +497,14 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
           {/* Row 1: Sender + date on same line */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
+              {latest.provider === 'microsoft' && (
+                <span
+                  title="Outlook"
+                  className="shrink-0 inline-flex items-center justify-center h-3.5 w-3.5 rounded-[3px] bg-[hsl(var(--outlook-blue))] text-[8px] font-bold text-white leading-none"
+                >
+                  O
+                </span>
+              )}
               <span className={cn(
                 'text-[13px] truncate',
                 isUnread
