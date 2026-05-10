@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { getAsanaSyncContext, syncTaskToAsana, updateTaskInAsana } from '@/hooks/useAsanaTaskSync';
 import { toast } from 'sonner';
+import { deriveTaskAssociations, logTaskCompletionAcrossTimelines } from '@/lib/taskAssociations';
 
 async function fireZapierWebhook(eventType: string, payload: Record<string, any>) {
   try {
@@ -342,6 +343,13 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
         .limit(1)
         .single();
 
+      // Auto-derive missing Deal / Contact / Company associations.
+      const derived = await deriveTaskAssociations({
+        deal_id: task.deal_id ?? null,
+        contact_id: task.contact_id ?? null,
+        crm_company_id: task.crm_company_id ?? null,
+      });
+
       const { data, error } = await supabase
         .from('tasks')
         .insert({
@@ -354,9 +362,9 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
           status: task.status || 'not_started',
           project_id: task.project_id || null,
           section_id: task.section_id || null,
-          deal_id: task.deal_id || null,
-          contact_id: task.contact_id || null,
-          crm_company_id: task.crm_company_id || null,
+          deal_id: derived.deal_id || null,
+          contact_id: derived.contact_id || null,
+          crm_company_id: derived.crm_company_id || null,
           company_id: membership?.company_id || null,
           recurrence_rule: task.recurrence_rule ?? null,
           is_recurring: !!task.recurrence_rule,
@@ -478,6 +486,32 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
 
       const { error } = await supabase.from('tasks').update(updateData).eq('id', id);
       if (error) throw error;
+
+      // Cross-log task completion to Deal / Contact / Company timelines (best-effort)
+      if (updates.status === 'complete' || updates.status === 'completed') {
+        const t = tasks.find(x => x.id === id);
+        if (t && (t.deal_id || t.contact_id || t.crm_company_id)) {
+          const { data: { user: au } } = await supabase.auth.getUser();
+          let actorName: string | null = null;
+          if (au) {
+            const { data: prof } = await supabase
+              .from('profiles')
+              .select('display_name')
+              .eq('user_id', au.id)
+              .maybeSingle();
+            actorName = prof?.display_name || null;
+          }
+          void logTaskCompletionAcrossTimelines({
+            taskId: id,
+            taskTitle: t.title,
+            deal_id: t.deal_id,
+            contact_id: t.contact_id,
+            crm_company_id: t.crm_company_id,
+            actorUserId: au?.id ?? null,
+            actorDisplayName: actorName,
+          });
+        }
+      }
 
       // Audit: log recurrence pause/resume/stop changes
       try {
