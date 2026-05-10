@@ -552,7 +552,6 @@ const Admin = () => {
   // navigation stays consistent.
   const COMING_SOON_SECTIONS: TabCategory[] = [
     "data-security",
-    "settings",
   ];
   const isComingSoon = COMING_SOON_SECTIONS.includes(activeCategory);
 
