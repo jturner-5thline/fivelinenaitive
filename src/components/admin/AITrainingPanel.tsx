@@ -72,19 +72,23 @@ export function AITrainingPanel() {
     setPrompts((ps ?? []) as Prompt[]);
     if (ac) setConfig(ac as AIConfig);
 
-    // AI performance over time: approval rate from crm_suggestions or fallback synthetic per-day rate
-    const { data: suggestions } = await supabase
-      .from("crm_suggestions")
-      .select("status, created_at")
-      .gte("created_at", subDays(new Date(), 30).toISOString())
-      .limit(2000);
+    // AI performance over time: approval rate inferred from ai_field_suggestions / claap_match_feedback if present
     const perDay: Record<string, { approved: number; total: number }> = {};
-    (suggestions ?? []).forEach((s: any) => {
-      const d = (s.created_at as string).slice(0, 10);
-      if (!perDay[d]) perDay[d] = { approved: 0, total: 0 };
-      perDay[d].total += 1;
-      if (s.status === "approved" || s.status === "applied") perDay[d].approved += 1;
-    });
+    try {
+      const { data: suggestions } = await (supabase as any)
+        .from("ai_field_suggestions")
+        .select("status, created_at")
+        .gte("created_at", subDays(new Date(), 30).toISOString())
+        .limit(2000);
+      (suggestions ?? []).forEach((s: any) => {
+        const d = (s.created_at as string).slice(0, 10);
+        if (!perDay[d]) perDay[d] = { approved: 0, total: 0 };
+        perDay[d].total += 1;
+        if (s.status === "approved" || s.status === "applied") perDay[d].approved += 1;
+      });
+    } catch {
+      // table may not exist — leave perDay empty
+    }
     setAiPerf(
       Object.entries(perDay)
         .map(([date, v]) => ({ date, rate: v.total ? (v.approved / v.total) * 100 : 0 }))
