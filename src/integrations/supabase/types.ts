@@ -9913,30 +9913,42 @@ export type Database = {
           created_at: string
           error_message: string
           error_type: string
+          feature: string | null
           id: string
           metadata: Json | null
           page_url: string | null
+          resolved_at: string | null
+          resolved_by: string | null
           stack_trace: string | null
+          status: string
           user_id: string | null
         }
         Insert: {
           created_at?: string
           error_message: string
           error_type: string
+          feature?: string | null
           id?: string
           metadata?: Json | null
           page_url?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
           stack_trace?: string | null
+          status?: string
           user_id?: string | null
         }
         Update: {
           created_at?: string
           error_message?: string
           error_type?: string
+          feature?: string | null
           id?: string
           metadata?: Json | null
           page_url?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
           stack_trace?: string | null
+          status?: string
           user_id?: string | null
         }
         Relationships: []
