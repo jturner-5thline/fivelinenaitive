@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { 
-  UserX, Building2, Ban, CheckCircle, Shield, UserPlus, Trash2, Search, X, CalendarIcon, ChevronLeft, ChevronRight
+  UserX, Building2, Ban, CheckCircle, Shield, UserPlus, Trash2, Search, X, CalendarIcon, ChevronLeft, ChevronRight, Download
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -113,6 +113,32 @@ export const AuditLogTable = () => {
   const handlePageSizeChange = (value: string) => {
     setPageSize(Number(value));
     setCurrentPage(1);
+  };
+
+  const exportCsv = () => {
+    const header = ["Timestamp", "Admin Name", "Admin Email", "Action", "Target Type", "Target", "Details"];
+    const escape = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const csv = [
+      header.join(","),
+      ...filteredLogs.map((l) =>
+        [
+          l.created_at,
+          l.admin_name ?? "",
+          l.admin_email ?? "",
+          l.action_type,
+          l.target_type ?? "",
+          l.target_name ?? "",
+          l.details ? JSON.stringify(l.details) : "",
+        ].map(escape).join(","),
+      ),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `admin-audit-log-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   if (isLoading) {
@@ -256,6 +282,10 @@ export const AuditLogTable = () => {
               Clear filters
             </Button>
           )}
+          <Button variant="outline" size="sm" onClick={exportCsv} className="shrink-0 ml-auto">
+            <Download className="h-4 w-4 mr-1" />
+            Export Audit Log
+          </Button>
         </div>
       </div>
 

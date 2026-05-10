@@ -277,6 +277,10 @@ export interface ErrorLog {
   page_url: string | null;
   metadata: Record<string, any> | null;
   created_at: string;
+  feature: string | null;
+  status: string;
+  resolved_at: string | null;
+  resolved_by: string | null;
 }
 
 export const useErrorLogs = (limit = 100) => {
@@ -290,6 +294,27 @@ export const useErrorLogs = (limit = 100) => {
         .limit(limit);
       if (error) throw error;
       return data as ErrorLog[];
+    },
+  });
+};
+
+export const useResolveErrorLog = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data: userData } = await supabase.auth.getUser();
+      const { error } = await supabase
+        .from("error_logs")
+        .update({
+          status: "resolved",
+          resolved_at: new Date().toISOString(),
+          resolved_by: userData.user?.id ?? null,
+        })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["error-logs"] });
     },
   });
 };

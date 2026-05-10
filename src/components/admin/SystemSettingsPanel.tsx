@@ -7,9 +7,39 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Settings, Shield, Layers, Save } from "lucide-react";
+import { Settings, Shield, Layers, Save, Globe, Flag } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useSystemSettings, useUpdateSystemSetting } from "@/hooks/useAdminConfig";
+import { FeatureFlagsTable } from "@/components/admin/FeatureFlagsTable";
+
+const TIMEZONES = [
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "Europe/London",
+  "Europe/Paris",
+  "Asia/Singapore",
+  "Asia/Tokyo",
+  "UTC",
+];
+
+const LANGUAGES = [
+  { value: "en", label: "English" },
+  { value: "es", label: "Spanish" },
+  { value: "fr", label: "French" },
+  { value: "de", label: "German" },
+  { value: "pt", label: "Portuguese" },
+];
+
+const SESSION_TIMEOUT_OPTIONS = [
+  { value: 30, label: "30 minutes" },
+  { value: 60, label: "1 hour" },
+  { value: 240, label: "4 hours" },
+  { value: 480, label: "8 hours" },
+  { value: 0, label: "Never" },
+];
 
 export const SystemSettingsPanel = () => {
   const { data: settings, isLoading } = useSystemSettings();
@@ -55,9 +85,117 @@ export const SystemSettingsPanel = () => {
   const maintenanceMode = localSettings.maintenance_mode || { enabled: false, message: "" };
   const sessionTimeout = localSettings.session_timeout || { minutes: 60, warn_before_minutes: 5 };
   const require2fa = localSettings.require_2fa || { enabled: false, roles: [] };
+  const platformName = localSettings.platform_name?.value ?? "naitive";
+  const supportEmail = localSettings.support_email?.value ?? "";
+  const defaultTimezone = localSettings.default_timezone?.value ?? "America/New_York";
+  const defaultLanguage = localSettings.default_language?.value ?? "en";
+
+  const handleSavePlatform = async () => {
+    try {
+      await Promise.all([
+        updateSetting.mutateAsync({ key: "platform_name", value: { value: platformName } }),
+        updateSetting.mutateAsync({ key: "support_email", value: { value: supportEmail } }),
+        updateSetting.mutateAsync({ key: "default_timezone", value: { value: defaultTimezone } }),
+        updateSetting.mutateAsync({ key: "default_language", value: { value: defaultLanguage } }),
+        updateSetting.mutateAsync({ key: "session_timeout", value: sessionTimeout }),
+      ]);
+      toast.success("Settings saved");
+    } catch {
+      toast.error("Failed to save settings");
+    }
+  };
 
   return (
     <div className="space-y-6">
+      {/* Platform Settings */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Globe className="h-5 w-5" />
+            <CardTitle className="text-lg">Platform Settings</CardTitle>
+          </div>
+          <CardDescription>Platform-wide configuration applied across the workspace</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="platform-name">Platform Name</Label>
+              <Input
+                id="platform-name"
+                value={platformName}
+                onChange={(e) =>
+                  setLocalSettings((p) => ({ ...p, platform_name: { value: e.target.value } }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="support-email">Support Email</Label>
+              <Input
+                id="support-email"
+                type="email"
+                placeholder="support@example.com"
+                value={supportEmail}
+                onChange={(e) =>
+                  setLocalSettings((p) => ({ ...p, support_email: { value: e.target.value } }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Default Timezone</Label>
+              <Select
+                value={defaultTimezone}
+                onValueChange={(v) =>
+                  setLocalSettings((p) => ({ ...p, default_timezone: { value: v } }))
+                }
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {TIMEZONES.map((tz) => (
+                    <SelectItem key={tz} value={tz}>{tz}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Default Language</Label>
+              <Select
+                value={defaultLanguage}
+                onValueChange={(v) =>
+                  setLocalSettings((p) => ({ ...p, default_language: { value: v } }))
+                }
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {LANGUAGES.map((l) => (
+                    <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Session Timeout</Label>
+              <Select
+                value={String(sessionTimeout.minutes ?? 60)}
+                onValueChange={(v) =>
+                  updateLocalSetting("session_timeout", "minutes", parseInt(v))
+                }
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {SESSION_TIMEOUT_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <Button onClick={handleSavePlatform} disabled={updateSetting.isPending}>
+            <Save className="h-4 w-4 mr-2" />
+            Save Settings
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Maintenance Mode */}
       <Card>
         <CardHeader>
@@ -103,53 +241,6 @@ export const SystemSettingsPanel = () => {
         </CardContent>
       </Card>
 
-      {/* Session Settings */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            <CardTitle className="text-lg">Session Settings</CardTitle>
-          </div>
-          <CardDescription>
-            Configure session timeout and warning settings
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="session-timeout">Session Timeout (minutes)</Label>
-              <Input
-                id="session-timeout"
-                type="number"
-                min={5}
-                max={480}
-                value={sessionTimeout.minutes}
-                onChange={(e) =>
-                  updateLocalSetting("session_timeout", "minutes", parseInt(e.target.value) || 60)
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="session-warn">Warn Before (minutes)</Label>
-              <Input
-                id="session-warn"
-                type="number"
-                min={1}
-                max={30}
-                value={sessionTimeout.warn_before_minutes}
-                onChange={(e) =>
-                  updateLocalSetting("session_timeout", "warn_before_minutes", parseInt(e.target.value) || 5)
-                }
-              />
-            </div>
-          </div>
-          <Button onClick={() => handleSave("session_timeout")} disabled={updateSetting.isPending}>
-            <Save className="h-4 w-4 mr-2" />
-            Save Changes
-          </Button>
-        </CardContent>
-      </Card>
-
       {/* 2FA Enforcement */}
       <Card>
         <CardHeader>
@@ -179,6 +270,22 @@ export const SystemSettingsPanel = () => {
             <Save className="h-4 w-4 mr-2" />
             Save Changes
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Feature Flags */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Flag className="h-5 w-5" />
+            <CardTitle className="text-lg">Feature Flags</CardTitle>
+          </div>
+          <CardDescription>
+            Toggle experimental and staged features for the platform
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FeatureFlagsTable />
         </CardContent>
       </Card>
 
