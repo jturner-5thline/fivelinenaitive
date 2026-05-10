@@ -128,6 +128,10 @@ export function ContactFieldSuggestions({ contactId, companyId }: ContactFieldSu
   const { data: suggestions = [], isLoading } = useContactFieldSuggestions(contactId);
   const action = useFieldSuggestionAction();
   const scan = useScanContactForSuggestions();
+  const [lastScannedAt, setLastScannedAt] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return window.localStorage.getItem(`cfs:lastScan:${contactId}`);
+  });
 
   const handleAction = (type: 'accept' | 'reject' | 'snooze', suggestionId: string) => {
     action.mutate({
@@ -140,11 +144,22 @@ export function ContactFieldSuggestions({ contactId, companyId }: ContactFieldSu
   };
 
   const handleScan = () => {
-    scan.mutate({
-      contact_id: contactId,
-      source_type: 'manual_scan',
-      company_id: companyId,
-    });
+    scan.mutate(
+      {
+        contact_id: contactId,
+        source_type: 'manual_scan',
+        company_id: companyId,
+      },
+      {
+        onSuccess: (data: any) => {
+          const ts = data?.scanned_at || new Date().toISOString();
+          setLastScannedAt(ts);
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(`cfs:lastScan:${contactId}`, ts);
+          }
+        },
+      },
+    );
   };
 
   if (isLoading) return null;
@@ -179,7 +194,9 @@ export function ContactFieldSuggestions({ contactId, companyId }: ContactFieldSu
       <CardContent>
         {suggestions.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-3">
-            No pending suggestions
+            {lastScannedAt
+              ? `No changes detected — last scanned ${format(new Date(lastScannedAt), 'MMM d, h:mm a')}`
+              : 'No pending suggestions — click Scan to check email & calendar activity'}
           </p>
         ) : (
           <div className="space-y-2">
