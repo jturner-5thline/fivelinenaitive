@@ -21,6 +21,48 @@ import { supabase } from '@/integrations/supabase/client';
 
 const PAGE_SIZE = 50;
 
+/**
+ * Fetch Microsoft (Outlook) messages from the unified `emails` table and
+ * shape them into the same field set the Gmail edge function returns, so the
+ * existing inbox mapper renders them without further changes. Carries a
+ * `provider: 'microsoft'` flag so UI rows can show an Outlook badge.
+ */
+async function fetchMicrosoftEmails(folder: 'INBOX' | 'SENT'): Promise<any[]> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    // We only have inbound messages today. Suppress for SENT until outbound
+    // sync exists, otherwise the SENT tab would show received messages.
+    if (folder === 'SENT') return [];
+    const { data, error } = await supabase
+      .from('emails')
+      .select('message_id, thread_id, subject, from_email, from_name, to_emails, preview, received_at, is_read, has_attachments, provider')
+      .eq('user_id', user.id)
+      .eq('provider', 'microsoft')
+      .order('received_at', { ascending: false })
+      .limit(PAGE_SIZE);
+    if (error || !data) return [];
+    return data.map((m) => ({
+      id: m.message_id,
+      gmail_message_id: m.message_id,
+      thread_id: m.thread_id,
+      subject: m.subject,
+      from_email: m.from_email,
+      from_name: m.from_name,
+      to_emails: m.to_emails ?? [],
+      snippet: m.preview ?? '',
+      received_at: m.received_at,
+      is_read: m.is_read,
+      is_starred: false,
+      labels: folder === 'INBOX' ? ['INBOX'] : ['SENT'],
+      has_attachments: m.has_attachments,
+      provider: 'microsoft',
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export interface InboxCacheState {
   inboxMessages: any[];
   sentMessages: any[];
@@ -106,10 +148,13 @@ export const useInboxCacheStore = create<InboxCacheState>((set, get) => ({
     try {
       // Inbox first (drives the unread badge), then sent.
       const inboxPage = await fetchPage({ labelIds: ['INBOX'] });
-      if (inboxPage.ok) {
+      const msInbox = await fetchMicrosoftEmails('INBOX');
+      const inboxMerged = [...(inboxPage.ok ? inboxPage.messages : []), ...msInbox]
+        .sort((a, b) => new Date(b.received_at || 0).getTime() - new Date(a.received_at || 0).getTime());
+      if (inboxPage.ok || msInbox.length) {
         set((prev) => ({
           // Merge so previously loaded older pages aren't dropped on poll.
-          inboxMessages: mergeUniqueById(prev.inboxMessages, inboxPage.messages),
+          inboxMessages: mergeUniqueById(prev.inboxMessages, inboxMerged),
           // Only overwrite the next-token when we re-fetched page 1 — it
           // represents the cursor *after* the freshest page.
           inboxNextToken: prev.inboxMessages.length === 0
