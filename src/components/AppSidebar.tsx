@@ -270,6 +270,10 @@ export function AppSidebar() {
           ))}
 
           <SidebarMenuItem>
+            <FeedbackButton showLabel={showExpanded} />
+          </SidebarMenuItem>
+
+          <SidebarMenuItem>
             <Popover>
               <PopoverTrigger asChild>
                 <SidebarMenuButton
