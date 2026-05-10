@@ -136,7 +136,7 @@ const Admin = () => {
     access: "pages",
     "data-security": "data",
     settings: "settings",
-    "product-enhancement": "enhancement",
+    "product-enhancement": "ux-analytics",
     support: "client-viewer",
     "usage-analytics": "usage-overview",
   });
