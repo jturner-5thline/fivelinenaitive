@@ -29,6 +29,8 @@ import { NaitiveQualToDemoInsights } from '@/components/naitive-pipeline/Naitive
 import { NaitiveDidNotMoveInsights } from '@/components/naitive-pipeline/NaitiveDidNotMoveInsights';
 import { NaitivePipelineNarrative } from '@/components/naitive-pipeline/NaitivePipelineNarrative';
 import { NaitiveCatchUpCard } from '@/components/naitive-pipeline/NaitiveCatchUpCard';
+import { NaitivePipelineFilterBar } from '@/components/naitive-pipeline/NaitivePipelineFilterBar';
+import { useNaitivePipelineFilters } from '@/hooks/useNaitivePipelineFilters';
 import {
   DndContext,
   DragOverlay,
