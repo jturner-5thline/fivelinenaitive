@@ -392,7 +392,17 @@ export function RecipientField({
  */
 export function emailStringToArray(str: string): string[] {
   if (!str.trim()) return [];
-  return str.split(/[,;]/).map(s => s.trim().toLowerCase()).filter(Boolean);
+  const tokens = splitRecipientList(str);
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const token of tokens) {
+    const { email } = extractEmailFromToken(token);
+    const cleaned = email.trim().toLowerCase();
+    if (!cleaned || seen.has(cleaned)) continue;
+    seen.add(cleaned);
+    out.push(cleaned);
+  }
+  return out;
 }
 
 export function emailArrayToString(arr: string[]): string {
