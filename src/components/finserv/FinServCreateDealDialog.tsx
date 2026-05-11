@@ -58,7 +58,7 @@ const DEAL_STAGES: { id: string; label: string }[] = [
   { id: 'fs-scoping', label: 'Scoping' },
   { id: 'fs-proposal-sent', label: 'Proposal Sent' },
   { id: 'fs-negotiation', label: 'Negotiation' },
-  { id: 'fs-closed-won', label: 'Closed Won' },
+  { id: 'fs-closed-won', label: 'Active Client' },
   { id: 'fs-closed-lost', label: 'Closed Lost' },
 ];
 export const FINSERV_OWNERS = ['Scott Williams', 'Siddhi Bhangale', 'Kris Lawless'] as const;
