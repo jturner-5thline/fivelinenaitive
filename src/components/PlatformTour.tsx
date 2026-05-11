@@ -476,7 +476,6 @@ export function PlatformTour() {
   }, [showTour, currentStep, step?.id]);
 
   const completeTour = useCallback(() => {
-    localStorage.setItem('tour-completed', 'true');
     localStorage.removeItem(STEP_INDEX_KEY);
     setShowTour(false);
     stopDemo();
