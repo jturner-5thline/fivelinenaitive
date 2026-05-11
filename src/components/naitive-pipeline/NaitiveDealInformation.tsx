@@ -12,7 +12,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Deal } from '@/types/deal';
 import { ReactNode, useEffect, useState } from 'react';
-import { useDealStages } from '@/contexts/DealStagesContext';
+import { useNaitivePipelineData } from '@/hooks/useNaitivePipelineData';
 
 const ICP_OPTIONS = ['Debt Advisory', 'M&A', 'Equity', 'Placement Agent', 'Broker', 'Other'];
 const PROSPECT_TYPE_OPTIONS = ['Decision Maker', 'Gatekeeper', 'Connector', 'Market Intelligence'];
@@ -38,7 +38,7 @@ interface Props {
  * create / edit time is exactly what they see (and can edit) on detail.
  */
 export function NaitiveDealInformation({ deal, onUpdate }: Props) {
-  const { stages: dealStages } = useDealStages();
+  const { stages: dealStages } = useNaitivePipelineData();
   // Local state only for fields that don't already round-trip cleanly through `deal`.
   const [whyNotLocal, setWhyNotLocal] = useState<string[]>([]);
 
