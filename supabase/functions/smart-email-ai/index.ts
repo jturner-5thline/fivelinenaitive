@@ -1494,6 +1494,33 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
         const ld = parsed.likely_deal || {};
         const norm = (s: string) => (s || "").toLowerCase().trim();
 
+        // ── HARD OVERRIDE when a deal is already linked ──
+        // The thread→deal association is the source of truth. Any model
+        // commentary about "candidate ids don't match" or "subject mentions
+        // X but not in candidate list" is noise — strip it and pin the
+        // linked deal as the resolved deal with high confidence.
+        const SCRUB_PATTERNS: RegExp[] = [
+          /subject mentions[^.]*?(does not|doesn'?t)\s+match[^.]*\.?/gi,
+          /(does not|doesn'?t)\s+match[^.]*candidate[^.]*\.?/gi,
+          /not\s+in\s+(?:the\s+)?(?:provided\s+)?candidate[^.]*\.?/gi,
+          /candidate (?:deal\s+)?ids?[^.]*\.?/gi,
+        ];
+        const scrub = (s: unknown): string => {
+          if (typeof s !== "string") return s as any;
+          let out = s;
+          for (const re of SCRUB_PATTERNS) out = out.replace(re, "");
+          return out.replace(/\s{2,}/g, " ").replace(/^[\s,;:.\-]+|[\s,;:.\-]+$/g, "").trim();
+        };
+
+        if (typeof dealId === "string" && dealId) {
+          ld.id = dealId;
+          if (typeof linkedDealName !== "undefined" && linkedDealName) {
+            ld.name = linkedDealName;
+          }
+          ld.confidence = "high";
+          ld.reasoning = "Thread is already linked to this deal in our system.";
+        }
+
         // 1) If id missing but name present, find by name.
         if (!ld.id && ld.name) {
           const wanted = norm(ld.name);
@@ -1520,6 +1547,13 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
           if (ld.name && rec.title && /unknown|the deal/i.test(rec.title)) {
             rec.title = rec.title.replace(/unknown|the deal/gi, ld.name);
           }
+          // Strip candidate-list boilerplate from any user-visible field.
+          if (rec.reason_note) rec.reason_note = scrub(rec.reason_note);
+          if (rec.title) rec.title = scrub(rec.title) || rec.title;
+        }
+        if (ld.reasoning) ld.reasoning = scrub(ld.reasoning) || ld.reasoning;
+        if (parsed.signal && parsed.signal.nuance) {
+          parsed.signal.nuance = scrub(parsed.signal.nuance);
         }
         parsed.likely_deal = ld;
         parsed.recommended_update = rec;
