@@ -37,6 +37,7 @@ import { EmailAttachmentsStrip, detectAttachmentFallbackReason } from '@/compone
 // behavior, actions, ordering, and label wiring stay identical between
 // Daily Briefing email rows and the Email widget pop-up.
 import { EmailContextMenu } from '@/components/deal/email/EmailContextMenu';
+import { CreateTaskFromEmailDialog, type CreateTaskFromEmailSource } from '@/components/tasks/CreateTaskFromEmailDialog';
 import { useGmail } from '@/hooks/useGmail';
 import { toast } from 'sonner';
 // Code-split: keeps the Memo view (and @tanstack/react-virtual) out of the
@@ -887,6 +888,8 @@ function EmailTab({
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => new Set());
   // Local read/star overrides so the row reflects the action instantly.
   const [overrides, setOverrides] = useState<Record<string, { is_read?: boolean; is_starred?: boolean }>>({});
+  // Email-to-task creation modal state (one shared modal per tab).
+  const [taskEmail, setTaskEmail] = useState<CreateTaskFromEmailSource | null>(null);
 
   const setReadState = useCallback(async (e: any, read: boolean) => {
     setOverrides(prev => ({ ...prev, [e.id]: { ...prev[e.id], is_read: read } }));
@@ -975,6 +978,11 @@ function EmailTab({
 
   return (
     <div className="relative h-full flex flex-col min-h-0">
+      <CreateTaskFromEmailDialog
+        open={!!taskEmail}
+        onOpenChange={(o) => { if (!o) setTaskEmail(null); }}
+        email={taskEmail}
+      />
       {/* Email list */}
       {/* Workspace: when no email is selected, the grouped list takes the full
           width. When an email IS selected, we switch to the same 3-column
@@ -1009,6 +1017,14 @@ function EmailTab({
                       onToggleStar={() => setStarState(e)}
                       onArchive={() => archiveOrDelete(e, 'archive')}
                       onDelete={() => archiveOrDelete(e, 'delete')}
+                      onCreateTask={() => setTaskEmail({
+                        messageId: e.gmail_message_id || e.id,
+                        threadId: e.thread_id || null,
+                        subject: e.subject || null,
+                        fromName: e.from_name || null,
+                        fromEmail: e.from_email || null,
+                        snippet: e.analysis?.summary || e.snippet || null,
+                      })}
                   >
                     <div>
                     <BriefingRow

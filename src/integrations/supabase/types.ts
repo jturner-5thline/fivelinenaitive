@@ -18472,6 +18472,10 @@ export type Database = {
           recurrence_rule: string | null
           recurrence_source_id: string | null
           section_id: string | null
+          source_email_from: string | null
+          source_email_message_id: string | null
+          source_email_subject: string | null
+          source_email_thread_id: string | null
           start_date: string | null
           status: string
           sync_source: string | null
@@ -18509,6 +18513,10 @@ export type Database = {
           recurrence_rule?: string | null
           recurrence_source_id?: string | null
           section_id?: string | null
+          source_email_from?: string | null
+          source_email_message_id?: string | null
+          source_email_subject?: string | null
+          source_email_thread_id?: string | null
           start_date?: string | null
           status?: string
           sync_source?: string | null
@@ -18546,6 +18554,10 @@ export type Database = {
           recurrence_rule?: string | null
           recurrence_source_id?: string | null
           section_id?: string | null
+          source_email_from?: string | null
+          source_email_message_id?: string | null
+          source_email_subject?: string | null
+          source_email_thread_id?: string | null
           start_date?: string | null
           status?: string
           sync_source?: string | null
