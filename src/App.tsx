@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -91,6 +91,17 @@ const HubspotSyncHealth = lazy(lazyRetry(() => import("./pages/HubspotSyncHealth
 function DealDetailKeyedWrapper() {
   const { id } = useParams<{ id: string }>();
   return <DealDetail key={id} />;
+}
+
+function LegacyDealDetailRedirect() {
+  const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+
+  if (!id) {
+    return <Navigate to="/deals" replace />;
+  }
+
+  return <Navigate to={`/deal/${id}${location.search}${location.hash}`} replace state={location.state} />;
 }
 
 
@@ -257,6 +268,9 @@ const App = () => (
                           } />
                           <Route path="/deal/:id" element={
                             <ProtectedRoute><AppLayout><DealDetailKeyedWrapper /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/deals/:id" element={
+                            <ProtectedRoute><LegacyDealDetailRedirect /></ProtectedRoute>
                           } />
                           <Route path="/settings" element={
                             <ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>
