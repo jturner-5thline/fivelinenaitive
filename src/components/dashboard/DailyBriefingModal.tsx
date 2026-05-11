@@ -1487,21 +1487,21 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
         )}
         overlayClassName="bg-black/80"
       >
-        <div className="flex flex-col h-full relative">
+        <div className="flex flex-col h-full relative max-w-full min-w-0 overflow-hidden">
           {/* Unified top header — title + date on the left, primary tab
               navigation on the right. When the Email tab is active, a second
               row beneath surfaces the email sub-tabs and the unread/all
               segmented control so all navigation lives in one cohesive band. */}
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
-            <div className="px-6 pt-4 pb-3 glass-divider-b glass-surface-1 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden min-w-0 max-w-full">
+            <div className="px-6 pt-4 pb-3 glass-divider-b glass-surface-1 space-y-3 max-w-full min-w-0 overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-3 max-w-full min-w-0">
+                <div className="min-w-0 flex-1">
                   <h2 className="text-lg font-bold text-foreground tracking-tight">{title}</h2>
                   <p className="text-xs text-muted-foreground/60 mt-0.5 truncate">
                     {window.label} • {format(new Date(), 'EEEE, MMMM d, yyyy')}
                   </p>
                 </div>
-                <TabsList className="h-auto flex flex-nowrap gap-1 overflow-x-auto whitespace-nowrap max-w-full">
+                <TabsList className="h-auto flex flex-nowrap gap-1 overflow-x-auto whitespace-nowrap max-w-full min-w-0">
                   {TABS.map(tab => {
                     const Icon = tab.icon;
                     return (
