@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef, memo } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Mail } from 'lucide-react';
@@ -117,7 +117,7 @@ async function fetchPage(args: {
   }
 }
 
-export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
+function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   const { status, sendEmail } = useGmail();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -364,7 +364,11 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
       // Kick off background auto-pagination (inbox tail + full sent).
       autoPaginate(firstInbox.nextPageToken);
     })();
-  }, [open, status.connected, hydrateFromCache, mergeUniqueById, autoPaginate, inboxMessages.length]);
+    // `inboxMessages.length` intentionally omitted — `hasLoadedRef` guards
+    // re-entry, and including it would re-evaluate this effect on every
+    // page append during auto-pagination (wasted work, no behavior change).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, status.connected, hydrateFromCache, mergeUniqueById, autoPaginate]);
 
   // On close we tear down the in-flight fetch flags but DELIBERATELY keep
   // local state intact — the next mount re-seeds from the cache store, so
