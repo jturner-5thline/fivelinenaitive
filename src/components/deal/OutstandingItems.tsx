@@ -321,7 +321,15 @@ function KanbanBoard({
   );
 }
 
-export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpdate, onDelete, onBulkAdd, onReorder, teamMembers, onApplyDefaultChecklist }: OutstandingItemsProps) {
+export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOnAdd, onUpdate: rawOnUpdate, onDelete: rawOnDelete, onBulkAdd: rawOnBulkAdd, onReorder: rawOnReorder, teamMembers, onApplyDefaultChecklist, readOnly = false, readOnlyReason }: OutstandingItemsProps) {
+  // When readOnly, neuter all mutators so any leftover handler (kanban
+  // drag, checkbox toggles, etc.) cannot mutate items. Also disable the
+  // top-level add/bulk handlers so banner/empty-state CTAs no-op.
+  const onAdd = readOnly ? (() => {}) : rawOnAdd;
+  const onUpdate = readOnly ? (() => {}) : rawOnUpdate;
+  const onDelete = readOnly ? (() => {}) : rawOnDelete;
+  const onBulkAdd = readOnly ? undefined : rawOnBulkAdd;
+  const onReorder = readOnly ? undefined : rawOnReorder;
   const [newItemText, setNewItemText] = useState('');
   const [newRequestedBy, setNewRequestedBy] = useState<string[]>([]);
   const [newPriority, setNewPriority] = useState<ItemPriority>('normal');
