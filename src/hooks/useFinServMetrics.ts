@@ -59,7 +59,9 @@ export interface FinServInsight {
   message: string;
 }
 
-export function useFinServMetrics(deals: Deal[], stages: DealStageOption[]) {
+const ACTIVE_CLIENT_STAGE = 'fs-active-client';
+
+export function useFinServMetrics(deals: Deal[], stages: DealStageOption[], topClientsLimit: number = 3) {
   const activeDeals = useMemo(() => deals.filter(d => !INACTIVE_STAGES.includes(d.stage)), [deals]);
   const wonDeals = useMemo(() => deals.filter(d => WON_STAGES.includes(d.stage)), [deals]);
   const lostDeals = useMemo(() => deals.filter(d => LOST_STAGES.includes(d.stage)), [deals]);
@@ -122,21 +124,26 @@ export function useFinServMetrics(deals: Deal[], stages: DealStageOption[]) {
     });
   }, [deals, stages]);
 
+  // Top Active Clients: only deals currently in the "Active Client" stage.
+  // Closed Won, Closed Lost, On Hold, Unresponsive, Churned, etc. are
+  // intentionally excluded so this reflects live revenue relationships only.
   const topClients = useMemo<FinServTopClient[]>(() => {
     const clientMap = new Map<string, { count: number; value: number }>();
-    deals.forEach(d => {
-      const name = d.company || d.name;
-      if (!name) return;
-      const existing = clientMap.get(name) || { count: 0, value: 0 };
-      existing.count++;
-      existing.value += d.value || 0;
-      clientMap.set(name, existing);
-    });
+    deals
+      .filter(d => d.stage === ACTIVE_CLIENT_STAGE)
+      .forEach(d => {
+        const name = d.company || d.name;
+        if (!name) return;
+        const existing = clientMap.get(name) || { count: 0, value: 0 };
+        existing.count++;
+        existing.value += d.value || 0;
+        clientMap.set(name, existing);
+      });
     return Array.from(clientMap.entries())
       .map(([name, data]) => ({ name, dealCount: data.count, totalValue: data.value }))
       .sort((a, b) => b.totalValue - a.totalValue || b.dealCount - a.dealCount)
-      .slice(0, 3);
-  }, [deals]);
+      .slice(0, Math.max(1, topClientsLimit));
+  }, [deals, topClientsLimit]);
 
   const insights = useMemo<FinServInsight[]>(() => {
     const result: FinServInsight[] = [];
