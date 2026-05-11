@@ -162,17 +162,12 @@ export function useMonthlyEntityProfit(entityName: string, quarterMonths: MonthD
   const isLoading = lR || fR || lI || fI || lE || fE || lB || fB || lA || fA;
 
   return useMemo(() => {
-    // Index P&L reports by exact bucket boundary (accrual basis only).
-    const reportByKey = new Map<string, any>();
-    for (const r of reports ?? []) {
-      const data: any = r.report_data;
-      const basis = data?.Header?.ReportBasis;
-      if (basis && basis !== 'Accrual') continue;
-      const bucket = buckets.find(
-        (b) => b.start === r.period_start && b.end === r.period_end,
-      );
-      if (bucket) reportByKey.set(bucket.key, data);
-    }
+    // Profit must always represent THAT month's standalone result —
+    // never a YTD or rolling sum. We therefore compute every bucket
+    // directly from its month's transactions and intentionally ignore
+    // any cached P&L reports (which can be YTD/quarterly and would
+    // otherwise leak prior-month totals into a single bar).
+    void reports; // kept queried so cache stays warm; not used for math
 
     // Build classification map: accountId -> classification.
     const classificationById = new Map<string, string>();
@@ -202,19 +197,6 @@ export function useMonthlyEntityProfit(entityName: string, quarterMonths: MonthD
     }
 
     const months: ProfitMonthBucket[] = buckets.map((b) => {
-      const report = reportByKey.get(b.key);
-      if (report) {
-        const income = extractGroupValue(report, 'Income') ?? 0;
-        const expensesTotal = extractGroupValue(report, 'Expenses') ?? 0;
-        const netIncome = extractGroupValue(report, 'NetIncome');
-        return {
-          label: b.label,
-          key: b.key,
-          revenue: income,
-          expenses: expensesTotal,
-          profit: netIncome ?? income - expensesTotal,
-        };
-      }
       const revenue = txnRevenue.get(b.key) ?? 0;
       const exp = txnExpenses.get(b.key) ?? 0;
       return { label: b.label, key: b.key, revenue, expenses: exp, profit: revenue - exp };
