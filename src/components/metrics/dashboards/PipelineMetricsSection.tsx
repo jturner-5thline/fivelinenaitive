@@ -116,6 +116,11 @@ export function PipelineDrilldownModal({
   deals: StageEntryDeal[];
 }) {
   const total = deals.reduce((s, d) => s + d.value, 0);
+  // Surface MRR breakdown when any deal in the drilldown carries MRR
+  // (FinServ widgets populate this; Debt widgets do not).
+  const showMrr = deals.some(d => typeof d.mrr === 'number' && d.mrr > 0);
+  const totalMrr = deals.reduce((s, d) => s + (d.mrr ?? 0), 0);
+  const mrrContributors = deals.filter(d => (d.mrr ?? 0) > 0).length;
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -134,6 +139,14 @@ export function PipelineDrilldownModal({
           <Badge variant="secondary" className="text-xs font-mono">
             {formatCurrencyFull(total)}
           </Badge>
+          {showMrr && (
+            <Badge variant="secondary" className="text-xs font-mono">
+              MRR {formatCurrencyMM(totalMrr)}
+              <span className="ml-1 font-normal text-muted-foreground">
+                ({mrrContributors} of {deals.length})
+              </span>
+            </Badge>
+          )}
           <span className="text-xs text-muted-foreground">Filtered by selected period</span>
         </div>
 
@@ -146,6 +159,9 @@ export function PipelineDrilldownModal({
                 <tr className="border-b bg-muted/30">
                   <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Deal / Company</th>
                   <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Amount</th>
+                  {showMrr && (
+                    <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">MRR</th>
+                  )}
                   <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Current Stage</th>
                   <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Entered</th>
                   <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Owner</th>
@@ -158,6 +174,15 @@ export function PipelineDrilldownModal({
                     <td className="px-3 py-2 text-xs text-right font-mono">
                       {formatCurrencyFull(deal.value)}
                     </td>
+                    {showMrr && (
+                      <td className="px-3 py-2 text-xs text-right font-mono">
+                        {(deal.mrr ?? 0) > 0 ? (
+                          formatCurrencyMM(deal.mrr ?? 0)
+                        ) : (
+                          <span className="text-muted-foreground/50">—</span>
+                        )}
+                      </td>
+                    )}
                     <td className="px-3 py-2 text-xs text-muted-foreground">
                       {deal.current_stage?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || '—'}
                     </td>
@@ -174,6 +199,11 @@ export function PipelineDrilldownModal({
                   <td className="px-3 py-2 text-xs text-right font-mono font-bold">
                     {formatCurrencyFull(total)}
                   </td>
+                  {showMrr && (
+                    <td className="px-3 py-2 text-xs text-right font-mono font-bold">
+                      {formatCurrencyMM(totalMrr)}
+                    </td>
+                  )}
                   <td colSpan={3} />
                 </tr>
               </tfoot>
