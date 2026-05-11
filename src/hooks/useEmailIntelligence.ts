@@ -191,7 +191,7 @@ export function useEmailIntelligence() {
     // Demo: bypass DB cache + AI analysis. Render the seeded mock inbox
     // with pre-baked analysis directly so storyline is deterministic.
     if (isDemoUserEmail(user.email)) {
-      const result = await listMessages({ maxResults: 50 });
+      const result = await listMessages({ maxResults: 100 });
       const msgs = (result?.messages || []) as any[];
       const enriched: EnrichedEmail[] = msgs.map((m) => {
         const baked = DEMO_EMAIL_ANALYSIS[m.id];
