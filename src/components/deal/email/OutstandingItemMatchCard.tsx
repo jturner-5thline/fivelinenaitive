@@ -492,6 +492,12 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
             priority: suggestion.priority,
             source_quote: suggestion.source_quote,
             confidence: suggestion.confidence,
+            requested_by_lender_name:
+              (suggestion as any).requested_by_lender_name || lenderName || null,
+            source_message_id:
+              (suggestion as any).source_message_id ||
+              thread.latestEmail?.id ||
+              null,
             confirmed_at: new Date().toISOString(),
           },
         );
@@ -508,6 +514,82 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
       }
     } finally {
       setWorking((w) => ({ ...w, [dismissKey]: false }));
+    }
+  };
+
+  /**
+   * Add every selected suggestion in a grouped lender-request list as a
+   * separate outstanding item, in document order. Sequential to preserve
+   * order; failures don't block remaining items.
+   */
+  const handleAddGroup = async (
+    groupId: string,
+    items: typeof visibleNewItemSuggestions,
+  ) => {
+    if (!dealId) return;
+    const selected = getGroupSelected(groupId, items.length);
+    const toAdd = items.filter((_, i) => selected.has(i));
+    if (toAdd.length === 0) return;
+    const workingKey = `group:${groupId}`;
+    setWorking((w) => ({ ...w, [workingKey]: true }));
+    let added = 0;
+    try {
+      for (const suggestion of toAdd) {
+        const mappedPriority: 'urgent' | 'high' | 'normal' =
+          suggestion.priority === 'urgent'
+            ? 'urgent'
+            : suggestion.priority === 'high'
+              ? 'high'
+              : 'normal';
+        const created = await addItem(suggestion.description, [], mappedPriority);
+        if (created) {
+          added += 1;
+          await logAuditAction(
+            'outstanding_item_added_from_email',
+            'outstanding_item',
+            created.id,
+            suggestion.description,
+            {
+              source: 'ai_assist_email_group',
+              thread_id: thread.threadId,
+              thread_subject: thread.subject || null,
+              from_name: thread.latestEmail?.from_name || null,
+              from_email: thread.latestEmail?.from_email || null,
+              due_date: suggestion.due_date,
+              priority: suggestion.priority,
+              source_quote: suggestion.source_quote,
+              confidence: suggestion.confidence,
+              requested_by_lender_name:
+                (suggestion as any).requested_by_lender_name || lenderName || null,
+              source_message_id:
+                (suggestion as any).source_message_id ||
+                thread.latestEmail?.id ||
+                null,
+              group_id: groupId,
+              group_size: items.length,
+              confirmed_at: new Date().toISOString(),
+            },
+          );
+        }
+      }
+      if (added > 0) {
+        toast.success(`Added ${added} outstanding item${added === 1 ? '' : 's'} to ${dealName || 'deal'}`);
+      }
+      // Dismiss all items in this group regardless of partial failures —
+      // the audit trail captures what got created.
+      setDismissed((d) => {
+        const n = new Set(d);
+        items.forEach((s) => {
+          const idxInVisible = visibleNewItemSuggestions.indexOf(s);
+          n.add(`new:${idxInVisible}:${s.description}`);
+        });
+        return n;
+      });
+    } catch (err) {
+      console.error('[OutstandingItemMatchCard] group add failed:', err);
+      if (added === 0) toast.error('Could not add outstanding items');
+    } finally {
+      setWorking((w) => ({ ...w, [workingKey]: false }));
     }
   };
 
