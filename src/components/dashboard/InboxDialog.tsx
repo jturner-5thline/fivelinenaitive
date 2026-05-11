@@ -190,19 +190,58 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
     return additions.length ? [...existing, ...additions] : existing;
   }, []);
 
-  // Load fallback from local cache when API returns nothing on first load
-  const hydrateFromCache = useCallback(async () => {
-    if (!user) return;
-    const { data: cached } = await supabase
+  // ─── Cursor-based pagination ──────────────────────────────────────
+  // Upstream (Gmail/Nylas) is already cursor-based via opaque
+  // `page_token`s. The edge case the inbox needs to defend against is
+  // *new mail arriving while the user is paginating*: relying on offsets
+  // or "load more from position N" would skip or duplicate rows because
+  // the top of the inbox shifts. Opaque tokens handle this for us, but
+  // the local cache fallback (`email_cache`) was previously offset-based
+  // (`.limit(200)` with no anchor) which had the exact problem.
+  //
+  // We now keep a derived `oldestReceivedAt` cursor — the timestamp of
+  // the oldest currently-loaded message — and use it as a stable anchor
+  // for the cache-backed "load older" path. Combined with the upstream
+  // page_token, every page request is anchored to a fixed point in time
+  // and is immune to inserts at the top.
+  const oldestReceivedAt = useMemo(() => {
+    if (inboxMessages.length === 0) return null;
+    let oldest: string | null = null;
+    for (const m of inboxMessages) {
+      const t = m.received_at as string | undefined;
+      if (!t) continue;
+      if (!oldest || t < oldest) oldest = t;
+    }
+    return oldest;
+  }, [inboxMessages]);
+
+  // Load older rows from the local DB cache using a `received_at` cursor
+  // instead of offset/limit. Used both as the cold-open fallback (no
+  // cursor → newest 200) and as the secondary "load older" path when the
+  // upstream Gmail token is exhausted or rate-limited.
+  const loadOlderFromCache = useCallback(async (
+    beforeReceivedAt: string | null,
+    limit = 200,
+  ) => {
+    if (!user) return [] as any[];
+    let q = supabase
       .from('email_cache')
       .select('*')
       .eq('user_id', user.id)
       .order('received_at', { ascending: false })
-      .limit(200);
-    if (cached?.length && isMountedRef.current) {
+      .limit(limit);
+    if (beforeReceivedAt) q = q.lt('received_at', beforeReceivedAt);
+    const { data: cached } = await q;
+    return cached || [];
+  }, [user]);
+
+  // Cold-open fallback: hydrate the newest cached rows.
+  const hydrateFromCache = useCallback(async () => {
+    const cached = await loadOlderFromCache(null, 200);
+    if (cached.length && isMountedRef.current) {
       setCachedInboxEmails(cached);
     }
-  }, [user]);
+  }, [loadOlderFromCache]);
 
   // Auto-paginate the inbox (and then the sent folder) until exhausted or until
   // the safety cap is hit. Sequential to avoid Nylas rate limits.
