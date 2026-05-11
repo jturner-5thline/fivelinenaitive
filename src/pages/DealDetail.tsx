@@ -3609,6 +3609,30 @@ export default function DealDetail() {
                                 onBulkAdd={bulkAddOutstandingItemsDb}
                                 onReorder={reorderOutstandingItemsDb}
                                 teamMembers={teamMembers}
+                                onApplyDefaultChecklist={async () => {
+                                  if (!company?.id || !user?.id || !deal?.id) return;
+                                  const r = await applyDefaultChecklistToOutstandingItems(
+                                    deal.id,
+                                    deal.dealTypes || [],
+                                    company.id,
+                                    user.id,
+                                  );
+                                  await refreshOutstandingItems();
+                                  if (r.inserted > 0) {
+                                    toast({
+                                      title: 'Checklist applied',
+                                      description: `Added ${r.inserted} item${r.inserted !== 1 ? 's' : ''} from ${r.sourceLabel}.`,
+                                    });
+                                  } else {
+                                    toast({
+                                      title: 'Nothing to add',
+                                      description: r.source === 'none'
+                                        ? 'No checklist is configured in Settings → Deals → Data Room Checklists.'
+                                        : 'All checklist items already exist on this deal.',
+                                      variant: 'destructive',
+                                    });
+                                  }
+                                }}
                               />
                             </div>
                           );
