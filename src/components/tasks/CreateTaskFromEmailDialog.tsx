@@ -66,18 +66,9 @@ export function CreateTaskFromEmailDialog({ open, onOpenChange, email }: Props) 
   }, [email]);
 
   // Strip raw HTML tags / collapse <br> from snippets so the textarea
-  // shows clean prose instead of escaped markup.
-  const cleanSnippet = (raw: string) =>
-    raw
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/?[^>]+>/g, '')
-      .replace(/&nbsp;/gi, ' ')
-      .replace(/&amp;/gi, '&')
-      .replace(/&lt;/gi, '<')
-      .replace(/&gt;/gi, '>')
-      .replace(/[ \t]+\n/g, '\n')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
+  // shows clean prose instead of escaped markup. Implementation lives in
+  // src/lib/emailNotesCleanup.ts and is unit-tested there.
+  const cleanSnippet = cleanEmailSnippet;
 
   useEffect(() => {
     if (!open || !email) return;
