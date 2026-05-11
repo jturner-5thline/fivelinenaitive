@@ -267,7 +267,7 @@ export default function NaitivePipeline() {
         .toLowerCase();
       return haystack.includes(q);
     });
-  }, [deals, searchQuery, stageLabelById, naitiveFilters]);
+  }, [deals, searchQuery, stageLabelById, naitiveFilters.apply]);
 
   const goTo = useCallback((target: 0 | 1) => {
     if (target === activeView) return;
