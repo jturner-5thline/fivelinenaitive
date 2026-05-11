@@ -706,9 +706,9 @@ serve(async (req: Request): Promise<Response> => {
           .insert({
             user_id: user.id,
             gmail_message_id: sentMsg.id || "unknown",
-            to_emails: to,
-            cc_emails: cc || [],
-            bcc_emails: bcc || [],
+            to_emails: toList,
+            cc_emails: ccList,
+            bcc_emails: bccList,
             subject,
             body_text: body,
             body_html,
