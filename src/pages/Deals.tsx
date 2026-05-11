@@ -939,6 +939,33 @@ export default function Dashboard() {
                 className="opacity-0"
                 style={{ animation: 'fadeInUp 0.4s ease-out 0.3s forwards' }}
               >
+              {/*
+                Flagged-filter context banner — renders ONLY when the
+                flag filter is on. Computed from the unfiltered deal set
+                so users can see how many flagged deals are currently
+                hidden by their pipeline / archive scope. Filter logic
+                itself is untouched.
+              */}
+              {filters.flaggedOnly && (() => {
+                const flagged = pipelineFilteredDeals.filter(d => d.isFlagged);
+                const total = flagged.length;
+                if (total === 0) return null;
+                const archived = flagged.filter(
+                  d => d.status === 'archived' || d.stage === 'closed-lost'
+                ).length;
+                const active = total - archived;
+                return (
+                  <div className="mb-3 rounded-md border border-red-500/30 bg-gradient-to-r from-red-500/10 to-red-900/5 px-3 py-2 text-xs text-red-300 flex items-center gap-2">
+                    <Flag className="h-3.5 w-3.5 shrink-0" />
+                    <span>
+                      Showing <strong className="font-semibold text-red-200">{total}</strong> flagged deal{total === 1 ? '' : 's'}.{' '}
+                      <strong className="font-semibold text-red-200">{active}</strong> active,{' '}
+                      <strong className="font-semibold text-red-200">{archived}</strong> archived.
+                    </span>
+                  </div>
+                );
+              })()}
+
               {showDuplicates && is5thLine ? (
                 <DuplicatesView clusters={duplicateClusters} onMerge={handleOpenMerge} onDealDeleted={refreshDeals} onNotDuplicate={suppressCluster} />
               ) : showMilestones ? (
