@@ -3760,6 +3760,8 @@ export default function DealDetail() {
                   )}
 
 
+                  </>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="lenders" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`lenders-${tabDirection}`}>
