@@ -1,7 +1,13 @@
 import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
-import type { Deal, DealLender } from '@/types/deal';
+import { ChevronDown, StickyNote, Check } from 'lucide-react';
+import type { Deal, DealLender, LenderTrackingStatus } from '@/types/deal';
+import { LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { useDealsContext } from '@/contexts/DealsContext';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 interface LendersPanelProps {
@@ -30,6 +36,171 @@ const BUCKET_META: Record<
 };
 
 const VISIBLE_PER_BUCKET = 2;
+
+const STATUS_OPTIONS: { value: LenderTrackingStatus; label: string }[] = [
+  { value: 'active', label: 'Reviewing' },
+  { value: 'on-deck', label: 'On deck' },
+  { value: 'on-hold', label: 'On hold' },
+  { value: 'passed', label: 'Passed' },
+];
+
+function LenderRow({
+  lender,
+  meta,
+}: {
+  lender: DealLender;
+  meta: typeof BUCKET_META[Bucket];
+}) {
+  const { updateLender } = useDealsContext();
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [noteDraft, setNoteDraft] = useState(lender.notes || '');
+  const [saving, setSaving] = useState(false);
+  const hasNote = !!(lender.notes && lender.notes.trim().length > 0);
+
+  const handleStatusChange = async (next: LenderTrackingStatus) => {
+    setStatusOpen(false);
+    if (next === lender.trackingStatus) return;
+    try {
+      await updateLender(lender.id, { trackingStatus: next });
+      toast.success('Lender status updated');
+    } catch {
+      toast.error('Failed to update lender status');
+    }
+  };
+
+  const handleSaveNote = async () => {
+    setSaving(true);
+    try {
+      await updateLender(lender.id, { notes: noteDraft.trim() });
+      toast.success('Lender note saved');
+      setNotesOpen(false);
+    } catch {
+      toast.error('Failed to save lender note');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="flex items-center gap-2"
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${meta.dot}`} />
+      <span className="flex-1 text-xs text-foreground truncate" title={lender.name}>
+        {lender.name}
+      </span>
+
+      <Popover
+        open={notesOpen}
+        onOpenChange={(o) => {
+          setNotesOpen(o);
+          if (o) setNoteDraft(lender.notes || '');
+        }}
+      >
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label={hasNote ? 'Edit lender note' : 'Add lender note'}
+            title={hasNote ? lender.notes || 'Edit note' : 'Add note'}
+            className={cn(
+              'shrink-0 inline-flex items-center justify-center h-5 w-5 rounded-full hover:bg-muted/60 transition-colors',
+              hasNote ? 'text-primary' : 'text-muted-foreground/60 hover:text-foreground'
+            )}
+          >
+            <StickyNote className="h-3 w-3" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          className="w-72 p-3 pointer-events-auto"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+            {lender.name} · note
+          </div>
+          <Textarea
+            value={noteDraft}
+            onChange={(e) => setNoteDraft(e.target.value)}
+            placeholder="Add a note about this lender…"
+            rows={4}
+            className="text-xs resize-none"
+          />
+          <div className="flex items-center justify-end gap-2 mt-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setNotesOpen(false)}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button type="button" size="sm" onClick={handleSaveNote} disabled={saving}>
+              {saving ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      <Popover open={statusOpen} onOpenChange={setStatusOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label="Change lender status"
+            title="Change status"
+            className="shrink-0"
+          >
+            <Badge
+              variant={meta.badgeVariant}
+              className="text-[9px] px-1.5 py-0 rounded-full cursor-pointer hover:brightness-110"
+            >
+              {meta.pillLabel}
+            </Badge>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          className="w-40 p-1 pointer-events-auto"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <div className="flex flex-col">
+            {STATUS_OPTIONS.map((opt) => {
+              const selected = lender.trackingStatus === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => handleStatusChange(opt.value)}
+                  className={cn(
+                    'flex items-center justify-between gap-2 px-2 py-1.5 text-xs rounded-sm hover:bg-muted text-left',
+                    selected && 'text-primary font-medium'
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        'h-1.5 w-1.5 rounded-full',
+                        LENDER_TRACKING_STATUS_CONFIG[opt.value]?.color || 'bg-muted'
+                      )}
+                    />
+                    {opt.label}
+                  </span>
+                  {selected && <Check className="h-3.5 w-3.5" />}
+                </button>
+              );
+            })}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
 
 export function LendersPanel({ deal }: LendersPanelProps) {
   const [expanded, setExpanded] = useState(false);
@@ -79,18 +250,7 @@ export function LendersPanel({ deal }: LendersPanelProps) {
                 </div>
                 <div className="space-y-1">
                   {shown.map(l => (
-                    <div key={l.id} className="flex items-center gap-2">
-                      <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${meta.dot}`} />
-                      <span
-                        className="flex-1 text-xs text-foreground truncate"
-                        title={l.name}
-                      >
-                        {l.name}
-                      </span>
-                      <Badge variant={meta.badgeVariant} className="text-[9px] px-1.5 py-0 rounded-full">
-                        {meta.pillLabel}
-                      </Badge>
-                    </div>
+                    <LenderRow key={l.id} lender={l} meta={meta} />
                   ))}
                   {hidden.length > 0 && (
                     <button
