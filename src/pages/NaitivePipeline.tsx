@@ -4,7 +4,7 @@ import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronLeft, ChevronRight, 
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { useNaitivePipelineData } from '@/hooks/useNaitivePipelineData';
 import { useNaitivePipelineMetrics } from '@/hooks/useNaitivePipelineMetrics';
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Deal, DealStatus } from '@/types/deal';
@@ -267,7 +267,7 @@ export default function NaitivePipeline() {
     });
   }, [navigate, searchParams]);
 
-  useMemo(() => {
+  useEffect(() => {
     const viewParam = searchParams.get('view');
     if (viewParam === 'pipeline' && activeView !== 1) {
       setActiveView(1);
@@ -276,7 +276,7 @@ export default function NaitivePipeline() {
     }
   }, [activeView, searchParams]);
 
-  useMemo(() => {
+  useEffect(() => {
     const nextParams = new URLSearchParams(searchParams);
     if (activeView === 1) {
       nextParams.set('view', 'pipeline');
