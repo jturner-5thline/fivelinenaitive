@@ -641,3 +641,9 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
     </Dialog>
   );
 }
+
+// Memoize the dialog: the dashboard re-renders frequently for unrelated
+// reasons (carousel state, toggles, layout). Without this, every parent
+// render walks the inbox subtree even when `open` and `onOpenChange` are
+// referentially stable.
+export const InboxDialog = memo(InboxDialogImpl);
