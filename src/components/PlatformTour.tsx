@@ -370,16 +370,11 @@ export function PlatformTour() {
       const isDemo = user.email === 'demo@example.com';
       setIsDemoUser(isDemo);
 
-      const demoTourShownThisSession = sessionStorage.getItem('demo-tour-shown-this-session');
-      const savedStep = Number(localStorage.getItem(STEP_INDEX_KEY) || '0') || 0;
-
+      // Demo accounts get the tour every fresh browser session (sandboxed walkthrough).
       if (isDemo) {
         setShouldShowTour(true);
-        if (!demoTourShownThisSession) {
-          localStorage.removeItem('tour-completed');
-          localStorage.removeItem('dismissed-hints');
-          localStorage.removeItem('hints-fully-dismissed');
-          localStorage.removeItem(STEP_INDEX_KEY);
+        const demoShown = sessionStorage.getItem('demo-tour-shown-this-session');
+        if (!demoShown) {
           sessionStorage.setItem('demo-tour-shown-this-session', 'true');
           setCurrentStep(0);
           setTimeout(() => setShowTour(true), 500);
@@ -387,48 +382,43 @@ export function PlatformTour() {
         return;
       }
 
-      // userId-scoped local flag — instant suppression, no cross-account bleed.
-      const localKey = `naitive_tour_done_${user.id}`;
-      setShouldShowTour(true);
-
-      // 1) localStorage first: if already seen on this device, never show again.
-      if (localStorage.getItem(localKey) || localStorage.getItem('naitive_guide_shown') === 'true') {
-        return;
-      }
-
-      // 2) DB check: if the query fails, assume returning user and DO NOT show.
+      // Real users: DB is the single source of truth. Per-user, per-account.
+      // No localStorage suppression — would falsely suppress on a new device.
       const { data: profile, error: profileErr } = await supabase
         .from('profiles')
-        .select('onboarding_completed, tour_completed_at')
+        .select('tour_completed_at')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (profileErr) {
+        // Be conservative: if we can't read the profile, do NOT auto-show
+        // (avoids re-firing on every refresh during a transient outage).
         console.warn('[PlatformTour] profile lookup failed; suppressing tour:', profileErr.message);
-        localStorage.setItem(localKey, 'true');
         return;
       }
 
       const tourAlreadyCompleted = !!(profile as { tour_completed_at?: string | null } | null)?.tour_completed_at;
       if (tourAlreadyCompleted) {
-        localStorage.setItem(localKey, 'true');
+        setShouldShowTour(false);
         return;
       }
 
-      // First-time user — show the tour, but mark the local flag BEFORE showing
-      // so a re-mount, a failed DB write, or any race cannot re-fire the modal.
-      localStorage.setItem(localKey, 'true');
-      localStorage.setItem('naitive_guide_shown', 'true');
-      setCurrentStep(savedStep);
+      // First-time auto-run for this account.
+      // Persist tour_completed_at IMMEDIATELY (before the modal opens) so a
+      // refresh, remount, second tab, or another device can never re-trigger
+      // the auto-launch. Manual replay from Help/Settings stays available
+      // because it dispatches `restart-platform-tour` directly and does NOT
+      // clear this flag.
+      setShouldShowTour(true);
+      setCurrentStep(0);
       setTimeout(() => setShowTour(true), 500);
-      sessionStorage.removeItem('just-completed-onboarding');
 
       const { error: updateErr } = await supabase
         .from('profiles')
         .update({ tour_completed_at: new Date().toISOString() })
         .eq('user_id', user.id);
       if (updateErr) {
-        console.warn('[PlatformTour] failed to persist tour_completed_at; localStorage flag will prevent re-fire:', updateErr.message);
+        console.warn('[PlatformTour] failed to persist tour_completed_at:', updateErr.message);
       }
     };
     checkTourEligibility();
