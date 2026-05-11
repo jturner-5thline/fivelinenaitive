@@ -149,8 +149,17 @@ export default function Notifications() {
   const allStaleAlerts = getStaleDealAlerts(deals, appPreferences.lenderUpdateYellowDays);
   
   // Filter based on preferences
-  const staleAlerts = shouldShowStaleAlerts ? allStaleAlerts : [];
-  const filteredActivities = activities.filter(a => shouldShowActivity(a.activity_type));
+  const prefStaleAlerts = shouldShowStaleAlerts ? allStaleAlerts : [];
+  const prefActivities = activities.filter(a => shouldShowActivity(a.activity_type));
+  // Apply active-deals-only filter
+  const staleAlerts = activeOnly
+    ? prefStaleAlerts.filter(a => !isInactiveDeal(a.dealId))
+    : prefStaleAlerts;
+  const filteredActivities = activeOnly
+    ? prefActivities.filter(a => !isInactiveDeal(a.deal_id))
+    : prefActivities;
+  const hiddenInactiveCount =
+    (prefStaleAlerts.length - staleAlerts.length) + (prefActivities.length - filteredActivities.length);
   
   // Count unread notifications
   const unreadAlerts = staleAlerts.filter(a => !isRead('stale_alert', a.dealId));
