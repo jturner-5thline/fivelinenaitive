@@ -185,10 +185,12 @@ export default function NaitivePipeline() {
   const { kpis, funnelData, agingData, healthMix, trendData, notifications, recommendations, hurdles } = useNaitivePipelineMetrics(deals, stages);
   const { history: stageHistory } = useNaitiveStageHistory(pipelineId);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const dealIds = useMemo(() => deals.map(d => d.id), [deals]);
   const { getMilestonesForDeal, toggleMilestone } = useNaitiveStageMilestones(dealIds);
+  const initialView = searchParams.get('view') === 'pipeline' ? 1 : 0;
 
-  const [activeView, setActiveView] = useState<0 | 1>(0);
+  const [activeView, setActiveView] = useState<0 | 1>(initialView);
   const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
   const [activeDealId, setActiveDealId] = useState<string | null>(null);
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
@@ -250,6 +252,44 @@ export default function NaitivePipeline() {
     setActiveView(target);
     setTimeout(() => setSlideDirection(null), 350);
   }, [activeView]);
+
+  const openDealFromPipeline = useCallback((deal: Deal) => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('view', 'pipeline');
+
+    navigate(`/deal/${deal.id}`, {
+      state: {
+        dealOrigin: {
+          label: 'Back to Naitive Pipeline',
+          returnTo: `/naitive-pipeline?${nextParams.toString()}`,
+        },
+      },
+    });
+  }, [navigate, searchParams]);
+
+  useMemo(() => {
+    const viewParam = searchParams.get('view');
+    if (viewParam === 'pipeline' && activeView !== 1) {
+      setActiveView(1);
+    } else if (viewParam !== 'pipeline' && activeView !== 0) {
+      setActiveView(0);
+    }
+  }, [activeView, searchParams]);
+
+  useMemo(() => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (activeView === 1) {
+      nextParams.set('view', 'pipeline');
+    } else {
+      nextParams.delete('view');
+    }
+
+    const current = searchParams.toString();
+    const next = nextParams.toString();
+    if (current !== next) {
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [activeView, searchParams, setSearchParams]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -340,7 +380,7 @@ export default function NaitivePipeline() {
               fullscreen={fullscreen}
               getMilestonesForDeal={getMilestonesForDeal}
               onToggleMilestone={toggleMilestone}
-              onOpenEdit={(d) => navigate(`/deal/${d.id}`)}
+              onOpenEdit={openDealFromPipeline}
             />
           ))}
         </div>
