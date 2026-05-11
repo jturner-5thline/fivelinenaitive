@@ -82,13 +82,6 @@ function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleM
   const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: deal.id, data: { deal } });
   const style = { transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.5 : 1 };
 
-  const openDeal = () => {
-    if (import.meta.env.DEV) {
-      console.info('[NaitivePipeline] deal tile click', { dealId: deal.id, company: deal.company || deal.name });
-    }
-    onOpenEdit(deal);
-  };
-
   return (
     <div
       ref={setNodeRef}
@@ -96,13 +89,13 @@ function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleM
       className="relative w-full min-w-0 touch-none rounded-xl"
       onClick={(e) => {
         if (shouldIgnoreCardOpen(e.target, e.currentTarget)) return;
-        openDeal();
+        onOpenEdit(deal);
       }}
       onKeyDown={(e) => {
         if (shouldIgnoreCardOpen(e.target, e.currentTarget)) return;
         if (e.key !== 'Enter' && e.key !== ' ') return;
         e.preventDefault();
-        openDeal();
+        onOpenEdit(deal);
       }}
       role="button"
       tabIndex={0}
@@ -200,7 +193,6 @@ export default function NaitivePipeline() {
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [editDeal, setEditDeal] = useState<Deal | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -600,19 +592,6 @@ export default function NaitivePipeline() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Edit Deal Dialog */}
-      {editDeal && pipelineId && (
-        <CreateNaitiveDealDialog
-          deal={editDeal}
-          open={!!editDeal}
-          onOpenChange={(o) => { if (!o) setEditDeal(null); }}
-          pipelineId={pipelineId}
-          stages={stages}
-          onCreated={() => { setEditDeal(null); refetch(); }}
-        />
-      )}
-
     </>
   );
 }
