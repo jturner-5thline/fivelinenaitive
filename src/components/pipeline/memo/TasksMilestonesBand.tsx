@@ -67,8 +67,11 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
   const queryClient = useQueryClient();
   const { company } = useCompany();
   const milestone = nextUpcomingMilestone(deal.milestones);
-  const visibleTasks = tasks.slice(0, 4);
+  const visibleTasks = tasks;
   const hasContent = visibleTasks.length > 0 || !!milestone;
+  // Show ~2 rows by default; scroll the rest. Each row ≈ 36px + 6px gap.
+  const totalItems = visibleTasks.length + (milestone ? 1 : 0);
+  const isScrollable = totalItems > 2;
   // The "+" add control is anchored to the bottom-most actionable row in
   // the rendered list. Milestone is rendered after tasks, so if present it
   // owns the inline plus; otherwise the final visible task row does.
@@ -219,6 +222,13 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
           No outstanding tasks or milestones.
         </p>
       ) : (
+        <div
+          className={cn(
+            'relative -mr-1 pr-1',
+            isScrollable &&
+              'max-h-[5.25rem] overflow-y-auto rounded-md ring-1 ring-border/50 bg-background/30 p-1 tasks-scroll-shell'
+          )}
+        >
         <div className="space-y-1.5">
           {visibleTasks.map((task, idx) => {
             const dueDate = task.dueDate ? new Date(task.dueDate) : null;
@@ -416,11 +426,6 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
               </div>
             );
           })}
-          {tasks.length > visibleTasks.length && (
-            <div className="text-[10px] text-muted-foreground pl-1">
-              +{tasks.length - visibleTasks.length} more
-            </div>
-          )}
           {milestone && (
             <div className="grid items-center gap-2 grid-cols-[1fr_28px]">
               <div className="min-w-0 flex items-center gap-2.5 rounded-md bg-primary/10 border border-primary/20 px-2.5 py-1.5">
@@ -440,6 +445,10 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
               </div>
             </div>
           )}
+        </div>
+        {isScrollable && (
+          <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-4 -mt-4 bg-gradient-to-t from-muted/80 to-transparent rounded-b-md" />
+        )}
         </div>
       )}
 
