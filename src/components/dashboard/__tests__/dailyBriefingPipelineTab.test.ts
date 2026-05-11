@@ -24,7 +24,7 @@ describe('DailyBriefingModal.tsx — Pipeline tab Grid removal', () => {
     'utf8',
   );
   const memoCardSource = readFileSync(
-    resolve(__dirname, '../memo/PipelineMemoCard.tsx'),
+    resolve(__dirname, '../../pipeline/memo/PipelineMemoCard.tsx'),
     'utf8',
   );
 
