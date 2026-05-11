@@ -1115,10 +1115,39 @@ function NeuralNetwork() {
         <meshBasicMaterial color="#6d28d9" transparent opacity={0.15} />
       </mesh>
       
-      {/* Nucleus main body - slightly irregular */}
+      {/* Nucleus main body — soft cyan gradient interior (airy, low opacity) */}
       <mesh ref={nucleusRef} position={[0, 0, 0]}>
-        <sphereGeometry args={[0.28, 24, 24]} />
-        <meshBasicMaterial color="#a78bfa" transparent opacity={0.35} />
+        <sphereGeometry args={[0.28, 48, 48]} />
+        <meshBasicMaterial
+          color="#a5f3fc"
+          transparent
+          opacity={0.07}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* Inner gradient highlight — brighter cyan core fading outward */}
+      <mesh position={[0, 0, 0]}>
+        <sphereGeometry args={[0.18, 32, 32]} />
+        <meshBasicMaterial
+          color="#67e8f9"
+          transparent
+          opacity={0.12}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* Cyan rim/border — backside additive creates a luminous outline */}
+      <mesh position={[0, 0, 0]}>
+        <sphereGeometry args={[0.295, 64, 64]} />
+        <meshBasicMaterial
+          color="#22d3ee"
+          transparent
+          opacity={0.38}
+          side={THREE.BackSide}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
       </mesh>
       
       {/* Chromatin network - tangled strand-like structures */}
