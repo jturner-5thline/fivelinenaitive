@@ -392,6 +392,7 @@ export default function NaitivePipeline() {
       <Helmet>
         <title>naitive Pipeline | naitive</title>
       </Helmet>
+      <NaitiveCatchUpCard />
       <div className="bg-transparent">
         <DashboardPage
           padding="sm"
