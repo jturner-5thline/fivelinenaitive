@@ -1,15 +1,8 @@
-import { useMemo } from 'react';
-import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Calendar as CalendarIcon, ChevronDown, Loader2, Check } from 'lucide-react';
 import { useIsFetching } from '@tanstack/react-query';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
   reportingPeriodHelpers,
@@ -18,65 +11,28 @@ import {
 } from '@/contexts/InsightsTimeframeContext';
 
 /**
- * Single executive-friendly timeframe dropdown.
+ * Premium dashboard timeframe picker.
  *
- * Options:
- *   • YTD, Last 3 / 6 / 12 Months  (rolling)
- *   • Specific Quarter (Q1 2026, Q2 2026, …)
- *   • Specific Month (Apr 2026, Mar 2026, …)
- *
- * Drives the entire dashboard via `useInsightsTimeframe`. There is no
- * day-level or arbitrary calendar selector.
+ * Layout (single popover, no long scrolling):
+ *  - Top row: rolling presets (YTD, Last 3/6/12 Months) as segmented buttons.
+ *  - Middle: Quarter selector — year row + 4 quarter chips per year.
+ *  - Bottom: Month selector — year row + 12-month grid (4 cols × 3 rows).
  */
 
-type Token =
-  | `tf:${InsightsTimeframeId}`
-  | `month:${string}` // YYYY-MM
-  | `quarter:${string}`; // YYYY-Qn
-
-const ROLLING: { token: Token; label: string }[] = [
-  { token: 'tf:ytd',     label: 'Year to Date (YTD)' },
-  { token: 'tf:last3m',  label: 'Last 3 Months' },
-  { token: 'tf:last6m',  label: 'Last 6 Months' },
-  { token: 'tf:last12m', label: 'Last 12 Months' },
+const ROLLING: { id: InsightsTimeframeId; label: string }[] = [
+  { id: 'ytd',     label: 'YTD' },
+  { id: 'last3m',  label: 'Last 3M' },
+  { id: 'last6m',  label: 'Last 6M' },
+  { id: 'last12m', label: 'Last 12M' },
 ];
+
+const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 function pad(n: number) { return String(n).padStart(2, '0'); }
 
-function buildMonthOptions(count = 18): { token: Token; label: string }[] {
-  const now = new Date();
-  const out: { token: Token; label: string }[] = [];
-  for (let i = 0; i < count; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const y = d.getFullYear();
-    const m1 = d.getMonth() + 1;
-    out.push({
-      token: `month:${y}-${pad(m1)}`,
-      label: d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' }),
-    });
-  }
-  return out;
-}
-
-function buildQuarterOptions(count = 8): { token: Token; label: string }[] {
-  const now = new Date();
-  const seen = new Set<string>();
-  const out: { token: Token; label: string }[] = [];
-  for (let i = 0; i < count * 3; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const y = d.getFullYear();
-    const q = Math.floor(d.getMonth() / 3) + 1;
-    const key = `${y}-Q${q}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push({ token: `quarter:${key}`, label: `Q${q} ${y}` });
-    if (out.length >= count) break;
-  }
-  return out;
-}
-
 export function InsightsTimeframePicker({ className }: { className?: string }) {
   const { timeframe, setTimeframe, reportingPeriod, setReportingPeriod } = useInsightsTimeframe();
+  const [open, setOpen] = useState(false);
 
   const fetchingCount = useIsFetching({
     predicate: (q) => {
@@ -94,38 +50,55 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
   });
   const isRefreshing = fetchingCount > 0;
 
-  const months = useMemo(() => buildMonthOptions(18), []);
-  const quarters = useMemo(() => buildQuarterOptions(8), []);
+  const now = new Date();
+  const currentYear = now.getFullYear();
 
-  // Resolve the currently selected token. Reporting period (Month/Quarter)
-  // always wins because it represents an explicit calendar selection.
-  const activeToken = useMemo<Token>(() => {
+  // Years to expose for Month/Quarter (current + 1 prior).
+  const years = useMemo(() => [currentYear, currentYear - 1], [currentYear]);
+
+  // Year tab state for the Month grid and Quarter row.
+  const initialYear = useMemo(() => {
     if (reportingPeriod) {
-      return reportingPeriod.view === 'month'
-        ? (`month:${reportingPeriod.period}` as Token)
-        : (`quarter:${reportingPeriod.period}` as Token);
+      const m = /^(\d{4})/.exec(reportingPeriod.period);
+      if (m) return parseInt(m[1], 10);
     }
-    return `tf:${timeframe.id}` as Token;
-  }, [timeframe.id, reportingPeriod]);
+    return currentYear;
+  }, [reportingPeriod, currentYear]);
+  const [monthYear, setMonthYear] = useState<number>(initialYear);
+  const [quarterYear, setQuarterYear] = useState<number>(initialYear);
 
-  const handleChange = (token: string) => {
-    if (token.startsWith('tf:')) {
-      const id = token.slice(3) as InsightsTimeframeId;
-      // Clear any active month/quarter so the rolling timeframe takes over.
-      setReportingPeriod(null);
-      setTimeframe(id);
-      return;
-    }
-    if (token.startsWith('month:')) {
-      const period = token.slice('month:'.length);
-      setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('month', period));
-      return;
-    }
-    if (token.startsWith('quarter:')) {
-      const period = token.slice('quarter:'.length);
-      setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('quarter', period));
-      return;
-    }
+  const activePresetId: InsightsTimeframeId | null = reportingPeriod ? null : timeframe.id;
+  const activeMonth = reportingPeriod?.view === 'month' ? reportingPeriod.period : null;
+  const activeQuarter = reportingPeriod?.view === 'quarter' ? reportingPeriod.period : null;
+
+  const triggerLabel = reportingPeriod?.label ?? timeframe.label;
+
+  const selectPreset = (id: InsightsTimeframeId) => {
+    setReportingPeriod(null);
+    setTimeframe(id);
+    setOpen(false);
+  };
+
+  const selectMonth = (year: number, month1: number) => {
+    setReportingPeriod(
+      reportingPeriodHelpers.computeReportingPeriod('month', `${year}-${pad(month1)}`),
+    );
+    setOpen(false);
+  };
+
+  const selectQuarter = (year: number, q: number) => {
+    setReportingPeriod(
+      reportingPeriodHelpers.computeReportingPeriod('quarter', `${year}-Q${q}`),
+    );
+    setOpen(false);
+  };
+
+  // Disable future months/quarters.
+  const isFutureMonth = (year: number, month1: number) =>
+    year > currentYear || (year === currentYear && month1 - 1 > now.getMonth());
+  const isFutureQuarter = (year: number, q: number) => {
+    const firstMonth1 = (q - 1) * 3 + 1;
+    return isFutureMonth(year, firstMonth1);
   };
 
   return (
@@ -135,50 +108,171 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
       ) : (
         <CalendarIcon className="h-4 w-4 text-muted-foreground" />
       )}
-      <Select value={activeToken} onValueChange={handleChange}>
-        <SelectTrigger
-          aria-label="Dashboard timeframe"
-          aria-busy={isRefreshing}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label="Dashboard timeframe"
+            aria-busy={isRefreshing}
+            className={cn(
+              'h-9 min-w-[180px] justify-between gap-2 text-xs font-medium',
+              isRefreshing && 'border-primary/40 text-primary',
+            )}
+          >
+            <span className="truncate">{triggerLabel}</span>
+            <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          sideOffset={6}
+          className="w-[420px] p-0 overflow-hidden"
+        >
+          {/* Rolling presets */}
+          <div className="px-3 pt-3 pb-2">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">
+              Quick presets
+            </div>
+            <div className="grid grid-cols-4 gap-1">
+              {ROLLING.map((o) => {
+                const active = activePresetId === o.id;
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => selectPreset(o.id)}
+                    className={cn(
+                      'h-8 rounded-md text-xs font-medium transition-colors border',
+                      'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      active
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background border-border hover:bg-accent hover:text-accent-foreground',
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="h-px bg-border" />
+
+          {/* Quarters */}
+          <div className="px-3 pt-2.5 pb-2">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Quarter
+              </div>
+              <YearTabs
+                years={years}
+                value={quarterYear}
+                onChange={setQuarterYear}
+              />
+            </div>
+            <div className="grid grid-cols-4 gap-1">
+              {[1, 2, 3, 4].map((q) => {
+                const token = `${quarterYear}-Q${q}`;
+                const active = activeQuarter === token;
+                const disabled = isFutureQuarter(quarterYear, q);
+                return (
+                  <button
+                    key={q}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => selectQuarter(quarterYear, q)}
+                    className={cn(
+                      'h-8 rounded-md text-xs font-medium transition-colors border relative',
+                      'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      disabled && 'opacity-30 cursor-not-allowed',
+                      active
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background border-border hover:bg-accent hover:text-accent-foreground',
+                    )}
+                  >
+                    Q{q}
+                    {active && <Check className="absolute top-0.5 right-0.5 h-2.5 w-2.5" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="h-px bg-border" />
+
+          {/* Months */}
+          <div className="px-3 pt-2.5 pb-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Month
+              </div>
+              <YearTabs
+                years={years}
+                value={monthYear}
+                onChange={setMonthYear}
+              />
+            </div>
+            <div className="grid grid-cols-4 gap-1">
+              {MONTH_ABBR.map((label, idx) => {
+                const month1 = idx + 1;
+                const token = `${monthYear}-${pad(month1)}`;
+                const active = activeMonth === token;
+                const disabled = isFutureMonth(monthYear, month1);
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => selectMonth(monthYear, month1)}
+                    className={cn(
+                      'h-8 rounded-md text-xs font-medium transition-colors border',
+                      'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      disabled && 'opacity-30 cursor-not-allowed',
+                      active
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background border-border hover:bg-accent hover:text-accent-foreground',
+                    )}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+function YearTabs({
+  years,
+  value,
+  onChange,
+}: {
+  years: number[];
+  value: number;
+  onChange: (y: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-0.5 rounded-md border border-border bg-muted/30 p-0.5">
+      {years.map((y) => (
+        <button
+          key={y}
+          type="button"
+          onClick={() => onChange(y)}
           className={cn(
-            'h-9 min-w-[200px] text-xs',
-            isRefreshing && 'border-primary/40 text-primary',
+            'h-5 px-2 rounded text-[10px] font-medium transition-colors',
+            'focus:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+            value === y
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground',
           )}
         >
-          <SelectValue placeholder="Select timeframe" />
-        </SelectTrigger>
-        <SelectContent align="end" className="max-h-[420px]">
-          <SelectGroup>
-            <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Rolling
-            </SelectLabel>
-            {ROLLING.map((o) => (
-              <SelectItem key={o.token} value={o.token} className="text-xs">
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-          <SelectGroup>
-            <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Quarter
-            </SelectLabel>
-            {quarters.map((o) => (
-              <SelectItem key={o.token} value={o.token} className="text-xs">
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-          <SelectGroup>
-            <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Month
-            </SelectLabel>
-            {months.map((o) => (
-              <SelectItem key={o.token} value={o.token} className="text-xs">
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
+          {y}
+        </button>
+      ))}
     </div>
   );
 }
