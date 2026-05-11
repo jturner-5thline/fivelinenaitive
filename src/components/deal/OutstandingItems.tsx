@@ -889,7 +889,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
             </Select>
 
             {/* Bulk import */}
-            {onBulkAdd && (
+            {onBulkAdd && !readOnly && (
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -924,8 +924,16 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
         )}
         
         <CardContent className="space-y-3 h-full flex-1">
+          {readOnly && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-100">
+              <span aria-hidden>🔒</span>
+              <span>
+                This deal is <strong>{readOnlyReason || 'inactive'}</strong>. Outstanding items are read-only and cannot be added, edited, or deleted.
+              </span>
+            </div>
+          )}
           {/* Bulk Action Bar */}
-          {selectedIds.size > 0 && (
+          {selectedIds.size > 0 && !readOnly && (
             <div className="flex items-center justify-between gap-2 p-3 rounded-lg border border-primary/30 bg-primary/5">
               <div className="flex items-center gap-2">
                 <CheckSquare className="h-4 w-4 text-primary" />
@@ -941,7 +949,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
           )}
 
           {/* Select All for Active Items */}
-          {activeItems.length > 1 && selectedIds.size === 0 && (
+          {activeItems.length > 1 && selectedIds.size === 0 && !readOnly && (
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
@@ -956,6 +964,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
           )}
 
           {/* Add item input */}
+          {!readOnly && (
           <div className={`${items.length > 0 ? 'pb-3 border-b border-border' : ''}`}>
             <div className="flex items-center gap-2">
               <Input
@@ -991,6 +1000,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
               </Popover>
             </div>
           </div>
+          )}
 
           {filteredItems.length === 0 && (
             <div className="text-center py-8">
@@ -1004,7 +1014,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
               {/* Retroactive bulk-add for legacy deals (Fix 4). Only shown
                   when the deal truly has zero items overall — not when a
                   search/filter merely hides them. */}
-              {!searchQuery && filterByLender.length === 0 && items.length === 0 && onApplyDefaultChecklist && (
+              {!searchQuery && filterByLender.length === 0 && items.length === 0 && onApplyDefaultChecklist && !readOnly && (
                 <div className="mt-4 mx-auto max-w-md rounded-lg border border-primary/30 bg-primary/5 p-3 flex items-center justify-between gap-3">
                   <span className="text-xs text-muted-foreground text-left">
                     Apply the default checklist to get started.
