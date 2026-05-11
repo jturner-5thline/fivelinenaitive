@@ -57,7 +57,7 @@ export const HomepageFeatureGrid = () => {
           {features.map((f, idx) => (
             <article
               key={f.title}
-              className={`group relative overflow-hidden rounded-2xl p-7 bg-gradient-to-b from-[hsl(268,40%,16%,0.45)] to-[hsl(262,38%,9%,0.5)] border border-[hsl(270,35%,55%,0.18)] backdrop-blur-2xl shadow-[inset_0_1px_0_hsl(270,40%,70%,0.06),0_8px_24px_-12px_hsl(265,60%,4%,0.6)] hover:border-[hsl(270,40%,60%,0.32)] hover:-translate-y-0.5 transition-all duration-300 ${
+              className={`group relative overflow-hidden rounded-2xl p-7 bg-gradient-to-br from-[hsl(190,85%,60%,0.18)] via-[hsl(230,75%,65%,0.14)] to-[hsl(270,70%,55%,0.22)] border border-[hsl(220,60%,70%,0.22)] backdrop-blur-2xl shadow-[inset_0_1px_0_hsl(190,80%,80%,0.08),0_8px_24px_-12px_hsl(265,60%,4%,0.6)] hover:border-[hsl(220,70%,75%,0.38)] hover:-translate-y-0.5 transition-all duration-300 ${
                 f.wide ? "lg:col-span-2 lg:row-span-1" : ""
               }`}
             >
