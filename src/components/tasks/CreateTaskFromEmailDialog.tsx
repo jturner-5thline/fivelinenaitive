@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { cleanEmailSnippet } from '@/lib/emailNotesCleanup';
 
 export interface CreateTaskFromEmailSource {
   messageId: string;
@@ -66,18 +67,9 @@ export function CreateTaskFromEmailDialog({ open, onOpenChange, email }: Props) 
   }, [email]);
 
   // Strip raw HTML tags / collapse <br> from snippets so the textarea
-  // shows clean prose instead of escaped markup.
-  const cleanSnippet = (raw: string) =>
-    raw
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/?[^>]+>/g, '')
-      .replace(/&nbsp;/gi, ' ')
-      .replace(/&amp;/gi, '&')
-      .replace(/&lt;/gi, '<')
-      .replace(/&gt;/gi, '>')
-      .replace(/[ \t]+\n/g, '\n')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
+  // shows clean prose instead of escaped markup. Implementation lives in
+  // src/lib/emailNotesCleanup.ts and is unit-tested there.
+  const cleanSnippet = cleanEmailSnippet;
 
   useEffect(() => {
     if (!open || !email) return;
