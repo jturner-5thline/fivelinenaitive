@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Building2, User, FileText, ListChecks, MessageSquare, Plus, ExternalLink, Loader2 } from 'lucide-react';
+import { Building2, User, FileText, ListChecks, MessageSquare, Plus, ExternalLink, Loader2, Mail } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { splitTextByUrls } from '@/lib/emailNotesCleanup';
+import { buildSourceEmailUrl } from '@/lib/sourceEmailLink';
 
 /**
  * Auto-linkify URLs in plain-text descriptions so source-email links
@@ -101,6 +102,39 @@ export function ExpandedTaskDetails({ task, onUpdate, onOpenFullDetail }: Expand
     >
       {/* LEFT: description + checklist + comments */}
       <div className="space-y-5 min-w-0">
+        {(() => {
+          const url = buildSourceEmailUrl({
+            messageId: (task as any).source_email_message_id,
+            threadId: (task as any).source_email_thread_id,
+          });
+          if (!url) return null;
+          const subject = (task as any).source_email_subject || '(no subject)';
+          const from = (task as any).source_email_from || '';
+          return (
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-2 rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-xs text-foreground hover:bg-muted/50 hover:border-primary/40 transition-colors"
+              title={`Open source email: ${subject}`}
+            >
+              <Mail className="h-3.5 w-3.5 text-primary shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground/80">
+                  Source email
+                </div>
+                <div className="truncate">
+                  {subject}
+                  {from ? <span className="text-muted-foreground"> · {from}</span> : null}
+                </div>
+              </div>
+              <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
+            </a>
+          );
+        })()}
+
         {/* Description */}
         <Section icon={<FileText className="h-3 w-3" />} label="Description">
           {editingDesc ? (

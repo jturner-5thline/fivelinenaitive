@@ -18,10 +18,11 @@ import {
 } from '@/components/ui/popover';
 import {
   Plus, MoreHorizontal, Trash2, ChevronDown, ChevronRight, GripVertical,
-  Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star, AlertTriangle, Building2, User, Repeat, Columns3,
+  Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star, AlertTriangle, Building2, User, Repeat, Columns3, Mail,
 } from 'lucide-react';
 import { ExpandedTaskDetails } from '@/components/tasks/ExpandedTaskDetails';
 import { cn } from '@/lib/utils';
+import { buildSourceEmailUrl } from '@/lib/sourceEmailLink';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor,
@@ -695,6 +696,18 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
   // Blocker note (stored as any since it's a new column)
   const blockerNote = (task as any).blocker_note;
 
+  // Source email deep-link (set when the task was created from an email
+  // via the right-click → Create Task flow). We surface it as a small
+  // inline icon link so users can jump back to the originating message.
+  const sourceEmailUrl = buildSourceEmailUrl({
+    messageId: (task as any).source_email_message_id,
+    threadId: (task as any).source_email_thread_id,
+  });
+  const sourceEmailTitle =
+    (task as any).source_email_subject ||
+    (task as any).source_email_from ||
+    'Open source email';
+
   // Build the sub-label string shown under the title (single line, ellipsis).
   const subLabel: { icon: typeof Building2 | typeof User; text: string; href: string } | null =
     task.deal_id && task.deal?.company
@@ -791,6 +804,21 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
               >
                 {task.title}
               </span>
+              {sourceEmailUrl && (
+                <a
+                  href={sourceEmailUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                  title={`Open source email: ${sourceEmailTitle}`}
+                  aria-label="Open source email"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium shrink-0 text-primary hover:bg-primary/10 transition-colors"
+                >
+                  <Mail className="h-2.5 w-2.5" />
+                  Email
+                </a>
+              )}
               {(task.recurrence_rule || (task as any).is_recurring) && (() => {
               const rule: string | null = task.recurrence_rule;
               const seriesEnd = (task as any).recurrence_end_date as string | null | undefined;
