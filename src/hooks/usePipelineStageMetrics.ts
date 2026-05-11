@@ -24,6 +24,8 @@ interface StageMetricResult {
   dollarVolume: number;
   deals: StageEntryDeal[];
   isLoading: boolean;
+  /** Sum of `mrr` across the deals in this metric (FinServ widgets). */
+  mrr?: number;
 }
 
 export interface AverageMetricResult {
@@ -326,7 +328,8 @@ function useStageEntryMetric(
             manager,
             stage,
             pipeline_id,
-            status
+            status,
+            mrr
           )
         `)
         .eq('activity_type', 'stage_change')
@@ -349,10 +352,10 @@ function useStageEntryMetric(
 
   return useMemo(() => {
     const loading = isLoading || isFetching;
-    if (!data) return { count: 0, dollarVolume: 0, deals: [], isLoading: loading };
+    if (!data) return { count: 0, dollarVolume: 0, deals: [], isLoading: loading, mrr: 0 };
 
     // Deduplicate: first entry per deal_id only
-    const seen = new Map<string, StageEntryDeal>();
+    const seen = new Map<string, StageEntryDeal & { __mrr: number }>();
     for (const row of data) {
       if (seen.has(row.deal_id)) continue;
       const deal = row.deals as any;
@@ -367,15 +370,19 @@ function useStageEntryMetric(
         current_stage: deal.stage,
         entered_at: row.created_at,
         pipeline_id: deal.pipeline_id,
+        __mrr: Number(deal.mrr) || 0,
       });
     }
 
-    const deals = Array.from(seen.values()).filter(d => !isExcludedDealName(d.company));
+    const enriched = Array.from(seen.values()).filter(d => !isExcludedDealName(d.company));
+    const deals: StageEntryDeal[] = enriched.map(({ __mrr, ...rest }) => rest);
+    const mrr = enriched.reduce((s, d) => s + d.__mrr, 0);
     return {
       count: deals.length,
       dollarVolume: deals.reduce((s, d) => s + d.value, 0),
       deals,
       isLoading: loading,
+      mrr,
     };
   }, [data, isLoading, isFetching, pipelineId]);
 }
@@ -398,7 +405,7 @@ function usePipelineAddedMetric(
 
       const { data: rows, error } = await supabase
         .from('deals')
-        .select('id, company, value, manager, stage, pipeline_id, created_at')
+        .select('id, company, value, manager, stage, pipeline_id, created_at, mrr')
         .eq('pipeline_id', pipelineId)
         .gte('created_at', startDate)
         .lte('created_at', endDate + 'T23:59:59.999Z')
@@ -412,11 +419,10 @@ function usePipelineAddedMetric(
 
   return useMemo(() => {
     const loading = isLoading || isFetching;
-    if (!data) return { count: 0, dollarVolume: 0, deals: [], isLoading: loading };
+    if (!data) return { count: 0, dollarVolume: 0, deals: [], isLoading: loading, mrr: 0 };
 
-    const deals: StageEntryDeal[] = data
-      .filter(d => !isExcludedDealName(d.company))
-      .map(d => ({
+    const filtered = (data as any[]).filter(d => !isExcludedDealName(d.company));
+    const deals: StageEntryDeal[] = filtered.map((d: any) => ({
         deal_id: d.id,
         company: d.company ?? '—',
         value: Number(d.value) || 0,
@@ -425,12 +431,14 @@ function usePipelineAddedMetric(
         entered_at: d.created_at,
         pipeline_id: d.pipeline_id ?? '',
       }));
+    const mrr = filtered.reduce((s: number, d: any) => s + (Number(d.mrr) || 0), 0);
 
     return {
       count: deals.length,
       dollarVolume: deals.reduce((s, d) => s + d.value, 0),
       deals,
       isLoading: loading,
+      mrr,
     };
   }, [data, isLoading, isFetching]);
 }
