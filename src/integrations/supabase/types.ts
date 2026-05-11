@@ -21187,6 +21187,30 @@ export type Database = {
           },
         ]
       }
+      widget_preferences: {
+        Row: {
+          created_at: string
+          special_widgets: Json
+          updated_at: string
+          user_id: string
+          widgets: Json
+        }
+        Insert: {
+          created_at?: string
+          special_widgets?: Json
+          updated_at?: string
+          user_id: string
+          widgets?: Json
+        }
+        Update: {
+          created_at?: string
+          special_widgets?: Json
+          updated_at?: string
+          user_id?: string
+          widgets?: Json
+        }
+        Relationships: []
+      }
       workflow_runs: {
         Row: {
           completed_at: string | null
