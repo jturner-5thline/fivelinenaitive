@@ -66,8 +66,12 @@ const CARD_INTERACTIVE_SELECTOR = [
   '[contenteditable="true"]',
 ].join(',');
 
-function shouldIgnoreCardOpen(target: EventTarget | null) {
-  return target instanceof HTMLElement && !!target.closest(CARD_INTERACTIVE_SELECTOR);
+function shouldIgnoreCardOpen(target: EventTarget | null, currentTarget?: HTMLElement | null) {
+  if (!(target instanceof HTMLElement)) return false;
+  const interactiveAncestor = target.closest(CARD_INTERACTIVE_SELECTOR);
+  if (!interactiveAncestor) return false;
+  if (currentTarget && interactiveAncestor === currentTarget) return false;
+  return true;
 }
 
 function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleMilestone, onOpenEdit }: {
@@ -91,11 +95,11 @@ function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleM
       style={style}
       className="relative w-full min-w-0 touch-none rounded-xl"
       onClick={(e) => {
-        if (shouldIgnoreCardOpen(e.target)) return;
+        if (shouldIgnoreCardOpen(e.target, e.currentTarget)) return;
         openDeal();
       }}
       onKeyDown={(e) => {
-        if (shouldIgnoreCardOpen(e.target)) return;
+        if (shouldIgnoreCardOpen(e.target, e.currentTarget)) return;
         if (e.key !== 'Enter' && e.key !== ' ') return;
         e.preventDefault();
         openDeal();
