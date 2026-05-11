@@ -2559,13 +2559,13 @@ export default function DealDetail() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
                     onClick={() => setIsDeleteDialogOpen(true)}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Archive className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Delete or archive deal</TooltipContent>
+                <TooltipContent>Archive deal</TooltipContent>
               </Tooltip>
               {viewModified && (
                 <Button
