@@ -99,13 +99,13 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
 
   // Resolve the currently selected token. Reporting period (Month/Quarter)
   // always wins because it represents an explicit calendar selection.
-  const activeToken: Token = useMemo(() => {
+  const activeToken = useMemo<Token>(() => {
     if (reportingPeriod) {
       return reportingPeriod.view === 'month'
-        ? `month:${reportingPeriod.period}`
-        : `quarter:${reportingPeriod.period}`;
+        ? (`month:${reportingPeriod.period}` as Token)
+        : (`quarter:${reportingPeriod.period}` as Token);
     }
-    return `tf:${timeframe.id}`;
+    return `tf:${timeframe.id}` as Token;
   }, [timeframe.id, reportingPeriod]);
 
   const handleChange = (token: string) => {
