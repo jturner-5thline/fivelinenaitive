@@ -36,6 +36,9 @@ interface Props {
   thread: EmailThread;
   /** Resolved attachments from the latest message (post `useFullEmailMessage`). */
   attachments?: EmailAttachment[];
+  /** Optional lender firm name resolved upstream (workflow analysis). Used
+   *  for source-attribution headers like "<Lender> requested N items". */
+  lenderName?: string;
 }
 
 /** Tokens used to fuzzy-match attachment filenames -> outstanding item text. */
@@ -140,7 +143,7 @@ function detectContactFulfillment(
   return matches;
 }
 
-export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments }: Props) {
+export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments, lenderName }: Props) {
   const { items, updateItem } = useOutstandingItems(dealId);
   const { logAuditAction } = useDealAuditLog(dealId);
   const [working, setWorking] = useState<Record<string, boolean>>({});
@@ -159,6 +162,7 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
     openItems,
     attachments,
     thread,
+    lenderName,
     enabled: !!dealId,
   });
 
@@ -259,9 +263,73 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
   const visibleContactMatches = contactMatches.filter(
     (m) => !dismissed.has(`contact:${m.item.id}`) && !attachmentMatches.some((a) => a.item.id === m.item.id),
   );
-  const visibleNewItemSuggestions = (aiResult.new_item_suggestions || []).filter(
+  const allNewItemSuggestions = aiResult.new_item_suggestions || [];
+  const visibleNewItemSuggestions = allNewItemSuggestions.filter(
     (s, i) => !dismissed.has(`new:${i}:${s.description}`),
   );
+
+  // Group lender-request lists ("we'll need the following: …") so we can
+  // render ONE approval card with a single "Add N items" CTA instead of
+  // N stacked cards. Items without a group_id render as standalone cards
+  // (one-off deliverables — the legacy behavior).
+  const groupedSuggestions = useMemo(() => {
+    const groups: Record<string, { label: string; items: typeof visibleNewItemSuggestions; firstIdx: number }> = {};
+    const standalone: Array<{ s: typeof visibleNewItemSuggestions[number]; idx: number }> = [];
+    visibleNewItemSuggestions.forEach((s, idx) => {
+      const gid = (s as any).group_id as string | null | undefined;
+      if (gid) {
+        if (!groups[gid]) {
+          groups[gid] = {
+            label: ((s as any).group_label as string | undefined) || '',
+            items: [],
+            firstIdx: idx,
+          };
+        }
+        if (!groups[gid].label && (s as any).group_label) {
+          groups[gid].label = (s as any).group_label as string;
+        }
+        groups[gid].items.push(s);
+      } else {
+        standalone.push({ s, idx });
+      }
+    });
+    // Only treat as a "grouped" card when 2+ items share a group_id —
+    // a single grouped item still renders as a standalone card.
+    const groupCards: Array<{ id: string; label: string; items: typeof visibleNewItemSuggestions }> = [];
+    Object.entries(groups)
+      .sort(([, a], [, b]) => a.firstIdx - b.firstIdx)
+      .forEach(([id, g]) => {
+        if (g.items.length >= 2) {
+          groupCards.push({ id, label: g.label, items: g.items });
+        } else {
+          // Demote 1-item groups to standalone.
+          g.items.forEach((s) => {
+            const idx = visibleNewItemSuggestions.indexOf(s);
+            standalone.push({ s, idx });
+          });
+        }
+      });
+    return { groupCards, standalone };
+  }, [visibleNewItemSuggestions]);
+
+  // Per-group selection state — defaults to all items checked. Lets the
+  // user uncheck an individual line before clicking "Add N items".
+  const [groupSelection, setGroupSelection] = useState<Record<string, Set<number>>>({});
+  const getGroupSelected = (groupId: string, total: number): Set<number> => {
+    if (groupSelection[groupId]) return groupSelection[groupId];
+    // Default: all selected.
+    const all = new Set<number>();
+    for (let i = 0; i < total; i++) all.add(i);
+    return all;
+  };
+  const toggleGroupItem = (groupId: string, idx: number, total: number) => {
+    setGroupSelection((prev) => {
+      const cur = new Set(prev[groupId] ?? Array.from({ length: total }, (_, i) => i));
+      if (cur.has(idx)) cur.delete(idx);
+      else cur.add(idx);
+      return { ...prev, [groupId]: cur };
+    });
+  };
 
   if (
     !dealId ||
@@ -424,6 +492,12 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
             priority: suggestion.priority,
             source_quote: suggestion.source_quote,
             confidence: suggestion.confidence,
+            requested_by_lender_name:
+              (suggestion as any).requested_by_lender_name || lenderName || null,
+            source_message_id:
+              (suggestion as any).source_message_id ||
+              thread.latestEmail?.id ||
+              null,
             confirmed_at: new Date().toISOString(),
           },
         );
@@ -443,6 +517,82 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
     }
   };
 
+  /**
+   * Add every selected suggestion in a grouped lender-request list as a
+   * separate outstanding item, in document order. Sequential to preserve
+   * order; failures don't block remaining items.
+   */
+  const handleAddGroup = async (
+    groupId: string,
+    items: typeof visibleNewItemSuggestions,
+  ) => {
+    if (!dealId) return;
+    const selected = getGroupSelected(groupId, items.length);
+    const toAdd = items.filter((_, i) => selected.has(i));
+    if (toAdd.length === 0) return;
+    const workingKey = `group:${groupId}`;
+    setWorking((w) => ({ ...w, [workingKey]: true }));
+    let added = 0;
+    try {
+      for (const suggestion of toAdd) {
+        const mappedPriority: 'urgent' | 'high' | 'normal' =
+          suggestion.priority === 'urgent'
+            ? 'urgent'
+            : suggestion.priority === 'high'
+              ? 'high'
+              : 'normal';
+        const created = await addItem(suggestion.description, [], mappedPriority);
+        if (created) {
+          added += 1;
+          await logAuditAction(
+            'outstanding_item_added_from_email',
+            'outstanding_item',
+            created.id,
+            suggestion.description,
+            {
+              source: 'ai_assist_email_group',
+              thread_id: thread.threadId,
+              thread_subject: thread.subject || null,
+              from_name: thread.latestEmail?.from_name || null,
+              from_email: thread.latestEmail?.from_email || null,
+              due_date: suggestion.due_date,
+              priority: suggestion.priority,
+              source_quote: suggestion.source_quote,
+              confidence: suggestion.confidence,
+              requested_by_lender_name:
+                (suggestion as any).requested_by_lender_name || lenderName || null,
+              source_message_id:
+                (suggestion as any).source_message_id ||
+                thread.latestEmail?.id ||
+                null,
+              group_id: groupId,
+              group_size: items.length,
+              confirmed_at: new Date().toISOString(),
+            },
+          );
+        }
+      }
+      if (added > 0) {
+        toast.success(`Added ${added} outstanding item${added === 1 ? '' : 's'} to ${dealName || 'deal'}`);
+      }
+      // Dismiss all items in this group regardless of partial failures —
+      // the audit trail captures what got created.
+      setDismissed((d) => {
+        const n = new Set(d);
+        items.forEach((s) => {
+          const idxInVisible = visibleNewItemSuggestions.indexOf(s);
+          n.add(`new:${idxInVisible}:${s.description}`);
+        });
+        return n;
+      });
+    } catch (err) {
+      console.error('[OutstandingItemMatchCard] group add failed:', err);
+      if (added === 0) toast.error('Could not add outstanding items');
+    } finally {
+      setWorking((w) => ({ ...w, [workingKey]: false }));
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
@@ -455,6 +605,107 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
       </div>
 
       <div className="space-y-2">
+        {/* GROUPED LENDER REQUESTS — top priority. One card per detected
+            list, with one bulk "Add N items" CTA and per-line checkboxes. */}
+        {groupedSuggestions.groupCards.map((group) => {
+          const selected = getGroupSelected(group.id, group.items.length);
+          const selectedCount = selected.size;
+          const workingKey = `group:${group.id}`;
+          const lenderForLabel =
+            (group.items[0] as any)?.requested_by_lender_name ||
+            lenderName ||
+            thread.latestEmail?.from_name ||
+            'Sender';
+          const headerLabel =
+            group.label ||
+            `${lenderForLabel} requested ${group.items.length} items for ${dealName || 'this deal'}`;
+          return (
+            <div
+              key={`group-${group.id}`}
+              className="rounded-md border border-primary/30 bg-primary/[0.04] overflow-hidden"
+            >
+              <div className="flex items-center gap-2 px-3 py-2 border-b border-primary/15 bg-primary/[0.05]">
+                <ListPlus className="h-3 w-3 text-primary shrink-0" />
+                <span className="text-[11px] font-semibold text-foreground/90 truncate flex-1">
+                  {headerLabel}
+                </span>
+                <Badge variant="secondary" className="h-4 text-[9px] px-1.5 shrink-0">
+                  {group.items.length} requested
+                </Badge>
+              </div>
+              <div className="px-3 py-2.5 space-y-2">
+                <Row label="Deal" value={dealName || '—'} />
+                <Row
+                  label="From"
+                  value={`${thread.latestEmail?.from_name || ''}${thread.latestEmail?.from_email ? ` <${thread.latestEmail.from_email}>` : ''}`}
+                  mono
+                />
+                <ul className="space-y-1 pt-1">
+                  {group.items.map((s, i) => {
+                    const isChecked = selected.has(i);
+                    return (
+                      <li key={`${group.id}-${i}`} className="flex items-start gap-2 text-[11px]">
+                        <button
+                          type="button"
+                          aria-label={isChecked ? 'Exclude this item' : 'Include this item'}
+                          onClick={() => toggleGroupItem(group.id, i, group.items.length)}
+                          className={`mt-0.5 inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${
+                            isChecked
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-white/20 bg-background/40'
+                          }`}
+                        >
+                          {isChecked && <CheckSquare className="h-2.5 w-2.5" />}
+                        </button>
+                        <span className={`flex-1 leading-snug ${isChecked ? 'text-foreground/90' : 'text-muted-foreground line-through'}`}>
+                          {s.description}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {group.items[0]?.source_quote && (
+                  <div className="text-[10.5px] text-muted-foreground/85 italic leading-snug border-l-2 border-white/[0.08] pl-2 mt-1">
+                    "{group.items[0].source_quote}"
+                  </div>
+                )}
+                <div className="flex items-center gap-2 pt-1">
+                  <Button
+                    size="sm"
+                    className="h-7 text-[11px] gap-1"
+                    disabled={!!working[workingKey] || selectedCount === 0}
+                    onClick={() => handleAddGroup(group.id, group.items)}
+                  >
+                    {working[workingKey] ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <ListPlus className="h-3 w-3" />
+                    )}
+                    Add {selectedCount} Outstanding Item{selectedCount === 1 ? '' : 's'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-[11px] gap-1 text-muted-foreground"
+                    onClick={() =>
+                      setDismissed((d) => {
+                        const n = new Set(d);
+                        group.items.forEach((s) => {
+                          const idxInVisible = visibleNewItemSuggestions.indexOf(s);
+                          n.add(`new:${idxInVisible}:${s.description}`);
+                        });
+                        return n;
+                      })
+                    }
+                  >
+                    <X className="h-3 w-3" /> Dismiss all
+                  </Button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
         {visibleAttachmentMatches.map(({ item, attachment, matchedOn }) => (
           <div
             key={`att-${item.id}`}
@@ -587,7 +838,9 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
           </div>
         ))}
 
-        {visibleNewItemSuggestions.map((s, idx) => {
+        {/* Standalone (ungrouped) new-item suggestions render with the
+            legacy single-item card. */}
+        {groupedSuggestions.standalone.map(({ s, idx }) => {
           const dismissKey = `new:${idx}:${s.description}`;
           return (
             <div

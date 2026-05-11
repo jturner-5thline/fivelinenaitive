@@ -1210,6 +1210,9 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                   dealName={dealName}
                   thread={thread}
                   attachments={drAttachments}
+                  lenderName={
+                    workflowAnalysis?.likely_lender_firm?.name || undefined
+                  }
                 />
 
                 {/* Proactive AI follow-up suggestions extracted from the
