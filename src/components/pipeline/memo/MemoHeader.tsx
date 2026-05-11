@@ -1,6 +1,7 @@
 import type { Deal } from '@/types/deal';
 import { Badge } from '@/components/ui/badge';
 import { formatDealType } from '@/utils/dealTypeLabels';
+import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 
 interface MemoHeaderProps {
   deal: Deal;
@@ -27,6 +28,10 @@ export function MemoHeader({ deal, showLiveDot = true }: MemoHeaderProps) {
     : null;
   const assetClassRaw = (deal.dealTypes && deal.dealTypes[0]) || null;
   const assetClass = assetClassRaw ? formatDealType(assetClassRaw) : null;
+  const { getStageConfigForDeal } = usePipelineStageConfig();
+  const stageLabel = deal.stage
+    ? getStageConfigForDeal(deal.stage as string, deal.pipelineId)?.label
+    : null;
 
   return (
     <div className="px-5 pt-4 pb-3 border-b border-border">
@@ -38,6 +43,11 @@ export function MemoHeader({ deal, showLiveDot = true }: MemoHeaderProps) {
           >
             {deal.company || deal.name}
           </h2>
+          {stageLabel && (
+            <Badge variant="outline" className="rounded-full border-primary/30 text-primary/90 bg-primary/5">
+              {stageLabel}
+            </Badge>
+          )}
           {structureLabel && (
             <Badge variant="gray" className="rounded-full">{structureLabel}</Badge>
           )}
