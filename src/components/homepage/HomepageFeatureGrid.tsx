@@ -37,6 +37,7 @@ const features = [
 
 export const HomepageFeatureGrid = () => {
   const { ref, isVisible } = useScrollReveal();
+  const { ref: gridRef, isVisible: gridVisible } = useScrollReveal(0.05);
 
   return (
     <section className="py-16 md:py-24 bg-transparent">
@@ -53,13 +54,14 @@ export const HomepageFeatureGrid = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div ref={gridRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {features.map((f, idx) => (
             <article
               key={f.title}
-              className={`group relative overflow-hidden rounded-2xl p-7 bg-gradient-to-br from-[hsl(190,85%,60%,0.18)] via-[hsl(230,75%,65%,0.14)] to-[hsl(270,70%,55%,0.22)] border border-[hsl(220,60%,70%,0.22)] backdrop-blur-2xl shadow-[inset_0_1px_0_hsl(190,80%,80%,0.08),0_8px_24px_-12px_hsl(265,60%,4%,0.6)] hover:border-[hsl(220,70%,75%,0.38)] hover:-translate-y-0.5 transition-all duration-300 ${
-                f.wide ? "lg:col-span-2 lg:row-span-1" : ""
-              }`}
+              style={{ transitionDelay: gridVisible ? `${idx * 80}ms` : "0ms" }}
+              className={`group relative overflow-hidden rounded-2xl p-7 bg-gradient-to-br from-[hsl(190,85%,60%,0.18)] via-[hsl(230,75%,65%,0.14)] to-[hsl(270,70%,55%,0.22)] border border-[hsl(220,60%,70%,0.22)] backdrop-blur-2xl shadow-[inset_0_1px_0_hsl(190,80%,80%,0.08),0_8px_24px_-12px_hsl(265,60%,4%,0.6)] hover:border-[hsl(220,70%,75%,0.38)] transition-all duration-700 ease-out ${
+                gridVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+              } ${f.wide ? "lg:col-span-2 lg:row-span-1" : ""}`}
             >
               <div className="relative">
                 <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[hsl(270,60%,40%,0.45)] to-[hsl(220,60%,35%,0.35)] border border-[hsl(280,70%,65%,0.4)] flex items-center justify-center mb-5">
