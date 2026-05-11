@@ -164,6 +164,10 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
   const [sentNextToken, setSentNextToken] = useState<string | null>(cacheSnapshot.sentNextToken);
   const [hasMoreInbox, setHasMoreInbox] = useState(true);
   const [hasMoreSent, setHasMoreSent] = useState(true);
+  // Tracks whether the local `email_cache` cursor fallback still has
+  // older rows. Starts optimistic; flips false the first time a cursor
+  // query returns 0 rows so the "End of inbox" sentinel can render.
+  const [hasMoreCache, setHasMoreCache] = useState(true);
 
   // Loading flags
   // Only show the initial spinner when we have nothing cached to render.
