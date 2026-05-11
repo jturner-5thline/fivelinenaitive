@@ -13,7 +13,7 @@ export const FINSERV_STAGES: DealStageOption[] = [
   { id: 'fs-scoping', label: 'Scoping', color: 'bg-violet-500' },
   { id: 'fs-proposal-sent', label: 'Proposal Sent', color: 'bg-purple-500' },
   { id: 'fs-negotiation', label: 'Negotiation', color: 'bg-amber-500' },
-  { id: 'fs-closed-won', label: 'Closed Won', color: 'bg-green-500' },
+  { id: 'fs-closed-won', label: 'Active Client', color: 'bg-green-500' },
   { id: 'fs-closed-lost', label: 'Closed Lost', color: 'bg-red-500' },
 ];
 
