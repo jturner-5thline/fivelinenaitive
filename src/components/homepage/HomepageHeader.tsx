@@ -20,8 +20,8 @@ export const HomepageHeader = () => {
         className={cn(
           "container mx-auto rounded-2xl transition-all duration-300 ease-out pointer-events-auto",
           scrolled
-            ? "bg-[rgba(8,12,24,0.88)] backdrop-blur-lg border border-white/15 shadow-[0_10px_32px_rgba(0,0,0,0.5)]"
-            : "bg-[rgba(8,12,24,0.65)] backdrop-blur-md border border-white/12 shadow-[0_6px_24px_rgba(0,0,0,0.35)]"
+            ? "bg-[linear-gradient(180deg,rgba(18,22,36,0.92)_0%,rgba(6,10,20,0.88)_100%)] backdrop-blur-lg border border-white/15 shadow-[0_10px_32px_rgba(0,0,0,0.5)]"
+            : "bg-[linear-gradient(180deg,rgba(16,20,32,0.7)_0%,rgba(6,10,20,0.6)_100%)] backdrop-blur-md border border-white/12 shadow-[0_6px_24px_rgba(0,0,0,0.35)]"
         )}
       >
         <nav className="px-4 sm:px-6 py-1.5 flex items-center justify-between gap-4 leading-none">
