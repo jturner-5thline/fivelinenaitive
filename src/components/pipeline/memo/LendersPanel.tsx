@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { ChevronDown, StickyNote, Check } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { ChevronDown, StickyNote, Check, ListChecks } from 'lucide-react';
 import type { Deal, DealLender, LenderTrackingStatus } from '@/types/deal';
 import { LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -47,9 +48,15 @@ const STATUS_OPTIONS: { value: LenderTrackingStatus; label: string }[] = [
 function LenderRow({
   lender,
   meta,
+  selectionMode,
+  selected,
+  onToggleSelected,
 }: {
   lender: DealLender;
   meta: typeof BUCKET_META[Bucket];
+  selectionMode: boolean;
+  selected: boolean;
+  onToggleSelected: (id: string, next: boolean) => void;
 }) {
   const { updateLender } = useDealsContext();
   const [statusOpen, setStatusOpen] = useState(false);
@@ -89,6 +96,14 @@ function LenderRow({
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
     >
+      {selectionMode && (
+        <Checkbox
+          checked={selected}
+          onCheckedChange={(v) => onToggleSelected(lender.id, !!v)}
+          aria-label={`Select ${lender.name}`}
+          className="h-3.5 w-3.5 shrink-0"
+        />
+      )}
       <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${meta.dot}`} />
       <span className="flex-1 text-xs text-foreground truncate" title={lender.name}>
         {lender.name}
@@ -204,7 +219,89 @@ function LenderRow({
 
 export function LendersPanel({ deal }: LendersPanelProps) {
   const [expanded, setExpanded] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
+  const [bulkNoteOpen, setBulkNoteOpen] = useState(false);
+  const [bulkNote, setBulkNote] = useState('');
+  const [bulkNoteMode, setBulkNoteMode] = useState<'replace' | 'append'>('append');
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const { updateLender } = useDealsContext();
   const lenders = deal.lenders || [];
+  const selectedLenders = useMemo(
+    () => lenders.filter((l) => selectedIds.has(l.id)),
+    [lenders, selectedIds],
+  );
+
+  const toggleSelected = (id: string, next: boolean) => {
+    setSelectedIds((prev) => {
+      const s = new Set(prev);
+      if (next) s.add(id); else s.delete(id);
+      return s;
+    });
+  };
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const selectAllVisible = () => {
+    setSelectedIds(new Set(lenders.map((l) => l.id)));
+  };
+
+  const applyBulkStatus = async (status: LenderTrackingStatus) => {
+    if (selectedLenders.length === 0) return;
+    setBulkStatusOpen(false);
+    setBulkSaving(true);
+    try {
+      const results = await Promise.allSettled(
+        selectedLenders.map((l) => updateLender(l.id, { trackingStatus: status })),
+      );
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed === 0) {
+        toast.success(`Updated ${selectedLenders.length} lender${selectedLenders.length === 1 ? '' : 's'}`);
+        exitSelectionMode();
+      } else {
+        toast.error(`Failed to update ${failed} of ${selectedLenders.length} lenders`);
+      }
+    } finally {
+      setBulkSaving(false);
+    }
+  };
+
+  const applyBulkNote = async () => {
+    if (selectedLenders.length === 0) return;
+    const text = bulkNote.trim();
+    if (!text) {
+      toast.error('Enter a note first');
+      return;
+    }
+    setBulkSaving(true);
+    try {
+      const results = await Promise.allSettled(
+        selectedLenders.map((l) => {
+          const next =
+            bulkNoteMode === 'replace'
+              ? text
+              : [l.notes?.trim(), text].filter(Boolean).join('\n\n');
+          return updateLender(l.id, { notes: next });
+        }),
+      );
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed === 0) {
+        toast.success(`Note ${bulkNoteMode === 'replace' ? 'set on' : 'appended to'} ${selectedLenders.length} lender${selectedLenders.length === 1 ? '' : 's'}`);
+        setBulkNote('');
+        setBulkNoteOpen(false);
+        exitSelectionMode();
+      } else {
+        toast.error(`Failed to update ${failed} of ${selectedLenders.length} lenders`);
+      }
+    } finally {
+      setBulkSaving(false);
+    }
+  };
+
   const grouped: Record<Bucket, DealLender[]> = { reviewing: [], onhold: [], ondeck: [], passed: [] };
   for (const l of lenders) grouped[bucketOf(l)].push(l);
   const hasHidden = (['reviewing','onhold','ondeck','passed'] as Bucket[])
@@ -212,26 +309,191 @@ export function LendersPanel({ deal }: LendersPanelProps) {
 
   return (
     <div className="p-5 min-w-0 self-start">
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
-        onPointerDown={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-        disabled={lenders.length === 0}
-        className="group flex items-center gap-1.5 mb-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground transition-colors disabled:cursor-default disabled:hover:text-muted-foreground"
-        aria-expanded={expanded}
-        title={hasHidden ? (expanded ? 'Collapse lenders' : 'Show all lenders') : undefined}
-      >
-        <span>Lenders{lenders.length > 0 ? ` · ${lenders.length}` : ''}</span>
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          disabled={lenders.length === 0}
+          className="group flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground transition-colors disabled:cursor-default disabled:hover:text-muted-foreground"
+          aria-expanded={expanded}
+          title={hasHidden ? (expanded ? 'Collapse lenders' : 'Show all lenders') : undefined}
+        >
+          <span>Lenders{lenders.length > 0 ? ` · ${lenders.length}` : ''}</span>
+          {lenders.length > 0 && (
+            <ChevronDown
+              className={cn(
+                'h-3 w-3 transition-transform duration-200',
+                expanded && 'rotate-180'
+              )}
+            />
+          )}
+        </button>
         {lenders.length > 0 && (
-          <ChevronDown
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (selectionMode) {
+                exitSelectionMode();
+              } else {
+                setSelectionMode(true);
+                setExpanded(true);
+              }
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
             className={cn(
-              'h-3 w-3 transition-transform duration-200',
-              expanded && 'rotate-180'
+              'inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider transition-colors',
+              selectionMode ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
             )}
-          />
+            title={selectionMode ? 'Exit bulk edit' : 'Bulk edit lenders'}
+          >
+            <ListChecks className="h-3 w-3" />
+            {selectionMode ? 'Done' : 'Bulk edit'}
+          </button>
         )}
-      </button>
+      </div>
+
+      {selectionMode && lenders.length > 0 && (
+        <div
+          className="mb-3 flex flex-wrap items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2 py-1.5"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <span className="text-[10px] font-medium text-muted-foreground mr-1">
+            {selectedLenders.length} selected
+          </span>
+          <button
+            type="button"
+            onClick={selectAllVisible}
+            className="text-[10px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+            disabled={selectedLenders.length === lenders.length}
+          >
+            Select all
+          </button>
+          {selectedLenders.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              className="text-[10px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+            >
+              Clear
+            </button>
+          )}
+          <div className="ml-auto flex items-center gap-1.5">
+            <Popover open={bulkStatusOpen} onOpenChange={setBulkStatusOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-6 px-2 text-[10px]"
+                  disabled={selectedLenders.length === 0 || bulkSaving}
+                >
+                  Set status
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                className="w-40 p-1 pointer-events-auto"
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <div className="flex flex-col">
+                  {STATUS_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => applyBulkStatus(opt.value)}
+                      className="flex items-center gap-2 px-2 py-1.5 text-xs rounded-sm hover:bg-muted text-left"
+                    >
+                      <span
+                        className={cn(
+                          'h-1.5 w-1.5 rounded-full',
+                          LENDER_TRACKING_STATUS_CONFIG[opt.value]?.color || 'bg-muted'
+                        )}
+                      />
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Popover open={bulkNoteOpen} onOpenChange={setBulkNoteOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-6 px-2 text-[10px]"
+                  disabled={selectedLenders.length === 0 || bulkSaving}
+                >
+                  <StickyNote className="h-3 w-3 mr-1" />
+                  Note
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                className="w-80 p-3 pointer-events-auto"
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                  Note · {selectedLenders.length} lender{selectedLenders.length === 1 ? '' : 's'}
+                </div>
+                <Textarea
+                  value={bulkNote}
+                  onChange={(e) => setBulkNote(e.target.value)}
+                  placeholder="Note to apply to all selected lenders…"
+                  rows={4}
+                  className="text-xs resize-none"
+                />
+                <div className="mt-2 flex items-center gap-3 text-[10px] text-muted-foreground">
+                  <label className="inline-flex items-center gap-1 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="bulk-note-mode"
+                      checked={bulkNoteMode === 'append'}
+                      onChange={() => setBulkNoteMode('append')}
+                    />
+                    Append
+                  </label>
+                  <label className="inline-flex items-center gap-1 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="bulk-note-mode"
+                      checked={bulkNoteMode === 'replace'}
+                      onChange={() => setBulkNoteMode('replace')}
+                    />
+                    Replace
+                  </label>
+                </div>
+                <div className="flex items-center justify-end gap-2 mt-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setBulkNoteOpen(false)}
+                    disabled={bulkSaving}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={applyBulkNote}
+                    disabled={bulkSaving || !bulkNote.trim()}
+                  >
+                    {bulkSaving ? 'Saving…' : 'Apply'}
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+      )}
 
       {lenders.length === 0 ? (
         <p className="text-xs text-muted-foreground italic">No lenders engaged.</p>
@@ -241,16 +503,47 @@ export function LendersPanel({ deal }: LendersPanelProps) {
             const items = grouped[b];
             if (items.length === 0) return null;
             const meta = BUCKET_META[b];
-            const shown = expanded ? items : items.slice(0, VISIBLE_PER_BUCKET);
-            const hidden = expanded ? [] : items.slice(VISIBLE_PER_BUCKET);
+            const showAll = expanded || selectionMode;
+            const shown = showAll ? items : items.slice(0, VISIBLE_PER_BUCKET);
+            const hidden = showAll ? [] : items.slice(VISIBLE_PER_BUCKET);
             return (
               <div key={b}>
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                  {meta.label} · {items.length}
+                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <span>{meta.label} · {items.length}</span>
+                  {selectionMode && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const allSelected = items.every((l) => selectedIds.has(l.id));
+                        setSelectedIds((prev) => {
+                          const s = new Set(prev);
+                          if (allSelected) {
+                            items.forEach((l) => s.delete(l.id));
+                          } else {
+                            items.forEach((l) => s.add(l.id));
+                          }
+                          return s;
+                        });
+                      }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      className="text-[9px] normal-case tracking-normal font-normal text-muted-foreground hover:text-foreground"
+                    >
+                      {items.every((l) => selectedIds.has(l.id)) ? 'Unselect group' : 'Select group'}
+                    </button>
+                  )}
                 </div>
                 <div className="space-y-1">
                   {shown.map(l => (
-                    <LenderRow key={l.id} lender={l} meta={meta} />
+                    <LenderRow
+                      key={l.id}
+                      lender={l}
+                      meta={meta}
+                      selectionMode={selectionMode}
+                      selected={selectedIds.has(l.id)}
+                      onToggleSelected={toggleSelected}
+                    />
                   ))}
                   {hidden.length > 0 && (
                     <button
@@ -268,7 +561,7 @@ export function LendersPanel({ deal }: LendersPanelProps) {
               </div>
             );
           })}
-          {expanded && hasHidden && (
+          {expanded && hasHidden && !selectionMode && (
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
