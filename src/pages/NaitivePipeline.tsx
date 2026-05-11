@@ -1,11 +1,12 @@
 import { Helmet } from 'react-helmet-async';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { useNaitivePipelineData } from '@/hooks/useNaitivePipelineData';
 import { useNaitivePipelineMetrics } from '@/hooks/useNaitivePipelineMetrics';
 import { useMemo, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Deal, DealStatus } from '@/types/deal';
 import { DealStageOption } from '@/contexts/DealStagesContext';
 import { CreateNaitiveDealDialog } from '@/components/naitive-pipeline/CreateNaitiveDealDialog';
@@ -149,6 +150,53 @@ export default function NaitivePipeline() {
   const [overId, setOverId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [editDeal, setEditDeal] = useState<Deal | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const stageLabelById = useMemo(() => {
+    const m = new Map<string, string>();
+    stages.forEach(s => m.set(s.id, s.label));
+    return m;
+  }, [stages]);
+
+  const filteredDeals = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return deals;
+    return deals.filter(d => {
+      const stageLabel = stageLabelById.get(d.stage) || d.stage || '';
+      const haystack = [
+        d.name,
+        d.company,
+        d.contact,
+        d.contactEmail,
+        d.contactTitle,
+        d.contactInfo,
+        d.manager,
+        d.dealOwner,
+        d.analyst,
+        d.ownedBy,
+        d.icpCategory,
+        d.engagementType,
+        d.opportunityType,
+        d.leadSource,
+        d.referralSource,
+        d.sourcedVia,
+        d.prospectType,
+        d.outcome,
+        d.keySignal,
+        d.nextStep,
+        d.nextStepDate,
+        d.status,
+        d.stage,
+        stageLabel,
+        ...(d.dealTypes || []),
+        ...(d.servicesOffered || []),
+      ]
+        .filter(Boolean)
+        .join(' \u0001 ')
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [deals, searchQuery, stageLabelById]);
 
   const goTo = useCallback((target: 0 | 1) => {
     if (target === activeView) return;
@@ -166,7 +214,7 @@ export default function NaitivePipeline() {
   const dealsByStage = useMemo(() => {
     const grouped = new Map<string, Deal[]>();
     stages.forEach(s => grouped.set(s.id, []));
-    deals.forEach(d => {
+    filteredDeals.forEach(d => {
       const arr = grouped.get(d.stage) || [];
       arr.push(d);
       grouped.set(d.stage, arr);
@@ -176,7 +224,7 @@ export default function NaitivePipeline() {
       grouped.set(id, arr);
     });
     return grouped;
-  }, [deals, stages]);
+  }, [filteredDeals, stages]);
 
   const handleStageChange = async (dealId: string, newStage: string) => {
     try {
@@ -275,10 +323,33 @@ export default function NaitivePipeline() {
               <div>
                 <h1 className="text-2xl font-bold tracking-tight">naitive Pipeline</h1>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {deals.length} {deals.length === 1 ? 'deal' : 'deals'} in pipeline
+                  {searchQuery.trim()
+                    ? `${filteredDeals.length} of ${deals.length} ${deals.length === 1 ? 'deal' : 'deals'} match`
+                    : `${deals.length} ${deals.length === 1 ? 'deal' : 'deals'} in pipeline`}
                 </p>
               </div>
               <div className="flex items-center gap-3">
+                <div className="relative w-72">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                  <Input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search Pipeline: deals, contacts, next steps, stage…"
+                    aria-label="Search naitive Pipeline"
+                    className="h-8 pl-8 pr-8 text-xs"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      aria-label="Clear search"
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 h-5 w-5 inline-flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
                 {/* View toggle pills */}
                 <div className="flex items-center bg-muted rounded-lg p-0.5">
                   {VIEWS.map((label, i) => (
